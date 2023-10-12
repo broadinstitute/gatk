@@ -21,6 +21,7 @@ workflow GvsJointVariantCalling {
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
+        Boolean use_compressed_references = false
         Boolean process_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
@@ -129,6 +130,7 @@ workflow GvsJointVariantCalling {
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
             billing_project_id = billing_project_id,
+            use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
@@ -186,6 +188,7 @@ workflow GvsJointVariantCalling {
             query_labels = query_labels,
             sample_names_to_extract = sample_names_to_extract,
             variants_docker = effective_variants_docker,
+            use_compressed_references = use_compressed_references,
     }
 
     String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])

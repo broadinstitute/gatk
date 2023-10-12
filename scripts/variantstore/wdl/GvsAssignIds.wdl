@@ -16,6 +16,8 @@ workflow GvsAssignIds {
     Boolean samples_are_controls = false
 
     Boolean process_vcf_headers = false
+
+    Boolean use_compressed_references = false
     String? cloud_sdk_docker
   }
 
@@ -123,6 +125,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       max_table_id = AssignIds.max_table_id,
       cloud_sdk_docker = effective_cloud_sdk_docker,
+      use_compressed_references = use_compressed_references,
   }
 
   output {

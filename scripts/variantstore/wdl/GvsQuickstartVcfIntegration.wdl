@@ -10,8 +10,8 @@ workflow GvsQuickstartVcfIntegration {
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
+        Boolean use_compressed_references = false
         Boolean process_vcf_headers = false
-
         String drop_state = "FORTY"
         String dataset_suffix
         Boolean is_wgs = true
@@ -82,6 +82,7 @@ workflow GvsQuickstartVcfIntegration {
             project_id = project_id,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
+            use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",

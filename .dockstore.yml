@@ -97,7 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1045_header_creator_hang
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -147,6 +146,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsExtractCallset
@@ -186,6 +186,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -325,6 +326,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCallsetStatistics

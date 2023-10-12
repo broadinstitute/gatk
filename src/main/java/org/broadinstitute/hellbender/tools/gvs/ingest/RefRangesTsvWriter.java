@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 
 import java.io.BufferedWriter;
@@ -34,6 +35,11 @@ public class RefRangesTsvWriter extends RefRangesWriter {
         writer.append(SEPARATOR);
         writer.append(state);
         writer.append("\n");
+    }
+
+    @Override
+    public void writeCompressed(long packedData, long sampleId) throws IOException {
+        throw new GATKException("TSVWriter doesn't support compressed reference blocks");
     }
 
     public void close() throws IOException {
