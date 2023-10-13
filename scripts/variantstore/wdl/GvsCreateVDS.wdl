@@ -128,7 +128,7 @@ task create_vds {
         memory: "6.5 GB"
         disks: "local-disk 100 SSD"
         cpu: 1
-        preemptible: false
+        preemptible: 0
         docker: variants_docker
         bootDiskSizeGb: 10
     }
