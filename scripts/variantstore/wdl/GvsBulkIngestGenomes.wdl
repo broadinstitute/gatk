@@ -19,7 +19,6 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
-
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker
@@ -36,8 +35,8 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsImportGenomes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-        # set to "ZERO" to drop GQ0 upon ingest into GVS for VDS (instead of VCF) output
-        String drop_state = "ZERO"
+        # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
+        String drop_state = "NONE"
 
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,
         # so if specifying `load_data_batch_size`, adjust preemptible and maxretries accordingly. Or just take the defaults, as those should work fine in most cases.
@@ -48,6 +47,8 @@ workflow GvsBulkIngestGenomes {
         Boolean process_vcf_headers = false
         Boolean tighter_gcp_quotas = false
         # End GvsImportGenomes
+
+        Boolean use_compressed_references = false
     }
 
     parameter_meta {
@@ -103,6 +104,7 @@ workflow GvsBulkIngestGenomes {
             samples_are_controls = false,
             process_vcf_headers = process_vcf_headers,
             cloud_sdk_docker = effective_cloud_sdk_docker,
+            use_compressed_references = use_compressed_references
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -131,6 +133,7 @@ workflow GvsBulkIngestGenomes {
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
             billing_project_id = billing_project_id,
+            use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
     }

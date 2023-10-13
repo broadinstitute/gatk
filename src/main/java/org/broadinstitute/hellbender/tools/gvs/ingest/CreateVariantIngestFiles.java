@@ -160,6 +160,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean enableVCFHeaderProcessing = false;
 
+    @Argument(
+            fullName = "use-compressed-refs",
+            doc = "Store the ref_ranges data in a compressed format. Saves about 40% on storage",
+            optional = true
+    )
+    public boolean storeCompressedReferences = false;
+
     private boolean shouldWriteLoadStatusStarted = true;
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -282,7 +289,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
 
         if (enableReferenceRanges && !refRangesRowsExist) {
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName);
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
         }
 
         if (enableVet && !vetRowsExist) {
