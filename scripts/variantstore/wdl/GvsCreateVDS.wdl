@@ -7,25 +7,19 @@ version 1.0
 #
 # Inputs:
 #
-#         ## ANALYSIS PARAMETERS
-#        #  ie, parameters that go to the Hail python code (submission_script below)
+#        ## ANALYSIS PARAMETERS
+#        # i.e., parameters that go to the Hail python code (submission_script below)
 #        # location for the avro files
 #        String avro_path
 #        # location for the final, created VDS
 #        String vds_output_url
 #
 #        ## CLUSTER PARAMETERS
-#
 #        # Set to 'subnetwork' if running in Terra Cromwell
 #        String gcs_subnetwork_name='subnetwork'
 #
 #        # Set to "us-central1" if running in Terra Cromwell
 #        String region = "us-central1"
-#
-#        ## VM PARAMETERS
-#        # Please note that there is a RuntimeAttr struct and a task parameter that can be used to override the defaults
-#        #  of the VM.  These are task parameters.
-#        #  However, since this can be a lightweight VM, overriding is unlikely to be necessary.
 #
 #
 # Important notes:
@@ -40,41 +34,42 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-struct RuntimeAttr {
-    Float? mem_gb
-    Int? cpu_cores
-    Int? disk_gb
-    Int? boot_disk_gb
-    Int? preemptible_tries
-    Int? max_retries
-}
 
 workflow GvsCreateVDS {
     ### Change here:  You will need to specify all parameters (both analysis and runtime) that need to go to the
     # cluster, VM spinning up the cluster, and the script being run on the cluster.
     input {
-
-        ## ANALYSIS PARAMETERS
-        #  ie, parameters that go to the Hail python code (submission_script below)
         String vds_output_url
         String avro_path
         String? hail_version='0.2.124'
 
-        # String used in construction of cluster name
-        #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
-        String prefix = "vds-creation-cluster"
+        String prefix = "vds-cluster"
+        String gcs_subnetwork_name='subnetwork'
+        String region = "us-central1"
+    }
+    parameter_meta {
+        ## ANALYSIS PARAMETERS
+        # i.e., parameters that go to the Hail python code (submission_script below)
+        avro_path : {
+            help: "Input location for the avro files"
+        }
+        vds_output_url: {
+            help: "location for the final created VDS"
+        }
+        hail_version: {
+            help: "0.2.124"
+        }
 
         ## CLUSTER PARAMETERS
-        # Set to 'subnetwork' if running in Terra Cromwell
-        String gcs_subnetwork_name='subnetwork'
-
-        # Set to "us-central1" if running in Terra Cromwell
-        String region = "us-central1"
-
-        ## VM PARAMETERS
-        # Please note that there is a RuntimeAttr struct and a task parameter that can be used to override the defaults
-        #  of the VM.  These are task parameters.
-        #  However, since this can be a lightweight VM, overriding is unlikely to be necessary.
+        prefix: {
+            help: "used in construction of cluster name"
+        }
+        gcs_subnetwork_name: {
+            help: "set to subnetwork if running in Terra Cromwell"
+        }
+        region: {
+            help: "us-central1"
+        }
     }
 
     call Utils.GetToolVersions
@@ -91,7 +86,6 @@ workflow GvsCreateVDS {
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = GetToolVersions.variants_docker,
     }
-
 }
 
 task create_vds {
@@ -102,24 +96,14 @@ task create_vds {
         String? hail_version
 
         # Cluster params
-        String gcs_project  # The Google project ID information is necessary when spinning up dataproc.
+        String gcs_project
         String workspace_bucket
         String region = "us-central1"
-        RuntimeAttr? runtime_attr_override
         String gcs_subnetwork_name
 
         String variants_docker
     }
 
-    RuntimeAttr runtime_default = object {
-                                      mem_gb: 6.5,
-                                      disk_gb: 100,
-                                      cpu_cores: 1,
-                                      preemptible_tries: 0,
-                                      max_retries: 0,
-                                      boot_disk_gb: 10
-                                  }
-    RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
     String temp_path = "~{workspace_bucket}/quickstart-vds-for-wdl-tieout/temp-dir/"
 
     command <<<
@@ -136,7 +120,7 @@ task create_vds {
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
         hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
-        cluster_name="~{prefix}-hail-${hex}"
+        cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
         # Set up the autoscaling policy
@@ -176,12 +160,11 @@ task create_vds {
     }
 
     runtime {
-        memory: select_first([runtime_override.mem_gb, runtime_default.mem_gb]) + " GB"
-        disks: "local-disk " + select_first([runtime_override.disk_gb, runtime_default.disk_gb]) + " SSD"
-        cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
-        preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
-        maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
+        memory: "6.5 GB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: false
         docker: variants_docker
-        bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
+        bootDiskSizeGb: 10
     }
 }
