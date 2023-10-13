@@ -1,43 +1,10 @@
 version 1.0
-#
-# This script will run the VDS creation in Hail
-# the input will need to be a path to avro files and many parameters
-#
-# This has not been tested on any reference other than hg38.
-#
-# Inputs:
-#
-#        ## ANALYSIS PARAMETERS
-#        # i.e., parameters that go to the Hail python code (submission_script below)
-#        # location for the avro files
-#        String avro_path
-#        # location for the final, created VDS
-#        String vds_output_url
-#
-#        ## CLUSTER PARAMETERS
-#        # Set to 'subnetwork' if running in Terra Cromwell
-#        String gcs_subnetwork_name='subnetwork'
-#
-#        # Set to "us-central1" if running in Terra Cromwell
-#        String region = "us-central1"
-#
-#
-# Important notes:
-#   - This WDL script is still dependent on the python/Hail script that it calls.  You will see this when the parameters
-#    are passed into the script.
-#   - This WDL is boilerplate, except for input parameters, output parameters, and where marked in the main task.
-#   - We HIGHLY recommend that the WDL do NOT run on a preemptible VM
-#    (reminder, this is a single VM that spins up the dataproc cluster and submits jobs -- it is not doing any of the
-#     actual computation.  In other words, it does not need to be a heavy machine.)
-#     In other words, always set `preemptible_tries` to zero (default).
-#
 
+# This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 
 
 workflow GvsCreateVDS {
-    ### Change here:  You will need to specify all parameters (both analysis and runtime) that need to go to the
-    # cluster, VM spinning up the cluster, and the script being run on the cluster.
     input {
         String vds_output_url
         String avro_path
@@ -73,7 +40,6 @@ workflow GvsCreateVDS {
     }
 
     call Utils.GetToolVersions
-
 
     call create_vds {
         input:
