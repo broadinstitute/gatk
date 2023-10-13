@@ -8,10 +8,10 @@ workflow GvsCreateVDS {
     input {
         String vds_output_url
         String avro_path
-        String? hail_version='0.2.124'
+        String? hail_version="0.2.124"
 
         String prefix = "vds-cluster"
-        String gcs_subnetwork_name='subnetwork'
+        String gcs_subnetwork_name="subnetwork"
         String region = "us-central1"
     }
     parameter_meta {
@@ -20,7 +20,7 @@ workflow GvsCreateVDS {
             help: "Input location for the avro files"
         }
         vds_output_url: {
-            help: "location for the final created VDS"
+            help: "Location for the final created VDS"
         }
         hail_version: {
             help: "0.2.124"
@@ -28,10 +28,10 @@ workflow GvsCreateVDS {
 
         # Cluster parameters
         prefix: {
-            help: "used in construction of cluster name"
+            help: "Prefix of tnhe Dataproc cluster name"
         }
         gcs_subnetwork_name: {
-            help: "set to subnetwork if running in Terra Cromwell"
+            help: "Set to 'subnetwork' if running in Terra Cromwell"
         }
         region: {
             help: "us-central1"
@@ -76,7 +76,7 @@ task create_vds {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        account_name=$(gcloud config list account --format "value(core.account)") ## do we need a service account anymore?
+        account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
         pip3 install hail~{'==' + hail_version}
@@ -116,8 +116,6 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_url} \
             --temp-path ~{temp_path}
-
-        echo "Goodbye cluster"
     >>>
 
     output {
