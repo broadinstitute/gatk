@@ -15,8 +15,7 @@ workflow GvsCreateVDS {
         String region = "us-central1"
     }
     parameter_meta {
-        ## ANALYSIS PARAMETERS
-        # i.e., parameters that go to the Hail python code (submission_script below)
+        # Analysis parameters, i.e., parameters that go to the Hail python code (submission_script below)
         avro_path : {
             help: "Input location for the avro files"
         }
@@ -27,7 +26,7 @@ workflow GvsCreateVDS {
             help: "0.2.124"
         }
 
-        ## CLUSTER PARAMETERS
+        # Cluster parameters
         prefix: {
             help: "used in construction of cluster name"
         }
@@ -48,6 +47,7 @@ workflow GvsCreateVDS {
             avro_path = avro_path,
             hail_version = hail_version,
             gcs_project = GetToolVersions.google_project,
+            region = region,
             workspace_bucket = GetToolVersions.workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = GetToolVersions.variants_docker,
@@ -61,10 +61,9 @@ task create_vds {
         String avro_path
         String? hail_version
 
-        # Cluster params
         String gcs_project
         String workspace_bucket
-        String region = "us-central1"
+        String region
         String gcs_subnetwork_name
 
         String variants_docker
