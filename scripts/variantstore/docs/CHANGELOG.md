@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Updated input VCF and VCF index localization commands in ingest to support Google Cloud Storage composite objects.
+- Updated input VCF and VCF index localization in ingest to support Google Cloud Storage composite objects.
 
 ## 0.4.0 - 2023-10-10
 
