@@ -41,7 +41,7 @@ def import_gvs(refs: 'List[List[str]]',
                skip_final_merge=False,
                unphase=False,
                ref_block_max_length: 'int' = 1000,
-               use_classic_vqsr=True
+               use_classic_vqsr=False
                ):
     """Import a collection of Avro files exported from GVS.
 
