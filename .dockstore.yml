@@ -185,6 +185,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
