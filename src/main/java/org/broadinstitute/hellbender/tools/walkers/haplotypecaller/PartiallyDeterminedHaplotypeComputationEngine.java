@@ -8,6 +8,7 @@ import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
@@ -397,29 +398,36 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
         }
 
-        List<SimpleInterval> allIntervals = new ArrayList<>(strIntervals);  // light up STRs
-        eventsInOrder.forEach(event -> allIntervals.add(new SimpleInterval(event)));    // light up each Event
-        swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(IntervalUtils.getSpanningInterval(tuple)));  // light up each mutex
-
-        allIntervals.sort(Comparator.comparingInt(SimpleInterval::getStart));   // no need to break ties here -- the end result is unique regardless
+        final List <DoubleRange> allIntervals = new ArrayList<>();
+        strIntervals.forEach(str -> allIntervals.add(new DoubleRange(str.getStart(), str.getEnd())));   // light up STRs
+        eventsInOrder.forEach(event -> allIntervals.add(new DoubleRange(dragenStart(event), dragenEnd(event))));    // light up each Event
+        swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(dragenSpan(tuple)));  // light up each mutex
+        allIntervals.sort(Comparator.comparingDouble(DoubleRange::getMinimumDouble));   // no need to break ties here -- the end result is unique regardless
+        allIntervals.add(new DoubleRange(Double.MAX_VALUE));    // add a dummy interval at the end with no possible overlap to simplify the loop below
 
         final List<EventGroup> eventGroups = new ArrayList<>();
-        final OverlapDetector<Event> eventOD = OverlapDetector.create(eventsInOrder);  // for querying which events overlap each EventGroup
+        double start = allIntervals.get(0).getMinimumDouble();
+        double end = allIntervals.get(0).getMaximumDouble();
+        int eventIndex = 0;
 
-        final String contig = eventsInOrder.get(0).getContig();
-        int start = allIntervals.get(0).getStart();
-        int end = allIntervals.get(0).getEnd();
+        for (final DoubleRange interval : allIntervals) {
+            if (interval.getMinimumDouble() <= end) {    // contiguous with previous span.  Note that DoubleRanges are closed (inclusive) on both ends
+                end = Math.max(end, interval.getMaximumDouble());
+            } else {    // add the previous span and begin a new one.  Note that the dummy last interval at triggers processing of the last EventGroup
+                final DoubleRange span = new DoubleRange(start, end);
+                final Set<Event> eventsInSpan = new HashSet<>();
+                while (eventIndex < eventsInOrder.size() && span.containsDouble(dragenStart(eventsInOrder.get(eventIndex)))) {
+                    eventsInSpan.add(eventsInOrder.get(eventIndex));
+                    eventIndex++;
+                }
+                if (!eventsInSpan.isEmpty()) {  // the interval could be an STR with no Events within
+                    eventGroups.add(new EventGroup(eventsInSpan, allMutexes));
+                }
 
-        for (final SimpleInterval interval : allIntervals) {
-            if (interval.getStart() < end) {    // contiguous with previous span
-                end = Math.max(end, interval.getEnd());
-            } else {    // add the previous span and begin a new one
-                eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), allMutexes));
-                start = interval.getStart();
-                end = interval.getEnd();
+                start = interval.getMinimumDouble();
+                end = interval.getMaximumDouble();
             }
         }
-        eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), allMutexes));    // add the last EventGroup
 
         return eventGroups;
     }
@@ -870,6 +878,19 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     // To match DRAGEN we must define a modified start position for indels, which is used to determine overlaps when creating event groups
     private static double dragenStart(final Event event) {
         return event.getStart() + (event.isIndel() ? (event.isSimpleDeletion() ? 1 : 0.5) : 0);
+    }
+
+    private static double dragenEnd(final Event event) {
+        return event.getEnd() + (event.isSimpleInsertion() ? 0.5 : 0);
+    }
+
+    private static final DoubleRange dragenSpan(final List<Event> tuple) {
+        final int size = tuple.size();
+        Utils.validate(size == 2 || size == 3, "this is supposed to be a pair or a trio");
+        final double start01 = Math.min(dragenStart(tuple.get(0)), dragenStart(tuple.get(1)));
+        final double end01 = Math.max(dragenEnd(tuple.get(0)), dragenEnd(tuple.get(1)));
+        return size == 2 ? new DoubleRange(start01, end01) :
+                new DoubleRange(Math.min(start01, dragenStart(tuple.get(2))), Math.max(end01, dragenEnd(tuple.get(2))));
     }
 
     /**

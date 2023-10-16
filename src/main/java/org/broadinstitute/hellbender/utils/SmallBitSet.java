@@ -138,7 +138,7 @@ public class SmallBitSet {
 
     public boolean isEmpty() { return bits == 0; }
 
-    public boolean hasElementGreaterThan(final int element) { return bits >= 1 << element; }
+    public boolean hasElementGreaterThan(final int element) { return bits >= 1 << (element + 1); }
 
     private static int elementIndex(final int element) {
         return 1 << element;
