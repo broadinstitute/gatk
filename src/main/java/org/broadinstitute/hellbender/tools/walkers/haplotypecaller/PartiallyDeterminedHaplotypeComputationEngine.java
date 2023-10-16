@@ -377,23 +377,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * Event that was compatible with all the Events of the mutex.
      *
      * @param eventsInOrder all events in a calling region
-     * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
+     * @param swMutexes list of lists of two or three non-overlapping events that are mutually excluded according
      *                                to the Smith-Waterman heuristic in which injecting them into the reference haplotype and
      *                                simplifying via Smith Waterman yields other events
      */
     @VisibleForTesting
-    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios, List<SimpleInterval> strIntervals) {
+    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swMutexes, List<SimpleInterval> strIntervals) {
         // In addition to the Smith-Waterman mutexes, we find the mutexes due to overlap
         // Note that overlapping SNPs are allowed on the undetermined parts of PD haplotypes.  Here we include overlapping SNPS
         // as mutexes and let the EventGroup class handle them.
-        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
+        final List<List<Event>> overlapMutexes = new ArrayList<>();
         for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
             final Event event1 = eventsInOrder.get(e1);
             for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
                 final Event event2 = eventsInOrder.get(e2);
 
-                if (eventsOverlapForPDHapsCode(event1, event2)) {
-                    allMutexes.add(List.of(event1, event2));
+                // TODO: we need to differentiate overlap mutexes from SW mutexes in EventGroup constructor
+                if (event1.overlaps(event2)) {  // the EventGroup constructor will sort out when the stricter condition of DRAGEN overlap is relevant
+                    overlapMutexes.add(List.of(event1, event2));
                 }
             }
         }
@@ -401,7 +402,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List <DoubleRange> allIntervals = new ArrayList<>();
         strIntervals.forEach(str -> allIntervals.add(new DoubleRange(str.getStart(), str.getEnd())));   // light up STRs
         eventsInOrder.forEach(event -> allIntervals.add(new DoubleRange(dragenStart(event), dragenEnd(event))));    // light up each Event
-        swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(dragenSpan(tuple)));  // light up each mutex
+        swMutexes.forEach(tuple -> allIntervals.add(dragenSpan(tuple)));  // light up each mutex
         allIntervals.sort(Comparator.comparingDouble(DoubleRange::getMinimumDouble));   // no need to break ties here -- the end result is unique regardless
         allIntervals.add(new DoubleRange(Double.MAX_VALUE));    // add a dummy interval at the end with no possible overlap to simplify the loop below
 
@@ -421,7 +422,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     eventIndex++;
                 }
                 if (!eventsInSpan.isEmpty()) {  // the interval could be an STR with no Events within
-                    eventGroups.add(new EventGroup(eventsInSpan, allMutexes));
+                    eventGroups.add(new EventGroup(eventsInSpan, swMutexes, overlapMutexes));
                 }
 
                 start = interval.getMinimumDouble();
@@ -734,27 +735,39 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         /**
          * @param events all events in this event group
-         * @param mutexPairsAndTrios all mutexes of two or three events, defined by overlap and by the Smith-Waterman heuristic,
+         * @param swMutexes all mutexes of two or three events, defined by the Smith-Waterman heuristic,
          *                           that determined the event groups in this calling region
          */
-        public EventGroup(final Collection<Event> events, List<List<Event>> mutexPairsAndTrios) {
+        public EventGroup(final Collection<Event> events, final List<List<Event>> swMutexes, final List<List<Event>> overlapMutexes) {
             Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
             eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
             eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
 
-            // for determined events, all mutexes that involve the given events apply
-            final List<List<Event>> mutexesForDeterminedEvents = mutexPairsAndTrios.stream()
-                    .filter(mutex -> mutex.stream().anyMatch(eventIndices::containsKey)).toList();
+            final List<List<Event>> relevantSWMutexes = swMutexes.stream().filter(mutex -> eventIndices.containsKey(mutex.get(0))).toList();
+
+            // the Smith-Waterman mutexes are non-negotiable and apply in both the determined and undetermined parts of PD haplotypes
+            final List<List<Event>> mutexesForDeterminedEvents = new ArrayList<>(relevantSWMutexes);
+            final List<List<Event>> mutexesForUndeterminedEvents = new ArrayList<>(relevantSWMutexes);
+
+            // overlapping SNPs can't both be determined but they may coexist in the undetermined span by being merged into an undetermined SNP pseudo-allele
+            // two indels or one indel and a SNP that overlap in the DRAGEN sense (excluding the dummy leading base etc) may never coexist
+            for (final List<Event> mutex : overlapMutexes) {
+                if (!eventIndices.containsKey(mutex.get(0))) {
+                    continue;
+                }
+                if (mutex.get(0).isSNP() && mutex.get(1).isSNP()) { // if they are both SNPs and are in overlapMutexes, they must be at the same locus, no check needed
+                    mutexesForDeterminedEvents.add(mutex);
+                } else if (eventsOverlapForPDHapsCode(mutex.get(0), mutex.get(1))) {    // the strict DRAGEN sense of overlap is a strict mutex, except for undetermined SNPs as above
+                    mutexesForDeterminedEvents.add(mutex);
+                    mutexesForUndeterminedEvents.add(mutex);
+                } else {    // VCF overlap but not DRAGEN overlap -- they may coexist behind the scenes in the undetermined part of PD haplotypes
+                    mutexesForDeterminedEvents.add(mutex);
+                }
+            }
 
             for (final List<Event> mutex : mutexesForDeterminedEvents) {
                 Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
             }
-
-            // for undetermined events we exclude mutexes of two overlapping SNPs -- the undetermined part of PD haplotypes
-            // allows multiple SNPs to coexist at a single locus
-            final List<List<Event>> mutexesForUndeterminedEvents = mutexesForDeterminedEvents.stream()
-                    .filter(mutex -> !(mutex.size() == 2 && mutex.get(0).getStart() == mutex.get(1).getStart() && mutex.get(0).isSNP() && mutex.get(1).isSNP()))
-                    .toList();
 
             allowedUndeterminedSubsets = computeAllowedSubsets(mutexesForUndeterminedEvents);
             allowedDeterminedSubsets = computeAllowedSubsets(mutexesForDeterminedEvents);
