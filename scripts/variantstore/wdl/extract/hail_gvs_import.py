@@ -42,7 +42,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
         # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
         # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
         # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-        unphase=True, # the default in Hail is to keep phasing information, but it's not necessary for AoU, so it can be dropped
+        unphase=False,  # turning on phasing starting with Echo
         use_classic_vqsr=use_classic_vqsr
     )
 
