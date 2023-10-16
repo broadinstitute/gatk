@@ -6,9 +6,9 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
-        String vds_output_url
+        String vds_output_path
         String avro_path
-        String? hail_version="0.2.124"
+        String hail_version="0.2.124"
 
         String prefix = "vds-cluster"
         String gcs_subnetwork_name="subnetwork"
@@ -19,7 +19,7 @@ workflow GvsCreateVDS {
         avro_path : {
             help: "Input location for the avro files"
         }
-        vds_output_url: {
+        vds_output_path: {
             help: "Location for the final created VDS"
         }
         hail_version: {
@@ -43,7 +43,7 @@ workflow GvsCreateVDS {
     call create_vds {
         input:
             prefix = prefix,
-            vds_url = vds_output_url,
+            vds_path = vds_output_path,
             avro_path = avro_path,
             hail_version = hail_version,
             gcs_project = GetToolVersions.google_project,
@@ -57,7 +57,7 @@ workflow GvsCreateVDS {
 task create_vds {
     input {
         String prefix
-        String vds_url
+        String vds_path
         String avro_path
         String? hail_version
 
@@ -68,8 +68,6 @@ task create_vds {
 
         String variants_docker
     }
-
-    String temp_path = "~{workspace_bucket}/quickstart-vds-for-wdl-tieout/temp-dir/"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -87,6 +85,7 @@ task create_vds {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
+        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
         # Set up the autoscaling policy
         cat > auto-scale-policy.yaml <<FIN
@@ -114,8 +113,8 @@ task create_vds {
             --gcs-project ~{gcs_project} \
             --cluster-name ${cluster_name} \
             --avro-path ~{avro_path} \
-            --vds-path ~{vds_url} \
-            --temp-path ~{temp_path}
+            --vds-path ~{vds_path} \
+            --temp-path ${hail_temp_path}
     >>>
 
     output {
