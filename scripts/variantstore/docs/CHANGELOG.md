@@ -1,5 +1,11 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.4.1 - 2023-10-16
+
+### Fixed
+
+- Updated input VCF and VCF index localization commands in ingest to support Google Cloud Storage composite objects.
+
 ## 0.4.0 - 2023-10-10
 
 ### Added
