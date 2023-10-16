@@ -149,6 +149,16 @@ workflows:
              - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
+   - name: GvsCreateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rc-vs-1064-wdl-quickstart-vds
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -299,6 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1064-wdl-quickstart-vds
          tags:
              - /.*/
    - name: GvsIngestTieout
