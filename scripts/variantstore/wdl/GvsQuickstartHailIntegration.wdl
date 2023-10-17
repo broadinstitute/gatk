@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
+import "GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
@@ -103,12 +104,24 @@ workflow GvsQuickstartHailIntegration {
             use_compressed_references = use_compressed_references,
     }
 
-    call CreateAndTieOutVds {
+    call CreateVds.GvsCreateVDS {
         input:
             git_branch_or_tag = git_branch_or_tag,
+            hail_version = "0.2.124",
             use_VQSR_lite = use_VQSR_lite,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+            cluster_prefix = "vds-cluster",
+            gcs_subnetwork_name = "subnetwork",
+            region = "us-central1",
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+    }
+
+    call TieOutVds {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
+            use_VQSR_lite = use_VQSR_lite,
+            vds_path = GvsCreateVDS.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -127,12 +140,11 @@ workflow GvsQuickstartHailIntegration {
 }
 
 
-task CreateAndTieOutVds {
+task TieOutVds {
     input {
         String? git_branch_or_tag
         Boolean use_VQSR_lite
-        String avro_prefix
-        String vds_destination_path
+        String vds_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
         String cloud_sdk_slim_docker
@@ -171,9 +183,6 @@ task CreateAndTieOutVds {
         # Copy VCFs and indexes to the current directory.
         cat vcf_manifest.txt | gcloud storage cp -I .
 
-        # `avro_prefix` includes a trailing `avro` so don't add another `avro` here.
-        gcloud storage cp --recursive ~{avro_prefix} $PWD
-
         export REFERENCES_PATH=$PWD/references
         mkdir -p ${REFERENCES_PATH}
 
@@ -198,21 +207,13 @@ task CreateAndTieOutVds {
         mkdir ${TEMP_PATH}
 
         export VDS_PATH=$WORK/gvs_import.vds
-        export AVRO_PATH=$PWD/avro
 
-        python3 ./hail_gvs_import.py \
-            --avro-path ${AVRO_PATH} \
-            --vds-path ${VDS_PATH} \
-            --temp-path ${TEMP_PATH} \
-            --references-path ${REFERENCES_PATH} \
-            ~{true='--use-vqsr-lite' false='' use_VQSR_lite}
+        gcloud storage cp ~{vds_path}  ${VDS_PATH}
+
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 
         python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
-
-        # Copy up the VDS
-        gcloud storage cp --recursive ${VDS_PATH} ~{vds_destination_path}
 
         pip install pytest
         ln -s ${WORK}/joined.mt .
