@@ -64,6 +64,7 @@
    - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
    - This workflow needs to be run with the `filter_set_name` from `GvsCreateFilterSet` step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - **NOTE** Set `use_compressed_references` to true.
 1. `GvsCreateVDS` workflow
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
    - For the `avro_path` input, Avro files from the above `GvsExtractAvroFilesForHail` step can be found in the Avro directory in the `OutputPath` task: `gs://fc-<workspace-id>/submissions/<submission id>/GvsExtractAvroFilesForHail/<workflow id>/call-OutputPath/avro`
