@@ -23,7 +23,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-    # A full description of the `import_vds` function written by Hail for this process can be in `import_vds.py`:
+    # A full description of the `import_vds` function written by Hail for this process can be found in `import_vds.py`:
     # https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/extract/import_gvs.py
     # Commented out parameters are ones where we are comfortable with the default, but want to make them easily
     # accessible to users.
@@ -42,7 +42,6 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
         # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
         # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
         # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-        unphase=False,  # turning on phasing starting with Echo
         use_classic_vqsr=use_classic_vqsr
     )
 

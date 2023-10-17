@@ -21,7 +21,6 @@ from hail.typecheck import typecheck, sequenceof, numeric
            partitions_per_sample=numeric,
            intermediate_resume_point=int,
            skip_final_merge=bool,
-           unphase=bool,
            ref_block_max_length=int,
            use_classic_vqsr=bool
            )
@@ -39,7 +38,6 @@ def import_gvs(refs: 'List[List[str]]',
                partitions_per_sample=0.35,
                intermediate_resume_point=0,
                skip_final_merge=False,
-               unphase=False,
                ref_block_max_length: 'int' = 1000,
                use_classic_vqsr=False
                ):
@@ -132,8 +130,6 @@ def import_gvs(refs: 'List[List[str]]',
         Index at which to resume sample-group imports. Default 0 (entire import)
     skip_final_merge : :class:`bool`
         Skip final merge if true.
-    unphase : :class:`bool`
-        Unphase VET genotypes on final merge.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
     use_classic_vqsr : :class:`bool`
@@ -258,7 +254,8 @@ def import_gvs(refs: 'List[List[str]]',
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
                                       local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
-                                      LGT=hl.parse_call(hl.coalesce(var_ht.PGT, var_ht.GT)),
+                                      LGT=hl.parse_call(var_ht.GT),
+                                      LPGT=hl.parse_call(var_ht.PGT),
                                       LAD=var_ht.AD.split(',').map(lambda x: hl.int32(x)),
                                       GQ=hl.int32(var_ht.GQ),
                                       RGQ=hl.int32(var_ht.RGQ))
@@ -397,9 +394,11 @@ def import_gvs(refs: 'List[List[str]]',
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
 
-        if unphase:
-            vd = vd.annotate_entries(LGT=vd.LGT.unphase())
-        vd = vd.select_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA), **vd.entry)
+        vd = vd.select_entries(
+            GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA),
+            PGT=hl.vds.lgt_to_gt(vd.LPGT, vd.LA),
+            **vd.entry
+        )
 
         hl.vds.VariantDataset(
             reference_data=rd,
