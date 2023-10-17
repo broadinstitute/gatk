@@ -302,6 +302,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1102-add-vds-wdl-to-integration-tests
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
