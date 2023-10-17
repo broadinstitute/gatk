@@ -380,12 +380,12 @@ task AssertTableSizesAreExpected {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            'SELECT "vet_total" AS total_name, sum(total_billable_bytes) AS total_bytes FROM
-            `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE table_name LIKE "vet_%"
+            "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
+            \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` WHERE table_name LIKE 'vet_%' \
             UNION ALL \
-            SELECT "ref_ranges_total" AS total_name, sum(total_billable_bytes) AS total_bytes
-            FROM `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-            WHERE table_name LIKE "ref_ranges_%" ORDER BY total_name' > table_size_output.csv
+            SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
+            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_sizes_output.csv
 
         set +o errexit
         diff -w table_sizes_output.csv ~{expected_output_csv} > differences.txt
