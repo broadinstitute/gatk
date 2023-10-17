@@ -32,7 +32,7 @@
 1. `GvsBulkIngestGenomes` workflow
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-   - **NOTE** Be sure to set the input `drop_state` to ZERO. This will have the effect of dropping GQ0 reference blocks.
+   - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and `use_compressed_references` to true (this will further compress the reference data).
    - `GvsBulkIngestGenomes` performs the functions of both `GvsAssignIds` and `GvsImportGenomes` with a much more scalable design. Detailed bulk ingest documentation can be found [here](../gvs-bulk-ingest-details.md).
 1. `GvsAssignIds` workflow
    - For use with **control** samples only!
@@ -47,6 +47,7 @@
    - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
    - **NOTE** Be sure to set the input `drop_state` to ZERO. This will have the effect of dropping GQ0 reference blocks.
    - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
+   - **NOTE** Set `use_compressed_references` to true.
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
 1. **TBD Workflow to soft delete samples**
