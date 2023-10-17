@@ -660,7 +660,7 @@ public final class AssemblyBasedCallerUtils {
         for (final Haplotype h : haplotypes) {
 
             // Partially determined haplotypes know at what position they are determined, only determined position haps should be considered for genotyping
-            if (h.isPartiallyDetermined() && ((PartiallyDeterminedHaplotype) h).getDeterminedSpan().overlaps(locus)) {
+            if (h.isPartiallyDetermined() && !((PartiallyDeterminedHaplotype) h).getDeterminedSpan().overlaps(locus)) {
                 continue;
             }
             final List<Event> overlappingEvents = h.getEventMap().getOverlappingEvents(loc);
