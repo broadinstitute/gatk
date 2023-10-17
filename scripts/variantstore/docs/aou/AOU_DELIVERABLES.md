@@ -26,7 +26,7 @@
     - Run the cells up to and through, section 1.4 ("Perform the copy, in batches")
     - If you want to automatically break up the new samples into smaller sample sets, then run the "now that the data have been copied, you can make sample sets if you wish" step. Set the `SUBSET_SIZE` and `set_name` variables to customize.
 - **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
-    - Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name ("aou_wgs") and callset identifier (e.g. "Bravo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name (e.g. "aou_wgs" — if it does not exist be sure to create one before running any workflows) and callset identifier (e.g. "Bravo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 
 ## The Pipeline
 1. `GvsBulkIngestGenomes` workflow
