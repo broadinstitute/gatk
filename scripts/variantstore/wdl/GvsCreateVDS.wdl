@@ -26,10 +26,9 @@ workflow GvsCreateVDS {
         vds_output_path: {
             help: "Location for the final created VDS"
         }
-
         # Cluster parameters
-        prefix: {
-            help: "Prefix of tnhe Dataproc cluster name"
+        cluster_prefix: {
+            help: "Prefix of the Dataproc cluster name"
         }
         gcs_subnetwork_name: {
             help: "Set to 'subnetwork' if running in Terra Cromwell"
