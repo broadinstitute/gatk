@@ -120,7 +120,7 @@ task create_vds {
                 scaleDownFactor: 1.0
                 gracefulDecommissionTimeout: 1h
         FIN
-        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region}
+        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \
