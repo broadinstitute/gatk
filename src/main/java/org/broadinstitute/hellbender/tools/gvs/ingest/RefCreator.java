@@ -184,11 +184,20 @@ public final class RefCreator {
             long localStart = start;
             while ( localStart <= end ) {
                 int length = (int) Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                refRangesWriter.write(localStart,
-                        sampleId,
-                        length,
-                        GQStateEnum.MISSING.getValue()
-                );
+                if (storeCompressedReferences) {
+                    String chromosome = SchemaUtils.decodeContig(localStart);
+                    refRangesWriter.writeCompressed(
+                            SchemaUtils.encodeCompressedRefBlock(chromosome, localStart, length,
+                                    GQStateEnum.MISSING.getCompressedValue()),
+                            sampleId
+                    );
+                } else {
+                    refRangesWriter.write(localStart,
+                            sampleId,
+                            length,
+                            GQStateEnum.MISSING.getValue()
+                    );
+                }
                 localStart = localStart + length ;
             }
         }
