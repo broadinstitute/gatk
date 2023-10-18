@@ -185,6 +185,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -263,6 +264,7 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
+             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
@@ -309,7 +311,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1064-wdl-quickstart-vds
+             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsIngestTieout
