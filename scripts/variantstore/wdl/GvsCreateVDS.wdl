@@ -110,9 +110,9 @@ task create_vds {
         cat > auto-scale-policy.yaml <<FIN
         workerConfig:
             minInstances: 2
-            maxInstances: 20
+            maxInstances: 10
         secondaryWorkerConfig:
-            maxInstances: 50
+            maxInstances: 1200
         basicAlgorithm:
             cooldownPeriod: 4m
             yarnConfig:
