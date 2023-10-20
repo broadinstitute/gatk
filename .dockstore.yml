@@ -184,7 +184,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1104_bitpatching
+             - vs_1060_phasing_into_vds
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
