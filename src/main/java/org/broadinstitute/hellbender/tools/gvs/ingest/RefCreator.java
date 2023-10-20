@@ -186,8 +186,9 @@ public final class RefCreator {
                 int length = (int) Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
                 if (storeCompressedReferences) {
                     String chromosome = SchemaUtils.decodeContig(localStart);
+                    int position = SchemaUtils.decodePosition(localStart);
                     refRangesWriter.writeCompressed(
-                            SchemaUtils.encodeCompressedRefBlock(chromosome, localStart, length,
+                            SchemaUtils.encodeCompressedRefBlock(chromosome, position, length,
                                     GQStateEnum.MISSING.getCompressedValue()),
                             sampleId
                     );
