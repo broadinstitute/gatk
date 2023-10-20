@@ -18,7 +18,72 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Get PathSeq file information
+ * <p>This tool is for inspecting the contents of binary resource files used by the PathSeq pipeline.
+ *
+ * <h3>Input</h3>
+ * <ul>
+ *     <li>PathSeq taxonomy file (.db) produced by PathSeqBuildReferenceTaxonomy</li>
+ *     <li>and/or PathSeq host kmers file (.hss or .bfi) produced by PathSeqBuildKmers</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>Summary metrics printed to logs and a human-readable version of the taxonomy file (if provided)</li>
+ *     <li>Summary metrisc of the k-mer file printed to logs (if provided)</li>
+ * </ul>
+ *
+ * The taxonomy text file is a tab-delimited table, in which each row corresponds to a node within the taxonomic
+ * tree, and has the following columns:
+ * <ol>
+ *     <li>RefSeq taxonomy ID (taxonomy_id)</li>
+ *     <li>name (name)</li>
+ *     <li>Taxonomic rank (rank)</li>
+ *     <li>Parent taxonomy ID (parent_id)</li>
+ *     <li>Comma-delimited list of taxonomy IDs from tree root to this node (path)</li>
+ *     <li>>Total reference length in bases (ref_length)</li>
+ *     <li>Comma-delimited list of sequence accessions (accessions)</li>
+ * </ol>
+ *
+ * In addition, the following metrics are printed to the tool logs:
+ *
+ * <ul>
+ *     <li>Total number of contigs</li>
+ *     <li>Total number of taxa</li>
+ *     <li>Total and per-kingdom number of organisms</li>
+ *     <li>Total and per-kingdom reference length (in bases)</li>
+ * </ul>
+ *
+ * If a k-mers file is provided, then the following is also printed:
+ *
+ * <ul>
+ *     <li>K-mer size</li>
+ *     <li>Base mask and masked base positions</li>
+ *     <li>File type (hash table or Bloom filter)</li>
+ *     <li>Number of kmers (hash table only)</li>
+ *     <li>False positive probability (Bloom filter only)</li>
+ * </ul>
+ *
+ * <h3>Usage examples</h3>
+ *
+ * <h4>Writes contents of taxonomy.db to a file and prints a summary log:</h4>
+ * <pre>
+ * gatk PathSeqInfo  \
+ *   --taxonomy-file taxonomy.db \
+ *   --species-list taxonomy.txt
+ * </pre>
+ *
+ * <h4>Prints a summary of host.bfi to log:</h4>
+ * <pre>
+ * gatk PathSeqInfo \
+ *  *   --kmer-file host.bfi
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ *
+ * <p>The species list output is only for inspecting the contents of the taxonomy file and cannot be consumed by
+ * any PathSeq tool.</p>
+ *
+ * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Get PathSeq file information",
@@ -61,6 +126,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         return null;
     }
 
+    /**
+     * Prints metrics for a given k-mer set to logs
+     */
     private static void printKmerInfo(final PSKmerCollection kmerCollection) {
         Utils.nonNull(kmerCollection, "Cannot print info for null k-mer collection");
         logger.info("K-mer file properties:");
@@ -80,6 +148,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         }
     }
 
+    /**
+     * Gets base mask of the given k-mer set
+     */
     private static List<String> getKmerMaskedBases(final PSKmerCollection kmerCollection) {
         Utils.nonNull(kmerCollection, "Cannot get masked bases for null k-mer collection");
         final SVKmerShort kmerMask = kmerCollection.getMask();
@@ -97,6 +168,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         return maskedBaseList;
     }
 
+    /**
+     * Writes a tsv with the nodes and structure of the given taxononmy database
+     */
     private static void writeTaxonomyTree(final PSTaxonomyDatabase taxonomyDatabase, final String speciesListPath) {
         Utils.nonNull(taxonomyDatabase, "Cannot print species for null taxonomy database");
         if (speciesListPath == null) return;
@@ -120,6 +194,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         }
     }
 
+    /**
+     * Prints summary metrics of the given database to logs
+     */
     private static void printTaxonomyInfo(final PSTaxonomyDatabase taxonomyDatabase) {
         Utils.nonNull(taxonomyDatabase, "Cannot print info for null taxonomy database");
         final PSTree tree = taxonomyDatabase.tree;
@@ -140,6 +217,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         }
     }
 
+    /**
+     * Returns the sum of all reference lengths in the given tree
+     */
     private static long getTaxonomyReferenceLength(final PSTree tree) {
         long totalLength = 0;
         for (final Integer nodeId : tree.getNodeIDs()) {
@@ -151,6 +231,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         return totalLength;
     }
 
+    /**
+     * Returns all kingdom-level nodes in the given tree
+     */
     private static List<Integer> getKingdomNodes(final PSTree tree) {
         final List<Integer> list = new ArrayList<>();
         for (final Integer nodeId : tree.getNodeIDs()) {
@@ -162,6 +245,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         return list;
     }
 
+    /**
+     * Gets list of taxonomy IDs of all descendents in the tree with non-zero reference length
+     */
     private static List<Integer> getDescendantNodesWithReference(final PSTree tree, final Integer parentId) {
         final List<Integer> list = new ArrayList<>();
         final Queue<Integer> queue = new PriorityQueue<>();
@@ -177,6 +263,9 @@ public final class PathSeqInfo extends CommandLineProgram {
         return list;
     }
 
+    /**
+     * Gets a list of all nodes in the tree with non-zero reference nodes
+     */
     private static List<Integer> getNodesWithReference(final PSTree tree) {
         final List<Integer> list = new ArrayList<>(tree.getNodeIDs().size());
         for (final Integer nodeId : tree.getNodeIDs()) {
