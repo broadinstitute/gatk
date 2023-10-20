@@ -131,6 +131,9 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
     @Argument(doc = "paired mode evaluation of variants (combine mates, when possible)", fullName = "paired-mode")
     private static boolean pairedMode = true;
 
+    @Argument(doc = "don't discard disjoint mates (combine variants from both reads)", fullName = "dont-ignore")
+    private static boolean noIgnore = false;
+
     @Argument(doc = "write BAM of rejected reads", fullName = "write-rejected-reads")
     private static boolean writeRejectedReads = false;
 
@@ -1948,7 +1951,17 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                     read2.setAttribute(ReportType.REPORT_TYPE_ATTRIBUTE_KEY, reportType.attributeValue);
                     rejectedReadsBAMWriter.addRead(read2);
                 }
-            } else { // mates are disjoint
+            } else if (noIgnore) { // mates are disjoint, process both
+                final ReadReport combinedReport = new ReadReport(report1, report2);
+                final ReportType reportType = combinedReport.updateCounts(codonTracker, variationCounts, reference);
+                disjointPairCounts.bumpCount(reportType);
+                if ( reportType.attributeValue != null && rejectedReadsBAMWriter != null ) {
+                    read1.setAttribute(ReportType.REPORT_TYPE_ATTRIBUTE_KEY, reportType.attributeValue);
+                    rejectedReadsBAMWriter.addRead(read1);
+                    read2.setAttribute(ReportType.REPORT_TYPE_ATTRIBUTE_KEY, reportType.attributeValue);
+                    rejectedReadsBAMWriter.addRead(read2);
+                }
+            } else { // mates are disjoint, use the first one
                 final ReportType ignoredMate = ReportType.IGNORED_MATE;
                 if ( read1.isFirstOfPair() ) {
                     processReport(read1, report1, disjointPairCounts);
@@ -1963,10 +1976,10 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                         rejectedReadsBAMWriter.addRead(read1);
                     }
                 }
-                disjointPairCounts.bumpCount(ignoredMate);
             }
         }
     }
+
 
     private static void processReport( final GATKRead read,
                                        final ReadReport readReport,
