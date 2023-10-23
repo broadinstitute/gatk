@@ -1955,10 +1955,6 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                 final ReadReport combinedReport = new ReadReport(report1, report2);
                 final ReportType reportType = combinedReport.updateCounts(codonTracker, variationCounts, reference);
                 disjointPairCounts.bumpCount(reportType);
-                if ( reportType.attributeValue != null && rejectedReadsBAMWriter != null ) {
-                    read1.setAttribute(ReportType.REPORT_TYPE_ATTRIBUTE_KEY, reportType.attributeValue);
-                    read2.setAttribute(ReportType.REPORT_TYPE_ATTRIBUTE_KEY, reportType.attributeValue);
-                }
             } else { // mates are disjoint, use the first one
                 final ReportType ignoredMate = ReportType.IGNORED_MATE;
                 if ( read1.isFirstOfPair() ) {
