@@ -14,6 +14,8 @@ workflow GvsCreateVDS {
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
+        String? gcs_project
+        String? workspace_bucket
         String? variants_docker
     }
     parameter_meta {
@@ -41,7 +43,7 @@ workflow GvsCreateVDS {
     }
 
 
-    if (!defined(variants_docker)) {
+    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(gcs_project)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -49,6 +51,9 @@ workflow GvsCreateVDS {
     }
 
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+    String effective_google_project = select_first([gcs_project, GetToolVersions.google_project])
+
 
     call create_vds {
         input:
@@ -57,9 +62,9 @@ workflow GvsCreateVDS {
             avro_path = avro_path,
             use_VQSR_lite = use_VQSR_lite,
             hail_version = hail_version,
-            gcs_project = GetToolVersions.google_project,
+            gcs_project = effective_google_project,
             region = region,
-            workspace_bucket = GetToolVersions.workspace_bucket,
+            workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = effective_variants_docker,
     }
