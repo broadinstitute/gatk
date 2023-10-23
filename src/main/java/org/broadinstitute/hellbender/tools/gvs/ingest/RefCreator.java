@@ -32,7 +32,7 @@ public final class RefCreator {
     private final boolean writeReferenceRanges;
     private final Long sampleId;
     private SimpleInterval previousInterval;
-    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
+    private final Set<GQStateEnum> gqStatesToIgnore;
     private final GenomeLocSortedSet coverageLocSortedSet;
     private final boolean storeCompressedReferences;
     private static final String PREFIX_SEPARATOR = "_";
@@ -43,11 +43,12 @@ public final class RefCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences) {
+    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
+        this.gqStatesToIgnore = gqStatesToIgnore;
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
@@ -71,11 +72,6 @@ public final class RefCreator {
             }
         } catch (final IOException ioex) {
             throw new UserException("Could not create reference range outputs", ioex);
-        }
-
-        this.gqStatesToIgnore.add(gqStateToIgnore);
-        if (dropAboveGqThreshold) {
-            this.gqStatesToIgnore.addAll(getGQStateEnumGreaterThan(gqStateToIgnore));
         }
     }
 
@@ -189,14 +185,14 @@ public final class RefCreator {
                     int position = SchemaUtils.decodePosition(localStart);
                     refRangesWriter.writeCompressed(
                             SchemaUtils.encodeCompressedRefBlock(chromosome, position, length,
-                                    GQStateEnum.MISSING.getCompressedValue()),
+                                    GQStateEnum.ZERO.getCompressedValue()),
                             sampleId
                     );
                 } else {
                     refRangesWriter.write(localStart,
                             sampleId,
                             length,
-                            GQStateEnum.MISSING.getValue()
+                            GQStateEnum.ZERO.getValue()
                     );
                 }
                 localStart = localStart + length ;

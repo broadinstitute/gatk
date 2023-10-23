@@ -169,6 +169,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private boolean shouldWriteLoadStatusStarted = true;
 
+    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
+
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
     public static boolean isNoCall(VariantContext variant) {
@@ -288,8 +290,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
 
+        if (gqStateToIgnore != null) {
+            gqStatesToIgnore.add(gqStateToIgnore);
+            if (dropAboveGqThreshold) {
+                // TODO - Do we want to get rid of this option ("dropAboveGqThreshold") - never used and confuses things.
+                gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
+            }
+        }
+
         if (enableReferenceRanges && !refRangesRowsExist) {
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
         }
 
         if (enableVet && !vetRowsExist) {
@@ -360,10 +370,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         if (refCreator != null) {
-            try {
-                refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
-            } catch (IOException ioe) {
-                throw new GATKException("Error writing missing intervals", ioe);
+            if ((gqStatesToIgnore.size() != 1) || (!gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
+                // We will write missing intervals as ZERO ('GQ0') unless that is the (ONLY???) GQ state that we are dropping.
+                // If ZERO/GQ0 is the ONLY state that we are dropping then we do not write those intervals.
+                try {
+                    refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+                } catch (IOException ioe) {
+                    throw new GATKException("Error writing missing intervals", ioe);
+                }
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
