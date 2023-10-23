@@ -121,7 +121,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             use_VQSR_lite = use_VQSR_lite,
-            vds_path = GvsCreateVDS.vds_output_path,
+            vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
