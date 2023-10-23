@@ -116,4 +116,11 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     @Hidden
     @Argument(fullName = "surrounding-mean-quality-size", doc = "number of bases around the feature to calculate surrounding mean quality", optional = true)
     public Integer surroundingMeanQualitySize = null;
+
+    /**
+     *  validation mode - if not specified, this feature is off
+     **/
+    @Hidden
+    @Argument(fullName = "report-all-bases", doc = "In this mode (aka validation mode), every base of every read in the input CRAM and interval is reported, and an X_SCORE value is calculated for all 3 possible alts", optional = true)
+    public boolean reportAllBases = false;
 }

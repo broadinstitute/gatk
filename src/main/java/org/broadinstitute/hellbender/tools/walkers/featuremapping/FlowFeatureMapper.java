@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -115,6 +116,8 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     VCF_SMQ_RIGHT = "X_SMQ_RIGHT";
     private static final String     VCF_SMQ_LEFT_MEAN = "X_SMQ_LEFT_MEAN";
     private static final String     VCF_SMQ_RIGHT_MEAN = "X_SMQ_RIGHT_MEAN";
+    private static final String     VCF_ADJACENT_REF_DIFF = "X_ADJACENT_REF_DIFF";
+
 
     private static final Double     LOWEST_PROB = 0.0001;
     private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
@@ -122,6 +125,9 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
 
     final private List<CopyAttrInfo> copyAttrInfo = new LinkedList<>();
+
+    // order here is according to SequenceUtil.VALID_BASES_UPPER
+    final private String scoreForBaseNames[] = new String[SequenceUtil.VALID_BASES_UPPER.length];
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -197,6 +203,9 @@ public final class FlowFeatureMapper extends ReadWalker {
         int         smqRight;
         int         smqLeftMean;
         int         smqRightMean;
+
+        double      scoreForBase[];
+        boolean     adjacentRefDiff;
 
         public MappedFeature(GATKRead read, FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type, byte[] readBases,
                              byte[] refBases, int readBasesOffset, int start, int offsetDelta) {
@@ -344,9 +353,24 @@ public final class FlowFeatureMapper extends ReadWalker {
             copyAttrInfo.add(info);
         }
 
+        // validation mode?
+        if ( fmArgs.reportAllBases ) {
+            for ( int baseIndex = 0 ; baseIndex < SequenceUtil.VALID_BASES_UPPER.length ; baseIndex++ ) {
+                headerInfo.add(new VCFInfoHeaderLine(scoreNameForBase(baseIndex), 1, VCFHeaderLineType.Float, "Base specific mapping score"));
+            }
+            headerInfo.add(new VCFInfoHeaderLine(VCF_ADJACENT_REF_DIFF, 1, VCFHeaderLineType.Flag, "Adjacent base filter indication: indel in the adjacent 5 bases to the considered base on the read"));
+        }
+
         final VCFHeader vcfHeader = new VCFHeader(headerInfo);
         vcfHeader.setSequenceDictionary(sequenceDictionary);
         return vcfHeader;
+    }
+
+    private String scoreNameForBase(int baseIndex) {
+        if ( scoreForBaseNames[baseIndex] == null ) {
+            scoreForBaseNames[baseIndex] = VCF_SCORE + "_" + new String(new byte[]{SequenceUtil.VALID_BASES_UPPER[baseIndex]});
+        }
+        return scoreForBaseNames[baseIndex];
     }
 
     @Override
@@ -378,6 +402,20 @@ public final class FlowFeatureMapper extends ReadWalker {
 
             // score the feature
             fr.score = scoreFeature(fr);
+
+            // score for validation mode?
+            if ( fmArgs.reportAllBases ) {
+                fr.scoreForBase = new double[SequenceUtil.VALID_BASES_UPPER.length];
+                for ( int baseIndex = 0 ; baseIndex < fr.scoreForBase.length ; baseIndex++ ) {
+                    final byte base = SequenceUtil.VALID_BASES_UPPER[baseIndex];
+                    boolean incl = base != ((fr.readBases[0] == fr.refBases[0]) ? fr.refBases[0] : fr.readBases[0]);
+                    if ( incl ) {
+                        fr.scoreForBase[baseIndex] = scoreFeature(fr, base);
+                    } else {
+                        fr.scoreForBase[baseIndex] = Double.NaN;
+                    }
+                }
+            }
 
             // emit feature if filters in
             if ( filterFeature(fr) ) {
@@ -443,10 +481,13 @@ public final class FlowFeatureMapper extends ReadWalker {
     }
 
     private double scoreFeature(final MappedFeature fr) {
+        return scoreFeature(fr, (byte)0);
+    }
+    private double scoreFeature(final MappedFeature fr, byte altBase) {
 
         // build haplotypes
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), fr.read);
-        final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder);
+        final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase);
 
         // create flow read
         final FlowBasedRead   flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder,
@@ -554,16 +595,21 @@ public final class FlowFeatureMapper extends ReadWalker {
         return result;
     }
 
-    private FlowBasedHaplotype[] buildHaplotypes(final MappedFeature fr, final String flowOrder) {
+    private FlowBasedHaplotype[] buildHaplotypes(final MappedFeature fr, final String flowOrder, byte altBase) {
 
         // build bases for flow haplotypes
         // NOTE!!!: this code assumes length of feature on read and reference is the same
         // this is true for SNP but not for INDELs - it will have to be re-written!
         // TODO: write for INDEL
-        final byte[] bases = fr.read.getBasesNoCopy();
+        byte[] bases = fr.read.getBasesNoCopy();
         int         offset = fr.readBasesOffset;
         int         refStart = fr.start;
         int         refModOfs = 0;
+
+        // install alt base?
+        if ( altBase != 0 )
+            bases[offset] = altBase;
+
         if ( offset > 0 ) {
             // reach into hmer before
             offset--;
@@ -620,7 +666,11 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // create alleles
         final Collection<Allele>          alleles = new LinkedList<>();
-        alleles.add(Allele.create(fr.readBases, false));
+        if ( fmArgs.reportAllBases && Arrays.equals(fr.readBases, fr.refBases) ) {
+            alleles.add(Allele.create(Allele.UNSPECIFIED_ALTERNATE_ALLELE_STRING.getBytes(), false));
+        } else {
+            alleles.add(Allele.create(fr.readBases, false));
+        }
         alleles.add(Allele.create(fr.refBases, true));
 
         // create variant context builder
@@ -667,6 +717,22 @@ public final class FlowFeatureMapper extends ReadWalker {
                 }
             }
         }
+
+        // validation mode?
+        if ( fmArgs.reportAllBases ) {
+            if ( fr.scoreForBase != null ) {
+                for (int baseIndex = 0; baseIndex < SequenceUtil.VALID_BASES_UPPER.length; baseIndex++) {
+                    if (!Double.isNaN(fr.scoreForBase[baseIndex])) {
+                        vcb.attribute(scoreNameForBase(baseIndex), String.format("%.5f", fr.scoreForBase[baseIndex]));
+                    }
+                }
+            }
+            if ( fr.adjacentRefDiff ) {
+                vcb.attribute(VCF_ADJACENT_REF_DIFF, true);
+            }
+        }
+
+        // build it!
         final VariantContext      vc = vcb.make();
 
         // write to file
