@@ -319,8 +319,8 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil ~{"-u " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
-      gsutil ~{"-u " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
       updated_input_vcf=input_vcf_$i.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
