@@ -109,12 +109,12 @@ workflow GvsQuickstartHailIntegration {
             git_branch_or_tag = git_branch_or_tag,
             hail_version = "0.2.124",
             use_VQSR_lite = use_VQSR_lite,
-            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
+            avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             cluster_prefix = "vds-cluster",
             gcs_subnetwork_name = "subnetwork",
             region = "us-central1",
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call TieOutVds {
@@ -142,7 +142,7 @@ workflow GvsQuickstartHailIntegration {
 
 task TieOutVds {
     input {
-        String? git_branch_or_tag
+        String git_branch_or_tag
         Boolean use_VQSR_lite
         String vds_path
         Array[File] tieout_vcfs
