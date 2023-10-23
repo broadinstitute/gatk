@@ -93,7 +93,12 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         info(f'Stopping cluster: {cluster_name}')
         delete_cmd = unwrap(f"""
             
-            gcloud dataproc clusters delete --project {gcs_project} --region {region} --account {account} {cluster_name}
+            gcloud dataproc clusters delete
+              --project {gcs_project}
+              --region {region}
+              --account {account}
+              --quiet
+              {cluster_name}
             
         """)
 
