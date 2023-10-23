@@ -52,6 +52,12 @@ workflow GvsCreateVDS {
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = GetToolVersions.variants_docker,
     }
+
+    output {
+        String cluster_name = create_vds.cluster_name
+        String vds_output_path = create_vds.vds_output_path
+    }
+
 }
 
 task create_vds {
