@@ -119,6 +119,7 @@ task create_vds {
 
     output {
         String cluster_name = read_string("cluster_name.txt")
+        String vds_output_path = "~{vds_path}"
     }
 
     runtime {
