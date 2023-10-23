@@ -156,7 +156,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-1064-wdl-quickstart-vds
+         - rc-vs-1102-add-vds-wdl-to-integration-tests
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -166,7 +166,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1004-extract
          tags:
              - /.*/
    - name: GvsImportGenomes
