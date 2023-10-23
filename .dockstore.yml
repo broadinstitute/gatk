@@ -312,7 +312,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1049_tables_are_not_forever
+             - rc-vs-1102-add-vds-wdl-to-integration-tests
          tags:
              - /.*/
    - name: GvsIngestTieout
