@@ -6,7 +6,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
-        String vds_output_path
+        String vds_destination_path
         String avro_path
         String hail_version="0.2.124"
 
@@ -43,7 +43,7 @@ workflow GvsCreateVDS {
     call create_vds {
         input:
             prefix = prefix,
-            vds_path = vds_output_path,
+            vds_path = vds_destination_path,
             avro_path = avro_path,
             hail_version = hail_version,
             gcs_project = GetToolVersions.google_project,
