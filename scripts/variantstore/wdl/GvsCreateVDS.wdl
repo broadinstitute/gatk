@@ -6,13 +6,15 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
+        String? git_branch_or_tag
         String vds_destination_path
         String avro_path
+        Boolean use_VQSR_lite = true ## TODO-- this does nothing as of yet--need to be threaded through into the python script
         String hail_version="0.2.124"
-
-        String prefix = "vds-cluster"
-        String gcs_subnetwork_name="subnetwork"
+        String cluster_prefix = "vds-cluster"
+        String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
+        String? variants_docker
     }
     parameter_meta {
         # Analysis parameters, i.e., parameters that go to the Hail python code (submission_script below)
@@ -38,19 +40,28 @@ workflow GvsCreateVDS {
         }
     }
 
-    call Utils.GetToolVersions
+
+    if (!defined(variants_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     call create_vds {
         input:
-            prefix = prefix,
+            prefix = cluster_prefix,
             vds_path = vds_destination_path,
             avro_path = avro_path,
+            use_VQSR_lite = use_VQSR_lite,
             hail_version = hail_version,
             gcs_project = GetToolVersions.google_project,
             region = region,
             workspace_bucket = GetToolVersions.workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = GetToolVersions.variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     output {
@@ -65,6 +76,7 @@ task create_vds {
         String prefix
         String vds_path
         String avro_path
+        Boolean use_VQSR_lite
         String? hail_version
 
         String gcs_project
