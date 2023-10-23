@@ -24,7 +24,7 @@ workflow GvsQuickstartHailIntegration {
         String? variants_docker
         String? gatk_docker
 
-        String? gatk_override
+        File? gatk_override
         String expected_output_prefix
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -107,7 +107,7 @@ workflow GvsQuickstartHailIntegration {
     call CreateVds.GvsCreateVDS {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            hail_version = "0.2.124",
+            hail_version = "0.2.124", ## TODO do we want to pull this out and make it a part of utils?
             use_VQSR_lite = use_VQSR_lite,
             avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
