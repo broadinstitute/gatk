@@ -67,7 +67,7 @@ workflow GvsQuickstartVcfIntegration {
       }
     }
 
-    call Utils.CreateDataset {
+    call Utils.CreateDatasetForTest {
         input:
             git_branch_or_tag = git_branch_or_tag,
             dataset_prefix = "quickit",
@@ -78,7 +78,7 @@ workflow GvsQuickstartVcfIntegration {
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
             call_set_identifier = git_branch_or_tag,
-            dataset_name = CreateDataset.dataset_name,
+            dataset_name = CreateDatasetForTest.dataset_name,
             project_id = project_id,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
@@ -122,7 +122,7 @@ workflow GvsQuickstartVcfIntegration {
         call AssertCostIsTrackedAndExpected {
             input:
                 go = JointVariantCalling.done,
-                dataset_name = CreateDataset.dataset_name,
+                dataset_name = CreateDatasetForTest.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -131,7 +131,7 @@ workflow GvsQuickstartVcfIntegration {
         call AssertTableSizesAreExpected {
             input:
                 go = JointVariantCalling.done,
-                dataset_name = CreateDataset.dataset_name,
+                dataset_name = CreateDatasetForTest.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -143,7 +143,7 @@ workflow GvsQuickstartVcfIntegration {
         Array[File] output_vcf_indexes = JointVariantCalling.output_vcf_indexes
         Float total_vcfs_size_mb = JointVariantCalling.total_vcfs_size_mb
         File manifest = JointVariantCalling.manifest
-        String dataset_name = CreateDataset.dataset_name
+        String dataset_name = CreateDatasetForTest.dataset_name
         String filter_set_name = "quickit"
         String recorded_git_hash = effective_git_hash
         Boolean done = true

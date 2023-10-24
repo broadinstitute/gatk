@@ -250,7 +250,7 @@ workflow GvsQuickstartIntegration {
     if (run_beta_integration) {
         String project_id = "gvs-internal"
 
-        call Utils.CreateDataset {
+        call Utils.CreateDatasetForTest {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 dataset_prefix = "quickit",
@@ -261,7 +261,7 @@ workflow GvsQuickstartIntegration {
         call JointVariantCalling.GvsJointVariantCalling as QuickstartBeta {
             input:
                 call_set_identifier = git_branch_or_tag,
-                dataset_name = CreateDataset.dataset_name,
+                dataset_name = CreateDatasetForTest.dataset_name,
                 project_id = project_id,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 extract_output_file_base_name = "quickit",
