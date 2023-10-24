@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -65,6 +66,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public GQStateEnum gqStateToIgnore = GQStateEnum.SIXTY;
 
+    @DeprecatedFeature(detail="Argument of no foreseeable use")
     @Argument(fullName = "ignore-above-gq-threshold",
             shortName = "GTIG",
             doc = "in addition to dropping the gq block specified by ref-block-gq-to-ignore, also drop higher gq blocks",
@@ -293,7 +295,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (gqStateToIgnore != null) {
             gqStatesToIgnore.add(gqStateToIgnore);
             if (dropAboveGqThreshold) {
-                // TODO - Do we want to get rid of this option ("dropAboveGqThreshold") - never used and confuses things.
                 gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
             }
         }
