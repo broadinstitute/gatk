@@ -28,6 +28,8 @@ sudo bash
 Now as root:
 
 ```
+branch=<your branch name here>
+
 apt-get update
 
 # Install git and Docker dependencies
@@ -36,7 +38,7 @@ apt-get install --assume-yes git-core git-lfs
 # Switch to 150 GiB data disk
 cd /mnt
 mkdir gitrepos && cd gitrepos
-git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ah_var_store --single-branch
+git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ${branch} --single-branch
 cd gatk
 
 # Run a helper script with lots more commands for building a GATK Docker image:
@@ -49,7 +51,9 @@ gcloud init
 gcloud auth configure-docker
 
 # Tag and push
-DOCKER_TAG=us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_$(date -I | sed 's/-/_/g')
+today="$(date -Idate | sed 's/-/_/g')"
+git_hash="$(git rev-parse --short HEAD)"
+DOCKER_TAG="us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_${today}_${git_hash}"
 DOCKER_IMAGE_ID=$(docker images | head -n 2 | tail -n 1 | awk '{print $3}')
 docker tag $DOCKER_IMAGE_ID $DOCKER_TAG
 docker push $DOCKER_TAG
