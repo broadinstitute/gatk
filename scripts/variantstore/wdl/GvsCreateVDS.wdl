@@ -138,6 +138,7 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_path} \
             --temp-path ${hail_temp_path}
+            --use-vqsr-lite
     >>>
 
     output {
