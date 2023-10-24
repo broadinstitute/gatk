@@ -293,7 +293,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1105_ChangeWritingOfMissingStates
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -303,7 +302,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1105_ChangeWritingOfMissingStates
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -314,7 +312,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1099_composite_object_inputs
-             - gg_VS-1105_ChangeWritingOfMissingStates
          tags:
              - /.*/
    - name: GvsIngestTieout
