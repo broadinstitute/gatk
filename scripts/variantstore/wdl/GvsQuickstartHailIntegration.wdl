@@ -206,7 +206,9 @@ task TieOutVds {
         export TEMP_PATH=$WORK/temp
         mkdir ${TEMP_PATH}
 
-        export VDS_PATH=$WORK/gvs_import.vds
+        export VDS_PATH=$WORK/vds.vds
+        mkdir ${VDS_PATH}
+
 
         gcloud storage cp -r ~{vds_path}  ${VDS_PATH}
 
