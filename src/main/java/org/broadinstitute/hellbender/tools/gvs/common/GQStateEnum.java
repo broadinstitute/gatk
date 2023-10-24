@@ -10,7 +10,7 @@ public enum GQStateEnum {
     FORTY("4", 40, 4),
     FIFTY("5", 50, 5),
     SIXTY("6", 60, 6),
-    // NOTE: MISSING is no longer used (it is now being written as ZERO, *unless* we are dropping ref_blocks with that state.
+    // NOTE: MISSING is no longer used (it is now being written as ZERO, *unless* we are dropping ref_blocks with that state.)
     // However, we will keep this enum value around in case the code needs to access older data sets written with MISSING values
     MISSING("m", null, 9),
     UNKNOWN("u", null, 10),
