@@ -208,7 +208,7 @@ task TieOutVds {
 
         export VDS_PATH=$WORK/gvs_import.vds
 
-        gcloud storage cp ~{vds_path}  ${VDS_PATH}
+        gcloud storage cp -r ~{vds_path}  ${VDS_PATH}
 
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
