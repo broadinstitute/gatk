@@ -206,11 +206,10 @@ task TieOutVds {
         export TEMP_PATH=$WORK/temp
         mkdir ${TEMP_PATH}
 
-        export VDS_PATH=$WORK/vds.vds
+        export VDS_PATH=$WORK/gvs_export.vds
         mkdir ${VDS_PATH}
 
-
-        gcloud storage cp -r ~{vds_path}  ${VDS_PATH}
+        gcloud storage cp -r ~{vds_path}  ${WORK}
 
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
