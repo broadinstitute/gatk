@@ -390,9 +390,8 @@ task CreateDatasetForTest {
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_docker
-    # By default uto-expire tables 2 weeks after their creation. Unfortunately there doesn't seem to be an automated way
-    # of auto-expiring the dataset, but the date is in the dataset name so old (and hopefully empty) datasets should be
-    # easy to identify and clean up.
+    # By default auto-expire tables 2 weeks after their creation. Unfortunately there doesn't seem to be an automated way
+    # of auto-expiring the dataset, but the date is in the dataset name so old datasets should be easy to identify.
     Int? table_ttl_seconds = 2 * 7 * 24 * 60 * 60
   }
   meta {
