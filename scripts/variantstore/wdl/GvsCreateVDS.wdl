@@ -9,7 +9,7 @@ workflow GvsCreateVDS {
         String? git_branch_or_tag
         String vds_destination_path
         String avro_path
-        Boolean use_VQSR_lite = true ## TODO-- this does nothing as of yet--need to be threaded through into the python script
+        Boolean use_classic_VQSR = false
         String hail_version="0.2.124"
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
@@ -60,7 +60,7 @@ workflow GvsCreateVDS {
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             avro_path = avro_path,
-            use_VQSR_lite = use_VQSR_lite,
+            use_classic_VQSR = use_classic_VQSR,
             hail_version = hail_version,
             gcs_project = effective_google_project,
             region = region,
@@ -81,7 +81,7 @@ task create_vds {
         String prefix
         String vds_path
         String avro_path
-        Boolean use_VQSR_lite
+        Boolean use_classic_VQSR
         String? hail_version
 
         String gcs_project
@@ -138,7 +138,7 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_path} \
             --temp-path ${hail_temp_path} \
-            ~{true="--use-vqsr-lite True" false="--use-vqsr-lite ''" use_VQSR_lite}
+            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
 
 
     >>>

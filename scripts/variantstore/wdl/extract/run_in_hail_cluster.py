@@ -24,7 +24,12 @@ def wrap(string):
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_project,
-                   autoscaling_policy, script_path, secondary_script_path, vds_path, temp_path, avro_path):
+                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path, avro_path):
+
+    use_classic_vqsr_flag = ""
+    if use_classic_vqsr:
+        use_classic_vqsr_flag = "--use-classic-vqsr"
+        print("using vets as filter model creation")
 
     try:
         cluster_start_cmd = wrap(f"""
@@ -67,7 +72,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                  --vds-path {vds_path}
                  --temp-path {temp_path}
                  --avro-path {avro_path}
-                 --use-vqsr-lite
+                 {use_classic_vqsr_flag}
 
                 """)
 
@@ -101,7 +106,8 @@ if __name__ == "__main__":
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--autoscaling-policy', type=str, help='Name of the autoscaling policy that should get used')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
-    parser.add_argument('--secondary-script-path', type=str, required=True, help='Path to secondary script to run in Hail cluster')
+    parser.add_argument('--secondary-script-path', type=str, help='Path to secondary script to run in Hail cluster')
+    parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
@@ -116,6 +122,7 @@ if __name__ == "__main__":
                    autoscaling_policy=args.autoscaling_policy,
                    script_path=args.script_path,
                    secondary_script_path=args.secondary_script_path,
+                   use_classic_vqsr=args.use_classic_vqsr,
                    vds_path=args.vds_path,
                    temp_path=args.temp_path,
                    avro_path=args.avro_path

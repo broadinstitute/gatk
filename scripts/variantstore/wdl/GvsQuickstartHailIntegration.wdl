@@ -12,7 +12,6 @@ workflow GvsQuickstartHailIntegration {
         Boolean is_wgs
         File? interval_list
         Boolean use_VQSR_lite = true
-        Boolean use_classic_VQSR = true
         Boolean use_compressed_references = false
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
@@ -108,7 +107,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = "0.2.124", ## TODO do we want to pull this out and make it a part of utils?
-            use_VQSR_lite = use_VQSR_lite,
+            use_classic_VQSR = !use_VQSR_lite,
             avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             cluster_prefix = "vds-cluster",
@@ -120,7 +119,6 @@ workflow GvsQuickstartHailIntegration {
     call TieOutVds {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            use_VQSR_lite = use_VQSR_lite,
             vds_path = GvsCreateVDS.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
@@ -143,7 +141,6 @@ workflow GvsQuickstartHailIntegration {
 task TieOutVds {
     input {
         String git_branch_or_tag
-        Boolean use_VQSR_lite
         String vds_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
