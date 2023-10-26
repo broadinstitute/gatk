@@ -138,6 +138,21 @@ public final class BigQueryUtils {
     }
 
     /**
+     * NOTE: Currently unused - was previously used in CreateVariantIngestFiles to log estimated rows in streaming buffer
+     * Leaving in place as we might need it in the future.
+     * @return estimated number of rows in the BigQuery vortex streaming buffer
+     */
+    public static long getEstimatedRowsInStreamingBuffer(String projectID, String datasetName, String tableName ) {
+        BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
+        Table table = bigquery.getTable(TableId.of(projectID, datasetName, tableName));
+
+        StandardTableDefinition tdd = table.getDefinition();
+        StandardTableDefinition.StreamingBuffer buffer = tdd.getStreamingBuffer();
+        Long rows = (buffer == null) ? 0 : buffer.getEstimatedRows();
+        return (rows == null) ? 0 : rows.longValue();
+    }
+
+    /**
      * Creates a {@link String} containing the given results in a pretty ascii-art table.
      * @param result A {@link TableResult} object containing the results of a query that generated some data.
      * @return A {@link String} containing the contents of the given query result pretty-printed in an ascii-art table.
