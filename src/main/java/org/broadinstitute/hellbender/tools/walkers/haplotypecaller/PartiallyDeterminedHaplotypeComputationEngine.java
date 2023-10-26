@@ -6,7 +6,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang3.ArrayUtils;
@@ -400,8 +399,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         final List <DoubleRange> allIntervals = new ArrayList<>();
         strIntervals.forEach(str -> allIntervals.add(new DoubleRange(str.getStart(), str.getEnd())));   // light up STRs
-        eventsInOrder.forEach(event -> allIntervals.add(new DoubleRange(dragenStart(event), dragenEnd(event))));    // light up each Event
-        swMutexes.forEach(tuple -> allIntervals.add(dragenSpan(tuple)));  // light up each mutex
+        eventsInOrder.forEach(event -> allIntervals.add(new DoubleRange(event.getStart(), dragenEnd(event))));    // light up each Event from VCF start to DRAGEN end
+        swMutexes.forEach(tuple -> allIntervals.add(unionOfDragenAndVCFSpans(tuple)));  // light up each mutex
         allIntervals.sort(Comparator.comparingDouble(DoubleRange::getMinimumDouble));   // no need to break ties here -- the end result is unique regardless
         allIntervals.add(new DoubleRange(Double.MAX_VALUE));    // add a dummy interval at the end with no possible overlap to simplify the loop below
 
@@ -417,7 +416,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             } else {    // add the previous span and begin a new one.  Note that the dummy last interval at triggers processing of the last EventGroup
                 final DoubleRange span = new DoubleRange(start, end);
                 final Set<Event> eventsInSpan = new HashSet<>();
-                while (eventIndex < eventsInDragenOrder.size() && span.containsDouble(dragenStart(eventsInDragenOrder.get(eventIndex)))) {
+                while (eventIndex < eventsInDragenOrder.size() && span.overlapsRange(new DoubleRange(eventsInDragenOrder.get(eventIndex).getStart(), dragenEnd(eventsInDragenOrder.get(eventIndex))))) {
                     eventsInSpan.add(eventsInDragenOrder.get(eventIndex));
                     eventIndex++;
                 }
@@ -910,13 +909,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         return event.getEnd() + (event.isSimpleInsertion() ? 0.5 : 0);
     }
 
-    private static final DoubleRange dragenSpan(final List<Event> tuple) {
+    // the union of VCF span and DRAGEN span uses the VCF start (which can be before the DRAGEN start) and the DRAGEN end (which can be after the VCF end)
+    private static final DoubleRange unionOfDragenAndVCFSpans(final List<Event> tuple) {
         final int size = tuple.size();
         Utils.validate(size == 2 || size == 3, "this is supposed to be a pair or a trio");
-        final double start01 = Math.min(dragenStart(tuple.get(0)), dragenStart(tuple.get(1)));
+        final double start01 = Math.min(tuple.get(0).getStart(), tuple.get(1).getStart());
         final double end01 = Math.max(dragenEnd(tuple.get(0)), dragenEnd(tuple.get(1)));
         return size == 2 ? new DoubleRange(start01, end01) :
-                new DoubleRange(Math.min(start01, dragenStart(tuple.get(2))), Math.max(end01, dragenEnd(tuple.get(2))));
+                new DoubleRange(Math.min(start01, tuple.get(2).getStart()), Math.max(end01, dragenEnd(tuple.get(2))));
     }
 
     /**
