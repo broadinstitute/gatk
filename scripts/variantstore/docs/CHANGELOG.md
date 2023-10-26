@@ -1,5 +1,11 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.0 - 2023-10-26
+
+### Changed
+
+- Modified loading of ref_ranges_* tables to now use GQ0 band (state = 0) instead of Missing (state = 'm') for regions where the interval list chosen for importing data extends beyond regions covered in the gVCF data. NOTE that when importing data with a drop state of 0, then those regions will not be written at all to ref_ranges_*, since we are dropping the state of 0.
+
 ## 0.4.1 - 2023-10-16
 
 ### Fixed
