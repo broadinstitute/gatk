@@ -422,7 +422,20 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     eventIndex++;
                 }
                 if (!eventsInSpan.isEmpty()) {  // the interval could be an STR with no Events within
-                    eventGroups.add(new EventGroup(eventsInSpan, swMutexes, overlapMutexes));
+                    try {
+                        eventGroups.add(new EventGroup(eventsInSpan, swMutexes, overlapMutexes));
+                    } catch (Exception e) {
+                        System.out.println("The exception was: " + e);
+                        System.out.println("Events in order: " + eventsInOrder);
+                        System.out.println("Events in DRAGEN order: " + eventsInDragenOrder);
+                        System.out.println("Event groups found so far: " + eventGroups);
+                        System.out.println("All intervals in order: " + allIntervals);
+                        System.out.println("current span: " + span);
+                        System.out.println("Events in the current span: " + eventsInSpan);
+                        System.out.println("All SW mutexes here: " + swMutexes);
+                        System.out.println("All STR intervals here: " + strIntervals);
+                        throw e;
+                    }
                 }
 
                 start = interval.getMinimumDouble();
