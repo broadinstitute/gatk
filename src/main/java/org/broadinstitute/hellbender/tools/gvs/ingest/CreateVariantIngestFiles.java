@@ -244,11 +244,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
 
-            long streamingBufferRows = BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName);
-            if (streamingBufferRows > 0 ) {
-                logger.info("Found estimated rows in streaming buffer!!! " + streamingBufferRows);
-            }
-
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
