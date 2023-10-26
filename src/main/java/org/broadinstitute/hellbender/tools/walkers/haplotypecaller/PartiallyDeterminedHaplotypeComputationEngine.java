@@ -100,14 +100,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
-
         final List<SimpleInterval> strIntervals = findSTRs(referenceHaplotype);
 
-        List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
-        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
+        List<List<Event>> swMutexes = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
+        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, swMutexes);
 
         // TODO: add in command line argument to activate joint detection and only use the STR overlap detector if joint detection is turned on
-        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations, strIntervals);
+        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, swMutexes, strIntervals);
         // if any of our merged event groups is too large, abort.
         if (eventGroups == null) {
             Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
@@ -410,6 +409,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         double start = allIntervals.get(0).getMinimumDouble();
         double end = allIntervals.get(0).getMaximumDouble();
         int eventIndex = 0;
+        final List<Event> eventsInDragenOrder = eventsInOrder.stream().sorted(Comparator.comparingDouble(e -> dragenStart(e))).toList();
 
         for (final DoubleRange interval : allIntervals) {
             if (interval.getMinimumDouble() <= end) {    // contiguous with previous span.  Note that DoubleRanges are closed (inclusive) on both ends
@@ -417,8 +417,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             } else {    // add the previous span and begin a new one.  Note that the dummy last interval at triggers processing of the last EventGroup
                 final DoubleRange span = new DoubleRange(start, end);
                 final Set<Event> eventsInSpan = new HashSet<>();
-                while (eventIndex < eventsInOrder.size() && span.containsDouble(dragenStart(eventsInOrder.get(eventIndex)))) {
-                    eventsInSpan.add(eventsInOrder.get(eventIndex));
+                while (eventIndex < eventsInDragenOrder.size() && span.containsDouble(dragenStart(eventsInDragenOrder.get(eventIndex)))) {
+                    eventsInSpan.add(eventsInDragenOrder.get(eventIndex));
                     eventIndex++;
                 }
                 if (!eventsInSpan.isEmpty()) {  // the interval could be an STR with no Events within
