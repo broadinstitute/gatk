@@ -421,6 +421,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     eventIndex++;
                 }
                 if (!eventsInSpan.isEmpty()) {  // the interval could be an STR with no Events within
+                    if (eventsInSpan.size() > MAX_VAR_IN_EVENT_GROUP) {
+                        return null;
+                    }
                     try {
                         eventGroups.add(new EventGroup(eventsInSpan, swMutexes, overlapMutexes));
                     } catch (Exception e) {
