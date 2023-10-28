@@ -28,7 +28,7 @@ public class SNVMapper implements FeatureMapper {
     final Integer     smqSize;
     final Integer     smqSizeMean;
 
-    final boolean reportAllBases;
+    final boolean reportAllAlts;
 
     public SNVMapper(FlowFeatureMapperArgumentCollection fmArgs) {
         identBefore = fmArgs.snvIdenticalBases;
@@ -36,7 +36,7 @@ public class SNVMapper implements FeatureMapper {
         minCigarElementLength = identBefore + 1 + identAfter;
         smqSize = fmArgs.surroundingMediaQualitySize;
         smqSizeMean = fmArgs.surroundingMeanQualitySize;
-        reportAllBases = fmArgs.reportAllAlts;
+        reportAllAlts = fmArgs.reportAllAlts;
 
         // adjust minimal read length
         FlowBasedRead.setMinimalReadLength(1 + 1 + identAfter);
@@ -100,7 +100,7 @@ public class SNVMapper implements FeatureMapper {
                 refOfs += identBefore;
                 for ( int ofs = identBefore ; ofs < length - identAfter ; ofs++, readOfs++, refOfs++ ) {
 
-                    if ( ref[refOfs] != 'N' && (reportAllBases || (bases[readOfs] != ref[refOfs])) ) {
+                    if ( ref[refOfs] != 'N' && (reportAllAlts || (bases[readOfs] != ref[refOfs])) ) {
 
                         // check that this is really a SNV (must be surrounded by identical ref)
                         boolean     surrounded = true;
@@ -114,13 +114,13 @@ public class SNVMapper implements FeatureMapper {
                                 surrounded = false;
                             }
                         }
-                        if ( !reportAllBases && !surrounded ) {
+                        if ( !reportAllAlts && !surrounded ) {
                             continue;
                         }
 
                         // add this feature
                         FlowFeatureMapper.MappedFeature feature = FlowFeatureMapper.MappedFeature.makeSNV(read, readOfs, ref[refOfs], referenceContext.getStart() + refOfs, readOfs - refOfs);
-                        if ( reportAllBases && !surrounded )
+                        if ( reportAllAlts && !surrounded )
                             feature.adjacentRefDiff = true;
                         feature.nonIdentMBasesOnRead = nonIdentMBases;
                         feature.refEditDistance = refEditDistance;

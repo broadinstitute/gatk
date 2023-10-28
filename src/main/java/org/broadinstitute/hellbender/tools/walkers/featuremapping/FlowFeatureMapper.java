@@ -490,8 +490,19 @@ public final class FlowFeatureMapper extends ReadWalker {
         final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase);
 
         // create flow read
-        final FlowBasedRead   flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder,
-                                                                        rgInfo.maxClass, fbargs);
+        final FlowBasedRead   flowRead;
+        if ( altBase == 0 ) {
+            flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+        } else {
+            byte[] bases = fr.read.getBasesNoCopy();
+            byte orgBase = bases[fr.readBasesOffset];
+            bases[fr.readBasesOffset] = altBase;
+
+            flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+
+            bases[fr.readBasesOffset] = orgBase;
+        }
+
         final int diffLeft = haplotypes[0].getStart() - flowRead.getStart() + fr.offsetDelta;
         final int diffRight = flowRead.getEnd() - haplotypes[0].getEnd();
         flowRead.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), false);
@@ -526,7 +537,18 @@ public final class FlowFeatureMapper extends ReadWalker {
             logger.info("score: " + score);
 
             // analyze read
-            final FlowBasedRead flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+            final FlowBasedRead flowRead2;
+            if ( altBase == 0 ) {
+                flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+            } else {
+                byte[] bases = fr.read.getBasesNoCopy();
+                byte orgBase = bases[fr.readBasesOffset];
+                bases[fr.readBasesOffset] = altBase;
+
+                flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+
+                bases[fr.readBasesOffset] = orgBase;
+            }
             final int[]        key2 = flowRead2.getKey();
             for ( int i = 0 ; i < key2.length ; i++ ) {
                 final double      p1 = flowRead2.getProb(i, key2[i]);
@@ -607,8 +629,12 @@ public final class FlowFeatureMapper extends ReadWalker {
         int         refModOfs = 0;
 
         // install alt base?
-        if ( altBase != 0 )
+        byte orgBase = 0;
+        int orgOffset = 0;
+        if ( altBase != 0 ) {
+            orgBase = bases[orgOffset = offset];
             bases[offset] = altBase;
+        }
 
         if ( offset > 0 ) {
             // reach into hmer before
@@ -644,6 +670,11 @@ public final class FlowFeatureMapper extends ReadWalker {
                                 new FlowBasedHaplotype(altHaplotype, flowOrder),
                                 new FlowBasedHaplotype(refHaplotype, flowOrder)
                             };
+
+        // restore changes
+        if ( altBase != 0 ) {
+            bases[orgOffset] = orgBase;
+        }
 
         // return
         return result;
