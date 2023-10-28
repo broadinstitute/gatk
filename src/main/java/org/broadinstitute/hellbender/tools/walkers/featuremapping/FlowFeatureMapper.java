@@ -667,7 +667,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         // create alleles
         final Collection<Allele>          alleles = new LinkedList<>();
         if ( fmArgs.reportAllAlts && Arrays.equals(fr.readBases, fr.refBases) ) {
-            alleles.add(Allele.create(Allele.UNSPECIFIED_ALTERNATE_ALLELE_STRING.getBytes(), false));
+            alleles.add(Allele.create("*".getBytes(), false));
         } else {
             alleles.add(Allele.create(fr.readBases, false));
         }
