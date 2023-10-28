@@ -151,11 +151,11 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testReportAllBases() throws IOException {
+    public void testReportAllAlts() throws IOException {
 
         final File outputDir = createTempDir("testFlowFeatureMapperTest");
-        final File expectedFile = new File(testDir + "/snv_feature_mapper_report_all_bases_output.vcf");
-        final File outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedFile : new File(outputDir + "/snv_feature_mapper_report_all_bases_output.vcf");
+        final File expectedFile = new File(testDir + "/snv_feature_mapper_report_all_alts_output.vcf");
+        final File outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedFile : new File(outputDir + "/snv_feature_mapper_report_all_alts_output.vcf");
 
         final String[] args = new String[] {
                 "-R", largeFileTestDir + "/Homo_sapiens_assembly38.fasta.gz",
@@ -169,7 +169,7 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
                 "--snv-identical-bases", "10",
                 "--debug-negatives", "false",
                 "--debug-read-name", "150451-BC94-0645901755",
-                "--report-all-bases",
+                "--report-all-alts",
                 "-L", "chr20:1099787-1101000"
         };
 

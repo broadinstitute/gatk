@@ -354,7 +354,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         }
 
         // validation mode?
-        if ( fmArgs.reportAllBases ) {
+        if ( fmArgs.reportAllAlts) {
             for ( int baseIndex = 0 ; baseIndex < SequenceUtil.VALID_BASES_UPPER.length ; baseIndex++ ) {
                 headerInfo.add(new VCFInfoHeaderLine(scoreNameForBase(baseIndex), 1, VCFHeaderLineType.Float, "Base specific mapping score"));
             }
@@ -404,7 +404,7 @@ public final class FlowFeatureMapper extends ReadWalker {
             fr.score = scoreFeature(fr);
 
             // score for validation mode?
-            if ( fmArgs.reportAllBases ) {
+            if ( fmArgs.reportAllAlts) {
                 fr.scoreForBase = new double[SequenceUtil.VALID_BASES_UPPER.length];
                 for ( int baseIndex = 0 ; baseIndex < fr.scoreForBase.length ; baseIndex++ ) {
                     final byte base = SequenceUtil.VALID_BASES_UPPER[baseIndex];
@@ -666,7 +666,7 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // create alleles
         final Collection<Allele>          alleles = new LinkedList<>();
-        if ( fmArgs.reportAllBases && Arrays.equals(fr.readBases, fr.refBases) ) {
+        if ( fmArgs.reportAllAlts && Arrays.equals(fr.readBases, fr.refBases) ) {
             alleles.add(Allele.create(Allele.UNSPECIFIED_ALTERNATE_ALLELE_STRING.getBytes(), false));
         } else {
             alleles.add(Allele.create(fr.readBases, false));
@@ -719,7 +719,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         }
 
         // validation mode?
-        if ( fmArgs.reportAllBases ) {
+        if ( fmArgs.reportAllAlts) {
             if ( fr.scoreForBase != null ) {
                 for (int baseIndex = 0; baseIndex < SequenceUtil.VALID_BASES_UPPER.length; baseIndex++) {
                     if (!Double.isNaN(fr.scoreForBase[baseIndex])) {

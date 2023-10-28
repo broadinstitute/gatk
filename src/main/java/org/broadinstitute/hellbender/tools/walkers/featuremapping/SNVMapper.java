@@ -36,7 +36,7 @@ public class SNVMapper implements FeatureMapper {
         minCigarElementLength = identBefore + 1 + identAfter;
         smqSize = fmArgs.surroundingMediaQualitySize;
         smqSizeMean = fmArgs.surroundingMeanQualitySize;
-        reportAllBases = fmArgs.reportAllBases;
+        reportAllBases = fmArgs.reportAllAlts;
 
         // adjust minimal read length
         FlowBasedRead.setMinimalReadLength(1 + 1 + identAfter);
