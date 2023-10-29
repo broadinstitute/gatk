@@ -408,7 +408,7 @@ public final class FlowFeatureMapper extends ReadWalker {
                 fr.scoreForBase = new double[SequenceUtil.VALID_BASES_UPPER.length];
                 for ( int baseIndex = 0 ; baseIndex < fr.scoreForBase.length ; baseIndex++ ) {
                     final byte base = SequenceUtil.VALID_BASES_UPPER[baseIndex];
-                    boolean incl = base != ((fr.readBases[0] == fr.refBases[0]) ? fr.refBases[0] : fr.readBases[0]);
+                    boolean incl = base != fr.readBases[0];
                     if ( incl ) {
                         fr.scoreForBase[baseIndex] = scoreFeature(fr, base);
                     } else {
@@ -491,17 +491,7 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // create flow read
         final FlowBasedRead   flowRead;
-        if ( altBase == 0 ) {
-            flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-        } else {
-            byte[] bases = fr.read.getBasesNoCopy();
-            byte orgBase = bases[fr.readBasesOffset];
-            bases[fr.readBasesOffset] = altBase;
-
-            flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-
-            bases[fr.readBasesOffset] = orgBase;
-        }
+        flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
 
         final int diffLeft = haplotypes[0].getStart() - flowRead.getStart() + fr.offsetDelta;
         final int diffRight = flowRead.getEnd() - haplotypes[0].getEnd();
@@ -538,17 +528,7 @@ public final class FlowFeatureMapper extends ReadWalker {
 
             // analyze read
             final FlowBasedRead flowRead2;
-            if ( altBase == 0 ) {
-                flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-            } else {
-                byte[] bases = fr.read.getBasesNoCopy();
-                byte orgBase = bases[fr.readBasesOffset];
-                bases[fr.readBasesOffset] = altBase;
-
-                flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-
-                bases[fr.readBasesOffset] = orgBase;
-            }
+            flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
             final int[]        key2 = flowRead2.getKey();
             for ( int i = 0 ; i < key2.length ; i++ ) {
                 final double      p1 = flowRead2.getProb(i, key2[i]);
@@ -630,10 +610,9 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // install alt base?
         byte orgBase = 0;
-        int orgOffset = 0;
         if ( altBase != 0 ) {
-            orgBase = bases[orgOffset = offset];
-            bases[offset] = altBase;
+            orgBase = fr.refBases[0];
+            fr.refBases[0] = altBase;
         }
 
         if ( offset > 0 ) {
@@ -673,7 +652,7 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // restore changes
         if ( altBase != 0 ) {
-            bases[orgOffset] = orgBase;
+            fr.refBases[0] = orgBase;
         }
 
         // return
