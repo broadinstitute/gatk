@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -334,7 +335,12 @@ public final class GATKVariantContextUtils {
                     gb.alleles(Collections.nCopies(ploidy, ref));
                     gb.PL(new int[genotypeLikelihoods.length]).log10PError(0);
                 } else {
-                    gb.alleles(finalAlleles);
+                    // try to retain phasing
+                    if (areUnphasedGenotypesEqual(finalAlleles, originalGT)) { // if phasing state was available in this context, this check could be skipped for unphased originalGTs
+                        gb.alleles(originalGT);
+                    } else {
+                        gb.alleles(finalAlleles).phased(false);
+                    }
                 }
                 final int numAltAlleles = allelesToUse.size() - 1;
                 if ( numAltAlleles > 0 ) {
@@ -369,6 +375,10 @@ public final class GATKVariantContextUtils {
                 gb.alleles(GenotypesCache.get(ploidy, maxPosteriorIndex).asAlleleList(allelesToUse));
             }
         }
+    }
+
+    private static boolean areUnphasedGenotypesEqual(final List<Allele> GT1, final List<Allele> GT2) {
+        return CollectionUtils.isEqualCollection(GT1, GT2);
     }
 
     private static List<Allele> bestMatchToOriginalGT(final List<Allele> allelesToUse, final List<Allele> originalGT) {
