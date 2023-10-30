@@ -123,8 +123,9 @@ public class SmallBitSet {
         bits &= ~(elementIndex(element));
     }
 
-    public void flip(final int element) {
+    public SmallBitSet flip(final int element) {
         bits ^= elementIndex(element);
+        return this;
     }
 
     public boolean get(final int element) {

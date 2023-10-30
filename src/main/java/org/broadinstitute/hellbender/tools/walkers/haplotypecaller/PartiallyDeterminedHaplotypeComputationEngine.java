@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.*;
@@ -139,20 +140,29 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 Utils.printIf(debug, () -> "Found too many branches, aborting and falling back to Assembly Variants!");
                 return sourceSet;
             }
+            
+            // by default, the whole event group is the determined span, but we can optionally revert to pre-joint detection behavior
+            // where only one event at a time is determined and the rest of the event group is undetermined
+            final List<Pair<Set<Event>, SimpleInterval>> eventSetsAndDeterminedSpans = true ?
+                    determinedEventGroup.determinedEventSets().stream().map(s -> Pair.of(s, determinedEventGroup.getSpan())).toList() :
+                    determinedEventGroup.determinedUndeterminedHybridSets();
 
-            for (final Set<Event> determinedEvents : determinedEventGroup.determinedEventSets()) {
+            for (final Pair<Set<Event>, SimpleInterval> eventSetAndDeterminedSpan : eventSetsAndDeterminedSpans) {
+                final Set<Event> eventsFromDeterminedGroup = eventSetAndDeterminedSpan.getLeft();
+                final SimpleInterval determinedSpan = eventSetAndDeterminedSpan.getRight();
                 Utils.printIf(debug, () -> "Constructing PD haplotypes with determined events (if no determined events, PD haplotypes match the reference over the determined span): " +
-                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", ")));
+                        eventsFromDeterminedGroup.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", ")));
 
                 // add the determined events to the undetermined branches
                 final List<ImmutableSet<Event>> branches = undeterminedBranches.stream()
-                        .map(branch -> Sets.union(branch, determinedEvents).immutableCopy()).toList();
+                        .map(branch -> Sets.union(branch, eventsFromDeterminedGroup).immutableCopy()).toList();
                 branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branches);
 
                 for (Set<Event> branch : branches) {
                     if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
                         final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
-                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedEventGroup.getSpan(), eventsInPDHap);
+                        // TODO: in the disable-joint-detection mode, don't use the span of the determined event group
+                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, eventsFromDeterminedGroup, determinedSpan, eventsInPDHap);
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
                         outputHaplotypes.add(newPDHaplotype);
                     } else {
@@ -161,7 +171,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         // every haplotype can grow by every event, or remain unchanged.  For example, if we have haplotypes
                         // H1 and H2 so far and reach a locus with events A and B our list grows to H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
                         List<List<Event>> fullyDeterminedHaplotypes = new ArrayList<>();
-                        fullyDeterminedHaplotypes.add(new ArrayList<>(determinedEvents)); // the seed haplotype
+                        fullyDeterminedHaplotypes.add(new ArrayList<>(eventsFromDeterminedGroup)); // the seed haplotype
 
                         for (final int locus : eventsByStartPos.keySet()) {
                             // TODO: don't know if the logic on the next line is right, but this code path could probably be deleted anyway
@@ -851,6 +861,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
 
+            // TODO: I think this comment may be wrong
             // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
@@ -881,6 +892,60 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 }
             }
 
+            return result;
+        }
+
+        /**
+         * Pre-joint detection behavior where individual events are set as determined and the rest of the event group is
+         * undetermined.
+         * @return a list of branches, each branch a mix of determined and undetermined events from this EventGroup paired with
+         * a SimpleInterval denoting which span is considered determined
+         */
+        public List<Pair<Set<Event>, SimpleInterval>> determinedUndeterminedHybridSets() {
+            final List<Pair<Set<Event>, SimpleInterval>> result = new ArrayList<>();
+
+            // case where ref is determined -- every event at a given locus shares the same undetermined sets
+            for (final int locus : eventsInOrder.stream().map(Event::getStart).collect(Collectors.toSet())) {
+                // TODO: should this instead be all events that overlap the locus?
+                final List<Event> eventsAtDeterminedLocus = eventsInOrder.stream().filter(event -> event.getStart() == locus).toList();
+                final SimpleInterval determinedSpan = IntervalUtils.getSpanningInterval(eventsAtDeterminedLocus);
+                final SmallBitSet locusEvents = new SmallBitSet(eventsAtDeterminedLocus.stream().map(eventIndices::get).toList());
+
+                final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
+
+                // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
+                // conditions 1) allowed 2) doesn't overlap the determined locus 3) maximal
+                for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
+                    if (allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusEvents).isEmpty() &&
+                            maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
+                        maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
+                    }
+                }
+
+                maximalAllowedSubsets.forEach(mas -> result.add(Pair.of(mas.asSet(eventsInOrder), determinedSpan)));
+            }
+
+            // case where one event at a time is determined
+            for (final Event determinedEvent : eventsInOrder) {
+                final int determinedEventIndex = eventIndices.get(determinedEvent);
+                // here locusEvents exclude the determinedEvent
+                final SmallBitSet locusEvents = new SmallBitSet(eventsInOrder.stream().filter(determinedEvent::overlaps).map(eventIndices::get)
+                        .filter(i -> i != determinedEventIndex).toList());
+
+                final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
+
+                // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
+                // conditions 1) allowed 2) contains the determined event but nothing else at that locus 3) maximal
+                for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
+                    if (subset.get(determinedEventIndex) && allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusEvents).isEmpty() &&
+                            maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
+                        maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
+                    }
+                }
+                maximalAllowedSubsets.forEach(mas -> result.add(Pair.of(mas.asSet(eventsInOrder), new SimpleInterval(determinedEvent))));
+            }
+
+            // Now that we have all the maximal sets, map bitset indices to Events
             return result;
         }
 
