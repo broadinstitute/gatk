@@ -41,6 +41,7 @@ public final class PileupDetectionArgumentCollection {
 
     public static final String GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME = "use-pdhmm";
     public static final String DETERMINE_PD_HAPS = "make-determined-haps-from-pd-code";
+    public static final String DISABLE_JOINT_DETECTION = "disable-joint-detection";
     public static final String DEBUG_PILEUPCALLING_ARG = "print-pileupcalling-status";
     public static final String FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED = "fallback-gga-if-pdhmm-fails";
     public static final String PDHMM_READ_OVERLAP_OPTIMIZATION = "use-pdhmm-overlap-optimization";
@@ -78,6 +79,8 @@ public final class PileupDetectionArgumentCollection {
     @Hidden
     @Argument(fullName= DETERMINE_PD_HAPS, doc = "PDHMM: As an alternative to using the PDHMM, run all of the haplotype branching/determination code and instead of using the PDHMM use the old HMM with determined haplotypes. NOTE: this often fails and fallsback to other code due to combinatorial expansion. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean useDeterminedHaplotypesDespitePdhmmMode = false;
+    @Argument(fullName= DISABLE_JOINT_DETECTION, doc = "PDHMM: Disable joint detection; that is, make partially-determined haplotypes with at most one determined event. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
+    public boolean disableJointDetection = false;
     @Hidden
     @Argument(fullName= DEBUG_PILEUPCALLING_ARG, doc = "PDHMM: If set, print to stdout a prodigious amount of debugging information about each of the steps involved in artificial haplotype construction and filtering. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean debugPileupStdout = false;

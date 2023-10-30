@@ -140,12 +140,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 Utils.printIf(debug, () -> "Found too many branches, aborting and falling back to Assembly Variants!");
                 return sourceSet;
             }
-            
+
             // by default, the whole event group is the determined span, but we can optionally revert to pre-joint detection behavior
             // where only one event at a time is determined and the rest of the event group is undetermined
-            final List<Pair<Set<Event>, SimpleInterval>> eventSetsAndDeterminedSpans = true ?
-                    determinedEventGroup.determinedEventSets().stream().map(s -> Pair.of(s, determinedEventGroup.getSpan())).toList() :
-                    determinedEventGroup.determinedUndeterminedHybridSets();
+            final List<Pair<Set<Event>, SimpleInterval>> eventSetsAndDeterminedSpans = pileupArgs.disableJointDetection ? determinedEventGroup.determinedUndeterminedHybridSets() :
+                    determinedEventGroup.determinedEventSets().stream().map(s -> Pair.of(s, determinedEventGroup.getSpan())).toList();
+                    ;
 
             for (final Pair<Set<Event>, SimpleInterval> eventSetAndDeterminedSpan : eventSetsAndDeterminedSpans) {
                 final Set<Event> eventsFromDeterminedGroup = eventSetAndDeterminedSpan.getLeft();
