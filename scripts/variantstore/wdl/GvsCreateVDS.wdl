@@ -8,7 +8,7 @@ workflow GvsCreateVDS {
     input {
         String vds_output_path
         String avro_path
-        String hail_version="0.2.124"
+        String? hail_version="0.2.126"
 
         String prefix = "vds-cluster"
         String gcs_subnetwork_name="subnetwork"
