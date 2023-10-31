@@ -29,7 +29,6 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
     use_classic_vqsr_flag = ""
     if use_classic_vqsr:
         use_classic_vqsr_flag = "--use-classic-vqsr"
-        print("using vets as filter model creation")
 
     try:
         cluster_start_cmd = wrap(f"""
