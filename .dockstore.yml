@@ -358,6 +358,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1098-hail-version-issues
          tags:
              - /.*/
    - name: MitochondriaPipeline
