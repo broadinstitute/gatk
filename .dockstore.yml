@@ -357,7 +357,7 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
+             - ah_var_store
          tags:
              - /.*/
    - name: MitochondriaPipeline
