@@ -197,7 +197,7 @@ task TieOutVds {
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
-        pip install hail==0.2.120
+        pip install hail==0.2.120 ## TODO this feels like something we are going to want to change?
 
         export WORK=$PWD/work
         mkdir ${WORK}
