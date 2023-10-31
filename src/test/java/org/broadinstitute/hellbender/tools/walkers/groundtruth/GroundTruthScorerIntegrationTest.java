@@ -151,7 +151,8 @@ public class GroundTruthScorerIntegrationTest extends CommandLineProgramTest {
 
         final String[] args = ArrayUtils.addAll(buildCommonArgs(outputFile, GT_SCORER_INPUT_BAM, true),
                 new String[] {
-                        "--report-file", reportFile.getAbsolutePath()
+                        "--report-file", reportFile.getAbsolutePath(),
+                        "--omit-zeros-from-report"
                 });
 
         runCommandLine(args);  // no assert, just make sure we don't throw
