@@ -73,6 +73,10 @@ public class SmallBitSet {
         return result;
     }
 
+    public static SmallBitSet emptySet() {
+        return new SmallBitSet();
+    }
+
     // convert to the next bitset in the canonical ordering, which conveniently is just adding 1 to the underlying int.
     // Useful for iterating over all possible subsets in order from empty to full.
     // Calling code is responsible for starting iteration at 0 (empty bitset) and stopping iteration at 2^n - 1 for a full bitset of n elements.

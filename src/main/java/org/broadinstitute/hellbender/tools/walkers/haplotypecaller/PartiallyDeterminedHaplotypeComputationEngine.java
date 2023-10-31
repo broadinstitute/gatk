@@ -902,6 +902,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * a SimpleInterval denoting which span is considered determined
          */
         public List<Pair<Set<Event>, SimpleInterval>> determinedUndeterminedHybridSets() {
+            if (eventsInOrder.size() == 1) {    // if only one event return 1) event is determined; 2) ref is determined
+                final Event event = eventsInOrder.get(0);
+                final SimpleInterval determinedSpan = new SimpleInterval(event);
+                return List.of(Pair.of(Set.of(event), determinedSpan), Pair.of(Set.of(), determinedSpan));
+            }
+
             final List<Pair<Set<Event>, SimpleInterval>> result = new ArrayList<>();
 
             // case where ref is determined -- every event at a given locus shares the same undetermined sets
@@ -913,13 +919,19 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                 final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
 
-                // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
-                // conditions 1) allowed 2) doesn't overlap the determined locus 3) maximal
+                // find all subsets of events that 1) are allowed, 2) contain no events at the determined locus (ie are ref there), and 3)
+                // are maximal (they are not proper subsets of anything bigger that satisfies 1 and 2).
                 for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
                     if (allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusEvents).isEmpty() &&
                             maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
                         maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
                     }
+                }
+
+                // the iteration above excludes the empty set, and it's possible that the empty set *is* the unique maximal subset satisfying
+                // conditions 1 and 2.  For example, any time an EventGroup contains events only at a single locus.
+                if (maximalAllowedSubsets.isEmpty()) {
+                    maximalAllowedSubsets.add(SmallBitSet.emptySet());
                 }
 
                 maximalAllowedSubsets.forEach(mas -> result.add(Pair.of(mas.asSet(eventsInOrder), determinedSpan)));
