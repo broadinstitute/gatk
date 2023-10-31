@@ -42,14 +42,17 @@
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - You will want to set the `external_sample_names` input based on the GCS path of a text file that lists all the sample names (external sample IDs).
    - If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id" instead of "this.samples.research_id").
+   - **NOTE** Set `use_compressed_references` to true.
 1. `GvsImportGenomes` workflow
    - For use with **control** samples only!
    - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
-   - Run at the `sample set` level ("Step 1" in workflow submission).  You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  
-   - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
+   - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - You will need to set the `external_sample_names` input to be the GCS path of a text file that lists all the sample names (external sample IDs).
+   - You will need to set the `input_vcfs` input to be the GCS path of a text file that lists all the re-blocked gVCFs (in the same order as the file used in `external_sample_names`).
+   - You will need to set the `input_vcf_indexes` input to be the GCS path of a text file that lists all the index files of the re-blocked gVCFs (in the same order as the file used in `external_sample_names`).
    - **NOTE** Be sure to set the input `drop_state` to ZERO. This will have the effect of dropping GQ0 reference blocks.
-   - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
    - **NOTE** Set `use_compressed_references` to true.
+   - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
 1. **TBD Workflow to soft delete samples**
