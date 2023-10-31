@@ -10,7 +10,7 @@ workflow GvsCreateVDS {
         String vds_destination_path
         String avro_path
         Boolean use_classic_VQSR = false
-        String hail_version="0.2.124"
+        String? hail_version
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
@@ -25,9 +25,6 @@ workflow GvsCreateVDS {
         }
         vds_output_path: {
             help: "Location for the final created VDS"
-        }
-        hail_version: {
-            help: "0.2.124"
         }
 
         # Cluster parameters
@@ -53,6 +50,7 @@ workflow GvsCreateVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_google_project = select_first([gcs_project, GetToolVersions.google_project])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
 
     call create_vds {
@@ -61,7 +59,7 @@ workflow GvsCreateVDS {
             vds_path = vds_destination_path,
             avro_path = avro_path,
             use_classic_VQSR = use_classic_VQSR,
-            hail_version = hail_version,
+            hail_version = effective_hail_version,
             gcs_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
