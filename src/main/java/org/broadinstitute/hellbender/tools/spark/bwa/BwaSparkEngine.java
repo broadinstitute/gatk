@@ -1,21 +1,15 @@
 package org.broadinstitute.hellbender.tools.spark.bwa;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-
-import java.util.*;
 
 /**
  * The BwaSparkEngine provides a simple interface for transforming a JavaRDD<GATKRead> in which the reads are paired
@@ -34,6 +28,9 @@ public final class BwaSparkEngine implements AutoCloseable {
     private final String indexFileName;
     private final boolean resolveIndexFileName;
     private final Broadcast<SAMFileHeader> broadcastHeader;
+
+    // assumes 128Mb Spark partitions, with reads needing about 100bytes each when BAM compressed
+    private static final int READS_PER_PARTITION_GUESS = 1500000;
 
     /**
      * @param ctx           the Spark context
@@ -101,7 +98,7 @@ public final class BwaSparkEngine implements AutoCloseable {
         final String indexFileName = this.indexFileName;
         final boolean resolveIndexFileName = this.resolveIndexFileName;
         return unalignedReads.mapPartitions(itr ->
-                new ReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment).apply(itr));
+                new BwaReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment, false).apply(itr, READS_PER_PARTITION_GUESS));
     }
 
     @Override
@@ -110,76 +107,4 @@ public final class BwaSparkEngine implements AutoCloseable {
         BwaMemIndexCache.closeAllDistributedInstances(ctx);
     }
 
-    private static final class ReadAligner {
-        private final BwaMemIndex bwaMemIndex;
-        private final SAMFileHeader readsHeader;
-        private final boolean alignsPairs;
-
-        // assumes 128Mb partitions, with reads needing about 100bytes each when BAM compressed
-        private static final int READS_PER_PARTITION_GUESS = 1500000;
-
-        ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs) {
-            this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
-            this.readsHeader = readsHeader;
-            this.alignsPairs = alignsPairs;
-            if ( alignsPairs && readsHeader.getSortOrder() != SAMFileHeader.SortOrder.queryname ) {
-                throw new UserException("Input must be queryname sorted unless you use single-ended alignment mode.");
-            }
-        }
-
-        Iterator<GATKRead> apply( final Iterator<GATKRead> readItr ) {
-            final List<GATKRead> inputReads = new ArrayList<>(READS_PER_PARTITION_GUESS);
-            while ( readItr.hasNext() ) {
-                inputReads.add(readItr.next());
-            }
-            final int nReads = inputReads.size();
-            if ( alignsPairs ) {
-                if ( (nReads & 1) != 0 ) {
-                    throw new GATKException("We're supposed to be aligning paired reads, but there are an odd number of them.");
-                }
-                for ( int idx = 0; idx != nReads; idx += 2 ) {
-                    final String readName1 = inputReads.get(idx).getName();
-                    final String readName2 = inputReads.get(idx+1).getName();
-                    if ( !Objects.equals(readName1,readName2) ) {
-                        throw new GATKException("Read pair has varying template name: "+readName1+" .vs "+readName2);
-                    }
-                }
-            }
-            final List<List<BwaMemAlignment>> allAlignments;
-            if ( nReads == 0 ) allAlignments = Collections.emptyList();
-            else {
-                final List<byte[]> seqs = new ArrayList<>(nReads);
-                for (final GATKRead read : inputReads) {
-                    seqs.add(read.getBases());
-                }
-                final BwaMemAligner aligner = new BwaMemAligner(bwaMemIndex);
-                // we are dealing with interleaved, paired reads.  tell BWA that they're paired.
-                if (alignsPairs) {
-                    aligner.alignPairs();
-                }
-                allAlignments = aligner.alignSeqs(seqs);
-            }
-            final List<String> refNames = bwaMemIndex.getReferenceContigNames();
-            final List<GATKRead> outputReads = new ArrayList<>(allAlignments.stream().mapToInt(List::size).sum());
-            for ( int idx = 0; idx != nReads; ++idx ) {
-                final GATKRead originalRead = inputReads.get(idx);
-                final String readName = originalRead.getName();
-                final byte[] bases = originalRead.getBases();
-                final byte[] quals = originalRead.getBaseQualities();
-                final String readGroup = originalRead.getReadGroup();
-                final List<BwaMemAlignment> alignments = allAlignments.get(idx);
-                final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
-                for ( final BwaMemAlignment alignment : alignments ) {
-                    final SAMRecord samRecord =
-                            BwaMemAlignmentUtils.applyAlignment(readName, bases, quals, readGroup,
-                                                                alignment, refNames, readsHeader, false, true);
-                    final GATKRead rec = SAMRecordToGATKReadAdapter.headerlessReadAdapter(samRecord);
-                    final String saTag = saTagMap.get(alignment);
-                    if ( saTag != null ) rec.setAttribute("SA", saTag);
-                    outputReads.add(rec);
-                }
-            }
-            return outputReads.iterator();
-        }
-    }
 }
