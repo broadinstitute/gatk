@@ -23,9 +23,10 @@ public class BwaMemAlignmentUtils {
      * call this method with alwaysGenerateASandXS=true.
      */
     public static SAMRecord applyAlignment( final String readName, final byte[] basesArg, final byte[] qualsArg,
-                                           final String readGroup, final BwaMemAlignment alignment,
-                                           final List<String> refNames, final SAMFileHeader header,
-                                           final boolean softClipAlts, final boolean alwaysGenerateASandXS ) {
+                                            final String readGroup, final BwaMemAlignment alignment,
+                                            final List<String> refNames, final SAMFileHeader header,
+                                            final boolean softClipAlts, final boolean alwaysGenerateASandXS,
+                                            final boolean markAsDuplicate ) {
         final SAMRecord samRecord = new SAMRecord(header);
         samRecord.setReadName(readName);
         final int samFlag = alignment.getSamFlag();
@@ -90,6 +91,8 @@ public class BwaMemAlignmentUtils {
         }
         //TODO: there ought to be a way to indicate a set of tag names that ought to be copied -- we're just doing RG
         if ( readGroup != null ) samRecord.setAttribute(SAMTag.RG.name(), readGroup);
+        // In some cases such as realignment, it may be desirable to reapply duplicate status
+        samRecord.setDuplicateReadFlag(markAsDuplicate);
         return samRecord;
     }
 
@@ -153,7 +156,7 @@ public class BwaMemAlignmentUtils {
                 .map(alignment -> {
                     final SAMRecord samRecord =
                             applyAlignment(readName, contigSequence, null, null, alignment,
-                                    refNames, header, false, false);
+                                    refNames, header, false, false, false);
                     final String saTag = saTagMap.get(alignment);
                     if ( saTag != null ) samRecord.setAttribute("SA", saTag);
                     if (contigAlignmentsReadGroup != null)

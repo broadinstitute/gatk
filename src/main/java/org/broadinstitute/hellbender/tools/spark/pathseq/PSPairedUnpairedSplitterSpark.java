@@ -23,10 +23,17 @@ public final class PSPairedUnpairedSplitterSpark {
      * Gets RDDs of the paired and unpaired reads. Option to cache the repartitioned RDD.
      */
     public PSPairedUnpairedSplitterSpark(final JavaRDD<GATKRead> reads, final int readsPerPartitionGuess, final boolean cacheReads) {
+        this(reads, readsPerPartitionGuess, reads.getNumPartitions(), cacheReads);
+    }
+
+    /**
+     * This constructor also allows one to specify the desired number of paritions.
+     */
+    public PSPairedUnpairedSplitterSpark(final JavaRDD<GATKRead> reads, final int readsPerPartitionGuess, final int targetNumPartitions, final boolean cacheReads) {
 
         //Repartition reads then map each partition to a pair of lists, one containing the paired reads and the
         // other the unpaired reads
-        repartitionedReads = PSFilter.repartitionReadsByName(reads)
+        repartitionedReads = PSFilter.repartitionReadsByName(reads, targetNumPartitions)
                 .mapPartitions(iter -> mapPartitionsToPairedAndUnpairedLists(iter, readsPerPartitionGuess));
         shouldBeCached = cacheReads;
         if (cacheReads) {

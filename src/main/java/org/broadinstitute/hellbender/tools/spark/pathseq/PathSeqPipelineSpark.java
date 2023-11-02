@@ -14,17 +14,14 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import scala.Tuple2;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * Combined tool that performs all PathSeq steps: read filtering, microbe reference alignment and abundance scoring
@@ -188,32 +185,6 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
             minRecommendedValue = 100000)
     public int readsPerPartitionOutput = 1000000;
 
-    /**
-     * Reduces number of partitions of paired reads, keeping pairs together.
-     */
-    private static JavaRDD<GATKRead> repartitionPairedReads(final JavaRDD<GATKRead> pairedReads, final int alignmentPartitions, final long numReads) {
-        final int readsPerPartition = 1 + (int) (numReads / alignmentPartitions);
-        return pairedReads.mapPartitions(iter -> PathSeqPipelineSpark.pairPartitionReads(iter, readsPerPartition))
-                .repartition(alignmentPartitions)
-                .flatMap(List::iterator);
-    }
-
-    /**
-     * Maps partition of paired reads to a partition of Lists containing each pair. Assumes pairs are adjacent.
-     */
-    private static Iterator<List<GATKRead>> pairPartitionReads(final Iterator<GATKRead> iter, final int readsPerPartition) {
-        final ArrayList<List<GATKRead>> readPairs = new ArrayList<>(readsPerPartition / 2);
-        while (iter.hasNext()) {
-            final List<GATKRead> list = new ArrayList<>(2);
-            list.add(iter.next());
-            if (!iter.hasNext()) throw new GATKException("Odd number of read pairs in paired reads partition");
-            list.add(iter.next());
-            if (!list.get(0).getName().equals(list.get(1).getName())) throw new GATKException("Pair did not have the same name in a paired reads partition");
-            readPairs.add(list);
-        }
-        return readPairs.iterator();
-    }
-
     @Override
     public boolean requiresReads() {
         return true;
@@ -252,7 +223,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         //Rebalance partitions using the counts
         final int numPairedPartitions = 1 + (int) (numPairedReads / readsPerPartition);
         final int numUnpairedPartitions = 1 + (int) (numUnpairedReads / readsPerPartition);
-        pairedReads = repartitionPairedReads(pairedReads, numPairedPartitions, numPairedReads);
+        pairedReads = SparkUtils.repartitionPairedReads(pairedReads, numPairedPartitions, numPairedReads);
         unpairedReads = unpairedReads.repartition(numUnpairedPartitions);
 
         //Bwa pathogen alignment

@@ -478,7 +478,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                     .filter( bwaMemAlignment ->  bwaMemAlignment.getRefId() >= 0
                             && SAMFlag.SECONDARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
                     .map(bwaMemAlignment -> BwaMemAlignmentUtils.applyAlignment(contigName, contigSequence, null,
-                            null, bwaMemAlignment, refNames, header, false, false))
+                            null, bwaMemAlignment, refNames, header, false, false, false))
                     .map(AlignmentInterval::new)
                     .map(ar -> ContigAlignmentsModifier.splitGappedAlignment(ar, DiscoverVariantsFromContigAlignmentsArgumentCollection
                             .GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, contigSequence.length))

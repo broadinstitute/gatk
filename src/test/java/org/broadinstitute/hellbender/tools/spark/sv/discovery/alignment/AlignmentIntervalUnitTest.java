@@ -206,7 +206,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                               final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                               final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false, false);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
         Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
         Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
@@ -222,7 +222,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                         final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                         final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false, false);
         final StringBuilder strBuilder = new StringBuilder(String.join(",", samRecord.getContig(),
                 "" + samRecord.getStart(), samRecord.getReadNegativeStrandFlag() ? "-" : "+", samRecord.getCigarString(), "" + samRecord.getMappingQuality()));
         if (samRecord.getAttribute(SAMTag.NM.name()) != null || samRecord.getAttribute(SAMTag.AS.name()) != null) {
@@ -246,7 +246,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                              final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                              final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false, false);
         final GATKRead read = new SAMRecordToGATKReadAdapter(samRecord);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(read);
         Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
@@ -264,7 +264,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                 final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
         final byte[] randomContigBases = new RandomDNA(13).nextBases(expectedContigLength);
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", randomContigBases, null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", randomContigBases, null, null, bwaMemAlignment, refNames, hg19Header, false, false, false);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
         final SAMRecord backSamRecord = alignmentInterval.toSAMRecord(samRecord.getHeader(), samRecord.getReadName(), randomContigBases, samRecord.getCigar().containsOperator(CigarOperator.H), samRecord.getFlags() , samRecord.getAttributes());
         Assert.assertEquals(backSamRecord.getReadName(), samRecord.getReadName());
