@@ -171,7 +171,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final SAMFileHeader header;
         final BwaSparkEngine bwaEngine;
         if (align) {
-            bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary());
+            bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary(), false);
             if (bwaArgs.singleEndAlignment) {
                 alignedReads = bwaEngine.alignUnpaired(getReads());
             } else {

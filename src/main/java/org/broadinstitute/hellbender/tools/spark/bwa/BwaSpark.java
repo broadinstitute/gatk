@@ -63,7 +63,7 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         try ( final BwaSparkEngine bwaEngine =
-                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
+                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary(), false) ) {
             final JavaRDD<GATKRead> reads;
             if (bwaArgs.singleEndAlignment) {
                 reads = bwaEngine.alignUnpaired(getReads());

@@ -40,7 +40,7 @@ public final class PSBwaAligner {
                     //Record is currently unmapped, so apply first alignment
                     read = new SAMRecordToGATKReadAdapter(BwaMemAlignmentUtils.applyAlignment(read.getName(),
                             read.getBases(), read.getBaseQualities(), read.getReadGroup(), alignment, refNames,
-                            header, false, false));
+                            header, false, false, false));
                 } else if (alignment.getRefId() != -1) {
                     //Record is currently mapped, but if the alignment is not empty then add as an alternate alignment
                     //This can happen if the input read is already mapped

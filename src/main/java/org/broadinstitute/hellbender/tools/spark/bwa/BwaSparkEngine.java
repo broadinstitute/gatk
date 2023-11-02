@@ -33,6 +33,7 @@ public final class BwaSparkEngine implements AutoCloseable {
     private final JavaSparkContext ctx;
     private final String indexFileName;
     private final boolean resolveIndexFileName;
+    private final boolean retainDuplicateFlag;
     private final Broadcast<SAMFileHeader> broadcastHeader;
 
     /**
@@ -42,12 +43,14 @@ public final class BwaSparkEngine implements AutoCloseable {
      * @param indexFileName the index image file name that already exists, or <code>null</code> to have the image file automatically distributed.
      * @param inputHeader   the SAM file header to use for reads
      * @param refDictionary the sequence dictionary to use for reads if the SAM file header doesn't have one (or it's empty)
+     * @param retainDuplicateFlag retain duplicate flag of each read
      */
     public BwaSparkEngine(final JavaSparkContext ctx,
                           final String referenceFile,
                           final String indexFileName,
                           SAMFileHeader inputHeader,
-                          final SAMSequenceDictionary refDictionary) {
+                          final SAMSequenceDictionary refDictionary,
+                          final boolean retainDuplicateFlag) {
         Utils.nonNull(referenceFile);
         Utils.nonNull(inputHeader);
         this.ctx = ctx;
@@ -67,6 +70,7 @@ public final class BwaSparkEngine implements AutoCloseable {
             inputHeader.setSequenceDictionary(refDictionary);
         }
         broadcastHeader = ctx.broadcast(inputHeader);
+        this.retainDuplicateFlag = retainDuplicateFlag;
     }
 
     public SAMFileHeader getHeader() { return broadcastHeader.getValue(); }
@@ -100,8 +104,9 @@ public final class BwaSparkEngine implements AutoCloseable {
         final Broadcast<SAMFileHeader> broadcastHeader = this.broadcastHeader;
         final String indexFileName = this.indexFileName;
         final boolean resolveIndexFileName = this.resolveIndexFileName;
+        final boolean retainDuplicateFlag = this.retainDuplicateFlag;
         return unalignedReads.mapPartitions(itr ->
-                new ReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment).apply(itr));
+                new ReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment, retainDuplicateFlag).apply(itr));
     }
 
     @Override
@@ -114,14 +119,17 @@ public final class BwaSparkEngine implements AutoCloseable {
         private final BwaMemIndex bwaMemIndex;
         private final SAMFileHeader readsHeader;
         private final boolean alignsPairs;
+        private final boolean retainDuplicateFlag;
 
         // assumes 128Mb partitions, with reads needing about 100bytes each when BAM compressed
         private static final int READS_PER_PARTITION_GUESS = 1500000;
 
-        ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs) {
+        ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs,
+                     final boolean retainDuplicateFlag) {
             this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
             this.readsHeader = readsHeader;
             this.alignsPairs = alignsPairs;
+            this.retainDuplicateFlag = retainDuplicateFlag;
             if ( alignsPairs && readsHeader.getSortOrder() != SAMFileHeader.SortOrder.queryname ) {
                 throw new UserException("Input must be queryname sorted unless you use single-ended alignment mode.");
             }
@@ -170,9 +178,10 @@ public final class BwaSparkEngine implements AutoCloseable {
                 final List<BwaMemAlignment> alignments = allAlignments.get(idx);
                 final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
                 for ( final BwaMemAlignment alignment : alignments ) {
+                    final boolean isDuplicate = retainDuplicateFlag && originalRead.isDuplicate();
                     final SAMRecord samRecord =
                             BwaMemAlignmentUtils.applyAlignment(readName, bases, quals, readGroup,
-                                                                alignment, refNames, readsHeader, false, true);
+                                                                alignment, refNames, readsHeader, false, true, isDuplicate);
                     final GATKRead rec = SAMRecordToGATKReadAdapter.headerlessReadAdapter(samRecord);
                     final String saTag = saTagMap.get(alignment);
                     if ( saTag != null ) rec.setAttribute("SA", saTag);
