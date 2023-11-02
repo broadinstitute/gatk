@@ -29,15 +29,9 @@ public class Event implements Locatable {
         Utils.validateArg(ref.isReference(), "ref is not ref");
         this.contig = contig;
         this.start = start;
-        //check for minimal representation
-        if(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref.getBases(), alt.getBases())){
-            refAllele = ref;
-            altAllele = alt;
-        } else {
-            Pair<Allele, Allele> minimalAlleles = makeMinimalRepresentation(ref, alt);
-            refAllele = minimalAlleles.getLeft();
-            altAllele = minimalAlleles.getRight();
-        }
+        final Pair<Allele, Allele> minimalAlleles = makeMinimalRepresentation(ref, alt);
+        refAllele = minimalAlleles.getLeft();
+        altAllele = minimalAlleles.getRight();
         stop = start + refAllele.length() - 1;
     }
 
@@ -48,15 +42,22 @@ public class Event implements Locatable {
      * @return pair of alleles in minimal representation
      */
     private static Pair<Allele, Allele> makeMinimalRepresentation(Allele ref, Allele alt) {
-        Utils.validateArg(!Arrays.equals(ref.getBases(), alt.getBases()), "ref and alt alleles are identical");
-        byte[] newRefBases = ref.getBases();
-        byte[] newAltBases = alt.getBases();
-        while (newRefBases.length != 1 && newAltBases.length != 1 && !differentLastBase(newRefBases, newAltBases)) {
-            newRefBases = Arrays.copyOf(ref.getBases(), ref.length() - 1);
-            newAltBases = Arrays.copyOf(alt.getBases(), alt.length() - 1);
+        //check for minimal representation
+        if(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref.getBases(), alt.getBases())) {
+            return new Pair<>(ref, alt);
         }
-        Allele newRefAllele = Allele.create(newRefBases, true);
-        Allele newAltAllele = Allele.create(newAltBases, false);
+        Utils.validateArg(!ref.basesMatch(alt), "ref and alt alleles are identical");
+        final byte[] refBases = ref.getBases();
+        final byte[] altBases = alt.getBases();
+        int overlapCount = 0;
+        final int minLen = Math.min(refBases.length, altBases.length);
+        while (overlapCount < minLen && refBases[refBases.length - 1 - overlapCount] == altBases[altBases.length - 1 - overlapCount]) {
+            overlapCount++;
+        }
+        final byte[] newRefBases = Arrays.copyOf(refBases, ref.getBases().length - overlapCount);
+        final byte[] newAltBases = Arrays.copyOf(altBases, alt.getBases().length - overlapCount);
+        final Allele newRefAllele = Allele.create(newRefBases, true);
+        final Allele newAltAllele = Allele.create(newAltBases, false);
         return(new Pair<>(newRefAllele, newAltAllele));
     }
 
