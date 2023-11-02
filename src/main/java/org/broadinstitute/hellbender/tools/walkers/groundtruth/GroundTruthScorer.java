@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.groundtruth;
 
 import com.opencsv.CSVReader;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Precision;
@@ -54,6 +56,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String ADD_MEAN_CALL_LONG_NAME = "add-mean-call";
     public static final String GT_NO_OUTPUT_LONG_NAME = "gt-no-output";
     public static final String OMIT_ZEROS_FROM_REPORT = "omit-zeros-from-report";
+    public static final String QUALITY_PERCENTILES = "quality-percentiles";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
@@ -213,6 +216,45 @@ public class GroundTruthScorer extends ReadWalker {
         }
     }
 
+    private static class PercentileReport extends SeriesStats {
+
+        static GATKReportTable newReportTable(final PercentileReport[] report, String qualityPercentiles) {
+            String[] qp = qualityPercentiles.split(",");
+            final GATKReportTable table = new GATKReportTable("PhredBinAccumulator", "PhredBinAccumulator", 8 + qp.length);
+            table.addColumn("flow", "%d");
+            table.addColumn("count", "%d");
+            table.addColumn("uniq", "%d");
+            table.addColumn("min", "%f");
+            table.addColumn("max", "%f");
+            table.addColumn("mean", "%f");
+            table.addColumn("median", "%f");
+            table.addColumn("std", "%f");
+            for ( String p : qp ) {
+                table.addColumn("p" + p, "%f");
+            }
+            int rowIndex = 0;
+            for (int i = 0; i < report.length; i++) {
+                int col = 0;
+                table.set(rowIndex, col++, i);
+                table.set(rowIndex, col++, report[i].getCount());
+                table.set(rowIndex, col++, report[i].getUniq());
+                table.set(rowIndex, col++, report[i].getMin());
+                table.set(rowIndex, col++, report[i].getMax());
+                table.set(rowIndex, col++, report[i].getMean());
+                table.set(rowIndex, col++, report[i].getMedian());
+                table.set(rowIndex, col++, report[i].getStd());
+                for ( String p : qp ) {
+                    table.set(rowIndex, col++, report[i].getPercentile(Double.parseDouble(p)));
+                }
+                rowIndex++;
+            }
+            return table;
+        }
+
+        void addProb(double p) {
+            super.add(-10 * Math.log10(p));
+        }
+    }
 
     @Argument(fullName = OUTPUT_CSV_LONG_NAME, doc="main CSV output file. supported file extensions: .csv, .csv.gz.")
     public GATKPath outputCsvPath = null;
@@ -247,6 +289,9 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = OMIT_ZEROS_FROM_REPORT, doc = "omit zero values from output report", optional = true)
     public boolean      omitZerosFromReport = false;
 
+    @Argument(fullName = QUALITY_PERCENTILES, doc = "list of quality percentiles, defaults to 10,25,50,75,90", optional = true)
+    public String      qualityPercentiles = "10,25,50,75,90";
+
     // locals
     private FlowBasedAlignmentLikelihoodEngine likelihoodCalculationEngine;
     private PrintWriter                         outputCsv;
@@ -254,6 +299,7 @@ public class GroundTruthScorer extends ReadWalker {
     private GenomePriorDB                       genomePriorDB;
     private BooleanAccumulator[]                qualReport;
     private String[]                            csvFieldOrder;
+    private PercentileReport[]                  percentileReports;
 
     // static/const
     static final private String[]       CSV_FIELD_ORDER_BASIC = {
@@ -308,6 +354,21 @@ public class GroundTruthScorer extends ReadWalker {
         // initialize reports
         if ( reportFilePath != null ) {
             qualReport = BooleanAccumulator.newReport(QUAL_VALUE_MAX + 1, HMER_VALUE_MAX + 1, deviationToBin(HMER_VALUE_MAX + 1), BASE_VALUE_MAX + 1);
+
+            // establish max hmer size of flow input
+            int maxClass = FlowBasedRead.MAX_CLASS;
+            final SAMFileHeader header = getHeaderForReads();
+            if ( header != null ) {
+                for ( SAMReadGroupRecord rg : header.getReadGroups() ) {
+                    if ( rg.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG) != null ) {
+                        maxClass = Math.max(maxClass, Integer.parseInt(rg.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG)));
+                    }
+                }
+            }
+            percentileReports = new PercentileReport[maxClass + 1];
+            for (int i = 0; i < percentileReports.length ; i++ ) {
+                percentileReports[i] = new PercentileReport();
+            }
         }
     }
 
@@ -324,7 +385,9 @@ public class GroundTruthScorer extends ReadWalker {
             final GATKReport report = new GATKReport(
                     BooleanAccumulator.newReportTable(qualReport, "qual", fbargs.probabilityRatioThreshold, omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", omitZerosFromReport),
-                    BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base", omitZerosFromReport));
+                    BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base", omitZerosFromReport),
+                    PercentileReport.newReportTable(percentileReports, qualityPercentiles)
+            );
             try ( final PrintStream ps = new PrintStream(reportFilePath.getOutputStream()) ) {
                 report.print(ps);
             }
@@ -469,6 +532,11 @@ public class GroundTruthScorer extends ReadWalker {
 
                 // assign normalized result
                 result[i] = 1 - probCol[Math.min(key[i], flowRead.getMaxHmer())];
+            }
+
+            // accumulate error probabilities
+            if ( percentileReports != null ) {
+                percentileReports[key[i]].addProb(result[i]);
             }
         }
 
