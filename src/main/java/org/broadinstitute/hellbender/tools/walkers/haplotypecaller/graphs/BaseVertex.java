@@ -12,7 +12,7 @@ public class BaseVertex {
     /** placeholder to store additional information for debugging purposes */
     private String additionalInfo = "";
     protected final byte[] sequence;
-    private final int cachedHashCode;
+    protected final int cachedHashCode;
 
     /**
      * Create a new sequence vertex with sequence
@@ -26,7 +26,6 @@ public class BaseVertex {
         Utils.nonNull(sequence, "Sequence cannot be null");
         this.sequence = sequence;
         cachedHashCode = Arrays.hashCode(sequence);
-
     }
 
     /**
