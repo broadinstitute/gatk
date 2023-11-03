@@ -400,7 +400,7 @@ task PopulateFilterSetSites {
   runtime {
     docker: gatk_docker
     memory: "3500 MB"
-    disks: "local-disk ~{disk_size} HDD"
+    disks: "local-disk ~{disk_size_gb} HDD"
     bootDiskSizeGb: 15
     preemptible: 0
     cpu: 1
