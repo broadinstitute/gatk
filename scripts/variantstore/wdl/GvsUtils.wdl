@@ -72,7 +72,7 @@ task GetToolVersions {
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
     String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-10-13-alpine-8d14f01e9"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_10_21_aba62cf"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_10_24"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
@@ -384,14 +384,18 @@ task BuildGATKJar {
   }
 }
 
-task CreateDataset {
+task CreateDatasetForTest {
   input {
     String? git_branch_or_tag
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_docker
+    # By default auto-expire tables 2 weeks after their creation. Unfortunately there doesn't seem to be an automated way
+    # of auto-expiring the dataset, but the date is in the dataset name so old datasets should be easy to identify.
+    Int? table_ttl_seconds = 2 * 7 * 24 * 60 * 60
   }
   meta {
+    description: "Create a dataset for testing purposes whose tables are all set to auto-expire. Do not call this task for production code as the tables created within it will auto-delete!"
     # Branch may be updated so do not call cache!
     volatile: true
   }
@@ -422,9 +426,10 @@ task CreateDataset {
     # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
     # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
     # any remaining characters that are not alphanumeric or underscores.
-    dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
+    today="$(date -Idate | sed 's/-/_/g')"
+    dataset="$(echo ~{dataset_prefix}_${today}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
-    bq --apilog=false mk --project_id="gvs-internal" "$dataset"
+    bq --apilog=false mk --project_id="gvs-internal" --default_table_expiration="~{table_ttl_seconds}" "$dataset"
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     bq --apilog=false update --set_label service:gvs gvs-internal:$dataset

@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -65,6 +66,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public GQStateEnum gqStateToIgnore = GQStateEnum.SIXTY;
 
+    @DeprecatedFeature(detail="Argument of no foreseeable use")
     @Argument(fullName = "ignore-above-gq-threshold",
             shortName = "GTIG",
             doc = "in addition to dropping the gq block specified by ref-block-gq-to-ignore, also drop higher gq blocks",
@@ -168,6 +170,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public boolean storeCompressedReferences = false;
 
     private boolean shouldWriteLoadStatusStarted = true;
+
+    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
@@ -288,8 +292,15 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
 
+        if (gqStateToIgnore != null) {
+            gqStatesToIgnore.add(gqStateToIgnore);
+            if (dropAboveGqThreshold) {
+                gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
+            }
+        }
+
         if (enableReferenceRanges && !refRangesRowsExist) {
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
         }
 
         if (enableVet && !vetRowsExist) {
@@ -360,10 +371,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         if (refCreator != null) {
-            try {
-                refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
-            } catch (IOException ioe) {
-                throw new GATKException("Error writing missing intervals", ioe);
+            if ((gqStatesToIgnore.size() != 1) || (!gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
+                // We will write missing intervals as ZERO ('GQ0') unless that is the (ONLY???) GQ state that we are dropping.
+                // If ZERO/GQ0 is the ONLY state that we are dropping then we do not write those intervals.
+                try {
+                    refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+                } catch (IOException ioe) {
+                    throw new GATKException("Error writing missing intervals", ioe);
+                }
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
