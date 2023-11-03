@@ -981,6 +981,10 @@ task PopulateFilterSetInfo {
 
     String project_id
 
+    Int disk_size_gb = ceil(3 * (size(snp_recal_file, "GiB") +
+                                 size(snp_recal_file_index, "GiB") +
+                                 size(indel_recal_file, "GiB") +
+                                 size(indel_recal_file_index, "GiB"))) + 500
     String gatk_docker
     File? gatk_override
   }
@@ -1036,7 +1040,7 @@ task PopulateFilterSetInfo {
   runtime {
     docker: gatk_docker
     memory: "3500 MB"
-    disks: "local-disk 250 HDD"
+    disks: "local-disk ~{disk_size} HDD"
     bootDiskSizeGb: 15
     preemptible: 0
     cpu: 1
