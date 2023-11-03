@@ -125,6 +125,7 @@ workflow GvsQuickstartHailIntegration {
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            hail_version = effective_hail_version,
     }
 
     output {
@@ -147,6 +148,7 @@ task TieOutVds {
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
         String cloud_sdk_slim_docker
+        String hail_version
     }
     parameter_meta {
         tieout_vcfs: {
@@ -187,7 +189,7 @@ task TieOutVds {
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
-        # Current version of Hail (0.2.117) demands Java 8 or Java 11, refuses to run on Java 17.
+        # Versions of Hail near 0.2.117 demand Java 8 or Java 11, and refuse to run on Java 17. (This is because Google Dataproc is still on Java 11)
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
@@ -197,7 +199,7 @@ task TieOutVds {
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
-        pip install hail==0.2.120 ## TODO this feels like something we are going to want to change?
+        pip install hail==~{hail_version}
 
         export WORK=$PWD/work
         mkdir ${WORK}
