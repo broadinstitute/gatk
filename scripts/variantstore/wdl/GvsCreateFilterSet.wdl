@@ -360,6 +360,8 @@ task PopulateFilterSetSites {
 
     String project_id
 
+    Int disk_size_gb = ceil(2 * (size(sites_only_variant_filtered_vcf, "GiB") +
+                                 size(sites_only_variant_filtered_vcf_index, "GiB"))) + 200
     String gatk_docker
     File? gatk_override
   }
@@ -399,7 +401,7 @@ task PopulateFilterSetSites {
   runtime {
     docker: gatk_docker
     memory: "3500 MB"
-    disks: "local-disk 200 HDD"
+    disks: "local-disk ~{disk_size_gb} HDD"
     bootDiskSizeGb: 15
     preemptible: 0
     cpu: 1

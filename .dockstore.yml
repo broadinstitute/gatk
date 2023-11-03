@@ -293,7 +293,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1119_RemoveUnusedCall
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -303,7 +302,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1119_RemoveUnusedCall
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -314,7 +312,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1049_tables_are_not_forever
-             - gg_VS-1119_RemoveUnusedCall
          tags:
              - /.*/
    - name: GvsIngestTieout
