@@ -49,7 +49,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
 
 
 
-    protected final boolean debugGraphTransformations;
     protected final byte minBaseQualityToUseInAssembly;
     protected List<AlignmentAugmentedKmerVertex> referencePath = null;
     protected boolean alreadyBuilt = false;
@@ -68,7 +67,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
 
     AlignmentAugmentedGraph(int kmerSize, EdgeFactory<MultiDeBruijnVertex, MultiSampleEdge> edgeFactory) {
         super(kmerSize, edgeFactory);
-        debugGraphTransformations = false;
         minBaseQualityToUseInAssembly = 0;
     }
 
@@ -77,14 +75,12 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
      *
      * @param kmerSize must be >= 1
      */
-    public AlignmentAugmentedGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
+    public AlignmentAugmentedGraph(final int kmerSize, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, new MyEdgeFactory(numPruningSamples));
 
         Utils.validateArg(kmerSize > 0, () -> "bad minkKmerSize " + kmerSize);
 
-        this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
-        this.minMatchingBasesToDanglingEndRecovery = numDanglingMatchingPrefixBases;
     }
 
     /**
@@ -98,12 +94,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
 
     // get the next kmerVertex for ChainExtension and validate if necessary.
     protected abstract MultiDeBruijnVertex getNextKmerVertexForChainExtension(final Kmer kmer, final boolean isRef, final MultiDeBruijnVertex prevVertex);
-
-    // perform any necessary preprocessing on the graph (such as non-unique kmer determination) before the graph is constructed
-    protected abstract void preprocessReads();
-
-    // whether reads are needed after graph construction
-    protected abstract boolean shouldRemoveReadsAfterGraphConstruction();
 
     // Method that will be called immediately before haplotype finding in the event there are alteations that must be made to the graph based on implementation
     public abstract void postProcessForHaplotypeFinding(File debugGraphOutputPath, Locatable refHaplotype);
@@ -134,11 +124,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
             }
         }
         return kmer.length;
-    }
-
-    @VisibleForTesting
-    protected void setAlreadyBuilt() {
-        alreadyBuilt = true;
     }
 
     /**
@@ -228,10 +213,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
         // increase the counts of all edges incoming into the starting vertex supported by going back in sequence
         increaseCountsInMatchedKmers(seqForKmers, startingVertex, startingVertex.getSequence(), kmerSize - 2);
 
-        if (debugGraphTransformations) {
-            startingVertex.addRead(seqForKmers.name);
-        }
-
         // keep track of information about the reference source
         if (seqForKmers.isRef) {
             if (refSource != null) {
@@ -249,9 +230,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
             if (seqForKmers.isRef) {
                 referencePath.add(vertex);
             }
-            if (debugGraphTransformations) {
-                vertex.addRead(seqForKmers.name);
-            }
         }
         if (seqForKmers.isRef) {
             referencePath = Collections.unmodifiableList(referencePath);
@@ -267,9 +245,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
             return;
         }
 
-        // Capture the set of non-unique kmers for the given kmer size (if applicable)
-        preprocessReads();
-
         // go through the pending sequences, and add them to the graph
         for (final List<SequenceForKmers> sequencesForSample : pending.values()) {
             for (final SequenceForKmers sequenceForKmers : sequencesForSample) {
@@ -283,9 +258,8 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
         }
 
         // clear the pending reads pile to conserve memory
-        if (shouldRemoveReadsAfterGraphConstruction()) {
-            pending.clear();
-        }
+        pending.clear();
+
         alreadyBuilt = true;
         for (final MultiDeBruijnVertex v : kmerToVertexMap.values()) {
             v.setAdditionalInfo(v.getAdditionalInfo() + '+');
@@ -316,32 +290,6 @@ public class AlignmentAugmentedGraph extends BaseGraph<AlignmentAugmentedKmerVer
         removeAllVertices(verticesToRemove);
     }
 
-    /**
-     * Try to recover dangling tails
-     *
-     * @param pruneFactor             the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
-     * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
-     * @param recoverAll              recover even branches with forks
-     */
-    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner, final SWParameters danglingTailSWParameters) {
-        Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
-        Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
-
-        if (!alreadyBuilt) {
-            throw new IllegalStateException("recoverDanglingTails requires the graph be already built");
-        }
-
-        int attempted = 0;
-        int nRecovered = 0;
-        for (final MultiDeBruijnVertex v : vertexSet()) {
-            if (outDegreeOf(v) == 0 && !isRefSink(v)) {
-                attempted++;
-                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength, recoverAll, aligner, danglingTailSWParameters);
-            }
-        }
-
-        ReadThreadingGraph.logger.debug(String.format("Recovered %d of %d dangling tails", nRecovered, attempted));
-    }
 
     /**
      * Finds the path in the graph from this vertex to the reference sink, including this vertex
