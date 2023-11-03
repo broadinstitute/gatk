@@ -294,6 +294,7 @@ workflows:
              - master
              - ah_var_store
              - gg_VS-1092_CreateFilterSetOOD
+             - gg_VS-1119_RemoveUnusedCall
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -304,6 +305,7 @@ workflows:
              - master
              - ah_var_store
              - gg_VS-1092_CreateFilterSetOOD
+             - gg_VS-1119_RemoveUnusedCall
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -315,6 +317,7 @@ workflows:
              - ah_var_store
              - vs_1049_tables_are_not_forever
              - gg_VS-1092_CreateFilterSetOOD
+             - gg_VS-1119_RemoveUnusedCall
          tags:
              - /.*/
    - name: GvsIngestTieout
