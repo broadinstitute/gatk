@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,6 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
@@ -25,6 +27,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -36,6 +39,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * HaplotypeCaller's genotyping strategy implementation.
@@ -163,6 +167,11 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
 
+        // haplo-genotype posteriors by joint detection interval for exact joint detection genotyping within determined intervals
+        // note: this will be empty is haplotypes are not partially determined
+        final OverlapDetector<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriorOverlapDetector =
+                computeHaploGenotypePosteriors(readLikelihoods, ref, refLoc, activeRegionWindow, header, ploidy, dragstrs, readQualifiesForGenotypingPredicate);
+
         for( final int loc : eventStarts ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
@@ -179,8 +188,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             if( mergedVC == null ) {
                 continue;
             }
-            
+
             int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
+
+            // TODO: can we use this as-is for the mapping between joint detection PD haplotypes and merged VC alleles?  I think so...
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
             if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
@@ -189,6 +200,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
 
+            // TODO: not relevant if we are using joint detection haplotype posteriors
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
@@ -208,6 +220,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
+            // TODO: end of the above irrelevant code
 
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n=============================================================================");
@@ -252,15 +265,18 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 }
             }
 
+            // TODO: how does this interact with joint detection haplotype posteriors?
             if (emitReferenceConfidence) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
                 mergedAllelesListSizeBeforePossibleTrimming++;
             }
 
+            // TODO: if using joint detection haplo-genotype posteriors we use a different method
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
             final GenotypePriorCalculator gpc = resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
+            // TODO: end of place where joint detection diverges
             if( call != null ) {
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call, variantCallingRelevantOverlap);
@@ -291,6 +307,83 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
     }
 
+    private OverlapDetector<GenotypingLikelihoods<Haplotype>> computeHaploGenotypePosteriors(AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, byte[] ref, SimpleInterval refLoc, SimpleInterval activeRegionWindow, SAMFileHeader header, int ploidy, DragstrReferenceAnalyzer dragstrs, BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate) {
+        final OverlapDetector<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriorOverlapDetector = new OverlapDetector<>(0,0);
+        // if haplotypes are partially determined, do DRAGEN exact genotyping within each determined span
+        final List<Haplotype> haplotypes = readLikelihoods.alleles();
+        if (!haplotypes.isEmpty() && haplotypes.get(0).isPartiallyDetermined()) {
+
+            final Map<SimpleInterval, List<Haplotype>> jdGroups = haplotypes.stream().collect(Collectors.groupingBy(h -> ((PartiallyDeterminedHaplotype) h).getDeterminedSpan()));
+            final List<SimpleInterval> jdIntervals = jdGroups.keySet().stream().sorted(Comparator.comparingInt(SimpleInterval::getStart)).toList();
+
+            for (final SimpleInterval jdInterval : jdIntervals) {
+                if( !jdInterval.overlaps(activeRegionWindow)) {
+                    continue;
+                }
+
+                final List<Haplotype> jdHaplotypes = jdGroups.get(jdInterval);
+                final AlleleLikelihoods<GATKRead, Haplotype> jdReadLikelihoods = readLikelihoods.removeAllelesToSubset(jdHaplotypes);
+
+                // TODO: this mimics the read subsetting around to a padded interval around the merged VC in the allele genotyping code below
+                // TODO: do we also wish to subset to overlapping reads here?
+                final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+                final SimpleInterval variantCallingRelevantOverlap = jdInterval.expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
+                jdReadLikelihoods.retainEvidence(read -> readQualifiesForGenotypingPredicate.test(read, variantCallingRelevantOverlap));
+
+                // NOTE: we do not want the DRAGEN genotypes model here because it includes FRD and BQD, which only apply once
+                // we have genotypes based on alleles, not haplotypes
+                final GenotypingLikelihoods<Haplotype> log10HaploGenotypeLikelihoods = new IndependentSampleGenotypesModel().calculateLikelihoods(jdReadLikelihoods,
+                        new GenotypingData<>(ploidyModel, jdReadLikelihoods), ref, jdInterval.getStart() - refLoc.getStart(), dragstrs);
+
+                // calculate heterozygosity for each event
+                final List<Event> allEvents = jdHaplotypes.stream().flatMap(haplotype -> haplotype.getEventMap().getEvents().stream()).distinct().toList();
+                final Map<Event, Double> log10EventHetPriors = new HashMap<>();
+                for (final Event event : allEvents) {
+                    final double log10SNPHetPrior = Math.log10(snpHeterozygosity);
+                    if (event.isSNP()) {
+                        log10EventHetPriors.put(event, log10SNPHetPrior);
+                    } else {
+                        final int pos = event.getStart();
+                        final boolean noDragstr = hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors || dragstrs == null;
+                        final double log10IndelHetPrior = noDragstr ? Math.log10(indelHeterozygosity) :
+                                -.1 * dragstrParams.api(dragstrs.period(pos), dragstrs.repeatLength(pos));
+                        log10EventHetPriors.put(event, event.isIndel() ? log10IndelHetPrior : Math.max(log10IndelHetPrior, log10SNPHetPrior));
+                    }
+                }
+
+                // calculate haplotype heterozygosities by adding up (in log space) their event heterozygosities
+                final Map<Haplotype, Double> log10HaplotypeHetPriors = jdHaplotypes.stream().collect(Collectors.toMap(h->h,
+                        h -> h.getEventMap().getEvents().stream().mapToDouble(log10EventHetPriors::get).sum()));
+
+                // note that DRAGEN's prior for homozygosity is NOT the same as Hardy-Weinberg equilibrium!
+                // TODO: should the DRAGEN het-hom ratio for haplotypes be the same as for alleles?
+                final Map<Haplotype, Double> log10HaplotypeHomPriors = jdHaplotypes.stream().collect(Collectors.toMap(h->h,
+                        h -> log10HaplotypeHetPriors.get(h) - Math.log10(hcArgs.likelihoodArgs.dragstrHetHomRatio)));
+
+                // calculate diploid haplotype-based genotype priors
+                final double[] log10HaploGenotypePriors = new double[GenotypeIndexCalculator.genotypeCount(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())];
+
+                for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())) {
+                    // implied = log10Priors[0] = 0.0;
+                    if (gac.index() > 0) {
+                        log10HaploGenotypePriors[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == ploidy ? log10HaplotypeHomPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele))
+                                : count * log10HaplotypeHetPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele)));
+                    }
+                }
+
+                // add haplo-genotype priors to haplo-genotype likelihoods in log space and normalize to get posteriors
+                final List<GenotypeLikelihoods> log10HaploGenotypePosteriorsInSampleOrder = IntStream.range(0, log10HaploGenotypeLikelihoods.numberOfSamples()).boxed()
+                        .map(s -> MathUtils.normalizeLog10(MathUtils.ebeAdd(log10HaploGenotypePriors, log10HaploGenotypeLikelihoods.sampleLikelihoods(s).getAsVector())))
+                        .map(GenotypeLikelihoods::fromLog10Likelihoods)
+                        .toList();
+
+                GenotypingLikelihoods<Haplotype> log10HaploGenotypePosteriors = new GenotypingLikelihoods<>(log10HaploGenotypeLikelihoods, ploidyModel, log10HaploGenotypePosteriorsInSampleOrder);
+                haploGenotypePosteriorOverlapDetector.addLhs(log10HaploGenotypePosteriors, jdInterval);
+            }
+        }
+        return haploGenotypePosteriorOverlapDetector;
+    }
+
     /**
      * If there is potential to use DRAGstr in the region based on the event map, then this method composes the
      *   STR finder.
@@ -302,9 +395,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      *    on the reconstructed haplotypes.
      */
     private  DragstrReferenceAnalyzer constructDragstrReferenceSTRAnalyzerIfNecessary(final List<Haplotype> haplotypes,
-                                                                                     final byte[] ref,
-                                                                                     final SimpleInterval refLoc,
-                                                                                     final SortedSet<Integer> startPosKeySet) {
+                                                                                      final byte[] ref,
+                                                                                      final SimpleInterval refLoc,
+                                                                                      final SortedSet<Integer> startPosKeySet) {
         if (isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)) {
             final int offset = startPosKeySet.first() - refLoc.getStart();
             final int to = startPosKeySet.last() - refLoc.getStart() + 2;

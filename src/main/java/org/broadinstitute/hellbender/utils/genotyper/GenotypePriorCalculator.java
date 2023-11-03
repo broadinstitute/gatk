@@ -149,6 +149,7 @@ public final class GenotypePriorCalculator {
 
         for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, alleles.size())) {
             // implied = result[0] = 0.0;
+            // TODO: shouldn't this be "count == ploidy ? homValues. . ." ?
             if (gac.index() > 0) {
                 result[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == 2 ? homValues[alleleTypes[allele]]
                         : hetValues[alleleTypes[allele]] + diffValues[alleleTypes[allele]] * (count - 1));
