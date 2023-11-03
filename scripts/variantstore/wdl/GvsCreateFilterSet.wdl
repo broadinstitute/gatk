@@ -360,7 +360,8 @@ task PopulateFilterSetSites {
 
     String project_id
 
-    Int disk_size_gb = ceil(2 * (size(sites_only_variant_filtered_vcf, "GiB") + size(sites_only_variant_filtered_vcf_index, "GiB"))) + 200
+    Int disk_size_gb = ceil(2 * (size(sites_only_variant_filtered_vcf, "GiB") +
+                                 size(sites_only_variant_filtered_vcf_index, "GiB"))) + 200
     String gatk_docker
     File? gatk_override
   }
