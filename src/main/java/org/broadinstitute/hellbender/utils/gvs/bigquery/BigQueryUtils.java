@@ -138,6 +138,8 @@ public final class BigQueryUtils {
     }
 
     /**
+     * NOTE: Currently unused - was previously used in CreateVariantIngestFiles to log estimated rows in streaming buffer
+     * Leaving in place as we might need it in the future.
      * @return estimated number of rows in the BigQuery vortex streaming buffer
      */
     public static long getEstimatedRowsInStreamingBuffer(String projectID, String datasetName, String tableName ) {
