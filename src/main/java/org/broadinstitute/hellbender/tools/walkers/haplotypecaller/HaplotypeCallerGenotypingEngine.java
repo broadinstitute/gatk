@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -193,7 +194,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             // use joint detection haplo-genotype posteriors if available
             final List<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriors = new ArrayList<>(haploGenotypePosteriorOverlapDetector.getOverlaps(mergedVC));
-            if (!haploGenotypePosteriors.isEmpty()) {
+            if (!haploGenotypePosteriors.isEmpty() && ploidy == 2) {    // DRAGEN joint detection assumes diploid
                 Utils.validate(haploGenotypePosteriors.size() == 1, "Only one set of haplotype genotype posteriors should overlap this variant.");
                 final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGenotypePosteriors.get(0);
 
@@ -201,6 +202,22 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
 
+                final Map<Pair<Allele, Allele>, Set<Pair<Haplotype, Haplotype>>> allelePairMapper = new HashMap<>();
+                for (final Allele allele1 : alleleMapper.keySet()) {
+                    for (final Allele allele2 : alleleMapper.keySet()) {
+                        final Pair<Allele, Allele> allelePair = Pair.of(allele1, allele2);
+                        allelePairMapper.put(allelePair, new HashSet<>());
+
+                        for (final Haplotype haplotype1 : alleleMapper.get(allele1)) {
+                            for (final Haplotype haplotype2 : alleleMapper.get(allele2)) {
+                                allelePairMapper.get(allelePair).add(Pair.of(haplotype1, haplotype2));
+                                allelePairMapper.get(allelePair).add(Pair.of(haplotype2, haplotype1));  // we could order haplotype1 and haplotype2 in their PL order, but this is easier
+                            }
+                        }
+                    }
+                }
+
+                haplotypePosteriors.
 
                 // TODO: we have a mapping between alleles and haplotypes.  Now we need a corresponding mapping between
                 // TODO: allele-genotypes and haplo-genotypes in the canonical PL order.
