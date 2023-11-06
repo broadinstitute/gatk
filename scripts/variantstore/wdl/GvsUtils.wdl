@@ -981,6 +981,7 @@ task PopulateFilterSetInfo {
 
     String project_id
 
+    Int memory_mb = 7500
     Int disk_size_gb = ceil(3 * (size(snp_recal_file, "GiB") +
                                  size(snp_recal_file_index, "GiB") +
                                  size(indel_recal_file, "GiB") +
@@ -994,6 +995,9 @@ task PopulateFilterSetInfo {
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
   command <<<
     set -eo pipefail
 
@@ -1002,7 +1006,7 @@ task PopulateFilterSetInfo {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     echo "Creating SNPs recalibration file"
-    gatk --java-options "-Xmx1g" \
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
@@ -1012,7 +1016,7 @@ task PopulateFilterSetInfo {
         -O ~{filter_set_name}.snps.recal.tsv
 
     echo "Creating INDELs racalibration file"
-    gatk --java-options "-Xmx1g" \
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
@@ -1039,7 +1043,7 @@ task PopulateFilterSetInfo {
 
   runtime {
     docker: gatk_docker
-    memory: "3500 MB"
+    memory: "${memory_mb} MiB"
     disks: "local-disk ~{disk_size_gb} HDD"
     bootDiskSizeGb: 15
     preemptible: 0
