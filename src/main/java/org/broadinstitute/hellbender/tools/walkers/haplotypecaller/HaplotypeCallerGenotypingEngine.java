@@ -191,6 +191,23 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
 
+            // use joint detection haplo-genotype posteriors if available
+            final List<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriors = new ArrayList<>(haploGenotypePosteriorOverlapDetector.getOverlaps(mergedVC));
+            if (!haploGenotypePosteriors.isEmpty()) {
+                Utils.validate(haploGenotypePosteriors.size() == 1, "Only one set of haplotype genotype posteriors should overlap this variant.");
+                final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGenotypePosteriors.get(0);
+
+                final List<Haplotype> determinedHaplotypes = haplotypePosteriors.asListOfAlleles(); // this only contains haplotypes whose determined span contains this locus
+
+                final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
+
+
+                // TODO: we have a mapping between alleles and haplotypes.  Now we need a corresponding mapping between
+                // TODO: allele-genotypes and haplo-genotypes in the canonical PL order.
+
+
+            }
+
             // TODO: can we use this as-is for the mapping between joint detection PD haplotypes and merged VC alleles?  I think so...
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
