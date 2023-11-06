@@ -35,7 +35,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Realigns soft-clipped reads.
+ * Realigns soft-clipped reads. Intended for use with short-read Dragen v3.7.8 BAMs/CRAMs.
  */
 @CommandLineProgramProperties(
         summary = "Realigns soft-clipped reads to a given reference.",
