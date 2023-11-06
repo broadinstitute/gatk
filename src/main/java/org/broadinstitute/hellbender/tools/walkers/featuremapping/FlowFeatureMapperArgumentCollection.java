@@ -123,4 +123,11 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     @Hidden
     @Argument(fullName = "report-all-alts", doc = "In this mode (aka validation mode), every base of every read in the input CRAM and interval is reported, and an X_SCORE value is calculated for all 3 possible alts", optional = true)
     public boolean reportAllAlts = false;
+
+    /**
+     *  adjacent-ref-diff mode - if not specified, this feature is off
+     **/
+    @Hidden
+    @Argument(fullName = "tag-bases-with-adjacent-ref-diff", doc = "In this mode bases that have an adjacent difference from the reference on the same read are not discarded, and tagged with X_ADJACENT_REF_DIFFm", optional = true)
+    public boolean tagBasesWithAdjacentRefDiff = false;
 }
