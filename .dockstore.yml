@@ -253,7 +253,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_458
          tags:
              - /.*/
    - name: GvsBeta
@@ -293,6 +292,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1092_OOMonPopulateFilterSetInfo
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -302,6 +302,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1092_OOMonPopulateFilterSetInfo
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -311,7 +312,8 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_458
+             - vs_1049_tables_are_not_forever
+             - gg_VS-1092_OOMonPopulateFilterSetInfo
          tags:
              - /.*/
    - name: GvsIngestTieout
