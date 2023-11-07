@@ -48,8 +48,8 @@
    - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - You will need to set the `external_sample_names` input to be the GCS path of a text file that lists all the sample names (external sample IDs).
-   - You will need to set the `input_vcfs` input to be the GCS path of a text file that lists all the re-blocked gVCFs (in the same order as the file used in `external_sample_names`).
-   - You will need to set the `input_vcf_indexes` input to be the GCS path of a text file that lists all the index files of the re-blocked gVCFs (in the same order as the file used in `external_sample_names`).
+   - You will need to set the `input_vcfs` input to be the GCS path of a text file that lists all the re-blocked gVCFs (in the same order as the file used in `external_sample_names`). You can generate the text file by exporting the full paths to the VCFs from the samples table in Terra and formatting appropriately.
+   - You will need to set the `input_vcf_indexes` input to be the GCS path of a text file that lists all the index files of the re-blocked gVCFs (in the same order as the file used in `external_sample_names`). You can generate this text file by exporting the full paths to the VCF index files from the samples table in Terra and formatting appropriately.
    - **NOTE** Be sure to set the input `drop_state` to ZERO. This will have the effect of dropping GQ0 reference blocks.
    - **NOTE** Set `use_compressed_references` to true.
    - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
