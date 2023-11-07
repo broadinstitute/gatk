@@ -66,7 +66,7 @@ task GetToolVersions {
   output {
     String gvs_version = read_string("version.txt")
     String git_hash = read_string("git_hash.txt")
-    String hail_version = "0.2.124"
+    String hail_version = "0.2.126"
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
