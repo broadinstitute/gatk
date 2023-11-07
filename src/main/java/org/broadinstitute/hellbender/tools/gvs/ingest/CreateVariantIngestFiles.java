@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -243,11 +242,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
-
-            long streamingBufferRows = BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName);
-            if (streamingBufferRows > 0 ) {
-                logger.info("Found estimated rows in streaming buffer!!! " + streamingBufferRows);
-            }
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
             if (state == LoadStatus.LoadState.COMPLETE) {
