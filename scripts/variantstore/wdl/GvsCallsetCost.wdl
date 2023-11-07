@@ -105,15 +105,18 @@ task CoreStorageModelSizes {
         String cloud_sdk_docker
     }
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         get_billable_bytes_in_gib() {
             local table_pattern="$1"
             local output_file_name="$2"
 
             bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
-                "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
-                    FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-                    WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
+                'SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2)
+                    FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+                    WHERE table_name LIKE "'"${table_pattern}"'"' | tail -1 > ${output_file_name}
         }
 
         get_billable_bytes_in_gib "vet_%"        vet_gib.txt
@@ -143,11 +146,15 @@ task ReadCostObservabilityTable {
         String cloud_sdk_docker
     }
     command <<<
-        bq --apilog=false query --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
-            "SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes \
-                FROM \`~{project_id}.~{dataset_name}.cost_observability\` \
-                WHERE call_set_identifier = '~{call_set_identifier}' GROUP BY step, event_key ORDER BY step" \
-            > cost_observability.json
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bq --apilog=false query --project_id=~{project_id} --format=prettyjson --use_legacy_sql=false \
+            'SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes
+                FROM `~{project_id}.~{dataset_name}.cost_observability`
+                WHERE call_set_identifier = "~{call_set_identifier}" GROUP BY step,
+                event_key ORDER BY step' > cost_observability.json
     >>>
     runtime {
         docker: cloud_sdk_docker

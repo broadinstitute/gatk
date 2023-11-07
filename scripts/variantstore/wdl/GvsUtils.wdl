@@ -111,10 +111,10 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-    --ignore-safety-checks --gather-type ~{gather_type} \
-    --create-output-variant-index false \
-    -I ~{sep=' -I ' input_vcfs} \
-    --output ~{output_vcf_name}
+      --ignore-safety-checks --gather-type ~{gather_type} \
+      --create-output-variant-index false \
+      -I ~{sep=' -I ' input_vcfs} \
+      --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
 
@@ -304,7 +304,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
     bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
-    "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
+    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like "~{sep=" OR table_name like " table_patterns}"' > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
   >>>
@@ -664,7 +664,7 @@ task CountSuperpartitions {
     command <<<
         bash ~{monitoring_script} > monitoring.log &
 
-        bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
                 WHERE table_name LIKE "vet_%"
@@ -705,7 +705,7 @@ task ValidateFilterSetName {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT filter_set_name as available_filter_set_names FROM `~{fq_filter_set_info_table}` GROUP BY filter_set_name')
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
@@ -751,19 +751,19 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "BEGIN \
-      SELECT COUNT(1) AS counted FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+    'BEGIN
+      SELECT COUNT(1) AS counted FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
           AND calibration_sensitivity IS NOT NULL;
-    EXCEPTION WHEN ERROR THEN \
-       SELECT '0' AS counted ;
-    END" | tail -1 > lite_count_file.txt
+    EXCEPTION WHEN ERROR THEN
+       SELECT "0" AS counted ;
+    END' | tail -1 > lite_count_file.txt
     LITE_COUNT=`cat lite_count_file.txt`
 
 
-    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-      AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+      'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
+      AND vqslod IS NOT NULL' | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`
 
     if [[ $LITE_COUNT != "0" ]]; then
