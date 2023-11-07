@@ -177,7 +177,7 @@ configurations.configureEach {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose', '-Xlint:-serial']
     options.encoding = 'UTF-8'
 }
 
@@ -504,8 +504,9 @@ processTestResources {
 }
 
 java {
-    sourceCompatibility = 1.17
-    targetCompatibility = 1.17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 def createSymlinks(archivePath, symlinkLocation) {
@@ -863,7 +864,7 @@ tasks.register('gatkTabComplete', Javadoc) {
     // runtime classpath, including Picard.
     classpath = sourceSets.main.runtimeClasspath
 
-    options.docletpath = classpath.asType(List)
+    options.docletpath = classpath as List
     options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
 
     //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
@@ -925,7 +926,7 @@ tasks.register('gatkWDLGen', Javadoc) {
     // The gatkWDLGen process instantiates any documented feature classes, so to run it we need the entire
     // runtime classpath, including picard.
     classpath = sourceSets.main.runtimeClasspath
-    options.docletpath = classpath.asType(List)
+    options.docletpath = classpath as List
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
 
     //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
