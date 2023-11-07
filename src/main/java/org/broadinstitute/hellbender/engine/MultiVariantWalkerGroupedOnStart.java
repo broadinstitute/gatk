@@ -54,13 +54,16 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
 
     @Advanced
     @Argument(fullName = COMBINE_VARIANTS_DISTANCE, doc = "Maximum distance for variants to be grouped together", optional = true)
+   @SuppressWarnings("this-escape")
     protected int distanceToCombineVariants = defaultDistanceToGroupVariants();
 
     @Advanced
+    @SuppressWarnings("this-escape")
     @Argument(fullName = MAX_COMBINED_DISTANCE, doc = "Maximum distance for variants to be grouped together", optional = true)
     protected int maxCombinedDistance = defaultMaxGroupedSpan();
 
     @Advanced
+    @SuppressWarnings("this-escape")
     @Argument(fullName = REFERENCE_WINDOW_PADDING, doc = "Number of bases on either side to expand spanning reference window", optional = true)
     protected int referenceWindowPadding = defaultReferenceWindowPadding();
 

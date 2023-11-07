@@ -469,7 +469,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * @return never {@code null}.
      */
-    public List<String> samples() {
+    public final List<String> samples() {
         return samples.asListOfSamples();
     }
 

@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.jar.Manifest;
 
@@ -74,7 +75,7 @@ public final class RuntimeUtils {
         final String classPath = resourceURL.toString();
         if (classPath.startsWith("jar")) {
             final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
-            try ( final InputStream manifestStream = new URL(manifestPath).openStream() ) {
+            try (final InputStream manifestStream = URI.create(manifestPath).toURL().openStream() ) {
                 return new Manifest(manifestStream);
             } catch (IOException e) {
                 return null;

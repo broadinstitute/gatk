@@ -42,6 +42,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
 
     GVCFBlock currentBlock = null;
 
+    @SuppressWarnings("this-escape")
     public GVCFBlockCombiner(List<? extends Number> gqPartitions, boolean floorBlocks) {
         this.gqPartitions = parsePartitions(gqPartitions);
         this.floorBlocks = floorBlocks;
@@ -162,8 +163,8 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         }
 
         // create the block, add g to it, and return it for use
-        final HomRefBlock block = new HomRefBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), g.getPloidy());
-        return block;
+        final HomRefBlock block;
+        return new HomRefBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), g.getPloidy());
     }
 
     /**
@@ -216,7 +217,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
 
     @Override
     public List<VariantContext> consumeFinalizedItems() {
-        List<VariantContext> result = new ArrayList<>(toOutput);
+        final List<VariantContext> result = new ArrayList<>(toOutput);
         toOutput.clear();
         return result;
     }

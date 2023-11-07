@@ -177,22 +177,13 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         // SNP case
         if (altAllele.length() == refAllele.length()){
             output[0] += SNP;
-            switch (altAllele.getBases()[0]) {
-                case 'A':
-                    output[0] += A;
-                    break;
-                case 'C':
-                    output[0] += C;
-                    break;
-                case 'T':
-                    output[0] += T;
-                    break;
-                case 'G':
-                    output[0] += G;
-                    break;
-                default:
-                    throw new RuntimeException("Found unexpected base in alt alleles");
-            }
+            output[0] += switch (altAllele.getBases()[0]) {
+                case 'A' -> A;
+                case 'C' -> C;
+                case 'T' -> T;
+                case 'G' -> G;
+                default -> throw new RuntimeException("Found unexpected base in alt alleles");
+            };
 
             // DEL case
         } else {

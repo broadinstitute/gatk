@@ -107,7 +107,7 @@ public abstract class GVCFBlock implements Locatable {
     }
 
     @Override
-    public int getStart() {
+    public final int getStart() {
         return startingVC.getStart();
     }
 

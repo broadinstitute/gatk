@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.logging.log4j.Logger;

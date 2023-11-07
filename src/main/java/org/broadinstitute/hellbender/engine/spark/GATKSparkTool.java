@@ -85,12 +85,15 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public static final String SPLITTING_INDEX_GRANULARITY = "splitting-index-granularity";
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     public final ReadInputArgumentCollection readArguments = requiresReads() ? new RequiredReadInputArgumentCollection() : new OptionalReadInputArgumentCollection();
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
     @Argument(doc = "maximum number of bytes to read from a file into each partition of reads. " +
@@ -107,6 +110,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     protected boolean useNio = false;
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected SequenceDictionaryValidationArgumentCollection sequenceDictionaryValidationArguments = getSequenceDictionaryValidationArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, shortName = StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, doc = "If true, adds a command line header line to created VCF files.", optional=true, common = true)
