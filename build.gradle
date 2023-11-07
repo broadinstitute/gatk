@@ -22,6 +22,7 @@ plugins {
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.time.format.DateTimeFormatter
+import java.util.stream.Collectors
 
 application {
     mainClass = "org.broadinstitute.hellbender.Main"
@@ -36,8 +37,8 @@ startScripts {
     }
 }
 
-task downloadGsaLibFile(type: Download) {
-    src 'http://cran.r-project.org/src/contrib/gsalib_2.2.1.tar.gz'
+tasks.register('downloadGsaLibFile', Download) {
+    src 'https://cran.r-project.org/src/contrib/gsalib_2.2.1.tar.gz'
     dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
     overwrite false
 }
@@ -163,7 +164,7 @@ if (versionOverridden) {
     println "Version number overridden as " + version
 }
 
-configurations.all {
+configurations.configureEach {
     resolutionStrategy {
         // the snapshot folder contains a dev version of guava, we don't want to use that.
         force 'com.google.guava:guava:' + guavaVersion
@@ -187,9 +188,9 @@ configurations.all {
     configurations*.exclude group: 'junit', module: 'junit'
 }
 
-tasks.withType(JavaCompile) {
-  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
-  options.encoding = 'UTF-8'
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose', '-Xlint:-serial']
+    options.encoding = 'UTF-8'
 }
 
 sourceSets {
@@ -463,8 +464,9 @@ processTestResources {
 }
 
 java {
-    sourceCompatibility = 1.17
-    targetCompatibility = 1.17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 def createSymlinks(archivePath, symlinkLocation) {
@@ -488,17 +490,17 @@ def createGatkSymlinks(destinationDir, archiveFile, suffix, baseJarName, seconda
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
-tasks.withType(Jar) {
+tasks.withType(Jar).configureEach {
     // transform the list of --add-opens directives into manifest format, which requires only the source
     // package (unlike the command line equivalent, in the manifest the "ALL-UNNAMED" target is implied
     // and can't be included in the manifest entry syntax)
     final manifestAddOpens = runtimeAddOpens.stream()
             .map(o -> o.substring(0, (o.length() - "ALL-UNNAMED".length()) - 1))
-            .collect(java.util.stream.Collectors.joining(' '))
+            .collect(Collectors.joining(' '))
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
                 'Implementation-Version': archiveVersion.get(),
-                'Toolkit-Short-Name' : 'GATK',
+                'Toolkit-Short-Name': 'GATK',
                 'Main-Class': application.mainClass,
                 'Picard-Version': picardVersion,
                 'htsjdk-Version': htsjdkVersion,
@@ -509,10 +511,10 @@ tasks.withType(Jar) {
 }
 
 wrapper {
-    gradleVersion = '8.2.1'
+    gradleVersion = '8.4'
 }
 
-tasks.withType(ShadowJar) {
+tasks.withType(ShadowJar).configureEach {
     from(project.sourceSets.main.output)
     archiveBaseName = project.name + '-package'
     mergeServiceFiles()
@@ -543,9 +545,9 @@ shadowJar {
     }
 }
 
-task localJar{ dependsOn shadowJar }
+tasks.register('localJar') { dependsOn shadowJar }
 
-task sparkJar(type: ShadowJar) {
+tasks.register('sparkJar', ShadowJar) {
     group = "Shadow"
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
@@ -559,7 +561,7 @@ task sparkJar(type: ShadowJar) {
 }
 
 // A jar that only contains the test classes and resources (to be extracted for testing)
-task shadowTestClassJar(type: ShadowJar){
+tasks.register('shadowTestClassJar', ShadowJar) {
     group = "Shadow"
     from sourceSets.test.output
     description = "Create a jar that packages the compiled test classes"
@@ -567,19 +569,19 @@ task shadowTestClassJar(type: ShadowJar){
 }
 
 // A minimal jar that only contains the extra dependencies needed for running the tests
-task shadowTestJar(type: ShadowJar){
+tasks.register('shadowTestJar', ShadowJar) {
     dependsOn 'compileTestUtilsJava', 'processTestUtilsResources'
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
-        (project.configurations.testRuntimeClasspath - project.configurations.runtimeClasspath ).collect {
+        (project.configurations.testRuntimeClasspath - project.configurations.runtimeClasspath).collect {
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
     archiveClassifier = "testDependencies"
 }
 
-task collectBundleIntoDir(type: Copy) {
+tasks.register('collectBundleIntoDir', Copy) {
     dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
 
     doFirst {
@@ -605,11 +607,11 @@ task collectBundleIntoDir(type: Copy) {
     from("scripts/sv", { into("scripts/sv") })
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
-    from("scripts/dataproc-cluster-ui", { into("scripts/")})
+    from("scripts/dataproc-cluster-ui", { into("scripts/") })
     into "$buildDir/bundle-files-collected"
 }
 
-task bundle(type: Zip) {
+tasks.register('bundle', Zip) {
     dependsOn collectBundleIntoDir
     zip64 true
 
@@ -638,13 +640,13 @@ jacocoTestReport {
     }
 }
 
-task condaStandardEnvironmentDefinition(type: Copy) {
+tasks.register('condaStandardEnvironmentDefinition', Copy) {
     from "scripts"
     into buildDir
     include gatkCondaTemplate
     rename { file -> gatkCondaYML }
-    expand(["condaEnvName":"gatk",
-            "condaEnvDescription" : "Conda environment for GATK Python Tools"])
+    expand(["condaEnvName"       : "gatk",
+            "condaEnvDescription": "Conda environment for GATK Python Tools"])
     doLast {
         logger.lifecycle("Created standard Conda environment yml file: $gatkCondaYML")
     }
@@ -652,12 +654,12 @@ task condaStandardEnvironmentDefinition(type: Copy) {
 
 
 // Create GATK conda environment yml file from the conda enc template
-task condaEnvironmentDefinition() {
+tasks.register('condaEnvironmentDefinition') {
     dependsOn 'pythonPackageArchive', 'condaStandardEnvironmentDefinition'
 }
 
 // Create the Python package archive file
-task pythonPackageArchive(type: Zip) {
+tasks.register('pythonPackageArchive', Zip) {
     inputs.dir "src/main/python/org/broadinstitute/hellbender/"
     outputs.file pythonPackageArchiveName
     doFirst {
@@ -680,29 +682,30 @@ task pythonPackageArchive(type: Zip) {
 // NOTE: This CREATES a local conda environment; but does not *activate* it. The environment must
 // be activated manually in the shell from which GATK will be run.
 //
-task localDevCondaEnv(type: Exec) {
+tasks.register('localDevCondaEnv', Exec) {
     dependsOn 'condaEnvironmentDefinition'
     inputs.file("$buildDir/$pythonPackageArchiveName")
     workingDir "$buildDir"
     commandLine "conda", "env", "create", "--force", "-f", gatkCondaYML
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
+tasks.register('javadocJar', Jar) {
+    dependsOn javadoc
     archiveClassifier = 'javadoc'
     from "$docBuildDir/javadoc"
 }
 
-task sourcesJar(type: Jar) {
+tasks.register('sourcesJar', Jar) {
     from sourceSets.main.allSource
     archiveClassifier = 'sources'
 }
 
-task testUtilsJar(type: Jar){
+tasks.register('testUtilsJar', Jar) {
     archiveBaseName = "$project.name-test-utils"
     from sourceSets.testUtils.output
 }
 
-tasks.withType(Javadoc) {
+tasks.withType(Javadoc).configureEach {
     // do this for all javadoc tasks, including gatkDoc
     options.addStringOption('Xdoclint:none')
     options.addStringOption('encoding', 'UTF-8')
@@ -717,7 +720,7 @@ javadoc {
 }
 
 
-task testUtilsJavadoc(type: Javadoc) {
+tasks.register('testUtilsJavadoc', Javadoc) {
     // This is a hack to disable the java default javadoc lint until we fix the html formatting
     // We only want to do this for the javadoc task, not gatkDoc
     options.addStringOption('Xdoclint:none', '-quiet')
@@ -727,20 +730,22 @@ task testUtilsJavadoc(type: Javadoc) {
     include '**/*.java'
 }
 
-task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
+tasks.register('testUtilsJavadocJar', Jar) {
+    dependsOn testUtilsJavadoc
     archiveBaseName = "$project.name-test-utils"
     archiveClassifier = 'javadoc'
     from "$docBuildDir/testUtilsJavadoc"
 }
 
-task testUtilsSourcesJar(type: Jar){
+tasks.register('testUtilsSourcesJar', Jar) {
     archiveBaseName = "$project.name-test-utils"
     archiveClassifier = 'sources'
     from sourceSets.testUtils.allSource
 }
 
 // Generate GATK Online Doc
-task gatkDoc(type: Javadoc, dependsOn: classes) {
+tasks.register('gatkDoc', Javadoc) {
+    dependsOn classes
     final File gatkDocDir = new File("$docBuildDir/gatkdoc")
     doFirst {
         // make sure the output folder exists or we can create it
@@ -784,7 +789,8 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
 }
 
 // Generate GATK Bash Tab Completion File
-task gatkTabComplete(type: Javadoc, dependsOn: classes) {
+tasks.register('gatkTabComplete', Javadoc) {
+    dependsOn classes
     final File tabCompletionDir = new File("$docBuildDir/tabCompletion")
     doFirst {
         // make sure the output folder exists or we can create it
@@ -803,7 +809,7 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     // runtime classpath, including Picard.
     classpath = sourceSets.main.runtimeClasspath
 
-    options.docletpath = classpath.asType(List)
+    options.docletpath = classpath as List
     options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
 
     //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
@@ -837,13 +843,14 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
 }
 
-def getWDLInputJSONTestFileNameFromWDLName(File wdlName) {
+static def getWDLInputJSONTestFileNameFromWDLName(File wdlName) {
     String fileWithoutExt = wdlName.name.take(wdlName.name.lastIndexOf('.'))
     return new File (wdlName.getParentFile(), fileWithoutExt + "Inputs.json").getAbsolutePath()
 }
 
 // Generate GATK Tool WDL
-task gatkWDLGen(type: Javadoc, dependsOn: classes) {
+tasks.register('gatkWDLGen', Javadoc) {
+    dependsOn classes
     final File gatkWDLDir = new File("$docBuildDir/wdlGen")
     outputs.dir(gatkWDLDir)
     doFirst {
@@ -864,7 +871,7 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     // The gatkWDLGen process instantiates any documented feature classes, so to run it we need the entire
     // runtime classpath, including picard.
     classpath = sourceSets.main.runtimeClasspath
-    options.docletpath = classpath.asType(List)
+    options.docletpath = classpath as List
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
 
     //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
@@ -894,11 +901,11 @@ def execWDLValidation = { validateWDL ->
         }
         return retCode
     } catch (IOException e) {
-        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.", e)
     }
 }
 
-task gatkValidateScriptsWdl() {
+tasks.register('gatkValidateScriptsWdl') {
     doFirst {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
@@ -921,7 +928,8 @@ task gatkValidateScriptsWdl() {
     }
 }
 
-task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
+tasks.register('gatkValidateGeneratedWdl') {
+    dependsOn gatkWDLGen, shadowJar
     doFirst {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
@@ -1081,8 +1089,8 @@ publish {
     }
 }
 
-task installSpark{ dependsOn sparkJar }
-task installAll{  dependsOn installSpark, installDist }
+tasks.register('installSpark') { dependsOn sparkJar }
+tasks.register('installAll') { dependsOn installSpark, installDist }
 
 installDist.dependsOn downloadGsaLibFile
 downloadGsaLibFile.dependsOn sourcesJar
