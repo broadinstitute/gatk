@@ -70,7 +70,8 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 WORKDIR /gatk
 RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
-RUN conda update conda
+RUN conda install -y python=3.10
+RUN conda install -y conda=23.10.0
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
