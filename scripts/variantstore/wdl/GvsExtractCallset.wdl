@@ -97,12 +97,11 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call Utils.GetNumSamplesLoaded {
+  call Utils.GetNumSamplesPrepared {
     input:
-      fq_sample_table = fq_sample_table,
+      fq_prepare_table = fq_prepare_table,
       project_id = project_id,
-      control_samples = control_samples,
-      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
+      prepare_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -115,7 +114,7 @@ workflow GvsExtractCallset {
                                                          else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
                                                               else 40000
 
-Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override, 
+Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
                                 if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
                                      else 500])
   # WDL 1.0 trick to set a variable ('none') to be undefined.

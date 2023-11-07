@@ -1046,3 +1046,37 @@ task PopulateFilterSetInfo {
     File monitoring_log = "monitoring.log"
   }
 }
+
+
+task GetNumSamplesPrepared {
+  input {
+    String fq_prepare_table
+    String project_id
+    String prepare_table_timestamp
+    String cloud_sdk_docker
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  command <<<
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+
+    SELECT COUNT(DISTINCT sample_id) FROM `~{fq_prepare_table}`' | sed 1d
+  >>>
+
+  output {
+    Int num_samples = read_int(stdout())
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
