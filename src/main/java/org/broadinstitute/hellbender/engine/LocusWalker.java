@@ -40,6 +40,7 @@ public abstract class LocusWalker extends WalkerBase {
     public static final String MAX_DEPTH_PER_SAMPLE_NAME = "max-depth-per-sample";
 
     @Argument(fullName = MAX_DEPTH_PER_SAMPLE_NAME, shortName = MAX_DEPTH_PER_SAMPLE_NAME, doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    @SuppressWarnings("this-escape")
     protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**

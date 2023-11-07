@@ -68,16 +68,20 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      */
 
     @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
+    @SuppressWarnings("this-escape")
     public int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
 
     @Argument(fullName = MAX_ASSEMBLY_LONG_NAME, doc = "Maximum size of an assembly region", optional = true)
+    @SuppressWarnings("this-escape")
     public int maxAssemblyRegionSize = defaultMaxAssemblyRegionSize();
 
     @Advanced
+    @SuppressWarnings("this-escape")
     @Argument(fullName = THRESHOLD_LONG_NAME, doc="Minimum probability for a locus to be considered active.", optional = true)
     public double activeProbThreshold = defaultActiveProbThreshold();
 
     @Advanced
+    @SuppressWarnings("this-escape")
     @Argument(fullName = PROPAGATION_LONG_NAME, doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
     public int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
 
@@ -90,6 +94,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      */
 
     @Argument(fullName = ASSEMBLY_PADDING_LONG_NAME, doc = "Number of additional bases of context to include around each assembly region", optional = true)
+    @SuppressWarnings("this-escape")
     public int assemblyRegionPadding = defaultAssemblyRegionPadding();
 
     /**
@@ -121,6 +126,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      */
 
     @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    @SuppressWarnings("this-escape")
     public int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
 
     @Hidden

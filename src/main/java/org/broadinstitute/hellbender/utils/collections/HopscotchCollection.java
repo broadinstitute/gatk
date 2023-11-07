@@ -60,6 +60,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
     }
 
     /** make a HopscotchCollection from a collection */
+    @SuppressWarnings("this-escape")
     public HopscotchCollection( final Collection<? extends T> collection ) {
         this(collection.size());
         addAll(collection);

@@ -187,6 +187,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IllegalArgumentException if {@code sourceReader} is {@code null}.
      * @throws IOException              if is raised when reading from the source.
      */
+    @SuppressWarnings("this-escape")
     protected TableReader(final String sourceName, final Reader sourceReader) throws IOException {
         Utils.nonNull(sourceReader, "the reader cannot be null");
 

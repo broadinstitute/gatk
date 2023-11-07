@@ -83,6 +83,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     protected abstract ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection();
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     public ReadThreadingAssemblerArgumentCollection assemblerArgs = getReadThreadingAssemblerArgumentCollection();
 
     @ArgumentCollection
@@ -185,6 +186,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Advanced
     @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
+    @SuppressWarnings("this-escape")
     public int maxMnpDistance = getDefaultMaxMnpDistance();
 
     @Argument(fullName = FORCE_CALL_ALLELES_LONG_NAME, doc = "The set of alleles to force-call regardless of evidence", optional = true)
