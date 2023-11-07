@@ -509,24 +509,27 @@ public final class MathUtils {
     public static double sum(final double[] values) {
         Utils.nonNull(values);
         double s = 0.0;
-        for (double v : values)
+        for (double v : values) {
             s += v;
+        }
         return s;
     }
 
     public static long sum(final int[] x) {
         Utils.nonNull(x);
         long total = 0;
-        for (int v : x)
+        for (int v : x) {
             total += v;
+        }
         return total;
     }
 
     public static long sum(final long[] x) {
         Utils.nonNull(x);
-        int total = 0;
-        for (long v : x)
+        long total = 0;
+        for (long v : x) {
             total += v;
+        }
         return total;
     }
 

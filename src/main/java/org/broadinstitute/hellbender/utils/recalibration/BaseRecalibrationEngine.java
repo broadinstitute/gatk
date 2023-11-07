@@ -419,7 +419,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             }
         }
         // we don't sum those as we go because they might set the same place to 1 twice
-        nEvents += MathUtils.sum(isDel) + MathUtils.sum(isIns);
+        nEvents += (int) (MathUtils.sum(isDel) + MathUtils.sum(isIns));
         return nEvents;
     }
 

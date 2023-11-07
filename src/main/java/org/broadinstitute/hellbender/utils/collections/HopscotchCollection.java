@@ -270,7 +270,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             buckets[bucketIndex] = null;
             status[bucketIndex] = 0;
             if ( predecessorIndex != NO_ELEMENT_INDEX ) { // fix up offset of previous element in chain if there is one
-                status[predecessorIndex] -= getOffset(predecessorIndex);
+                status[predecessorIndex] -= (byte) getOffset(predecessorIndex);
             }
         } else {
             // move the item at the end of the chain into the hole we're creating by deleting this entry
@@ -283,7 +283,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             }
             buckets[bucketIndex] = buckets[nextIndex];
             buckets[nextIndex] = null;
-            status[prevIndex] -= getOffset(prevIndex);
+            status[prevIndex] -= (byte) getOffset(prevIndex);
         }
         size -= 1;
     }
@@ -305,7 +305,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
 
         // if the new entry lies downstream of the current chain end, just link it in
         if ( offsetToEmpty > offsetToEndOfChain ) {
-            status[endOfChainIndex] += offsetToEmpty - offsetToEndOfChain;
+            status[endOfChainIndex] += (byte) (offsetToEmpty - offsetToEndOfChain);
         } else {
             linkIntoChain(bucketIndex, emptyBucketIndex);
         }
@@ -323,7 +323,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             offsetToEmpty -= offset;
         }
         offset -= offsetToEmpty;
-        status[tmpIndex] -= offset;
+        status[tmpIndex] -= (byte) offset;
         status[emptyBucketIndex] = (byte) offset;
     }
 
@@ -349,7 +349,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             buckets[emptyBucketIndex] = buckets[nextIndex];
             buckets[nextIndex] = null;
             status[nextIndex] = 0;
-            status[prevIndex] -= getOffset(prevIndex);
+            status[prevIndex] -= (byte) getOffset(prevIndex);
             emptyBucketIndex = nextIndex;
         }
     }
@@ -409,9 +409,9 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         int toEmptyDistance = getIndexDiff(bucketToMoveIndex, emptyBucketIndex);
         int nextOffset = getOffset(bucketToMoveIndex);
         if ( nextOffset == 0 || nextOffset > toEmptyDistance ) {
-            status[predecessorBucketIndex] += toEmptyDistance;
+            status[predecessorBucketIndex] += (byte) toEmptyDistance;
         } else {
-            status[predecessorBucketIndex] += nextOffset;
+            status[predecessorBucketIndex] += (byte) nextOffset;
             toEmptyDistance -= nextOffset;
             predecessorBucketIndex = getIndex(bucketToMoveIndex, nextOffset);
             while ( (nextOffset = getOffset(predecessorBucketIndex)) != 0 && nextOffset < toEmptyDistance ) {

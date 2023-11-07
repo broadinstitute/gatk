@@ -271,12 +271,12 @@ public class CoverageOutputWriter implements Closeable {
         SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = lineWriter.getNewLineBuilder();
 
         // get the depths per sample and buildAndWriteLine up the output string while tabulating total and average coverage
-        int tDepth = 0;
+        long tDepth = 0;
         boolean depthCounted = false;
         for (DoCOutputType.Partition type : partitions) {
             Map<String, int[]> countsByID = countsBySampleByType.get(type);
             for (String sample : identifiersByType.get(type)) {
-                long dp = (countsByID != null && countsByID.keySet().contains(sample)) ? MathUtils.sum(countsByID.get(sample)) : 0;
+                long dp = (countsByID != null && countsByID.containsKey(sample)) ? MathUtils.sum(countsByID.get(sample)) : 0;
                 lineBuilder.setColumn("Depth_for_" + sample, Long.toString(dp));
                 if (printBaseCounts) {
                     lineBuilder.setColumn(sample + "_base_counts", getBaseCountsString(countsByID != null ? countsByID.get(sample) : null, includeDeletions));
@@ -289,7 +289,7 @@ public class CoverageOutputWriter implements Closeable {
         }
 
         // Add the total depth and summary information to the line
-        lineBuilder.setColumn(0, locus.getContig() + ":" + locus.getStart()).setColumn(1, Integer.toString(tDepth));
+        lineBuilder.setColumn(0, locus.getContig() + ":" + locus.getStart()).setColumn(1, Long.toString(tDepth));
         for (DoCOutputType.Partition type : partitions) { //Note that this is a deterministic traversal since the underlying set is an EnumSet
             lineBuilder.setColumn("Average_Depth_" + type.toString(), DOUBLE_FORMAT_2PLACES.format( (double) tDepth / identifiersByType.get(type).size()));
         }
