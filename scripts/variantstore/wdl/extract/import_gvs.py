@@ -393,14 +393,14 @@ def import_gvs(refs: 'List[List[str]]',
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
 
-    # Clean up any completely empty phasing fields.
-    e = vd.entries()
-    if e.all(hl.is_missing(e.PS)):
-        vd = vd.drop('PS')
-    if e.all(hl.is_missing(e.PID)):
-        vd = vd.drop('PID')
+        # Clean up any completely empty phasing fields.
+        e = vd.entries()
+        if e.all(hl.is_missing(e.PS)):
+            vd = vd.drop('PS')
+        if e.all(hl.is_missing(e.PID)):
+            vd = vd.drop('PID')
 
-    hl.vds.VariantDataset(
+        hl.vds.VariantDataset(
             reference_data=rd,
             variant_data=vd,
         ).write(final_path, overwrite=True)
