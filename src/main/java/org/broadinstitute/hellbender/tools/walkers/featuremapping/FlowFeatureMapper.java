@@ -354,10 +354,12 @@ public final class FlowFeatureMapper extends ReadWalker {
         }
 
         // validation mode?
-        if ( fmArgs.reportAllAlts) {
+        if ( fmArgs.reportAllAlts ) {
             for ( int baseIndex = 0 ; baseIndex < SequenceUtil.VALID_BASES_UPPER.length ; baseIndex++ ) {
                 headerInfo.add(new VCFInfoHeaderLine(scoreNameForBase(baseIndex), 1, VCFHeaderLineType.Float, "Base specific mapping score"));
             }
+        }
+        if ( fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff ) {
             headerInfo.add(new VCFInfoHeaderLine(VCF_ADJACENT_REF_DIFF, 1, VCFHeaderLineType.Flag, "Adjacent base filter indication: indel in the adjacent 5 bases to the considered base on the read"));
         }
 
@@ -729,7 +731,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         }
 
         // validation mode?
-        if ( fmArgs.reportAllAlts) {
+        if ( fmArgs.reportAllAlts ) {
             if ( fr.scoreForBase != null ) {
                 for (int baseIndex = 0; baseIndex < SequenceUtil.VALID_BASES_UPPER.length; baseIndex++) {
                     if (!Double.isNaN(fr.scoreForBase[baseIndex])) {
@@ -737,9 +739,9 @@ public final class FlowFeatureMapper extends ReadWalker {
                     }
                 }
             }
-            if ( fr.adjacentRefDiff ) {
-                vcb.attribute(VCF_ADJACENT_REF_DIFF, true);
-            }
+        }
+        if ( fr.adjacentRefDiff ) {
+            vcb.attribute(VCF_ADJACENT_REF_DIFF, true);
         }
 
         // build it!
