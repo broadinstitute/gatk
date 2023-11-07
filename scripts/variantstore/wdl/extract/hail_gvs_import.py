@@ -23,7 +23,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-    # A full description of the `import_vds` function written by Hail for this process can be found in `import_gvs.py`:
+    # A full description of the `import_gvs` function written by Hail for this process can be found in `import_gvs.py`:
     # https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/extract/import_gvs.py
     # Commented out parameters are ones where we are comfortable with the default, but want to make them easily
     # accessible to users.
