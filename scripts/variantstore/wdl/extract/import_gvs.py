@@ -393,16 +393,12 @@ def import_gvs(refs: 'List[List[str]]',
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
 
-        def has_any_defined_entries(f):
-            e = vds.variant_data.entries()
-            # In Scala this would use a lazy `exists`, not sure if this formulation is lazy.
-            return e.filter(hl.is_defined(f(e))).head(1).count() > 0
-
-        if not has_any_defined_entries(lambda e: e.PS):
-            vd = vd.drop('PS')
-
-        if not has_any_defined_entries(lambda e: e.PID):
-            vd = vd.drop('PID')
+    # Clean up any completely empty phasing fields.
+    e = vd.entries()
+    if e.all(hl.is_missing(e.PS)):
+        vd = vd.drop('PS')
+    if e.all(hl.is_missing(e.PID)):
+        vd = vd.drop('PID')
 
     hl.vds.VariantDataset(
             reference_data=rd,
