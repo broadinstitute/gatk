@@ -26,10 +26,9 @@ workflow GvsCreateVDS {
         vds_output_path: {
             help: "Location for the final created VDS"
         }
-
         # Cluster parameters
-        prefix: {
-            help: "Prefix of tnhe Dataproc cluster name"
+        cluster_prefix: {
+            help: "Prefix of the Dataproc cluster name"
         }
         gcs_subnetwork_name: {
             help: "Set to 'subnetwork' if running in Terra Cromwell"
@@ -111,9 +110,9 @@ task create_vds {
         cat > auto-scale-policy.yaml <<FIN
         workerConfig:
             minInstances: 2
-            maxInstances: 20
+            maxInstances: 10
         secondaryWorkerConfig:
-            maxInstances: 50
+            maxInstances: 1200
         basicAlgorithm:
             cooldownPeriod: 4m
             yarnConfig:
@@ -121,7 +120,7 @@ task create_vds {
                 scaleDownFactor: 1.0
                 gracefulDecommissionTimeout: 1h
         FIN
-        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region}
+        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \

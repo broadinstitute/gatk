@@ -1,15 +1,7 @@
 """
-The following instructions can be used from the terminal of a Terra notebook to import GVS QuickStart Avro files
-and generate a VDS.
 
-* Hail installation
+Convenience script to wrap `import_gvs.py` for creating a VDS from a collection of Avro files exported from GVS.
 
-Copy the appropriate Hail wheel locally and install:
-
-```
-gsutil -m cp 'gs://gvs-internal-scratch/hail-wheels/<date>-<short git hash>/hail-<Hail version>-py3-none-any.whl' .
-pip install --force-reinstall hail-<Hail version>-py3-none-any.whl
-```
 """
 
 
@@ -31,9 +23,10 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-    ## Note that a full description of the create_vds function written by Hail for this process can be found here:
-    ## https://github.com/tpoterba/hail/blob/import-gvs/hail/python/hail/methods/impex.py
-    ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
+    # A full description of the `import_gvs` function written by Hail for this process can be found in `import_gvs.py`:
+    # https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/extract/import_gvs.py
+    # Commented out parameters are ones where we are comfortable with the default, but want to make them easily
+    # accessible to users.
     import_gvs.import_gvs(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
@@ -49,14 +42,13 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
         # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
         # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
         # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-        unphase=True, # the default in Hail is to keep phasing information, but it's not necessary for AoU, so it can be dropped
         use_classic_vqsr=use_classic_vqsr
     )
 
 
 def gcs_generate_avro_args(bucket, blob_prefix, key):
     """
-    Generate a list of the Avro arguments for the `create_vds` invocation for the specified key. The datatype should
+    Generate a list of the Avro arguments for the `import_gvs` invocation for the specified key. The datatype should
     match these parameters:
 
     * vets (list of lists, one outer list per GVS superpartition of 4000 samples max)
