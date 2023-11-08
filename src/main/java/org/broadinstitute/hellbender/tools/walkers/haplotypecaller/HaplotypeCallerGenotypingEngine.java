@@ -341,7 +341,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             // TODO: haplotype priors, no need to double-count priors here!
             final GenotypePriorCalculator gpc = resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
-            
+
             // TODO: looks like even in joint detection we will need the read-allele likelihoods for annotations
             if( call != null ) {
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -409,7 +409,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                     if (event.isSNP()) {
                         log10EventHetPriors.put(event, log10SNPHetPrior);
                     } else {
-                        final int pos = event.getStart();
+                        // TODO: is this right?
+                        final int pos = event.getStart() - refLoc.getStart() + 1;
                         final boolean noDragstr = hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors || dragstrs == null;
                         final double log10IndelHetPrior = noDragstr ? Math.log10(indelHeterozygosity) :
                                 -.1 * dragstrParams.api(dragstrs.period(pos), dragstrs.repeatLength(pos));
