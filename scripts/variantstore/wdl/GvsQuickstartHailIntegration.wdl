@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
+import "GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
@@ -11,7 +12,6 @@ workflow GvsQuickstartHailIntegration {
         Boolean is_wgs
         File? interval_list
         Boolean use_VQSR_lite = true
-        Boolean use_classic_VQSR = true
         Boolean use_compressed_references = false
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
@@ -23,7 +23,8 @@ workflow GvsQuickstartHailIntegration {
         String? variants_docker
         String? gatk_docker
 
-        String? gatk_override
+        File? gatk_override
+        String? hail_version
         String expected_output_prefix
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -52,6 +53,7 @@ workflow GvsQuickstartHailIntegration {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
@@ -103,15 +105,27 @@ workflow GvsQuickstartHailIntegration {
             use_compressed_references = use_compressed_references,
     }
 
-    call CreateAndTieOutVds {
+    call CreateVds.GvsCreateVDS {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            use_VQSR_lite = use_VQSR_lite,
-            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
+            hail_version = effective_hail_version,
+            use_classic_VQSR = !use_VQSR_lite,
+            avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+            cluster_prefix = "vds-cluster",
+            gcs_subnetwork_name = "subnetwork",
+            region = "us-central1",
+            variants_docker = effective_variants_docker,
+    }
+
+    call TieOutVds {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
+            vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            hail_version = effective_hail_version,
     }
 
     output {
@@ -127,15 +141,14 @@ workflow GvsQuickstartHailIntegration {
 }
 
 
-task CreateAndTieOutVds {
+task TieOutVds {
     input {
-        String? git_branch_or_tag
-        Boolean use_VQSR_lite
-        String avro_prefix
-        String vds_destination_path
+        String git_branch_or_tag
+        String vds_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
         String cloud_sdk_slim_docker
+        String hail_version
     }
     parameter_meta {
         tieout_vcfs: {
@@ -171,15 +184,12 @@ task CreateAndTieOutVds {
         # Copy VCFs and indexes to the current directory.
         cat vcf_manifest.txt | gcloud storage cp -I .
 
-        # `avro_prefix` includes a trailing `avro` so don't add another `avro` here.
-        gcloud storage cp --recursive ~{avro_prefix} $PWD
-
         export REFERENCES_PATH=$PWD/references
         mkdir -p ${REFERENCES_PATH}
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
-        # Current version of Hail (0.2.117) demands Java 8 or Java 11, refuses to run on Java 17.
+        # Versions of Hail near 0.2.117 demand Java 8 or Java 11, and refuse to run on Java 17. (This is because Google Dataproc is still on Java 11)
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
@@ -189,7 +199,7 @@ task CreateAndTieOutVds {
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
-        pip install hail==0.2.120
+        pip install hail==~{hail_version}
 
         export WORK=$PWD/work
         mkdir ${WORK}
@@ -197,22 +207,15 @@ task CreateAndTieOutVds {
         export TEMP_PATH=$WORK/temp
         mkdir ${TEMP_PATH}
 
-        export VDS_PATH=$WORK/gvs_import.vds
-        export AVRO_PATH=$PWD/avro
+        export VDS_PATH=$WORK/gvs_export.vds
+        mkdir ${VDS_PATH}
 
-        python3 ./hail_gvs_import.py \
-            --avro-path ${AVRO_PATH} \
-            --vds-path ${VDS_PATH} \
-            --temp-path ${TEMP_PATH} \
-            --references-path ${REFERENCES_PATH} \
-            ~{true='--use-vqsr-lite' false='' use_VQSR_lite}
+        gcloud storage cp -r ~{vds_path}  ${WORK}
+
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 
         python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
-
-        # Copy up the VDS
-        gcloud storage cp --recursive ${VDS_PATH} ~{vds_destination_path}
 
         pip install pytest
         ln -s ${WORK}/joined.mt .

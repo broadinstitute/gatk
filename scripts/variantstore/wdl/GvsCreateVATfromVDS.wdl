@@ -601,7 +601,7 @@ task BigQueryLoadJson {
         DATE=86400 ## 24 hours in seconds
 
         set +e
-        bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
@@ -616,7 +616,7 @@ task BigQueryLoadJson {
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
 
         set +e
-        bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
@@ -629,7 +629,7 @@ task BigQueryLoadJson {
         bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
         set +e
-        bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 

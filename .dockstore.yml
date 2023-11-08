@@ -156,7 +156,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-1064-wdl-quickstart-vds
+         - rc-vs-1102-add-vds-wdl-to-integration-tests
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -166,7 +166,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1004-extract
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -293,7 +292,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1092_OOMonPopulateFilterSetInfo
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -303,7 +301,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1092_OOMonPopulateFilterSetInfo
+             - rc-vs-1102-add-vds-wdl-to-integration-tests
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -313,8 +311,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1049_tables_are_not_forever
-             - gg_VS-1092_OOMonPopulateFilterSetInfo
+             - rc-vs-1102-add-vds-wdl-to-integration-tests
          tags:
              - /.*/
    - name: GvsIngestTieout

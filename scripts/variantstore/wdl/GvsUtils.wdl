@@ -66,12 +66,13 @@ task GetToolVersions {
   output {
     String gvs_version = read_string("version.txt")
     String git_hash = read_string("git_hash.txt")
+    String hail_version = "0.2.124"
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-10-13-alpine-8d14f01e9"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-10-26-alpine-23d0e01b6"
     String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_10_31_e7746ce7c38a8226bcac5b89284782de2a4cdda1"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -110,10 +111,10 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-    --ignore-safety-checks --gather-type ~{gather_type} \
-    --create-output-variant-index false \
-    -I ~{sep=' -I ' input_vcfs} \
-    --output ~{output_vcf_name}
+      --ignore-safety-checks --gather-type ~{gather_type} \
+      --create-output-variant-index false \
+      -I ~{sep=' -I ' input_vcfs} \
+      --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
 
@@ -303,7 +304,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
     bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
-    "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
+    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like "~{sep=" OR table_name like " table_patterns}"' > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
   >>>
@@ -663,7 +664,7 @@ task CountSuperpartitions {
     command <<<
         bash ~{monitoring_script} > monitoring.log &
 
-        bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
                 WHERE table_name LIKE "vet_%"
@@ -704,7 +705,7 @@ task ValidateFilterSetName {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT filter_set_name as available_filter_set_names FROM `~{fq_filter_set_info_table}` GROUP BY filter_set_name')
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
@@ -750,19 +751,19 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "BEGIN \
-      SELECT COUNT(1) AS counted FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+    'BEGIN
+      SELECT COUNT(1) AS counted FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
           AND calibration_sensitivity IS NOT NULL;
-    EXCEPTION WHEN ERROR THEN \
-       SELECT '0' AS counted ;
-    END" | tail -1 > lite_count_file.txt
+    EXCEPTION WHEN ERROR THEN
+       SELECT "0" AS counted ;
+    END' | tail -1 > lite_count_file.txt
     LITE_COUNT=`cat lite_count_file.txt`
 
 
-    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-      AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+      'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
+      AND vqslod IS NOT NULL' | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`
 
     if [[ $LITE_COUNT != "0" ]]; then

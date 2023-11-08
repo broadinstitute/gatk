@@ -6,13 +6,17 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
-        String vds_output_path
+        String? git_branch_or_tag
+        String vds_destination_path
         String avro_path
-        String hail_version="0.2.124"
-
-        String prefix = "vds-cluster"
-        String gcs_subnetwork_name="subnetwork"
+        Boolean use_classic_VQSR = false
+        String? hail_version
+        String cluster_prefix = "vds-cluster"
+        String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
+        String? gcs_project
+        String? workspace_bucket
+        String? variants_docker
     }
     parameter_meta {
         # Analysis parameters, i.e., parameters that go to the Hail python code (submission_script below)
@@ -21,9 +25,6 @@ workflow GvsCreateVDS {
         }
         vds_output_path: {
             help: "Location for the final created VDS"
-        }
-        hail_version: {
-            help: "0.2.124"
         }
 
         # Cluster parameters
@@ -38,20 +39,38 @@ workflow GvsCreateVDS {
         }
     }
 
-    call Utils.GetToolVersions
+
+    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(gcs_project)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+    String effective_google_project = select_first([gcs_project, GetToolVersions.google_project])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
+
 
     call create_vds {
         input:
-            prefix = prefix,
-            vds_path = vds_output_path,
+            prefix = cluster_prefix,
+            vds_path = vds_destination_path,
             avro_path = avro_path,
-            hail_version = hail_version,
-            gcs_project = GetToolVersions.google_project,
+            use_classic_VQSR = use_classic_VQSR,
+            hail_version = effective_hail_version,
+            gcs_project = effective_google_project,
             region = region,
-            workspace_bucket = GetToolVersions.workspace_bucket,
+            workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = GetToolVersions.variants_docker,
+            variants_docker = effective_variants_docker,
     }
+
+    output {
+        String cluster_name = create_vds.cluster_name
+    }
+
 }
 
 task create_vds {
@@ -59,6 +78,7 @@ task create_vds {
         String prefix
         String vds_path
         String avro_path
+        Boolean use_classic_VQSR
         String? hail_version
 
         String gcs_project
@@ -114,7 +134,10 @@ task create_vds {
             --cluster-name ${cluster_name} \
             --avro-path ~{avro_path} \
             --vds-path ~{vds_path} \
-            --temp-path ${hail_temp_path}
+            --temp-path ${hail_temp_path} \
+            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
+
+
     >>>
 
     output {
