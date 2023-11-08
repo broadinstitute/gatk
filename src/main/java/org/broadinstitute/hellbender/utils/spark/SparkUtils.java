@@ -307,4 +307,35 @@ public final class SparkUtils {
         }
         return sortedReadsForMarking;
     }
+
+    /**
+     * Reduces number of partitions of paired reads, keeping pairs together.
+     *
+     * @param pairedReads   input reads
+     * @param numPartitions desired number of partitions
+     * @param numReads      size of the input
+     * @return repartitioned input reads
+     */
+    public static JavaRDD<GATKRead> repartitionPairedReads(final JavaRDD<GATKRead> pairedReads, final int numPartitions, final long numReads) {
+        final int readsPerPartition = 1 + (int) (numReads / numPartitions);
+        return pairedReads.mapPartitions(iter -> pairPartitionReads(iter, readsPerPartition))
+                .repartition(numPartitions)
+                .flatMap(List::iterator);
+    }
+
+    /**
+     * Maps partition of paired reads to a partition of Lists containing each pair. Assumes pairs are adjacent.
+     */
+    private static Iterator<List<GATKRead>> pairPartitionReads(final Iterator<GATKRead> iter, final int readsPerPartition) {
+        final ArrayList<List<GATKRead>> readPairs = new ArrayList<>(readsPerPartition / 2);
+        while (iter.hasNext()) {
+            final List<GATKRead> list = new ArrayList<>(2);
+            list.add(iter.next());
+            if (!iter.hasNext()) throw new GATKException("Odd number of read pairs in paired reads partition");
+            list.add(iter.next());
+            if (!list.get(0).getName().equals(list.get(1).getName())) throw new GATKException("Pair did not have the same name in a paired reads partition");
+            readPairs.add(list);
+        }
+        return readPairs.iterator();
+    }
 }

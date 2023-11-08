@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
@@ -29,10 +28,14 @@ import org.broadinstitute.hellbender.tools.spark.utils.ReadFilterSparkifier;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Realigns soft-clipped reads. Intended for use with short-read Dragen v3.7.8 BAMs/CRAMs.
@@ -64,11 +67,11 @@ public final class RealignSoftClippedReads extends GATKSparkTool {
     public boolean resetDuplicateFlag = false;
 
     @Advanced
-    @Argument(doc = "Number of reads per partition to use for realignment.",
+    @Argument(doc = "Number of reads per partition to use for intermediate steps.",
             fullName = "alignment-reads-per-partition",
             optional = true,
             minValue = 100)
-    public int alignmentReadsPerPartition = 5000;
+    public int intermediateReadsPerPartition = 5000;
 
     @Advanced
     @Argument(doc = "Estimated number of reads per partition in the input.",
@@ -117,41 +120,42 @@ public final class RealignSoftClippedReads extends GATKSparkTool {
                 .filter(r -> ReadFilterLibrary.PRIMARY_LINE.test(r))
                 .map(r -> unmapRead(r, headerBroadCast.getValue()));
         // Cache the result before running the splitter, since usually only <5% of the alignments are soft-clipped
-        primarySplitReadsRdd.persist(StorageLevel.MEMORY_AND_DISK());
-
-        // Third traversal to gather unclipped read pairs
-        final JavaRDD<GATKRead> notSplitReadsRdd = getReads()
-                .filter(r -> !splitReadIdsBroadcast.getValue().contains(r.getName()));
+        primarySplitReadsRdd.persist(StorageLevel.DISK_ONLY());
+        final long numPrimarySplitReads = primarySplitReadsRdd.count();
+        final int numSplitterParitions = 1 + (int) (numPrimarySplitReads / intermediateReadsPerPartition);
 
         // Split into paired/unpaired soft-clipped reads
-        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(primarySplitReadsRdd, inputReadsPerPartition, false);
-        JavaRDD<GATKRead> pairedReads = splitter.getPairedReads();
-        JavaRDD<GATKRead> unpairedReads = splitter.getUnpairedReads();
-
-        // Counting forces an action on the RDDs to guarantee we're done with the Bwa image and kmer filter
-        final long numPairedReads = pairedReads.count();
-        final long numUnpairedReads = unpairedReads.count();
+        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(primarySplitReadsRdd, inputReadsPerPartition, numSplitterParitions, false);
 
         // Rebalance partitions using the counts
-        final int numPairedPartitions = 1 + (int) (numPairedReads / alignmentReadsPerPartition);
-        final int numUnpairedPartitions = 1 + (int) (numUnpairedReads / alignmentReadsPerPartition);
-        pairedReads = repartitionPairedReads(pairedReads, numPairedPartitions, numPairedReads);
-        unpairedReads = unpairedReads.repartition(numUnpairedPartitions);
+        JavaRDD<GATKRead> pairedReads = splitter.getPairedReads();
+        pairedReads.persist(StorageLevel.DISK_ONLY());
+        final long numPairedReads = pairedReads.count();
+        final int numPairedPartitions = 1 + (int) (numPairedReads / intermediateReadsPerPartition);
+        pairedReads = SparkUtils.repartitionPairedReads(pairedReads, numPairedPartitions, numPairedReads);
 
-        // Cache again after the shuffle
-        pairedReads.persist(StorageLevel.MEMORY_AND_DISK());
-        unpairedReads.persist(StorageLevel.MEMORY_AND_DISK());
+        JavaRDD<GATKRead> unpairedReads = splitter.getUnpairedReads();
+        unpairedReads.persist(StorageLevel.DISK_ONLY());
+        final long numUnpairedReads = unpairedReads.count();
+        final int numUnpairedPartitions = 1 + (int) (numUnpairedReads / intermediateReadsPerPartition);
+        unpairedReads = unpairedReads.repartition(numUnpairedPartitions);
 
         // Realign
         final SAMFileHeader alignmentHeader = getHeaderForReads().clone();
         alignmentHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
         final BwaSparkEngine bwa = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), indexImageFile, alignmentHeader, getReferenceSequenceDictionary(), !resetDuplicateFlag);
-        pairedReads = bwa.alignPaired(pairedReads).map(r -> setRealigned(r));
-        unpairedReads = bwa.alignUnpaired(unpairedReads).map(r -> setRealigned(r));
 
-        // Cache this since it's expensive
-        pairedReads.persist(StorageLevel.MEMORY_AND_DISK());
-        unpairedReads.persist(StorageLevel.MEMORY_AND_DISK());
+        pairedReads = bwa.alignPaired(pairedReads).map(r -> setRealigned(r));
+        pairedReads = SparkUtils.sortReadsAccordingToHeader(pairedReads, getHeaderForReads(), pairedReads.getNumPartitions());
+        pairedReads.persist(StorageLevel.DISK_ONLY());
+
+        unpairedReads = bwa.alignUnpaired(unpairedReads).map(r -> setRealigned(r));
+        unpairedReads = SparkUtils.sortReadsAccordingToHeader(unpairedReads, getHeaderForReads(), unpairedReads.getNumPartitions());
+        unpairedReads.persist(StorageLevel.DISK_ONLY());
+
+        // Third traversal to gather unclipped read pairs
+        final JavaRDD<GATKRead> notSplitReadsRdd = getReads()
+                .filter(r -> !splitReadIdsBroadcast.getValue().contains(r.getName()));
 
         // Merge reads
         final JavaRDD<GATKRead> mergedReads = notSplitReadsRdd.union(pairedReads.union(unpairedReads));
@@ -162,7 +166,7 @@ public final class RealignSoftClippedReads extends GATKSparkTool {
             ReadsSparkSink.writeReads(ctx, output.toString(),
                     hasReference() ? referenceArguments.getReferenceSpecifier() : null, mergedReads, getHeaderForReads(),
                     shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, mergedReads.getNumPartitions(),
-                    shardedPartsDir, true, splittingIndexGranularity);
+                    shardedPartsDir, false, splittingIndexGranularity);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
         }
@@ -185,31 +189,6 @@ public final class RealignSoftClippedReads extends GATKSparkTool {
         final GATKRead copy = read.copy();
         copy.setAttribute("RA", 1);
         return copy;
-    }
-
-    /**
-     * Reduces number of partitions of paired reads, keeping pairs together.
-     */
-    private static JavaRDD<GATKRead> repartitionPairedReads(final JavaRDD<GATKRead> pairedReads, final int alignmentPartitions, final long numReads) {
-        final int readsPerPartition = 1 + (int) (numReads / alignmentPartitions);
-        return pairedReads.mapPartitions(iter -> pairPartitionReads(iter, readsPerPartition))
-                .repartition(alignmentPartitions)
-                .flatMap(List::iterator);
-    }
-    /**
-     * Maps partition of paired reads to a partition of Lists containing each pair. Assumes pairs are adjacent.
-     */
-    private static Iterator<List<GATKRead>> pairPartitionReads(final Iterator<GATKRead> iter, final int readsPerPartition) {
-        final ArrayList<List<GATKRead>> readPairs = new ArrayList<>(readsPerPartition / 2);
-        while (iter.hasNext()) {
-            final List<GATKRead> list = new ArrayList<>(2);
-            list.add(iter.next());
-            if (!iter.hasNext()) throw new GATKException("Odd number of read pairs in paired reads partition");
-            list.add(iter.next());
-            if (!list.get(0).getName().equals(list.get(1).getName())) throw new GATKException("Pair did not have the same name in a paired reads partition");
-            readPairs.add(list);
-        }
-        return readPairs.iterator();
     }
 
     private static final class ValidSoftClipReadFilter extends ReadFilter {
