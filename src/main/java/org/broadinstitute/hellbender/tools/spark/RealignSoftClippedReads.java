@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark;
 
+import com.google.common.collect.Streams;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.MergingIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -12,9 +14,13 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDiction
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaReadAligner;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.codehaus.plexus.util.FileUtils;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
@@ -22,7 +28,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Realigns soft-clipped reads. Intended for use with short-read Dragen v3.7.8 BAMs/CRAMs.
+ * Realigns soft-clipped reads. Intended for use with short-read Dragen v3.7.8 alignments.
  */
 @CommandLineProgramProperties(
         summary = "Realigns soft-clipped reads to a given reference.",
@@ -53,18 +59,13 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             fullName = "buffer-size",
             optional = true,
             minValue = 100)
-    public int bufferSize = 10000;
+    public int bufferSize = 40000;
 
     @Argument(doc="Number of bwa threads.",
             fullName = "bwa-threads",
             optional = true,
             minValue = 1)
-    public int bwaThreads = 12;
-
-    @Override
-    public boolean requiresReference() {
-        return true;
-    }
+    public int bwaThreads = 2;
 
     @Override
     public boolean requiresReads() {
@@ -85,9 +86,14 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     private ValidSoftClipReadFilter softClipReadFilter;
     private GATKRead lastRead = null;
     private List<GATKRead> readBuffer;
+    private int numDroppedUnpairedReads = 0;
+    private int numRealignedReads = 0;
 
     @Override
     public void onTraversalStart() {
+        if (!getHeaderForReads().getSortOrder().equals(SAMFileHeader.SortOrder.coordinate)) {
+            throw new UserException.BadInput("Input is not coordinate sorted");
+        }
         softclippedReadNames = new HashSet<>();
         softClipReadFilter = new ValidSoftClipReadFilter(minSoftClipLength);
         readBuffer = new ArrayList<>(bufferSize);
@@ -95,39 +101,48 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
 
     @Override
     public void traverseReads() {
+        logger.info("Identifying soft-clipped reads...");
         forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
                 firstPass(read)
         );
-        logger.info("Found " + softclippedReadNames.size() + " soft-clipped read pairs");
+
+        logger.info("Found " + softclippedReadNames.size() + " soft-clipped read pairs.");
         final SAMFileHeader tempHeader = getHeaderForReads().clone();
         tempHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
 
-        final File clippedReadBam = FileUtils.createTempFile("realign_1", ".bam", null);
-        final File unclippedReadBam = FileUtils.createTempFile("realign_2", ".bam", null);
+        final File clippedReadBam = FileUtils.createTempFile("realign_1", FileExtensions.BAM, null);
+        final File unclippedReadBam = FileUtils.createTempFile("realign_2", FileExtensions.BAM, null);
         try (final SAMFileWriter clippedWriter = new SAMFileWriterFactory().makeWriter(tempHeader, false,
                 clippedReadBam, null);
              final SAMFileGATKReadWriter nonClippedWriter = createSAMWriter(new GATKPath(unclippedReadBam.getPath()), true)) {
 
+            logger.debug("Created temporary file for clipped reads: " + clippedReadBam);
+            logger.debug("Created temporary file for unclipped reads: " + unclippedReadBam);
             logger.info("Splitting clipped and unclipped reads...");
             forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
                     secondPass(read, clippedWriter, nonClippedWriter)
             );
         }
 
-        final File alignmentBam = FileUtils.createTempFile("realign_3", ".bam", null);
+        final File alignmentBam = FileUtils.createTempFile("realign_3", FileExtensions.BAM, null);
         try (final ReadsPathDataSource clippedSource = new ReadsPathDataSource(clippedReadBam.toPath());
              final SAMFileGATKReadWriter alignmentWriter = createSAMWriter(new GATKPath(alignmentBam.getPath()), false)) {
+            logger.debug("Created temporary file for realigned reads: " + alignmentBam);
             final BwaReadAligner aligner = new BwaReadAligner(indexImage.toString(), clippedSource.getHeader(), true, true);
             aligner.setNThreads(bwaThreads);
             logger.info("Aligning reads...");
             clippedSource.forEach(read -> thirdPass(read, aligner, alignmentWriter));
+            if (lastRead != null) {
+                numDroppedUnpairedReads++;
+            }
             flushBuffer(aligner, alignmentWriter);
+            logger.info("Alignment completed! There were " + numRealignedReads + " realigned paired reads, " +
+                    "and " + numDroppedUnpairedReads + " unpaired reads were dropped.");
         }
 
         try (final ReadsPathDataSource unclippedSource = new ReadsPathDataSource(unclippedReadBam.toPath());
              final ReadsPathDataSource alignmentSource = new ReadsPathDataSource(alignmentBam.toPath());
              final SAMFileGATKReadWriter writer = createSAMWriter(output, true)) {
-
             final CloseableIterator<SAMRecord> unclippedRecordsIter = new ClosableReadSourceIterator(unclippedSource);
             final CloseableIterator<SAMRecord> alignedRecordsIter = new ClosableReadSourceIterator(alignmentSource);
             final Comparator<SAMRecord> weakComparator = new Comparator<>() {
@@ -139,6 +154,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                 }
             };
             final MergingIterator<SAMRecord> iter = new MergingIterator<>(weakComparator, List.of(unclippedRecordsIter, alignedRecordsIter));
+            logger.info("Merged realigned reads...");
             iter.stream().map(SAMRecordToGATKReadAdapter::new).forEach(writer::addRead);
         }
     }
@@ -219,38 +235,22 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             }
             lastRead = null;
         } else {
+            numDroppedUnpairedReads++;
             lastRead = read;
         }
     }
 
     private void flushBuffer(final BwaReadAligner aligner, final GATKReadWriter writer) {
-        logger.info("  Running batch of " + readBuffer.size() + " reads");
-        aligner.apply(readBuffer.iterator()).forEachRemaining(writer::addRead);
+        logger.info("Aligning batch of " + readBuffer.size() + " paired reads");
+        Streams.stream(aligner.apply(readBuffer.iterator())).map(RealignSoftClippedReads::setRealigned)
+                .forEachOrdered(writer::addRead);
+        numRealignedReads += readBuffer.size();
         readBuffer.clear();
     }
 
-    static GATKRead unmapRead(final GATKRead read, final SAMFileHeader header) {
-        final SAMRecord record = new SAMRecord(header);
-        record.setReadName(read.getName());
-        record.setReadBases(read.getBases());
-        record.setBaseQualities(read.getBaseQualities());
-        record.setAttribute(SAMTag.RG, read.getReadGroup());
-        record.setDuplicateReadFlag(read.isDuplicate());
-        if (read.isFirstOfPair()) {
-            read.setIsFirstOfPair();
-        } else if (read.isSecondOfPair()) {
-            read.setIsSecondOfPair();
-        }
-        if (read.isReverseStrand()) {
-            record.reverseComplement();
-        }
-        return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
-    }
-
     static GATKRead setRealigned(GATKRead read) {
-        final GATKRead copy = read.copy();
-        copy.setAttribute("RA", 1);
-        return copy;
+        read.setAttribute("RA", 1);
+        return read;
     }
 
     private static final class ValidSoftClipReadFilter extends ReadFilter {
