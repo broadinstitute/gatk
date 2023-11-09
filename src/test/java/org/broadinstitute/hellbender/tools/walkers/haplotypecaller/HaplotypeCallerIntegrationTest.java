@@ -2025,7 +2025,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "--dragen-378-concordance-mode",
-                "--disable-joint-detection",
                 "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
 
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",

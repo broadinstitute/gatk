@@ -445,6 +445,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                         .toList();
 
                 GenotypingLikelihoods<Haplotype> log10HaploGenotypePosteriors = new GenotypingLikelihoods<>(log10HaploGenotypeLikelihoods, ploidyModel, log10HaploGenotypePosteriorsInSampleOrder);
+                if (haploGenotypePosteriorOverlapDetector.overlapsAny(jdInterval)) {
+                    int DEBUG = 90;
+                }
                 haploGenotypePosteriorOverlapDetector.addLhs(log10HaploGenotypePosteriors, jdInterval);
             }
         }
