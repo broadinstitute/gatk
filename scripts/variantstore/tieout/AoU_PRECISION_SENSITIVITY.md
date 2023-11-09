@@ -1,8 +1,18 @@
 # Generating Callset Precision and Sensitivity Values
 
 ## Prerequisites
-Complete (at least) through the training step (`GvsCreateFilterSet`) of the [GVS pipeline](../docs/aou/AOU_DELIVERABLES.md) with all the samples (control and non-control).  Then run the callset extract step with a view of the sample-mapping table that's controls-only but with the training (i.e. "filter_set") from all the samples.
+1. Complete (at least) through the training step (`GvsCreateFilterSet`) of the [GVS pipeline](../docs/aou/AOU_DELIVERABLES.md) with all the samples (control and non-control).
+1. Run the `GvsPrepareRanges` WDL with the following input values:
+   1. call_set_identifier`, `dataset_name`, `project_id` set to the same values as the inputs of the same name in the preceding `GvsCreateFilterSet` run.
+   1. `control_samples` set to `true`.
+   1. Make sure to set `use_compressed_references` to the appropriate value. This will be `true` for AoU callsets starting with Echo.
+1. Run the `GvsExtractCallset` WDL with the following input values:
+   1. `call_set_identifier`, `dataset_name`, `filter_set_name`, `project_id` set to the same values as the inputs of the same name in the preceding `GvsCreateFilterSet` run.
+   1. `extract_table_prefix` set to the same value as `call_set_identifier`.
+   1. `control_samples` set to `true`.
+   1. `scatter_count` set to 500. This is an optional input value but at least for Echo scale test control extract prior to P+S, leaving this unset causes most of the 111 `ExtractTaxk` shards to OOM.
 
+## Precision and Sensitivity
 1. Use the GvsCalculatePrecisionAndSensitivity wdl to calculate the precision and sensitivity.
 
 The wdl takes several inputs:

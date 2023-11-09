@@ -80,6 +80,7 @@
     - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
     - It will need to be run twice. Once with `only_output_vet_tables` set to "true" (the default value is `false`) and once with `control_samples` set to "true" (the default value is `false`).
     - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats. Use the same prefix for both runs.
+    - **NOTE** Set `use_compressed_references` to true.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsExtractCallset` workflow
     - This workflow extracts the control data in BigQuery and transforms it into a sharded joint VCF incorporating the VETS filter set data.
