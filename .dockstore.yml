@@ -156,6 +156,10 @@ workflows:
        branches:
          - master
          - ah_var_store
+<<<<<<< HEAD
+=======
+         - rc-vs-923-add-validation
+>>>>>>> d2bfc6ffb (update dockstore for testing)
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -312,7 +316,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1144_phasing_revert
+             - rc-vs-923-add-validation
          tags:
              - /.*/
    - name: GvsIngestTieout
