@@ -156,7 +156,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-1139-hail-tweaks
+         - rc-vs-923-add-validation
        tags:
          - /.*/
    - name: GvsExtractCallset
