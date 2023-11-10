@@ -66,6 +66,18 @@ workflow GvsCreateVDS {
             variants_docker = effective_variants_docker,
     }
 
+    call validate_vds {
+        input:
+            prefix = cluster_prefix,
+            vds_path = vds_destination_path,
+            hail_version = effective_hail_version,
+            gcs_project = effective_google_project,
+            region = region,
+            workspace_bucket = effective_workspace_bucket,
+            gcs_subnetwork_name = gcs_subnetwork_name,
+            variants_docker = effective_variants_docker,
+    }
+
     output {
         String cluster_name = create_vds.cluster_name
     }
@@ -120,14 +132,14 @@ task create_vds {
                 scaleDownFactor: 1.0
                 gracefulDecommissionTimeout: 120s
         FIN
-        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
+        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/hail_gvs_import.py \
             --secondary-script-path /app/import_gvs.py \
             --account ${account_name} \
-            --autoscaling-policy rc-example-autoscaling-policy \
+            --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
             --gcs-project ~{gcs_project} \
             --cluster-name ${cluster_name} \
@@ -135,13 +147,7 @@ task create_vds {
             --vds-path ~{vds_path} \
             --temp-path ${hail_temp_path} \
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
-
-
     >>>
-
-    output {
-        String cluster_name = read_string("cluster_name.txt")
-    }
 
     runtime {
         memory: "6.5 GB"
@@ -150,5 +156,67 @@ task create_vds {
         preemptible: 0
         docker: variants_docker
         bootDiskSizeGb: 10
+    }
+
+    output {
+        String cluster_name = read_string("cluster_name.txt")
+    }
+}
+
+task validate_vds {
+    input {
+        String prefix
+        String vds_path
+
+        String? hail_version
+        String gcs_project
+        String workspace_bucket
+        String region
+        String gcs_subnetwork_name
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        account_name=$(gcloud config list account --format "value(core.account)")
+
+        pip3 install --upgrade pip
+        pip3 install hail~{'==' + hail_version}
+        pip3 install --upgrade google-cloud-dataproc
+
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+
+        cluster_name="~{prefix}-${hex}"
+        echo ${cluster_name} > cluster_name.txt
+        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+
+        # The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
+
+        # Run the hail python script to validate a VDS
+        python3 /app/run_in_hail_cluster.py \
+        --script-path /app/vds_validation.py \
+        --account ${account_name} \
+        --autoscaling-policy gvs-autoscaling-policy \
+        --region ~{region} \
+        --gcs-project ~{gcs_project} \
+        --cluster-name ${cluster_name} \
+        --vds-path ~{vds_path}
+    >>>
+
+    runtime {
+        memory: "6.5 GB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: 0
+        docker: variants_docker
+        bootDiskSizeGb: 10
+    }
+
+    output {
+        Float total_mb = read_float(stdout())
     }
 }
