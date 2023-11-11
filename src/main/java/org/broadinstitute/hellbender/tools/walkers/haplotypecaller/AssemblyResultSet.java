@@ -588,7 +588,7 @@ public final class AssemblyResultSet {
         haplotypes.clear();
         refHaplotype = null;
     }
-    public void replaceAllHaplotypes(Set<Haplotype> list) {
+    public void replaceAllHaplotypes(Collection<Haplotype> list) {
         haplotypes.clear();
         refHaplotype = null;
         for ( Haplotype h : list ) {
@@ -612,8 +612,8 @@ public final class AssemblyResultSet {
         }
     }
 
-    public void setPartiallyDeterminedMode() {
-        this.isPartiallyDeterminedList = true;
+    public void setPartiallyDeterminedMode(final boolean isPartiallyDetermined) {
+        this.isPartiallyDeterminedList = isPartiallyDetermined;
     }
 
     public boolean isPartiallyDeterminedList() {
@@ -675,23 +675,27 @@ public final class AssemblyResultSet {
             return; // nothing to do
         }
 
+        if (debug) {
+            logger.info("Number of haplotypes pre-pileup injection: " + this.getHaplotypeCount());
+        }
+
         final Haplotype refHaplotype = getReferenceHaplotype();
         final Map<Integer, List<Event>> assembledEventByStart = getVariationEvents(argumentCollection.maxMnpDistance).stream()
                 .collect(Collectors.groupingBy(Event::getStart));
         final Collection<Event> assembledIndels = getVariationEvents(argumentCollection.maxMnpDistance).stream().
-                filter(Event::isIndel).collect(Collectors.toList());
+                filter(Event::isIndel).toList();
 
         Set<Haplotype> baseHaplotypes = new TreeSet<>();
         baseHaplotypes.addAll(getHaplotypeList().stream()
-                .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
+                .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(Haplotype::getScore).reversed())
                 .limit(AssemblyBasedCallerUtils.NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
-                .collect(Collectors.toList()));
+                .toList());
 
         //TODO its unclear whether the correct answer here is to use the hardclipped pileup reads (which we used in generating the pileup alleles for specificty reasons)
         //TODO or if it would be more accurate to use the softclipped bases here in filtering down the haplotypes. I suspect the latter but I will evaluate later.
         Map<Kmer, MutableInt> kmerReadCounts = AssemblyBasedCallerUtils.getKmerReadCounts(region.getHardClippedPileupReads(), argumentCollection.pileupDetectionArgs.filteringKmerSize);
 
-        for (final Event event : goodPileupEvents.stream().sorted(Comparator.comparingInt(Event::getStart)).collect(Collectors.toList())) {
+        for (final Event event : goodPileupEvents.stream().sorted(Comparator.comparingInt(Event::getStart)).toList()) {
 
             if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: " + event);
 
@@ -705,7 +709,7 @@ public final class AssemblyResultSet {
                 continue;
             }
 
-            final Set<Haplotype> newPileupHaplotypes = new HashSet<>();
+            final Set<Haplotype> newPileupHaplotypes = new LinkedHashSet<>();
             for (final Haplotype baseHaplotype : baseHaplotypes) {
                 final Haplotype insertedHaplotype = makeHaplotypeWithInsertedEvent(baseHaplotype, refHaplotype, event, aligner, argumentCollection.getHaplotypeToReferenceSWParameters());
                 if (insertedHaplotype != null) {

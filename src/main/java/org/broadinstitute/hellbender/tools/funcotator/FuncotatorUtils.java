@@ -59,6 +59,11 @@ public final class FuncotatorUtils {
 
     public static final int DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT = 150;
 
+    /**
+     * The default window on either side of splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
+     */
+    public static final int DEFAULT_SPLICE_SITE_WINDOW_SIZE = 2;
+
     private static final Map<String, AminoAcid> tableByCodon;
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;
@@ -1454,7 +1459,7 @@ public final class FuncotatorUtils {
         // We must add bases to the start to adjust for indels because of the required preceding base in VCF format:
         final int indelStartBaseAdjustment = GATKVariantContextUtils.isIndel(refAllele, altAllele) ? 1 : 0;
 
-        final int start = reference.getWindow().getStart() - referenceWindow + indelStartBaseAdjustment;
+        final int start = Math.max(1, reference.getWindow().getStart() - referenceWindow + indelStartBaseAdjustment);
         final int end   = reference.getWindow().getEnd() + referenceWindow;
 
         // Calculate the interval from which to get the reference:

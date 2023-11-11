@@ -53,7 +53,9 @@ final public class DataSourceUtils {
     private static final String  MANIFEST_SOURCE_LINE_START     = "Source:";
     private static final String  MANIFEST_ALT_SOURCE_LINE_START = "Alternate Source:";
     @VisibleForTesting
-    static final Pattern VERSION_PATTERN                        = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
+    static final Pattern OLD_VERSION_PATTERN                        = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
+    static final Pattern NEW_VERSION_PATTERN                    = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.hg(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
+
     private static final Pattern SOURCE_PATTERN                 = Pattern.compile(MANIFEST_SOURCE_LINE_START + "\\s+(ftp.*)");
     private static final Pattern ALT_SOURCE_PATTERN             = Pattern.compile(MANIFEST_ALT_SOURCE_LINE_START + "\\s+(gs.*)");
 
@@ -69,9 +71,9 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MAX_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MAX_MINOR_VERSION_NUMBER = 7;
+    static final int MAX_MINOR_VERSION_NUMBER = 8;
     @VisibleForTesting
-    static final LocalDate MAX_DATE            = LocalDate.of(2020, Month.MAY, 21);
+    static final LocalDate MAX_DATE            = LocalDate.of(2023, Month.SEPTEMBER, 8);
 
     //==================================================================================================================
     // Public Static Members:
@@ -80,7 +82,7 @@ final public class DataSourceUtils {
     public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = getDataSourceMinVersionString();
 
     /** The maximum supported version of the data sources for funcotator to run.  */
-    public static final String CURRENT_MAXIMUM_DATA_SOURCE_VERSION         = getDataSourceMaxVersionString();
+    public static final String CURRENT_MAXIMUM_DATA_SOURCE_VERSION         = getDataSourceMaxVersionString(38);
 
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
@@ -88,6 +90,8 @@ final public class DataSourceUtils {
     public static final String DATA_SOURCES_NAME_PREFIX                    = "funcotator_dataSources";
     public static final String DS_SOMATIC_NAME_MODIFIER                    = "s";
     public static final String DS_GERMLINE_NAME_MODIFIER                   = "g";
+    public static final String DS_HG38_NAME_MODIFIER                       = "hg38";
+    public static final String DS_HG19_NAME_MODIFIER                       = "hg19";
     public static final String DS_EXTENSION                                = ".tar.gz";
     public static final String DS_CHECKSUM_EXTENSION                       = ".sha256";
 
@@ -137,8 +141,8 @@ final public class DataSourceUtils {
      *    {@link #MAX_DATE}
      * @return A {@link String} representing the Max version information as it would appear in the data sources file name.
      */
-    public static String getDataSourceMaxVersionString() {
-        return getDataSourceVersionString(MAX_MAJOR_VERSION_NUMBER, MAX_MINOR_VERSION_NUMBER, MAX_DATE);
+    public static String getDataSourceMaxVersionString(final int ref) {
+        return getNewDataSourceVersionString(MAX_MAJOR_VERSION_NUMBER, MAX_MINOR_VERSION_NUMBER, ref, MAX_DATE);
     }
 
 
@@ -154,6 +158,25 @@ final public class DataSourceUtils {
         return String.format("v%d.%d.%d%02d%02d",
                 major,
                 minor,
+                date.getYear(),
+                date.getMonthValue(),
+                date.getDayOfMonth()
+        );
+    }
+    /**
+     * Get the string representing the given version information for funcotator as it would be written in the data sources
+     * release files.
+     * @param major {@code int} representing the major version of the data sources to use.
+     * @param minor {@code int} representing the minor version of the data sources to use.
+     * @param ref {@code int} representing the hg reference number of the data sources to use.
+     * @param date {@link LocalDate} representing the date of the data sources to use.
+     * @return A {@link String} representing the given version information as it would appear in the data sources file name.
+     */
+    public static String getNewDataSourceVersionString(final int major, final int minor, final int ref, final LocalDate date) {
+        return String.format("v%d.%d.hg%d.%d%02d%02d",
+                major,
+                minor,
+                ref,
                 date.getYear(),
                 date.getMonthValue(),
                 date.getDayOfMonth()
@@ -304,6 +327,8 @@ final public class DataSourceUtils {
      *                                                            be annotated with a gencode/transcript datasource.
      *                                                            Not all datasources support this flag and it is
      *                                                            ignored for those that don't.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     * @param spliceSiteWindowSize The number of bases on either side of a splice site for a variant to be a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} variant.
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
@@ -314,7 +339,8 @@ final public class DataSourceUtils {
                                                                                                         final int lookaheadFeatureCachingInBp,
                                                                                                         final FlankSettings flankSettings,
                                                                                                         final boolean doAttemptSegmentFuncotationForTranscriptDatasources,
-                                                                                                        final int minBasesForValidSegment) {
+                                                                                                        final int minBasesForValidSegment,
+                                                                                                        final int spliceSiteWindowSize) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -353,7 +379,7 @@ final public class DataSourceUtils {
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment, spliceSiteWindowSize);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
@@ -557,6 +583,8 @@ final public class DataSourceUtils {
      * @param isSegmentFuncotationEnabled Do we want to allow the output Gencode Funcotation Factory to do segment annotations?  If false,
      *                                    segments will be funcotated with variant classifications of
      *                                    {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     * @param spliceSiteWindowSize The number of bases on either side of a splice site for a variant to be a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} variant.
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     private static GencodeFuncotationFactory createGencodeDataSource(final Path dataSourceFile,
@@ -567,7 +595,8 @@ final public class DataSourceUtils {
                                                                      final FeatureInput<? extends Feature> featureInput,
                                                                      final FlankSettings flankSettings,
                                                                      final boolean isSegmentFuncotationEnabled,
-                                                                     final int minBasesForValidSegment) {
+                                                                     final int minBasesForValidSegment,
+                                                                     final int spliceSiteWindowSize) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -596,7 +625,8 @@ final public class DataSourceUtils {
                 isB37,
                 ncbiBuildVersion,
                 isSegmentFuncotationEnabled,
-                minBasesForValidSegment
+                minBasesForValidSegment,
+                spliceSiteWindowSize
             );
     }
 
@@ -697,7 +727,7 @@ final public class DataSourceUtils {
                 while ((line != null) && ((version == null) || (source == null) || (alternateSource == null))) {
 
                     if (version == null && line.startsWith(MANIFEST_VERSION_LINE_START)) {
-                        final Matcher matcher = VERSION_PATTERN.matcher(line);
+                        final Matcher matcher = NEW_VERSION_PATTERN.matcher(line);
                         if ( matcher.matches() ) {
                             versionMajor     = Integer.valueOf(matcher.group(1));
                             versionMinor     = Integer.valueOf(matcher.group(2));

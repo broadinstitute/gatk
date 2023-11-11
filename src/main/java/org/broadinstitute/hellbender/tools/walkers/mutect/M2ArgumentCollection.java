@@ -9,7 +9,6 @@ import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
-import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
@@ -50,6 +49,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
     public static final String PCR_SNV_QUAL_LONG_NAME = "pcr-snv-qual";
     public static final String PCR_INDEL_QUAL_LONG_NAME = "pcr-indel-qual";
+    public static final String MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = "base-qual-correction-factor";
     public static final String F1R2_TAR_GZ_NAME = "f1r2-tar-gz";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
@@ -248,6 +248,18 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     @Argument(fullName = PCR_INDEL_QUAL_LONG_NAME, optional = true, doc = "Phred-scaled PCR indel qual for overlapping fragments")
     public int pcrIndelQual = 40;
+
+    /**
+     * A scale factor to modify the base qualities reported by the sequencer and used in the Mutect2 substitution error model.
+     * Set to zero to turn off the error model changes included in GATK 4.1.9.0.
+     * Our pileup likelihoods models assume that the base quality (qual) corresponds to the probability that a ref base is misread
+     * as the *particular* alt base, whereas the qual actually means the probability of *any* substitution error.
+     * Since there are three possible substitutions for each ref base we must divide the error probability by three
+     * which corresponds to adding 10*log10(3) = 4.77 ~ 5 to the qual.
+     */
+    @Advanced
+    @Argument(fullName = MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION, optional = true, doc = "Set to zero to turn off the error model changes included in GATK 4.1.9.0.")
+    public int activeRegionMultipleSubstitutionBaseQualCorrection = (int)Math.round(10 * Math.log10(3));
 
     /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.

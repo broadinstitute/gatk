@@ -721,7 +721,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), // "weak_evidence, strict_strand, strand_bias|SITE",
                                 Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|SITE",
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac|SITE"
-                        )}
+                        )},
+                {NA12878_MITO_GVCF, .0009, Arrays.asList("MT:15326"), Arrays.asList(Collections.emptySet()), Arrays.asList(Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS))}
         };
     }
 

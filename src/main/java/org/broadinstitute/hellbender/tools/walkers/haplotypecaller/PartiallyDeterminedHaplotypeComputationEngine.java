@@ -1,17 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Range;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.SmallBitSet;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -25,8 +24,10 @@ import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Class that manages the complicated steps involved in generating artificial haplotypes for the PDHMM:
@@ -52,7 +53,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // Decide arbitrarily so as not to accidentally throw away overlapping variants
             .thenComparingInt(e -> e.refAllele().length())
             .thenComparingInt(e -> e.altAllele().length())
-            .thenComparing(e -> e.altAllele());
+            .thenComparing(Event::altAllele);
 
 
     /**
@@ -93,180 +94,102 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Event> eventsInOrder = makeFinalListOfEventsInOrder(sourceSet, badPileupEvents, goodPileupEvents, referenceHaplotype, pileupArgs, debug);
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
-
-        Map<Double, List<Event>> eventsByDRAGENCoordinates = eventsInOrder.stream()
-                .collect(Collectors.groupingBy(e -> dragenStart(e), LinkedHashMap::new, Collectors.toList()));
-        SortedMap<Integer, List<Event>> variantsByStartPos = eventsInOrder.stream()
+        SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
-        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
-        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
+        List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
+        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
 
-        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedPairs);
-        Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
-
+        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations);
         // if any of our merged event groups is too large, abort.
-        if (eventGroups.stream().anyMatch(eg -> eg.size() > MAX_VAR_IN_EVENT_GROUP)) {
+        if (eventGroups == null) {
             Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
             return sourceSet;
         }
-        eventGroups.forEach(eg -> eg.populateBitset(disallowedPairs));
+        Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
-        Set<Haplotype> outputHaplotypes = new LinkedHashSet<>();
-        if (pileupArgs.determinePDHaps) {
-            // only add the reference haplotype if we are producing regular haplotype objects (not PD haplotypes for the haplotype alleles)
-            outputHaplotypes.add(referenceHaplotype);
-        }
-
-        /**
-         * Overall Loop:
-         * Iterate over every cluster of variants with the same start position.
+        /*
+          Outer loop: iterate over all loci with events, setting each in turn as the determined locus with all other loci being undetermined
+          Inner loop: iterate over all alleles at the determined locus, including the reference allele unless we are making determined haplotypes, to set as
+                    the determined allele.  For each choice of determined allele generate all possible partially determined haplotypes
          */
-        for (final int thisEventGroupStart : variantsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
-            final List<Event> allEventsHere = variantsByStartPos.get(thisEventGroupStart);
-            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + thisEventGroupStart);
+        final Set<Haplotype> outputHaplotypes = pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
+        for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
+            final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
+            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
 
-            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(thisEventGroupStart)) {
+            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
                 Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
                 continue;
             }
 
-            /**
-             * Determined Event Loop:
-             * We iterate over every ref position and select single alleles (including ref) from that reference position (in R space) to be "determined"
-             *
-             * NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
-             */
-            for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                final boolean isRef = determinedAlleleIndex == -1;
-                final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
-                Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(thisEventGroupStart-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
-                // This corresponds to the DRAGEN code for
-                // 0 0
-                // 0 1
-                // 1 0
+            for (int determinedAlleleIndex = (pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
+                final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
+                final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
+                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
+                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
 
+                final List<Set<Event>> branches = computeBranches(eventGroups, determinedEvents, allEventsHere);
 
-                /*
-                 * Here we handle any of the necessary work to deal with the event groups and maybe forming compound branches out of the groups
-                 */
-
-                // Loop over eventGroups, have each of them return a list of VariantContexts
-                List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
-                branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
-
-                /* Note for future posterity:
-                 * An assembly region could potentially have any number of (within some limitations) of event groups. When we are constructing
-                 * haplotypes out of the assembled variants we want to take the dot product of the branches for each set of event groups that
-                 * we find. I.E. if an event group with mutex variants (B,C) requires two branches for Variant A and Variant A also leads to two branches in
-                 * another event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
-                 * This is why we iterate over branchExcludeAlleles internally here.
-                 */
-                for(EventGroup group : eventGroups ) {
-                    if (group.causesBranching()) {
-                        List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(allEventsHere, determinedAlleleIndex, true);
-                        // Combinatorially expand the branches as necessary
-                        List<Set<Event>> newBranchesToAdd = new ArrayList<>();
-                        for (Set<Event> excludedVars : branchExcludeAlleles) {
-                            //For every exclude group, fork it by each subset we have:
-                            for (int i = 1; i < groupVCs.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
-                                Set<Event> newSet = new HashSet<>(excludedVars);
-                                groupVCs.get(i).stream().filter(t -> !t.b).forEach(t -> newSet.add(t.a));
-                                newBranchesToAdd.add(newSet);
-                            }
-                            // Be careful since this event group might have returned nothing
-                            if (!groupVCs.isEmpty()) {
-                                groupVCs.get(0).stream().filter(t -> !t.b).forEach(t -> excludedVars.add(t.a));
-                            }
-                        }
-                        branchExcludeAlleles.addAll(newBranchesToAdd);
-
-                        if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                            Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedEventToTest.getStart() + " aborting and falling back to Assembly Variants!");
-                            return sourceSet;
-                        }
-                    }
+                if (branches == null) {
+                    Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
+                    return sourceSet;
                 }
 
-                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branchExcludeAlleles);
+                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, determinedEvents, branches);
 
-
-                /**
-                 * Now handle each branch independently of the others. (the logic is the same in every case except we must ensure that none of the excluded alleles get included when constructing haps.
-                 */
-                for (Set<Event> excludeEvents : branchExcludeAlleles) {
-
-                    List<Haplotype> branchHaps = new ArrayList<>();
-                    List<Event> newBranch = new ArrayList<>();
-
-                    // Handle the simple case of making PD haplotypes
-                    if (!pileupArgs.determinePDHaps) {
-                        for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
-                            if (otherEventGroupStart == thisEventGroupStart) {
-                                newBranch.add(determinedEventToTest);
-                            } else {
-                                // We know here that nothing illegally overlaps because there are no groups.
-                                // Also exclude any events that overlap the determined allele since we cant construct them (also this stops compound alleles from being formed)
-                                // NOTE: it is important that we allow reference alleles to overlap undetermined variants as it leads to mismatches against DRAGEN otherwise.
-                                variantsByStartPos.get(otherEventGroupStart).stream().filter(vc -> !excludeEvents.contains(vc)).forEach(newBranch::add);
-                            }
-                        }
-                        newBranch.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, newBranch);
-                        newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
-                        branchHaps.add(newPDHaplotypeFromEvents);
-
+                // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
+                for (Set<Event> branch : branches) {
+                    if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
+                        final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
+                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
+                        branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
+                        outputHaplotypes.add(newPDHaplotype);
                     } else {
                         // TODO currently this approach doesn't properly handle a bunch of duplicate events...
-                        // If we are producing determined bases, then we want to enforce that every new event at least has THIS event as a variant.
-                        List<List<Event>> growingEventGroups = new ArrayList<>();
-                        growingEventGroups.add(new ArrayList<>());
-                        for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
-                            // Iterate through the growing combinatorial expansion of haps, split it into either having or not having the variant.
-                            if (growingEventGroups.size() > MAX_BRANCH_PD_HAPS) {
-                                Utils.printIf(debug, () -> "Too many branch haplotypes ["+growingEventGroups.size()+"] generated from site, falling back on assembly variants!");
-                                return sourceSet;
-                            } else if (otherEventGroupStart == thisEventGroupStart) {
-                                growingEventGroups.forEach(group -> group.add(determinedEventToTest));
-                            } else if (thisEventGroupStart < otherEventGroupStart) {
-                                variantsByStartPos.get(otherEventGroupStart).stream()
-                                        .filter(event -> !excludeEvents.contains(event))
-                                        .flatMap(event -> growingEventGroups.stream().map(group -> growEventGroup(group, event)))
-                                        .forEach(growingEventGroups::add);
+                        // Start with a single "seed" haplotype containing the determined event(s). At each downstream locus,
+                        // every haplotype can grow by every event, or remain unchanged.  For example, if we have haplotypes
+                        // H1 and H2 so far and reach a locus with events A and B our list grows to H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
+                        List<List<Event>> fullyDeterminedHaplotypes = new ArrayList<>();
+                        fullyDeterminedHaplotypes.add(new ArrayList<>(determinedEvents)); // the seed haplotype
+
+                        for (final int locus : eventsByStartPos.keySet()) {
+                            if (determinedLocus < locus) {
+                                final List<List<Event>> children = eventsByStartPos.get(locus).stream().filter(branch::contains)
+                                        .flatMap(event -> fullyDeterminedHaplotypes.stream().map(group -> growEventList(group, event))).toList();
+                                children.forEach(child -> child.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR));
+                                fullyDeterminedHaplotypes.addAll(children);
+
+                                if (fullyDeterminedHaplotypes.size() > MAX_BRANCH_PD_HAPS) {
+                                    Utils.printIf(debug, () -> "Too many branch haplotypes [" + fullyDeterminedHaplotypes.size() + "] generated from site, falling back on assembly variants!");
+                                    return sourceSet;
+                                }
                             }
                         }
-
-                        for (List<Event> subset : growingEventGroups) {
-                            subset.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                            Utils.printIf(debug, () -> "Constructing Hap From Events:"+ formatEventsLikeDragenLogs(subset,  referenceHaplotype.getStart()));
-                            branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
-                        }
+                        fullyDeterminedHaplotypes.forEach(events -> Utils.printIf(debug, () -> "Constructing Haplotype From Events:" + formatEventsLikeDragenLogs(events, referenceHaplotype.getStart())));
+                        final List<Haplotype> branchHaps = fullyDeterminedHaplotypes.stream()
+                                .map(events -> constructHaplotypeFromEvents(referenceHaplotype, events, true)).toList();
+                        branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, branchHaps);
+                        outputHaplotypes.addAll(branchHaps);
                     }
-                    branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, branchHaps);
 
-                    outputHaplotypes.addAll(branchHaps);
                     if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-                        Utils.printIf(debug,() -> "Too many Haps ["+outputHaplotypes.size()+"] generated at this site! Aborting!");
+                        Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
                         return sourceSet;
                     }
                 }
             }
         }
 
-        if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-            Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
-            return sourceSet;
-        }
         sourceSet.storeAssemblyHaplotypes();
 
-        // TODO this is an entirely unnecessary step that can be done away with but i leave in because it makes debugging against previous versions much easier.
-        final Set<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).collect(Collectors.toCollection(LinkedHashSet::new));
+        // TODO: Sorting haplotypes is unnecessary but makes debugging against previous versions much easier.
+        final List<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).toList();
         sourceSet.replaceAllHaplotypes(result);
         Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-        if (!pileupArgs.determinePDHaps) {
-            // Setting a boolean on the source-set to indicate to downstream code that we have PD haplotypes
-            sourceSet.setPartiallyDeterminedMode();
-        }
+
+        // Set PDHMM flag to enable later PDHMM genotyping.  We only set it now because earlier code might fail and revert to non-PDHMM mode.
+        sourceSet.setPartiallyDeterminedMode(!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode);
         Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
         return sourceSet;
     }
@@ -386,13 +309,34 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Partition events into clusters that must be considered together, either because they overlap or because they belong to the
-     * same mutually exclusive pair or trio.  To find this clustering we calculate the connected components of an undirected graph
-     * with an edge connecting events that overlap or are mutually excluded.
+     * Partition events into the largest possible clusters such that events in distinct clusters are mutually compatible
+     * i.e. can exist on the same haplotype.
+     *
+     * The resulting event groups are a disjoint cover of the input events; that is, every input event belongs to exactly one
+     * output EventGroup.
+     *
+     * In the common case that all events are compatible -- they are non-overlapping SNPs, for example -- the result is a bunch of singleton event groups
+     *
+     * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
+     * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
+     * haplotype against the reference haplotype via Smith-Waterman.  If the resulting reduced representation contains other events
+     * that have already been found the two or three events are mutually forbidden.
+     *
+     * To find the desired partition we calculate the connected components of an undirected graph whose edges correspond to
+     * either type of incompatibility.  That is, overlapping events and Smith-Waterman-forbidden pairs get an edge; Smith-Waterman-forbidden
+     * trios get three edges, one for every two events in the trio.
+     *
+     * Note: Although the resulting partition is the same as DRAGEN's, the graph-based algorithm below is a very different
+     * implementation.
+     *
+     * @param eventsInOrder all events in a calling region
+     * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
+     *                                to the Smith-Waterman heuristic in which injecting them into the reference haplotype and
+     *                                simplifying via Smith Waterman yields other events
      */
-    private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> disallowedPairsAndTrios) {
-        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-        eventsInOrder.forEach(graph::addVertex);
+    @VisibleForTesting
+    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
+        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
 
         // edges due to overlapping position
         for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
@@ -400,22 +344,55 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
                 final Event event2 = eventsInOrder.get(e2);
                 if (eventsOverlapForPDHapsCode(event1, event2)) {
-                    graph.addEdge(event1, event2);
+                    allMutexes.add(List.of(event1, event2));
                 }
             }
         }
 
-        // edges due to mutual exclusion
-        for (final List<Event> excludedGroup : disallowedPairsAndTrios) {
-            graph.addEdge(excludedGroup.get(0), excludedGroup.get(1));
-            if (excludedGroup.size() == 3) {
-                graph.addEdge(excludedGroup.get(1), excludedGroup.get(2));
+        // for each mutex, add edges 0-1, 1-2. . . to put all mutex events in one connected component
+        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+        eventsInOrder.forEach(graph::addVertex);
+        allMutexes.forEach(mutex -> new IndexRange(0, mutex.size() - 1).forEach(n -> graph.addEdge(mutex.get(n), mutex.get(n+1))));
+
+        final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
+        return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
+                components.stream().map(component -> new EventGroup(component, allMutexes)).toList();
+    }
+
+    /**
+     * Compute the branches (sets of mutually allowed Events) that define partially determined haplotypes.  For a given set of determined events
+     * each event group has one or more 1) maximal subsets that 2) contain all the determined events (if they belong to the event group)
+     * and 3) contain no mutually-exclusive pairs or trios of events.
+     *
+     * When constructing PD haplotypes we take all possible unions of these subsets over all event groups.
+     *
+     * Returns null if the combinatorial explosion of branches becomes too large.
+     */
+    @VisibleForTesting
+    static List<Set<Event>> computeBranches(List<EventGroup> eventGroups, Set<Event> determinedEvents, final List<Event> allEventsAtDeterminedLocus) {
+        List<Set<Event>> branches = new ArrayList<>();
+        branches.add(new HashSet<>());   // start with a single empty branch
+
+        for (EventGroup group : eventGroups) {
+            final List<Set<Event>> setsToAdd = group.eventSetsForPDHaplotypes(determinedEvents, allEventsAtDeterminedLocus);
+
+            // Take every possible union of existing branches and this event group's sets to add. As an optimization
+            // we add the 0th set's elements in-place, and append unions with the 1st, 2nd etc sets to add.
+            final List<HashSet<Event>> extraBranches = setsToAdd.size() < 2 ? List.of() : branches.stream()
+                    .flatMap(branch -> setsToAdd.stream().skip(1).map(setToAdd -> Sets.newHashSet(Sets.union(branch, setToAdd))))
+                    .toList();
+
+            // add the 0th exclusion set in-place
+            if (!setsToAdd.isEmpty()) {
+                branches.forEach(branch -> branch.addAll(setsToAdd.get(0)));
+            }
+            branches.addAll(extraBranches);
+
+            if (branches.size() > MAX_BRANCH_PD_HAPS) {
+                return null;
             }
         }
-
-        return new ConnectivityInspector<>(graph).connectedSets().stream()
-                .map(set -> set.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList()).map(EventGroup::new)
-                .toList();
+        return branches;
     }
 
     /**
@@ -455,7 +432,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      */
     @VisibleForTesting
     private static boolean constructArtificialHaplotypeAndTestEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, Collection<Event> events, List<Event> eventsToTest, boolean debug) {
-        final Haplotype realignHap = constructHaplotypeFromVariants(referenceHaplotype, eventsToTest, false);
+        final Haplotype realignHap = constructHaplotypeFromEvents(referenceHaplotype, eventsToTest, false);
         //Special case to capture events that equal the reference (and thus have empty event maps).
         if (Arrays.equals(realignHap.getBases(), referenceHaplotype.getBases())) {
             Utils.printIf(debug,()->"Events add up to the reference! disallowing pair");
@@ -479,81 +456,71 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         return wasEquivalentEvent;
     }
-
     /**
      * NOTE: this accepts multiple alleles stacked up at the same base (assuming the order is SNP -> INDEL)
      * NOTE: However this class does NOT accept multiple SNPS overlapping or SNPs overlapping deletions
      */
     @VisibleForTesting
-    public static Haplotype constructHaplotypeFromVariants(final Haplotype refHap, final List<Event> events, final boolean setEventMap) {
-        //ASSERT that the base is ref and cool
-        if (!refHap.isReference() || refHap.getCigar().numCigarElements() > 1) {
-            throw new GATKException("This is not a valid base haplotype for construction");
-        }
-        //ASSERT that everything is fully overlapping the reference.
-        events.stream().forEach(v -> {if (!refHap.getGenomeLocation().contains(v)) throw new GATKException("Provided Variant Context"+v+"doesn't overlap haplotype "+refHap);});
+    public static Haplotype constructHaplotypeFromEvents(final Haplotype refHap, final List<Event> events, final boolean setEventMap) {
+        Utils.validate(refHap.isReference() && refHap.getCigar().numCigarElements() == 1, "This is not a valid base haplotype for construction");
 
-        final int genomicStartPosition = refHap.getStart();
-        int refOffsetOfNextBaseToAdd = genomicStartPosition;
+        //ASSERT that everything is fully overlapping the reference.
+        events.stream().forEach(v -> Utils.validate(refHap.contains(v), () -> "Provided Variant Context"+v+"doesn't overlap haplotype "+refHap));
+
+        final int refStart = refHap.getStart();
+        int lastPositionAdded = refStart;   // genomic coordinate
 
         byte[] refbases = refHap.getBases();
         CigarBuilder runningCigar = new CigarBuilder();
-        byte[] newRefBases = {};
+        final int resultHaplotypeLength = refHap.length() + events.stream().mapToInt(e -> e.altAllele().length() - e.refAllele().length()).sum();
+        final ByteBuffer newHapBases = ByteBuffer.allocate(resultHaplotypeLength);
+
+        Utils.validate(IntStream.range(0, events.size()-1).allMatch(n ->
+                events.get(n).getEnd() < actualStartExcludingInitialIndelBase(events.get(n+1))), () -> "PD event list: " + events + " is out of order.");
 
         //ASSUME sorted for now
-        // use the reverse list to save myself figuring out cigars for right now
         for (Event event : events) {
             Allele refAllele = event.refAllele();
             Allele altAllele = event.altAllele();
 
-            int intermediateRefStartPosition = refOffsetOfNextBaseToAdd - genomicStartPosition;
-            int intermediateRefEndPosition = Math.toIntExact(event.getStart() - genomicStartPosition);
+            final int actualStart = actualStartExcludingInitialIndelBase(event);   // the +1 for indels accounts for the initial alt=ref dummy base
 
-            if ((event.isIndel() && intermediateRefEndPosition - intermediateRefStartPosition < -1) || (!event.isIndel() && intermediateRefEndPosition - intermediateRefStartPosition < 0)) {//todo clean this up
-                throw new GATKException("Variant "+event+" is out of order in the PD event list: "+events);
-            }
-            if (intermediateRefEndPosition - intermediateRefStartPosition > 0) { // Append the cigar element for the anchor base if necessary.
-                runningCigar.add(new CigarElement(intermediateRefEndPosition - intermediateRefStartPosition, CigarOperator.M));
-            }
-            // Include the ref base for indel if the base immediately proceeding this event is not already tracked
-            boolean includeRefBaseForIndel = event.isIndel() && (intermediateRefStartPosition <= intermediateRefEndPosition);
+            int basesBeforeNextEvent = actualStart - lastPositionAdded;
+            runningCigar.add(new CigarElement(basesBeforeNextEvent, CigarOperator.M));
 
-            if (refAllele.length() == altAllele.length()) {
-                runningCigar.add(new CigarElement(refAllele.length(), CigarOperator.X));
-            } else {
-                // If the last base was filled by another event, don't attempt to fill in the indel ref base.
-                if (includeRefBaseForIndel) {
-                    runningCigar.add(new CigarElement(1, CigarOperator.M)); //When we add an indel we end up inserting a matching base
-                }
-                runningCigar.add(new CigarElement(Math.abs(altAllele.length() - refAllele.length()),
-                        refAllele.length() > altAllele.length() ? CigarOperator.D : CigarOperator.I));
-            }
+            final int altRefLengthDiff = altAllele.length() - refAllele.length();
+            final CigarElement eventElement = altRefLengthDiff == 0 ? new CigarElement(refAllele.length(), CigarOperator.X) :
+                    new CigarElement(Math.abs(altRefLengthDiff), altRefLengthDiff < 0 ? CigarOperator.D : CigarOperator.I);
+            runningCigar.add(eventElement);
 
-            if (intermediateRefEndPosition - intermediateRefStartPosition > 0) {
-                newRefBases = ArrayUtils.addAll(newRefBases, ArrayUtils.subarray(refbases, intermediateRefStartPosition, event.getStart() - genomicStartPosition)); // bases before the variant
-            }
-            // Handle the ref base for indels that exclude their ref bases
-            if (refAllele.length() != altAllele.length() && !includeRefBaseForIndel) {
-                newRefBases = ArrayUtils.addAll(newRefBases, Arrays.copyOfRange(altAllele.getBases(),1, altAllele.length()));
-            // else add the snp
-            } else {
-                newRefBases = ArrayUtils.addAll(newRefBases, altAllele.getBases()); // refbases added
-            }
-            refOffsetOfNextBaseToAdd = event.getEnd() + 1; //TODO this is probably not set for future reference
+            // bases before the event, including the dummy initial indel base, followed by event bases, excluding the dummy indel base
+            newHapBases.put(ArrayUtils.subarray(refbases, lastPositionAdded - refStart, actualStart - refStart));
+            newHapBases.put(altRefLengthDiff == 0 ? altAllele.getBases() : basesAfterFirst(altAllele));
+
+            lastPositionAdded = event.getEnd() + 1; //TODO this is probably not set for future reference
         }
 
-        // Finish off the haplotype with the final bases
-        int refStartIndex = refOffsetOfNextBaseToAdd - genomicStartPosition;
-        newRefBases = ArrayUtils.addAll(newRefBases, ArrayUtils.subarray(refbases, refStartIndex, refbases.length));
+        // bases after the last event
+        int refStartIndex = lastPositionAdded - refStart;
+        newHapBases.put(ArrayUtils.subarray(refbases, refStartIndex, refbases.length));
         runningCigar.add(new CigarElement(refbases.length - refStartIndex, CigarOperator.M));
 
-        final Haplotype outHaplotype = new Haplotype(newRefBases, false, refHap.getGenomeLocation(), runningCigar.make());
+        final Haplotype result = new Haplotype(newHapBases.array(), false, refHap, runningCigar.make());
         if (setEventMap) {
-            EventMap.buildEventMapsForHaplotypes(Collections.singletonList(outHaplotype), refHap.getBases(), refHap.getGenomeLocation(), false,0);
-            // NOTE: we set this AFTER generating the event maps because hte event map code above is being generated from the ref hap so this offset will cause out of bounds errors
-            outHaplotype.setAlignmentStartHapwrtRef(refHap.getAlignmentStartHapwrtRef()); //TODO better logic here
+            EventMap.buildEventMapsForHaplotypes(List.of(result), refHap.getBases(), refHap, false,0);
+            // NOTE: we set this AFTER generating the event maps because the event map code above is being generated from the ref hap so this offset will cause out of bounds errors
+            result.setAlignmentStartHapwrtRef(refHap.getAlignmentStartHapwrtRef());
         }
-        return outHaplotype;
+        return result;
+    }
+
+    private static int actualStartExcludingInitialIndelBase(final Event event) {
+        return event.getStart() + (event.isIndel() ? 1 : 0);
+    }
+
+    // skip the dummy intial base of an indel
+    private static byte[] basesAfterFirst(final Allele altAllele) {
+        return Arrays.copyOfRange(altAllele.getBases(), 1, altAllele.length());
     }
 
     /**
@@ -562,334 +529,254 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * Generally we are constructing a new haplotype with all the reference bases for SNP events and with the longest possible allele for INDEL events.
      * For deletions, we extend the haplotype by the ref length
      *
-     * NOTE: we assume each provided VC is in start position order, and only ever contains one allele (and that if there are overlapping SNPs and indels that the SNPs come fist)
+     * NOTE: we assume each provided VC is in start position order, and that if there are overlapping SNPs and indels that the SNPs come first
      */
     @VisibleForTesting
-    //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be present...
-    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype base, final Event eventWithVariant, final boolean useRef, final List<Event> constituentEvents) {
-        //ASSERT that the base is ref and cool
-        if (!base.isReference() || base.getCigar().numCigarElements() > 1) {
-            throw new RuntimeException("This is not a valid base haplotype for construction");
-        }
-        //TODO add a more stringent check that the format of constituentEvents works
-        int genomicStartPosition = base.getStart();
-        int refOffsetOfNextBaseToAdd = genomicStartPosition;
+    //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be prsent...
+    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final int determinedLocus,
+                                                                       final List<Event> constituentEvents, final List<Event> allEventsAtDeterminedLocus) {
+        Utils.validate(refHap.isReference() && refHap.getCigar().numCigarElements() == 1, "This is not a valid base haplotype for construction");
+        final boolean refIsDetermined = determinedEvents.isEmpty();
 
-        byte[] refBasesToAddTo = base.getBases();
+        //TODO add a more stringent check that the format of constituentEvents works
+        int refStart = refHap.getStart();
+        int lastPositionAdded = refStart;
+
+        byte[] refBasesToAddTo = refHap.getBases();
         CigarBuilder runningCigar = new CigarBuilder(false); // NOTE: in some incredibly rare edge cases involving the legacy assembly region trimmer a deletion can hang past the edge of an active window.
-        byte[] newHaplotypeBasees = {};
-        byte[] pdBytes = {};
+        final int upperBoundOnResultLength = refHap.length() + constituentEvents.stream().mapToInt(e -> Math.max(e.altAllele().length(), e.refAllele().length()) - 1).sum();
+        final ByteBuffer newHapBases = ByteBuffer.allocate(upperBoundOnResultLength);
+        final ByteBuffer pdBytes = ByteBuffer.allocate(upperBoundOnResultLength);
 
         //ASSUME sorted for now
         // use the reverse list to save myself figuring out cigars for right now
+        boolean lastEventWasSnp = false;
         for (Event event : constituentEvents) {
-            int intermediateRefStartPosition = refOffsetOfNextBaseToAdd - genomicStartPosition;
-            int intermediateRefEndPosition = Math.toIntExact(event.getStart() - genomicStartPosition);
 
-            // An extra special case if we are a SNP following a SNP
-            if (event.isSNP() && intermediateRefEndPosition - intermediateRefStartPosition == -1 && ((pdBytes[pdBytes.length-1] & PartiallyDeterminedHaplotype.SNP) != 0)  ) {
-                byte[] array = PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(event.refAllele(), event.altAllele());
-                pdBytes[pdBytes.length-1] = (byte) (pdBytes[pdBytes.length-1] | array[0]); // adding any partial bases if necessary
+            final int actualStart = event.getStart() + (event.isIndel() ? 1 : 0);   // the +1 for indels accounts for the initial alt=ref dummy base
+            int basesBeforeNextEvent = actualStart - lastPositionAdded;
+
+            // Special case for two SNPs at the same position -- merge them into a single undetermined SNP via bitwise OR
+            if (basesBeforeNextEvent == -1 && event.isSNP() && lastEventWasSnp) {
+                final byte byteForThisSnp = PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(event.refAllele(), event.altAllele())[0];
+                final int bufferPositionOfLastSnp = pdBytes.position() - 1;
+                final byte byteForLastSnp = pdBytes.get(bufferPositionOfLastSnp);
+                pdBytes.put(bufferPositionOfLastSnp,(byte) (byteForLastSnp | byteForThisSnp) );
+                continue;
+            } else if (event.getStart() == determinedLocus && refIsDetermined) {
+                // Ref alleles (even if they overlap undetermined events) should be skipped
                 continue;
             }
 
-            // Ref alleles (even if they overlap undetermined events) should be skipped
-            if (event.getStart()==eventWithVariant.getStart() && useRef) {
-                continue;
-            }
+            Utils.validate(basesBeforeNextEvent >= 0, () -> "Event " + event + " is out of order in PD event list: " + constituentEvents + ".");
 
-            //Check that we are allowed to add this event (and if not we are)
-            if ((event.isIndel() && intermediateRefEndPosition - intermediateRefStartPosition < -1) || (!event.isIndel() && intermediateRefEndPosition - intermediateRefStartPosition < 0)) {//todo clean this up
-                throw new RuntimeException("Variant "+event+" is out of order in the PD event list: "+constituentEvents);
-            }
-
-            // Add the cigar for bases we skip over
-            if (intermediateRefEndPosition - intermediateRefStartPosition > 0) {
-                runningCigar.add(new CigarElement(intermediateRefEndPosition - intermediateRefStartPosition, CigarOperator.M));
-            }
-
-            // Include the ref base for indel if the base immediately proceeding this event is not already tracked
-            boolean includeRefBaseForIndel = event.isIndel() && (intermediateRefStartPosition <= intermediateRefEndPosition);
-
-            // Determine the alleles to add
             Allele refAllele = event.refAllele();
             Allele altAllele = event.altAllele();
-            boolean isInsertion = altAllele.length() > refAllele.length(); // If its an insertion we flip to "ADD" the bases to the ref.
-            boolean isEvent = false;
-            byte[] basesToAdd;
-            // If this is the blessed variant, add
-            if (event.getStart()==eventWithVariant.getStart()) {
-                isEvent = true;
-                basesToAdd = useRef? refAllele.getBases() : altAllele.getBases();
-            // Otherwise make sure we are adding the longest allele (for indels) or the ref allele for snps.
-            } else {
-                basesToAdd = refAllele.length() >= altAllele.length() ? refAllele.getBases() : altAllele.getBases();
-            }
+            final int altRefLengthDiff = altAllele.length() - refAllele.length();
 
-            // Remove anchor base if necessary
-            if (event.isIndel() && !includeRefBaseForIndel) {
-                basesToAdd = Arrays.copyOfRange(basesToAdd, 1, basesToAdd.length);
-            }
+            boolean isInsertion = altRefLengthDiff > 0; // If it's an insertion we flip to "ADD" the bases to the ref.
+            final boolean isEvent = determinedEvents.stream().anyMatch(event::equals);
+            runningCigar.add(new CigarElement(basesBeforeNextEvent, CigarOperator.M));
 
-            // Figure out the cigar to add:
+            // Figure out the cigar element to add:
             // - If we are in the ref, simply add the cigar corresponding to the allele we are using
-            // -
-            CigarElement newCigarElement;
-            // if this is the event special case
-            if (isEvent) {
-                if (event.isSNP()) {
-                    newCigarElement = new CigarElement(refAllele.length(), useRef? CigarOperator.M : CigarOperator.X);
-                } else {
-                    if (event.isIndel() && includeRefBaseForIndel) {
-                        runningCigar.add(new CigarElement( 1, CigarOperator.M));
-                    }
-                    // For Insertions: mark the Cigar as I if we aren't in ref
-                    if (isInsertion) {
-                        newCigarElement = new CigarElement(useRef ? 0 : Math.max(refAllele.length(), altAllele.length()) - 1, CigarOperator.I);
-                    // For Deletions: Always include the bases, however mark them as M or D accordingly
-                    } else {
-                        newCigarElement = new CigarElement(Math.max(refAllele.length(), altAllele.length()) - 1, useRef ? CigarOperator.M : CigarOperator.D);
-                    }
-                }
-           // If we aren't in the blessed variant, add a match and make sure the array is set accordingly
-            } else {
-                if (!event.isIndel()) {
-                    newCigarElement = new CigarElement(refAllele.length() , CigarOperator.M);
-                } else {
-                    // Maybe add the cigar for the anchor base
-                    if (includeRefBaseForIndel) {
-                        runningCigar.add(new CigarElement(1, CigarOperator.M));
-                    }
-                    // Add the cigar for the indel allele bases
-                    if (isInsertion) {
-                        // Insertions stay in the cigar since they are added relative to the reference
-                        newCigarElement = new CigarElement(Math.abs(altAllele.length() - refAllele.length()), CigarOperator.I);
-                    } else {
-                        // Deletions become matches because they still exist as bases on the reference
-                        newCigarElement = new CigarElement(Math.abs(altAllele.length() - refAllele.length()), CigarOperator.M);
-                    }
-                }
+            if (event.isSNP()) {    // SNPs are straightforward, whether or not it's the special event
+                runningCigar.add(new CigarElement(refAllele.length(), refIsDetermined || !isEvent ? CigarOperator.M : CigarOperator.X));
+            } else if (isEvent) {   // special indel
+                // The event is considered a deletion of the longer allele, regardless of which is ref
+                // we subtract 1 for the dummy initial indel base.
+                final int elementLength = isInsertion && refIsDetermined ? 0 : Math.max(refAllele.length(), altAllele.length()) - 1;
+                final CigarOperator operator = isInsertion ? CigarOperator.I : (refIsDetermined ? CigarOperator.M : CigarOperator.D);
+                runningCigar.add(new CigarElement(elementLength, operator));
+            } else {    // non-special indel. Insertions are treated as such; deletions become matches
+                runningCigar.add(new CigarElement(Math.abs(altRefLengthDiff), altRefLengthDiff > 0 ? CigarOperator.I : CigarOperator.M));
             }
-            runningCigar.add(newCigarElement);
 
-            // Add ref basses up to this if necessary
-            if (intermediateRefEndPosition - intermediateRefStartPosition > 0) {
-                newHaplotypeBasees = ArrayUtils.addAll(newHaplotypeBasees, ArrayUtils.subarray(refBasesToAddTo, intermediateRefStartPosition, event.getStart() - genomicStartPosition)); // bases before the variant
-                pdBytes = ArrayUtils.addAll(pdBytes, new byte[event.getStart() - refOffsetOfNextBaseToAdd]); // bases before the variant
-            }
-            newHaplotypeBasees = ArrayUtils.addAll(newHaplotypeBasees, basesToAdd); // refbases added
-            if (includeRefBaseForIndel) {
-                pdBytes = ArrayUtils.add(pdBytes, (byte)0);
-            }
-            pdBytes = ArrayUtils.addAll(pdBytes, isEvent?
-                    new byte[basesToAdd.length - (includeRefBaseForIndel?1:0)] :
-                    PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(isInsertion?
-                            altAllele :
-                            refAllele,
-                            isInsertion? refAllele :
-                                    altAllele)); // refbases added
-            refOffsetOfNextBaseToAdd = event.getEnd() + 1; //TODO this is probably not set for future reference
+            // bases before the event, including the dummy initial indel base, followed by event bases, excluding the dummy indel base
+            newHapBases.put(ArrayUtils.subarray(refBasesToAddTo, lastPositionAdded - refStart, actualStart - refStart)); // bases before the variant
+            pdBytes.put(new byte[actualStart - lastPositionAdded]); // bases before the variant -- all zeroes
+
+            // Now add event bases.  If this is the blessed variant, add the ref or alt as appropriate
+            // Otherwise make sure we are adding the longest allele (for indels) or the ref allele for snps.
+            final boolean alleleToUseIsRef = (isEvent && refIsDetermined) || (!isEvent && altRefLengthDiff <= 0);
+            final Allele alleleToUse = alleleToUseIsRef ? refAllele : altAllele;
+            final Allele otherAllele = alleleToUseIsRef ? altAllele : refAllele;
+            final byte[] basesToAdd = event.isIndel() ? basesAfterFirst(alleleToUse) : alleleToUse.getBases();
+            newHapBases.put(basesToAdd); // refbases added
+            pdBytes.put(isEvent ? new byte[basesToAdd.length] :
+                    PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(alleleToUse, otherAllele)); // refbases added
+
+            lastPositionAdded = event.getEnd() + 1; //TODO this is probably not set for future reference
+            lastEventWasSnp = event.isSNP();
         }
 
         // Finish off the haplotype with the final bases
-        int refStartIndex = refOffsetOfNextBaseToAdd - genomicStartPosition;
-        newHaplotypeBasees = ArrayUtils.addAll(newHaplotypeBasees, ArrayUtils.subarray(refBasesToAddTo, refStartIndex, refBasesToAddTo.length));
-        pdBytes = ArrayUtils.addAll(pdBytes, new byte[refBasesToAddTo.length - refStartIndex]);
+        int refStartIndex = lastPositionAdded - refStart;
+        newHapBases.put(ArrayUtils.subarray(refBasesToAddTo, refStartIndex, refBasesToAddTo.length));
+        pdBytes.put(new byte[refBasesToAddTo.length - refStartIndex]);
         runningCigar.add(new CigarElement(refBasesToAddTo.length - refStartIndex, CigarOperator.M));
 
         return new PartiallyDeterminedHaplotype(
-                new Haplotype(newHaplotypeBasees, false, base.getGenomeLocation(), runningCigar.make()),
-                useRef,
-                pdBytes,
+                new Haplotype(ArrayUtils.subarray(newHapBases.array(), 0, newHapBases.position()), false, refHap.getGenomeLocation(), runningCigar.make()),
+                ArrayUtils.subarray(pdBytes.array(), 0, pdBytes.position()),
                 constituentEvents,
-                eventWithVariant,
+                determinedEvents,
                 runningCigar.make(),
-                eventWithVariant.getStart(),
-                base.getAlignmentStartHapwrtRef());
+                determinedLocus,
+                allEventsAtDeterminedLocus,
+                refHap.getAlignmentStartHapwrtRef());
+
     }
 
-    // A helper class for managing mutually exclusive event clusters and the logic arround forming valid events vs eachother.
-    private static class EventGroup {
-        List<Event> eventsInBitmapOrder;
-        HashSet<Event> eventSet;
-        //From Illumina (there is a LOT of math that will eventually go into these)/
-        BitSet allowedEvents = null;
+    // A helper class for managing mutually exclusive event clusters and the logic around forming valid events vs each other.
+    @VisibleForTesting
+    static class EventGroup {
+        private final ImmutableList<Event> eventsInOrder;
+        private final ImmutableMap<Event, Integer> eventIndices;
+
+        // There are BitSets and SmallBitSets going around.  The SmallBitSets represent sets of events -- mutexes and other subsets
+        // of the event group.  This BitSet is a set of sets of events!  Each element/bit represents a subset of events.  If the bit is true
+        // then the corresponding subset of events is allowed i.e. doesn't contain a mutex.  For example, if the 11th bit is true we know
+        // that the subset containing events 0, 1, and 3 (11 = 2^3 + 2^1 + 2^0) is allowed because neither {0,1}, {0,3}, {1,3}, or {0,1,3}
+        // are mutually excluded.
+        private final BitSet allowedSubsets;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
-        List<List<Tuple<Event,Boolean>>> cachedEventLists = null;
-
-        public EventGroup(final Collection<Event> events) {
-            eventsInBitmapOrder = new ArrayList<>();
-            eventSet = new HashSet<>();
-
-            for (final Event event : events) {
-                eventsInBitmapOrder.add(event);
-                eventSet.add(event);
-            }
-        }
+        List<Set<Event>> cachedEventSets = null;
 
         /**
-         * This is the primary method for handling mutually exclusive events in this subgroup. This code amd methods comes directly from DRAGEN:
-         *
-         * Create a #Variants bitset to store valid pairings:
-         *      - The index of each element corresponds to an enumerated subset of alleles in this group
-         *      - Each bit in the index corresponds to the presence or absence of a variant from the vcf list.
-         *          - For example with variants [A,B,C] the number 5 corresponds to subset [A,C]
-         *      - A false in the bitset corresponds to a disallowed pair.
-         *      - NOTE: we can use 32bit ints for these bitshift operations by virtue of the fact that we limit ourselves to at most 22 variants per group.
-         * Iterate through pairs of Variants that overlap and mark off any pairings including this.
-         * Iterate through the mutex variants and ensure pairs containing all mutex variant groups are marked as true
-         *
-         * @param disallowedEvents Pairs of events disallowed
+         * @param events all events in this event group
+         * @param mutexPairsAndTrios all mutexes of two or three events, defined by overlap and by the Smith-Waterman heuristic,
+         *                           that determined the event groups in this calling region
          */
-        public void populateBitset(List<List<Event>> disallowedEvents) {
-            Utils.validate(size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + size() + ") for populating bitset.");
-            if (eventsInBitmapOrder.size() < 2) {
-                return;
-            }
+        public EventGroup(final Collection<Event> events, List<List<Event>> mutexPairsAndTrios) {
+            Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
+            eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
+            eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
+            allowedSubsets = new BitSet(1 << eventsInOrder.size());
 
-            allowedEvents = new BitSet(eventsInBitmapOrder.size());
-            allowedEvents.flip(1, 1 << eventsInBitmapOrder.size());
-            // initialize all events as being allowed and then disallow them in turn .
-
-            // Ensure the list is in positional order before commencing.
-            eventsInBitmapOrder.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-            List<Integer> bitmasks = new ArrayList<>();
-
-            // Mark as disallowed all events that overlap each other, excluding pairs of SNPs
-            for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
-                final Event first = eventsInBitmapOrder.get(i);
-                for (int j = i+1; j < eventsInBitmapOrder.size(); j++) {
-                    final Event second = eventsInBitmapOrder.get(j);
-                    if (!(first.isSNP() && second.isSNP()) && eventsOverlapForPDHapsCode(first, second)) {
-                        bitmasks.add(1 << i | 1 << j);
-                    }
-                }
+            final List<List<Event>> overlappingMutexes = mutexPairsAndTrios.stream()
+                    // overlapping SNPs are mutexes for forming event groups, but they are NOT forbidden combinations for PD haplotypes!
+                    .filter(mutex -> !(mutex.size() == 2 && mutex.get(0).getStart() == mutex.get(1).getStart() && mutex.get(0).isSNP() && mutex.get(1).isSNP()))
+                    .filter(mutex -> mutex.stream().anyMatch(eventIndices::containsKey)).toList();
+            for (final List<Event> mutex : overlappingMutexes) {
+                Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
             }
-            // mark as disallowed any sets of variants from the bitmask.
-            for (List<Event> disallowed : disallowedEvents) {
-                //
-                if (disallowed.stream().anyMatch(v -> eventSet.contains(v))){
-                    int bitmask = 0;
-                    for (Event v : disallowed) {
-                        int indexOfV = eventsInBitmapOrder.indexOf(v);
-                        if (indexOfV < 0) {
-                            throw new RuntimeException("Something went wrong in event group merging, variant "+v+" is missing from the event group despite being in a mutex pair: "+disallowed+"\n"+this);
-                        }
-                        bitmask += 1 << eventsInBitmapOrder.indexOf(v);
-                    }
-                    bitmasks.add(bitmask);
-                }
-            }
-
-            // Now iterate through the list and disallow all events with every bitmask
-            //TODO This method is potentially very inefficient! We don't technically have to iterate over every i,
-            //TODO we know there is an optimization involving minimizing the number of checks necessary here by iterating
-            //TODO using the bitmask values themselves for the loop
-            if (!bitmasks.isEmpty()) {
-                events:
-                for (int i = 1; i < allowedEvents.length(); i++) {
-                    for (final int mask : bitmasks) {
-                        if ((i & mask) == mask) { // are the bits form the mask true?
-                            allowedEvents.set(i, false);
-                            continue events;
-                            // Once i is set we don't need to keep checking bitmasks
-                        }
-                    }
-                }
-            }
+            computeAllowedSubsets(overlappingMutexes);
         }
 
         /**
-         * This method handles the logic involved in getting all of the allowed subsets of alleles for this event group.
+         * Compute the BitSet of allowed subsets of events i.e. subsets of events that do not contain a mutex group.
          *
-         * @param disallowSubsets
+         * NOTE: we can use SmallBitSets because we limit ourselves to at most 22 variants per group.
+         *
+         * @param mutexPairsAndTrios The groups of mutually forbidden events that generated all the event groups in this calling region.
+         */
+
+
+         private void computeAllowedSubsets(List<List<Event>> mutexPairsAndTrios) {
+             if (eventsInOrder.size() < 2) {
+                 return;
+             }
+
+             // initialize all events as being allowed and then disallow them in turn .
+             allowedSubsets.set(1, 1 << eventsInOrder.size());
+
+             // make SmallBitSet of the event indices of each mutex
+             final List<SmallBitSet> mutexes = mutexPairsAndTrios.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).toList();
+
+             // Now forbid all subsets that contain forbidden combinations
+             //TODO This method is potentially very inefficient! We don't technically have to iterate over every i,
+             //TODO we know there is an optimization involving minimizing the number of checks necessary here by iterating
+             //TODO using the bitmask values themselves for the loop
+             if (!mutexes.isEmpty()) {
+                 for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
+                     if (mutexes.stream().anyMatch(subset::contains)) {
+                         allowedSubsets.set(subset.index(), false);
+                     }
+                 }
+             }
+         }
+
+        /**
+         * For a given set of determined events, find all subsets of the event group such that each subset
+         *
+         * 1) contains all determined events that overlap this event group
+         * 2) contains no two or three mutually exclusive elements i.e. is an allowed subset as computed in this object's constructor
+         * 3) is not a subset of any larger subset that satisfies 1) and 2)
+         *
+         * Note that the subsets need not be disjoint and need not cover all events in this EventGroup.
+         *
+         * Because these subsets contain no mutexes, one can sensibly make partially-determined haplotypes out of them,
+         * with each subset entailing a unique set of undetermined alleles.  Property 3) above ensures that we make as
+         * few partially-determined haplotypes as possible.
+         *
          * @return
          */
-        public List<List<Tuple<Event,Boolean>>> getVariantGroupsForEvent(final List<Event> allEventsHere, final int determinedAlleleIndex, final boolean disallowSubsets) {
-            // If we are dealing with an external to this list event
-            int eventMask = 0;
-            int maskValues = 0;
-            for(int i = 0; i < allEventsHere.size(); i++) {
-                if (eventSet.contains(allEventsHere.get(i))) {
-                    int index = eventsInBitmapOrder.indexOf(allEventsHere.get(i));
-                    eventMask = eventMask | (1 << index);
-                    maskValues = maskValues | ((i == determinedAlleleIndex ? 1 : 0) << index);
-                }
-            }
-            // Special case (if we are determining bases outside of this mutex cluster we can reuse the work from previous iterations)
-            if (eventMask == 0 && cachedEventLists != null) {
-                return cachedEventLists;
+        public List<Set<Event>> eventSetsForPDHaplotypes(final Set<Event> determinedEvents, final List<Event> locusEvents) {
+            final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
+            final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
+
+            if (eventsInOrder.size() == 1) {
+                // if this is the determined locus and ref is determined, return an empty set; otherwise return a singleton set of the lone event
+                return (!locusOverlapSet.isEmpty() && determinedEvents.isEmpty()) ? Collections.singletonList(Set.of()) :
+                        Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
             }
 
-            List<Integer> ints = new ArrayList<>();
-            // Iterate from the BACK of the list (i.e. ~supersets -> subsets)
+            // the repeated case is when the determined locus is external to this event group
+            final boolean cachedCase = locusOverlapSet.isEmpty() && determinedOverlapSet.isEmpty();
+
+            // We use a cache for the recurring case where the determined events do not belong to this event group
+            if (cachedCase && cachedEventSets != null) {
+                return cachedEventSets;
+            }
+
+            final List<SmallBitSet> maximalAllowedContainingDetermined = new ArrayList<>();
+
+            // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
-            outerLoop:
-            for (int i = allowedEvents.length(); i > 0; i--) {
-                // If the event is allowed AND if we are looking for a particular event to be present or absent.
-                if (allowedEvents.get(i) && (eventMask == 0 || ((i & eventMask) == maskValues))) {
+            for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
+                if (allowedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
-                    if (disallowSubsets) {
-                        for (Integer group : ints) {
-                            // if the current i is a subset of an existing group
-                            if ((i | group) == group) {
-                                continue outerLoop;
-                            }
-                        }
+                    if (maximalAllowedContainingDetermined.stream().noneMatch(group -> group.contains(subset))) {
+                        maximalAllowedContainingDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
                     }
-                    ints.add(i);
                 }
             }
 
-            // Now that we have all the mutex groups, unpack them into lists of variants
-            List<List<Tuple<Event,Boolean>>> output = new ArrayList<>();
-            for (Integer grp : ints) {
-                List<Tuple<Event,Boolean>> newGrp = new ArrayList<>();
-                for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
-                    // if the corresponding bit is 1, set it as such, otherwise set it as 0.
-                    newGrp.add(new Tuple<>(eventsInBitmapOrder.get(i), ((1<<i) & grp) != 0));
-                }
-                output.add(newGrp);
-            }
+            // Now that we have all the maximal sets, map bitset indices to Events
+            List<Set<Event>> output = maximalAllowedContainingDetermined.stream()
+                    .map(bitset -> bitset.stream(eventsInOrder.size()).mapToObj(eventsInOrder::get).collect(Collectors.toSet())).toList();
+
             // Cache the result
-            if(eventMask==0) {
-                cachedEventLists = Collections.unmodifiableList(output);
+            if(cachedCase) {
+                cachedEventSets = Collections.unmodifiableList(output);
             }
             return output;
         }
 
+        // create the SmallBitSet of those elements from some collection of events that overlap this EventGroup
+        private SmallBitSet overlapSet(final Collection<Event> events) {
+            return new SmallBitSet(events.stream().map(e -> eventIndices.getOrDefault(e, -1)).filter(n -> n != -1).toList());
+        }
+
         public boolean causesBranching() {
-            return eventsInBitmapOrder.size() > 1;
+            return eventsInOrder.size() > 1;
         }
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
-            return "EventGroup: " + formatEventsLikeDragenLogs(eventsInBitmapOrder, startPos);
+            return "EventGroup: " + formatEventsLikeDragenLogs(eventsInOrder, startPos);
         }
 
-        public boolean contains(final Event event) {
-            return eventSet.contains(event);
-        }
+        public int size() { return eventsInOrder.size(); }
 
-        public int size() { return eventsInBitmapOrder.size(); }
-
-        public void addEvent(final Event event) {
-            eventsInBitmapOrder.add(event);
-            eventSet.add(event);
-            allowedEvents = null;
-        }
-
-        public EventGroup mergeEvent(final EventGroup other) {
-            eventsInBitmapOrder.addAll(other.eventsInBitmapOrder);
-            eventSet.addAll(other.eventsInBitmapOrder);
-            allowedEvents = null;
-            return this;
-        }
+        @VisibleForTesting
+        List<Event> eventsInOrderForTesting() { return eventsInOrder; }
     }
 
-    private static List<Event> growEventGroup(final List<Event> group, final Event event) {
-        final List<Event> result = new ArrayList<>(group);
+    private static List<Event> growEventList(final List<Event> eventList, final Event event) {
+        final List<Event> result = new ArrayList<>(eventList);
         result.add(event);
         return result;
     }
@@ -917,8 +804,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     private static void removeBadPileupEventsMessage(final boolean debug, final AssemblyResultSet assemblyResultSet, final Set<Event> badPileupEvents) {
         if (debug) {
             final Set<Event> intersection = Sets.intersection(assemblyResultSet.getVariationEvents(0), badPileupEvents);
-            Utils.printIf(debug && !intersection.isEmpty(),
-                    () ->"Removing assembly variant due to columnwise heuristics: " + intersection);
+            Utils.printIf(!intersection.isEmpty(), () ->"Removing assembly variant due to columnwise heuristics: " + intersection);
         }
     }
 
@@ -930,23 +816,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> formatEventsLikeDragenLogs(group, refStart)).collect(Collectors.joining("\n")));
     }
 
-    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder, List<Set<Event>> branchExcludeAlleles) {
+    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder,
+                                                    final Set<Event> determinedEvents, List<Set<Event>> branches) {
         if (debug) {
             System.out.println("Branches:");
-            for (int i = 0; i < branchExcludeAlleles.size(); i++) {
-                final int ifinal = i;
-                System.out.println("Branch "+i+" VCs:");
-                System.out.println("exclude:" + formatEventsLikeDragenLogs(branchExcludeAlleles.get(i), referenceHaplotype.getStart()));
+            for (int i = 0; i < branches.size(); i++) {
+                System.out.println("Branch " + i + " VCs:");
+                final Set<Event> included = branches.get(i);
+                final Set<Event> excluded = eventsInOrder.stream().filter(event -> !included.contains(event)).collect(Collectors.toSet());
+                System.out.println("exclude:" + formatEventsLikeDragenLogs(excluded, referenceHaplotype.getStart()));
                 //to match dragen debug output for personal sanity
-                final Collection<Event> included = eventsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).collect(Collectors.toList());
                 System.out.println("include:" + formatEventsLikeDragenLogs(included, referenceHaplotype.getStart()));
             }
         }
     }
 
     private static void branchHaplotypesDebugMessage(final Haplotype referenceHaplotype, final boolean debug, final Set<Event> excludeEvents, final List<Haplotype> branchHaps) {
-            Utils.printIf(debug, () -> "Constructed Haps for Branch" + formatEventsLikeDragenLogs(excludeEvents,  referenceHaplotype.getStart(), ",") + ":");
-            Utils.printIf(debug, () -> branchHaps.stream().map(h -> h.getCigar() + " " + h.toString()).collect(Collectors.joining("\n")));
+        Utils.printIf(debug, () -> "Constructed Haps for Branch" + formatEventsLikeDragenLogs(excludeEvents,  referenceHaplotype.getStart(), ",") + ":");
+        Utils.printIf(debug, () -> branchHaps.stream().map(h -> h.getCigar() + " " + h).collect(Collectors.joining("\n")));
     }
 
 }

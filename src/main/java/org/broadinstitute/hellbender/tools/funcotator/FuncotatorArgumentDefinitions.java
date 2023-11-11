@@ -69,6 +69,8 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String CUSTOM_VARIANT_CLASS_ORDER_FILE = "custom-variant-classification-order";
 
+    public static final String SPLICE_SITE_WINDOW_SIZE = "splice-site-window-size";
+
     // ------------------------------------------------------------
     // Helper Types:
 

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -19,6 +20,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -26,10 +28,10 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -93,14 +95,16 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                                           final List<String> funcotationFieldNames,
                                                           final List<Feature> featureList,
                                                           final List<GencodeFuncotation> gencodeFuncotationList,
-                                                          final List<Funcotation> expected) {
+                                                          final List<Funcotation> expected,
+                                                          final boolean doGzip) {
         return new Object[] {
             createVariantContext(contig, start, end, refAlleleString, altAlleleString, refFilePath),
             new ReferenceContext( referenceDataSourceMap.get(refFilePath), new SimpleInterval(contig, start, end)),
             funcotationFieldNames,
             featureList,
             gencodeFuncotationList,
-            expected
+            expected,
+            doGzip
         };
     }
 
@@ -121,6 +125,12 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     private Object[][] provideForTestCreateFuncotations() {
+        Object[][] arr1 = provideDataForTestCreateFuncotations(false);
+        Object[][] arr2 = provideDataForTestCreateFuncotations(true);
+        return Utils.concat(arr1, arr2, Object[][]::new);
+    }
+
+    private Object[][] provideDataForTestCreateFuncotations(boolean doGzip) {
 
         final List<String> fieldNames = Arrays.asList("0", "1", "2", "3", "4", "5", "6");
 
@@ -156,7 +166,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         reportableFieldNames,
                         Collections.emptyList(), Collections.emptyList(),
-                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName, null))
+                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName, null)),
+                        doGzip
                 ),
                 // Trivial case where null Features are in the list:
                 helpProvideForTestCreateFuncotations(
@@ -164,7 +175,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         reportableFieldNames,
                         Arrays.asList(null, null, null), Collections.emptyList(),
-                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName, null))
+                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName, null)),
+                        doGzip
                 ),
                 // One XsvTableFeature in list
                 helpProvideForTestCreateFuncotations(
@@ -175,7 +187,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                             xsvTableFeature1
                         ),
                         Collections.emptyList(),
-                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null))
+                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null)),
+                        doGzip
                 ),
                 // Two XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
@@ -188,7 +201,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         Collections.emptyList(),
                         // TODO: Commented out because of issue #4930.  When issue is fixed, revert to this test case! (https://github.com/broadinstitute/gatk/issues/4930)
 //                        Arrays.asList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature2, defaultAltAllele, defaultDataSourceName, null))
-                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null))
+                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null)),
+                        doGzip
                 ),
                 // Many XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
@@ -201,7 +215,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         Collections.emptyList(),
                         // TODO: Commented out because of issue #4930.  When issue is fixed, revert to this test case! (https://github.com/broadinstitute/gatk/issues/4930)
 //                        Arrays.asList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature2, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature3, defaultAltAllele, defaultDataSourceName, null))
-                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null))
+                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null)),
+                        doGzip
                 ),
                 // Many XsvTableFeatures in list and non-empty GencodeFuncotations
                 helpProvideForTestCreateFuncotations(
@@ -216,7 +231,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         ),
                         // TODO: Commented out because of issue #4930.  When issue is fixed, revert to this test case! (https://github.com/broadinstitute/gatk/issues/4930)
 //                        Arrays.asList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature2, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature3, defaultAltAllele, defaultDataSourceName, null))
-                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null))
+                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null)),
+                        doGzip
                 ),
         };
     }
@@ -272,13 +288,14 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                        final List<String> reportableFuncotationFieldNames,
                                        final List<Feature> featureList,
                                        final List<GencodeFuncotation> gencodeFuncotations,
-                                       final List<Funcotation> expected) {
+                                       final List<Funcotation> expected,
+                                       final boolean doGzip) {
 
         // Create a temporary file for the "backing data" which will only contain the header:
-        final Path headerBackingDataFilePath = createTempPath("headerBackingDataFile", "csv");
+        final Path headerBackingDataFilePath = createTempPath("headerBackingDataFile", "csv" + (doGzip ? ".gz" : ""));
         final Path configFilePath;
-        try {
-            Files.write(headerBackingDataFilePath, ("CONTIG,START,END," + reportableFuncotationFieldNames.stream().collect(Collectors.joining(","))).getBytes());
+        try (BufferedWriter writer = IOUtil.openFileForBufferedUtf8Writing(headerBackingDataFilePath)){
+            writer.write("CONTIG,START,END," + reportableFuncotationFieldNames.stream().collect(Collectors.joining(",")));
 
             // Create a temporary file for the config file that points to the temporary file for the backing data:
             configFilePath = createTemporaryConfigFile(headerBackingDataFilePath);

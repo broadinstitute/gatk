@@ -21,6 +21,8 @@ workflow AlignmentPipeline {
 
     #Optional runtime arguments
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam, "GB") * 4 + size(mt_fasta, "GB") + size(mt_fasta_index, "GB") + size(mt_amb, "GB") + size(mt_ann, "GB") + size(mt_bwt, "GB") + size(mt_pac, "GB") + size(mt_sa, "GB")) + 20
+    Int mem = 6
   }
 
   parameter_meta {
@@ -43,7 +45,9 @@ workflow AlignmentPipeline {
       ref_bwt = mt_bwt,
       ref_pac = mt_pac,
       ref_sa = mt_sa,
-      preemptible_tries = preemptible_tries
+      preemptible_tries = preemptible_tries,
+      disk_size = disk_size,
+      mem = mem
   }
 
   output {
@@ -70,13 +74,14 @@ task AlignAndMarkDuplicates {
 
     String? read_name_regex
 
+    # runtime
     Int? preemptible_tries
+    Int disk_size
+    Int mem
   }
 
   String basename = basename(input_bam, ".bam")
   String metrics_filename = basename + ".metrics"
-  Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_amb, "GB") + size(ref_ann, "GB") + size(ref_bwt, "GB") + size(ref_pac, "GB") + size(ref_sa, "GB")
-  Int disk_size = ceil(size(input_bam, "GB") * 4 + ref_size) + 20
 
   meta {
     description: "Aligns with BWA and MergeBamAlignment, then Marks Duplicates. Outputs a coordinate sorted bam."
@@ -149,7 +154,7 @@ task AlignAndMarkDuplicates {
   >>>
   runtime {
     preemptible: select_first([preemptible_tries, 5])
-    memory: "6 GB"
+    memory: mem + " GB"
     cpu: "2"
     disks: "local-disk " + disk_size + " HDD"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"

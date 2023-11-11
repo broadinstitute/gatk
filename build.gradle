@@ -12,21 +12,21 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id "jacoco"
-    id "de.undercouch.download" version "4.1.2" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "7.1.1"    //used to build the shadow and sparkJars
+    id "de.undercouch.download" version "5.4.0" //used for downloading GSA lib
+    id "com.github.johnrengelman.shadow" version "8.1.1"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
 
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import de.undercouch.gradle.tasks.download.Download
 import java.time.format.DateTimeFormatter
 
-mainClassName = "org.broadinstitute.hellbender.Main"
-
-//Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
-applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamjdk.use_async_io_write_samtools=true", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=2"]
+application {
+    mainClass = "org.broadinstitute.hellbender.Main"
+    //Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
+    applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false", "-Dsamjdk.use_async_io_write_samtools=true", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=2"]
+}
 
 //Delete the windows script - we never test on Windows so let's not pretend it works
 startScripts {
@@ -57,19 +57,19 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','3.0.5')
-final picardVersion = System.getProperty('picard.version','3.0.0')
+final picardVersion = System.getProperty('picard.version','3.1.0')
 final barclayVersion = System.getProperty('barclay.version','5.0.0')
 final sparkVersion = System.getProperty('spark.version', '3.3.1')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.5.0')
-final bigQueryVersion = System.getProperty('bigQuery.version', '2.9.0')
-final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.9.1')
-final guavaVersion = System.getProperty('guava.version', '31.0.1-jre')
+final bigQueryVersion = System.getProperty('bigQuery.version', '2.31.0')
+final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.41.0')
+final guavaVersion = System.getProperty('guava.version', '32.1.2-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
 final testNGVersion = '7.0.0'
 
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.123.25'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.127.0'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -168,7 +168,7 @@ configurations.all {
         force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.21.6'
+        force 'com.google.protobuf:protobuf-java:3.23.4'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
@@ -181,9 +181,9 @@ configurations.all {
 
         force 'com.esotericsoftware:kryo:4.0.0'
     }
-    all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
-    all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
-    all*.exclude group: 'junit', module: 'junit'
+    configurations*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
+    configurations*.exclude group: 'com.google.guava', module: 'guava-jdk5'
+    configurations*.exclude group: 'junit', module: 'junit'
 }
 
 tasks.withType(JavaCompile) {
@@ -337,7 +337,7 @@ dependencies {
     implementation('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
     implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
 
-    implementation('com.intel.gkl:gkl:0.8.8') {
+    implementation('com.intel.gkl:gkl:0.8.11') {
         exclude module: 'htsjdk'
     }
 
@@ -456,8 +456,10 @@ test {
     jvmArgs = testConfigurationJVMArgs
 }
 
-//add gatk launcher script to the jar as a resource
+
 processResources {
+    dependsOn(downloadGsaLibFile)
+    //add gatk launcher script to the jar as a resource
     from("gatk")
 }
 
@@ -468,8 +470,10 @@ processTestResources {
     include "org/broadinstitute/hellbender/utils/io/*"
 }
 
-sourceCompatibility = 1.17
-targetCompatibility = 1.17
+java {
+    sourceCompatibility = 1.17
+    targetCompatibility = 1.17
+}
 
 def createSymlinks(archivePath, symlinkLocation) {
     exec {
@@ -479,14 +483,14 @@ def createSymlinks(archivePath, symlinkLocation) {
 }
 
 // Suffix is what will be added to the symlink
-def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, secondaryBaseJarName) {
+def createGatkSymlinks(destinationDir, archiveFile, suffix, baseJarName, secondaryBaseJarName) {
     def finalSuffix = (suffix == "") ? "" : ("-" + suffix)
 
     def symlinkLocation = destinationDir.getAsFile().get().toString() + "/" + baseJarName + finalSuffix + ".jar"
     def symlinkLocation2 = destinationDir.getAsFile().get().toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
 
-    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
-    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
+    createSymlinks(archiveFile.getAsFile().get().getAbsolutePath(), symlinkLocation)
+    createSymlinks(archiveFile.getAsFile().get().getAbsolutePath(), symlinkLocation2)
 }
 
 logger.info("build for version:" + version)
@@ -503,7 +507,7 @@ tasks.withType(Jar) {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
                 'Implementation-Version': archiveVersion.get(),
                 'Toolkit-Short-Name' : 'GATK',
-                'Main-Class': project.mainClassName,
+                'Main-Class': application.mainClass,
                 'Picard-Version': picardVersion,
                 'htsjdk-Version': htsjdkVersion,
                 'Spark-Version': sparkVersion,
@@ -513,7 +517,7 @@ tasks.withType(Jar) {
 }
 
 wrapper {
-    gradleVersion = '7.5.1'
+    gradleVersion = '8.2.1'
 }
 
 tasks.withType(ShadowJar) {
@@ -543,7 +547,7 @@ shadowJar {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDirectory, archivePath, "", baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archiveFile, "", baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -558,7 +562,7 @@ task sparkJar(type: ShadowJar) {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDirectory, archivePath, archiveClassifier, baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archiveFile, archiveClassifier, baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -593,8 +597,8 @@ task collectBundleIntoDir(type: Copy) {
         assert file("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties").exists()
     }
 
-    from(shadowJar.archivePath)
-    from(sparkJar.archivePath)
+    from(shadowJar.archiveFile)
+    from(sparkJar.archiveFile)
     from("gatk")
     from("README.md")
     from("$docBuildDir/tabCompletion/gatk-completion.sh")
@@ -625,7 +629,7 @@ task bundle(type: Zip) {
     into(archiveBaseName)
 
     doLast {
-        logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
+        logger.lifecycle("Created GATK distribution in ${destinationDirectory}/${archiveFileName}")
     }
 }
 
@@ -674,7 +678,7 @@ task pythonPackageArchive(type: Zip) {
     into("/")
 
     doLast {
-        logger.lifecycle("Created GATK Python package archive in ${destinationDir}/${archiveName}")
+        logger.lifecycle("Created GATK Python package archive in ${destinationDirectory}/${archiveFileName}")
     }
 }
 
@@ -886,7 +890,7 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
 
     // the wdl doclet will populate the test JSON input files with the name of a dummy
     // file in this location, in order to satisfy cromwell's attempts to localize inputs and outputs
-    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
+    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: rootDir.getAbsolutePath())
 }
 
 def execWDLValidation = { validateWDL ->
@@ -913,7 +917,7 @@ task gatkValidateScriptsWdl() {
 
     doLast {
         // Run the womtool validator on all WDL files in the 'scripts' directory
-        final File wdlFolder = new File("scripts")
+        final File wdlFolder = new File(buildDir, "scripts")
         def wdlFiles = fileTree(dir: wdlFolder).filter {
             f -> f.getAbsolutePath().endsWith(".wdl")
         }
@@ -953,7 +957,7 @@ task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
 
         // the test JSON input file is populated by the WDL gen process with the name of this dummy file
         // to satisfy cromwell's attempt to de/localize input/output files
-        def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
+        def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: rootDir.getAbsolutePath()
         final dummyWDLTestFileName = "$buildDir/dummyWDLTestFile"
         final File dummyWDLTestFile = file(dummyWDLTestFileName)
         final cromwellLocation = System.getenv('CROMWELL_JAR')
@@ -1077,5 +1081,15 @@ task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
 installDist.dependsOn downloadGsaLibFile
+downloadGsaLibFile.dependsOn sourcesJar
+
+// For Gradle 8 explicitly add 'condaEnvironmentDefinition' as a dependency of the following tasks.
+// For more information, please refer to
+// https://docs.gradle.org/8.2.1/userguide/validation_problems.html#implicit_dependency in the Gradle documentation.
+['shadowJar', 'sparkJar', 'compileTestUtilsJava', 'shadowTestClassJar', 'sourcesJar', 'testUtilsSourcesJar', 'gatkDoc', 'gatkTabComplete', 'gatkWDLGen'].each {
+    tasks.named(it).configure {
+        dependsOn 'condaEnvironmentDefinition'
+    }
+}
 
 defaultTasks 'bundle'

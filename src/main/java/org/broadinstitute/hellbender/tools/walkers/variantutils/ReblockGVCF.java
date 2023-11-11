@@ -108,12 +108,14 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public static final String RGQ_THRESHOLD_SHORT_NAME = "rgq-threshold";
     public static final String TREE_SCORE_THRESHOLD_LONG_NAME = "tree-score-threshold-to-no-call";
     public static final String ANNOTATIONS_TO_KEEP_LONG_NAME = "annotations-to-keep";
+    public static final String ANNOTATIONS_TO_REMOVE_LONG_NAME = "format-annotations-to-remove";
     public static final String KEEP_ALL_ALTS_ARG_NAME = "keep-all-alts";
     public static final String QUAL_APPROX_LONG_NAME = "do-qual-score-approximation";
     public static final String QUAL_APPROX_SHORT_NAME = "do-qual-approx";
     public static final String ALLOW_MISSING_LONG_NAME = "allow-missing-hom-ref-data";
     public static final String KEEP_SITE_FILTERS_LONG_NAME = "keep-site-filters";
     public static final String KEEP_SITE_FILTERS_SHORT_NAME = "keep-filters";
+    public static final String ADD_FILTERS_TO_GENOTYPE = "add-site-filters-to-genotype";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written")
@@ -155,6 +157,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private List<String> annotationsToKeep = new ArrayList<>();
 
     @Advanced
+    @Argument(fullName=ANNOTATIONS_TO_REMOVE_LONG_NAME, doc="FORMAT level annotations to remove from all genotypes in final GVCF.", optional = true)
+    private List<String> annotationsToRemove = new ArrayList<>();
+
+    @Advanced
     @Argument(fullName=QUAL_APPROX_LONG_NAME, shortName=QUAL_APPROX_SHORT_NAME, doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper", optional = true)
     protected boolean doQualApprox = false;
 
@@ -169,6 +175,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Advanced
     @Argument(fullName=KEEP_SITE_FILTERS_LONG_NAME, shortName = KEEP_SITE_FILTERS_SHORT_NAME, doc="Keep site level filters for variants (not ref blocks).")
     private boolean keepFilters = false;
+
+    @Advanced
+    @Argument(fullName= ADD_FILTERS_TO_GENOTYPE, doc="Add site level filters to genotype level. Site level filters removed by default, if they should be kept, use --" + KEEP_SITE_FILTERS_LONG_NAME)
+    private boolean addFiltersToFormatField = false;
 
     //TODO: this will be an argument when posteriors handling is fully implemented in AlleleSubsettingUtils
     protected String posteriorsKey = null;
@@ -227,6 +237,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 + ", but the " + GATKVCFConstants.TREE_SCORE + " annotation is not present in the input GVCF.");
         }
 
+        List<String> missingAnnotationsToRemove = annotationsToRemove.stream().filter(a -> inputHeader.getFormatHeaderLine(a)==null).toList();
+        missingAnnotationsToRemove.forEach(a -> logger.warn("FORMAT level annotation " + a + ", which was requested to be removed by --" + ANNOTATIONS_TO_REMOVE_LONG_NAME + ", not found in input GVCF header."));
+
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeaders);
@@ -263,6 +276,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
             } else {
                 throw new UserException(String.format("%s is not in header of input GVCF but was requested to be kept by %s argument.", annotation, ANNOTATIONS_TO_KEEP_LONG_NAME));
             }
+        }
+
+        if (addFiltersToFormatField) {
+            headerLines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_FILTER_KEY));
         }
 
         //Allele length and Genotype length annotations need to be subset or removed if alleles are dropped so we need to parse the header for annotation count types
@@ -317,7 +334,27 @@ public final class ReblockGVCF extends MultiVariantWalker {
     // get VariantContexts from input gVCFs and regenotype
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
-        regenotypeVC(variant);
+        if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
+            throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
+        }
+        VariantContext newVC = annotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
+        regenotypeVC(newVC);
+    }
+
+    /**
+     * Remove format level annotations from genotype in variant context.
+     *
+     * @param vc variant context to remove format annotations from
+     * @return variant context with format annotations removed from genotype
+     */
+    private VariantContext removeVCFFormatAnnotations(final VariantContext vc) {
+        final Genotype genotype = vc.getGenotype(0);
+        Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
+        for (String annotation : annotationsToRemove) {
+            extendedAttributes.remove(annotation);
+        }
+        final Genotype newGenotype = new GenotypeBuilder(genotype).noAttributes().attributes(extendedAttributes).make();
+        return new VariantContextBuilder(vc).genotypes(newGenotype).make();
     }
 
     /**
@@ -649,8 +686,13 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final Genotype updatedAllelesGenotype = updatedAllelesVC.getGenotype(0);
 
         //remove any AD reads for the non-ref
-        final List<Genotype> genotypesArray = removeNonRefADs(updatedAllelesGenotype, updatedAllelesVC.getAlleleIndex(Allele.NON_REF_ALLELE));
-        builder.genotypes(genotypesArray);
+        final Genotype g = removeNonRefADs(updatedAllelesGenotype, updatedAllelesVC.getAlleleIndex(Allele.NON_REF_ALLELE));
+        if (addFiltersToFormatField) {
+            final List<String> filters = updatedAllelesVC.getFilters().stream().toList();
+            builder.genotypes(new GenotypeBuilder(g).filters(filters).make());
+        } else {
+            builder.genotypes(g);
+        }
 
         composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC, annotationsToKeep);
 
@@ -854,9 +896,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * Any AD counts for the non-ref allele get propagated to every new allele when GVCFs are merged, so zero them out
      * @param g a genotype that may or may not contain AD
      * @param nonRefInd allele index of the non-ref, -1 if missing
-     * @return  an unmodifiable Genotype array that can be used by a GenotypeBuilder
+     * @return  a Genotype with the non-ref AD zeroed out and new DP, or the original genotype if it doesn't have AD
      */
-    private List<Genotype> removeNonRefADs(final Genotype g, final int nonRefInd) {
+    private Genotype removeNonRefADs(final Genotype g, final int nonRefInd) {
         if (g.hasAD() && nonRefInd != -1) {
             final int[] ad = g.getAD();
             if (ad.length >= nonRefInd && ad[nonRefInd] > 0) { //only initialize a builder if we have to
@@ -869,12 +911,12 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 } else {
                     gb.DP((int) MathUtils.sum(ad));
                 }
-                return Collections.singletonList(gb.make());
+                return gb.make();
             } else {
-                return Collections.singletonList(g);
+                return g;
             }
         } else {
-            return Collections.singletonList(g);
+            return g;
         }
     }
 

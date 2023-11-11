@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -15,7 +14,10 @@ import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
 
 public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKBaseTest {
 
@@ -46,6 +48,174 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     // TODO THESE ARE FOR INVALID TEST CASES
     Event SNP_C_99 = new Event("20",99, Allele.REF_A,Allele.ALT_C);
     Event SNP_C_120 = new Event("20",120, Allele.REF_A,Allele.ALT_C);
+    Event SNP_G_120 = new Event("20",120, Allele.REF_A,Allele.ALT_G);
+
+    @DataProvider
+    public Object[][] makeEventGroupClustersDataProvider() {
+        // format:
+        // 1) list of all events
+        // 2) list of 2- and 3-element groups of events that are mutually excluded due to the Smith-Waterman heuristic
+        //      (note that there is no reference sequence in this test, hence we can set whatever  exclusions we want here)
+        //      (note also that this is in addition to any mutexes due to overlapping loci)
+        //  3) list of sets of events that make up the desired partition into event groups
+        // for convenience, 2) and 3) are representing by indices within the list 1).
+        return new Object[][] {
+                // no mutexes; singleton event groups result
+                { List.of(SNP_C_90), List.of(), List.of(List.of(0))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), List.of(List.of(0), List.of(1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), List.of(List.of(0), List.of(1), List.of(2))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), List.of(List.of(0), List.of(1), List.of(2), List.of(3))},
+
+                // all events are connected by a path of overlaps; everything belongs to a single event group
+                { List.of(SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1,2))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(0,1,2,3))},
+
+                // multiple event groups due to independent overlaps -- note that insertions have 0.5 added to their start for DRAGEN
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), List.of(List.of(0,1,2), List.of(3))},
+                { List.of(SNP_C_105, SNP_G_105, INS_TT_105), List.of(), List.of(List.of(0,1), List.of(2))},
+                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), List.of(List.of(0,1), List.of(2), List.of(3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(), List.of(List.of(0,1), List.of(2,3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+
+                // Smith-Waterman pair mutex joining event groups that would otherwise be independent
+                { List.of(SNP_C_90, SNP_C_100), List.of(List.of(0,1)), List.of(List.of(0,1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,1)), List.of(List.of(0,1), List.of(2))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,2)), List.of(List.of(0,2), List.of(1))},    // this example is unrealistic
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(List.of(1,2)), List.of(List.of(0,1,2,3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2)), List.of(List.of(0,1, 2,3), List.of(4))},
+
+                // two Smith-Waterman pair mutexes transitively combining three event groups
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), List.of(List.of(0,1, 2, 3, 4))},
+
+                // Smith-Waterman pair mutex doing nothing because it is redundant with an overlap mutex
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(2,3)), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+
+                // Smith-Waterman trio mutex transitively combining three event groups
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2,4)), List.of(List.of(0,1, 2, 3, 4))},
+        };
+    }
+
+    @Test(dataProvider = "makeEventGroupClustersDataProvider")
+    public void testMakeEventGroupClusters(List<Event> eventsInOrder, List<List<Integer>> swMutexes, List<List<Integer>> expectedEventGroups) {
+        // convert indices to events
+        final List<List<Event>> mutexes = swMutexes.stream()
+                .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
+                .toList();
+
+        // set of actual partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order because that's how the code works
+        final Set<List<Event>> actualPartition = PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes).stream()
+                .map(eventGroup -> eventGroup.eventsInOrderForTesting())
+                .collect(Collectors.toSet());
+
+        // set of expected partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order because we sort it explicitly
+        final Set<List<Event>> expectedPartition = expectedEventGroups.stream()
+                .map(eventsList -> eventsList.stream().map(eventsInOrder::get).sorted(PartiallyDeterminedHaplotypeComputationEngine.HAPLOTYPE_SNP_FIRST_COMPARATOR).toList())
+                .collect(Collectors.toSet());
+
+        Assert.assertEquals(expectedPartition, actualPartition);
+    }
+
+    @DataProvider
+    public Object[][] makeBranchesDataProvider() {
+        // format:
+        // 1) list of all events
+        // 2) list of 2- and 3-element groups of events that are mutually excluded due to the Smith-Waterman heuristic
+        //      (note that there is no reference sequence in this test, hence we can set whatever  exclusions we want here)
+        //      (note also that this is in addition to any mutexes due to overlapping loci)
+        //  3) determined locus
+        //  4) OptionalInt of determined event's index (if present), empty if ref allele at determined locus is determined
+        //  5) expected branches as list of sets
+        // for convenience, 2), 4), and 5) are representing by indices within the list 1).
+        return new Object[][] {
+                // no mutexes, hence a single branch with all events, except alt events at a determined ref locus
+                { List.of(SNP_C_90), List.of(), 90, OptionalInt.empty(), List.of(Set.of())},
+                { List.of(SNP_C_90), List.of(), 90, OptionalInt.of(0), List.of(Set.of(0))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), 100, OptionalInt.empty(), List.of(Set.of(0))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), 100, OptionalInt.of(1), List.of(Set.of(0,1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), 100, OptionalInt.empty(), List.of(Set.of(0,2))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), 100, OptionalInt.of(1), List.of(Set.of(0,1,2))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), 90, OptionalInt.of(0), List.of(Set.of(0,1,2,3))},
+
+                // all events are connected by a path of overlaps; everything belongs to a single event group
+                { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of())},
+                { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(0), List.of(Set.of(0))},
+
+                // ref is determined at the spanning deletion, the two SNPs coexist as undetermined alleles
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.empty(), List.of(Set.of(1,2))},
+
+                // spanning deletion is determined, the two SNPs are incompatible
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0))},
+
+                // ref is determined at the biallelic SNP locus, spanning deletion is a valid undetermined allele
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of(0))},
+
+                // one SNP is determined, spanning deletion and the other SNP are invalid
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(1), List.of(Set.of(1))},
+
+                // SNP at 106 is incompatible with the spanning deletion, both SNPs at 105 are undetermined
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), 106, OptionalInt.of(3), List.of(Set.of(1,2,3))},
+
+                // ref is determined at 106, hence we branch!  Either we have the spanning deletion or the two SNPs
+                // note that spanning deletions being compatible with the ref allele at a SNP *is* DRAGEN behavior, even if it's suspect
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), 106, OptionalInt.empty(), List.of(Set.of(0), Set.of(1,2))},
+
+                // spanning deletion forbids spanned SNPs and allows the other SNP
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0,3))},
+
+                // spanning deletion forbids spanned SNPs and allows the other two overlapping SNPs
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120, SNP_G_120), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0,3,4))},
+
+                // ref is determined at 105, insertion at 106 and SNP at 107 don't overlap
+                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), 105, OptionalInt.empty(), List.of(Set.of(2,3))},
+
+                // deletion at 105 is determined, so spanned SNP at 106 is forbidden.  SNP at 120 is always allowed, and the
+                // deletion at 100 and its spanned SNP at 101 induce branching
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), 105, OptionalInt.of(2), List.of(Set.of(0,2,4), Set.of(1,2,4))},
+
+                // just a mess -- the deletion at 100 spans the SNP at 101, which is SW mutexed with the deletion at 105, which spans the SNP at 106,
+                // which has an (unrealistic) SW mutex with the SNP at 120.  We're testing here that although there is only one event group we still
+                // get several branches with more than one event.
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), 120, OptionalInt.of(4),
+                    List.of(Set.of(0,2,4), Set.of(1,4))},
+
+                // another example from the same balagan
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), 105, OptionalInt.of(2),
+                        List.of(Set.of(0,2,4))},
+
+                // another messy one -- note that the deletion at 98 overlaps events that start at 104 but not 105
+                { List.of(DEL_AAAAAAA_98, DEL_AA_100, SNP_G_101, DEL_AAAAAAA_102, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), 120, OptionalInt.of(6),
+                        List.of(Set.of(0,4,6), Set.of(0,5,6), Set.of(1,3,6), Set.of(1,4,6), Set.of(1,5,6), Set.of(2,3,6), Set.of(2,4,6), Set.of(2,5,6))},
+
+        };
+    }
+
+    @Test(dataProvider = "makeBranchesDataProvider")
+    public void testMakeBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes, final int determinedLocus, final OptionalInt determinedEvent,
+                                 final List<Set<Integer>> expectedBranchIndices) {
+        // convert indices to events
+        final List<List<Event>> mutexes = swMutexes.stream()
+                .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
+                .toList();
+
+        final List<PartiallyDeterminedHaplotypeComputationEngine.EventGroup> eventGroups =
+                PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes);
+
+        // an absent determined event denotes that the ref allele is determined
+        // TODO: eventually this needs to be generalized to multiple determined events
+        final Set<Event> determinedEvents = determinedEvent.isPresent() ? Set.of(eventsInOrder.get(determinedEvent.getAsInt())) : Set.of();
+
+        final List<Event> allEventsAtDeterminedLocus = eventsInOrder.stream().filter(event -> event.getStart() == determinedLocus).toList();
+
+        final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine.computeBranches(eventGroups, determinedEvents, allEventsAtDeterminedLocus)
+                        .stream().collect(Collectors.toSet());
+
+        final Set<Set<Event>> expectedBranches = expectedBranchIndices.stream()
+                        .map(indexSet -> indexSet.stream().map(eventsInOrder::get).collect(Collectors.toSet()))
+                                .collect(Collectors.toSet());
+
+        Assert.assertEquals(actualBranches, expectedBranches);
+    }
 
     @DataProvider
     public Object[][] testConstructHaplotypeFromVariantsDataProvider() {
@@ -84,7 +254,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
         Assert.assertEquals(result.getBases(), expectedBases.getBytes());
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
 
@@ -94,40 +264,40 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Assert.assertEquals(resultEMap.getNumberOfEvents(), events.size() - numberOfCompounds);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestOutOfOrderInputs() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> variants = List.of(SNP_C_105, SNP_G_105);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, variants, true);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestSNPsOverlapping() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> events = List.of(SNP_C_109, DEL_AA_100);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestVariantNotOverlappingHap() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> events = List.of(SNP_C_90);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestVariantIndelPartiallyOverlapping() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> events = List.of(DEL_AAAAAAA_98);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
     }
 
     //This is a test asserting that a real edge case that was prone to cause failures in the PDHMM is handled properly when compound variants are taken into account.
@@ -143,7 +313,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
         final List<Event> events = List.of(e1, e2, e3);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("62M1X19M1X1M12D157M"));
 
         // Assert that the resulting event map matches the input variants:
@@ -160,41 +330,42 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     @DataProvider
     public Object[][] testGeneratePDHaplotypeDataProvider() {
         return new Object[][] {
-                {List.of(SNP_C_105, SNP_C_106), SNP_C_106, false, "AAAAAACAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "6M1X3M"},
-                {List.of(SNP_C_105, SNP_C_106), SNP_C_106, true , "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "10M"},
+                {List.of(SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106, "AAAAAACAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "6M1X3M"},
+                {List.of(SNP_C_105, SNP_C_106), Set.of(), 106, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "10M"},
 
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), INS_TT_103, false, "AAAATAAAAAA", new byte[]{0,0,0,0,0,0,17,17,0,0,0}, "4M1I6M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), INS_TT_103, true , "AAAAAAAAAA",  new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), SNP_C_105,  false, "AAAATACAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I1M1X4M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), SNP_C_105,  true , "AAAATAAAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I6M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(INS_TT_103), 103, "AAAATAAAAAA", new byte[]{0,0,0,0,0,0,17,17,0,0,0}, "4M1I6M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(), 103, "AAAAAAAAAA",  new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105, "AAAATACAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I1M1X4M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(),  105, "AAAATAAAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I6M"},
 
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), DEL_AAA_102, false, "AAAAAAAA"  , new byte[]{0,0,0,17,17,0,0,0}, "3M2D5M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), DEL_AAA_102, true , "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_105,  false,  "AAAAACAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "5M1X4M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_105,  true ,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "10M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_106,  false,  "AAAAAACAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "6M1X3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_106,  true ,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(DEL_AAA_102), 102, "AAAAAAAA"  , new byte[]{0,0,0,17,17,0,0,0}, "3M2D5M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 102, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105,  "AAAAACAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "5M1X4M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 105,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106,  "AAAAAACAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "6M1X3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 106,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "10M"},
 
                 // making sure we support "complex alleles" from DRAGEN
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), SNP_C_105,  false ,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "5M1X1M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), SNP_C_105,  true ,  "AAAAAAAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), DEL_AAA_102,  false ,  "AAAAAGGAAA", new byte[]{0,0,0,17,17,2,4,0,0,0}, "3M2D2M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), DEL_AAA_102,  true ,  "AAAAAAAGGAAA", new byte[]{0,0,0,0,0,17,81,2,4,0,0,0}, "7M2I3M"},
-                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), SNP_G_101,  false ,  "AGAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "1M1X8M"},
-                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), SNP_G_101,  true ,   "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "10M"},
-
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(SNP_C_105), 105,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "5M1X1M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 105,  "AAAAAAAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(DEL_AAA_102),  102,  "AAAAAGGAAA", new byte[]{0,0,0,17,17,2,4,0,0,0}, "3M2D2M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 102,  "AAAAAAAGGAAA", new byte[]{0,0,0,0,0,17,81,2,4,0,0,0}, "7M2I3M"},
+                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(SNP_G_101), 101,  "AGAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "1M1X8M"},
+                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(), 101,   "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "10M"},
         };
     }
     @Test(dataProvider = "testGeneratePDHaplotypeDataProvider")
-    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Event targetEvent, boolean useRefBase, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
+    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Set<Event> determinedEvents, int determinedLocus, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, targetEvent, useRefBase, events);
+        final List<Event> allEventsAtDeterminedLocus = events.stream().filter(event -> event.getStart() == determinedLocus).toList();
+
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, determinedEvents, determinedLocus, events, allEventsAtDeterminedLocus);
         Assert.assertEquals(new String(result.getBases()), expectedBases);
         Assert.assertEquals(result.getAlternateBases(), expectedAltArray);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
-        Assert.assertEquals(result.getDeterminedPosition(), targetEvent.getStart());
+        Assert.assertEquals(result.getDeterminedPosition(), determinedLocus);
     }
 
     // NOTE: This is an enforcement of a behavior that I consider to be a bug in DRAGEN. Specifically my assumption that we needn't ever concern
@@ -208,7 +379,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, DEL_AA_105, true, List.of(DEL_AAAAAAA_102, DEL_AA_105));
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, Set.of(), 105, List.of(DEL_AAAAAAA_102, DEL_AA_105), List.of(DEL_AA_105));
         Assert.assertEquals(new String(result.getBases()), "AAAAAAAAAA");
         Assert.assertEquals(result.getAlternateBases(), new byte[]{0,0,0,2,0,0,0,0,4,0});
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("10M"));
