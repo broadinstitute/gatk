@@ -7,6 +7,12 @@ import java.util.function.Consumer;
 
 public interface FeatureMapper {
 
+    enum FilterStatus {
+        None,
+        Filtered,
+        NoFeatureAndFiltered
+    };
+
     void        forEachOnRead(GATKRead read, ReferenceContext referenceContext, Consumer<? super FlowFeatureMapper.MappedFeature> action);
-    boolean     noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start);
+    FilterStatus noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start);
 }

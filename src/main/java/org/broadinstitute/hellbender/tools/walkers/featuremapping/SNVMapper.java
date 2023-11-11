@@ -21,22 +21,34 @@ import java.util.function.Consumer;
 
 public class SNVMapper implements FeatureMapper {
 
-    final int         identBefore;
-    final int         identAfter;
+    final int         surroundBefore;
+    final int         surroundtAfter;
     final int         minCigarElementLength;
     final LevenshteinDistance levDistance = new LevenshteinDistance();
     final Integer     smqSize;
     final Integer     smqSizeMean;
 
+    final boolean     ignoreSurround;
+    final int         spanBefore;
+    final int         spanAfter;
+
+    final FlowFeatureMapperArgumentCollection fmArgs;
+
     public SNVMapper(FlowFeatureMapperArgumentCollection fmArgs) {
-        identBefore = fmArgs.snvIdenticalBases;
-        identAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : identBefore;
-        minCigarElementLength = identBefore + 1 + identAfter;
+        surroundBefore = fmArgs.snvIdenticalBases;
+        surroundtAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : surroundBefore;
         smqSize = fmArgs.surroundingMediaQualitySize;
         smqSizeMean = fmArgs.surroundingMeanQualitySize;
+        this.fmArgs = fmArgs;
+
+        // ignore surround
+        ignoreSurround = fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff;
+        spanBefore = ignoreSurround ? 0 : surroundBefore;
+        spanAfter = ignoreSurround ? 0 : surroundtAfter;
+        minCigarElementLength = spanBefore + 1 + spanAfter;
 
         // adjust minimal read length
-        FlowBasedRead.setMinimalReadLength(1 + 1 + identAfter);
+        FlowBasedRead.setMinimalReadLength(1 + 1 + spanAfter);
     }
 
     @Override
@@ -93,30 +105,44 @@ public class SNVMapper implements FeatureMapper {
             if ( length >= minCigarElementLength &&
                     cigarElement.getOperator().consumesReadBases() &&
                     cigarElement.getOperator().consumesReferenceBases() ) {
-                readOfs += identBefore;
-                refOfs += identBefore;
-                for ( int ofs = identBefore ; ofs < length - identAfter ; ofs++, readOfs++, refOfs++ ) {
+                readOfs += spanBefore;
+                refOfs += spanBefore;
+                for ( int ofs = spanBefore ; ofs < length - spanAfter ; ofs++, readOfs++, refOfs++ ) {
 
-                    if ( ref[refOfs] != 'N'  && bases[readOfs] != ref[refOfs] ) {
+                    if ( ref[refOfs] != 'N' && (fmArgs.reportAllAlts || (bases[readOfs] != ref[refOfs])) ) {
 
                         // check that this is really a SNV (must be surrounded by identical ref)
                         boolean     surrounded = true;
-                        for ( int i = 0 ; i < identBefore && surrounded ; i++ ) {
-                            if ( bases[readOfs-1-i] != ref[refOfs-1-i] ) {
+                        for ( int i = 0 ; i < surroundBefore && surrounded ; i++ ) {
+                            final int bIndex = readOfs-1-i;
+                            final int rIndex = refOfs-1-i;
+                            if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
+                                surrounded = false;
+                                continue;
+                            }
+                            if ( bases[bIndex] != ref[rIndex] ) {
                                 surrounded = false;
                             }
                         }
-                        for ( int i = 0 ; i < identAfter && surrounded ; i++ ) {
-                            if ( bases[readOfs+1+i] != ref[refOfs+1+i] ) {
+                        for ( int i = 0 ; i < surroundtAfter && surrounded ; i++ ) {
+                            final int bIndex = readOfs+1+i;
+                            final int rIndex = refOfs+1+i;
+                            if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
+                                surrounded = false;
+                                continue;
+                            }
+                            if ( bases[bIndex] != ref[rIndex] ) {
                                 surrounded = false;
                             }
                         }
-                        if ( !surrounded ) {
+                        if ( (!fmArgs.reportAllAlts && !fmArgs.tagBasesWithAdjacentRefDiff) && !surrounded ) {
                             continue;
                         }
 
                         // add this feature
                         FlowFeatureMapper.MappedFeature feature = FlowFeatureMapper.MappedFeature.makeSNV(read, readOfs, ref[refOfs], referenceContext.getStart() + refOfs, readOfs - refOfs);
+                        if ( (fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff) && !surrounded )
+                            feature.adjacentRefDiff = true;
                         feature.nonIdentMBasesOnRead = nonIdentMBases;
                         feature.refEditDistance = refEditDistance;
                         if ( !read.isReverseStrand() )
@@ -166,8 +192,8 @@ public class SNVMapper implements FeatureMapper {
                         features.add(feature);
                     }
                 }
-                readOfs += identAfter;
-                refOfs += identAfter;
+                readOfs += spanAfter;
+                refOfs += spanAfter;
 
             } else {
 
@@ -222,7 +248,7 @@ public class SNVMapper implements FeatureMapper {
         }
     }
 
-    public boolean noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start) {
+    public FilterStatus noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start) {
 
         // access bases
         final byte[]      bases = read.getBasesNoCopy();
@@ -243,9 +269,9 @@ public class SNVMapper implements FeatureMapper {
                     cigarElement.getOperator().consumesReferenceBases() ) {
 
                 // break out if not enough clearing
-                if ( (start < referenceContext.getStart() + refOfs + identBefore) ||
-                        (start >= referenceContext.getStart() + refOfs + length - identAfter) )
-                    return false;
+                if ( (start < referenceContext.getStart() + refOfs + spanBefore) ||
+                        (start >= referenceContext.getStart() + refOfs + length - spanAfter) )
+                    return FilterStatus.Filtered;
 
                 int         delta = start - (referenceContext.getStart() + refOfs);
                 readOfs += delta;
@@ -255,13 +281,25 @@ public class SNVMapper implements FeatureMapper {
 
                     // check that this is really a SNV (must be surrounded by identical ref)
                     boolean     surrounded = true;
-                    for ( int i = 0 ; i < identBefore && surrounded ; i++ ) {
-                        if ( bases[readOfs-1-i] != ref[refOfs-1-i] ) {
+                    for ( int i = 0 ; i < surroundBefore && surrounded ; i++ ) {
+                        final int bIndex = readOfs-1-i;
+                        final int rIndex = refOfs-1-i;
+                        if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
+                            surrounded = false;
+                            continue;
+                        }
+                        if ( bases[bIndex] != ref[rIndex] ) {
                             surrounded = false;
                         }
                     }
-                    for ( int i = 0 ; i < identAfter && surrounded ; i++ ) {
-                        if ( bases[readOfs+1+i] != ref[refOfs+1+i] ) {
+                    for ( int i = 0 ; i < surroundtAfter && surrounded ; i++ ) {
+                        final int bIndex = readOfs+1+i;
+                        final int rIndex = refOfs+1+i;
+                        if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
+                            surrounded = false;
+                            continue;
+                        }
+                        if ( bases[bIndex] != ref[rIndex] ) {
                             surrounded = false;
                         }
                     }
@@ -269,10 +307,10 @@ public class SNVMapper implements FeatureMapper {
                         continue;
                     }
 
-                    // this is it! no feature but filtred in
-                    return true;
+                    // this is it! no feature but filtered in
+                    return FilterStatus.NoFeatureAndFiltered;
                 } else
-                    return false;
+                    return FilterStatus.Filtered;
 
             } else {
 
@@ -287,7 +325,7 @@ public class SNVMapper implements FeatureMapper {
         };
 
         // if here, false
-        return false;
+        return FilterStatus.None;
     }
 
 }
