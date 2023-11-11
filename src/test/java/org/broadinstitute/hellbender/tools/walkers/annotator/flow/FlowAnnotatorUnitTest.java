@@ -28,7 +28,7 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
             new HmerMotifs(),
             new GcContent(),
             new CycleSkipStatus(),
-            new VariantType(),
+            new VariantType()
     };
 
     @DataProvider(name = "testData")
