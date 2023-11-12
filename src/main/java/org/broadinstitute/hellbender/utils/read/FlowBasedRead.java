@@ -41,7 +41,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     public static final int  MAX_CLASS = 12; //note - this is a historical value to support files with max class is not defined in the header, it is expected that mc tag exists in the CRAM
     public static final String     DEFAULT_FLOW_ORDER = "TGCA";
     private static final long serialVersionUID = 42L;
-    private final Logger logger = LogManager.getLogger(this.getClass());
+    private static final Logger logger = LogManager.getLogger(FlowBasedRead.class);
     private static final OneShotLogger vestigialOneShotLogger = new OneShotLogger(FlowBasedRead.class);
 
     // constants
@@ -573,6 +573,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         } else {
             applyClipping(clipLeft, leftHmerClip, clipRight, rightHmerClip, spread);
             baseClipped = true;
+            validKey = true;
             trimLeftBase = clipLeftBase;
             trimRightBase = clipRightBase;
         }
