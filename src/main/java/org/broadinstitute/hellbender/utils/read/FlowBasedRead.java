@@ -117,7 +117,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * The validity status of the key. Certain operations may produce undefined/errornous results. This is signaled by
      * the read being marked with a validKey == false
      */
-    private boolean validKey;
+    private boolean validKey = true;
 
     /**
      * The direction of this read. After being red, the direction will also swing to be REFERENCE
