@@ -395,7 +395,7 @@ task ExtractTask {
   >>>
   runtime {
     docker: gatk_docker
-    memory: select_first([memory_override, "12 GB"])
+    memory: select_first([memory_override, 12]) + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
     preemptible: select_first([extract_preemptible_override, "2"])
