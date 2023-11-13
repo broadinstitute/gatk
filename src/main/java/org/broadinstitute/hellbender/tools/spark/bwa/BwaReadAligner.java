@@ -21,7 +21,7 @@ public final class BwaReadAligner {
     private static final int READS_PER_PARTITION_GUESS = 1500000;
 
     public BwaReadAligner(final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs,
-                   final boolean retainDuplicateFlag) {
+                          final boolean retainDuplicateFlag) {
         this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
         this.readsHeader = readsHeader;
         this.alignsPairs = alignsPairs;
