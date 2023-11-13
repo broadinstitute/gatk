@@ -97,11 +97,12 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call Utils.GetNumSamplesPrepared {
+  call Utils.GetNumSamplesLoaded {
     input:
-      fq_prepare_table = fq_prepare_table,
+      fq_sample_table = fq_sample_table,
       project_id = project_id,
-      prepare_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
+      control_samples = control_samples,
+      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
