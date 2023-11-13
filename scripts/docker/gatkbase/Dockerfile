@@ -12,10 +12,12 @@ RUN apt-get update && \
     bc \
     unzip \
     bzip2 \
-    zlib \
-    libbz2 \
-    liblzma \
-    libcurl \
+    libssl-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+    zlib1g-dev \
+    libncurses5-dev \
+    libbz2-dev \
     less \
     bedtools \
     gpg-agent \
@@ -71,7 +73,7 @@ RUN mkdir $DOWNLOAD_DIR && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip 
 
-# Install samtools
+# Install samtools and tabix
 ENV HTSLIB_VERSION "1.18"
 ENV HTSLIB_VERSION_MD5 = "eef1378084dc3888f6dd59f522886d6c"
 RUN wget -q https://github.com/samtools/samtools/releases/download/$HTSLIB_VERSION/samtools-$HTSLIB_VERSION.tar.bz2 && \
@@ -81,5 +83,7 @@ RUN wget -q https://github.com/samtools/samtools/releases/download/$HTSLIB_VERSI
     ./configure --quiet --enable-libcurl --prefix=$HOME/samtools && \
     make -s -j $(nproc --all) all all-htslib && \
     make -s install install-htslib && \
-    cd .. && rm -r samtools-$HTSLIB_VERSION.tar.bz2 samtools-$HTSLIB_VERSION
-RUN samtools --version
+    cd .. && rm -r samtools-$HTSLIB_VERSION.tar.bz2 samtools-$HTSLIB_VERSION && \
+    export PATH=$HOME/samtools/bin:$PATH && \
+    samtools --version && \
+    tabix --version
