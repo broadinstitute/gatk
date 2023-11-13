@@ -125,8 +125,8 @@ if __name__ == "__main__":
     parser.add_argument('--secondary-script-path', type=str, help='Path to secondary script to run in Hail cluster')
     parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
-    parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
-    parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
+    parser.add_argument('--avro-path', type=str, help='Avro URL')
+    parser.add_argument('--temp-path', type=str, help='Cruft URL')
 
     args = parser.parse_args()
 
