@@ -18,6 +18,8 @@ workflow GvsExtractCallset {
     String query_project = project_id
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
+    Int? memory_override
+    Int? disk_override
     Boolean zero_pad_output_vcf_filenames = true
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
@@ -211,6 +213,8 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
+        disk_override                      = disk_override,
+        memory_override                    = memory_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
         write_cost_to_db                   = write_cost_to_db,
@@ -304,6 +308,8 @@ task ExtractTask {
     File? gatk_override
     Int? extract_preemptible_override
     Int? extract_maxretries_override
+    Int? disk_override
+    Int? memory_override
 
     Int? local_sort_max_records_in_ram = 10000000
 
@@ -389,8 +395,8 @@ task ExtractTask {
   >>>
   runtime {
     docker: gatk_docker
-    memory: "12 GB"
-    disks: "local-disk 150 HDD"
+    memory: select_first([memory_override, "12 GB"])
+    disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
     preemptible: select_first([extract_preemptible_override, "2"])
     maxRetries: select_first([extract_maxretries_override, "3"])

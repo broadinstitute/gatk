@@ -26,7 +26,6 @@ workflow GvsExtractCohortFromSampleNames {
     String extraction_uuid
     String filter_set_name
     String output_file_base_name
-    Int? scatter_count
 
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
@@ -34,6 +33,9 @@ workflow GvsExtractCohortFromSampleNames {
 
     Int? extract_preemptible_override
     Int? extract_maxretries_override
+    Int? extract_scatter_count_override
+    Int? extract_memory_override
+    Int? extract_disk_override
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
@@ -66,7 +68,7 @@ workflow GvsExtractCohortFromSampleNames {
       sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp
   }
 
-  Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
+  Int effective_scatter_count = if defined(extract_scatter_count_override) then select_first([extract_scatter_count_override])
                                 else if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
                                      else if GetNumSamplesLoaded.num_samples < 1000 then 250
                                           else if GetNumSamplesLoaded.num_samples < 5000 then 500
@@ -123,6 +125,8 @@ workflow GvsExtractCohortFromSampleNames {
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
+      memory_override = extract_memory_override,
+      disk_override = extract_disk_override,
 
       gatk_override = gatk_override,
       write_cost_to_db = write_cost_to_db
