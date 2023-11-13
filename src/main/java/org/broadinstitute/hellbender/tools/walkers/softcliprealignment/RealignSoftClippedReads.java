@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.softcliprealignment;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -57,36 +58,31 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
-    private int numDroppedUnpairedReads = 0;
-    private int numRealignedReads = 0;
-    private SubsettingRealignmentEngine engine;
-    private Set<String> softclippedReadNames;
-
-    @Override
-    public void onTraversalStart() {
-        engine = new SubsettingRealignmentEngine(softClipRealignmentArgs.indexImage.toString(),
-                getHeaderForReads(),  softClipRealignmentArgs.bufferSize,
-                softClipRealignmentArgs.bwaThreads);
-    }
-
     @Override
     public void traverseReads() {
         logger.info("Identifying soft-clipped reads...");
-        softclippedReadNames = new HashSet<>();
+        final Set<String> softclippedReadNames = new HashSet<>();
         forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
-                firstPass(read)
+                checkIfClipped(read, softclippedReadNames, minSoftClipLength)
         );
-
-
-        forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
-                engine.addRead(read, softclippedReadNames)
-        );
+        logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs");
+        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(
+                softClipRealignmentArgs.indexImage.toString(), getHeaderForReads(),
+                softClipRealignmentArgs.bufferSize, softClipRealignmentArgs.bwaThreads)) {
+            logger.info("Subsetting soft-clipped reads and mates...");
+            forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
+                    engine.addRead(read, r -> softclippedReadNames.contains(r.getName()))
+            );
+            logger.info("Realigning and merging with unclipped reads...");
+            engine.alignAndMerge();
+        }
     }
 
     /**
      * Gather names of soft-clipped reads
      */
-    private void firstPass(final GATKRead read) {
+    @VisibleForTesting
+    static void checkIfClipped(final GATKRead read, final Set<String> softclippedReadNames, final int minSoftClipLength) {
         if (isValidSoftClip(read, minSoftClipLength)) {
             softclippedReadNames.add(read.getName());
         }
