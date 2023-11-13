@@ -303,7 +303,7 @@ public class FlowBasedReadUtils {
                     hmersLeft--;
                 }
 
-            int         hmerSize = 1;
+            int hmerSize = 1;
             for ( ; hmerSize < bases.length ; hmerSize++ )
                 if (bases[hmerSize] != hmerBase) {
                     if ( --hmersLeft <= 0 )
