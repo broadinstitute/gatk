@@ -18,7 +18,7 @@ def configure_logging():
     root.addHandler(handler)
 
 
-def wrap(string):
+def unwrap(string):
     import re
     return re.sub("\\s{2,}", " ", string).strip()
 
@@ -31,7 +31,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         use_classic_vqsr_flag = "--use-classic-vqsr"
 
     try:
-        cluster_start_cmd = wrap(f"""
+        cluster_start_cmd = unwrap(f"""
         
         hailctl dataproc start 
          --autoscaling-policy={autoscaling_policy}
@@ -50,7 +50,11 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
 
         info(f"Starting cluster '{cluster_name}'...")
         info(cluster_start_cmd)
-        info(os.popen(cluster_start_cmd).read())
+        pipe = os.popen(cluster_start_cmd)
+        info(pipe.read())
+        ret = pipe.close()
+        if ret:
+            raise RuntimeError(f"Unexpected exit code from cluster creation: {ret}")
 
         cluster_client = dataproc.ClusterControllerClient(
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
@@ -58,7 +62,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
 
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
-                submit_cmd = wrap(f"""
+                submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
                  --py-files={secondary_script_path}
@@ -76,20 +80,33 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                 """)
 
                 info("Running: " + submit_cmd)
-                os.popen(submit_cmd).read()
+                pipe = os.popen(submit_cmd)
+                pipe.read()
+                ret = pipe.close()
+                if ret:
+                    raise RuntimeError(f"Unexpected exit code running submitted job: {ret}")
                 break
     except Exception as e:
         info(e)
         raise
     finally:
         info(f'Stopping cluster: {cluster_name}')
-        delete_cmd = wrap(f"""
+        delete_cmd = unwrap(f"""
             
-            gcloud dataproc clusters delete --project {gcs_project} --region {region} --account {account} {cluster_name}
+            gcloud dataproc clusters delete
+              --project {gcs_project}
+              --region {region}
+              --account {account}
+              --quiet
+              {cluster_name}
             
         """)
 
-        os.popen(delete_cmd).read()
+        pipe = os.popen(delete_cmd)
+        pipe.read()
+        ret = pipe.close()
+        if ret:
+            raise RuntimeError(f"Unexpected exit code deleting cluster: {ret}")
 
 
 if __name__ == "__main__":
