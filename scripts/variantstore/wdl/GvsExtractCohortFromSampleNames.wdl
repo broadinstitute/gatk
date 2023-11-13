@@ -67,7 +67,7 @@ workflow GvsExtractCohortFromSampleNames {
       fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
       project_id = gvs_project,
       sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-      SamplesTableDatetimeCheckcloud_sdk_docker = effective_cloud_sdk_docker
+      cloud_sdk_docker = effective_cloud_sdk_docker
   }
 
   Int effective_scatter_count = if defined(extract_scatter_count_override) then select_first([extract_scatter_count_override])
