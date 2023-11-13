@@ -12,6 +12,10 @@ RUN apt-get update && \
     bc \
     unzip \
     bzip2 \
+    zlib \
+    libbz2 \
+    liblzma \
+    libcurl \
     less \
     bedtools \
     gpg-agent \
