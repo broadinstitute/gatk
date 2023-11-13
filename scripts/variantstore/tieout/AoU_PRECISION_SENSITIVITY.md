@@ -3,7 +3,7 @@
 ## Prerequisites
 1. Complete (at least) through the training step (`GvsCreateFilterSet`) of the [GVS pipeline](../docs/aou/AOU_DELIVERABLES.md) with all the samples (control and non-control).
 1. Run the `GvsPrepareRanges` WDL with the following input values:
-   1. call_set_identifier`, `dataset_name`, `project_id` set to the same values as the inputs of the same name in the preceding `GvsCreateFilterSet` run.
+   1. `call_set_identifier`, `dataset_name`, `project_id` set to the same values as the inputs of the same name in the preceding `GvsCreateFilterSet` run.
    1. `control_samples` set to `true`.
    1. Make sure to set `use_compressed_references` to the appropriate value. This will be `true` for AoU callsets starting with Echo.
 1. Run the `GvsExtractCallset` WDL with the following input values:
@@ -27,7 +27,7 @@ gs://<long prefix with workspace id, submission id, etc>/call-ExtractTask/shard-
 ```
 
 Then all the output control VCFs might be selected into a FOFN with some globbing. Perform the following in a notebook
-in the workspace and then copy the resulting FOFN to a location under the workspace bucket:
+in the workspace:
 
 ```
 gsutil ls 'gs://<long prefix with workspace id, submission id, etc>/call-ExtractTask/shard-*/*.vcf.gz' > vcfs_fofn.txt
