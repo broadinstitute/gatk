@@ -59,12 +59,12 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
 
     private int numDroppedUnpairedReads = 0;
     private int numRealignedReads = 0;
-    private SoftClipRealignmentEngine engine;
+    private SubsettingRealignmentEngine engine;
     private Set<String> softclippedReadNames;
 
     @Override
     public void onTraversalStart() {
-        engine = new SoftClipRealignmentEngine(softClipRealignmentArgs.indexImage.toString(),
+        engine = new SubsettingRealignmentEngine(softClipRealignmentArgs.indexImage.toString(),
                 getHeaderForReads(),  softClipRealignmentArgs.bufferSize,
                 softClipRealignmentArgs.bwaThreads);
     }

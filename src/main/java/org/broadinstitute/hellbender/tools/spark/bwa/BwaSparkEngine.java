@@ -30,6 +30,9 @@ public final class BwaSparkEngine implements AutoCloseable {
     private final boolean retainDuplicateFlag;
     private final Broadcast<SAMFileHeader> broadcastHeader;
 
+    // assumes 128Mb Spark partitions, with reads needing about 100bytes each when BAM compressed
+    private static final int READS_PER_PARTITION_GUESS = 1500000;
+
     /**
      * @param ctx           the Spark context
      * @param referenceFile the path to the reference file named <i>_prefix_.fa</i>, which is used to find the image file with name <i>_prefix_.fa.img</i>.
@@ -100,7 +103,7 @@ public final class BwaSparkEngine implements AutoCloseable {
         final boolean resolveIndexFileName = this.resolveIndexFileName;
         final boolean retainDuplicateFlag = this.retainDuplicateFlag;
         return unalignedReads.mapPartitions(itr ->
-                new BwaReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment, retainDuplicateFlag).apply(itr));
+                new BwaReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment, retainDuplicateFlag).apply(itr, READS_PER_PARTITION_GUESS));
     }
 
     @Override

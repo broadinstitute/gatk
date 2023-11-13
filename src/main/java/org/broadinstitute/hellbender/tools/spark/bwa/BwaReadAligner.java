@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.bwa.*;
@@ -10,6 +11,9 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.*;
 
+/**
+ * Class for aligning reads with BWA. Supports both paired and unpaired alignments.
+ */
 public final class BwaReadAligner {
     private final BwaMemIndex bwaMemIndex;
     private final SAMFileHeader readsHeader;
@@ -17,9 +21,13 @@ public final class BwaReadAligner {
     private final boolean retainDuplicateFlag;
     private int nThreads = 1;
 
-    // assumes 128Mb partitions, with reads needing about 100bytes each when BAM compressed
-    private static final int READS_PER_PARTITION_GUESS = 1500000;
-
+    /**
+     * Main constructor
+     * @param indexFileName path to BWA index image file
+     * @param readsHeader   input reads header
+     * @param alignsPairs   whether this is a paired-end alignment
+     * @param retainDuplicateFlag  carry over duplicate read flag
+     */
     public BwaReadAligner(final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs,
                           final boolean retainDuplicateFlag) {
         this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
@@ -31,15 +39,28 @@ public final class BwaReadAligner {
         }
     }
 
+    /**
+     * Sets the number of threads used by BWA
+     */
     public void setNThreads(final int n) {
         nThreads = n;
     }
 
-    public Iterator<GATKRead> apply(final Iterator<GATKRead> readItr) {
-        final List<GATKRead> inputReads = new ArrayList<>(READS_PER_PARTITION_GUESS);
+    /**
+     * Overloaded alignment method for Spark
+     */
+    public Iterator<GATKRead> apply(final Iterator<GATKRead> readItr, final int estimatedInputSize) {
+        final List<GATKRead> inputReads = new ArrayList<>(estimatedInputSize);
         while (readItr.hasNext()) {
             inputReads.add(readItr.next());
         }
+        return apply(inputReads);
+    }
+
+    /**
+     * Performs alignment on a list of reads
+     */
+    public Iterator<GATKRead> apply(final List<GATKRead> inputReads) {
         final int nReads = inputReads.size();
         if (alignsPairs) {
             if ((nReads & 1) != 0) {
@@ -73,8 +94,12 @@ public final class BwaReadAligner {
         for (int idx = 0; idx != nReads; ++idx) {
             final GATKRead originalRead = inputReads.get(idx);
             final String readName = originalRead.getName();
-            final byte[] bases = originalRead.getBases();
+            final byte[] bases =  originalRead.getBases();
             final byte[] quals = originalRead.getBaseQualities();
+            if (originalRead.isReverseStrand()) {
+                SequenceUtil.reverseComplement(bases);
+                SequenceUtil.reverse(quals, 0, quals.length);
+            }
             final String readGroup = originalRead.getReadGroup();
             final List<BwaMemAlignment> alignments = allAlignments.get(idx);
             final Map<BwaMemAlignment, String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments, refNames);
