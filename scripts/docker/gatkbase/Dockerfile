@@ -14,8 +14,6 @@ RUN apt-get update && \
     bzip2 \
     less \
     bedtools \
-    samtools \
-    tabix \
     gpg-agent \
     build-essential \
     openjdk-17-jdk \
@@ -68,3 +66,16 @@ RUN mkdir $DOWNLOAD_DIR && \
     find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip 
+
+# Install samtools
+ENV HTSLIB_VERSION "1.18"
+ENV HTSLIB_VERSION_MD5 = "eef1378084dc3888f6dd59f522886d6c"
+RUN wget -q https://github.com/samtools/samtools/releases/download/$HTSLIB_VERSION/samtools-$HTSLIB_VERSION.tar.bz2 && \
+    test "`md5sum samtools-$HTSLIB_VERSION.tar.bz2 | awk -v FS='  ' '{print $1}'` = $HTSLIB_VERSION_MD5" && \
+    tar xjf samtools-$HTSLIB_VERSION.tar.bz2 && \
+    cd samtools-$HTSLIB_VERSION && \
+    ./configure --quiet --enable-libcurl --prefix=$HOME/samtools && \
+    make -s -j $(nproc --all) all all-htslib && \
+    make -s install install-htslib && \
+    cd .. && rm -r samtools-$HTSLIB_VERSION.tar.bz2 samtools-$HTSLIB_VERSION
+RUN samtools --version
