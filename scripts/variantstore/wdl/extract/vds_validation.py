@@ -1,6 +1,5 @@
 import argparse
 import hail as hl
-blah
 
 
 ###
