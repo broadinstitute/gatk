@@ -73,7 +73,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                  --driver-log-levels root=WARN
                  --
                  --vds-path {vds_path}
-                 {'--temp-path ' + temp_path if temp_path else ''}
+                 --temp-path {temp_path}
                  {'--avro-path ' + avro_path if avro_path else ''}
                  {use_classic_vqsr_flag}
                 """)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, help='Avro URL')
-    parser.add_argument('--temp-path', type=str, help='Cruft URL')
+    parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
 
     args = parser.parse_args()
 
