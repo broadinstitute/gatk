@@ -78,14 +78,9 @@
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
 1. `GvsPrepareRangesCallset` workflow
     - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
-    - It will need to be run twice. Once with `only_output_vet_tables` set to "true" (the default value is `false`) and once with `control_samples` set to "true" (the default value is `false`).
+    - `only_output_vet_tables` should be set to "true" (the default value is `false`).
     - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats. Use the same prefix for both runs.
     - **NOTE** Set `use_compressed_references` to true.
-    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-1. `GvsExtractCallset` workflow
-    - This workflow extracts the control data in BigQuery and transforms it into a sharded joint VCF incorporating the VETS filter set data.
-    - It will need to be run once with `control_samples` set to "true", and with the `filter_set_name` from the `GvsCreateFilterSet` step and the `extract_table_prefix` from the `GvsPrepareRangesCallset` step.  
-    - Include a valid `output_gcs_dir` parameter, which is where the VCF, interval list, manifest, and sample name list files will go, e.g. `gs://fc-<workspace-id>/extractedcontrol-vcfs/`
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCallsetStatistics` workflow
     - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
