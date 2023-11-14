@@ -65,7 +65,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
-                 '--py-files={secondary_script_path}' if secondary_script_path else ''
+                 {'--py-files=' + secondary_script_path if secondary_script_path else ''}
                  --cluster={cluster_name}
                  --project {gcs_project}
                  --region={region}
@@ -73,8 +73,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                  --driver-log-levels root=WARN
                  --
                  --vds-path {vds_path}
-                 '--temp-path {temp_path}' if {temp_path} else ''
-                 '--avro-path {avro_path}' if {avro_path} else ''
+                 {'--temp-path ' + temp_path if {temp_path} else ''}
+                 {'--avro-path '+ avro_path if {avro_path} else ''}
                  {use_classic_vqsr_flag}
                 """)
 
