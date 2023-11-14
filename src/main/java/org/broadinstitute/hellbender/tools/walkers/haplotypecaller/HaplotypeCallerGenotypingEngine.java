@@ -418,10 +418,12 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                     }
                 }
 
+                // TODO: we compute this even for all ref haplotype -- that seems sketchy!!
                 // calculate haplotype heterozygosities by adding up (in log space) their event heterozygosities
                 final Map<Haplotype, Double> log10HaplotypeHetPriors = jdHaplotypes.stream().collect(Collectors.toMap(h->h,
                         h -> h.getEventMap().getEvents().stream().mapToDouble(log10EventHetPriors::get).sum()));
 
+                // TODO: likewise: we are calculating this for the ref haplotype. . .
                 // note that DRAGEN's prior for homozygosity is NOT the same as Hardy-Weinberg equilibrium!
                 // TODO: should the DRAGEN het-hom ratio for haplotypes be the same as for alleles?
                 final Map<Haplotype, Double> log10HaplotypeHomPriors = jdHaplotypes.stream().collect(Collectors.toMap(h->h,
@@ -430,12 +432,11 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 // calculate diploid haplotype-based genotype priors
                 final double[] log10HaploGenotypePriors = new double[GenotypeIndexCalculator.genotypeCount(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())];
 
+                // TODO: this is yielding hom alt nearly as likely as hom ref, with het much less likely than either.  This is WRONG!!!
                 for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())) {
-                    // implied = log10Priors[0] = 0.0;
-                    if (gac.index() > 0) {
-                        log10HaploGenotypePriors[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == ploidy ? log10HaplotypeHomPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele))
-                                : count * log10HaplotypeHetPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele)));
-                    }
+                    // note: the zeroth element here is not necessarily the ref-ref haplo-genotype
+                    log10HaploGenotypePriors[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == ploidy ? log10HaplotypeHomPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele))
+                            : count * log10HaplotypeHetPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele)));
                 }
 
                 // add haplo-genotype priors to haplo-genotype likelihoods in log space and normalize to get posteriors
@@ -446,7 +447,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 GenotypingLikelihoods<Haplotype> log10HaploGenotypePosteriors = new GenotypingLikelihoods<>(log10HaploGenotypeLikelihoods, ploidyModel, log10HaploGenotypePosteriorsInSampleOrder);
                 if (haploGenotypePosteriorOverlapDetector.overlapsAny(jdInterval)) {
-                    int DEBUG = 90;
+                    int DEBUG = 90; // TODO: remove this line!
                 }
                 haploGenotypePosteriorOverlapDetector.addLhs(log10HaploGenotypePosteriors, jdInterval);
             }
