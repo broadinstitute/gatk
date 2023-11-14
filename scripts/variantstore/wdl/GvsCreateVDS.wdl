@@ -204,7 +204,8 @@ task validate_vds {
         --region ~{region} \
         --gcs-project ~{gcs_project} \
         --cluster-name ${cluster_name} \
-        --vds-path ~{vds_path}
+        --vds-path ~{vds_path} \
+        --temp-path ${hail_temp_path}
     >>>
 
     runtime {
