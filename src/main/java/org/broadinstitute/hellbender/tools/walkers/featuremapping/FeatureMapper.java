@@ -13,6 +13,6 @@ public interface FeatureMapper {
         NoFeatureAndFiltered
     };
 
-    void        forEachOnRead(GATKRead read, ReferenceContext referenceContext, Consumer<? super FlowFeatureMapper.MappedFeature> action);
+    void        forEachOnRead(GATKRead read, ReferenceContext referenceContext, Consumer<? super MappedFeature> action);
     FilterStatus noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start);
 }

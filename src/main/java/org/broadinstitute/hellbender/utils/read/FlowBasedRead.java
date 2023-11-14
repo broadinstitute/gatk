@@ -250,6 +250,33 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
 
     }
 
+    public FlowBasedRead(final FlowBasedRead other, final boolean deepCopy) {
+        super(other.samRecord);
+        if ( deepCopy ) {
+            forwardSequence = other.forwardSequence.clone();
+            key = other.key.clone();
+            flow2base = other.flow2base.clone();
+            flowOrder = other.flowOrder.clone();
+            flowMatrix = other.flowMatrix.clone();
+        } else {
+            forwardSequence = other.forwardSequence;
+            key = other.key;
+            flow2base = other.flow2base;
+            flowOrder = other.flowOrder;
+            flowMatrix = other.flowMatrix;
+        }
+        maxHmer = other.maxHmer;
+        validKey = other.validKey;
+        direction = other.direction;
+        baseClipped = other.baseClipped;
+        trimLeftBase = other.trimLeftBase;
+        trimRightBase = other.trimRightBase;
+        fbargs = other.fbargs;
+        readInsQuals = other.readInsQuals;
+        readDelQuals = other.readDelQuals;
+        overallGCP = other.overallGCP;
+    }
+
     //since the last unclipped flow is uncertain (we give high probabilities to
     //also hmers higher than the called hmer)
     private void spreadFlowLengthProbsAcrossCountsAtFlow(final int flowToSpread) {
@@ -283,12 +310,11 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         flow2base = FlowBasedKeyCodec.getKeyToBase(key);
         flowOrder = FlowBasedKeyCodec.getFlowToBase(_flowOrder, key.length);
 
-        // initialize matrix
+        // initialize matrix. fill first line, copy subsequent lines from first
         flowMatrix = new double[maxHmer+1][key.length];
-        for (int i = 0 ; i < maxHmer+1; i++) {
-            for (int j = 0 ; j < key.length; j++ ){
-                flowMatrix[i][j] = fbargs.fillingValue;
-            }
+        Arrays.fill(flowMatrix[0], fbargs.fillingValue);
+        for (int i = 1 ; i < maxHmer+1; i++) {
+            System.arraycopy(flowMatrix[0], 0, flowMatrix[i], 0, key.length);
         }
 
         // access qual, convert to flow representation

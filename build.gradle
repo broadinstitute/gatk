@@ -345,6 +345,12 @@ dependencies {
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
+	// https://mvnrepository.com/artifact/ml.dmlc/xgboost-jvm
+	//implementation group: 'ml.dmlc', name: 'xgboost-jvm_2.12', version: '2.0.2', ext: 'pom'
+    //implementation 'ml.dmlc:xgboost-jvm_2.12:2.0.2'
+    implementation("ml.dmlc:xgboost4j_2.12:2.0.1")
+    implementation("ml.dmlc:xgboost4j-spark_2.12:2.0.1")
+
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion

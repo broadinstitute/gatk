@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.groundtruth;
 
 import org.apache.commons.collections.map.LazySortedMap;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -16,8 +19,29 @@ public class SeriesStats {
     private double min = Double.NaN;
     private double max = Double.NaN;
     private SortedMap<Double, AtomicInteger> bins = new TreeMap<>();
+    private int intCount = 0;
+    private Map<Double, SeriesStats> auxBins = new LinkedHashMap<>();
 
-    void add(double v) {
+    public void csvWrite(final String path) throws IOException {
+        PrintWriter pw = new PrintWriter(path);
+        pw.println("value,count");
+        boolean intKeys = (count == intCount);
+        for (Map.Entry<Double, AtomicInteger> entry : bins.entrySet() ) {
+            if ( intKeys ) {
+                pw.println(String.format("%d,%d", entry.getKey().intValue(), entry.getValue().get()));
+            } else {
+                pw.println(String.format("%f,%d", entry.getKey(), entry.getValue().get()));
+            }
+        }
+        pw.close();
+    }
+
+    public void add(int v) {
+        add((double)v);
+        intCount++;
+    }
+
+    public void add(double v) {
 
         // save in simple values
         last = v;
@@ -35,6 +59,21 @@ public class SeriesStats {
             bins.get(v).incrementAndGet();
         } else {
             bins.put(v, new AtomicInteger(1));
+        }
+    }
+
+    public void aux(int v, int auxValue) {
+        aux((double)v, auxValue);
+    }
+
+    public void aux(double v, int auxValue) {
+
+        if ( auxBins.containsKey(v) ) {
+            auxBins.get(v).add(auxValue);
+        } else {
+            SeriesStats ss = new SeriesStats();
+            ss.add(auxValue);
+            auxBins.put(v, ss);
         }
     }
 
@@ -109,4 +148,15 @@ public class SeriesStats {
         return Math.sqrt(variance);
     }
 
+    public Map<Double, AtomicInteger> getBins() {
+        return this.bins;
+    }
+
+    public Map<Double, SeriesStats> getAuxBins() {
+        return this.auxBins;
+    }
+
+    public String toDigest() {
+        return this.bins.toString();
+    }
 }

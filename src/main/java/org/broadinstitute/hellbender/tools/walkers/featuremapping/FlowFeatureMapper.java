@@ -10,7 +10,6 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.math3.util.Precision;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
@@ -23,18 +22,13 @@ import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
-import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
-import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
 import java.util.*;
-
 
 /**
  * Finds specific features in reads, scores the confidence of each feature relative to the
@@ -117,17 +111,18 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     VCF_SMQ_LEFT_MEAN = "X_SMQ_LEFT_MEAN";
     private static final String     VCF_SMQ_RIGHT_MEAN = "X_SMQ_RIGHT_MEAN";
     private static final String     VCF_ADJACENT_REF_DIFF = "X_ADJACENT_REF_DIFF";
+    private static final String     VCF_SNVQR_PREFIX = "X_SNVQR_";
 
-
-    private static final Double     LOWEST_PROB = 0.0001;
     private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
 
     private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
 
     final private List<CopyAttrInfo> copyAttrInfo = new LinkedList<>();
 
+    final private List<SnvqrFeature> snvqrFeatures = new LinkedList<>();
+
     // order here is according to SequenceUtil.VALID_BASES_UPPER
-    final private String scoreForBaseNames[] = new String[SequenceUtil.VALID_BASES_UPPER.length];
+    final static private String scoreForBaseNames[] = new String[SequenceUtil.VALID_BASES_UPPER.length];
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -183,83 +178,12 @@ public final class FlowFeatureMapper extends ReadWalker {
         }
     }
 
-    protected static class MappedFeature implements Comparable<MappedFeature> {
-
-        GATKRead    read;
-        FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type;
-        byte[]      readBases;
-        byte[]      refBases;
-        int         readBasesOffset; // offset of read bases array
-        int         start;      // location (on reference)
-        int         offsetDelta;
-        double      score;
-        int         readCount;
-        int         filteredCount;
-        int         nonIdentMBasesOnRead;
-        int         featuresOnRead;
-        int         refEditDistance;
-        int         index;
-        int         smqLeft;
-        int         smqRight;
-        int         smqLeftMean;
-        int         smqRightMean;
-
-        double      scoreForBase[];
-        boolean     adjacentRefDiff;
-
-        public MappedFeature(GATKRead read, FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type, byte[] readBases,
-                             byte[] refBases, int readBasesOffset, int start, int offsetDelta) {
-            this.read = read;
-            this.type = type;
-            this.readBases = readBases;
-            this.refBases = refBases;
-            this.readBasesOffset = readBasesOffset;
-            this.start = start;
-            this.offsetDelta = offsetDelta;
-        }
-
-        static MappedFeature makeSNV(GATKRead read, int offset, byte refBase, int start, int offsetDelta) {
-            byte[]      readBases = {read.getBasesNoCopy()[offset]};
-            byte[]      refBases = {refBase};
-            return new MappedFeature(
-                    read,
-                    FlowFeatureMapperArgumentCollection.MappingFeatureEnum.SNV,
-                    readBases,
-                    refBases,
-                    offset,
-                    start,
-                    offsetDelta);
-        }
-
-        @Override
-        public String toString() {
-            return "Feature{" +
-                    "read=" + read +
-                    ", type=" + type +
-                    ", readBases=" + Arrays.toString(readBases) +
-                    ", refBases=" + Arrays.toString(refBases) +
-                    ", readBasesOffset=" + readBasesOffset +
-                    ", start=" + start +
-                    '}';
-        }
-
-        @Override
-        public int compareTo(MappedFeature o) {
-
-            int     delta = this.read.getContig().compareTo(o.read.getContig());
-            if ( delta != 0 ) {
-                return delta;
-            } else {
-                return this.start - o.start;
-            }
-        }
-    }
-
     // locals
     private VariantContextWriter                vcfWriter;
-    final private PriorityQueue<MappedFeature>        featureQueue = new PriorityQueue<>();
+    final private PriorityQueue<MappedFeature>  featureQueue = new PriorityQueue<>();
     final private PriorityQueue<ReadContext>    readQueue = new PriorityQueue<>();
     private FeatureMapper                       mapper;
+    private FlowFeatureMapperUtils.Args          utilArgs;
 
     @Override
     public void onTraversalStart() {
@@ -271,11 +195,31 @@ public final class FlowFeatureMapper extends ReadWalker {
             throw new IllegalArgumentException("input file must be coordinated sorted");
         }
 
+        // build utils args
+        utilArgs = new FlowFeatureMapperUtils.Args();
+        utilArgs.header = getHeaderForReads();
+        utilArgs.fbArgs = fbargs;
+        utilArgs.debugNegatives = fmArgs.debugNegatives;
+        utilArgs.debugReadName = fmArgs.debugReadName;
+        utilArgs.limitScore = fmArgs.limitScore;
+        utilArgs.keepNegatives = fmArgs.keepNegatives;
+
+        // load apply snvqr features
+        if ( fmArgs.addApplySNVQRFeatures != null ) {
+            SnvqrFeatureFactory.setFillEdgeBaseWithValue("N");
+            for ( final String nameList : fmArgs.addApplySNVQRFeatures ) {
+                for (final String name : nameList.split(",")) {
+                    snvqrFeatures.add(SnvqrFeatureFactory.getFeature(name, null));
+                }
+            }
+        }
+
         // open output vcf
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5, outputSitesOnlyVCFs);
         vcfWriter.writeHeader(makeVCFHeader(sequenceDictionary, getDefaultToolVCFHeaderLines()));
+
     }
 
     @Override
@@ -363,12 +307,17 @@ public final class FlowFeatureMapper extends ReadWalker {
             headerInfo.add(new VCFInfoHeaderLine(VCF_ADJACENT_REF_DIFF, 1, VCFHeaderLineType.Flag, "Adjacent base filter indication: indel in the adjacent 5 bases to the considered base on the read"));
         }
 
+        // add anvqr features
+        for ( final SnvqrFeature feature : snvqrFeatures ) {
+            headerInfo.add(new VCFInfoHeaderLine(VCF_SNVQR_PREFIX + feature.getName().toUpperCase(), 1, VCFHeaderLineType.String, "AppleSNVQR: " + feature.getName()));
+        }
+
         final VCFHeader vcfHeader = new VCFHeader(headerInfo);
         vcfHeader.setSequenceDictionary(sequenceDictionary);
         return vcfHeader;
     }
 
-    private String scoreNameForBase(int baseIndex) {
+    static private String scoreNameForBase(int baseIndex) {
         if ( scoreForBaseNames[baseIndex] == null ) {
             scoreForBaseNames[baseIndex] = VCF_SCORE + "_" + new String(new byte[]{SequenceUtil.VALID_BASES_UPPER[baseIndex]});
         }
@@ -403,7 +352,7 @@ public final class FlowFeatureMapper extends ReadWalker {
             }
 
             // score the feature
-            fr.score = scoreFeature(fr);
+            fr.score = FlowFeatureMapperUtils.scoreFeature(fr, utilArgs);
 
             // score for validation mode?
             if ( fmArgs.reportAllAlts) {
@@ -412,7 +361,7 @@ public final class FlowFeatureMapper extends ReadWalker {
                     final byte base = SequenceUtil.VALID_BASES_UPPER[baseIndex];
                     boolean incl = base != fr.readBases[0];
                     if ( incl ) {
-                        fr.scoreForBase[baseIndex] = scoreFeature(fr, base);
+                        fr.scoreForBase[baseIndex] = FlowFeatureMapperUtils.scoreFeature(fr, base, utilArgs);
                     } else {
                         fr.scoreForBase[baseIndex] = Double.NaN;
                     }
@@ -481,184 +430,6 @@ public final class FlowFeatureMapper extends ReadWalker {
             }
         }
     }
-
-    private double scoreFeature(final MappedFeature fr) {
-        return scoreFeature(fr, (byte)0);
-    }
-    private double scoreFeature(final MappedFeature fr, byte altBase) {
-
-        // build haplotypes
-        final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), fr.read);
-        final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase);
-
-        // create flow read
-        final FlowBasedRead flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-
-        final int diffLeft = haplotypes[0].getStart() - flowRead.getStart() + fr.offsetDelta;
-        final int diffRight = flowRead.getEnd() - haplotypes[0].getEnd();
-        flowRead.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), false);
-
-        if ( !flowRead.isValid() ) {
-            return -1;
-        }
-
-        // compute alternative score
-        final int         hapKeyLength = Math.min(haplotypes[0].getKeyLength(), haplotypes[1].getKeyLength());
-        final double      readScore = computeLikelihoodLocal(flowRead, haplotypes[0], hapKeyLength, false);
-        final double      refScore = computeLikelihoodLocal(flowRead, haplotypes[1], hapKeyLength, false);
-        double            score = readScore - refScore;
-        if ( !Double.isNaN(fmArgs.limitScore) ) {
-            score = Math.min(score, fmArgs.limitScore);
-        }
-
-        if ( ((Double.isNaN(score) || (score < 0)) && fmArgs.debugNegatives)
-             || (fmArgs.debugReadName != null && fmArgs.debugReadName.contains(fr.read.getName())) ) {
-            logger.info("**** debug read: " + fr.read);
-            logger.info("readBases: " + fr.read.getBasesString());
-            logger.info("flowRead: " + flowRead);
-            logger.info("flowBases: " + flowRead.getBasesString());
-            logger.info("flowOrder: " + flowRead.getFlowOrder());
-            logger.info("flowKey: " + flowRead.getKeyLength() + " " + Arrays.toString(flowRead.getKey()));
-            logger.info("readHaplotype: " + haplotypes[0]);
-            logger.info("readHapKey: " + haplotypes[0].getKeyLength() + " " + Arrays.toString(haplotypes[0].getKey()));
-            computeLikelihoodLocal(flowRead, haplotypes[0], hapKeyLength, true);
-            logger.info("refrHaplotype: " + haplotypes[1]);
-            logger.info("refrHapKey: " + haplotypes[1].getKeyLength() + " " + Arrays.toString(haplotypes[1].getKey()));
-            computeLikelihoodLocal(flowRead, haplotypes[1], hapKeyLength, true);
-            logger.info("score: " + score);
-
-            // analyze read
-            final FlowBasedRead flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-            final int[]        key2 = flowRead2.getKey();
-            for ( int i = 0 ; i < key2.length ; i++ ) {
-                final double      p1 = flowRead2.getProb(i, key2[i]);
-                for ( int j = 0 ; j < rgInfo.maxClass ; j++ ) {
-                    final double      p2 = flowRead2.getProb(i, j);
-                    if ( p2 > p1 )
-                        logger.info(String.format("prob at %s key[%d]=%d, %f is lower than at %d which is %f",
-                                                                flowRead2.getName(), i, key2[i], p1, j, p2));
-                }
-            }
-        }
-
-        if ( score < 0 && !fmArgs.keepNegatives && score != -1.0 ) {
-            score = 0;
-        }
-
-        return score;
-    }
-
-    public static double computeLikelihoodLocal(final FlowBasedRead read, final FlowBasedHaplotype haplotype, final int hapKeyLength, final boolean debug) {
-
-        final byte[] flowOrder = haplotype.getFlowOrderArray();
-        final byte   readFlowOrder0 = read.getFlowOrderArray()[0];
-        int startingPoint = 0;
-        for (int i = 0; i < flowOrder.length; i++) {
-            if (flowOrder[i] == readFlowOrder0) {
-                startingPoint = i;
-                break;
-            }
-        }
-        final int[]         key = haplotype.getKey();
-
-        // debug support
-        StringBuffer        debugMessage = null;
-        if ( debug )
-            debugMessage = new StringBuffer(Integer.toString(startingPoint) + " hmer prob |");
-        double              result = 0 ;
-        for (int i = 0; i < read.getKeyLength(); i++) {
-            int     index = i + startingPoint;
-            double  prob = 0;
-            int     locationToFetch = 0;
-            if ( index < hapKeyLength ) {
-                locationToFetch = Math.min(key[index] & 0xff, read.getMaxHmer() + 1);
-                prob = read.getProb(i, locationToFetch);
-            } else {
-                if ( debug ) {
-                    debugMessage.append(" clip");
-                }
-                break;
-            }
-            if ( Precision.equals(prob, 0.0) ) {
-                prob = LOWEST_PROB;
-            }
-            result += Math.log10(prob);
-
-            if ( debug ) {
-                debugMessage.append(String.format(" %d %.4f", locationToFetch, prob));
-            }
-        }
-
-        if ( debug ) {
-            debugMessage.append(" | " + result);
-            logger.info("debugMessage: " + debugMessage);
-        }
-
-        return result;
-    }
-
-    private FlowBasedHaplotype[] buildHaplotypes(final MappedFeature fr, final String flowOrder, byte altBase) {
-
-        // build bases for flow haplotypes
-        // NOTE!!!: this code assumes length of feature on read and reference is the same
-        // this is true for SNP but not for INDELs - it will have to be re-written!
-        // TODO: write for INDEL
-        byte[] bases = fr.read.getBasesNoCopy();
-        int         offset = fr.readBasesOffset;
-        int         refStart = fr.start;
-        int         refModOfs = 0;
-
-        // install alt base?
-        byte orgBase = 0;
-        if ( altBase != 0 ) {
-            orgBase = fr.refBases[0];
-            fr.refBases[0] = altBase;
-        }
-
-        if ( offset > 0 ) {
-            // reach into hmer before
-            offset--;
-            refModOfs++;
-            refStart--;
-
-            // extend until start of hmer
-            final byte        hmerBase = bases[offset];
-            while ( offset > 0 && bases[offset-1] == hmerBase ) {
-                offset--;
-                refModOfs++;
-                refStart--;
-            }
-        }
-        final byte[]      sAltBases = Arrays.copyOfRange(bases, offset, bases.length);
-        final byte[]      sRefBases = Arrays.copyOf(sAltBases, sAltBases.length);
-        System.arraycopy(fr.refBases, 0, sRefBases, refModOfs, fr.refBases.length);
-
-        // construct haplotypes
-        final SimpleInterval genomeLoc = new SimpleInterval(fr.read.getContig(), refStart, refStart + sAltBases.length - 1);
-        final Cigar          cigar = new Cigar();
-        cigar.add(new CigarElement(sAltBases.length, CigarOperator.M));
-        final Haplotype      altHaplotype = new Haplotype(sAltBases, false);
-        final Haplotype      refHaplotype = new Haplotype(sRefBases, true);
-        altHaplotype.setGenomeLocation(genomeLoc);
-        refHaplotype.setGenomeLocation(genomeLoc);
-        altHaplotype.setCigar(cigar);
-        refHaplotype.setCigar(cigar);
-
-        // prepare flow based haplotypes
-        final FlowBasedHaplotype[] result = {
-                                new FlowBasedHaplotype(altHaplotype, flowOrder),
-                                new FlowBasedHaplotype(refHaplotype, flowOrder)
-                            };
-
-        // restore changes
-        if ( altBase != 0 ) {
-            fr.refBases[0] = orgBase;
-        }
-
-        // return
-        return result;
-    }
-
     private boolean filterFeature(final MappedFeature fr) {
 
         if ( fmArgs.excludeNaNScores && Double.isNaN(fr.score) ) {
@@ -691,28 +462,11 @@ public final class FlowFeatureMapper extends ReadWalker {
                                                     fr.start + fr.refBases.length - 1,
                                                     alleles);
 
-        // copy attributes
-        vcb.attribute(VCF_READ_NAME, fr.read.getName());
-        vcb.attribute(VCF_SCORE, String.format("%.5f", fr.score));
-        vcb.attribute(VCF_FLAGS, fr.read.getFlags());
-        vcb.attribute(VCF_MAPQ, fr.read.getMappingQuality());
-        vcb.attribute(VCF_CIGAR, fr.read.getCigar().toString());
-        vcb.attribute(VCF_READ_COUNT, fr.readCount);
-        vcb.attribute(VCF_FILTERED_COUNT, fr.filteredCount);
-        vcb.attribute(VCF_FC1, fr.nonIdentMBasesOnRead);
-        vcb.attribute(VCF_FC2, fr.featuresOnRead);
-        vcb.attribute(VCF_LENGTH, fr.read.getLength());
-        vcb.attribute(VCF_EDIST, fr.refEditDistance);
-        vcb.attribute(VCF_INDEX, fr.index);
-
-        // median/mean quality on?
-        if ( fmArgs.surroundingMediaQualitySize != null ) {
-            vcb.attribute(VCF_SMQ_LEFT, fr.smqLeft);
-            vcb.attribute(VCF_SMQ_RIGHT, fr.smqRight);
-        }
-        if ( fmArgs.surroundingMeanQualitySize != null ) {
-            vcb.attribute(VCF_SMQ_LEFT_MEAN, fr.smqLeftMean);
-            vcb.attribute(VCF_SMQ_RIGHT_MEAN, fr.smqRightMean);
+        // add gathered attributes
+        for ( Map.Entry<String, Object> e : gatherVcfAttributes(fr,
+                                            fmArgs.surroundingMediaQualitySize, fmArgs.surroundingMeanQualitySize,
+                                            fmArgs.reportAllAlts).entrySet() ) {
+            vcb.attribute(e.getKey(), e.getValue());
         }
 
         for ( CopyAttrInfo info : copyAttrInfo ) {
@@ -728,18 +482,13 @@ public final class FlowFeatureMapper extends ReadWalker {
             }
         }
 
-        // validation mode?
-        if ( fmArgs.reportAllAlts ) {
-            if ( fr.scoreForBase != null ) {
-                for (int baseIndex = 0; baseIndex < SequenceUtil.VALID_BASES_UPPER.length; baseIndex++) {
-                    if (!Double.isNaN(fr.scoreForBase[baseIndex])) {
-                        vcb.attribute(scoreNameForBase(baseIndex), String.format("%.5f", fr.scoreForBase[baseIndex]));
-                    }
-                }
+        // add snvqr features
+        for ( final SnvqrFeature feature : snvqrFeatures ) {
+            if ( feature.isNonCalledBasedIndependent() ) {
+                vcb.attribute(VCF_SNVQR_PREFIX + feature.getName().toUpperCase(), feature.getObjectValue(fr));
+            } else {
+                vcb.attribute(VCF_SNVQR_PREFIX + feature.getName().toUpperCase(), feature.getObjectValue(fr, fr.refBases[0], getHeaderForReads()));
             }
-        }
-        if ( fr.adjacentRefDiff ) {
-            vcb.attribute(VCF_ADJACENT_REF_DIFF, true);
         }
 
         // build it!
@@ -747,6 +496,58 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // write to file
         vcfWriter.add(vc);
+    }
+
+    public static Map<String, Object> gatherVcfAttributes(final MappedFeature fr,
+                                                          final Integer surroundingMediaQualitySize, final Integer surroundingMeanQualitySize,
+                                                          final boolean reportAllAlts) {
+
+        Map<String, Object> attrs = new LinkedHashMap<>();
+
+        attrs.put(VCF_READ_NAME, fr != null ? fr.read.getName() : null);
+        attrs.put(VCF_SCORE, fr != null ? String.format("%.5f", fr.score) : null);
+        attrs.put(VCF_FLAGS, fr != null ? fr.read.getFlags() : null);
+        attrs.put(VCF_MAPQ, fr != null ? fr.read.getMappingQuality() : null);
+        attrs.put(VCF_CIGAR, fr != null ? fr.read.getCigar().toString() : null);
+        attrs.put(VCF_READ_COUNT, fr != null ? fr.readCount : null);
+        attrs.put(VCF_FILTERED_COUNT, fr != null ? fr.filteredCount : null);
+        attrs.put(VCF_FC1, fr != null ? fr.nonIdentMBasesOnRead : null);
+        attrs.put(VCF_FC2, fr != null ? fr.featuresOnRead : null);
+        attrs.put(VCF_LENGTH, fr != null ? fr.read.getLength() : null);
+        attrs.put(VCF_EDIST, fr != null ? fr.refEditDistance : null);
+        attrs.put(VCF_INDEX, fr != null ? fr.index : null);
+
+        // median/mean quality on?
+        if ( surroundingMediaQualitySize != null ) {
+            attrs.put(VCF_SMQ_LEFT, fr != null ? fr.smqLeft : null);
+            attrs.put(VCF_SMQ_RIGHT, fr != null ? fr.smqRight : null);
+        }
+        if ( surroundingMeanQualitySize != null ) {
+            attrs.put(VCF_SMQ_LEFT_MEAN, fr != null ? fr.smqLeftMean : null);
+            attrs.put(VCF_SMQ_RIGHT_MEAN, fr != null ? fr.smqRightMean : null);
+        }
+
+        // validation mode?
+        if ( reportAllAlts ) {
+            if ( fr == null ) {
+                for (int baseIndex = 0; baseIndex < SequenceUtil.VALID_BASES_UPPER.length; baseIndex++) {
+                    attrs.put(scoreNameForBase(baseIndex), null);
+                }
+            } else if ( fr.scoreForBase != null ) {
+                for (int baseIndex = 0; baseIndex < SequenceUtil.VALID_BASES_UPPER.length; baseIndex++) {
+                    if (!Double.isNaN(fr.scoreForBase[baseIndex])) {
+                        attrs.put(scoreNameForBase(baseIndex), String.format("%.5f", fr.scoreForBase[baseIndex]));
+                    }
+                }
+            }
+        }
+        if ( fr == null ) {
+            attrs.put(VCF_ADJACENT_REF_DIFF, null);
+        } else {
+            attrs.put(VCF_ADJACENT_REF_DIFF, true);
+        }
+
+        return attrs;
     }
 
     private FeatureMapper buildMapper() {

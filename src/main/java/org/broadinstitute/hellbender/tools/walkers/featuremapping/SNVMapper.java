@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
@@ -21,28 +22,50 @@ import java.util.function.Consumer;
 
 public class SNVMapper implements FeatureMapper {
 
+    static final int SUROUND_DEFUALT = 5;
+
     final int         surroundBefore;
     final int         surroundAfter;
-    final int         minCigarElementLength;
     final LevenshteinDistance levDistance = new LevenshteinDistance();
     final Integer     smqSize;
     final Integer     smqSizeMean;
+    final boolean     reportAllAlts;
+    final boolean     tagBasesWithAdjacentRefDiff;
+    final boolean     generateNonRefFeatures;
 
-    final boolean     ignoreSurround;
-    final int         spanBefore;
-    final int         spanAfter;
-
-    final FlowFeatureMapperArgumentCollection fmArgs;
+    boolean     ignoreSurround;
+    int         spanBefore;
+    int         spanAfter;
+    int         minCigarElementLength;
 
     public SNVMapper(FlowFeatureMapperArgumentCollection fmArgs) {
         surroundBefore = fmArgs.snvIdenticalBases;
         surroundAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : surroundBefore;
         smqSize = fmArgs.surroundingMediaQualitySize;
         smqSizeMean = fmArgs.surroundingMeanQualitySize;
-        this.fmArgs = fmArgs;
+        reportAllAlts = fmArgs.reportAllAlts;
+        tagBasesWithAdjacentRefDiff = fmArgs.tagBasesWithAdjacentRefDiff;
+        generateNonRefFeatures = false;
+
+        init();
+    }
+
+    public SNVMapper(ApplySNVQRArgumentCollection aqArgs) {
+        surroundBefore = SUROUND_DEFUALT;
+        surroundAfter = SUROUND_DEFUALT;
+        smqSize = null;
+        smqSizeMean = null;
+        reportAllAlts = true;
+        tagBasesWithAdjacentRefDiff = true;
+        generateNonRefFeatures = true;
+
+        init();
+    }
+
+    private void init() {
 
         // ignore surround
-        ignoreSurround = fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff;
+        ignoreSurround = reportAllAlts || tagBasesWithAdjacentRefDiff;
         spanBefore = ignoreSurround ? 0 : surroundBefore;
         spanAfter = ignoreSurround ? 0 : surroundAfter;
         minCigarElementLength = spanBefore + 1 + spanAfter;
@@ -52,10 +75,10 @@ public class SNVMapper implements FeatureMapper {
     }
 
     @Override
-    public void forEachOnRead(GATKRead read, ReferenceContext referenceContext, Consumer<? super FlowFeatureMapper.MappedFeature> action) {
+    public void forEachOnRead(GATKRead read, ReferenceContext referenceContext, Consumer<? super MappedFeature> action) {
 
         // prepare list
-        List<FlowFeatureMapper.MappedFeature>     features = new LinkedList<>();
+        List<MappedFeature>     features = new LinkedList<>();
 
         // access bases
         final byte[]      bases = read.getBasesNoCopy();
@@ -70,13 +93,15 @@ public class SNVMapper implements FeatureMapper {
         } else {
             basesString = new String(Arrays.copyOfRange(bases, startSoftClip, bases.length - endSoftClip));
         }
-        int               refEditDistance = levDistance.apply(basesString, new String(ref));
+        int               refEditDistance = calcEditDistance(basesString, new String(ref));
 
         // count bases delta on M cigar elements
         int         nonIdentMBases = 0;
         int         readOfs = 0;
         int         refOfs = 0;
-        for ( final CigarElement cigarElement : read.getCigarElements() ) {
+        int         cigarElementCount = read.getCigar().numCigarElements();
+        for ( int cigarElementIndex = 0 ; cigarElementIndex < cigarElementCount ; cigarElementIndex++ ) {
+            final CigarElement cigarElement = read.getCigar().getCigarElement(cigarElementIndex);
             final int     length = cigarElement.getLength();
             if ( cigarElement.getOperator().consumesReadBases() && cigarElement.getOperator().consumesReferenceBases() ) {
                 for ( int ofs = 0 ; ofs < length ; ofs++ ) {
@@ -97,19 +122,22 @@ public class SNVMapper implements FeatureMapper {
         // walk the cigar (again) looking for features
         readOfs = 0;
         refOfs = 0;
-        for ( final CigarElement cigarElement : read.getCigarElements() ) {
-
+        int numCigarElements = read.numCigarElements();
+        for ( int cigarElementIndex = 0 ; cigarElementIndex < numCigarElements ; cigarElementIndex++ ) {
+            final CigarElement cigarElement = read.getCigarElement(cigarElementIndex);
             final int     length = cigarElement.getLength();
 
             // worth looking into?
             if ( length >= minCigarElementLength &&
                     cigarElement.getOperator().consumesReadBases() &&
-                    cigarElement.getOperator().consumesReferenceBases() ) {
+                    (generateNonRefFeatures || cigarElement.getOperator().consumesReferenceBases()) ) {
                 readOfs += spanBefore;
                 refOfs += spanBefore;
-                for ( int ofs = spanBefore ; ofs < length - spanAfter ; ofs++, readOfs++, refOfs++ ) {
+                final boolean hasRef = cigarElement.getOperator().consumesReferenceBases();
+                for ( int ofs = spanBefore ; ofs < length - spanAfter ; ofs++, readOfs++, refOfs += (hasRef) ? 1 : 0 ) {
 
-                    if ( ref[refOfs] != 'N' && (fmArgs.reportAllAlts || (bases[readOfs] != ref[refOfs])) ) {
+                    final byte refBase = hasRef ? ref[refOfs] : bases[readOfs];
+                    if ( refBase != 'N' && (reportAllAlts || (bases[readOfs] != refBase)) ) {
 
                         // check that this is really a SNV (must be surrounded by identical ref)
                         boolean     surrounded = true;
@@ -120,7 +148,7 @@ public class SNVMapper implements FeatureMapper {
                                 surrounded = false;
                                 continue;
                             }
-                            if ( bases[bIndex] != ref[rIndex] ) {
+                            if ( !hasRef || (bases[bIndex] != ref[rIndex]) ) {
                                 surrounded = false;
                             }
                         }
@@ -131,17 +159,17 @@ public class SNVMapper implements FeatureMapper {
                                 surrounded = false;
                                 continue;
                             }
-                            if ( bases[bIndex] != ref[rIndex] ) {
+                            if ( !hasRef || (bases[bIndex] != ref[rIndex]) ) {
                                 surrounded = false;
                             }
                         }
-                        if ( (!fmArgs.reportAllAlts && !fmArgs.tagBasesWithAdjacentRefDiff) && !surrounded ) {
+                        if ( (!reportAllAlts && !tagBasesWithAdjacentRefDiff) && !surrounded ) {
                             continue;
                         }
 
                         // add this feature
-                        FlowFeatureMapper.MappedFeature feature = FlowFeatureMapper.MappedFeature.makeSNV(read, readOfs, ref[refOfs], referenceContext.getStart() + refOfs, readOfs - refOfs);
-                        if ( (fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff) && !surrounded )
+                        MappedFeature feature = MappedFeature.makeSNV(read, readOfs, refBase, referenceContext.getStart() + refOfs, readOfs - refOfs);
+                        if ( (reportAllAlts || tagBasesWithAdjacentRefDiff) && !surrounded )
                             feature.adjacentRefDiff = true;
                         feature.nonIdentMBasesOnRead = nonIdentMBases;
                         feature.refEditDistance = refEditDistance;
@@ -188,7 +216,6 @@ public class SNVMapper implements FeatureMapper {
 
                         }
 
-
                         features.add(feature);
                     }
                 }
@@ -208,10 +235,44 @@ public class SNVMapper implements FeatureMapper {
         };
 
         // report features
-        for ( FlowFeatureMapper.MappedFeature feature : features ) {
+        for ( MappedFeature feature : features ) {
             feature.featuresOnRead = features.size();
             action.accept(feature);
         }
+    }
+
+    private int calcEditDistance(String s1, String s2) {
+
+        // identical
+        if ( s1.length() == s2.length() && s1.equals(s2) ) {
+            return 0;
+        }
+
+        // find first difference & trim
+        int     minLength = Math.min(s1.length(), s2.length());
+        int     diffIndex = 0;
+        for ( ; diffIndex < minLength ; diffIndex++ ) {
+            if (s1.charAt(diffIndex) != s2.charAt(diffIndex)) {
+                break;
+            }
+        }
+        s1 = s1.substring(diffIndex);
+        s2 = s2.substring(diffIndex);
+        minLength = Math.min(s1.length(), s2.length());
+
+        // find last difference & trim
+        int diffLength1 = s1.length();
+        int diffLength2 = s2.length();
+        for ( ; diffLength1 > 0 && diffLength2 > 0 ; diffLength1--, diffLength2-- ) {
+            if (s1.charAt(diffLength1 - 1) != s2.charAt(diffLength2 - 1)) {
+                break;
+            }
+        }
+        s1 = s1.substring(0, diffLength1);
+        s2 = s2.substring(0, diffLength2);
+
+        // find edit distance on the shorter strings
+        return levDistance.apply(s1, s2);
     }
 
     private int calcSmq(final byte[] quals, int from, int to, boolean median) {
@@ -257,7 +318,9 @@ public class SNVMapper implements FeatureMapper {
         // walk the cigar
         int         readOfs = 0;
         int         refOfs = 0;
-        for ( final CigarElement cigarElement : read.getCigarElements() ) {
+        int numCigarElements = read.numCigarElements();
+        for ( int cigarElementIndex = 0 ; cigarElementIndex < numCigarElements ; cigarElementIndex++ ) {
+            final CigarElement cigarElement = read.getCigarElement(cigarElementIndex);
 
             final int     length = cigarElement.getLength();
 

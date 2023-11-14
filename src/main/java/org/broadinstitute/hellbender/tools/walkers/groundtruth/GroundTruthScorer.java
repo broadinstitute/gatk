@@ -17,6 +17,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.featuremapping.FlowFeatureMapperUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.featuremapping.FlowFeatureMapper;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
@@ -555,7 +556,7 @@ public class GroundTruthScorer extends ReadWalker {
 
         // compute score
         final int         hapKeyLength = flowHaplotype.getKeyLength();
-        final double      score = FlowFeatureMapper.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
+        final double      score = FlowFeatureMapperUtils.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
         final double      normalizedScore = score / flowRead.getKeyLength();
         if ( normalizedScore < normalizedScoreThreshold )
             return;
