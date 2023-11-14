@@ -68,6 +68,7 @@ workflow GvsCreateVDS {
 
     call validate_vds {
         input:
+            go = select_first([create_vds.done, true]),
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
@@ -160,14 +161,15 @@ task create_vds {
 
     output {
         String cluster_name = read_string("cluster_name.txt")
+        Boolean done = true
     }
 }
 
 task validate_vds {
     input {
+        Boolean go
         String prefix
         String vds_path
-
         String? hail_version
         String gcs_project
         String workspace_bucket
