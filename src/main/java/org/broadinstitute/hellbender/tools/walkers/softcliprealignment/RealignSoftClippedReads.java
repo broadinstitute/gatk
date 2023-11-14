@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.util.Collections;
@@ -74,7 +75,8 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                     engine.addRead(read, r -> softclippedReadNames.contains(r.getName()))
             );
             logger.info("Realigning and merging with unclipped reads...");
-            engine.alignAndMerge();
+            final SAMFileGATKReadWriter writer = createSAMWriter(output, true);
+            engine.alignAndMerge().forEachRemaining(writer::addRead);
         }
     }
 

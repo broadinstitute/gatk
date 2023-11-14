@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
 
-public class SubsettingRealignmentEngine implements AutoCloseable {
+public final class SubsettingRealignmentEngine implements AutoCloseable {
 
     private GATKRead lastRead = null;
     private List<GATKRead> pairedBuffer;
@@ -34,13 +34,18 @@ public class SubsettingRealignmentEngine implements AutoCloseable {
     private final BwaReadAligner pairedAligner;
     private final BwaReadAligner unpairedAligner;
 
-    File selectedReadsBam;
-    File nonselectedReadsBam;
-    SAMFileWriter selectedReadsWriter;
-    SAMFileWriter nonselectedReadsWriter;
+    private File selectedReadsBam;
+    private File nonselectedReadsBam;
+    private SAMFileWriter selectedReadsWriter;
+    private SAMFileWriter nonselectedReadsWriter;
 
-    CloseableIterator<SAMRecord> unselectedRecordsIter;
-    CloseableIterator<SAMRecord> alignedRecordsIter;
+    private CloseableIterator<SAMRecord> unselectedRecordsIter;
+    private CloseableIterator<SAMRecord> alignedRecordsIter;
+
+    private long selectedReadsCount = 0;
+    private long nonselectedReadsCount = 0;
+    private long pairedAlignmentReadsCount = 0;
+    private long unpairedAlignmentReadsCount = 0;
 
     public static final String REALIGNED_READ_TAG = "RA";
     public static final int REALIGNED_READ_TAG_VALUE = 1;
@@ -116,9 +121,11 @@ public class SubsettingRealignmentEngine implements AutoCloseable {
         if (predicate.test(read)) {
             if (ReadFilterLibrary.PRIMARY_LINE.test(read)) {
                 selectedReadsWriter.addAlignment(read.convertToSAMRecord(selectedReadsWriter.getFileHeader()));
+                selectedReadsCount++;
             }
         } else {
             nonselectedReadsWriter.addAlignment(read.convertToSAMRecord(nonselectedReadsWriter.getFileHeader()));
+            nonselectedReadsCount++;
         }
     }
 
@@ -196,10 +203,12 @@ public class SubsettingRealignmentEngine implements AutoCloseable {
     }
 
     private List<GATKRead> flushPairedBuffer() {
+        pairedAlignmentReadsCount += pairedBuffer.size();
         return flushBuffer(pairedBuffer, pairedAligner);
     }
 
     private List<GATKRead> flushUnpairedBuffer() {
+        unpairedAlignmentReadsCount += unpairedBuffer.size();
         return flushBuffer(unpairedBuffer, unpairedAligner);
     }
 
@@ -209,6 +218,7 @@ public class SubsettingRealignmentEngine implements AutoCloseable {
         } else {
             final ArrayList<GATKRead> buffer = new ArrayList<>(1);
             buffer.add(lastRead);
+            unpairedAlignmentReadsCount++;
             return flushBuffer(buffer, unpairedAligner);
         }
     }
@@ -229,6 +239,22 @@ public class SubsettingRealignmentEngine implements AutoCloseable {
 
     public static boolean checkRealignedTag(final GATKRead read) {
         return read.hasAttribute(REALIGNED_READ_TAG) && read.getAttributeAsInteger(REALIGNED_READ_TAG) == REALIGNED_READ_TAG_VALUE;
+    }
+
+    public long getSelectedReadsCount() {
+        return selectedReadsCount;
+    }
+
+    public long getNonselectedReadsCount() {
+        return nonselectedReadsCount;
+    }
+
+    public long getPairedAlignmentReadsCount() {
+        return pairedAlignmentReadsCount;
+    }
+
+    public long getUnpairedAlignmentReadsCount() {
+        return unpairedAlignmentReadsCount;
     }
 
     /**

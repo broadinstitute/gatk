@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.bwa.*;
@@ -74,6 +73,12 @@ public final class BwaReadAligner {
                 }
             }
         }
+        // Reset to forward strand for the aligner
+        for (final GATKRead read : inputReads) {
+            if (read.isReverseStrand()) {
+                read.reverseComplement();
+            }
+        }
         final List<List<BwaMemAlignment>> allAlignments;
         if (nReads == 0) allAlignments = Collections.emptyList();
         else {
@@ -96,10 +101,6 @@ public final class BwaReadAligner {
             final String readName = originalRead.getName();
             final byte[] bases =  originalRead.getBases();
             final byte[] quals = originalRead.getBaseQualities();
-            if (originalRead.isReverseStrand()) {
-                SequenceUtil.reverseComplement(bases);
-                SequenceUtil.reverse(quals, 0, quals.length);
-            }
             final String readGroup = originalRead.getReadGroup();
             final List<BwaMemAlignment> alignments = allAlignments.get(idx);
             final Map<BwaMemAlignment, String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments, refNames);
