@@ -53,7 +53,7 @@ gsutil cp vcfs_fofn.txt <workspace_bucket>/p_and_s/vcfs_fofn.txt
 [ "NA12878", \
   "NA24385"
 ```
-**truth_vcfs** - A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`. Note this
+**truth_vcfs** - A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`.
 
 ```
 [ "gs://broad-gotc-test-storage/gvs/truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz", \
