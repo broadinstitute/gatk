@@ -10,7 +10,7 @@
    1. `call_set_identifier`, `dataset_name`, `filter_set_name`, `project_id` set to the same values as the inputs of the same name in the preceding `GvsCreateFilterSet` run.
    1. `extract_table_prefix` set to the same value as `call_set_identifier`.
    1. `control_samples` set to `true`.
-   1. `scatter_count` set to 500. This is an optional input value but at least for Echo scale test control extract prior to P+S, leaving this unset causes most of the 111 `ExtractTaxk` shards to OOM.
+   1. `scatter_count` set to 500. This is an optional input value but at least for the Echo scale test control extract prior to P+S, leaving this unset causes most of the 111 `ExtractTask` shards to OOM.
 
 ## Precision and Sensitivity
 1. Use the GvsCalculatePrecisionAndSensitivity wdl to calculate the precision and sensitivity.
