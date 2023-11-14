@@ -218,8 +218,7 @@ task validate_vds {
         docker: variants_docker
         bootDiskSizeGb: 10
     }
-
     output {
-        Float total_mb = read_float(stdout())
+        String cluster_name = read_string("cluster_name.txt")
     }
 }
