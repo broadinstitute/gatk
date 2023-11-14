@@ -73,8 +73,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                  --driver-log-levels root=WARN
                  --
                  --vds-path {vds_path}
-                 {'--temp-path ' + temp_path if {temp_path} else ''}
-                 {'--avro-path '+ avro_path if {avro_path} else ''}
+                 {'--temp-path ' + temp_path if temp_path else ''}
+                 {'--avro-path ' + avro_path if avro_path else ''}
                  {use_classic_vqsr_flag}
                 """)
 
