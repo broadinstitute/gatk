@@ -25,7 +25,58 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Realigns soft-clipped reads. Intended for use with short-read Dragen v3.7.8 alignments.
+ * Realigns soft-clipped reads using BWA.
+ *
+ * <p>
+ *
+ * </p>
+ *
+ * <p>
+ * The reference is strictly required when handling CRAM files.
+ * </p>
+ *
+ * <h3> Input </h3>
+ * <ul>
+ *     <li> Coordinate-sorted and indexed SAM/BAM/CRAM </li>
+ * </ul>
+ *
+ * <h3> Output </h3>
+ * <ul>
+ *     <li> Coordinate-sorted and indexed SAM/BAM/CRAM </li>
+ * </ul>
+ *
+ * <h3>Usage examples</h3>
+ * Print reads that pass the WellformedReadFilter and that map to chromosome 20.
+ * <pre>
+ * gatk PrintReads \
+ *   -I input.bam \
+ *   -L 20 \
+ *   -O chr20.bam
+ * </pre>
+ * Print reads that pass the WellformedReadFilter and the NotDuplicateReadFilter.
+ * <pre>
+ * gatk PrintReads \
+ *   -I input.bam \
+ *   --read-filter NotDuplicateReadFilter \
+ *   -O filtered.bam
+ * </pre>
+ *
+ * Print reads that pass the WellformedReadFilter and that map to chromosome 20 from a BAM in a google cloud bucket to another cloud bucket.
+ * <pre>
+ * gatk PrintReads \
+ *   -I gs://cloud-bucket/input.bam \
+ *   -L 20 \
+ *   -O gs://my-gcs-bucket/chr20.bam
+ * </pre>
+ * Print reads that pass the WellformedReadFilter and that map to chromosome 20 from a BAM in a google cloud bucket to the local system.
+ * <pre>
+ * gatk PrintReads \
+ *   -I gs://cloud-bucket/input.bam \
+ *   -L 20 \
+ *   -O chr20.bam
+ * </pre>
+ *
+ * {@GATK.walkertype ReadWalker}
  */
 @CommandLineProgramProperties(
         summary = "Realigns soft-clipped reads to a given reference.",
@@ -48,7 +99,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     public int minSoftClipLength = 1;
 
     @ArgumentCollection
-    public SubsettingRealignmentArgumentCollection softClipRealignmentArgs = new SubsettingRealignmentArgumentCollection();
+    public SubsettingRealignmentArgumentCollection args = new SubsettingRealignmentArgumentCollection();
 
     @Override
     public boolean requiresReads() {
@@ -68,9 +119,8 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                 checkIfClipped(read, softclippedReadNames, minSoftClipLength)
         );
         logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs.");
-        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(
-                softClipRealignmentArgs.indexImage.toString(), getHeaderForReads(),
-                softClipRealignmentArgs.bufferSize, softClipRealignmentArgs.bwaThreads);
+        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(args.indexImage.toString(),
+                getHeaderForReads(), args.bufferSize, args.bwaThreads, args.keepDuplicateFlag);
              final SAMFileGATKReadWriter writer = createSAMWriter(output, true)) {
             logger.info("Subsetting soft-clipped reads and mates...");
             forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {

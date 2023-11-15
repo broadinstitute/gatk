@@ -9,6 +9,7 @@ public class SubsettingRealignmentArgumentCollection {
     public static final String BWA_IMAGE_LONG_NAME = BwaArgumentCollection.BWA_MEM_INDEX_IMAGE_FULL_NAME;
     public static final String BUFFER_SIZE_LONG_NAME = "buffer-size";
     public static final String BWA_THREADS_LONG_NAME = "bwa-threads";
+    public static final String KEEP_DUPLCIATE_FLAG = "keep-duplicate-flag";
 
     @Argument(doc="BWA index image path generated with BwaMemIndexImageCreator.",
             fullName = BwaArgumentCollection.BWA_MEM_INDEX_IMAGE_FULL_NAME)
@@ -26,5 +27,10 @@ public class SubsettingRealignmentArgumentCollection {
             optional = true,
             minValue = 1)
     public int bwaThreads = 2;
+
+    @Argument(doc="Retain duplicate flag on realigned reads.",
+            fullName = KEEP_DUPLCIATE_FLAG,
+            optional = true)
+    public boolean keepDuplicateFlag = false;
 
 }

@@ -21,37 +21,70 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
 
+/**
+ * Multipurpose class for performing read alignment on a subset of reads using BWA. Automatically detects paired and
+ * unpaired reads using read names (flags are ignored for this) and uses the appropriate alignment mode for each.
+ * It merges the realigned subset ("selected" reads) with the rest of the original reads ("non-selected" reads)
+ * and returns them in coordinate sorted order.
+ *
+ * This class is used as follows. First, each read is passed in with the {@link #addRead(GATKRead, Predicate)}
+ * method, which requires one to specify the predicate for whether that read should be realigned. The reads must
+ * be provided in coordinate sorted order. Once all reads have been added, a single call to {@link #alignAndMerge()}
+ * can be made to perform the alignment and merge with the non-realigned reads.
+ *
+ * To ensure a consistently small memory footprint, reads are cached to disk using temporary BAM files and buffered
+ * for realignment. Also remember to call {@link #close()} or use try-with-resources to ensure that cached data is
+ * properly cleaned up.
+ *
+ * Note that instances of this class are NOT idempotent because calls to {@link #addRead(GATKRead, Predicate)} and
+ * {@link #alignAndMerge()} must be made in this specific order.
+ */
 public final class SubsettingRealignmentEngine implements AutoCloseable {
 
+    // Read buffers
     private GATKRead lastRead = null;
     private List<GATKRead> pairedBuffer;
     private List<GATKRead> unpairedBuffer;
     private final int bufferSize;
 
-    private final SAMFileHeader inputHeader;
-    private final SAMFileHeader alignmentHeader;
+    // Read headers
+    private final SAMFileHeader inputHeader;  // coordinate sorted (input and final output)
+    private final SAMFileHeader alignmentHeader; // same as input header but queryname sorted
 
+    // Aligners
     private final BwaReadAligner pairedAligner;
     private final BwaReadAligner unpairedAligner;
 
+    // Temporary files for the first pass, which divides reads into "selected" and "non-selected" groups
     private File selectedReadsBam;
     private File nonselectedReadsBam;
     private SAMFileWriter selectedReadsWriter;
     private SAMFileWriter nonselectedReadsWriter;
 
+    // Iterators for the final merge of non-selected and aligned reads
     private CloseableIterator<SAMRecord> unselectedRecordsIter;
     private CloseableIterator<SAMRecord> alignedRecordsIter;
 
+    // Read counters, for logging
     private long selectedReadsCount = 0;
     private long nonselectedReadsCount = 0;
     private long pairedAlignmentReadsCount = 0;
     private long unpairedAlignmentReadsCount = 0;
 
+    // Tag assigned to reads that were realigned
     public static final String REALIGNED_READ_TAG = "RA";
     public static final int REALIGNED_READ_TAG_VALUE = 1;
 
+    /**
+     * Constructor
+     * @param indexImagePath path to image created with {@link org.broadinstitute.hellbender.tools.BwaMemIndexImageCreator}
+     * @param inputHeader    input reads header (coordinate-sorted)
+     * @param bufferSize     number of reads for the alignment buffers
+     * @param bwaThreads     number of bwa threads
+     * @param retainDuplicateFlag  keep duplicate flag for each realigned read
+     */
     public SubsettingRealignmentEngine(final String indexImagePath, final SAMFileHeader inputHeader,
-                                       final int bufferSize, final int bwaThreads) {
+                                       final int bufferSize, final int bwaThreads, final boolean retainDuplicateFlag) {
         if (!inputHeader.getSortOrder().equals(SAMFileHeader.SortOrder.coordinate)) {
             throw new UserException.BadInput("Input is not coordinate sorted");
         }
@@ -64,10 +97,12 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         alignmentHeader = inputHeader.clone();
         alignmentHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
 
-        pairedAligner = new BwaReadAligner(indexImagePath, alignmentHeader, true, true);
+        pairedAligner = new BwaReadAligner(indexImagePath, alignmentHeader, true, retainDuplicateFlag);
+        pairedAligner.setSoftClipSupplementaryAlignments(true);  // as in the Warp pipeline
         pairedAligner.setNThreads(bwaThreads);
 
-        unpairedAligner = new BwaReadAligner(indexImagePath, alignmentHeader, false, true);
+        unpairedAligner = new BwaReadAligner(indexImagePath, alignmentHeader, false, retainDuplicateFlag);
+        pairedAligner.setSoftClipSupplementaryAlignments(true);
         unpairedAligner.setNThreads(bwaThreads);
 
         selectedReadsBam = FileUtils.createTempFile("realign_1", FileExtensions.BAM, null);
@@ -76,6 +111,9 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         nonselectedReadsWriter = new SAMFileWriterFactory().makeWriter(inputHeader, true, nonselectedReadsBam, null);
     }
 
+    /**
+     * Cleans up temporary files and writers
+     */
     @Override
     public void close() {
         closeFirstPassWriters();
@@ -104,6 +142,9 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * For deleting temporary files
+     */
     private void cleanUpFile(final File file) {
         if (file == null) {
             return;
@@ -116,9 +157,11 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
     }
 
     /**
-     * Add and input read. Note that any {@link #REALIGNED_READ_TAG} tags should be cleared prior.
-     * @param read
-     * @param predicate
+     * Add an input read. Note that any {@link #REALIGNED_READ_TAG} tags should be cleared prior. All reads are
+     * cached on disk in BAM format. This method may NOT be called after any call to @{link #alignAndMerge} or
+     * @{link #close}. Also, it is assumed that mates have the same name (i.e. no "/1" and "/2") to detect pairs.
+     * @param read  candidate realignment read
+     * @param predicate  returns true iff the read should be realigned
      */
     public void addRead(final GATKRead read, final Predicate<GATKRead> predicate) {
         Utils.nonNull(selectedReadsWriter, "This instance has been closed");
@@ -134,6 +177,12 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Performs realignment on the reads submitted with @{@link #addRead(GATKRead, Predicate)}, and merges
+     * the alignments with non-selected reads. Caches realignments to disk before merging. This method may NOT be
+     * called after a previous call to this method or @{link #close}.
+     * @return merged iterator of realigned and non-selected reads, all coordinate-sorted
+     */
     public Iterator<GATKRead> alignAndMerge() {
         Utils.nonNull(selectedReadsBam, "This instance has been run already");
         Utils.nonNull(nonselectedReadsBam, "This instance has been closed");
@@ -228,7 +277,7 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
     }
 
     /**
-     * Realign all of the reads in the given buffer and clear it
+     * Realign all reads in the given buffer and clear it
      */
     private List<GATKRead> flushBuffer(final List<GATKRead> mutableBuffer, final BwaReadAligner aligner) {
         final List<GATKRead> alignments = Lists.newArrayList(aligner.apply(mutableBuffer));

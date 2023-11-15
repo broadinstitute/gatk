@@ -27,13 +27,21 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
     public static final String BWA_IMAGE_PATH = TEST_DATA_DIR + "hg38_chr22_test.fasta.img";
     public static final String BAM_FILE = TEST_DATA_DIR + "test.realigned.bam";
 
+    private static SubsettingRealignmentEngine getDefaultEngine(final SAMFileHeader header) {
+        return new SubsettingRealignmentEngine(BWA_IMAGE_PATH, header, 10, 1, false);
+    }
+
+    private static boolean alwaysTrue(final GATKRead read) {
+        return true;
+    }
+
     @Test
     public void testSmall() {
         final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
         final SAMFileHeader inputHeader = reader.getFileHeader();
-        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1)) {
+        try (final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader)) {
             final Iterator<SAMRecord> iter = reader.iterator();
-            engine.addRead(new SAMRecordToGATKReadAdapter(iter.next()), r -> true);
+            engine.addRead(new SAMRecordToGATKReadAdapter(iter.next()), SubsettingRealignmentEngineTest::alwaysTrue);
             engine.addRead(new SAMRecordToGATKReadAdapter(iter.next()), r -> false);
             final List<GATKRead> output = Lists.newArrayList(engine.alignAndMerge());
 
@@ -57,7 +65,7 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
     public void testFull() {
         final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
         final SAMFileHeader inputHeader = reader.getFileHeader();
-        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1)) {
+        try (final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader)) {
             final Iterator<SAMRecord> iter = reader.iterator();
             while (iter.hasNext()) {
                 final GATKRead read = new SAMRecordToGATKReadAdapter(iter.next());
@@ -83,12 +91,37 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
             Assert.assertEquals(hasReadGroupOutput, 7818);
         }
     }
+    @Test
+    public void testRetainDuplicateFlag() {
+        final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
+        final SAMFileHeader inputHeader = reader.getFileHeader();
+        try (final SubsettingRealignmentEngine keepDuplicateEngine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1, true);
+             final SubsettingRealignmentEngine notKeepDuplicateEngine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1, false)) {
+            final Iterator<SAMRecord> iter = reader.iterator();
+            final GATKRead duplicate = new SAMRecordToGATKReadAdapter(iter.next());
+            duplicate.setIsDuplicate(true);
+            final GATKRead nonDuplicate = new SAMRecordToGATKReadAdapter(iter.next());
+            nonDuplicate.setIsDuplicate(false);
+
+            keepDuplicateEngine.addRead(duplicate, SubsettingRealignmentEngineTest::alwaysTrue);
+            keepDuplicateEngine.addRead(nonDuplicate, SubsettingRealignmentEngineTest::alwaysTrue);
+            final List<GATKRead> keepDuplicateOutput = Lists.newArrayList(keepDuplicateEngine.alignAndMerge());
+            Assert.assertEquals(keepDuplicateOutput.size(), 2);
+            Assert.assertEquals(keepDuplicateOutput.stream().filter(GATKRead::isDuplicate).count(), 1);
+
+            notKeepDuplicateEngine.addRead(duplicate, SubsettingRealignmentEngineTest::alwaysTrue);
+            notKeepDuplicateEngine.addRead(nonDuplicate, SubsettingRealignmentEngineTest::alwaysTrue);
+            final List<GATKRead> notKeepDuplicateOutput = Lists.newArrayList(notKeepDuplicateEngine.alignAndMerge());
+            Assert.assertEquals(notKeepDuplicateOutput.size(), 2);
+            Assert.assertEquals(notKeepDuplicateOutput.stream().filter(GATKRead::isDuplicate).count(), 0);
+        }
+    }
 
     @Test
     public void testEmptyInput() {
         final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
         final SAMFileHeader inputHeader = reader.getFileHeader();
-        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1)) {
+        try (final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader)) {
             final List<GATKRead> output = Lists.newArrayList(engine.alignAndMerge());
             Assert.assertEquals(output.size(), 0);
             Assert.assertEquals(engine.getSelectedReadsCount(), 0);
@@ -102,9 +135,9 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
     public void testAddingReadAfterAlignment() {
         final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
         final SAMFileHeader inputHeader = reader.getFileHeader();
-        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1)) {
+        try (final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader)) {
             engine.alignAndMerge();
-            engine.addRead(new SAMRecordToGATKReadAdapter(reader.iterator().next()), r -> true);
+            engine.addRead(new SAMRecordToGATKReadAdapter(reader.iterator().next()), SubsettingRealignmentEngineTest::alwaysTrue);
         }
     }
 
@@ -114,7 +147,7 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
         final SAMFileHeader inputHeader = reader.getFileHeader();
         // Must be coordinate sorted
         inputHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
-        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1)) {
+        try (final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader)) {
         }
     }
 
@@ -122,17 +155,17 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
     public void testClosed1() {
         final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
         final SAMFileHeader inputHeader = reader.getFileHeader();
-        final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1);
+        final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader);
         engine.close();
-        engine.addRead(new SAMRecordToGATKReadAdapter(reader.iterator().next()), r -> true);
+        engine.addRead(new SAMRecordToGATKReadAdapter(reader.iterator().next()), SubsettingRealignmentEngineTest::alwaysTrue);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testClosed2() {
         final SamReader reader = SamReaderFactory.make().open(new File(BAM_FILE));
         final SAMFileHeader inputHeader = reader.getFileHeader();
-        final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(BWA_IMAGE_PATH, inputHeader, 10, 1);
-        engine.addRead(new SAMRecordToGATKReadAdapter(reader.iterator().next()), r -> true);
+        final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader);
+        engine.addRead(new SAMRecordToGATKReadAdapter(reader.iterator().next()), SubsettingRealignmentEngineTest::alwaysTrue);
         engine.close();
         engine.alignAndMerge();
     }

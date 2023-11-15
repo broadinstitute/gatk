@@ -18,7 +18,8 @@ public final class BwaReadAligner {
     private final SAMFileHeader readsHeader;
     private final boolean alignsPairs;
     private final boolean retainDuplicateFlag;
-    private int nThreads = 1;
+    private int nThreads = 1;  // -t option
+    private boolean softClipSupplementaryAlignments = false;  // -Y option
 
     /**
      * Main constructor
@@ -39,10 +40,17 @@ public final class BwaReadAligner {
     }
 
     /**
-     * Sets the number of threads used by BWA
+     * Sets the number of threads used by BWA (-t option)
      */
     public void setNThreads(final int n) {
         nThreads = n;
+    }
+
+    /**
+     * Sets whether to soft-clip supplementary alignments (-Y option)
+     */
+    public void setSoftClipSupplementaryAlignments(final boolean softClipSupplementaryAlignments) {
+        this.softClipSupplementaryAlignments = softClipSupplementaryAlignments;
     }
 
     /**
@@ -88,6 +96,9 @@ public final class BwaReadAligner {
             }
             final BwaMemAligner aligner = new BwaMemAligner(bwaMemIndex);
             aligner.setNThreadsOption(nThreads);
+            if (softClipSupplementaryAlignments) {
+                aligner.setFlagOption(BwaMemAligner.MEM_F_SOFTCLIP);
+            }
             // we are dealing with interleaved, paired reads.  tell BWA that they're paired.
             if (alignsPairs) {
                 aligner.alignPairs();
