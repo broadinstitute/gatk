@@ -57,7 +57,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String GT_NO_OUTPUT_LONG_NAME = "gt-no-output";
     public static final String OMIT_ZEROS_FROM_REPORT = "omit-zeros-from-report";
     public static final String QUALITY_PERCENTILES = "quality-percentiles";
-    public static final String INCLUDE_ZERO_FLOWS = "include-zero-flows";
+    public static final String EXCLUDE_ZERO_FLOWS = "exclude-zero-flows";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
@@ -291,8 +291,8 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = QUALITY_PERCENTILES, doc = "list of quality percentiles, defaults to 10,25,50,75,90", optional = true)
     public String      qualityPercentiles = "10,25,50,75,90";
 
-    @Argument(fullName = INCLUDE_ZERO_FLOWS, doc = "should flows with a call of zero be included in the percentile report?", optional = true)
-    public boolean     includeZeroFlows = false;
+    @Argument(fullName = EXCLUDE_ZERO_FLOWS, doc = "should flows with a call of zero be included in the percentile report?", optional = true)
+    public boolean     excludeZeroFlows = false;
 
     // locals
     private FlowBasedAlignmentLikelihoodEngine likelihoodCalculationEngine;
@@ -535,7 +535,7 @@ public class GroundTruthScorer extends ReadWalker {
 
             // accumulate error probabilities
             if ( percentileReports != null ) {
-                if ( key[i] != 0 || includeZeroFlows ) {
+                if ( key[i] != 0 || !excludeZeroFlows ) {
                     while ( percentileReports.size() < (i + 1) ) {
                         percentileReports.add(new PercentileReport());
                     }
