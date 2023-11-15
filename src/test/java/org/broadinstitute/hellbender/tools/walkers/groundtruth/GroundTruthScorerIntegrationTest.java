@@ -13,6 +13,7 @@ import java.io.IOException;
 public class GroundTruthScorerIntegrationTest extends CommandLineProgramTest {
 
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
     public static final String OUTPUT_FILENAME = "ground_truth_scorer_output.csv";
     public static final String OUTPUT_FILENAME_MEANCALL = "ground_truth_scorer_output_meancall.csv";
     public static final String OUTPUT_FILENAME_UNCLIPPED = "ground_truth_scorer_output_unclipped.csv";

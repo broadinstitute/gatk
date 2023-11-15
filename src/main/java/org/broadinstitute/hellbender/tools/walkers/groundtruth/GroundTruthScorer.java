@@ -57,6 +57,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String GT_NO_OUTPUT_LONG_NAME = "gt-no-output";
     public static final String OMIT_ZEROS_FROM_REPORT = "omit-zeros-from-report";
     public static final String QUALITY_PERCENTILES = "quality-percentiles";
+    public static final String INCLUDE_ZERO_FLOWS = "include-zero-flows";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
@@ -218,33 +219,31 @@ public class GroundTruthScorer extends ReadWalker {
 
     private static class PercentileReport extends SeriesStats {
 
-        static GATKReportTable newReportTable(final PercentileReport[] report, String qualityPercentiles) {
+        static GATKReportTable newReportTable(final Vector<PercentileReport> report, String qualityPercentiles) {
             String[] qp = qualityPercentiles.split(",");
             final GATKReportTable table = new GATKReportTable("PhredBinAccumulator", "PhredBinAccumulator", 8 + qp.length);
             table.addColumn("flow", "%d");
             table.addColumn("count", "%d");
-            table.addColumn("uniq", "%d");
             table.addColumn("min", "%f");
             table.addColumn("max", "%f");
             table.addColumn("mean", "%f");
             table.addColumn("median", "%f");
             table.addColumn("std", "%f");
-            for ( String p : qp ) {
+            for ( final String p : qp ) {
                 table.addColumn("p" + p, "%f");
             }
             int rowIndex = 0;
-            for (int i = 0; i < report.length; i++) {
+            for ( final PercentileReport r : report ) {
                 int col = 0;
-                table.set(rowIndex, col++, i);
-                table.set(rowIndex, col++, report[i].getCount());
-                table.set(rowIndex, col++, report[i].getUniq());
-                table.set(rowIndex, col++, report[i].getMin());
-                table.set(rowIndex, col++, report[i].getMax());
-                table.set(rowIndex, col++, report[i].getMean());
-                table.set(rowIndex, col++, report[i].getMedian());
-                table.set(rowIndex, col++, report[i].getStd());
+                table.set(rowIndex, col++, rowIndex);
+                table.set(rowIndex, col++, r.getCount());
+                table.set(rowIndex, col++, r.getMin());
+                table.set(rowIndex, col++, r.getMax());
+                table.set(rowIndex, col++, r.getMean());
+                table.set(rowIndex, col++, r.getMedian());
+                table.set(rowIndex, col++, r.getStd());
                 for ( String p : qp ) {
-                    table.set(rowIndex, col++, report[i].getPercentile(Double.parseDouble(p)));
+                    table.set(rowIndex, col++, r.getPercentile(Double.parseDouble(p)));
                 }
                 rowIndex++;
             }
@@ -292,6 +291,9 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = QUALITY_PERCENTILES, doc = "list of quality percentiles, defaults to 10,25,50,75,90", optional = true)
     public String      qualityPercentiles = "10,25,50,75,90";
 
+    @Argument(fullName = INCLUDE_ZERO_FLOWS, doc = "should flows with a call of zero be included in the percentile report?", optional = true)
+    public boolean     includeZeroFlows = false;
+
     // locals
     private FlowBasedAlignmentLikelihoodEngine likelihoodCalculationEngine;
     private PrintWriter                         outputCsv;
@@ -299,7 +301,7 @@ public class GroundTruthScorer extends ReadWalker {
     private GenomePriorDB                       genomePriorDB;
     private BooleanAccumulator[]                qualReport;
     private String[]                            csvFieldOrder;
-    private PercentileReport[]                  percentileReports;
+    private Vector<PercentileReport>            percentileReports;
 
     // static/const
     static final private String[]       CSV_FIELD_ORDER_BASIC = {
@@ -365,10 +367,7 @@ public class GroundTruthScorer extends ReadWalker {
                     }
                 }
             }
-            percentileReports = new PercentileReport[maxClass + 1];
-            for (int i = 0; i < percentileReports.length ; i++ ) {
-                percentileReports[i] = new PercentileReport();
-            }
+            percentileReports = new Vector<>();
         }
     }
 
@@ -536,7 +535,12 @@ public class GroundTruthScorer extends ReadWalker {
 
             // accumulate error probabilities
             if ( percentileReports != null ) {
-                percentileReports[key[i]].addProb(result[i]);
+                if ( key[i] != 0 || includeZeroFlows ) {
+                    while ( percentileReports.size() < (i + 1) ) {
+                        percentileReports.add(new PercentileReport());
+                    }
+                    percentileReports.get(i).addProb(result[i]);
+                }
             }
         }
 
