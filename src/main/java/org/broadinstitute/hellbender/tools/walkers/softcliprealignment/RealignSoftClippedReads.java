@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.softcliprealignment;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -40,14 +41,14 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public GATKPath output;
 
-    @Argument(doc="Minimum length of soft clips required for realignment.",
+    @Argument(doc="Minimum length of soft clips required for realignment. Setting to 0 will realign all reads.",
             fullName = "min-clipped-length",
             optional = true,
             minValue = 0)
-    public int minSoftClipLength = 0;
+    public int minSoftClipLength = 1;
 
     @ArgumentCollection
-    public SoftClipRealignmentArgumentCollection softClipRealignmentArgs = new SoftClipRealignmentArgumentCollection();
+    public SubsettingRealignmentArgumentCollection softClipRealignmentArgs = new SubsettingRealignmentArgumentCollection();
 
     @Override
     public boolean requiresReads() {
@@ -66,17 +67,24 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
         forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
                 checkIfClipped(read, softclippedReadNames, minSoftClipLength)
         );
-        logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs");
+        logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs.");
         try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(
                 softClipRealignmentArgs.indexImage.toString(), getHeaderForReads(),
-                softClipRealignmentArgs.bufferSize, softClipRealignmentArgs.bwaThreads)) {
+                softClipRealignmentArgs.bufferSize, softClipRealignmentArgs.bwaThreads);
+             final SAMFileGATKReadWriter writer = createSAMWriter(output, true)) {
             logger.info("Subsetting soft-clipped reads and mates...");
-            forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
-                    engine.addRead(read, r -> softclippedReadNames.contains(r.getName()))
-            );
-            logger.info("Realigning and merging with unclipped reads...");
-            final SAMFileGATKReadWriter writer = createSAMWriter(output, true);
+            forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {
+                // Clear realignment tags in case the input was previously realigned
+                read.clearAttribute(SubsettingRealignmentEngine.REALIGNED_READ_TAG);
+                // Submit the read to the engine, selecting soft-clipped reads and their mates
+                engine.addRead(read, r -> softclippedReadNames.contains(r.getName()));
+            });
+            logger.info("Found " + engine.getSelectedReadsCount() + " soft-clipped reads and mates.");
+            logger.info("Found " + engine.getNonselectedReadsCount() + " non-clipped reads.");
+            logger.info("Realigning and merging reads...");
             engine.alignAndMerge().forEachRemaining(writer::addRead);
+            logger.info("Realigned " + engine.getPairedAlignmentReadsCount() + " paired and " +
+                    engine.getUnpairedAlignmentReadsCount() + " unpaired reads.");
         }
     }
 
@@ -93,9 +101,20 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     /**
      * Returns whether the read is non-secondary/non-supplementary and sufficiently soft-clipped
      */
+    @VisibleForTesting
     static boolean isValidSoftClip(final GATKRead read, final int minSoftClipLength) {
-        return ReadFilterLibrary.PRIMARY_LINE.test(read)
-                && read.getCigarElements().stream().anyMatch(c -> c.getOperator() == CigarOperator.SOFT_CLIP
-                && c.getLength() >= minSoftClipLength);
+        return ReadFilterLibrary.PRIMARY_LINE.test(read) && hasMinSoftClip(read, minSoftClipLength);
+    }
+
+    private static boolean hasMinSoftClip(final GATKRead read, final int minSoftClipLength) {
+        if (minSoftClipLength == 0) {
+            return true;
+        }
+        for (final CigarElement e : read.getCigarElements()) {
+            if (e.getOperator() == CigarOperator.SOFT_CLIP && e.getLength() >= minSoftClipLength) {
+                return true;
+            }
+        }
+        return false;
     }
 }

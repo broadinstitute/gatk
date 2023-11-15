@@ -115,6 +115,11 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Add and input read. Note that any {@link #REALIGNED_READ_TAG} tags should be cleared prior.
+     * @param read
+     * @param predicate
+     */
     public void addRead(final GATKRead read, final Predicate<GATKRead> predicate) {
         Utils.nonNull(selectedReadsWriter, "This instance has been closed");
         Utils.nonNull(nonselectedReadsWriter, "This instance has been closed");
@@ -201,7 +206,6 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
         return Collections.emptyList();
     }
-
     private List<GATKRead> flushPairedBuffer() {
         pairedAlignmentReadsCount += pairedBuffer.size();
         return flushBuffer(pairedBuffer, pairedAligner);
@@ -223,6 +227,9 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Realign all of the reads in the given buffer and clear it
+     */
     private List<GATKRead> flushBuffer(final List<GATKRead> mutableBuffer, final BwaReadAligner aligner) {
         final List<GATKRead> alignments = Lists.newArrayList(aligner.apply(mutableBuffer));
         alignments.forEach(SubsettingRealignmentEngine::setRealignedTag);
@@ -233,26 +240,41 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
     /**
      * Sets tag {@link #REALIGNED_READ_TAG} to mark it as realigned
      */
-    static void setRealignedTag(final GATKRead read) {
+    private static void setRealignedTag(final GATKRead read) {
         read.setAttribute(REALIGNED_READ_TAG, REALIGNED_READ_TAG_VALUE);
     }
 
-    public static boolean checkRealignedTag(final GATKRead read) {
+    /**
+     * Returns true if the read was realigned
+     */
+    public static boolean readIsRealigned(final GATKRead read) {
         return read.hasAttribute(REALIGNED_READ_TAG) && read.getAttributeAsInteger(REALIGNED_READ_TAG) == REALIGNED_READ_TAG_VALUE;
     }
 
+    /**
+     * Number of reads selected for realignment
+     */
     public long getSelectedReadsCount() {
         return selectedReadsCount;
     }
 
+    /**
+     * Number of reads not selected for realignment
+     */
     public long getNonselectedReadsCount() {
         return nonselectedReadsCount;
     }
 
+    /**
+     * Number of realigned paired reads
+     */
     public long getPairedAlignmentReadsCount() {
         return pairedAlignmentReadsCount;
     }
 
+    /**
+     * Number of realigned unpaired reads
+     */
     public long getUnpairedAlignmentReadsCount() {
         return unpairedAlignmentReadsCount;
     }

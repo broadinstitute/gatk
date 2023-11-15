@@ -23,8 +23,9 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
         return SubsettingRealignmentEngine.class.getSimpleName();
     }
 
-    private static final String BWA_IMAGE_PATH = "src/test/resources/large/SubsettingRealignmentEngine/hg38_chr22_test.fasta.img";
-    private final String BAM_FILE = "src/test/resources/large/SubsettingRealignmentEngine/test.realigned.bam";
+    public static final String TEST_DATA_DIR = "src/test/resources/large/SubsettingRealignmentEngine/";
+    public static final String BWA_IMAGE_PATH = TEST_DATA_DIR + "hg38_chr22_test.fasta.img";
+    public static final String BAM_FILE = TEST_DATA_DIR + "test.realigned.bam";
 
     @Test
     public void testSmall() {
@@ -41,11 +42,14 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
             Assert.assertEquals(engine.getPairedAlignmentReadsCount(), 0);
             Assert.assertEquals(engine.getUnpairedAlignmentReadsCount(), 1);
 
-            final long realignedOutput = output.stream().filter(SubsettingRealignmentEngine::checkRealignedTag).count();
+            final long realignedOutput = output.stream().filter(SubsettingRealignmentEngine::readIsRealigned).count();
             Assert.assertEquals(realignedOutput, 1);
 
-            final long notRealignedOutput = output.stream().filter(r -> !SubsettingRealignmentEngine.checkRealignedTag(r)).count();
+            final long notRealignedOutput = output.stream().filter(r -> !SubsettingRealignmentEngine.readIsRealigned(r)).count();
             Assert.assertEquals(notRealignedOutput, 1);
+
+            Assert.assertFalse(output.get(0).isUnmapped());
+            Assert.assertFalse(output.get(1).isUnmapped());
         }
     }
 
@@ -66,10 +70,10 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
             Assert.assertEquals(engine.getPairedAlignmentReadsCount(), 34);
             Assert.assertEquals(engine.getUnpairedAlignmentReadsCount(), 69);
 
-            final long realignedOutput = output.stream().filter(SubsettingRealignmentEngine::checkRealignedTag).count();
+            final long realignedOutput = output.stream().filter(SubsettingRealignmentEngine::readIsRealigned).count();
             Assert.assertEquals(realignedOutput, 105);
 
-            final long notRealignedOutput = output.stream().filter(r -> !SubsettingRealignmentEngine.checkRealignedTag(r)).count();
+            final long notRealignedOutput = output.stream().filter(r -> !SubsettingRealignmentEngine.readIsRealigned(r)).count();
             Assert.assertEquals(notRealignedOutput, 7713);
 
             final long properlyPairedOutput = output.stream().filter(GATKRead::isProperlyPaired).count();
