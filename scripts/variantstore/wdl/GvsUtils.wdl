@@ -816,6 +816,9 @@ task IsUsingCompressedReferences {
         table_name = "ref_ranges_001"
       AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
 
+    # grep will return non-zero if the "query" term is not found and we don't want to fail the task for that.
+    set +o errexit
+
     grep packed_ref_data column_name.txt
     rc=$?
     if [[ $rc -eq 0 ]]
@@ -832,6 +835,7 @@ task IsUsingCompressedReferences {
         exit 1
       fi
     fi
+    set -o errexit
 
     echo $ret > ret.txt
   >>>
