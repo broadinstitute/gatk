@@ -156,7 +156,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1060_phasing_into_vds
+         - rc-vs-1139-hail-tweaks
        tags:
          - /.*/
    - name: GvsExtractCallset

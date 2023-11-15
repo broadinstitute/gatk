@@ -110,15 +110,15 @@ task create_vds {
         cat > auto-scale-policy.yaml <<FIN
         workerConfig:
             minInstances: 2
-            maxInstances: 10
+            maxInstances: 2
         secondaryWorkerConfig:
             maxInstances: 1200
         basicAlgorithm:
-            cooldownPeriod: 4m
+            cooldownPeriod: 120s
             yarnConfig:
-                scaleUpFactor: 0.05
+                scaleUpFactor: 1.0
                 scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 1h
+                gracefulDecommissionTimeout: 120s
         FIN
         gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
