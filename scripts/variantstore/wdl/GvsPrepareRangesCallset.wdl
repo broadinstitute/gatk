@@ -34,7 +34,7 @@ workflow GvsPrepareCallset {
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
-  if (!defined(git_hash) || !defined(variants_docker) || ! defined(cloud_sdk_docker)) {
+  if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
