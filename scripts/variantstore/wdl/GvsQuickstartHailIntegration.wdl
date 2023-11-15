@@ -120,11 +120,10 @@ workflow GvsQuickstartHailIntegration {
     call TieOutVds {
         input:
             go = GvsCreateVDS.done,
-            git_branch_or_tag = git_branch_or_tag,
             vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            variants_docker = effective_variants_docker,
             hail_version = effective_hail_version,
     }
 
@@ -144,11 +143,10 @@ workflow GvsQuickstartHailIntegration {
 task TieOutVds {
     input {
         Boolean go
-        String git_branch_or_tag
         String vds_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
-        String cloud_sdk_slim_docker
+        String variants_docker
         String hail_version
     }
     parameter_meta {
@@ -164,11 +162,9 @@ task TieOutVds {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
-        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract"
         for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py
         do
-            curl --silent --location --remote-name "${script_url_prefix}/${script}"
+            cp /app/${script} .
         done
 
         # Create a manifest of VCFs and indexes to bulk download with `gcloud storage cp`.
@@ -224,7 +220,7 @@ task TieOutVds {
     >>>
     runtime {
         # `slim` here to be able to use Java
-        docker: cloud_sdk_slim_docker
+        docker: variants_docker
         maxRetries: 2
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
