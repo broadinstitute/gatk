@@ -796,6 +796,60 @@ task IsVQSRLite {
   }
 }
 
+task IsUsingCompressedReferences {
+  input {
+    String project_id
+    String dataset_name
+    String cloud_sdk_docker
+  }
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+      SELECT
+        column_name
+      FROM
+        `~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+      WHERE
+        table_name = "ref_ranges_001"
+      AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
+
+    grep packed_ref_data column_name.txt
+    rc=$?
+    if [[ $rc -eq 0 ]]
+    then
+      ret=true
+    else
+      grep location column_name.txt
+      rc=$?
+      if [[ $rc -eq 0 ]]
+      then
+        ret=false
+      else
+        echo "Did not find either expected column name 'location' or 'packed_ref_data' in ref_ranges_001 table." 1>&2
+        exit 1
+      fi
+    fi
+
+    echo $ret > ret.txt
+  >>>
+
+  output {
+    Boolean is_using_compressed_references = read_boolean("ret.txt")
+    File column_name = "column_name.txt"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task IndexVcf {
     input {
         File input_vcf

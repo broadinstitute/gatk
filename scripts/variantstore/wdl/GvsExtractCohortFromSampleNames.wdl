@@ -99,7 +99,8 @@ workflow GvsExtractCohortFromSampleNames {
       destination_project             = destination_project_id,
       destination_dataset             = destination_dataset_name,
       fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
-      write_cost_to_db                = write_cost_to_db
+      write_cost_to_db                = write_cost_to_db,
+      cloud_sdk_docker                = effective_cloud_sdk_docker,
   }
 
   call GvsExtractCallset.GvsExtractCallset {
