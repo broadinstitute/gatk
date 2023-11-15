@@ -65,7 +65,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
-                 --py-files={secondary_script_path}
+                 {'--py-files=' + secondary_script_path if secondary_script_path else ''}
                  --cluster={cluster_name}
                  --project {gcs_project}
                  --region={region}
@@ -74,9 +74,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                  --
                  --vds-path {vds_path}
                  --temp-path {temp_path}
-                 --avro-path {avro_path}
+                 {'--avro-path ' + avro_path if avro_path else ''}
                  {use_classic_vqsr_flag}
-
                 """)
 
                 info("Running: " + submit_cmd)
@@ -125,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument('--secondary-script-path', type=str, help='Path to secondary script to run in Hail cluster')
     parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
-    parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
+    parser.add_argument('--avro-path', type=str, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
 
     args = parser.parse_args()

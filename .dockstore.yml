@@ -156,7 +156,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-1139-hail-tweaks
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -311,7 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1060_phasing_into_vds
+             - rc-vs-923-add-validation
          tags:
              - /.*/
    - name: GvsIngestTieout
