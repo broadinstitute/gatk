@@ -39,7 +39,7 @@ workflow GvsCreateVDS {
     }
 
 
-    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(gcs_project)) {
+    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(gcs_project) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
