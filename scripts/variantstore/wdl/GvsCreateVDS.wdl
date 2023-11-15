@@ -151,10 +151,6 @@ task create_vds {
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
     >>>
 
-    output {
-        String cluster_name = read_string("cluster_name.txt")
-    }
-
     runtime {
         memory: "6.5 GB"
         disks: "local-disk 100 SSD"
