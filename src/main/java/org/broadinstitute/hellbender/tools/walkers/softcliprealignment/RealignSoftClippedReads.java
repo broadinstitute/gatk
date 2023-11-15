@@ -32,6 +32,11 @@ import java.util.Set;
  * </p>
  *
  * <p>
+ * Use of interval subsetting (with -L) is supported. However, use caution because mates outside of the selected
+ * intervals will NOT be included. Reads whose mates lie outside the intervals will be aligned in unpaired mode.
+ * </p>
+ *
+ * <p>
  * The reference is strictly required when handling CRAM files.
  * </p>
  *
@@ -45,47 +50,28 @@ import java.util.Set;
  *     <li> Coordinate-sorted and indexed SAM/BAM/CRAM </li>
  * </ul>
  *
- * <h3>Usage examples</h3>
- * Print reads that pass the WellformedReadFilter and that map to chromosome 20.
+ * <h3>Usage example</h3>
+ * Realign reads with soft-clips of at least 10 bases.
  * <pre>
  * gatk PrintReads \
  *   -I input.bam \
- *   -L 20 \
- *   -O chr20.bam
- * </pre>
- * Print reads that pass the WellformedReadFilter and the NotDuplicateReadFilter.
- * <pre>
- * gatk PrintReads \
- *   -I input.bam \
- *   --read-filter NotDuplicateReadFilter \
- *   -O filtered.bam
- * </pre>
- *
- * Print reads that pass the WellformedReadFilter and that map to chromosome 20 from a BAM in a google cloud bucket to another cloud bucket.
- * <pre>
- * gatk PrintReads \
- *   -I gs://cloud-bucket/input.bam \
- *   -L 20 \
- *   -O gs://my-gcs-bucket/chr20.bam
- * </pre>
- * Print reads that pass the WellformedReadFilter and that map to chromosome 20 from a BAM in a google cloud bucket to the local system.
- * <pre>
- * gatk PrintReads \
- *   -I gs://cloud-bucket/input.bam \
- *   -L 20 \
- *   -O chr20.bam
+ *   --bwa-mem-index-image ref.fasta.img \
+ *   --min-clipped-length 10 \
+ *   -O output.bam
  * </pre>
  *
  * {@GATK.walkertype ReadWalker}
  */
 @CommandLineProgramProperties(
-        summary = "Realigns soft-clipped reads to a given reference.",
-        oneLineSummary = "Realigns soft-clipped reads to a given reference.",
+        summary = "Realigns soft-clipped reads to a given reference using BWA.",
+        oneLineSummary = "Realigns soft-clipped reads to a given reference using BWA.",
         programGroup = OtherProgramGroup.class
 )
 @DocumentedFeature
 @ExperimentalFeature
 public final class RealignSoftClippedReads extends MultiplePassReadWalker {
+
+    public static final String MIN_SOFT_CLIP_LENGTH_LONG_NAME = "min-clipped-length";
 
     @Argument(doc="Output bam file.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -93,7 +79,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     public GATKPath output;
 
     @Argument(doc="Minimum length of soft clips required for realignment. Setting to 0 will realign all reads.",
-            fullName = "min-clipped-length",
+            fullName = MIN_SOFT_CLIP_LENGTH_LONG_NAME,
             optional = true,
             minValue = 0)
     public int minSoftClipLength = 1;

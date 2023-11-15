@@ -147,8 +147,7 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
         final SAMFileHeader inputHeader = reader.getFileHeader();
         // Must be coordinate sorted
         inputHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
-        try (final SubsettingRealignmentEngine engine = getDefaultEngine(inputHeader)) {
-        }
+        getDefaultEngine(inputHeader);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
