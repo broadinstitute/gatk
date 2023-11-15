@@ -15,8 +15,11 @@ public class SubsettingRealignmentArgumentCollection {
             fullName = BwaArgumentCollection.BWA_MEM_INDEX_IMAGE_FULL_NAME)
     public GATKPath indexImage;
 
-    @Argument(doc="Number of reads to hold in the buffer before aligning as a batch. This should be sufficiently " +
-            "large that the aligner can accurately estimate the insert size distribution.",
+    /**
+     * Larger buffers will use more memory but reduce some overhead of restarting the aligner. This should be
+     * sufficiently large that the aligner can accurately estimate the insert size distribution.
+     */
+    @Argument(doc="Number of reads to hold in the buffer before aligning as a batch.",
             fullName = BUFFER_SIZE_LONG_NAME,
             optional = true,
             minValue = 100)
