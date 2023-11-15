@@ -119,6 +119,7 @@ workflow GvsQuickstartHailIntegration {
 
     call TieOutVds {
         input:
+            go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
             vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
@@ -142,6 +143,7 @@ workflow GvsQuickstartHailIntegration {
 
 task TieOutVds {
     input {
+        Boolean go
         String git_branch_or_tag
         String vds_path
         Array[File] tieout_vcfs
