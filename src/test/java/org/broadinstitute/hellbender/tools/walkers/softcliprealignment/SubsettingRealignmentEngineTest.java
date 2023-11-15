@@ -57,7 +57,9 @@ public class SubsettingRealignmentEngineTest extends CommandLineProgramTest {
             Assert.assertEquals(notRealignedOutput, 1);
 
             Assert.assertFalse(output.get(0).isUnmapped());
+            Assert.assertTrue(SubsettingRealignmentEngine.readIsRealigned(output.get(0)));
             Assert.assertFalse(output.get(1).isUnmapped());
+            Assert.assertFalse(SubsettingRealignmentEngine.readIsRealigned(output.get(1)));
         }
     }
 

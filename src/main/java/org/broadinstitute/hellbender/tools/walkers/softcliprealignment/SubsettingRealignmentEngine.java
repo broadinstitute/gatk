@@ -194,12 +194,12 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         try (final ReadsDataSource selectedSource = new ReadsPathDataSource(selectedReadsBam.toPath());
              final SAMFileWriter alignmentWriter = new SAMFileWriterFactory().makeWriter(inputHeader, false, alignmentBam, null)) {
             for (final GATKRead read : selectedSource) {
-                addReadToBuffer(read).forEach(r -> alignmentWriter.addAlignment(r.convertToSAMRecord(inputHeader)));
+                writeAlignments(addReadToBuffer(read), alignmentWriter);
             }
             // Flush leftover reads
             writeAlignments(flushPairedBuffer(), alignmentWriter);
+            addLastReadToBuffer();
             writeAlignments(flushUnpairedBuffer(), alignmentWriter);
-            writeAlignments(flushLastRead(), alignmentWriter);
         }
 
         // Delete unneeded temp file of the original selected reads
@@ -265,14 +265,10 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         return flushBuffer(unpairedBuffer, unpairedAligner);
     }
 
-    private List<GATKRead> flushLastRead() {
-        if (lastRead == null) {
-            return Collections.emptyList();
-        } else {
-            final ArrayList<GATKRead> buffer = new ArrayList<>(1);
-            buffer.add(lastRead);
-            unpairedAlignmentReadsCount++;
-            return flushBuffer(buffer, unpairedAligner);
+    private void addLastReadToBuffer() {
+        if (lastRead != null) {
+            unpairedBuffer.add(lastRead);
+            lastRead = null;
         }
     }
 

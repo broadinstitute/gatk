@@ -54,7 +54,7 @@ import java.util.Set;
  * Unclipped reads (whose mates are also not soft-clipped) are emitted in the output exactly as they appear in the
  * input. That is, SAM flags and tags are not changed. For the realigned reads, the only tags retained are read
  * groups (RG). The "--keep-duplicate-flag" option may be enabled to retain the duplicate read SAM flag
- * for realigned reads.
+ * for realigned reads. Reads that were realigned can be identified by an "RA" tag set to "1" in the output.
  * </p>
  *
  * <p>
