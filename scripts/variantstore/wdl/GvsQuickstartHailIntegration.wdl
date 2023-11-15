@@ -40,7 +40,7 @@ workflow GvsQuickstartHailIntegration {
 
     if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
         !defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
-        !defined(variants_docker) || !defined(gatk_docker)) {
+        !defined(variants_docker) || !defined(gatk_docker) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
