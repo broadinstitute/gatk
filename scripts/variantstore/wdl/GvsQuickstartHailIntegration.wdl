@@ -102,7 +102,6 @@ workflow GvsQuickstartHailIntegration {
             basic_docker = effective_basic_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
-            use_compressed_references = use_compressed_references,
     }
 
     call CreateVds.GvsCreateVDS {
