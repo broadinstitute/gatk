@@ -8,7 +8,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -209,109 +208,81 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             readAlleleLikelihoods.retainEvidence(read -> readQualifiesForGenotypingPredicate.test(read, variantCallingRelevantOverlap));
             readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
 
+            if (configuration.isSampleContaminationPresent()) {
+                // This warrants future evaluation as to the best way to handle disqualified reads
+                if (hcArgs.applyBQD || hcArgs.applyFRD) {
+                    DRAGENConaminationWarning.warn("\\n=============================================================================" +
+                            "Sample contamination specified with FRD/BQD enabled. Contamination calling with either BQD or FRD genotyping models enabled is currently unsupported and may produce unexpected results. Use at your own risk." +
+                            "\n=============================================================================");
+                }
+
+                readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
+            }
+
+            // note: this debugging does not pertain to joint detection, where read-allele likelihoods are never computed
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
+                HaplotypeCallerGenotypingDebugger.println("\n=============================================================================");
+                HaplotypeCallerGenotypingDebugger.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
+                HaplotypeCallerGenotypingDebugger.println("=============================================================================");
+                HaplotypeCallerGenotypingDebugger.println("haplotype alleles key:");
+                for (Map.Entry<Allele, List<Haplotype>> allele : alleleMapper.entrySet()) {
+                    HaplotypeCallerGenotypingDebugger.println("Allele: "+allele.getKey()+" Haps: "+allele.getValue().stream().map(readLikelihoods::indexOfAllele).map(i -> Integer.toString(i)).collect(Collectors.joining(", ")));
+                }
+                HaplotypeCallerGenotypingDebugger.println("Read-allele matrix:");
+                String allele_string = readAlleleLikelihoods.alleles().stream().map(al -> al.toString()).collect(Collectors.joining(" "));
+                HaplotypeCallerGenotypingDebugger.println(allele_string);
+                for (int sn = 0 ; sn < readAlleleLikelihoods.numberOfSamples(); sn++){
+                    for (int evn = 0 ; evn < readAlleleLikelihoods.sampleEvidence(sn).size(); evn++) {
+                        String outputStr = "read: " + readLikelihoods.sampleEvidence(sn).indexOf(readAlleleLikelihoods.sampleEvidence(sn).get(evn)) + " " + readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
+
+                        for (Allele curAllele : readAlleleLikelihoods.alleles()) {
+                            int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
+                            outputStr = outputStr + " " + readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn);
+                        }
+                        HaplotypeCallerGenotypingDebugger.println(outputStr);
+                    }
+                }
+
+                HaplotypeCallerGenotypingDebugger.println("Normalized Read-Allele matrix:");
+                for (int sn = 0 ; sn < readAlleleLikelihoods.numberOfSamples(); sn++){
+                    for (int evn = 0 ; evn < readAlleleLikelihoods.sampleEvidence(sn).size(); evn++) {
+                        String outputStr = "read: " + readLikelihoods.sampleEvidence(sn).indexOf(readAlleleLikelihoods.sampleEvidence(sn).get(evn)) + " " + readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
+
+                        double max = Double.NEGATIVE_INFINITY;
+                        for (Allele curAllele : readAlleleLikelihoods.alleles()) {
+                            int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
+                            max = Math.max(readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn), max);
+                        }
+
+                        for (Allele curAllele : readAlleleLikelihoods.alleles()) {
+                            int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
+                            outputStr = outputStr + " " + (readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn) - max);
+                        }
+                        HaplotypeCallerGenotypingDebugger.println(outputStr);
+                    }
+                }
+            }   // end of read-allele likelihoods debugging messages
+
+            // TODO: does this work if we have the haplo-genotype override below?
+            if (emitReferenceConfidence) {
+                mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
+                readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
+                mergedAllelesListSizeBeforePossibleTrimming++;
+            }
+
             // use joint detection haplo-genotype posteriors if available
-            final GenotypesContext genotypes;   // this will be calculated in the joint detection way or not
+            final GenotypesContext genotypesOverride;   // this will be calculated in the joint detection way or not
             final List<GenotypingLikelihoods<Haplotype>> haploGTPosteriors = new ArrayList<>(haploGTPosteriorOverlapDetector.getOverlaps(mergedVC));
             if (!haploGTPosteriors.isEmpty() && ploidy == 2) {    // DRAGEN joint detection assumes diploid
                 Utils.validate(haploGTPosteriors.size() == 1, "Only one set of haplotype genotype posteriors should overlap this variant.");
                 final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGTPosteriors.get(0);
-                final List<Haplotype> determinedHaplotypes = haplotypePosteriors.asListOfAlleles(); // this only contains haplotypes whose determined span contains this locus
-                final Ordering<Haplotype> haplotypeOrdering = Ordering.explicit(determinedHaplotypes);
-                final Map<Allele, List<Haplotype>> alleleToHaplotypes = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
-
-                // map from haplotype pair to corresponding haplo-genotype index (in the canonical GL order)
-                final Map<List<Haplotype>, Integer> haploPairToGTIndex = Utils.stream(GenotypeAlleleCounts.iterable(ploidy, haplotypePosteriors.numberOfAlleles()))
-                        .collect(Collectors.toMap(gac -> gac.asAlleleList(determinedHaplotypes), gac -> gac.index()));
-
-                // map from allele-genotype index to list of compatible haplo-genotype indices
-                final Map<Integer, int[]> alleleGTIndexToHaploGTIndices = new HashMap<>();
-                for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, mergedVC.getNAlleles())) {
-                    final List<Allele> alleleList = gac.asAlleleList(mergedVC.getAlleles());
-                    final int[] haploGTIndices = Lists.cartesianProduct(alleleList.stream().map(alleleToHaplotypes::get).toList()).stream()
-                                    .map(haplotypeOrdering::sortedCopy).mapToInt(haploPairToGTIndex::get).toArray();
-                    alleleGTIndexToHaploGTIndices.put(gac.index(), haploGTIndices);
-                }
-
-                // for each sample, traverse the allele-based GACs and add up the log-space posteriors of all corresponding haplotype-based posterior GLs
-                genotypes = GenotypesContext.create(haplotypePosteriors.numberOfSamples());
-                for (int sampleIndex = 0; sampleIndex < haplotypePosteriors.numberOfSamples(); sampleIndex++) {
-                    final double[] log10HaploGenotypePosteriors = haplotypePosteriors.sampleLikelihoods(sampleIndex).getAsVector();
-
-                    final double[] jointDetectionPosteriorGLs = IntStream.range(0, GenotypeIndexCalculator.genotypeCount(ploidy, mergedVC.getNAlleles()))
-                            .mapToObj(alleleGTIndex -> alleleGTIndexToHaploGTIndices.get(alleleGTIndex))
-                            .map(haploGTIndices -> MathUtils.applyToArray(haploGTIndices, idx -> log10HaploGenotypePosteriors[idx]))
-                            .mapToDouble(MathUtils::log10SumLog10).toArray();
-
-                    // Note: since jointDetectionPosteriors are a double[] (not an int[]) the conversion to PLs is automatic
-                    genotypes.add(new GenotypeBuilder(samples.getSample(sampleIndex)).alleles(noCallAlleles).PL(jointDetectionPosteriorGLs).make());
-                }
-            } else {    // if we don't have joint detection haplo-genotype posteriors
-                if (configuration.isSampleContaminationPresent()) {
-                    // This warrants future evaluation as to the best way to handle disqualified reads
-                    if (hcArgs.applyBQD || hcArgs.applyFRD) {
-                        DRAGENConaminationWarning.warn("\\n=============================================================================" +
-                                "Sample contamination specified with FRD/BQD enabled. Contamination calling with either BQD or FRD genotyping models enabled is currently unsupported and may produce unexpected results. Use at your own risk." +
-                                "\n=============================================================================");
-                    }
-
-                    readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
-                }
-
-                // note: this debugging does not pertain to joint detection, where read-allele likelihoods are never computed
-                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
-                    HaplotypeCallerGenotypingDebugger.println("\n=============================================================================");
-                    HaplotypeCallerGenotypingDebugger.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
-                    HaplotypeCallerGenotypingDebugger.println("=============================================================================");
-                    HaplotypeCallerGenotypingDebugger.println("haplotype alleles key:");
-                    for (Map.Entry<Allele, List<Haplotype>> allele : alleleMapper.entrySet()) {
-                        HaplotypeCallerGenotypingDebugger.println("Allele: "+allele.getKey()+" Haps: "+allele.getValue().stream().map(readLikelihoods::indexOfAllele).map(i -> Integer.toString(i)).collect(Collectors.joining(", ")));
-                    }
-                    HaplotypeCallerGenotypingDebugger.println("Read-allele matrix:");
-                    String allele_string = readAlleleLikelihoods.alleles().stream().map(al -> al.toString()).collect(Collectors.joining(" "));
-                    HaplotypeCallerGenotypingDebugger.println(allele_string);
-                    for (int sn = 0 ; sn < readAlleleLikelihoods.numberOfSamples(); sn++){
-                        for (int evn = 0 ; evn < readAlleleLikelihoods.sampleEvidence(sn).size(); evn++) {
-                            String outputStr = "read: " + readLikelihoods.sampleEvidence(sn).indexOf(readAlleleLikelihoods.sampleEvidence(sn).get(evn)) + " " + readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
-
-                            for (Allele curAllele : readAlleleLikelihoods.alleles()) {
-                                int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
-                                outputStr = outputStr + " " + readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn);
-                            }
-                            HaplotypeCallerGenotypingDebugger.println(outputStr);
-                        }
-                    }
-
-                    HaplotypeCallerGenotypingDebugger.println("Normalized Read-Allele matrix:");
-                    for (int sn = 0 ; sn < readAlleleLikelihoods.numberOfSamples(); sn++){
-                        for (int evn = 0 ; evn < readAlleleLikelihoods.sampleEvidence(sn).size(); evn++) {
-                            String outputStr = "read: " + readLikelihoods.sampleEvidence(sn).indexOf(readAlleleLikelihoods.sampleEvidence(sn).get(evn)) + " " + readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
-
-                            double max = Double.NEGATIVE_INFINITY;
-                            for (Allele curAllele : readAlleleLikelihoods.alleles()) {
-                                int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
-                                max = Math.max(readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn), max);
-                            }
-
-                            for (Allele curAllele : readAlleleLikelihoods.alleles()) {
-                                int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
-                                outputStr = outputStr + " " + (readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn) - max);
-                            }
-                            HaplotypeCallerGenotypingDebugger.println(outputStr);
-                        }
-                    }
-                }   // end of read-allele likelihoods debugging messages
-
-                // TODO: we should put something for ref confidence in the above joint detection code, but
-                //      how does this interact with joint detection haplotype posteriors?
-                if (emitReferenceConfidence) {
-                    mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
-                    readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
-                    mergedAllelesListSizeBeforePossibleTrimming++;
-                }
-
-                // these genotypes have the PLs calculated and filled out but are otherwise empty (no-call alleles, no annotations)
-                genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
+                genotypesOverride = computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haplotypePosteriors);
             }
+
+            // TODO: the code below needs to optionally take in the genotypesOverride as a flag to skip GL computation
+            // these genotypes have the PLs calculated and filled out but are otherwise empty (no-call alleles, no annotations)
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
+
             // at this point joint detection and non-joint detection code paths meet up again
 
             // TODO: look into this genotype prior calculator because in joint detection we have already accounted for
@@ -348,6 +319,50 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    /**
+     *
+     * @param ploidy
+     * @param noCallAlleles
+     * @param loc
+     * @param mergedVC
+     * @param haplotypePosteriors
+     * @return
+     */
+    private GenotypesContext computeAlleleGenotypesFromHaploGenotypes(int ploidy, List<Allele> noCallAlleles, int loc, VariantContext mergedVC, GenotypingLikelihoods<Haplotype> haplotypePosteriors) {
+        final GenotypesContext genotypes;
+        final List<Haplotype> determinedHaplotypes = haplotypePosteriors.asListOfAlleles(); // this only contains haplotypes whose determined span contains this locus
+        final Ordering<Haplotype> haplotypeOrdering = Ordering.explicit(determinedHaplotypes);
+        final Map<Allele, List<Haplotype>> alleleToHaplotypes = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
+
+        // map from haplotype pair to corresponding haplo-genotype index (in the canonical GL order)
+        final Map<List<Haplotype>, Integer> haploPairToGTIndex = Utils.stream(GenotypeAlleleCounts.iterable(ploidy, haplotypePosteriors.numberOfAlleles()))
+                .collect(Collectors.toMap(gac -> gac.asAlleleList(determinedHaplotypes), gac -> gac.index()));
+
+        // map from allele-genotype index to list of compatible haplo-genotype indices
+        final Map<Integer, int[]> alleleGTIndexToHaploGTIndices = new HashMap<>();
+        for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, mergedVC.getNAlleles())) {
+            final List<Allele> alleleList = gac.asAlleleList(mergedVC.getAlleles());
+            final int[] haploGTIndices = Lists.cartesianProduct(alleleList.stream().map(alleleToHaplotypes::get).toList()).stream()
+                            .map(haplotypeOrdering::sortedCopy).mapToInt(haploPairToGTIndex::get).toArray();
+            alleleGTIndexToHaploGTIndices.put(gac.index(), haploGTIndices);
+        }
+
+        // for each sample, traverse the allele-based GACs and add up the log-space posteriors of all corresponding haplotype-based posterior GLs
+        genotypes = GenotypesContext.create(haplotypePosteriors.numberOfSamples());
+        for (int sampleIndex = 0; sampleIndex < haplotypePosteriors.numberOfSamples(); sampleIndex++) {
+            final double[] log10HaploGenotypePosteriors = haplotypePosteriors.sampleLikelihoods(sampleIndex).getAsVector();
+
+            final double[] jointDetectionPosteriorGLs = IntStream.range(0, GenotypeIndexCalculator.genotypeCount(ploidy, mergedVC.getNAlleles()))
+                    .mapToObj(alleleGTIndex -> alleleGTIndexToHaploGTIndices.get(alleleGTIndex))
+                    .map(haploGTIndices -> MathUtils.applyToArray(haploGTIndices, idx -> log10HaploGenotypePosteriors[idx]))
+                    .mapToDouble(MathUtils::log10SumLog10).toArray();
+
+            // Note: since jointDetectionPosteriors are a double[] (not an int[]) the conversion to PLs is automatic
+            genotypes.add(new GenotypeBuilder(samples.getSample(sampleIndex)).alleles(noCallAlleles).PL(jointDetectionPosteriorGLs).make());
+        }
+        return genotypes;
     }
 
     private OverlapDetector<GenotypingLikelihoods<Haplotype>> computeHaploGenotypePosteriors(AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, byte[] ref, SimpleInterval refLoc, SimpleInterval activeRegionWindow, SAMFileHeader header, int ploidy, DragstrReferenceAnalyzer dragstrs, BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate) {
