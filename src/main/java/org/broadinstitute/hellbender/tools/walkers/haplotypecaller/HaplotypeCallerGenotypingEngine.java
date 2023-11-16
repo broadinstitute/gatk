@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Ordering;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -170,7 +172,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         // haplo-genotype posteriors by joint detection interval for exact joint detection genotyping within determined intervals
         // note: this will be empty is haplotypes are not partially determined
-        final OverlapDetector<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriorOverlapDetector =
+        final OverlapDetector<GenotypingLikelihoods<Haplotype>> haploGTPosteriorOverlapDetector =
                 computeHaploGenotypePosteriors(readLikelihoods, ref, refLoc, activeRegionWindow, header, ploidy, dragstrs, readQualifiesForGenotypingPredicate);
 
         for( final int loc : eventStarts ) {
@@ -209,61 +211,36 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             // use joint detection haplo-genotype posteriors if available
             final GenotypesContext genotypes;   // this will be calculated in the joint detection way or not
-            final List<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriors = new ArrayList<>(haploGenotypePosteriorOverlapDetector.getOverlaps(mergedVC));
-            if (!haploGenotypePosteriors.isEmpty() && ploidy == 2) {    // DRAGEN joint detection assumes diploid
-                Utils.validate(haploGenotypePosteriors.size() == 1, "Only one set of haplotype genotype posteriors should overlap this variant.");
-                final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGenotypePosteriors.get(0);
-
+            final List<GenotypingLikelihoods<Haplotype>> haploGTPosteriors = new ArrayList<>(haploGTPosteriorOverlapDetector.getOverlaps(mergedVC));
+            if (!haploGTPosteriors.isEmpty() && ploidy == 2) {    // DRAGEN joint detection assumes diploid
+                Utils.validate(haploGTPosteriors.size() == 1, "Only one set of haplotype genotype posteriors should overlap this variant.");
+                final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGTPosteriors.get(0);
                 final List<Haplotype> determinedHaplotypes = haplotypePosteriors.asListOfAlleles(); // this only contains haplotypes whose determined span contains this locus
-
+                final Ordering<Haplotype> haplotypeOrdering = Ordering.explicit(determinedHaplotypes);
                 final Map<Allele, List<Haplotype>> alleleToHaplotypes = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
 
-                final Map<Pair<Allele, Allele>, Set<Pair<Haplotype, Haplotype>>> allelePairMapper = new HashMap<>();
-                for (final Allele allele1 : alleleToHaplotypes.keySet()) {
-                    for (final Allele allele2 : alleleToHaplotypes.keySet()) {
-                        final Pair<Allele, Allele> allelePair = Pair.of(allele1, allele2);
-                        allelePairMapper.put(allelePair, new HashSet<>());
+                // map from haplotype pair to corresponding haplo-genotype index (in the canonical GL order)
+                final Map<List<Haplotype>, Integer> haploPairToGTIndex = Utils.stream(GenotypeAlleleCounts.iterable(ploidy, haplotypePosteriors.numberOfAlleles()))
+                        .collect(Collectors.toMap(gac -> gac.asAlleleList(determinedHaplotypes), gac -> gac.index()));
 
-                        for (final Haplotype haplotype1 : alleleToHaplotypes.get(allele1)) {
-                            for (final Haplotype haplotype2 : alleleToHaplotypes.get(allele2)) {
-                                allelePairMapper.get(allelePair).add(Pair.of(haplotype1, haplotype2));
-                                allelePairMapper.get(allelePair).add(Pair.of(haplotype2, haplotype1));  // we could order haplotype1 and haplotype2 in their PL order, but this is easier
-                            }
-                        }
-                    }
-                }
-
-                // map from haplotype pairs to corresponding haplo-genotype index (in the canonical GL order)
-                final Map<Pair<Haplotype, Haplotype>, Integer> haplotypePairToHaploGTIndex = new HashMap<>();
-
-                final List<Haplotype> haplotypesInOrder = haplotypePosteriors.asListOfAlleles();
-                for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, haplotypePosteriors.numberOfAlleles())) {
-                    final List<Haplotype> haploGenotypeAsList = gac.asAlleleList(haplotypesInOrder);
-                    haplotypePairToHaploGTIndex.put(Pair.of(haploGenotypeAsList.get(0), haploGenotypeAsList.get(1)), gac.index());
-                    haplotypePairToHaploGTIndex.put(Pair.of(haploGenotypeAsList.get(1), haploGenotypeAsList.get(0)), gac.index());
-                }
-
-                // map from allele pairs to all compatible indices (in the canonical GL order) of haploGenotypes
-                final Map<Pair<Allele, Allele>, List<Integer>> allelePairToHaploGTIndices = new HashMap<>();
-                for (final Pair<Allele, Allele> allelePair : allelePairMapper.keySet()) {
-                    final List<Integer> compatibleHaploGTIndices = allelePairMapper.get(allelePair).stream()
-                            .map(haplotypePairToHaploGTIndex::get).distinct().sorted().toList();
-                    allelePairToHaploGTIndices.put(allelePair, compatibleHaploGTIndices);
+                // map from allele-genotype index to list of compatible haplo-genotype indices
+                final Map<Integer, int[]> alleleGTIndexToHaploGTIndices = new HashMap<>();
+                for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, mergedVC.getNAlleles())) {
+                    final List<Allele> alleleList = gac.asAlleleList(mergedVC.getAlleles());
+                    final int[] haploGTIndices = Lists.cartesianProduct(alleleList.stream().map(alleleToHaplotypes::get).toList()).stream()
+                                    .map(haplotypeOrdering::sortedCopy).mapToInt(haploPairToGTIndex::get).toArray();
+                    alleleGTIndexToHaploGTIndices.put(gac.index(), haploGTIndices);
                 }
 
                 // for each sample, traverse the allele-based GACs and add up the log-space posteriors of all corresponding haplotype-based posterior GLs
                 genotypes = GenotypesContext.create(haplotypePosteriors.numberOfSamples());
-
                 for (int sampleIndex = 0; sampleIndex < haplotypePosteriors.numberOfSamples(); sampleIndex++) {
-                    final double[] jointDetectionPosteriorGLs = new double[GenotypeIndexCalculator.genotypeCount(ploidy, mergedVC.getNAlleles())];
                     final double[] log10HaploGenotypePosteriors = haplotypePosteriors.sampleLikelihoods(sampleIndex).getAsVector();
 
-                    for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, mergedVC.getNAlleles())) {
-                        final List<Allele> alleleList = gac.asAlleleList(mergedVC.getAlleles());
-                        final Pair<Allele, Allele> allelePair = Pair.of(alleleList.get(0), alleleList.get(1));
-                        final double[] log10CompatibleHaploGenotypePosteriors = allelePairToHaploGTIndices.get(allelePair).stream().mapToDouble(n -> log10HaploGenotypePosteriors[n]).toArray();
-                        jointDetectionPosteriorGLs[gac.index()] = MathUtils.log10SumLog10(log10CompatibleHaploGenotypePosteriors);
-                    }
+                    final double[] jointDetectionPosteriorGLs = IntStream.range(0, GenotypeIndexCalculator.genotypeCount(ploidy, mergedVC.getNAlleles()))
+                            .mapToObj(alleleGTIndex -> alleleGTIndexToHaploGTIndices.get(alleleGTIndex))
+                            .map(haploGTIndices -> MathUtils.applyToArray(haploGTIndices, idx -> log10HaploGenotypePosteriors[idx]))
+                            .mapToDouble(MathUtils::log10SumLog10).toArray();
 
                     // Note: since jointDetectionPosteriors are a double[] (not an int[]) the conversion to PLs is automatic
                     genotypes.add(new GenotypeBuilder(samples.getSample(sampleIndex)).alleles(noCallAlleles).PL(jointDetectionPosteriorGLs).make());
@@ -432,7 +409,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 // calculate diploid haplotype-based genotype priors
                 final double[] log10HaploGenotypePriors = new double[GenotypeIndexCalculator.genotypeCount(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())];
 
-                // TODO: this is yielding hom alt nearly as likely as hom ref, with het much less likely than either.  This is WRONG!!!
                 for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())) {
                     // note: the zeroth element here is not necessarily the ref-ref haplo-genotype
                     log10HaploGenotypePriors[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == ploidy ? log10HaplotypeHomPriors.get(log10HaploGenotypeLikelihoods.getAllele(allele))
@@ -446,9 +422,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                         .toList();
 
                 GenotypingLikelihoods<Haplotype> log10HaploGenotypePosteriors = new GenotypingLikelihoods<>(log10HaploGenotypeLikelihoods, ploidyModel, log10HaploGenotypePosteriorsInSampleOrder);
-                if (haploGenotypePosteriorOverlapDetector.overlapsAny(jdInterval)) {
-                    int DEBUG = 90; // TODO: remove this line!
-                }
                 haploGenotypePosteriorOverlapDetector.addLhs(log10HaploGenotypePosteriors, jdInterval);
             }
         }
