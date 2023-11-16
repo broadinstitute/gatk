@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaReadAligner;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.codehaus.plexus.util.FileUtils;
 
 import java.io.File;
@@ -62,8 +61,8 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
     private SAMFileWriter nonselectedReadsWriter;
 
     // Iterators for the final merge of non-selected and aligned reads
-    private CloseableIterator<SAMRecord> unselectedRecordsIter;
-    private CloseableIterator<SAMRecord> alignedRecordsIter;
+    private CloseableIterator<GATKRead> unselectedRecordsIter;
+    private CloseableIterator<GATKRead> alignedRecordsIter;
 
     // Read counters, for logging
     private long selectedReadsCount = 0;
@@ -183,7 +182,7 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
      * called after a previous call to this method or @{link #close}.
      * @return merged iterator of realigned and non-selected reads, all coordinate-sorted
      */
-    public Iterator<GATKRead> alignAndMerge() {
+    public MergingIterator<GATKRead> alignAndMerge() {
         Utils.nonNull(selectedReadsBam, "This instance has been run already");
         Utils.nonNull(nonselectedReadsBam, "This instance has been closed");
         // Assume we're done with adding reads, so we can close the first set of temp files
@@ -213,15 +212,14 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         alignedRecordsIter = new ClosableReadSourceIterator(alignmentSource);
         // htsjdk read comparators attempt tie-breaking after comparing coordinates, but this is generally too
         // strict for data in the wild, so we won't enforce it here.
-        final Comparator<SAMRecord> weakComparator = new Comparator<>() {
+        final Comparator<GATKRead> weakComparator = new Comparator<>() {
             final SAMRecordComparator strongComparator = inputHeader.getSortOrder().getComparatorInstance();
             @Override
-            public int compare(SAMRecord o1, SAMRecord o2) {
-                return strongComparator.fileOrderCompare(o1, o2);
+            public int compare(GATKRead o1, GATKRead o2) {
+                return strongComparator.fileOrderCompare(o1.convertToSAMRecord(inputHeader), o2.convertToSAMRecord(inputHeader));
             }
         };
-        return new MergingIterator<>(weakComparator, List.of(unselectedRecordsIter, alignedRecordsIter))
-                .stream().map(SAMRecordToGATKReadAdapter::new).map(r -> (GATKRead)r).iterator();
+        return new MergingIterator<>(weakComparator, List.of(unselectedRecordsIter, alignedRecordsIter));
     }
 
     /**
@@ -328,7 +326,7 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
      * Helper class to map a {@link ReadsDataSource} iterator to a {@link CloseableIterator} and each input read to a
      * {@link SAMRecord} as well.
      */
-    static final class ClosableReadSourceIterator implements CloseableIterator<SAMRecord> {
+    static final class ClosableReadSourceIterator implements CloseableIterator<GATKRead> {
 
         ReadsDataSource source;
         final Iterator<GATKRead> iterator;
@@ -356,11 +354,11 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
 
         @Override
-        public SAMRecord next() {
+        public GATKRead next() {
             if (source == null) {
                 throw new NoSuchElementException("Source has been closed");
             }
-            return iterator.next().convertToSAMRecord(source.getHeader());
+            return iterator.next();
         }
     }
 

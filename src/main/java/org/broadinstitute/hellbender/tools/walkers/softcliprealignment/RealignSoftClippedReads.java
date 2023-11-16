@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.softcliprealignment;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.MergingIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -156,7 +157,11 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             logger.info("Found " + engine.getSelectedReadsCount() + " soft-clipped reads and mates.");
             logger.info("Found " + engine.getNonselectedReadsCount() + " non-clipped reads.");
             logger.info("Realigning and merging reads...");
-            engine.alignAndMerge().forEachRemaining(writer::addRead);
+            try (final MergingIterator<GATKRead> iter = engine.alignAndMerge()) {
+                while (iter.hasNext()) {
+                    writer.addRead(iter.next());
+                }
+            }
             logger.info("Realigned " + engine.getPairedAlignmentReadsCount() + " paired and " +
                     engine.getUnpairedAlignmentReadsCount() + " unpaired reads.");
         }
