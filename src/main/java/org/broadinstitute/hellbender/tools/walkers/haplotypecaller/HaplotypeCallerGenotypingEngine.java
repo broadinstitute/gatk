@@ -271,17 +271,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             // use joint detection haplo-genotype posteriors if available
-            final GenotypesContext genotypesOverride;   // this will be calculated in the joint detection way or not
             final List<GenotypingLikelihoods<Haplotype>> haploGTPosteriors = new ArrayList<>(haploGTPosteriorOverlapDetector.getOverlaps(mergedVC));
-            if (!haploGTPosteriors.isEmpty() && ploidy == 2) {    // DRAGEN joint detection assumes diploid
-                Utils.validate(haploGTPosteriors.size() == 1, "Only one set of haplotype genotype posteriors should overlap this variant.");
-                final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGTPosteriors.get(0);
-                genotypesOverride = computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haplotypePosteriors);
-            }
+            Utils.validate(haploGTPosteriors.size() < 2, "At most one set of haplotype genotype posteriors should overlap this variant.");
+            final Optional<GenotypingLikelihoods<Allele>> glsOverride = (haploGTPosteriors.size() == 1 && ploidy == 2) ?
+                    Optional.of(computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haploGTPosteriors.get(0))) : Optional.empty();
 
             // TODO: the code below needs to optionally take in the genotypesOverride as a flag to skip GL computation
             // these genotypes have the PLs calculated and filled out but are otherwise empty (no-call alleles, no annotations)
-            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs, glsOverride);
 
             // at this point joint detection and non-joint detection code paths meet up again
 
@@ -330,8 +327,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param haplotypePosteriors
      * @return
      */
-    private GenotypesContext computeAlleleGenotypesFromHaploGenotypes(int ploidy, List<Allele> noCallAlleles, int loc, VariantContext mergedVC, GenotypingLikelihoods<Haplotype> haplotypePosteriors) {
-        final GenotypesContext genotypes;
+    private GenotypingLikelihoods<Allele> computeAlleleGenotypesFromHaploGenotypes(int ploidy, List<Allele> noCallAlleles, int loc, VariantContext mergedVC, GenotypingLikelihoods<Haplotype> haplotypePosteriors) {
         final List<Haplotype> determinedHaplotypes = haplotypePosteriors.asListOfAlleles(); // this only contains haplotypes whose determined span contains this locus
         final Ordering<Haplotype> haplotypeOrdering = Ordering.explicit(determinedHaplotypes);
         final Map<Allele, List<Haplotype>> alleleToHaplotypes = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
@@ -350,7 +346,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         }
 
         // for each sample, traverse the allele-based GACs and add up the log-space posteriors of all corresponding haplotype-based posterior GLs
-        genotypes = GenotypesContext.create(haplotypePosteriors.numberOfSamples());
+        final List<GenotypeLikelihoods> genotypeLikelihoodsInSampleOrder = new ArrayList<>();
         for (int sampleIndex = 0; sampleIndex < haplotypePosteriors.numberOfSamples(); sampleIndex++) {
             final double[] log10HaploGenotypePosteriors = haplotypePosteriors.sampleLikelihoods(sampleIndex).getAsVector();
 
@@ -359,10 +355,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                     .map(haploGTIndices -> MathUtils.applyToArray(haploGTIndices, idx -> log10HaploGenotypePosteriors[idx]))
                     .mapToDouble(MathUtils::log10SumLog10).toArray();
 
-            // Note: since jointDetectionPosteriors are a double[] (not an int[]) the conversion to PLs is automatic
-            genotypes.add(new GenotypeBuilder(samples.getSample(sampleIndex)).alleles(noCallAlleles).PL(jointDetectionPosteriorGLs).make());
+            genotypeLikelihoodsInSampleOrder.add(GenotypeLikelihoods.fromLog10Likelihoods(jointDetectionPosteriorGLs));
         }
-        return genotypes;
+
+        return new GenotypingLikelihoods<>(new IndexedAlleleList<>(mergedVC.getAlleles()), ploidyModel, genotypeLikelihoodsInSampleOrder);
     }
 
     private OverlapDetector<GenotypingLikelihoods<Haplotype>> computeHaploGenotypePosteriors(AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, byte[] ref, SimpleInterval refLoc, SimpleInterval activeRegionWindow, SAMFileHeader header, int ploidy, DragstrReferenceAnalyzer dragstrs, BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate) {
@@ -705,10 +701,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * For a particular event described in inputVC, form PL vector for each sample by looking into allele read map and filling likelihood matrix for each allele
      * @param readLikelihoods          Allele map describing mapping from reads to alleles and corresponding likelihoods
      * @param mergedVC               Input VC with event to genotype
+     * @parma glsOverride           GenotypingLikelihoods calculated elsewhere, such as from joint detection haplo-genotyping, in which case we omit
+     *                              the GL calculation and only do additional modifications such as DRAGEN BQD and FRD
      * @return                       GenotypesContext object wrapping genotype objects with PLs
      */
     protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods,
-                                                        final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
+                                                        final VariantContext mergedVC, final List<Allele> noCallAlleles,
+                                                        final byte[] paddedReference, final int offsetForRefIntoEvent,
+                                                        final DragstrReferenceAnalyzer dragstrs, Optional<GenotypingLikelihoods<Allele>> glsOverride) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
