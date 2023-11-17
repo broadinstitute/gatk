@@ -55,6 +55,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         info(pipe.read())
         ret = pipe.close()
         if ret:
+            info(ret)
             raise RuntimeError(f"Unexpected exit code from cluster creation: {ret}")
 
         cluster_client = dataproc.ClusterControllerClient(
@@ -89,24 +90,24 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
     except Exception as e:
         info(e)
         raise
-    finally:
-        info(f'Stopping cluster: {cluster_name}')
-        delete_cmd = unwrap(f"""
-            
-            gcloud dataproc clusters delete
-              --project {gcs_project}
-              --region {region}
-              --account {account}
-              --quiet
-              {cluster_name}
-            
-        """)
-
-        pipe = os.popen(delete_cmd)
-        pipe.read()
-        ret = pipe.close()
-        if ret:
-            raise RuntimeError(f"Unexpected exit code deleting cluster: {ret}")
+    # finally:
+    #     info(f'Stopping cluster: {cluster_name}')
+    #     delete_cmd = unwrap(f"""
+    #
+    #         gcloud dataproc clusters delete
+    #           --project {gcs_project}
+    #           --region {region}
+    #           --account {account}
+    #           --quiet
+    #           {cluster_name}
+    #
+    #     """)
+    #
+    #     pipe = os.popen(delete_cmd)
+    #     pipe.read()
+    #     ret = pipe.close()
+    #     if ret:
+    #         raise RuntimeError(f"Unexpected exit code deleting cluster: {ret}")
 
 
 if __name__ == "__main__":
