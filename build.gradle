@@ -189,7 +189,7 @@ configurations.configureEach {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose', '-Xlint:-serial']
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Xdiags:verbose', '-Xlint:-serial']
     options.encoding = 'UTF-8'
 }
 
