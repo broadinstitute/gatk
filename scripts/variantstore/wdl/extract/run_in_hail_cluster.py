@@ -44,7 +44,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
          --max-idle=60m
          --max-age=1440m
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
-         --properties ^#^dataproc:dataproc.monitoring.stackdriver.enable=true#dataproc:dataproc.logging.stackdriver.enable=true
+         --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true
          {cluster_name}
          
         """)
