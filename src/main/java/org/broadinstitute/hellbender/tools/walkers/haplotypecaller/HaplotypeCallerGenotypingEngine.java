@@ -276,7 +276,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             final Optional<GenotypingLikelihoods<Allele>> glsOverride = (haploGTPosteriors.size() == 1 && ploidy == 2) ?
                     Optional.of(computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haploGTPosteriors.get(0))) : Optional.empty();
 
-            // TODO: the code below needs to optionally take in the genotypesOverride as a flag to skip GL computation
             // these genotypes have the PLs calculated and filled out but are otherwise empty (no-call alleles, no annotations)
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs, glsOverride);
 
@@ -713,7 +712,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
-        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods), paddedReference, offsetForRefIntoEvent, dragstrs);
+        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods), paddedReference, offsetForRefIntoEvent, dragstrs, glsOverride);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
         for (int s = 0; s < sampleCount; s++) {
