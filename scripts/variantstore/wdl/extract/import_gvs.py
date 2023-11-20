@@ -254,7 +254,7 @@ def import_gvs(refs: 'List[List[str]]',
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
                                       local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
-                                      LGT=hl.parse_call(hl.coalesce(var_ht.PGT, var_ht.GT)),
+                                      LGT=hl.parse_call(var_ht.GT),
                                       LAD=var_ht.AD.split(',').map(lambda x: hl.int32(x)),
                                       GQ=hl.int32(var_ht.GQ),
                                       RGQ=hl.int32(var_ht.RGQ))
@@ -392,16 +392,6 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
-
-        # Clean up any completely empty phasing fields.
-        ps_all_missing, pid_all_missing = vd.aggregate_entries((
-            hl.agg.all(hl.is_missing(vd.PS)),
-            hl.agg.all(hl.is_missing(vd.PID))
-        ))
-        if ps_all_missing:
-            vd = vd.drop('PS')
-        if pid_all_missing:
-            vd = vd.drop('PID')
 
         hl.vds.VariantDataset(
             reference_data=rd,
