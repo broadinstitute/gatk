@@ -14,9 +14,11 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
+def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr, local_hail_path):
     import hail as hl
     import import_gvs
+    from hailtop.fs.router_fs import RouterFS
+
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
     rg38 = hl.get_reference('GRCh38')
@@ -46,7 +48,11 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
             use_classic_vqsr=use_classic_vqsr
         )
     finally:
-        hl.copy_log(f'{vds_path}.log')
+        fs = RouterFS()
+        fs.copy(
+            local_hail_log_path,
+            f'{vds_path}.log'
+        )
 
 
 def gcs_generate_avro_args(bucket, blob_prefix, key):
@@ -139,6 +145,7 @@ if __name__ == '__main__':
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
+    local_hail_log_path = os.path.realpath(Env.hc()._log)
     use_classic_vqsr =  args.use_classic_vqsr
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
@@ -150,7 +157,7 @@ if __name__ == '__main__':
         def args(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr)
+        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr, local_hail_path)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -162,6 +169,6 @@ if __name__ == '__main__':
         def args(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr)
+        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr, Local_hail_path)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")

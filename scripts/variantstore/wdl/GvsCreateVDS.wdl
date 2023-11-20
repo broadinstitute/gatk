@@ -128,7 +128,7 @@ task create_vds {
             minInstances: 2
             maxInstances: 2
         secondaryWorkerConfig:
-            maxInstances: 1200
+            maxInstances: 500
         basicAlgorithm:
             cooldownPeriod: 120s
             yarnConfig:
