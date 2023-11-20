@@ -23,7 +23,7 @@ workflow GvsPrepareCallset {
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
-    Boolean use_compressed_references = false
+    String? cloud_sdk_docker
     String? variants_docker
     String? git_branch_or_tag
     String? git_hash
@@ -34,7 +34,7 @@ workflow GvsPrepareCallset {
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
-  if (!defined(git_hash) || !defined(variants_docker)) {
+  if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -42,7 +42,15 @@ workflow GvsPrepareCallset {
   }
 
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  call Utils.IsUsingCompressedReferences {
+    input:
+      project_id = query_project,
+      dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
 
   call PrepareRangesCallsetTask {
     input:
@@ -60,7 +68,7 @@ workflow GvsPrepareCallset {
       only_output_vet_tables          = only_output_vet_tables,
       write_cost_to_db                = write_cost_to_db,
       variants_docker                 = effective_variants_docker,
-      use_compressed_references       = use_compressed_references,
+      use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
   }
 
   output {

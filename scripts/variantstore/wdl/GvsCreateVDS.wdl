@@ -83,6 +83,7 @@ workflow GvsCreateVDS {
 
     output {
         String cluster_name = create_vds.cluster_name
+        Boolean done = true
     }
 
 }
