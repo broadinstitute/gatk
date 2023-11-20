@@ -166,6 +166,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1124
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -235,6 +236,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1124
          tags:
              - /.*/
    - name: GvsWithdrawSamples
