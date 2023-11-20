@@ -13,7 +13,6 @@ workflow GvsExtractAvroFilesForHail {
         String filter_set_name
         String call_set_identifier
         Boolean use_VQSR_lite = true
-        Boolean use_compressed_references = false
         Int scatter_width = 10
         String? basic_docker
         String? cloud_sdk_docker
@@ -77,6 +76,13 @@ workflow GvsExtractAvroFilesForHail {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call Utils.IsUsingCompressedReferences {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
@@ -88,7 +94,7 @@ workflow GvsExtractAvroFilesForHail {
                 shard_index = i,
                 num_shards = scatter_width,
                 variants_docker = effective_variants_docker,
-                use_compressed_references = use_compressed_references,
+                use_compressed_references = IsUsingCompressedReferences.is_using_compressed_references,
         }
     }
 

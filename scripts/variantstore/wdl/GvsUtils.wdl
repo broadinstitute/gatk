@@ -72,7 +72,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-11-15-alpine-104a124c6"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-11-15-alpine-14e0343b6"
     String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_10_31_e7746ce7c38a8226bcac5b89284782de2a4cdda1"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -785,6 +785,64 @@ task IsVQSRLite {
   >>>
   output {
     Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
+task IsUsingCompressedReferences {
+  input {
+    String project_id
+    String dataset_name
+    String cloud_sdk_docker
+  }
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+      SELECT
+        column_name
+      FROM
+        `~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+      WHERE
+        table_name = "ref_ranges_001"
+      AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
+
+    # grep will return non-zero if the "query" term is not found and we don't want to fail the task for that.
+    set +o errexit
+
+    grep packed_ref_data column_name.txt
+    rc=$?
+    if [[ $rc -eq 0 ]]
+    then
+      ret=true
+    else
+      grep location column_name.txt
+      rc=$?
+      if [[ $rc -eq 0 ]]
+      then
+        ret=false
+      else
+        echo "Did not find either expected column name 'location' or 'packed_ref_data' in ref_ranges_001 table." 1>&2
+        exit 1
+      fi
+    fi
+    set -o errexit
+
+    echo $ret > ret.txt
+  >>>
+
+  output {
+    Boolean is_using_compressed_references = read_boolean("ret.txt")
+    File column_name = "column_name.txt"
   }
 
   runtime {

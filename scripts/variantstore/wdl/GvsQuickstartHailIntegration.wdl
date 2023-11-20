@@ -102,7 +102,6 @@ workflow GvsQuickstartHailIntegration {
             basic_docker = effective_basic_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
-            use_compressed_references = use_compressed_references,
     }
 
     call CreateVds.GvsCreateVDS {
@@ -120,6 +119,7 @@ workflow GvsQuickstartHailIntegration {
 
     call TieOutVds {
         input:
+            go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
             vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
@@ -143,6 +143,7 @@ workflow GvsQuickstartHailIntegration {
 
 task TieOutVds {
     input {
+        Boolean go
         String git_branch_or_tag
         String vds_path
         Array[File] tieout_vcfs

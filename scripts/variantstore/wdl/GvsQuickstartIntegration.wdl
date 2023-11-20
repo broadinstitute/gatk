@@ -26,6 +26,7 @@ workflow GvsQuickstartIntegration {
         String? cloud_sdk_slim_docker
         String? variants_docker
         String? gatk_docker
+        String? hail_version
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -49,6 +50,7 @@ workflow GvsQuickstartIntegration {
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     call FilterIntervalListChromosomes {
         input:
@@ -93,6 +95,7 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                hail_version = effective_hail_version,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -118,6 +121,7 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                hail_version = effective_hail_version,
         }
 
         if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
