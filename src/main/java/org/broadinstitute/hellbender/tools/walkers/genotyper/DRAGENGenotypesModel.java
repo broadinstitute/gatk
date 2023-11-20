@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.hipparchus.util.MathArrays;
 
 import java.io.Serializable;
 import java.util.*;
@@ -140,31 +141,37 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             // start with the genotyping likelihoods without any BQD or FRD (possibly overridden by the joint detection haplotype-based genotyping)
             // then modify in-place with BQD and FRD, which in general increase hom likelihoods while leaving het likelihoods unchanged
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
-            final double[] glsModifiedInPlace = glsOverride.isEmpty() ? GenotypeLikelihoodCalculator.computeLog10GenotypeLikelihoods(samplePloidy, sampleLikelihoods) :
-                    glsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+            
+            final double[] ploidyModelGLs = GenotypeLikelihoodCalculator.computeLog10GenotypeLikelihoods(samplePloidy, sampleLikelihoods);
+            final double[] ploidyModelGLsCorrected = ploidyModelGLs.clone();
 
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n Standard Genotyping Likelihoods Results:");
-                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(glsModifiedInPlace));
+                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGLs));
             }
 
             if (computeBQD) {
-                applyLikelihoodsAdjusmentToBaseline(glsModifiedInPlace, "BQD",
+                applyLikelihoodsAdjusmentToBaseline(ploidyModelGLsCorrected, "BQD",
                 GenotypeLikelihoodCalculatorDRAGEN.calculateBQDLikelihoods(samplePloidy, sampleLikelihoods, strandForward, strandReverse,
                         paddedReference, offsetForRefIntoEvent));
             }
             if (computeFRD) {
-                applyLikelihoodsAdjusmentToBaseline(glsModifiedInPlace, "FRD",
-                        GenotypeLikelihoodCalculatorDRAGEN.calculateFRDLikelihoods(samplePloidy, sampleLikelihoods, glsModifiedInPlace,
+                applyLikelihoodsAdjusmentToBaseline(ploidyModelGLsCorrected, "FRD",
+                        GenotypeLikelihoodCalculatorDRAGEN.calculateFRDLikelihoods(samplePloidy, sampleLikelihoods, ploidyModelGLsCorrected,
                                 Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                                 FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment));
             }
 
+            final double[] glAdditiveCorrection = MathArrays.ebeSubtract(ploidyModelGLsCorrected, ploidyModelGLs);
+
+            final double[] correctedGLs = MathArrays.ebeAdd(glsOverride.isEmpty() ? ploidyModelGLs : glsOverride.get().sampleLikelihoods(sampleIndex).getAsVector(),
+                    glAdditiveCorrection);
+
             // this is what the work actually is, after we have computed a few things
-            genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(glsModifiedInPlace));
+            genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(correctedGLs));
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("merged matrix:");
-                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(glsModifiedInPlace));
+                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(correctedGLs));
             }
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
