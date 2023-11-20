@@ -24,7 +24,7 @@ def unwrap(string):
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_project,
-                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path, avro_path):
+                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path, avro_path, kill_cluster_at_end):
 
     use_classic_vqsr_flag = ""
     if use_classic_vqsr:
@@ -90,24 +90,25 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
     except Exception as e:
         info(e)
         raise
-    # finally:
-    #     info(f'Stopping cluster: {cluster_name}')
-    #     delete_cmd = unwrap(f"""
-    #
-    #         gcloud dataproc clusters delete
-    #           --project {gcs_project}
-    #           --region {region}
-    #           --account {account}
-    #           --quiet
-    #           {cluster_name}
-    #
-    #     """)
-    #
-    #     pipe = os.popen(delete_cmd)
-    #     pipe.read()
-    #     ret = pipe.close()
-    #     if ret:
-    #         raise RuntimeError(f"Unexpected exit code deleting cluster: {ret}")
+    finally:
+        if kill_cluster_at_end:
+            info(f'Stopping cluster: {cluster_name}')
+            delete_cmd = unwrap(f"""
+
+                gcloud dataproc clusters delete
+                  --project {gcs_project}
+                  --region {region}
+                  --account {account}
+                  --quiet
+                  {cluster_name}
+
+            """)
+
+            pipe = os.popen(delete_cmd)
+            pipe.read()
+            ret = pipe.close()
+            if ret:
+                raise RuntimeError(f"Unexpected exit code deleting cluster: {ret}")
 
 
 if __name__ == "__main__":
@@ -128,6 +129,7 @@ if __name__ == "__main__":
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
+    parser.add_argument('--kill-cluster-at-end', type=bool, default=True)
 
     args = parser.parse_args()
 
@@ -142,5 +144,6 @@ if __name__ == "__main__":
                    use_classic_vqsr=args.use_classic_vqsr,
                    vds_path=args.vds_path,
                    temp_path=args.temp_path,
-                   avro_path=args.avro_path
+                   avro_path=args.avro_path,
+                   kill_cluster_at_end= args.kill_cluster_at_end
                    )

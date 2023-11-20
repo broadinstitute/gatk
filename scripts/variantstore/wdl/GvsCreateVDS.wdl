@@ -10,6 +10,7 @@ workflow GvsCreateVDS {
         String vds_destination_path
         String avro_path
         Boolean use_classic_VQSR = false
+        Boolean kill_cluster_at_end = true
         String? hail_version
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
@@ -64,6 +65,7 @@ workflow GvsCreateVDS {
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = effective_variants_docker,
+            kill_cluster_at_end = kill_cluster_at_end
     }
 
     call validate_vds {
@@ -91,6 +93,7 @@ task create_vds {
         String vds_path
         String avro_path
         Boolean use_classic_VQSR
+        Boolean kill_cluster_at_end
         String? hail_version
 
         String gcs_project
@@ -147,6 +150,7 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_path} \
             --temp-path ${hail_temp_path} \
+            ~{true='' false='--kill-cluster-at-end False' kill_cluster_at_end} \
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
     >>>
 
