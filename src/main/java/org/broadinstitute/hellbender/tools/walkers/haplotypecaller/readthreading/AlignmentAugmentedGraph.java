@@ -6,6 +6,7 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.AdaptiveChainPruner;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -29,11 +30,16 @@ public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
         super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, 1, -1);
     }
 
-    public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final SAMFileHeader header, final ChainPruner pruner) {
+    public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner pruner) {
+        final Set<Kmer> decisionKmers = findDecisionKmers(refHaplotype, reads, pruner);
+
+    }
+
+    private Set<Kmer> findDecisionKmers(Haplotype refHaplotype, Iterable<GATKRead> reads, ChainPruner pruner) {
         // make a regular read threading graph in order to identify decision vertices
         final PlainDeBruijnGraph initialGraph = new PlainDeBruijnGraph(kmerSize, minBaseQualityToUseInAssembly);
         initialGraph.addSequence("ref", refHaplotype.getBases(), 1, true);
-        reads.forEach(read -> initialGraph.addRead(read, header));
+        reads.forEach(read -> initialGraph.addRead(read, null));
         initialGraph.buildGraphIfNecessary();
         pruner.pruneLowWeightChains(initialGraph);
 
@@ -49,12 +55,12 @@ public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
             edges.forEach(edge -> decisionVertices.add(Pair.of(initialGraph.getEdgeTarget(edge), branchiness)));
         }
 
-        final Set<MultiDeBruijnVertex> branchiestVertices = decisionVertices.stream()
+        return decisionVertices.stream()
                 .sorted(Comparator.comparingInt(Pair<MultiDeBruijnVertex, Integer>::getRight).reversed())
                 .limit(MAX_BRANCH_VERTICES)
                 .map(Pair::getLeft)
+                .map(vertex -> new Kmer(vertex.getSequence()))
                 .collect(Collectors.toSet());
-
     }
 
     /**

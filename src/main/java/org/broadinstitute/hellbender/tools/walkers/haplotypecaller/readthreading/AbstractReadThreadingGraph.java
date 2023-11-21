@@ -1051,7 +1051,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 if (start != -1 && len >= kmerSize) {
                     // if the sequence is long enough to get some value out of, add it to the graph
                     final String name = read.getName() + '_' + start + '_' + end;
-                    addSequence(name, ReadUtils.getSampleName(read, header), sequence, start, end, 1, false);
+                    addSequence(name, header == null ? "sample" : ReadUtils.getSampleName(read, header), sequence, start, end, 1, false);
                 }
 
                 lastGood = -1; // reset the last good base
