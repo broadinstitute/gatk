@@ -14,7 +14,7 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr, local_hail_path):
+def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     import hail as hl
     import import_gvs
     from hail.utils.java import Env
@@ -48,6 +48,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr, l
             use_classic_vqsr=use_classic_vqsr
         )
     finally:
+        local_hail_log_path = os.path.realpath(Env.hc()._log)
         fs = RouterFS()
         fs.copy(
             local_hail_log_path,
@@ -145,7 +146,6 @@ if __name__ == '__main__':
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
-    local_hail_log_path = os.path.realpath(Env.hc()._log)
     use_classic_vqsr =  args.use_classic_vqsr
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
@@ -157,7 +157,7 @@ if __name__ == '__main__':
         def args(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr, local_hail_log_path)
+        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -169,6 +169,6 @@ if __name__ == '__main__':
         def args(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr, local_hail_log_path)
+        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")
