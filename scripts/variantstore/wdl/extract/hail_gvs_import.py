@@ -157,7 +157,7 @@ if __name__ == '__main__':
         def args(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr, local_hail_path)
+        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr, local_hail_log_path)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -169,6 +169,6 @@ if __name__ == '__main__':
         def args(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr, Local_hail_path)
+        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr, local_hail_log_path)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")
