@@ -17,7 +17,7 @@ gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr, local_hail_path):
     import hail as hl
     import import_gvs
-    from hail.java import Env
+    from hl.utils.java import Env
 
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
