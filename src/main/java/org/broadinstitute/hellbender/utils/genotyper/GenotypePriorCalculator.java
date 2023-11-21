@@ -46,6 +46,17 @@ public final class GenotypePriorCalculator {
     private final double[] homValues;
     private final double[] diffValues;
 
+    // constructor for flat prior
+    private GenotypePriorCalculator() {
+        hetValues = new double[NUMBER_OF_ALLELE_TYPES];
+        homValues = new double[NUMBER_OF_ALLELE_TYPES];
+        diffValues = new double[NUMBER_OF_ALLELE_TYPES];
+    }
+
+    public static GenotypePriorCalculator flatPrior() {
+        return new GenotypePriorCalculator();
+    }
+
     private GenotypePriorCalculator(final double snpHet, final double snpHom,
                                           final double indelHet, final double indelHom,
                                           final double otherHet, final double otherHom) {

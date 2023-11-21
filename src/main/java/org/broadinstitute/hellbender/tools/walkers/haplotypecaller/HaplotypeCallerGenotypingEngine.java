@@ -279,11 +279,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             // these genotypes have the PLs calculated and filled out but are otherwise empty (no-call alleles, no annotations)
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs, glsOverride);
 
-            // at this point joint detection and non-joint detection code paths meet up again
-
-            // TODO: look into this genotype prior calculator because in joint detection we have already accounted for
-            // TODO: haplotype priors, no need to double-count priors here!
-            final GenotypePriorCalculator gpc = resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
+            // In joint detection we have already accounted for *haplotype* priors, no need to double-count priors here!
+            final GenotypePriorCalculator gpc = glsOverride.isPresent() ? GenotypePriorCalculator.flatPrior() :
+                    resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
 
             // TODO: looks like even in joint detection we will need the read-allele likelihoods for annotations
