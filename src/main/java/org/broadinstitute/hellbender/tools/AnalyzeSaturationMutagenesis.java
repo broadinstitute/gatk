@@ -1970,7 +1970,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                         rejectedReadsBAMWriter.addRead(read1);
                     }
                 }
-                disjointPairCounts.bumpCount(reportType);
+                disjointPairCounts.bumpCount(ignoredMate);
             }
         }
     }
