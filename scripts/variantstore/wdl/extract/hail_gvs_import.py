@@ -18,6 +18,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     import hail as hl
     import import_gvs
     from hail.utils.java import Env
+    from hailtop.fs.router_fs import RouterFS
 
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
