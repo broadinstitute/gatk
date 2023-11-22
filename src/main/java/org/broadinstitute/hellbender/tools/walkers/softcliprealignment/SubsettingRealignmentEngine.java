@@ -176,6 +176,15 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
         }
     }
 
+    public void addDistantMate(final GATKRead mate) {
+        Utils.nonNull(selectedReadsWriter, "This instance has been closed");
+        Utils.nonNull(nonselectedReadsWriter, "This instance has been closed");
+        if (ReadFilterLibrary.PRIMARY_LINE.test(mate)) {
+            selectedReadsWriter.addAlignment(mate.convertToSAMRecord(selectedReadsWriter.getFileHeader()));
+            selectedReadsCount++;
+        }
+    }
+
     /**
      * Performs realignment on the reads submitted with @{@link #addRead(GATKRead, Predicate)}, and merges
      * the alignments with non-selected reads. Caches realignments to disk before merging. This method may NOT be

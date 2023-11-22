@@ -1,29 +1,32 @@
 package org.broadinstitute.hellbender.tools.walkers.softcliprealignment;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Streams;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.MergingIterator;
+import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.MultiplePassReadWalker;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Realigns soft-clipped reads using BWA.
@@ -140,20 +143,51 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     public void traverseReads() {
         logger.info("Identifying soft-clipped reads...");
         final Set<String> softclippedReadNames = new HashSet<>();
-        forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
-                checkIfClipped(read, softclippedReadNames, minSoftClipLength)
-        );
+        final Set<String> pairedReadsWithDistantMates = new HashSet<>();
+        final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
+        forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {
+            checkIfClipped(read, softclippedReadNames, minSoftClipLength);
+            evaluateDistantMate(read, pairedReadsWithDistantMates);
+        });
         logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs.");
+        logger.info("Found " + pairedReadsWithDistantMates.size() + " distant mates.");
+
         try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(args.indexImage.toString(),
                 getHeaderForReads(), args.bufferSize, args.bwaThreads, args.keepDuplicateFlag);
              final SAMFileGATKReadWriter writer = createSAMWriter(output, true)) {
-            logger.info("Subsetting soft-clipped reads and mates...");
+            final OverlapDetector<SimpleInterval> traversalIntervals = intervalArgumentCollection.intervalsSpecified() ? OverlapDetector.create(intervalArgumentCollection.getIntervals(dictionary)) : null;
+            final List<MateInfo> distantMates = new ArrayList<>();
+            logger.info("Subsetting soft-clipped reads and close mates...");
+            // Add reads
             forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {
                 // Clear realignment tags in case the input was previously realigned
                 read.clearAttribute(SubsettingRealignmentEngine.REALIGNED_READ_TAG);
                 // Submit the read to the engine, selecting soft-clipped reads and their mates
                 engine.addRead(read, r -> softclippedReadNames.contains(r.getName()));
+                if (pairedReadsWithDistantMates.contains(read.getName())) {
+                    addMateLocus(read, distantMates, traversalIntervals);
+                }
             });
+
+            // Add distant mates
+            SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
+            if (hasReference()) { // pass in reference if available, because CRAM files need it
+                factory = factory.referenceSequence(referenceArguments.getReferencePath());
+            }
+            final ReadsDataSource readSource = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, 1,
+                    (cloudIndexPrefetchBuffer < 0 ? 1 : cloudIndexPrefetchBuffer));
+            // Sort so we traverse in order
+            Collections.sort(distantMates, IntervalUtils.getDictionaryOrderComparator(dictionary));
+            logger.info("Adding " + distantMates.size() + " distant mates...");
+            for (final MateInfo mate : distantMates) {
+                logger.info(mate.name + " " + mate.contig + ":" + mate.start);
+                final List<GATKRead> mates = Streams.stream(readSource.query(new SimpleInterval(mate))).filter(r -> validMate(r, mate)).collect(Collectors.toList());
+                if (mates.size() != 1) {
+                    throw new GATKException("Valid mate of " + mate.name + " not found at " + mate.contig + ":" + mate.start);
+                }
+                engine.addDistantMate(mates.get(0));
+            }
+
             logger.info("Found " + engine.getSelectedReadsCount() + " soft-clipped reads and mates.");
             logger.info("Found " + engine.getNonselectedReadsCount() + " non-clipped reads.");
             logger.info("Realigning and merging reads...");
@@ -177,6 +211,36 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
         }
     }
 
+    static void evaluateDistantMate(final GATKRead read, final Set<String> pairedReadsWithDistantMates) {
+        if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired()) {
+            final String name = read.getName();
+            if (pairedReadsWithDistantMates.contains(name)) {
+                pairedReadsWithDistantMates.remove(name);
+            } else {
+                pairedReadsWithDistantMates.add(name);
+            }
+        }
+    }
+
+    static void addMateLocus(final GATKRead read, final List<MateInfo> loci, final OverlapDetector<SimpleInterval> traversalIntervals) {
+        if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired()) {
+            final SimpleInterval mateLocus = new SimpleInterval(read.getMateContig(), read.getMateStart(), read.getMateStart());
+            if (traversalIntervals == null || !traversalIntervals.overlapsAny(mateLocus)) {
+                loci.add(new MateInfo(read.getMateContig(), read.getMateStart(), !read.isFirstOfPair(), read.getName()));
+            }
+        }
+    }
+    static boolean validMate(final GATKRead read, final MateInfo mate) {
+        if (!(ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired() && read.getName().equals(mate.name) && read.isFirstOfPair() == mate.firstRead)) {
+            return false;
+        }
+        if (read.getContig() == null) {
+            return mate.contig == null;
+        } else {
+            return read.getContig().equals(mate.contig) && read.getStart() == mate.start;
+        }
+    }
+
     /**
      * Returns whether the read is non-secondary/non-supplementary and sufficiently soft-clipped
      */
@@ -195,5 +259,34 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             }
         }
         return false;
+    }
+
+    private static final class MateInfo implements Locatable {
+        final String contig;
+        final int start;
+        final boolean firstRead;
+        final String name;
+
+        public MateInfo(final String contig, final int start, final boolean firstRead, final String name) {
+            this.contig = contig;
+            this.start = start;
+            this.firstRead = firstRead;
+            this.name = name;
+        }
+
+        @Override
+        public String getContig() {
+            return contig;
+        }
+
+        @Override
+        public int getStart() {
+            return start;
+        }
+
+        @Override
+        public int getEnd() {
+            return start;
+        }
     }
 }
