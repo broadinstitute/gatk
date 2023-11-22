@@ -143,14 +143,13 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     public void traverseReads() {
         logger.info("Identifying soft-clipped reads...");
         final Set<String> softclippedReadNames = new HashSet<>();
-        final Set<String> pairedReadsWithDistantMates = new HashSet<>();
+        final Set<String> pairedClippedReadsWithDistantMates = new HashSet<>();
         final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
         forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {
-            checkIfClipped(read, softclippedReadNames, minSoftClipLength);
-            evaluateDistantMate(read, pairedReadsWithDistantMates);
+            checkIfClipped(read, softclippedReadNames, minSoftClipLength, pairedClippedReadsWithDistantMates);
         });
         logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs.");
-        logger.info("Found " + pairedReadsWithDistantMates.size() + " distant mates.");
+        logger.info("Found " + pairedClippedReadsWithDistantMates.size() + " distant mates.");
 
         try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(args.indexImage.toString(),
                 getHeaderForReads(), args.bufferSize, args.bwaThreads, args.keepDuplicateFlag);
@@ -164,7 +163,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                 read.clearAttribute(SubsettingRealignmentEngine.REALIGNED_READ_TAG);
                 // Submit the read to the engine, selecting soft-clipped reads and their mates
                 engine.addRead(read, r -> softclippedReadNames.contains(r.getName()));
-                if (pairedReadsWithDistantMates.contains(read.getName())) {
+                if (pairedClippedReadsWithDistantMates.contains(read.getName())) {
                     addMateLocus(read, distantMates, traversalIntervals);
                 }
             });
@@ -205,19 +204,20 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
      * Gather names of soft-clipped reads
      */
     @VisibleForTesting
-    static void checkIfClipped(final GATKRead read, final Set<String> softclippedReadNames, final int minSoftClipLength) {
+    static void checkIfClipped(final GATKRead read, final Set<String> softclippedReadNames, final int minSoftClipLength, final Set<String> pairedClippedReadsWithDistantMates) {
         if (isValidSoftClip(read, minSoftClipLength)) {
             softclippedReadNames.add(read.getName());
+            evaluateDistantMate(read, pairedClippedReadsWithDistantMates);
         }
     }
 
-    static void evaluateDistantMate(final GATKRead read, final Set<String> pairedReadsWithDistantMates) {
+    static void evaluateDistantMate(final GATKRead read, final Set<String> pairedClippedReadsWithDistantMates) {
         if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired()) {
             final String name = read.getName();
-            if (pairedReadsWithDistantMates.contains(name)) {
-                pairedReadsWithDistantMates.remove(name);
+            if (pairedClippedReadsWithDistantMates.contains(name)) {
+                pairedClippedReadsWithDistantMates.remove(name);
             } else {
-                pairedReadsWithDistantMates.add(name);
+                pairedClippedReadsWithDistantMates.add(name);
             }
         }
     }
@@ -225,7 +225,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
     static void addMateLocus(final GATKRead read, final List<MateInfo> loci, final OverlapDetector<SimpleInterval> traversalIntervals) {
         // Note we exclude unmapped mates, since they are impossible to pull out efficiently
         if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired() && read.getMateContig() != null) {
-            final SimpleInterval mateLocus = new SimpleInterval(read.getMateContig(), read.getMateStart(), read.getMateStart());
+            final SimpleInterval mateLocus = new SimpleInterval(read.getMateContig(), read.getMateStart(), read.getMateStart() + 1);
             if (traversalIntervals == null || !traversalIntervals.overlapsAny(mateLocus)) {
                 loci.add(new MateInfo(read.getMateContig(), read.getMateStart(), !read.isFirstOfPair(), read.getName()));
             }
