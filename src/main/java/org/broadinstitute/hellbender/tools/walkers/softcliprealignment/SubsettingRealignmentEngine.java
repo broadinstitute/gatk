@@ -171,8 +171,9 @@ public final class SubsettingRealignmentEngine implements AutoCloseable {
                 selectedReadsCount++;
             }
         } else {
-            nonselectedReadsWriter.addAlignment(read.convertToSAMRecord(nonselectedReadsWriter.getFileHeader()));
-            nonselectedReadsCount++;
+            // TODO add back in?
+            //nonselectedReadsWriter.addAlignment(read.convertToSAMRecord(nonselectedReadsWriter.getFileHeader()));
+            //nonselectedReadsCount++;
         }
     }
 

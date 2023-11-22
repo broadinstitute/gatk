@@ -149,13 +149,14 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             checkIfClipped(read, softclippedReadNames, minSoftClipLength, pairedClippedReadsWithDistantMates);
         });
         logger.info("Found " + softclippedReadNames.size() + " soft-clipped reads / read pairs.");
-        logger.info("Found " + pairedClippedReadsWithDistantMates.size() + " distant mates.");
+        logger.info("Found " + pairedClippedReadsWithDistantMates.size() + " distant/unmapped mates.");
 
         try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(args.indexImage.toString(),
                 getHeaderForReads(), args.bufferSize, args.bwaThreads, args.keepDuplicateFlag);
              final SAMFileGATKReadWriter writer = createSAMWriter(output, true)) {
             final OverlapDetector<SimpleInterval> traversalIntervals = intervalArgumentCollection.intervalsSpecified() ? OverlapDetector.create(intervalArgumentCollection.getIntervals(dictionary)) : null;
             final List<MateInfo> distantMates = new ArrayList<>();
+            final Map<String, MateInfo> unmappedMates = new HashMap<>();
             logger.info("Subsetting soft-clipped reads and close mates...");
             // Add reads
             forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {
@@ -164,7 +165,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                 // Submit the read to the engine, selecting soft-clipped reads and their mates
                 engine.addRead(read, r -> softclippedReadNames.contains(r.getName()));
                 if (pairedClippedReadsWithDistantMates.contains(read.getName())) {
-                    addMateLocus(read, distantMates, traversalIntervals);
+                    addMateLocus(read, distantMates, unmappedMates, traversalIntervals);
                 }
             });
 
@@ -173,8 +174,8 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             if (hasReference()) { // pass in reference if available, because CRAM files need it
                 factory = factory.referenceSequence(referenceArguments.getReferencePath());
             }
-            final ReadsDataSource readSource = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, 1,
-                    (cloudIndexPrefetchBuffer < 0 ? 1 : cloudIndexPrefetchBuffer));
+            final ReadsDataSource readSource = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, 0,
+                    (cloudIndexPrefetchBuffer < 0 ? 0 : cloudIndexPrefetchBuffer));
             // Sort so we traverse in order
             Collections.sort(distantMates, IntervalUtils.getDictionaryOrderComparator(dictionary));
             logger.info("Adding " + distantMates.size() + " distant mates...");
@@ -185,6 +186,21 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                     throw new GATKException("Valid mate of " + mate.name + " not found at " + mate.contig + ":" + mate.start);
                 }
                 engine.addDistantMate(mates.get(0));
+            }
+
+            if (!unmappedMates.isEmpty()) {
+                logger.info("Adding " + unmappedMates.size() + " unmapped mates...");
+                final Iterator<GATKRead> unmappedIter = readSource.queryUnmapped();
+                while (unmappedIter.hasNext()) {
+                    final GATKRead unmappedRead = unmappedIter.next();
+                    if (unmappedMates.containsKey(unmappedRead.getName())) {
+                        final MateInfo info = unmappedMates.get(unmappedRead.getName());
+                        logger.info(info.name + " " + info.contig + ":" + info.start);
+                        if (validMate(unmappedRead, info)) {
+                            engine.addDistantMate(unmappedRead);
+                        }
+                    }
+                }
             }
 
             logger.info("Found " + engine.getSelectedReadsCount() + " soft-clipped reads and mates.");
@@ -222,12 +238,17 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
         }
     }
 
-    static void addMateLocus(final GATKRead read, final List<MateInfo> loci, final OverlapDetector<SimpleInterval> traversalIntervals) {
+    static void addMateLocus(final GATKRead read, final List<MateInfo> distantMates, final Map<String, MateInfo> unmappedMates,
+                             final OverlapDetector<SimpleInterval> traversalIntervals) {
         // Note we exclude unmapped mates, since they are impossible to pull out efficiently
-        if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired() && read.getMateContig() != null) {
-            final SimpleInterval mateLocus = new SimpleInterval(read.getMateContig(), read.getMateStart(), read.getMateStart() + 1);
-            if (traversalIntervals == null || !traversalIntervals.overlapsAny(mateLocus)) {
-                loci.add(new MateInfo(read.getMateContig(), read.getMateStart(), !read.isFirstOfPair(), read.getName()));
+        if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired()) {
+            if (read.getMateContig() == null) {
+                unmappedMates.put(read.getName(), new MateInfo(read.getMateContig(), read.getMateStart(), !read.isFirstOfPair(), read.getName()));
+            } else {
+                final SimpleInterval mateLocus = new SimpleInterval(read.getMateContig(), read.getMateStart(), read.getMateStart() + 1);
+                if (traversalIntervals == null || !traversalIntervals.overlapsAny(mateLocus)) {
+                    distantMates.add(new MateInfo(read.getMateContig(), read.getMateStart(), !read.isFirstOfPair(), read.getName()));
+                }
             }
         }
     }
