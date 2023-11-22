@@ -242,7 +242,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
                              final OverlapDetector<SimpleInterval> traversalIntervals) {
         // Note we exclude unmapped mates, since they are impossible to pull out efficiently
         if (ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired()) {
-            if (read.getMateContig() == null) {
+            if (read.mateIsUnmapped()) {
                 unmappedMates.put(read.getName(), new MateInfo(read.getMateContig(), read.getMateStart(), !read.isFirstOfPair(), read.getName()));
             } else {
                 final SimpleInterval mateLocus = new SimpleInterval(read.getMateContig(), read.getMateStart(), read.getMateStart() + 1);
@@ -256,7 +256,7 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
         if (!(ReadFilterLibrary.PRIMARY_LINE.test(read) && read.isPaired() && read.getName().equals(mate.name) && read.isFirstOfPair() == mate.firstRead)) {
             return false;
         }
-        if (read.getContig() == null) {
+        if (read.isUnmapped()) {
             return mate.contig == null;
         } else {
             return read.getContig().equals(mate.contig) && read.getStart() == mate.start;
