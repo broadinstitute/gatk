@@ -29,6 +29,8 @@ public final class AugmentedVertex extends BaseVertex {
         hashCode = 7 * super.hashCode() + 13 * position;
     }
 
+    public int getPosition() { return position; }
+
     @Override
     public boolean equals(final Object o) {
         return super.equals(o) && ((AugmentedVertex) o).position == this.position;
