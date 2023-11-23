@@ -58,7 +58,7 @@ public class AlignmentAugmentedGraph {
         final VertexManager vertexManager = new VertexManager(kmerSize, unambiguousKmers);
 
         final AugmentedKmerGraph graph = new AugmentedKmerGraph(kmerSize);
-        vertexManager.allVertices.forEach(graph::addVertex);
+        vertexManager.allVertices().forEach(graph::addVertex);
 
         // TODO: thread the reference sequence???
         for (final GATKRead read : reads) {
@@ -214,8 +214,9 @@ public class AlignmentAugmentedGraph {
             return clusterer == null ? Optional.empty() : clusterer.getVertexFromMinPosition(minPosition);
         }
 
-        public Stream<AugmentedVertex> allVertices = kmerMap.values().stream()
-                .flatMap(clusterer -> clusterer.getVertices().stream());
+        public Stream<AugmentedVertex> allVertices() {
+            return kmerMap.values().stream().flatMap(clusterer -> clusterer.getVertices().stream());
+        }
 
     }
 
