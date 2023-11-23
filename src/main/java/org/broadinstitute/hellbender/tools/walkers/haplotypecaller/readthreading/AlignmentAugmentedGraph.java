@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.api.client.util.Lists;
-import com.google.common.collect.Multiset;
 import com.google.common.collect.TreeMultiset;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -13,28 +12,30 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
+public class AlignmentAugmentedGraph {
 
     // TODO: magic constant, make adjustable
     private static final int MAX_BRANCH_VERTICES = 100;
 
-    // TODO: magic constant, make adjustable
-    private static final int MAX_CLUSTERS_PER_KMER = 5;
+    private final int kmerSize;
 
-    public AlignmentAugmentedGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly) {
-        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, 1, -1);
+    private final byte minBaseQualityToUseInAssembly;
+
+    public AlignmentAugmentedGraph(final int kmerSize, final byte minBaseQualityToUseInAssembly) {
+        this.kmerSize = kmerSize;
+        this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
     }
 
     public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner pruner) {
@@ -87,8 +88,6 @@ public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
 
 
         final Set<Kmer> decisionKmers = findDecisionKmers(refHaplotype, reads, pruner);
-        final Map<Kmer, TreeMultiset<Integer>> decisionKmerPositions = gatherDecisionKmerPositions(decisionKmers, rangedKmers);
-        final Map<Kmer, List<Integer>> decisionKmerClusters = clusterDecisionKmers(decisionKmers, decisionKmerPositions);
 
 
     }
@@ -119,42 +118,6 @@ public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
                 .map(Pair::getLeft)
                 .map(vertex -> new Kmer(vertex.getSequence()))
                 .collect(Collectors.toSet());
-    }
-
-    private Map<Kmer, TreeMultiset<Integer>> gatherDecisionKmerPositions(final Set<Kmer> decisionKmers, final List<Pair<Kmer, IntRange>> rangedKmers) {
-        final Map<Kmer, TreeMultiset<Integer>> decisionKmerPositions = new HashMap<>();
-        decisionKmers.forEach(kmer -> decisionKmerPositions.put(kmer, TreeMultiset.create()));
-        rangedKmers.stream()
-                .filter(pair -> decisionKmers.contains(pair.getLeft())) // it's a decision kmer
-                .filter(pair -> pair.getRight().getMaximumInteger() - pair.getRight().getMinimumInteger() < kmerSize)   // its location is roughly determined
-                .forEach(pair -> decisionKmerPositions.get(pair.getLeft()).add(pair.getRight().getMinimumInteger()));
-        return decisionKmerPositions;
-    }
-
-    private Map<Kmer, List<Integer>> clusterDecisionKmers(Set<Kmer> decisionKmers, Map<Kmer, TreeMultiset<Integer>> decisionKmerPositions) {
-        final Map<Kmer, List<Integer>> decisionKmerClusters = new HashMap<>();
-        decisionKmers.forEach(kmer -> decisionKmerClusters.put(kmer, Lists.newArrayList()));
-        for (final Kmer kmer : decisionKmers) {
-            final List<Pair<Integer, Integer>> clusters = Lists.newArrayList(); // positions and multiplicity
-            final TreeMultiset<Integer> positions = decisionKmerPositions.get(kmer);
-            int currentCluster = positions.firstEntry().getElement();
-            int currentMultiplicity = 0;
-            for (final Multiset.Entry<Integer> entry : positions.entrySet()) { // unique values is in ascending order
-                // TODO: is this tolerance the right criterion?
-                if (entry.getElement() < currentCluster + kmerSize) {   // expand current cluster if within tolerance
-                    currentMultiplicity += positions.count(entry.getCount());
-                } else {
-                    clusters.add(Pair.of(currentCluster, currentMultiplicity));
-                    currentCluster = entry.getElement();
-                    currentMultiplicity = entry.getCount();
-                }
-            }
-            clusters.add(Pair.of(currentCluster, currentMultiplicity)); // flush the last cluster
-            final List<Integer> clusterList = decisionKmerClusters.get(kmer);
-            clusters.stream().sorted(Comparator.comparingInt(pair -> -pair.getRight()))  // sort from greatest to least multiplciity
-                    .map(Pair::getLeft).limit(MAX_CLUSTERS_PER_KMER).forEach(clusterList::add);
-        }
-        return decisionKmerClusters;
     }
 
     // extracts kmers and their alignment positions -- soft clips are assigned a range with one ambiguous end eg
@@ -212,59 +175,6 @@ public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
             }
         }
         return result;
-    }
-
-    /**
-     * Checks whether a kmer can be the threading start based on the current threading start location policy.
-     *
-     * @param kmer the query kmer.
-     * @return {@code true} if we can start thread the sequence at this kmer, {@code false} otherwise.
-     * @see #setThreadingStartOnlyAtExistingVertex(boolean)
-     */
-    protected abstract boolean isThreadingStart(final Kmer kmer, final boolean startThreadingOnlyAtExistingVertex);
-
-    // get the next kmerVertex for ChainExtension and validate if necessary.
-    protected abstract MultiDeBruijnVertex getNextKmerVertexForChainExtension(final Kmer kmer, final boolean isRef, final MultiDeBruijnVertex prevVertex);
-
-    // perform any necessary preprocessing on the graph (such as non-unique kmer determination) before the graph is constructed
-    protected void preprocessReads() {
-        throw new UnsupportedOperationException("HAven't implemented yet.");
-    }
-
-    // heuristic to decide if the graph should be thrown away based on low complexity/poor assembly
-    @Override
-    public boolean isLowQualityGraph() { return false; }
-
-    // whether reads are needed after graph construction
-    @Override
-    protected boolean shouldRemoveReadsAfterGraphConstruction() {
-        return false;
-    }
-
-    // Method that will be called immediately before haplotype finding in the event there are alteations that must be made to the graph based on implementation
-    @Override
-    public void postProcessForHaplotypeFinding(File debugGraphOutputPath, Locatable refHaplotype) {
-        throw new UnsupportedOperationException("HAven't implemented yet.");
-    }
-
-    /**
-     * Define the behavior for how the graph should keep track of a potentially new kmer.
-     *
-     * @param kmer      (potentially) new kmer to track
-     * @param newVertex corresponding vertex for that kmer
-     */
-    protected abstract void trackKmer(Kmer kmer, MultiDeBruijnVertex newVertex);
-
-    @Override
-    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll,
-                                     final SmithWatermanAligner aligner, final SWParameters danglingTailSWParameters) {
-        throw new UnsupportedOperationException("Not implemented yet but it's going to be different.");
-    }
-
-    @Override
-    public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll,
-                                     final SmithWatermanAligner aligner, final SWParameters danglingTailSWParameters) {
-        throw new UnsupportedOperationException("Not implemented yet but it's going to be different.");
     }
 
     private static class VertexManager {
@@ -412,6 +322,7 @@ public class AlignmentAugmentedGraph extends AbstractReadThreadingGraph {
         }
     }
 
-
-
+    protected boolean baseIsUsableForAssembly(final byte base, final byte qual) {
+        return base != BaseUtils.Base.N.base && qual >= minBaseQualityToUseInAssembly;
+    }
 }
