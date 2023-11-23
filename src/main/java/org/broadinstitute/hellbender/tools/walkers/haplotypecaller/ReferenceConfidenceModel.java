@@ -15,7 +15,6 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -30,6 +29,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -55,9 +55,6 @@ public class ReferenceConfidenceModel {
     // Annotation used to cache reference confidence information
     public static final String INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME = "IDL";
     public static final boolean USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES = true;
-    // these are filled only when the softclipping is being reversed
-    public static final String ORIGINAL_SOFTCLIP_START_TAG = "os";
-    public static final String ORIGINAL_SOFTCLIP_END_TAG = "oe";
 
     private final SampleList samples;
     private final int indelInformativeDepthIndelSize;
@@ -420,7 +417,7 @@ public class ReferenceConfidenceModel {
             if (!useSoftClippedBases && readsWereRealigned){
                 int loc = pileup.getLocation().getStart();
                 //skip bases that were originally softclipped
-                if ((getOriginalSoftStart(p.getRead()) > loc) || (getOriginalSoftEnd(p.getRead()) < loc)){
+                if ((ReadUtils.getOriginalSoftStart(p.getRead()) > loc) || (ReadUtils.getOriginalSoftEnd(p.getRead()) < loc)){
                     continue;
                 }
             }
@@ -433,22 +430,6 @@ public class ReferenceConfidenceModel {
             result.genotypeLikelihoods[i] -= denominator;
         }
         return result;
-    }
-
-    private int getOriginalSoftStart(GATKRead read) {
-        if (!read.hasAttribute(ORIGINAL_SOFTCLIP_START_TAG)){
-            throw new GATKException("Attempt to read soft clip start that was not saved");
-        } else {
-            return read.getAttributeAsInteger(ORIGINAL_SOFTCLIP_START_TAG);
-        }
-    }
-
-    private int getOriginalSoftEnd(GATKRead read) {
-        if (!read.hasAttribute(ORIGINAL_SOFTCLIP_END_TAG)){
-            throw new GATKException("Attempt to read soft clip end that was not saved");
-        } else {
-            return read.getAttributeAsInteger(ORIGINAL_SOFTCLIP_END_TAG);
-        }
     }
 
 

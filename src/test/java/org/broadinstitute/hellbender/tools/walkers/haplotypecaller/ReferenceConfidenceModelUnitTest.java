@@ -495,8 +495,8 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                     start + getStart(),
                     ArrayUtils.addAll(ArrayUtils.addAll(softClipStart,ref.substring(start, start + length).getBytes()), softClipEnd),
                     quals, startSoftClip + "S" + length + "M" + endSoftClip + "S");
-            read.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_START_TAG, read.getStart());
-            read.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG, read.getEnd());
+            read.setAttribute(ReadUtils.ORIGINAL_SOFTCLIP_START_TAG, read.getStart());
+            read.setAttribute(ReadUtils.ORIGINAL_SOFTCLIP_END_TAG, read.getEnd());
 
             read.setReadGroup(rg.getId());
             return read;

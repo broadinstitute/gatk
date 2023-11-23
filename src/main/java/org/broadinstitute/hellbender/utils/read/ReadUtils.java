@@ -32,6 +32,10 @@ import java.util.*;
  */
 public final class ReadUtils {
 
+    // these are filled only when the softclipping is being reversed
+    public static final String ORIGINAL_SOFTCLIP_START_TAG = "os";
+    public static final String ORIGINAL_SOFTCLIP_END_TAG = "oe";
+
     private ReadUtils() {
     }
 
@@ -1197,4 +1201,19 @@ public final class ReadUtils {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 
+    public static int getOriginalSoftStart(GATKRead read) {
+        if (!read.hasAttribute(ORIGINAL_SOFTCLIP_START_TAG)){
+            throw new GATKException("Attempt to read soft clip start that was not saved");
+        } else {
+            return read.getAttributeAsInteger(ORIGINAL_SOFTCLIP_START_TAG);
+        }
+    }
+
+    public static int getOriginalSoftEnd(GATKRead read) {
+        if (!read.hasAttribute(ORIGINAL_SOFTCLIP_END_TAG)){
+            throw new GATKException("Attempt to read soft clip end that was not saved");
+        } else {
+            return read.getAttributeAsInteger(ORIGINAL_SOFTCLIP_END_TAG);
+        }
+    }
 }
