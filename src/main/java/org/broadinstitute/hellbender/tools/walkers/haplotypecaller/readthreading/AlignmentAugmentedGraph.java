@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.api.client.util.Lists;
-import com.google.common.collect.TreeMultiset;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
@@ -19,7 +16,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -72,8 +68,8 @@ public class AlignmentAugmentedGraph {
                 final Kmer kmer2 = kmers.get(n+1).getLeft();
 
                 if (kmer1 != null && kmer2 != null) {   // null if unusable kmers due to 'N' or low-qual bases
-                    final Optional<MultiDeBruijnVertex> vertex1 = vertexManager.getVertex(kmer1, kmers.get(n).getRight());
-                    final Optional<MultiDeBruijnVertex> vertex2 = vertexManager.getVertex(kmer1, kmers.get(n+1).getRight());
+                    final Optional<AugmentedVertex> vertex1 = vertexManager.getVertex(kmer1, kmers.get(n).getRight());
+                    final Optional<AugmentedVertex> vertex2 = vertexManager.getVertex(kmer1, kmers.get(n+1).getRight());
 
                     if (vertex1.isPresent() && vertex2.isPresent()) {
                         graph.addEdge(vertex1.get(), vertex2.get());
@@ -83,6 +79,8 @@ public class AlignmentAugmentedGraph {
         }
 
         graph.removeSingletonOrphanVertices();
+
+        // graph.printGraph();
 
 
 
@@ -187,7 +185,7 @@ public class AlignmentAugmentedGraph {
             kmerMap.values().forEach(clusterer -> clusterer.finish());
         }
 
-        public Optional<MultiDeBruijnVertex> getVertex(final Kmer kmer, final IntRange range) {
+        public Optional<AugmentedVertex> getVertex(final Kmer kmer, final IntRange range) {
             final int rangeMin = range.getMinimumInteger();
             final int rangeMax = range.getMaximumInteger();
 
@@ -201,22 +199,22 @@ public class AlignmentAugmentedGraph {
             }
         }
 
-        public Optional<MultiDeBruijnVertex> getVertex(final Kmer kmer, final int position) {
+        public Optional<AugmentedVertex> getVertex(final Kmer kmer, final int position) {
             final PositionClusterer clusterer = kmerMap.get(kmer);
             return clusterer == null ? Optional.empty() : clusterer.getVertex(position);
         }
 
-        public Optional<MultiDeBruijnVertex> getVertexFromMaxPosition(final Kmer kmer, final int maxPosition) {
+        public Optional<AugmentedVertex> getVertexFromMaxPosition(final Kmer kmer, final int maxPosition) {
             final PositionClusterer clusterer = kmerMap.get(kmer);
             return clusterer == null ? Optional.empty() : clusterer.getVertexFromMaxPosition(maxPosition);
         }
 
-        public Optional<MultiDeBruijnVertex> getVertexFromMinPosition(final Kmer kmer, final int minPosition) {
+        public Optional<AugmentedVertex> getVertexFromMinPosition(final Kmer kmer, final int minPosition) {
             final PositionClusterer clusterer = kmerMap.get(kmer);
             return clusterer == null ? Optional.empty() : clusterer.getVertexFromMinPosition(minPosition);
         }
 
-        public Stream<MultiDeBruijnVertex> allVertices = kmerMap.values().stream()
+        public Stream<AugmentedVertex> allVertices = kmerMap.values().stream()
                 .flatMap(clusterer -> clusterer.getVertices().stream());
 
     }
@@ -231,7 +229,7 @@ public class AlignmentAugmentedGraph {
 
         private boolean finalized;
 
-        private final List<MultiDeBruijnVertex> vertices = new ArrayList<>(1);
+        private final List<AugmentedVertex> vertices = new ArrayList<>(1);
 
 
         public PositionClusterer(final int tolerance, final Kmer kmer) {
@@ -239,7 +237,7 @@ public class AlignmentAugmentedGraph {
             this.kmer = kmer;
         }
 
-        public List<MultiDeBruijnVertex> getVertices() { return vertices; }
+        public List<AugmentedVertex> getVertices() { return vertices; }
 
         public void finish() {
             if (finalized) {
@@ -247,10 +245,10 @@ public class AlignmentAugmentedGraph {
             }
             finalized = true;
             sort();
-            clustersAndCounts.forEach(pair -> vertices.add(new MultiDeBruijnVertex(kmer.bases())));
+            clustersAndCounts.forEach(pair -> vertices.add(new AugmentedVertex(kmer.bases(), pair.getLeft())));
         }
 
-        public Optional<MultiDeBruijnVertex> getVertex(final int position) {
+        public Optional<AugmentedVertex> getVertex(final int position) {
             if (vertices.size() == 1) {
                 return Optional.of(vertices.get(0));
             } else {
@@ -263,7 +261,7 @@ public class AlignmentAugmentedGraph {
             return Optional.empty();
         }
 
-        public Optional<MultiDeBruijnVertex> getVertexFromMaxPosition(final int maxPosition) {
+        public Optional<AugmentedVertex> getVertexFromMaxPosition(final int maxPosition) {
             int matchIndex = -1;
             for (int n = 0; n < clustersAndCounts.size(); n++) {
                 if (clustersAndCounts.get(n).getLeft() >= maxPosition) {
@@ -277,7 +275,7 @@ public class AlignmentAugmentedGraph {
             return matchIndex != -1 ? Optional.of(vertices.get(matchIndex)) : Optional.empty();
         }
 
-        public Optional<MultiDeBruijnVertex> getVertexFromMinPosition(final int minPosition) {
+        public Optional<AugmentedVertex> getVertexFromMinPosition(final int minPosition) {
             int matchIndex = -1;
             for (int n = 0; n < clustersAndCounts.size(); n++) {
                 if (clustersAndCounts.get(n).getLeft() >= minPosition) {

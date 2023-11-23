@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGr
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.jgrapht.EdgeFactory;
 
-public class AugmentedKmerGraph extends BaseGraph<MultiDeBruijnVertex, MultiSampleEdge> {
+public class AugmentedKmerGraph extends BaseGraph<AugmentedVertex, MultiSampleEdge> {
 
     private static MyEdgeFactory EDGE_FACTORY = new MyEdgeFactory();
 
@@ -12,11 +12,11 @@ public class AugmentedKmerGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         super(kmerSize, EDGE_FACTORY);
     }
 
-    private static final class MyEdgeFactory implements EdgeFactory<MultiDeBruijnVertex, MultiSampleEdge> {
+    private static final class MyEdgeFactory implements EdgeFactory<AugmentedVertex, MultiSampleEdge> {
         public MyEdgeFactory() { }
 
         @Override
-        public MultiSampleEdge createEdge(final MultiDeBruijnVertex sourceVertex, final MultiDeBruijnVertex targetVertex) {
+        public MultiSampleEdge createEdge(final AugmentedVertex sourceVertex, final AugmentedVertex targetVertex) {
             return new MultiSampleEdge(false, 1, 1);
         }
 
