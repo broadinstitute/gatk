@@ -119,84 +119,63 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     }
 
     @DataProvider
-    public Object[][] makeBranchesDataProvider() {
+    public Object[][] makeUndeterminedBranchesDataProvider() {
         // format:
         // 1) list of all events
         // 2) list of 2- and 3-element groups of events that are mutually excluded due to the Smith-Waterman heuristic
         //      (note that there is no reference sequence in this test, hence we can set whatever  exclusions we want here)
         //      (note also that this is in addition to any mutexes due to overlapping loci)
-        //  3) determined locus
-        //  4) OptionalInt of determined event's index (if present), empty if ref allele at determined locus is determined
-        //  5) expected branches as list of sets
-        // for convenience, 2), 4), and 5) are representing by indices within the list 1).
+        //  3) expected branches as list of list of sets -- the outer index is for the event groups.  Each event group
+        //  (in order of position) has a list of undetermined branches, each undetermined branch being a set of events
+        //  external to the event group (when that event group is the determined one)
+        // for convenience, 2) and 3) are representing by indices within the list 1).
         return new Object[][] {
-                // no mutexes, hence a single branch with all events, except alt events at a determined ref locus
-                { List.of(SNP_C_90), List.of(), 90, OptionalInt.empty(), List.of(Set.of())},
-                { List.of(SNP_C_90), List.of(), 90, OptionalInt.of(0), List.of(Set.of(0))},
-                { List.of(SNP_C_90, SNP_C_100), List.of(), 100, OptionalInt.empty(), List.of(Set.of(0))},
-                { List.of(SNP_C_90, SNP_C_100), List.of(), 100, OptionalInt.of(1), List.of(Set.of(0,1))},
-                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), 100, OptionalInt.empty(), List.of(Set.of(0,2))},
-                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), 100, OptionalInt.of(1), List.of(Set.of(0,1,2))},
-                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), 90, OptionalInt.of(0), List.of(Set.of(0,1,2,3))},
+                // no mutexes, hence singleton event groups and for each event group (which comprises only one event)
+                // the undetermined branch includes every other event
+                { List.of(SNP_C_90), List.of(), List.of(List.of(Set.of()))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), List.of(List.of(Set.of(1)), List.of(Set.of(0)))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), List.of(List.of(Set.of(1,2)), List.of(Set.of(0,2)), List.of(Set.of(0,1)))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), List.of(List.of(Set.of(1,2,3)), List.of(Set.of(0,2,3)), List.of(Set.of(0,1,3)), List.of(Set.of(0,1,2)))},
 
-                // all events are connected by a path of overlaps; everything belongs to a single event group
-                { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of())},
-                { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(0), List.of(Set.of(0))},
+                // all events are connected by a path of overlaps; everything belongs to a single event group,
+                // hence the undetermined event set is empty
+                { List.of(SNP_C_105, SNP_G_105), List.of(), List.of(List.of(Set.of()))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(Set.of()))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(Set.of()))},
 
-                // ref is determined at the spanning deletion, the two SNPs coexist as undetermined alleles
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.empty(), List.of(Set.of(1,2))},
+                // first event group is spanning deletion and two spanned SNPs; the only undetermined branch is the other SNP
+                // second event group is the other SNP and it admits two undetermined branches from the first event group:
+                // 1) the spanning deletion alone, and 2) the SNPs, which though overlapping can coexist as undetermiend events
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(),
+                    List.of(List.of(Set.of(3)), List.of(Set.of(0), Set.of(1,2)))},
 
-                // spanning deletion is determined, the two SNPs are incompatible
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0))},
+                // similar to above but now there are two overlapping SNPs at 120, which coexist for undetermined sets
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120, SNP_G_120), List.of(),
+                        List.of(List.of(Set.of(3,4)), List.of(Set.of(0), Set.of(1,2)))},
 
-                // ref is determined at the biallelic SNP locus, spanning deletion is a valid undetermined allele
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of(0))},
+                //  insertion at 106 and SNP at 107 don't overlap so there are 3 event groups: the SNPs at 105, the insertion, and the SNP
+                // at 107.  In each case all events outside the determined event group coexist as undetermined events
+                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(),
+                    List.of(List.of(Set.of(2,3)), List.of(Set.of(0,1,3)), List.of(Set.of(0,1,2)))},
 
-                // one SNP is determined, spanning deletion and the other SNP are invalid
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(1), List.of(Set.of(1))},
+                // two deletion/spanned SNP pairs and a lone SNP.  Hence three event groups.  Each deletion/spanned SNP pair
+                // induces two branches when undetermined.  Thus we have 2x2=4 branches when the SNP at 120 is determined.
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(),
+                    List.of(List.of(Set.of(2,4), Set.of(3,4)), List.of(Set.of(0,4), Set.of(1,4)), List.of(Set.of(0,2), Set.of(0,3), Set.of(1,2), Set.of(1,3)))},
 
-                // SNP at 106 is incompatible with the spanning deletion, both SNPs at 105 are undetermined
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), 106, OptionalInt.of(3), List.of(Set.of(1,2,3))},
-
-                // ref is determined at 106, hence we branch!  Either we have the spanning deletion or the two SNPs
-                // note that spanning deletions being compatible with the ref allele at a SNP *is* DRAGEN behavior, even if it's suspect
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), 106, OptionalInt.empty(), List.of(Set.of(0), Set.of(1,2))},
-
-                // spanning deletion forbids spanned SNPs and allows the other SNP
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0,3))},
-
-                // spanning deletion forbids spanned SNPs and allows the other two overlapping SNPs
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120, SNP_G_120), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0,3,4))},
-
-                // ref is determined at 105, insertion at 106 and SNP at 107 don't overlap
-                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), 105, OptionalInt.empty(), List.of(Set.of(2,3))},
-
-                // deletion at 105 is determined, so spanned SNP at 106 is forbidden.  SNP at 120 is always allowed, and the
-                // deletion at 100 and its spanned SNP at 101 induce branching
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), 105, OptionalInt.of(2), List.of(Set.of(0,2,4), Set.of(1,2,4))},
-
-                // just a mess -- the deletion at 100 spans the SNP at 101, which is SW mutexed with the deletion at 105, which spans the SNP at 106,
-                // which has an (unrealistic) SW mutex with the SNP at 120.  We're testing here that although there is only one event group we still
-                // get several branches with more than one event.
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), 120, OptionalInt.of(4),
-                    List.of(Set.of(0,2,4), Set.of(1,4))},
-
-                // another example from the same balagan
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), 105, OptionalInt.of(2),
-                        List.of(Set.of(0,2,4))},
-
-                // another messy one -- note that the deletion at 98 overlaps events that start at 104 but not 105
-                { List.of(DEL_AAAAAAA_98, DEL_AA_100, SNP_G_101, DEL_AAAAAAA_102, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), 120, OptionalInt.of(6),
-                        List.of(Set.of(0,4,6), Set.of(0,5,6), Set.of(1,3,6), Set.of(1,4,6), Set.of(1,5,6), Set.of(2,3,6), Set.of(2,4,6), Set.of(2,5,6))},
+                // two event groups, the horrid mess and the lone SNP;  When the horrid mess is determined there is a lone undetermined
+                // branch from the lone SNP.  When the lone SNP is determined, well, it's just total chaos.
+                { List.of(DEL_AAAAAAA_98, DEL_AA_100, SNP_G_101, DEL_AAAAAAA_102, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(),
+                        List.of(List.of(Set.of(6)),
+                        List.of(Set.of(0,4), Set.of(0,5), Set.of(1,3), Set.of(1,4), Set.of(1,5), Set.of(2,3), Set.of(2,4), Set.of(2,5)))},
 
         };
     }
 
     // TODO: update this test: previously the method computed the entire branch, both determined and undetermined
     // TODO: now the method computes only the event sets for the undetermined part of PD haplotypes
-    @Test(dataProvider = "makeBranchesDataProvider")
-    public void testMakeBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes, final int determinedLocus, final OptionalInt determinedEvent,
-                                 final List<Set<Integer>> expectedBranchIndices) {
+    @Test(dataProvider = "makeUndeterminedBranchesDataProvider")
+    public void testMakeUndeterminedBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes, final List<List<Set<Integer>>> expectedBranchIndices) {
         // convert indices to events
         final List<List<Event>> mutexes = swMutexes.stream()
                 .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
@@ -205,21 +184,18 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         final List<PartiallyDeterminedHaplotypeComputationEngine.EventGroup> eventGroups =
                 PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes);
 
-        // an absent determined event denotes that the ref allele is determined
-        // TODO: eventually this needs to be generalized to multiple determined events
-        final Set<Event> determinedEvents = determinedEvent.isPresent() ? Set.of(eventsInOrder.get(determinedEvent.getAsInt())) : Set.of();
+        Assert.assertEquals(eventGroups.size(), expectedBranchIndices.size(), "wrong number of event groups");
 
-        final List<Event> allEventsAtDeterminedLocus = eventsInOrder.stream().filter(event -> event.getStart() == determinedLocus).toList();
+        for (int determinedEventGroupIndex = 0; determinedEventGroupIndex < eventGroups.size(); determinedEventGroupIndex++) {
+            final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine
+                    .computeUndeterminedBranches(eventGroups, determinedEventGroupIndex).stream().collect(Collectors.toSet());
 
-        // TODO: fix all this
-        /*final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine.computeUndeterminedBranches(eventGroups, determinedEvents, allEventsAtDeterminedLocus)
-                        .stream().collect(Collectors.toSet());
+            final Set<Set<Event>> expectedBranches = expectedBranchIndices.get(determinedEventGroupIndex).stream()
+                    .map(indexSet -> indexSet.stream().map(eventsInOrder::get).collect(Collectors.toSet()))
+                    .collect(Collectors.toSet());
 
-        final Set<Set<Event>> expectedBranches = expectedBranchIndices.stream()
-                        .map(indexSet -> indexSet.stream().map(eventsInOrder::get).collect(Collectors.toSet()))
-                                .collect(Collectors.toSet());
-
-        Assert.assertEquals(actualBranches, expectedBranches);*/
+            Assert.assertEquals(actualBranches, expectedBranches);
+        }
     }
 
     @DataProvider
