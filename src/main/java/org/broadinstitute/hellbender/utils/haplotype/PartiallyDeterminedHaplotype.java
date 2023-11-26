@@ -72,8 +72,6 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
 
     private final byte[] alternateBases;
     private final List<Event> constituentBuiltEvents;
-
-    //TODO Eventually these will have to be refactored to support multiple determined alleles per PDHaplotype
     private final Set<Event> determinedEvents; // NOTE this must be a subset (possibly empty if the determined allele is ref) of both of the previous lists
 
     // NOTE: we need all of the events at the determined site (all of which are determined in *some* PD haplotype) for the purposes

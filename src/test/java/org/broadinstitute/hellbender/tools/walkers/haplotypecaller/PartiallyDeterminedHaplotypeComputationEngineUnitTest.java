@@ -7,13 +7,13 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
@@ -119,63 +119,89 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     }
 
     @DataProvider
-    public Object[][] makeUndeterminedBranchesDataProvider() {
+    public Object[][] makeBranchesDataProvider() {
         // format:
         // 1) list of all events
         // 2) list of 2- and 3-element groups of events that are mutually excluded due to the Smith-Waterman heuristic
         //      (note that there is no reference sequence in this test, hence we can set whatever  exclusions we want here)
         //      (note also that this is in addition to any mutexes due to overlapping loci)
-        //  3) expected branches as list of list of sets -- the outer index is for the event groups.  Each event group
+        //  3) expected determined branches as list of list of sets -- the outer index is for the event groups.  Each event group
         //  (in order of position) has a list of undetermined branches, each undetermined branch being a set of events
         //  external to the event group (when that event group is the determined one)
+        //  4) expected determined event sets as list of list of sets -- the outer index is again for the event groups.  Each event group
+        //  has a list of *all* allowed subsets of events from that event group, which are used in the determined part of PD haplotypes.
         // for convenience, 2) and 3) are representing by indices within the list 1).
         return new Object[][] {
                 // no mutexes, hence singleton event groups and for each event group (which comprises only one event)
                 // the undetermined branch includes every other event
-                { List.of(SNP_C_90), List.of(), List.of(List.of(Set.of()))},
-                { List.of(SNP_C_90, SNP_C_100), List.of(), List.of(List.of(Set.of(1)), List.of(Set.of(0)))},
-                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), List.of(List.of(Set.of(1,2)), List.of(Set.of(0,2)), List.of(Set.of(0,1)))},
-                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), List.of(List.of(Set.of(1,2,3)), List.of(Set.of(0,2,3)), List.of(Set.of(0,1,3)), List.of(Set.of(0,1,2)))},
+                // the determined branch includes every subset since there are no mutexes
+                { List.of(SNP_C_90), List.of(),
+                        List.of(List.of(Set.of())),
+                        List.of(List.of(Set.of(), Set.of(0)))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(),
+                        List.of(List.of(Set.of(1)), List.of(Set.of(0))),
+                        List.of(List.of(Set.of(), Set.of(0)), List.of(Set.of(), Set.of(1)))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(),
+                        List.of(List.of(Set.of(1,2)), List.of(Set.of(0,2)), List.of(Set.of(0,1))),
+                        List.of(List.of(Set.of(), Set.of(0)), List.of(Set.of(), Set.of(1)), List.of(Set.of(), Set.of(2)))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(),
+                        List.of(List.of(Set.of(1,2,3)), List.of(Set.of(0,2,3)), List.of(Set.of(0,1,3)), List.of(Set.of(0,1,2))),
+                        List.of(List.of(Set.of(), Set.of(0)), List.of(Set.of(), Set.of(1)), List.of(Set.of(), Set.of(2)), List.of(Set.of(), Set.of(3)))},
 
                 // all events are connected by a path of overlaps; everything belongs to a single event group,
                 // hence the undetermined event set is empty
-                { List.of(SNP_C_105, SNP_G_105), List.of(), List.of(List.of(Set.of()))},
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(Set.of()))},
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(Set.of()))},
+                // not all subsets are allowed as determined subsets  due to overlaps
+                { List.of(SNP_C_105, SNP_G_105), List.of(),
+                        List.of(List.of(Set.of())),
+                        List.of(List.of(Set.of(), Set.of(0), Set.of(1)))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(),
+                        List.of(List.of(Set.of())),
+                        List.of(List.of(Set.of(), Set.of(0), Set.of(1), Set.of(2)))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(),
+                        List.of(List.of(Set.of())),
+                        List.of(List.of(Set.of(), Set.of(0), Set.of(1), Set.of(2), Set.of(3), Set.of(1,3), Set.of(2,3)))},
 
                 // first event group is spanning deletion and two spanned SNPs; the only undetermined branch is the other SNP
                 // second event group is the other SNP and it admits two undetermined branches from the first event group:
                 // 1) the spanning deletion alone, and 2) the SNPs, which though overlapping can coexist as undetermiend events
                 { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(),
-                    List.of(List.of(Set.of(3)), List.of(Set.of(0), Set.of(1,2)))},
+                    List.of(List.of(Set.of(3)), List.of(Set.of(0), Set.of(1,2))),
+                    List.of(List.of(Set.of(), Set.of(0), Set.of(1), Set.of(2)), List.of(Set.of(), Set.of(3)))},
 
                 // similar to above but now there are two overlapping SNPs at 120, which coexist for undetermined sets
                 { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120, SNP_G_120), List.of(),
-                        List.of(List.of(Set.of(3,4)), List.of(Set.of(0), Set.of(1,2)))},
+                        List.of(List.of(Set.of(3,4)), List.of(Set.of(0), Set.of(1,2))),
+                        List.of(List.of(Set.of(), Set.of(0), Set.of(1), Set.of(2)), List.of(Set.of(), Set.of(3), Set.of(4)))},
 
                 //  insertion at 106 and SNP at 107 don't overlap so there are 3 event groups: the SNPs at 105, the insertion, and the SNP
                 // at 107.  In each case all events outside the determined event group coexist as undetermined events
                 { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(),
-                    List.of(List.of(Set.of(2,3)), List.of(Set.of(0,1,3)), List.of(Set.of(0,1,2)))},
+                    List.of(List.of(Set.of(2,3)), List.of(Set.of(0,1,3)), List.of(Set.of(0,1,2))),
+                    List.of(List.of(Set.of(), Set.of(0), Set.of(1)), List.of(Set.of(), Set.of(2)), List.of(Set.of(), Set.of(3)))},
 
                 // two deletion/spanned SNP pairs and a lone SNP.  Hence three event groups.  Each deletion/spanned SNP pair
                 // induces two branches when undetermined.  Thus we have 2x2=4 branches when the SNP at 120 is determined.
                 { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(),
-                    List.of(List.of(Set.of(2,4), Set.of(3,4)), List.of(Set.of(0,4), Set.of(1,4)), List.of(Set.of(0,2), Set.of(0,3), Set.of(1,2), Set.of(1,3)))},
+                    List.of(List.of(Set.of(2,4), Set.of(3,4)), List.of(Set.of(0,4), Set.of(1,4)), List.of(Set.of(0,2), Set.of(0,3), Set.of(1,2), Set.of(1,3))),
+                    List.of(List.of(Set.of(), Set.of(0), Set.of(1)), List.of(Set.of(), Set.of(2), Set.of(3)), List.of(Set.of(), Set.of(4)))},
 
                 // two event groups, the horrid mess and the lone SNP;  When the horrid mess is determined there is a lone undetermined
                 // branch from the lone SNP.  When the lone SNP is determined, well, it's just total chaos.
                 { List.of(DEL_AAAAAAA_98, DEL_AA_100, SNP_G_101, DEL_AAAAAAA_102, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(),
                         List.of(List.of(Set.of(6)),
-                        List.of(Set.of(0,4), Set.of(0,5), Set.of(1,3), Set.of(1,4), Set.of(1,5), Set.of(2,3), Set.of(2,4), Set.of(2,5)))},
-
+                            List.of(Set.of(0,4), Set.of(0,5), Set.of(1,3), Set.of(1,4), Set.of(1,5), Set.of(2,3), Set.of(2,4), Set.of(2,5))),
+                        List.of(List.of(Set.of(), Set.of(0), Set.of(1), Set.of(2), Set.of(3), Set.of(4), Set.of(5),
+                                Set.of(0,4), Set.of(0,5), Set.of(1,3), Set.of(1,4), Set.of(1,5), Set.of(2,3), Set.of(2,4), Set.of(2,5)),
+                                    List.of(Set.of(), Set.of(6)))},
         };
     }
 
     // TODO: update this test: previously the method computed the entire branch, both determined and undetermined
     // TODO: now the method computes only the event sets for the undetermined part of PD haplotypes
-    @Test(dataProvider = "makeUndeterminedBranchesDataProvider")
-    public void testMakeUndeterminedBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes, final List<List<Set<Integer>>> expectedBranchIndices) {
+    @Test(dataProvider = "makeBranchesDataProvider")
+    public void testMakeBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes,
+                                 final List<List<Set<Integer>>> expectedUndeterminedBranchIndices,
+                                 final List<List<Set<Integer>>> expectedDeterminedBranchIndices) {
         // convert indices to events
         final List<List<Event>> mutexes = swMutexes.stream()
                 .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
@@ -184,17 +210,26 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         final List<PartiallyDeterminedHaplotypeComputationEngine.EventGroup> eventGroups =
                 PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes);
 
-        Assert.assertEquals(eventGroups.size(), expectedBranchIndices.size(), "wrong number of event groups");
+        Assert.assertEquals(eventGroups.size(), expectedUndeterminedBranchIndices.size(), "wrong number of event groups");
 
         for (int determinedEventGroupIndex = 0; determinedEventGroupIndex < eventGroups.size(); determinedEventGroupIndex++) {
-            final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine
+            final Set<Set<Event>> actualUndeterminedBranches = PartiallyDeterminedHaplotypeComputationEngine
                     .computeUndeterminedBranches(eventGroups, determinedEventGroupIndex).stream().collect(Collectors.toSet());
 
-            final Set<Set<Event>> expectedBranches = expectedBranchIndices.get(determinedEventGroupIndex).stream()
+            final Set<Set<Event>> expectedUndeterminedBranches = expectedUndeterminedBranchIndices.get(determinedEventGroupIndex).stream()
                     .map(indexSet -> indexSet.stream().map(eventsInOrder::get).collect(Collectors.toSet()))
                     .collect(Collectors.toSet());
 
-            Assert.assertEquals(actualBranches, expectedBranches);
+            Assert.assertEquals(actualUndeterminedBranches, expectedUndeterminedBranches);
+
+            final Set<Set<Event>> actualDeterminedBranches = eventGroups.get(determinedEventGroupIndex).determinedEventSets()
+                    .stream().collect(Collectors.toSet());
+
+            final Set<Set<Event>> expectedDeterminedBranches = expectedDeterminedBranchIndices.get(determinedEventGroupIndex).stream()
+                    .map(indexSet -> indexSet.stream().map(eventsInOrder::get).collect(Collectors.toSet()))
+                    .collect(Collectors.toSet());
+
+            Assert.assertEquals(actualDeterminedBranches, expectedDeterminedBranches);
         }
     }
 
@@ -307,49 +342,49 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         }
     }
 
-
     @DataProvider
     public Object[][] testGeneratePDHaplotypeDataProvider() {
+        // format: List<Event> events, Set<Event> determinedEvents, int start of determined span, int end of determined span
+        // String expectedBases, byte[] expectedAltArray, String expectedCigar
         return new Object[][] {
-                {List.of(SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106, "AAAAAACAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "6M1X3M"},
-                {List.of(SNP_C_105, SNP_C_106), Set.of(), 106, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "10M"},
+                {List.of(SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106,106, "AAAAAACAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "6M1X3M"},
+                {List.of(SNP_C_105, SNP_C_106), Set.of(), 106,106, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "10M"},
 
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(INS_TT_103), 103, "AAAATAAAAAA", new byte[]{0,0,0,0,0,0,17,17,0,0,0}, "4M1I6M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(), 103, "AAAAAAAAAA",  new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105, "AAAATACAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I1M1X4M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(),  105, "AAAATAAAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I6M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(INS_TT_103), 103,103, "AAAATAAAAAA", new byte[]{0,0,0,0,0,0,17,17,0,0,0}, "4M1I6M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(), 103,103, "AAAAAAAAAA",  new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105,105, "AAAATACAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I1M1X4M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(),  105,105, "AAAATAAAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I6M"},
 
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(DEL_AAA_102), 102, "AAAAAAAA"  , new byte[]{0,0,0,17,17,0,0,0}, "3M2D5M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 102, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105,  "AAAAACAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "5M1X4M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 105,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "10M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106,  "AAAAAACAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "6M1X3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 106,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(DEL_AAA_102), 102,104, "AAAAAAAA"  , new byte[]{0,0,0,17,17,0,0,0}, "3M2D5M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 102, 104, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105,105,  "AAAAACAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "5M1X4M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 105,105,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106,106,  "AAAAAACAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "6M1X3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 106,106,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "10M"},
 
                 // making sure we support "complex alleles" from DRAGEN
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(SNP_C_105), 105,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "5M1X1M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 105,  "AAAAAAAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(DEL_AAA_102),  102,  "AAAAAGGAAA", new byte[]{0,0,0,17,17,2,4,0,0,0}, "3M2D2M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 102,  "AAAAAAAGGAAA", new byte[]{0,0,0,0,0,17,81,2,4,0,0,0}, "7M2I3M"},
-                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(SNP_G_101), 101,  "AGAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "1M1X8M"},
-                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(), 101,   "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(SNP_C_105), 105,105,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "5M1X1M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 105, 105, "AAAAAAAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(DEL_AAA_102),  102, 104, "AAAAAGGAAA", new byte[]{0,0,0,17,17,2,4,0,0,0}, "3M2D2M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 102,104,  "AAAAAAAGGAAA", new byte[]{0,0,0,0,0,17,81,2,4,0,0,0}, "7M2I3M"},
+                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(SNP_G_101), 101,101,  "AGAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "1M1X8M"},
+                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(), 101,101,   "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "10M"},
         };
     }
     @Test(dataProvider = "testGeneratePDHaplotypeDataProvider")
-    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Set<Event> determinedEvents, int determinedLocus, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
+    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Set<Event> determinedEvents, int startOfDeterminedSpan, int endOfDeterminedSpan, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
-
-        final List<Event> allEventsAtDeterminedLocus = events.stream().filter(event -> event.getStart() == determinedLocus).toList();
-
-        // TODO: fix all this
-        /*PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, determinedEvents, determinedLocus, events);
+        final SimpleInterval determinedSpan = new SimpleInterval("20", startOfDeterminedSpan, endOfDeterminedSpan);
+        final List<Event> constituentEvents = events.stream()
+                .filter(event -> determinedEvents.contains(event) || !determinedSpan.overlaps(event))
+                .toList();  // haplotypes exclude events in the determined span that are not determined
+        final PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, determinedEvents, determinedSpan, constituentEvents);
         Assert.assertEquals(new String(result.getBases()), expectedBases);
         Assert.assertEquals(result.getAlternateBases(), expectedAltArray);
-        Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));*/
-
-        // TODO: replace with determinedSpan
-        //Assert.assertEquals(result.getDeterminedPosition(), determinedLocus);
+        Assert.assertEquals(result.getDeterminedEvents(), determinedEvents);
+        Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
+        Assert.assertEquals(result.getDeterminedSpan(), determinedSpan);
     }
 
     // NOTE: This is an enforcement of a behavior that I consider to be a bug in DRAGEN. Specifically my assumption that we needn't ever concern
