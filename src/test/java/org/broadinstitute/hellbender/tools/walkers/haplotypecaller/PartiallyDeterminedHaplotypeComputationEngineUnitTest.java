@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import com.netflix.servo.util.Objects;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -12,6 +13,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -265,6 +267,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
         };
     }
+
     @Test(dataProvider = "testConstructHaplotypeFromVariantsDataProvider")
     public void basicConstructHaplotypeFromVariants(List<Event> events, String expectedBases, String expectedCigar, int numberOfCompounds) {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
@@ -278,6 +281,59 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         EventMap resultEMap = result.getEventMap();
         // NOTE, because of representation in VCF lines, the compound alleles get compressed into a single in the event map, here we assert that this is correct.
         Assert.assertEquals(resultEMap.getNumberOfEvents(), events.size() - numberOfCompounds);
+    }
+
+    // encapsulate the determined events, constituent event, and determined span
+    private static class PDHaplotypeSummary {
+        final Set<Event> determinedEvents;
+        final Set<Event> undeterminedEvents;
+        final SimpleInterval determinedSpan;
+
+        public PDHaplotypeSummary(Set<Event> determinedEvents, Set<Event> undeterminedEvents, SimpleInterval determinedSpan) {
+            this.determinedEvents = determinedEvents;
+            this.undeterminedEvents = undeterminedEvents;
+            this.determinedSpan = determinedSpan;
+        }
+
+        public static PDHaplotypeSummary fromPDHaplotye(final Haplotype haplotype) {
+            final PartiallyDeterminedHaplotype pdHaplotype = (PartiallyDeterminedHaplotype) haplotype;
+            final Set<Event> determinedEvents = pdHaplotype.getDeterminedEvents();
+            final Set<Event> undeterminedEvents = pdHaplotype.getConstituentEvents().stream()
+                    .filter(event -> !determinedEvents.contains(event))
+                    .collect(Collectors.toSet());
+            return new PDHaplotypeSummary(determinedEvents, undeterminedEvents, pdHaplotype.getDeterminedSpan());
+        }
+
+        @Override
+        public boolean equals( final Object other ) {
+            return other instanceof PDHaplotypeSummary
+                    && determinedSpan.equals(((PDHaplotypeSummary) other).determinedSpan)
+                    && determinedEvents.equals(((PDHaplotypeSummary) other).determinedEvents)
+                    && undeterminedEvents.equals(((PDHaplotypeSummary) other).undeterminedEvents);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(determinedSpan.hashCode(), determinedEvents.hashCode(), undeterminedEvents.hashCode());
+        }
+
+    }
+
+    @Test
+    public void testGeneratePDHaplotyes(final Haplotype refHaplotype, final List<Event> eventsInOrder, List<List<Integer>> swMutexIndices,
+                                        final Set<PDHaplotypeSummary> expected) {
+        final List<List<Event>> swMutexes = swMutexIndices.stream()
+                .map(indices -> indices.stream().map(eventsInOrder::get).toList()).toList();
+
+
+        final Set<Haplotype> pdHaplotypes = PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(
+                refHaplotype, eventsInOrder, swMutexes, false, false, false);
+
+        final Set<PDHaplotypeSummary> actual = pdHaplotypes.stream()
+                .map(PDHaplotypeSummary::fromPDHaplotye)
+                .collect(Collectors.toSet());
+
+        Assert.assertEquals(actual, expected);
     }
 
     @Test(expectedExceptions = IllegalStateException.class)

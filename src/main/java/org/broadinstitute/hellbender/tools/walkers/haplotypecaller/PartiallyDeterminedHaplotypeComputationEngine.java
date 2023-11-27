@@ -102,7 +102,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         if (outputHaplotypes == null) {
             return sourceSet;
         }
-        
+
         sourceSet.storeAssemblyHaplotypes();
 
         // TODO: Sorting haplotypes is unnecessary but makes debugging against previous versions much easier.

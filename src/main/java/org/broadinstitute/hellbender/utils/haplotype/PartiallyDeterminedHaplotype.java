@@ -71,7 +71,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     }
 
     private final byte[] alternateBases;
-    private final List<Event> constituentBuiltEvents;
+    private final List<Event> constituentEvents;
     private final Set<Event> determinedEvents; // NOTE this must be a subset (possibly empty if the determined allele is ref) of both of the previous lists
 
     // NOTE: we need all of the events at the determined site (all of which are determined in *some* PD haplotype) for the purposes
@@ -96,7 +96,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         Utils.validateArg(base.length() == pdBytes.length, "pdBytes array must have same length as base haplotype.");
         this.setGenomeLocation(base.getGenomeLocation());
         this.alternateBases = pdBytes;
-        this.constituentBuiltEvents = constituentEvents;
+        this.constituentEvents = constituentEvents;
         // TODO: this needs to generalize to a set of determined events or empty if ref is determined
         this.determinedEvents = determinedEvents;
 
@@ -119,7 +119,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     public String toString() {
         String output = "HapLen:"+length() +", "+new String(getDisplayBases());
         output = output + "\nUnresolved Bases["+alternateBases.length+"] "+Arrays.toString(alternateBases);
-        return output + "\n"+getCigar().toString()+" "+ constituentBuiltEvents.stream()
+        return output + "\n"+getCigar().toString()+" "+ constituentEvents.stream()
                 .map(v ->(determinedEvents.contains(v) ?"*":"")+ getDRAGENDebugEventString( getStart()).apply(v) )
                 .collect(Collectors.joining("->"));
     }
@@ -149,6 +149,8 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     public Set<Event> getDeterminedEvents() {
         return determinedEvents;
     }
+
+    public List<Event> getConstituentEvents() { return constituentEvents; }
 
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
     public SimpleInterval getDeterminedSpan() {
