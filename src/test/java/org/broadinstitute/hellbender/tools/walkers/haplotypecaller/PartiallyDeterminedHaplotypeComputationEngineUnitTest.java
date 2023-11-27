@@ -341,6 +341,29 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
                                 Triple.of(List.of(0), List.of(1), new SimpleInterval("20", 105, 105)),   // first SNP haplotype, 2nd SNP undetermined
                                 Triple.of(List.of(), List.of(0), new SimpleInterval("20", 107, 107)),   // ref haplotype (2nd SNP's determined span), 1st SNP undetermined
                                 Triple.of(List.of(1), List.of(0), new SimpleInterval("20", 107, 107)))},  // second SNP haplotype, 1st SNP undetermined
+                {"CTTGAAGACTGAG".getBytes(), List.of(SNP_C_105, SNP_G_105, SNP_C_107), List.of(),      // two overlapping SNPs and one other SNP
+                        Set.of(Triple.of(List.of(), List.of(2), new SimpleInterval("20", 105, 105)),
+                                Triple.of(List.of(0), List.of(2), new SimpleInterval("20", 105, 105)),
+                                Triple.of(List.of(1), List.of(2), new SimpleInterval("20", 105, 105)),
+                                Triple.of(List.of(), List.of(0,1), new SimpleInterval("20", 107, 107)),
+                                Triple.of(List.of(2), List.of(0,1), new SimpleInterval("20", 107, 107)))},
+                {"CTAAAAGACTGAG".getBytes(), List.of(DEL_AAA_102, SNP_G_102, SNP_C_104), List.of(),      // deletion spanning two non-overlapping SNPs
+                        Set.of(Triple.of(List.of(), List.of(), new SimpleInterval("20", 102, 104)),
+                                Triple.of(List.of(0), List.of(), new SimpleInterval("20", 102, 104)),
+                                Triple.of(List.of(1), List.of(), new SimpleInterval("20", 102, 104)),
+                                Triple.of(List.of(2), List.of(), new SimpleInterval("20", 102, 104)),
+                                Triple.of(List.of(1,2), List.of(), new SimpleInterval("20", 102, 104)))},
+                {"CTAAAAAAAAAAA".getBytes(), List.of(DEL_AAA_102, SNP_G_102, SNP_C_104, SNP_C_107), List.of(),      // deletion spanning two non-overlapping SNPs; one other SNP; everything shares an event group due to the STR
+                        Set.of(Triple.of(List.of(), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(0), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(1), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(2), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(3), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(0,3), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(1,2), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(1,3), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(2,3), List.of(), new SimpleInterval("20", 102, 107)),
+                                Triple.of(List.of(1,2,3), List.of(), new SimpleInterval("20", 102, 107)))}
         };
     }
 
