@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingDebugger;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
@@ -164,8 +165,22 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
             final double[] glAdditiveCorrection = MathArrays.ebeSubtract(ploidyModelGLsCorrected, ploidyModelGLs);
 
-            final double[] correctedGLs = MathArrays.ebeAdd(glsOverride.isEmpty() ? ploidyModelGLs : glsOverride.get().sampleLikelihoods(sampleIndex).getAsVector(),
-                    glAdditiveCorrection);
+
+
+            // go over all homozygous genotypes and find how close they are to the maximum likelihood after the FRD/BQD
+            // correction.  Then use this difference to truncate the equivalent different in the corrected GLs.
+            final double[] correctedGLs = glsOverride.isEmpty() ? ploidyModelGLs : glsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+            final double maxPloidyModelCorrectedGL = MathUtils.arrayMax(ploidyModelGLsCorrected);
+            final double maxCorrectedGL = MathUtils.arrayMax(correctedGLs);
+
+            for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidyModel.samplePloidy(sampleIndex), genotypingAlleles.numberOfAlleles())) {
+                if (gac.distinctAlleleCount() == 1) {   // homozygous
+                    final int idx = gac.index();
+
+                    // if this hom GL is farther from the max GL than the BQD/FRD-corrected ploidy model GLs have it, move it closer
+                    correctedGLs[idx] = Math.max(correctedGLs[idx], maxCorrectedGL + ploidyModelGLsCorrected[idx] - maxPloidyModelCorrectedGL);
+                }
+            }
 
             // this is what the work actually is, after we have computed a few things
             genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(correctedGLs));

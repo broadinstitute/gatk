@@ -317,7 +317,6 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         public int hashCode() {
             return Objects.hash(determinedSpan.hashCode(), determinedEvents.hashCode(), undeterminedEvents.hashCode());
         }
-
     }
 
     @DataProvider
