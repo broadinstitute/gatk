@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.netflix.servo.util.Objects;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
@@ -319,9 +320,43 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
     }
 
-    @Test
-    public void testGeneratePDHaplotyes(final Haplotype refHaplotype, final List<Event> eventsInOrder, List<List<Integer>> swMutexIndices,
-                                        final Set<PDHaplotypeSummary> expected) {
+    @DataProvider
+    public Object[][] testGeneratePDHaplotyesDataProvider() {
+        // FORMAT: byte[] refBases, List<Event> eventsInOrder, List<List<Integer>> swMutexIndices,
+        //                                        Set<Triple<List<Integer>, List<Integer>, SimpleInterval>> expectedIndices of PDHaplotypeSummaries
+        return new Object[][]{
+                {"CTTGAAGCTGAG".getBytes(), List.of(SNP_C_105), List.of(),      // lone SNP
+                    Set.of(Triple.of(List.of(), List.of(), new SimpleInterval("20", 105, 105)), // ref haplotype
+                            Triple.of(List.of(0), List.of(), new SimpleInterval("20", 105, 105)))},  // SNP haplotype
+                {"CTTGAAGCTGAG".getBytes(), List.of(SNP_C_105, SNP_G_105), List.of(),      // two overlapping SNPs
+                        Set.of(Triple.of(List.of(), List.of(), new SimpleInterval("20", 105, 105)), // ref haplotype
+                                Triple.of(List.of(0), List.of(), new SimpleInterval("20", 105, 105)),   // first SNP haplotype
+                                Triple.of(List.of(1), List.of(), new SimpleInterval("20", 105, 105)))},  // second SNP haplotype
+                {"CTTGAAAGCTGAG".getBytes(), List.of(SNP_C_105, DEL_AA_105), List.of(),      // overlapping deletion and SNP
+                        Set.of(Triple.of(List.of(), List.of(), new SimpleInterval("20", 105, 106)), // ref haplotype
+                                Triple.of(List.of(0), List.of(), new SimpleInterval("20", 105, 106)),   // first SNP haplotype
+                                Triple.of(List.of(1), List.of(), new SimpleInterval("20", 105, 106)))},  // second SNP haplotype
+                {"CTTGAAGACTGAG".getBytes(), List.of(SNP_C_105, SNP_C_107), List.of(),      // two non-overlapping SNPs
+                        Set.of(Triple.of(List.of(), List.of(1), new SimpleInterval("20", 105, 105)), // ref haplotype (1st SNP's determined span), 2nd SNP undetermined
+                                Triple.of(List.of(0), List.of(1), new SimpleInterval("20", 105, 105)),   // first SNP haplotype, 2nd SNP undetermined
+                                Triple.of(List.of(), List.of(0), new SimpleInterval("20", 107, 107)),   // ref haplotype (2nd SNP's determined span), 1st SNP undetermined
+                                Triple.of(List.of(1), List.of(0), new SimpleInterval("20", 107, 107)))},  // second SNP haplotype, 1st SNP undetermined
+        };
+    }
+
+    @Test(dataProvider = "testGeneratePDHaplotyesDataProvider")
+    public void testGeneratePDHaplotyes(final byte[] refBases, final List<Event> eventsInOrder, List<List<Integer>> swMutexIndices,
+                                        final Set<Triple<List<Integer>, List<Integer>, SimpleInterval>> expectedIndices) {
+        final Set<PDHaplotypeSummary> expected = expectedIndices.stream()
+                .map(triple -> new PDHaplotypeSummary(
+                        triple.getLeft().stream().map(eventsInOrder::get).collect(Collectors.toSet()),
+                        triple.getMiddle().stream().map(eventsInOrder::get).collect(Collectors.toSet()),
+                        triple.getRight()))
+                .collect(Collectors.toSet());
+
+        final Haplotype refHaplotype = new Haplotype(refBases, true, 500, TextCigarCodec.decode(refBases.length + "M"));
+        refHaplotype.setGenomeLocation(new SimpleInterval("20", 100, 100 + refBases.length));
+
         final List<List<Event>> swMutexes = swMutexIndices.stream()
                 .map(indices -> indices.stream().map(eventsInOrder::get).toList()).toList();
 
