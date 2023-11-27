@@ -36,6 +36,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         hailctl dataproc start 
          --autoscaling-policy={autoscaling_policy}
          --worker-machine-type {worker_machine_type}
+         --master-machine-type n1-highmem-16
          --region {region}
          --project {gcs_project}
          --service-account {account}
