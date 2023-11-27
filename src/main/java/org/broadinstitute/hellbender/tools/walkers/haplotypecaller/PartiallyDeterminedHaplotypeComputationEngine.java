@@ -95,14 +95,48 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final boolean debug = pileupArgs.debugPileupStdout;
 
         final List<Event> eventsInOrder = makeFinalListOfEventsInOrder(sourceSet, badPileupEvents, goodPileupEvents, referenceHaplotype, pileupArgs, debug);
+        List<List<Event>> swMutexes = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
 
+        final Set<Haplotype> outputHaplotypes = generatePDHaplotypes(referenceHaplotype, eventsInOrder, swMutexes,
+            debug, pileupArgs.useDeterminedHaplotypesDespitePdhmmMode, pileupArgs.disableJointDetection);
+        if (outputHaplotypes == null) {
+            return sourceSet;
+        }
+        
+        sourceSet.storeAssemblyHaplotypes();
+
+        // TODO: Sorting haplotypes is unnecessary but makes debugging against previous versions much easier.
+        final List<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).toList();
+        sourceSet.replaceAllHaplotypes(result);
+        Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
+
+        // Set PDHMM flag to enable later PDHMM genotyping.  We only set it now because earlier code might fail and revert to non-PDHMM mode.
+        sourceSet.setPartiallyDeterminedMode(!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode);
+        Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
+        return sourceSet;
+    }
+
+    /**
+     * This just splits off some of the above code so that it can be tested without having to construct an entire
+     * AssemblyResultSet
+     * @param referenceHaplotype
+     * @param eventsInOrder
+     * @param swMutexes
+     * @param debug
+     * @return  null if the calling code should return the original AssemblyResultSet and not PD haplotypes
+     */
+    @VisibleForTesting
+    static Set<Haplotype> generatePDHaplotypes(final Haplotype referenceHaplotype, final List<Event> eventsInOrder,
+                                                      final List<List<Event>> swMutexes, final boolean debug,
+                                               final boolean useDeterminedHaplotypesDespitePdhmmMode,
+                                               final boolean disableJointDetection) {
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
-        SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
+        final SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
         final List<SimpleInterval> strIntervals = findSTRs(referenceHaplotype);
 
-        List<List<Event>> swMutexes = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
+
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, swMutexes);
 
         // TODO: add in command line argument to activate joint detection and only use the STR overlap detector if joint detection is turned on
@@ -110,7 +144,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // if any of our merged event groups is too large, abort.
         if (eventGroups == null) {
             Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
-            return sourceSet;
+            return null;
         }
         Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
@@ -121,7 +155,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
           To be clear, each EventGroup may have multiple determined subsets, and
          */
-        final Set<Haplotype> outputHaplotypes = pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
+        final Set<Haplotype> outputHaplotypes = useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
 
         for (int determinedEventGroupIndex = 0; determinedEventGroupIndex < eventGroups.size(); determinedEventGroupIndex++) {
             final EventGroup determinedEventGroup = eventGroups.get(determinedEventGroupIndex);
@@ -138,14 +172,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             if (undeterminedBranches == null) {
                 Utils.printIf(debug, () -> "Found too many branches, aborting and falling back to Assembly Variants!");
-                return sourceSet;
+                return null;
             }
 
             // by default, the whole event group is the determined span, but we can optionally revert to pre-joint detection behavior
             // where only one event at a time is determined and the rest of the event group is undetermined
-            final List<Pair<Set<Event>, SimpleInterval>> eventSetsAndDeterminedSpans = pileupArgs.disableJointDetection ? determinedEventGroup.determinedUndeterminedHybridSets() :
+            final List<Pair<Set<Event>, SimpleInterval>> eventSetsAndDeterminedSpans = disableJointDetection ? determinedEventGroup.determinedUndeterminedHybridSets() :
                     determinedEventGroup.determinedEventSets().stream().map(s -> Pair.of(s, determinedEventGroup.getSpan())).toList();
-                    ;
+            ;
 
             for (final Pair<Set<Event>, SimpleInterval> eventSetAndDeterminedSpan : eventSetsAndDeterminedSpans) {
                 final Set<Event> eventsFromDeterminedGroup = eventSetAndDeterminedSpan.getLeft();
@@ -159,7 +193,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branches);
 
                 for (Set<Event> branch : branches) {
-                    if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
+                    if (!useDeterminedHaplotypesDespitePdhmmMode) {
                         final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
                         // TODO: in the disable-joint-detection mode, don't use the span of the determined event group
                         PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, eventsFromDeterminedGroup, determinedSpan, eventsInPDHap);
@@ -183,7 +217,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                                 if (fullyDeterminedHaplotypes.size() > MAX_BRANCH_PD_HAPS) {
                                     Utils.printIf(debug, () -> "Too many branch haplotypes [" + fullyDeterminedHaplotypes.size() + "] generated from site, falling back on assembly variants!");
-                                    return sourceSet;
+                                    return null;
                                 }
                             }
                         }
@@ -196,23 +230,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                     if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
                         Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
-                        return sourceSet;
+                        return null;
                     }
                 }
             }
         }
-
-        sourceSet.storeAssemblyHaplotypes();
-
-        // TODO: Sorting haplotypes is unnecessary but makes debugging against previous versions much easier.
-        final List<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).toList();
-        sourceSet.replaceAllHaplotypes(result);
-        Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-
-        // Set PDHMM flag to enable later PDHMM genotyping.  We only set it now because earlier code might fail and revert to non-PDHMM mode.
-        sourceSet.setPartiallyDeterminedMode(!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode);
-        Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
-        return sourceSet;
+        return outputHaplotypes;
     }
 
     /**
