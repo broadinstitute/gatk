@@ -120,6 +120,11 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public GATKPath output;
 
+    @Argument(doc="Skip distant mates (fast)",
+            fullName = "skip-distant-mates",
+            optional = true)
+    public boolean skipDistantMates = false;
+
     @Argument(doc="Minimum length of soft clips required for realignment. Setting to 0 will realign all reads.",
             fullName = MIN_SOFT_CLIP_LENGTH_LONG_NAME,
             optional = true,
@@ -141,6 +146,39 @@ public final class RealignSoftClippedReads extends MultiplePassReadWalker {
 
     @Override
     public void traverseReads() {
+        if (skipDistantMates) {
+            doUnpaired();
+        } else {
+            doPaired();
+        }
+    }
+
+    private void doUnpaired() {
+        try (final SubsettingRealignmentEngine engine = new SubsettingRealignmentEngine(args.indexImage.toString(),
+                getHeaderForReads(), args.bufferSize, args.bwaThreads, args.keepDuplicateFlag);
+             final SAMFileGATKReadWriter writer = createSAMWriter(output, true)) {
+            final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
+            forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) -> {
+                if (isValidSoftClip(read, minSoftClipLength)) {
+                    // Clear realignment tags in case the input was previously realigned
+                    read.clearAttribute(SubsettingRealignmentEngine.REALIGNED_READ_TAG);
+                    read.setIsPaired(false);
+                    engine.addRead(read, r -> true);
+                }
+            });
+            logger.info("Found " + engine.getSelectedReadsCount() + " soft-clipped reads.");
+            logger.info("Realigning and merging reads...");
+            try (final MergingIterator<GATKRead> iter = engine.alignAndMerge()) {
+                while (iter.hasNext()) {
+                    writer.addRead(iter.next());
+                }
+            }
+            logger.info("Realigned " + engine.getPairedAlignmentReadsCount() + " paired and " +
+                    engine.getUnpairedAlignmentReadsCount() + " unpaired reads.");
+        }
+    }
+
+    private void doPaired() {
         logger.info("Identifying soft-clipped reads...");
         final Set<String> softclippedReadNames = new HashSet<>();
         final Set<String> pairedClippedReadsWithDistantMates = new HashSet<>();
