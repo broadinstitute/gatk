@@ -181,8 +181,8 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             // approximate the priors' effect on the BQD/FRD-corrected likelihoods as being equal the their effect
             // on non-corrected likelihoods
             if (genotypePosteriorsOverride.isPresent()) {
-                final double[] post = genotypePosteriorsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
-                final double[] like = genotypeLikelihoodsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+                final double[] post = MathUtils.normalizeLog10(genotypePosteriorsOverride.get().sampleLikelihoods(sampleIndex).getAsVector());
+                final double[] like = MathUtils.normalizeLog10(genotypeLikelihoodsOverride.get().sampleLikelihoods(sampleIndex).getAsVector());
                 final double[] effectOfPrior = MathArrays.ebeSubtract(post, like);
                 MathUtils.addToArrayInPlace(correctedGLs, effectOfPrior);
             }
