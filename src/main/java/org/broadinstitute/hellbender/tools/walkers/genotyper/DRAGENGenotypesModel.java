@@ -71,13 +71,13 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
                                                                             final DragstrReferenceAnalyzer dragstrs) {
-        return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, Optional.empty());
+        return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, Optional.empty(), Optional.empty());
     }
 
     @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
-                                                                            final DragstrReferenceAnalyzer dragstrs, Optional<GenotypingLikelihoods<A>> glsOverride) {
+                                                                            final DragstrReferenceAnalyzer dragstrs, Optional<GenotypingLikelihoods<A>> genotypeLikelihoodsOverride, Optional<GenotypingLikelihoods<A>> genotypePosteriorsOverride) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
@@ -163,13 +163,9 @@ public class DRAGENGenotypesModel implements GenotypingModel {
                                 FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment));
             }
 
-            final double[] glAdditiveCorrection = MathArrays.ebeSubtract(ploidyModelGLsCorrected, ploidyModelGLs);
-
-
-
             // go over all homozygous genotypes and find how close they are to the maximum likelihood after the FRD/BQD
             // correction.  Then use this difference to truncate the equivalent different in the corrected GLs.
-            final double[] correctedGLs = glsOverride.isEmpty() ? ploidyModelGLs : glsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+            final double[] correctedGLs = genotypeLikelihoodsOverride.isEmpty() ? ploidyModelGLs : genotypeLikelihoodsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
             final double maxPloidyModelCorrectedGL = MathUtils.arrayMax(ploidyModelGLsCorrected);
             final double maxCorrectedGL = MathUtils.arrayMax(correctedGLs);
 
@@ -180,6 +176,15 @@ public class DRAGENGenotypesModel implements GenotypingModel {
                     // if this hom GL is farther from the max GL than the BQD/FRD-corrected ploidy model GLs have it, move it closer
                     correctedGLs[idx] = Math.max(correctedGLs[idx], maxCorrectedGL + ploidyModelGLsCorrected[idx] - maxPloidyModelCorrectedGL);
                 }
+            }
+
+            // approximate the priors' effect on the BQD/FRD-corrected likelihoods as being equal the their effect
+            // on non-corrected likelihoods
+            if (genotypePosteriorsOverride.isPresent()) {
+                final double[] post = genotypePosteriorsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+                final double[] like = genotypeLikelihoodsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+                final double[] effectOfPrior = MathArrays.ebeSubtract(post, like);
+                MathUtils.addToArrayInPlace(correctedGLs, effectOfPrior);
             }
 
             // this is what the work actually is, after we have computed a few things

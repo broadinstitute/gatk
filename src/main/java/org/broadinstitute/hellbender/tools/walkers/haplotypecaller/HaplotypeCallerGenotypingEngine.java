@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -171,8 +172,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         // haplo-genotype posteriors by joint detection interval for exact joint detection genotyping within determined intervals
         // note: this will be empty is haplotypes are not partially determined
-        final OverlapDetector<GenotypingLikelihoods<Haplotype>> haploGTPosteriorOverlapDetector =
-                computeHaploGenotypePosteriors(readLikelihoods, ref, refLoc, activeRegionWindow, header, ploidy, dragstrs, readQualifiesForGenotypingPredicate);
+        final OverlapDetector<Pair<GenotypingLikelihoods<Haplotype>, GenotypingLikelihoods<Haplotype>>> haploGTLikelihoodAndPosteriorOverlapDetector =
+                computeHaploGenotypeLikelihoodsAndPosteriors(readLikelihoods, ref, refLoc, activeRegionWindow, header, ploidy, dragstrs, readQualifiesForGenotypingPredicate);
 
         for( final int loc : eventStarts ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
@@ -271,16 +272,19 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             // use joint detection haplo-genotype posteriors if available
-            final List<GenotypingLikelihoods<Haplotype>> haploGTPosteriors = new ArrayList<>(haploGTPosteriorOverlapDetector.getOverlaps(mergedVC));
-            Utils.validate(haploGTPosteriors.size() < 2, "At most one set of haplotype genotype posteriors should overlap this variant.");
-            final Optional<GenotypingLikelihoods<Allele>> glsOverride = (haploGTPosteriors.size() == 1 && ploidy == 2) ?
-                    Optional.of(computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haploGTPosteriors.get(0))) : Optional.empty();
+            final List<Pair<GenotypingLikelihoods<Haplotype>, GenotypingLikelihoods<Haplotype>>> haploGTLikelihoodsAndPosteriors = new ArrayList<>(haploGTLikelihoodAndPosteriorOverlapDetector.getOverlaps(mergedVC));
+            Utils.validate(haploGTLikelihoodsAndPosteriors.size() < 2, "At most one set of haplotype genotype posteriors should overlap this variant.");
+            final Optional<GenotypingLikelihoods<Allele>> genotypeLikelihoodOverride = (haploGTLikelihoodsAndPosteriors.size() == 1 && ploidy == 2) ?
+                    Optional.of(computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haploGTLikelihoodsAndPosteriors.get(0).getLeft())) : Optional.empty();
+            final Optional<GenotypingLikelihoods<Allele>> genotypePosteriorOverride = (haploGTLikelihoodsAndPosteriors.size() == 1 && ploidy == 2) ?
+                    Optional.of(computeAlleleGenotypesFromHaploGenotypes(ploidy, noCallAlleles, loc, mergedVC, haploGTLikelihoodsAndPosteriors.get(0).getRight())) : Optional.empty();
 
             // these genotypes have the PLs calculated and filled out but are otherwise empty (no-call alleles, no annotations)
-            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs, glsOverride);
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref,
+                    loc - refLoc.getStart(), dragstrs, genotypeLikelihoodOverride, genotypePosteriorOverride);
 
             // In joint detection we have already accounted for *haplotype* priors, no need to double-count priors here!
-            final GenotypePriorCalculator gpc = glsOverride.isPresent() ? GenotypePriorCalculator.flatPrior() :
+            final GenotypePriorCalculator gpc = genotypeLikelihoodOverride.isPresent() ? GenotypePriorCalculator.flatPrior() :
                     resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
 
@@ -358,8 +362,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         return new GenotypingLikelihoods<>(new IndexedAlleleList<>(mergedVC.getAlleles()), ploidyModel, genotypeLikelihoodsInSampleOrder);
     }
 
-    private OverlapDetector<GenotypingLikelihoods<Haplotype>> computeHaploGenotypePosteriors(AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, byte[] ref, SimpleInterval refLoc, SimpleInterval activeRegionWindow, SAMFileHeader header, int ploidy, DragstrReferenceAnalyzer dragstrs, BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate) {
-        final OverlapDetector<GenotypingLikelihoods<Haplotype>> haploGenotypePosteriorOverlapDetector = new OverlapDetector<>(0,0);
+    // returns pairs of GenotypingLikelihoods of haplo-genotypes, the first being actual likelihoods and the second being
+    // posteriors -- the same object with priors applied
+    private OverlapDetector<Pair<GenotypingLikelihoods<Haplotype>, GenotypingLikelihoods<Haplotype>>> computeHaploGenotypeLikelihoodsAndPosteriors(AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, byte[] ref, SimpleInterval refLoc, SimpleInterval activeRegionWindow, SAMFileHeader header, int ploidy, DragstrReferenceAnalyzer dragstrs, BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate) {
+        final OverlapDetector<Pair<GenotypingLikelihoods<Haplotype>, GenotypingLikelihoods<Haplotype>>> haploGenotypeLikelihoodAndPosteriorOverlapDetector = new OverlapDetector<>(0,0);
         // if haplotypes are partially determined, do DRAGEN exact genotyping within each determined span
         final List<Haplotype> haplotypes = readLikelihoods.alleles();
         if (!haplotypes.isEmpty() && haplotypes.get(0).isPartiallyDetermined()) {
@@ -430,10 +436,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                         .toList();
 
                 GenotypingLikelihoods<Haplotype> log10HaploGenotypePosteriors = new GenotypingLikelihoods<>(log10HaploGenotypeLikelihoods, ploidyModel, log10HaploGenotypePosteriorsInSampleOrder);
-                haploGenotypePosteriorOverlapDetector.addLhs(log10HaploGenotypePosteriors, jdInterval);
+                haploGenotypeLikelihoodAndPosteriorOverlapDetector.addLhs(Pair.of(log10HaploGenotypeLikelihoods, log10HaploGenotypePosteriors), jdInterval);
             }
         }
-        return haploGenotypePosteriorOverlapDetector;
+        return haploGenotypeLikelihoodAndPosteriorOverlapDetector;
     }
 
     /**
@@ -705,12 +711,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods,
                                                         final VariantContext mergedVC, final List<Allele> noCallAlleles,
                                                         final byte[] paddedReference, final int offsetForRefIntoEvent,
-                                                        final DragstrReferenceAnalyzer dragstrs, Optional<GenotypingLikelihoods<Allele>> glsOverride) {
+                                                        final DragstrReferenceAnalyzer dragstrs, Optional<GenotypingLikelihoods<Allele>> genotypeLikelihoodsOverride,
+                                                        Optional<GenotypingLikelihoods<Allele>> genotypePosteriorsOverride) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
-        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods), paddedReference, offsetForRefIntoEvent, dragstrs, glsOverride);
+        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),
+                paddedReference, offsetForRefIntoEvent, dragstrs, genotypeLikelihoodsOverride, genotypePosteriorsOverride);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
         for (int s = 0; s < sampleCount; s++) {
