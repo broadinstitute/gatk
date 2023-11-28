@@ -31,6 +31,7 @@ workflow GvsExtractCohortFromSampleNames {
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
 
+    File? interval_list
     Int? extract_preemptible_override
     Int? extract_maxretries_override
     Int? extract_scatter_count_override
@@ -91,6 +92,9 @@ workflow GvsExtractCohortFromSampleNames {
 
   File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
 
+  # allow an interval list to be passed in, but default it to our standard one if no args are here
+  File working_interval_list = select_first([interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
+
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
       call_set_identifier             = cohort_table_prefix,
@@ -130,6 +134,7 @@ workflow GvsExtractCohortFromSampleNames {
       split_intervals_mem_override = split_intervals_mem_override,
       memory_override = extract_memory_override,
       disk_override = extract_disk_override,
+      interval_list = working_interval_list,
 
       gatk_override = gatk_override,
       write_cost_to_db = write_cost_to_db
