@@ -236,6 +236,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1124
+             - VS-678
          tags:
              - /.*/
    - name: GvsWithdrawSamples
