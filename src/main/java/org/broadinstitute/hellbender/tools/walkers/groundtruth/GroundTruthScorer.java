@@ -65,11 +65,27 @@ public class GroundTruthScorer extends ReadWalker {
 
     private static final double NORMALIZED_SCORE_THRESHOLD_DEFAULT = -0.1;
 
+    /*
+     Private accumulator class for counting false/true observations (hence Boolean).
+
+     Observations are counted at a top level and are also optionally classified into a set of bins (the
+     number of which is fixed upon construction). The bins themselves are also BooleanAccumulator objects,
+     resulting in a tree like multi-level accumulator.
+
+
+     GroundTruthScores builds a four level deep accumulation tree, which can support observations of a
+     boolean event with 3-deep context (bin1,bin2,bin3).
+
+     Once accumulation is done, the instance is able to generate a suitable GATKReportTable for any given
+     bin depth (1, 2 or 3).
+
+     */
     private static class BooleanAccumulator {
         long falseCount;
         long trueCount;
         BooleanAccumulator[] bins;
 
+        // add an observation to this accumulator
         void add(final boolean b) {
             if (b) {
                 trueCount++;
@@ -78,6 +94,7 @@ public class GroundTruthScorer extends ReadWalker {
             }
         }
 
+        // add an observation to this accumulator and to one of the bins in the level under it (1 deep)
         void add(final boolean b, final int bin) {
             add(b);
             if ( bins != null && bin >= 0 && bin < bins.length ) {
@@ -87,6 +104,8 @@ public class GroundTruthScorer extends ReadWalker {
                 bins[Math.max(0, Math.min(bin, bins.length - 1))].add(b);
             }
         }
+
+        // add an observation to this accumulator and to two levels of bins under it (2 deep)
         void add(final boolean b, final int bin, final int bin2) {
             add(b);
             if ( bins != null && bin >= 0 && bin < bins.length ) {
@@ -96,6 +115,8 @@ public class GroundTruthScorer extends ReadWalker {
                 bins[Math.max(0, Math.min(bin, bins.length - 1))].add(b, bin2);
             }
         }
+
+        // add an observation to this accumulator and to three levels of bins under it (3 deep)
         void add(final boolean b, final int bin, final int bin2, final int bin3) {
             add(b);
             if ( bins != null && bin >= 0 && bin < bins.length ) {
@@ -106,14 +127,17 @@ public class GroundTruthScorer extends ReadWalker {
             }
         }
 
+        // get observation count of this accumulator
         long getCount() {
             return falseCount + trueCount;
         }
 
+        // get the false rate/ration for this accumulator
         double getFalseRate() {
             return (getCount() == 0) ? 0.0 : ((double)falseCount / getCount());
         }
 
+        // create a set of accumulators with 3-deep bin nesting
         static BooleanAccumulator[] newReport(final int size, final int binCount, final int binCount2, final int binCount3) {
             BooleanAccumulator[]   report = new BooleanAccumulator[size];
             for ( byte i = 0 ; i < report.length ; i++ ) {
@@ -140,6 +164,7 @@ public class GroundTruthScorer extends ReadWalker {
             return report;
         }
 
+        // create a GATK report from a set of accumulators without nesting into their bins
         static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, final double probThreshold, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name + "Report", "error rate per " + name, 4);
             table.addColumn(name, "%d");
@@ -164,6 +189,7 @@ public class GroundTruthScorer extends ReadWalker {
             return table;
         }
 
+        // create a GATK report from a set of accumulators while nesting into one level of their bins (1 deep)
         static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name1, final String name2, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name1 + "_" + name2 + "Report", "error rate per " + name1 + " by " + name2, 4);
             table.addColumn(name1, "%d");
@@ -187,6 +213,7 @@ public class GroundTruthScorer extends ReadWalker {
             return table;
         }
 
+        // create a GATK report from a set of accumulators while nesting into two levels of their bins (2 deep)
         static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name1, final String name2, final String name3, final String name4, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name1 + "_" + name2 + "_" + name3 + "_" + name4 + "_Report", "error rate per " + name1 + " by " + name2 + " and " + name3, 5);
             table.addColumn(name1, "%d");
@@ -512,21 +539,30 @@ public class GroundTruthScorer extends ReadWalker {
             }
 
             // step 2 - normalize column
-            for ( int j = 0 ; j < probCol.length ; j++ ) {
-                probCol[j] /= sum;
+            if ( sum != 0.0 ) {
+                for (int j = 0; j < probCol.length; j++) {
+                    probCol[j] /= sum;
+                }
             }
 
             // step 3 - scale according to prior genome?
             if ( genomePriorDB != null ) {
 
-                long[] prior = (genomePriorDB != null) ? genomePriorDB.getPriorForBase(flowOrder[i]) : null;
+                long[] prior = genomePriorDB.getPriorForBase(flowOrder[i]);
                 sum = 0;
-                for ( int j = 0 ; j < probCol.length ; j++ ) {
-                    sum += (probCol[j] *= prior[j]);
+                if ( prior != null ) {
+                    for (int j = 0; j < probCol.length; j++) {
+                        sum += (probCol[j] *= prior[j]);
+                    }
                 }
 
                 // assign normalized result
-                result[i] = 1 - (probCol[Math.min(probCol.length - 1, Math.min(key[i], flowRead.getMaxHmer()))] / sum);
+                if ( sum != 0.0 ) {
+                    result[i] = 1 - (probCol[Math.min(probCol.length - 1, Math.min(key[i], flowRead.getMaxHmer()))] / sum);
+                } else {
+                    // revert to non-prior normalization
+                    result[i] = 1 - probCol[Math.min(key[i], flowRead.getMaxHmer())];
+                }
             } else {
 
                 // assign normalized result

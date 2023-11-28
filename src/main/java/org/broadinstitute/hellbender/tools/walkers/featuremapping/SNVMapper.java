@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 public class SNVMapper implements FeatureMapper {
 
     final int         surroundBefore;
-    final int         surroundtAfter;
+    final int         surroundAfter;
     final int         minCigarElementLength;
     final LevenshteinDistance levDistance = new LevenshteinDistance();
     final Integer     smqSize;
@@ -36,7 +36,7 @@ public class SNVMapper implements FeatureMapper {
 
     public SNVMapper(FlowFeatureMapperArgumentCollection fmArgs) {
         surroundBefore = fmArgs.snvIdenticalBases;
-        surroundtAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : surroundBefore;
+        surroundAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : surroundBefore;
         smqSize = fmArgs.surroundingMediaQualitySize;
         smqSizeMean = fmArgs.surroundingMeanQualitySize;
         this.fmArgs = fmArgs;
@@ -44,7 +44,7 @@ public class SNVMapper implements FeatureMapper {
         // ignore surround
         ignoreSurround = fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff;
         spanBefore = ignoreSurround ? 0 : surroundBefore;
-        spanAfter = ignoreSurround ? 0 : surroundtAfter;
+        spanAfter = ignoreSurround ? 0 : surroundAfter;
         minCigarElementLength = spanBefore + 1 + spanAfter;
 
         // adjust minimal read length
@@ -124,7 +124,7 @@ public class SNVMapper implements FeatureMapper {
                                 surrounded = false;
                             }
                         }
-                        for ( int i = 0 ; i < surroundtAfter && surrounded ; i++ ) {
+                        for (int i = 0; i < surroundAfter && surrounded ; i++ ) {
                             final int bIndex = readOfs+1+i;
                             final int rIndex = refOfs+1+i;
                             if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
@@ -292,7 +292,7 @@ public class SNVMapper implements FeatureMapper {
                             surrounded = false;
                         }
                     }
-                    for ( int i = 0 ; i < surroundtAfter && surrounded ; i++ ) {
+                    for (int i = 0; i < surroundAfter && surrounded ; i++ ) {
                         final int bIndex = readOfs+1+i;
                         final int rIndex = refOfs+1+i;
                         if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {

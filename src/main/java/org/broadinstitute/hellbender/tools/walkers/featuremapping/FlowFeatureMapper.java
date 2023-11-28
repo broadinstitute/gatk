@@ -492,8 +492,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase);
 
         // create flow read
-        final FlowBasedRead   flowRead;
-        flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+        final FlowBasedRead flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
 
         final int diffLeft = haplotypes[0].getStart() - flowRead.getStart() + fr.offsetDelta;
         final int diffRight = flowRead.getEnd() - haplotypes[0].getEnd();
@@ -529,8 +528,7 @@ public final class FlowFeatureMapper extends ReadWalker {
             logger.info("score: " + score);
 
             // analyze read
-            final FlowBasedRead flowRead2;
-            flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+            final FlowBasedRead flowRead2 = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
             final int[]        key2 = flowRead2.getKey();
             for ( int i = 0 ; i < key2.length ; i++ ) {
                 final double      p1 = flowRead2.getProb(i, key2[i]);
@@ -721,7 +719,7 @@ public final class FlowFeatureMapper extends ReadWalker {
             if ( fr.read.hasAttribute(info.name) ) {
                 final String attrName = fmArgs.copyAttrPrefix + info.name;
                 if ( info.type == VCFHeaderLineType.Integer ) {
-                    vcb.attribute(attrName, fr.read.getAttributeAsString(info.name));
+                    vcb.attribute(attrName, fr.read.getAttributeAsInteger(info.name));
                 } else if ( info.type == VCFHeaderLineType.Float ) {
                     vcb.attribute(attrName, fr.read.getAttributeAsFloat(info.name));
                 } else {
