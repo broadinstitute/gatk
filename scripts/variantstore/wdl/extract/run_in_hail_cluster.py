@@ -24,7 +24,7 @@ def unwrap(string):
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_project,
-                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path, avro_path, kill_cluster_at_end):
+                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path, avro_path, leave_cluster_running_at_end):
 
     use_classic_vqsr_flag = ""
     if use_classic_vqsr:
@@ -92,7 +92,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         info(e)
         raise
     finally:
-        if kill_cluster_at_end:
+        if not leave_cluster_running_at_end:
             info(f'Stopping cluster: {cluster_name}')
             delete_cmd = unwrap(f"""
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
-    parser.add_argument('--kill-cluster-at-end', type=bool, default=True)
+    parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
 
     args = parser.parse_args()
 
@@ -146,5 +146,5 @@ if __name__ == "__main__":
                    vds_path=args.vds_path,
                    temp_path=args.temp_path,
                    avro_path=args.avro_path,
-                   kill_cluster_at_end= args.kill_cluster_at_end
+                   leave_cluster_running_at_end=args.leave_cluster_running_at_end
                    )
