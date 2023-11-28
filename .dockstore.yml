@@ -313,7 +313,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1144_phasing_revert
+             - rsa_vs_1095
          tags:
              - /.*/
    - name: GvsIngestTieout

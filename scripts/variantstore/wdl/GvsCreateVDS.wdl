@@ -11,7 +11,9 @@ workflow GvsCreateVDS {
         String avro_path
         Boolean use_classic_VQSR = false
         Boolean leave_cluster_running_at_end = false
+        Int? intermediate_resume_point
         String? hail_version
+        String? hail_temp_path
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
@@ -37,6 +39,12 @@ workflow GvsCreateVDS {
         region: {
             help: "us-central1"
         }
+        hail_temp_path: {
+            help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
+        }
+        intermediate_resume_point: {
+            help: "Index at which to resume creating intermediate VDSes."
+        }
     }
 
 
@@ -52,6 +60,21 @@ workflow GvsCreateVDS {
     String effective_google_project = select_first([gcs_project, GetToolVersions.google_project])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
+    if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
+        call Utils.TerminateWorkflow as NeedHailTempPath {
+            input:
+                message = "GvsCreateVDS called with an intermediate resume point but no specified hail temp path from which to resume",
+                basic_docker = effective_variants_docker, # intentionally mismatched as basic was not already defined and this should be a superset
+        }
+    }
+
+    if (!defined(intermediate_resume_point) && defined(hail_temp_path)) {
+        call Utils.TerminateWorkflow as NeedIntermediateResumePoint {
+            input:
+                message = "GvsCreateVDS called with no intermediate resume point but a specified hail temp path, which isn't a known use case",
+                basic_docker = effective_variants_docker, # intentionally mismatched as basic was not already defined and this should be a superset
+        }
+    }
 
     call create_vds {
         input:
@@ -60,6 +83,8 @@ workflow GvsCreateVDS {
             avro_path = avro_path,
             use_classic_VQSR = use_classic_VQSR,
             hail_version = effective_hail_version,
+            hail_temp_path = hail_temp_path,
+            intermediate_resume_point = intermediate_resume_point,
             gcs_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
@@ -96,6 +121,8 @@ task create_vds {
         Boolean use_classic_VQSR
         Boolean leave_cluster_running_at_end
         String? hail_version
+        String? hail_temp_path
+        Int? intermediate_resume_point
 
         String gcs_project
         String workspace_bucket
@@ -121,7 +148,12 @@ task create_vds {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
-        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+
+        if [[ -z "~{hail_temp_path}" ]]
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
 
         # Set up the autoscaling policy
         cat > auto-scale-policy.yaml <<FIN
@@ -151,6 +183,7 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_path} \
             --temp-path ${hail_temp_path} \
+            ~{'--intermediate-resume-point ' + intermediate_resume_point} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
     >>>
