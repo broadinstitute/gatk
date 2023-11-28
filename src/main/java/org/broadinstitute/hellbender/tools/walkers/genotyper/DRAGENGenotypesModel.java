@@ -165,7 +165,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
             // go over all homozygous genotypes and find how close they are to the maximum likelihood after the FRD/BQD
             // correction.  Then use this difference to truncate the equivalent different in the corrected GLs.
-            final double[] correctedGLs = genotypeLikelihoodsOverride.isEmpty() ? ploidyModelGLs : genotypeLikelihoodsOverride.get().sampleLikelihoods(sampleIndex).getAsVector();
+            final double[] correctedGLs = (genotypeLikelihoodsOverride.isEmpty() ? ploidyModelGLs : genotypeLikelihoodsOverride.get().sampleLikelihoods(sampleIndex).getAsVector()).clone();
             final double maxPloidyModelCorrectedGL = MathUtils.arrayMax(ploidyModelGLsCorrected);
             final double maxCorrectedGL = MathUtils.arrayMax(correctedGLs);
 
