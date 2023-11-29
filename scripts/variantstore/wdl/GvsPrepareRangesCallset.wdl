@@ -14,6 +14,7 @@ workflow GvsPrepareCallset {
     String call_set_identifier
 
     String extract_table_prefix = call_set_identifier
+    Boolean extract_table_ttl = false
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
@@ -69,6 +70,7 @@ workflow GvsPrepareCallset {
       write_cost_to_db                = write_cost_to_db,
       variants_docker                 = effective_variants_docker,
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
+      extract_table_ttl = extract_table_ttl
   }
 
   output {
@@ -96,6 +98,7 @@ task PrepareRangesCallsetTask {
     Boolean write_cost_to_db
     Boolean use_compressed_references
     String variants_docker
+    Boolean extract_table_ttl
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -136,7 +139,8 @@ task PrepareRangesCallsetTask {
           --ttl ~{temp_table_ttl_in_hours} \
           ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
           ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db} \
-          ~{true="--use_compressed_references True" false='' use_compressed_references}
+          ~{true="--use_compressed_references True" false='' use_compressed_references} \
+          ~{true="--extract_table_ttl True" false='' extract_table_ttl}
 
   >>>
   output {

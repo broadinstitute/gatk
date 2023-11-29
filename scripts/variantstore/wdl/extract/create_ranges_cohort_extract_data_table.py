@@ -18,8 +18,6 @@ REF_TABLE_PREFIX = "ref_ranges_"
 VET_TABLE_PREFIX = "vet_"
 SAMPLES_PER_PARTITION = 4000
 
-FINAL_TABLE_TTL = ""
-# FINAL_TABLE_TTL = " OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 72 HOUR)) "
 
 # temp-table-uuid
 output_table_prefix = str(uuid.uuid4()).split("-")[0]
@@ -130,8 +128,10 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
-def create_final_extract_vet_table(fq_destination_table_vet_data):
-    # first, create the table structure
+def create_final_extract_vet_table(fq_destination_table_vet_data, extract_table_ttl):
+    ttl = ""
+    if extract_table_ttl:
+        ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_vet_data}` 
@@ -149,15 +149,17 @@ def create_final_extract_vet_table(fq_destination_table_vet_data):
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
-          {FINAL_TABLE_TTL}        
+          {ttl}        
         """
     print(sql)
     query_return = utils.execute_with_retry(client, "create final export vet table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 
-def create_final_extract_ref_table(fq_destination_table_ref_data):
-    # first, create the table structure
+def create_final_extract_ref_table(fq_destination_table_ref_data, extract_table_ttl):
+    ttl = ""
+    if extract_table_ttl:
+        ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_ref_data}` 
         (
@@ -168,7 +170,7 @@ def create_final_extract_ref_table(fq_destination_table_ref_data):
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
-          {FINAL_TABLE_TTL}        
+          {ttl}        
         """
     print(sql)
     query_return = utils.execute_with_retry(client, "create final export ref table", sql)
@@ -262,7 +264,8 @@ def make_extract_table(call_set_identifier,
                        temp_table_ttl_hours,
                        only_output_vet_tables,
                        write_cost_to_db,
-                       use_compressed_references):
+                       use_compressed_references,
+                       extract_table_ttl):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -330,10 +333,10 @@ def make_extract_table(call_set_identifier,
 
         # create and populate the tables for extract data
         if not only_output_vet_tables:
-            create_final_extract_ref_table(fq_destination_table_ref_data)
+            create_final_extract_ref_table(fq_destination_table_ref_data, extract_table_ttl)
             populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references)
 
-        create_final_extract_vet_table(fq_destination_table_vet_data)
+        create_final_extract_vet_table(fq_destination_table_vet_data, extract_table_ttl)
         populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
     finally:
@@ -363,8 +366,7 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--fq_sample_mapping_table', type=str, help='Mapping table from sample_id to sample_name',
                         required=True)
-    parser.add_argument('--max_tables',type=int, help='Maximum number of vet/ref ranges tables to consider', required=False,
-                        default=250)
+    parser.add_argument('--max_tables',type=int, help='Maximum number of vet/ref ranges tables to consider', required=False, default=250)
     parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
     parser.add_argument('--only_output_vet_tables', type=bool,
                       help='Only create __VET_DATA table, skip __REF_DATA and __SAMPLES tables', required=False, default=False)
@@ -372,6 +374,8 @@ if __name__ == '__main__':
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
     parser.add_argument('--use_compressed_references', type=bool,
                         help='Expect compressed reference data and expand the fields', required=False, default=False)
+    parser.add_argument('--extract_table_ttl', type=bool,
+                        help='Add a TTL to the extract tables', required=False, default=False)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -398,4 +402,5 @@ if __name__ == '__main__':
                        args.ttl,
                        args.only_output_vet_tables,
                        args.write_cost_to_db,
-                       args.use_compressed_references)
+                       args.use_compressed_references,
+                       args.extract_table_ttl)
