@@ -150,6 +150,7 @@ task create_vds {
         echo ${cluster_name} > cluster_name.txt
 
         if [[ -z "~{hail_temp_path}" ]]
+        then
             hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
         else
             hail_temp_path="~{hail_temp_path}"
