@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class AlignmentAugmentedGraph {
@@ -57,6 +58,24 @@ public class AlignmentAugmentedGraph {
 
         final VertexManager vertexManager = new VertexManager(kmerSize, unambiguousKmers);
 
+        final AugmentedKmerGraph graph = makeAugmentedKmerGraph(reads, vertexManager);
+
+        final List<AugmentedVertex> branchVertices = graph.vertexSet().stream()
+                .filter(v -> graph.outDegreeOf(v) > 1).toList();
+
+        // decision vertices = anything after a branch or a source (wince which source to begin with is a decision)
+        final List<AugmentedVertex> decisionVertices = Stream.concat(graph.getSources().stream(),
+                branchVertices.stream().flatMap(bv -> graph.outgoingVerticesOf(bv).stream()))
+                .distinct() // needed because a decision vertex may have multiplo parents
+                .toList();
+
+        final Map<AugmentedVertex, Integer> decisionVertexIndexMap = IntStream.range(0, decisionVertices.size()).boxed()
+                .collect(Collectors.toMap(decisionVertices::get, n->n));
+
+
+    }
+
+    private AugmentedKmerGraph makeAugmentedKmerGraph(Iterable<GATKRead> reads, VertexManager vertexManager) {
         final AugmentedKmerGraph graph = new AugmentedKmerGraph(kmerSize);
         vertexManager.allVertices().forEach(graph::addVertex);
 
@@ -79,43 +98,7 @@ public class AlignmentAugmentedGraph {
         }
 
         graph.removeSingletonOrphanVertices();
-
-        // graph.printGraph();
-
-
-
-
-        final Set<Kmer> decisionKmers = findDecisionKmers(refHaplotype, reads, pruner);
-
-
-    }
-
-    private Set<Kmer> findDecisionKmers(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner pruner) {
-        // make a regular read threading graph in order to identify decision vertices
-        final PlainDeBruijnGraph initialGraph = new PlainDeBruijnGraph(kmerSize, minBaseQualityToUseInAssembly);
-        initialGraph.addSequence("ref", refHaplotype.getBases(), 1, true);
-        reads.forEach(read -> initialGraph.addRead(read, null));
-        initialGraph.buildGraphIfNecessary();
-        pruner.pruneLowWeightChains(initialGraph);
-
-        final List<MultiDeBruijnVertex> branchVertices = initialGraph.vertexSet().stream()
-                .filter(v -> initialGraph.outDegreeOf(v) > 1).toList();
-
-        final List<Pair<MultiDeBruijnVertex, Integer>> decisionVertices = new ArrayList<>();
-        for (final MultiDeBruijnVertex vertex : branchVertices) {
-            final List<MultiSampleEdge> edges = Lists.newArrayList(initialGraph.outgoingEdgesOf(vertex));
-            final int[] multiplicities = edges.stream().mapToInt(MultiSampleEdge::getMultiplicity).toArray();
-            final int branchiness = (int) MathUtils.sum(multiplicities) - MathUtils.arrayMax(multiplicities);
-            // TODO: if there are more than 2 outgoing edges this gives minor edges more branchiness than they deserve
-            edges.forEach(edge -> decisionVertices.add(Pair.of(initialGraph.getEdgeTarget(edge), branchiness)));
-        }
-
-        return decisionVertices.stream()
-                .sorted(Comparator.comparingInt(Pair<MultiDeBruijnVertex, Integer>::getRight).reversed())
-                .limit(MAX_BRANCH_VERTICES)
-                .map(Pair::getLeft)
-                .map(vertex -> new Kmer(vertex.getSequence()))
-                .collect(Collectors.toSet());
+        return graph;
     }
 
     // extracts kmers and their alignment positions -- soft clips are assigned a range with one ambiguous end eg
