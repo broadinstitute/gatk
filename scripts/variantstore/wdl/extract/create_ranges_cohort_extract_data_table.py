@@ -109,9 +109,9 @@ def get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_
 
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                 fq_sample_mapping_table, honor_withdrawn, extract_table_ttl):
+                                 fq_sample_mapping_table, honor_withdrawn, enable_extract_table_ttl):
     ttl = ""
-    if extract_table_ttl:
+    if enable_extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
@@ -131,9 +131,9 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
-def create_final_extract_vet_table(fq_destination_table_vet_data, extract_table_ttl):
+def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl):
     ttl = ""
-    if extract_table_ttl:
+    if enable_extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
@@ -159,9 +159,9 @@ def create_final_extract_vet_table(fq_destination_table_vet_data, extract_table_
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 
-def create_final_extract_ref_table(fq_destination_table_ref_data, extract_table_ttl):
+def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl):
     ttl = ""
-    if extract_table_ttl:
+    if enable_extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
@@ -269,7 +269,7 @@ def make_extract_table(call_set_identifier,
                        only_output_vet_tables,
                        write_cost_to_db,
                        use_compressed_references,
-                       extract_table_ttl):
+                       enable_extract_table_ttl):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -330,17 +330,17 @@ def make_extract_table(call_set_identifier,
         # samples with a null `withdrawn` date in the cohort.
         if not only_output_vet_tables:
             create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                     fq_sample_mapping_table, not sample_names_to_extract, extract_table_ttl)
+                                     fq_sample_mapping_table, not sample_names_to_extract, enable_extract_table_ttl)
 
         # pull the sample ids back down
         sample_ids = get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table)
 
         # create and populate the tables for extract data
         if not only_output_vet_tables:
-            create_final_extract_ref_table(fq_destination_table_ref_data, extract_table_ttl)
+            create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl)
             populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references)
 
-        create_final_extract_vet_table(fq_destination_table_vet_data, extract_table_ttl)
+        create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl)
         populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
     finally:
@@ -378,7 +378,7 @@ if __name__ == '__main__':
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
     parser.add_argument('--use_compressed_references', type=bool,
                         help='Expect compressed reference data and expand the fields', required=False, default=False)
-    parser.add_argument('--extract_table_ttl', type=bool,
+    parser.add_argument('--enable_extract_table_ttl', type=bool,
                         help='Add a TTL to the extract tables', required=False, default=False)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
@@ -407,4 +407,4 @@ if __name__ == '__main__':
                        args.only_output_vet_tables,
                        args.write_cost_to_db,
                        args.use_compressed_references,
-                       args.extract_table_ttl)
+                       args.enable_extract_table_ttl)
