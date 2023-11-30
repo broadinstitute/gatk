@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.api.client.util.Lists;
-import com.google.api.client.util.Sets;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang.math.IntRange;
@@ -9,7 +8,6 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -76,15 +74,90 @@ public class AlignmentAugmentedGraph {
         final List<Integer> sourceVertexIndices = graph.getSources().stream()
                 .map(decisionVertexIndexMap::get).toList();
         
-        final Map<GATKRead, int[]> readFeatureMap = Utils.stream(reads)
-                .collect(Collectors.toMap(read -> read, read -> featurizeRead(vertexManager, graph, decisionVertices, decisionVertexIndexMap, sourceVertexIndices, read)));
+        final Map<GATKRead, double[]> readFeatureMap = Utils.stream(reads)
+                .collect(Collectors.toMap(read -> read, read -> featurizeRead(vertexManager, graph, decisionVertices,
+                        decisionVertexIndexMap, sourceVertexIndices, read)));
+
+        final List<double[]> haplotypeCentroids = Lists.newArrayList();
+        haplotypeCentroids.add(new double[decisionVertices.size()]);
+
+        final Random rand = new Random();
+        for (int iteration = 0; iteration < 10; iteration++) {
+            final List<ArrayList<GATKRead>> readsByHaplotype = haplotypeCentroids.stream().map(hc -> new ArrayList<GATKRead>()).toList();
+            // assign reads to haplotype via cosine similarity, breaking ties randomly
+            for (final GATKRead read : reads) {
+                final double[] features = readFeatureMap.get(read);
+                final double[] haplotypeCosineSimilarities =
+                        haplotypeCentroids.stream().mapToDouble(centroid -> MathUtils.dotProduct(centroid, features)).toArray();
+                int randomBestHaplotypeIndex = randomMaxIndex( rand, haplotypeCosineSimilarities);
+                readsByHaplotype.get(randomBestHaplotypeIndex).add(read);
+            }
+
+            final List<double[]> haplotypeMeans = new ArrayList<>();
+            for (final List<GATKRead> readsInCluster : readsByHaplotype) {
+                final int count = readsInCluster.size();
+                final double[] mean = new double[decisionVertices.size()];
+                if (count > 0) {
+                    readsInCluster.forEach(read -> MathUtils.addToArrayInPlace(mean, readFeatureMap.get(read));
+                    MathUtils.applyToArrayInPlace(mean, x -> x / count);
+                }
+                haplotypeMeans.add(mean);
+            }
+
+            // now traverse the graoh to convert double[] haplotype means into int[] features encoding decisions
+            haplotypeCentroids.clear();
+            for (final double[] haplotypeMean : haplotypeMeans) {
+                final double[] centroid = new double[decisionVertices.size()];
+
+                // choose starting source vertex
+                final int startVertexIndex = randomMaxIndex(rand, sourceVertexIndices.stream().mapToDouble(n -> haplotypeMean[n]).toArray());
+                sourceVertexIndices.forEach(n -> centroid[n] = -1);
+                centroid[startVertexIndex] = 1;
+
+                AugmentedVertex vertex = decisionVertices.get(startVertexIndex);
+                while (!graph.isSink(vertex)) {
+
+                    while (graph.outDegreeOf(vertex) == 1) {    // zip ahead until the next branch or sink
+                        vertex = graph.getEdgeTarget(graph.outgoingEdgeOf(vertex));
+                    }
+
+                    if (graph.outDegreeOf(vertex) > 1) {    // it's a branch
+                        final List<AugmentedVertex> children = new ArrayList<>(graph.outgoingVerticesOf(vertex));
+
+                        final double[] childrensMeans = children.stream()
+                                .mapToDouble(c -> haplotypeMean[decisionVertexIndexMap.get(c)]).toArray();
+
+                        final AugmentedVertex bestChild = children.get(randomMaxIndex(rand, childrensMeans));
+
+                        children.forEach(c -> centroid[decisionVertexIndexMap.get(c)] = -1);
+                        centroid[decisionVertexIndexMap.get(bestChild)] = 1;
+
+                        vertex = bestChild;
+                    }
+                }   // done traversing graph and featurizing the haplotype centroid
+                haplotypeCentroids.add(centroid);
+            }
+
+            // TODO: make new cluster if necessary
+            // done with iteration -- we have assigned reads to centroids and recomputed centroids
+        }
+
+        // TODO: turn haplotypes into byte[] arrays
+
+        // TODO: aliogn these haplotype byte[] arrays to the reference to get full-fledged Haplotypes
 
     }
 
-    private int[] featurizeRead(final VertexManager vertexManager, final AugmentedKmerGraph graph, final List<AugmentedVertex> decisionVertices,
+    private int randomMaxIndex(final Random rand, final double[] array) {
+        final double maxValue = MathUtils.arrayMax(array);
+        final int[] maxIndices = IntStream.range(0, array.length).filter(n -> array[n] == maxValue).toArray();
+        return maxIndices[rand.nextInt(maxIndices.length)];
+    }
+
+    private double[] featurizeRead(final VertexManager vertexManager, final AugmentedKmerGraph graph, final List<AugmentedVertex> decisionVertices,
                                 final Map<AugmentedVertex, Integer> decisionVertexIndexMap, final List<Integer> sourceVertexIndices, GATKRead read) {
         AugmentedVertex lastVertexInRead = null;
-        final int[] features = new int[decisionVertices.size()];
+        final double[] features = new double[decisionVertices.size()];
 
         for (final Pair<Kmer, IntRange> pair : kmerizeRead(read)) {
             final Kmer kmer = pair.getLeft();
