@@ -45,6 +45,7 @@ workflow GvsExtractCallset {
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
     Boolean write_cost_to_db = true
+    Boolean is_wgs = true
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -114,7 +115,8 @@ workflow GvsExtractCallset {
                                           else if GetNumSamplesLoaded.num_samples < 5000 then 1000
                                                else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
                                                     else if GetNumSamplesLoaded.num_samples < 50000 then 10000
-                                                         else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
+                                                         else if GetNumSamplesLoaded.num_samples < 100000 && is_wgs then 20000
+                                                    else if GetNumSamplesLoaded.num_samples < 100000 && !is_wgs then 7500
                                                               else 40000
 
 Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,

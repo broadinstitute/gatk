@@ -39,9 +39,10 @@ workflow GvsImportGenomes {
     String? gatk_docker
     File? load_data_gatk_override
     String? billing_project_id
+    Boolean is_wgs = true
   }
 
-  Int max_auto_batch_size = 25000
+  Int max_auto_batch_size = if is_wgs then 25000 else 100000
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
   Int broad_user_max_scatter = 1000
@@ -49,6 +50,7 @@ workflow GvsImportGenomes {
   # figure out max scatter depending on whether they're a Broad internal user or a beta customer.
   Int max_scatter_for_user =  if is_rate_limited_beta_customer then beta_customer_max_scatter
                               else broad_user_max_scatter
+  String genome_type = if is_wgs then "WGS" else "exome"
 
   if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
@@ -66,7 +68,7 @@ workflow GvsImportGenomes {
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
       input:
-        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples.",
+        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " for " + genome_type + " samples.",
         basic_docker = effective_basic_docker,
     }
   }
@@ -76,7 +78,8 @@ workflow GvsImportGenomes {
   # But if it's a beta customer, use the number computed above
   Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
                                        else if num_samples < max_scatter_for_user then 1
-                                            else num_samples / max_scatter_for_user
+                                            else if is_wgs then num_samples / max_scatter_for_user
+                                                else (num_samples / (max_scatter_for_user * 2))
 
   # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
   # and retryable random BQ import errors increases with import batch size / job run time.

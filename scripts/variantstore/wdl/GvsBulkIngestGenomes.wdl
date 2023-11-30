@@ -46,6 +46,7 @@ workflow GvsBulkIngestGenomes {
         String? billing_project_id
         Boolean process_vcf_headers = false
         Boolean tighter_gcp_quotas = false
+        Boolean is_wgs = true
         # End GvsImportGenomes
 
         Boolean use_compressed_references = false
@@ -136,6 +137,7 @@ workflow GvsBulkIngestGenomes {
             use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
+            is_wgs = is_wgs,
     }
 
     output {
