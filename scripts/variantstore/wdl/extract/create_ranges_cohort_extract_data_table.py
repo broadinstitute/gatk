@@ -109,7 +109,11 @@ def get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_
 
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                 fq_sample_mapping_table, honor_withdrawn):
+                                 fq_sample_mapping_table, honor_withdrawn, extract_table_ttl):
+
+    ttl = ""
+    if extract_table_ttl:
+        ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
 
@@ -119,7 +123,7 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
              m.is_loaded IS TRUE AND m.is_control = {control_samples}
              {"AND m.withdrawn IS NULL" if honor_withdrawn else ""}
     )
-
+    {ttl}
     """
     print(sql)
 
