@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_ProvenanceReport
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -175,6 +176,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_ProvenanceReport
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -185,6 +187,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1060_phasing_into_vds
+             - gg_ProvenanceReport
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
