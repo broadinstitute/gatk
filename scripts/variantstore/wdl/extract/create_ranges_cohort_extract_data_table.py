@@ -110,20 +110,19 @@ def get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
                                  fq_sample_mapping_table, honor_withdrawn, extract_table_ttl):
-
     ttl = ""
     if extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
-
-    CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (
+    CREATE OR REPLACE TABLE `{fq_destination_table_samples}` 
+    {ttl}
+    AS (
         SELECT m.sample_id, m.sample_name, m.is_loaded, {"m.withdrawn," if honor_withdrawn else "NULL as withdrawn,"} m.is_control FROM `{fq_sample_name_table}` s JOIN
         `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) WHERE
              m.is_loaded IS TRUE AND m.is_control = {control_samples}
              {"AND m.withdrawn IS NULL" if honor_withdrawn else ""}
     )
-    {ttl}
     """
     print(sql)
 
@@ -164,6 +163,7 @@ def create_final_extract_ref_table(fq_destination_table_ref_data, extract_table_
     ttl = ""
     if extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
+
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_ref_data}` 
         (
