@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.api.client.util.Lists;
+import com.google.api.client.util.Sets;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang.math.IntRange;
@@ -72,7 +73,55 @@ public class AlignmentAugmentedGraph {
         final Map<AugmentedVertex, Integer> decisionVertexIndexMap = IntStream.range(0, decisionVertices.size()).boxed()
                 .collect(Collectors.toMap(decisionVertices::get, n->n));
 
+        final List<Integer> sourceVertexIndices = graph.getSources().stream()
+                .map(decisionVertexIndexMap::get).toList();
+        
+        final Map<GATKRead, int[]> readFeatureMap = Utils.stream(reads)
+                .collect(Collectors.toMap(read -> read, read -> featurizeRead(vertexManager, graph, decisionVertices, decisionVertexIndexMap, sourceVertexIndices, read)));
 
+    }
+
+    private int[] featurizeRead(final VertexManager vertexManager, final AugmentedKmerGraph graph, final List<AugmentedVertex> decisionVertices,
+                                final Map<AugmentedVertex, Integer> decisionVertexIndexMap, final List<Integer> sourceVertexIndices, GATKRead read) {
+        AugmentedVertex lastVertexInRead = null;
+        final int[] features = new int[decisionVertices.size()];
+
+        for (final Pair<Kmer, IntRange> pair : kmerizeRead(read)) {
+            final Kmer kmer = pair.getLeft();
+            final IntRange positionRange = pair.getRight();
+            final Optional<AugmentedVertex> maybeVertex = kmer == null ? Optional.empty() : vertexManager.getVertex(kmer, positionRange);
+
+            if (maybeVertex.isPresent()) {
+                final AugmentedVertex vertex = maybeVertex.get();
+                // if last vertex was null due to being at the read start or bad bases disqualifying a kmer in
+                // the middle of the read, traverse backwards until the last decision vertex
+                if (lastVertexInRead == null) {
+                    AugmentedVertex backwardVertex = vertex;
+                    while (!decisionVertexIndexMap.containsKey(backwardVertex)) {
+                        backwardVertex = graph.getEdgeSource(graph.incomingEdgeOf(backwardVertex));
+                    }
+
+                    if (graph.isSource(backwardVertex)) {
+                        sourceVertexIndices.forEach(n -> features[n] = -1);
+                        features[decisionVertexIndexMap.get(backwardVertex)] = 1;
+                    } else if (graph.inDegreeOf(backwardVertex) == 1) { // in rare edge case of two parents, it's ambiguous and we leave the feature at zero
+                        final AugmentedVertex parent = graph.getEdgeSource(graph.incomingEdgeOf(backwardVertex));
+                        graph.outgoingVerticesOf(parent).stream()
+                                .filter(decisionVertexIndexMap::containsKey)
+                                .map(decisionVertexIndexMap::get)
+                                .forEach(n -> features[n] = -1);
+                        features[decisionVertexIndexMap.get(backwardVertex)] = 1;
+                    }
+                } else if (decisionVertexIndexMap.containsKey(vertex)) {  // decision vertex
+                    // set sibling features to -1 and this feature to +1
+                    graph.outgoingVerticesOf(lastVertexInRead).forEach(v -> features[decisionVertexIndexMap.get(v)] = -1);
+                    features[decisionVertexIndexMap.get(vertex)] = 1;
+                }
+            }
+
+            lastVertexInRead = maybeVertex.orElse(null);
+        }
+        return features;
     }
 
     private AugmentedKmerGraph makeAugmentedKmerGraph(Iterable<GATKRead> reads, VertexManager vertexManager) {
