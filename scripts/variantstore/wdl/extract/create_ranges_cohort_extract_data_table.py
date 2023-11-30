@@ -330,7 +330,7 @@ def make_extract_table(call_set_identifier,
         # samples with a null `withdrawn` date in the cohort.
         if not only_output_vet_tables:
             create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                     fq_sample_mapping_table, honor_withdrawn=not sample_names_to_extract, extract_table_ttl)
+                                     fq_sample_mapping_table, not sample_names_to_extract, extract_table_ttl)
 
         # pull the sample ids back down
         sample_ids = get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table)
