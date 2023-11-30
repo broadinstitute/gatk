@@ -37,6 +37,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
          --autoscaling-policy={autoscaling_policy}
          --worker-machine-type {worker_machine_type}
          --master-machine-type n1-highmem-16
+         --master-memory-fraction 0.6
          --region {region}
          --project {gcs_project}
          --service-account {account}
@@ -92,7 +93,9 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         info(e)
         raise
     finally:
-        if not leave_cluster_running_at_end:
+        if leave_cluster_running_at_end:
+            info(f"Leaving cluster {cluster_name} running as `leave_cluster_running_at_end` option is True")
+        else:
             info(f'Stopping cluster: {cluster_name}')
             delete_cmd = unwrap(f"""
 
