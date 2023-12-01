@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -16,6 +17,7 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -31,6 +33,8 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     private static final String hg38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
     public static final String WARP_PROD_REBLOCKING_ARGS = " -do-qual-approx --floor-blocks -GQB 20 -GQB 30 -GQB 40 ";
+
+    private static final String pf_reference = largeFileTestDir + "PlasmoDB-61_Pfalciparum3D7_Genome.fasta";
 
     @DataProvider(name = "getCommandLineArgsForExactTest")
     public Object[][] getCommandLineArgsForExactTest() {
@@ -633,5 +637,34 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
 
         Assert.assertThrows(GATKException.class, () -> runCommandLine(args));
+    }
+
+    @Test
+    public void testAddedHcAsAnnotations() throws IOException {
+
+        final File input = new File(largeFileTestDir + "reblockGVCFs_AS_test.p_falciparum.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final File expected = new File(largeFileTestDir + "expected.reblockGVCFs_AS_test.p_falciparum.rb.g.vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addReference(new File(pf_reference))
+                .add("V", input)
+                .addFlag("do-qual-approx")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false")
+                .addFlag("floor-blocks")
+                .add("GQB", 20)
+                .add("GQB", 30)
+                .add("GQB", 40)
+                .addOutput(output);
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(
+                output.toPath(),
+                expected.toPath(),
+                "#",
+                true
+        );
     }
 }
