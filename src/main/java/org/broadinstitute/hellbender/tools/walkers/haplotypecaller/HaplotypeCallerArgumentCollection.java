@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.arrow.util.VisibleForTesting;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -25,7 +26,7 @@ import java.util.List;
 /**
  * Set of arguments for the {@link HaplotypeCallerEngine}
  */
-public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable{
+public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public static final String PLOIDY_REGIONS_NAME = "ploidy-regions";

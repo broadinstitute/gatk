@@ -26,9 +26,11 @@ public class SimpleCount implements Locatable, Feature {
 
     public SimpleCount(final NamedFeature namedFeature) {
         try {
-            this(new SimpleInterval(namedFeature), Integer.parseInt(namedFeature.getName()));
+            int count = Integer.parseInt(namedFeature.getName());
+            this.interval = new SimpleInterval(namedFeature);
+            this.count = ParamUtils.isPositiveOrZero(count, "Can't construct SimpleCount with negative count at " + namedFeature.getContig() + ":" + namedFeature.getStart() + "-" + namedFeature.getEnd() + ".");
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Error parsing name into integer for feature at " + namedFeature.getContig() + ":" + namedFeature.getStart() + "-" + namedFeature.getEnd());
+            throw new IllegalArgumentException("Error parsing name into integer for feature at " + namedFeature.getContig() + ":" + namedFeature.getStart() + "-" + namedFeature.getEnd() + ".");
         }
     }
 

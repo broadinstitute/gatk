@@ -201,7 +201,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
      * and a reference file
-     *  @param hcArgs command-line arguments for the HaplotypeCaller
+     * @param hcArgs command-line arguments for the HaplotypeCaller
      * @param assemblyRegionArgs
      * @param createBamOutIndex true to create an index file for the bamout
      * @param createBamOutMD5 true to create an md5 file for the bamout
@@ -237,6 +237,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // Parse the user provided custom ploidy regions into ploidyRegions object containing SimpleCounts
         if (this.hcArgs.ploidyRegions != null) {
             this.hcArgs.ploidyRegions.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+        }
+
+        for (SimpleCount region : this.ploidyRegions) {
+            if (!IntervalUtils.intervalIsOnDictionaryContig(region.getInterval(), readsHeader.getSequenceDictionary())) {
+                throw new UserException("Invalid region provided for --ploidy-regions at " + region.getContig() + ":" + region.getStart() + "-" + region.getEnd() + ". Contig name or endpoint doesn't match read sequence dictionary.");
+            }
         }
 
         this.ploidyRegionsOverlapDetector = OverlapDetector.create(this.ploidyRegions);
