@@ -190,6 +190,7 @@ workflow GvsJointVariantCalling {
             sample_names_to_extract = sample_names_to_extract,
             variants_docker = effective_variants_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
+            enable_extract_table_ttl = true,
     }
 
     String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
