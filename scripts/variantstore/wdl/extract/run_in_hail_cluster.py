@@ -24,11 +24,15 @@ def unwrap(string):
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_project,
-                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path, avro_path, leave_cluster_running_at_end):
+                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path,
+                   avro_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes):
 
     use_classic_vqsr_flag = ""
     if use_classic_vqsr:
         use_classic_vqsr_flag = "--use-classic-vqsr"
+
+    cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
+    cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
 
     try:
         cluster_start_cmd = unwrap(f"""
@@ -41,6 +45,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
          --region {region}
          --project {gcs_project}
          --service-account {account}
+         {cluster_max_idle_arg}
+         {cluster_max_age_arg}
          --num-master-local-ssds 1
          --num-worker-local-ssds 1 
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
@@ -129,10 +135,13 @@ if __name__ == "__main__":
     parser.add_argument('--autoscaling-policy', type=str, help='Name of the autoscaling policy that should get used')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
     parser.add_argument('--secondary-script-path', type=str, help='Path to secondary script to run in Hail cluster')
-    parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
+    parser.add_argument("--use-classic-vqsr", action="store_true",
+                        help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
+    parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
+    parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
     parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
 
     args = parser.parse_args()
@@ -149,5 +158,7 @@ if __name__ == "__main__":
                    vds_path=args.vds_path,
                    temp_path=args.temp_path,
                    avro_path=args.avro_path,
-                   leave_cluster_running_at_end=args.leave_cluster_running_at_end
+                   leave_cluster_running_at_end=args.leave_cluster_running_at_end,
+                   cluster_max_idle_minutes=args.cluster_max_idle_minutes,
+                   cluster_max_age_minutes=args.cluster_max_age_minutes
                    )

@@ -12,6 +12,8 @@ workflow GvsCreateVDS {
         Boolean use_classic_VQSR = false
         Boolean leave_cluster_running_at_end = false
         Int? intermediate_resume_point
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
         String? hail_version
         String? hail_temp_path
         String cluster_prefix = "vds-cluster"
@@ -91,6 +93,8 @@ workflow GvsCreateVDS {
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = effective_variants_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
+            cluster_max_idle_minutes = cluster_max_idle_minutes,
+            cluster_max_age_minutes = cluster_max_age_minutes,
     }
 
     call validate_vds {
@@ -123,6 +127,8 @@ task create_vds {
         String? hail_version
         String? hail_temp_path
         Int? intermediate_resume_point
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
 
         String gcs_project
         String workspace_bucket
@@ -184,6 +190,8 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_path} \
             --temp-path ${hail_temp_path} \
+            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--intermediate-resume-point ' + intermediate_resume_point} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
