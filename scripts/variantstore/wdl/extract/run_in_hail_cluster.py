@@ -44,7 +44,6 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
          --num-master-local-ssds 1
          --num-worker-local-ssds 1 
          --max-idle=60m
-         --max-age=1440m
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
          --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
          {cluster_name}
@@ -85,16 +84,17 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
                 info("Running: " + submit_cmd)
                 pipe = os.popen(submit_cmd)
                 pipe.read()
-                ret = pipe.close()
-                if ret:
-                    raise RuntimeError(f"Unexpected exit code running submitted job: {ret}")
+                wait_status = pipe.close()
+                exit_code = os.waitstatus_to_exitcode(wait_status)
+                if exit_code:
+                    raise RuntimeError(f"Unexpected exit code running submitted job: {exit_code}")
                 break
     except Exception as e:
         info(e)
         raise
     finally:
         if leave_cluster_running_at_end:
-            info(f"Leaving cluster {cluster_name} running as `leave_cluster_running_at_end` option is True")
+            info(f"Leaving cluster {cluster_name} running as `leave_cluster_running_at_end` option is True.")
         else:
             info(f'Stopping cluster: {cluster_name}')
             delete_cmd = unwrap(f"""
@@ -110,9 +110,10 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
 
             pipe = os.popen(delete_cmd)
             pipe.read()
-            ret = pipe.close()
-            if ret:
-                raise RuntimeError(f"Unexpected exit code deleting cluster: {ret}")
+            wait_status = pipe.close()
+            exit_code = os.waitstatus_to_exitcode(wait_status)
+            if exit_code:
+                raise RuntimeError(f"Unexpected exit code deleting cluster: {exit_code}")
 
 
 if __name__ == "__main__":
