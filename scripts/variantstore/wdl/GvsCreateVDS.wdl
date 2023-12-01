@@ -14,6 +14,7 @@ workflow GvsCreateVDS {
         Int? intermediate_resume_point
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
+        Float? master_memory_fraction
         String? hail_version
         String? hail_temp_path
         String cluster_prefix = "vds-cluster"
@@ -95,6 +96,7 @@ workflow GvsCreateVDS {
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
+            master_memory_fraction = master_memory_fraction,
     }
 
     call validate_vds {
@@ -129,6 +131,7 @@ task create_vds {
         Int? intermediate_resume_point
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
+        Float? master_memory_fraction
 
         String gcs_project
         String workspace_bucket
@@ -192,6 +195,7 @@ task create_vds {
             --temp-path ${hail_temp_path} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+            ~{'--master-memory-fraction ' + master_memory_fraction} \
             ~{'--intermediate-resume-point ' + intermediate_resume_point} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}

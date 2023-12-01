@@ -23,9 +23,10 @@ def unwrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_project,
+def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, gcs_project,
                    autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path,
-                   avro_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes):
+                   avro_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes,
+                   master_memory_fraction):
 
     use_classic_vqsr_flag = ""
     if use_classic_vqsr:
@@ -40,8 +41,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
         hailctl dataproc start 
          --autoscaling-policy={autoscaling_policy}
          --worker-machine-type {worker_machine_type}
-         --master-machine-type n1-highmem-16
-         --master-memory-fraction 0.6
+         --master-machine-type {master_machine_type}
+         --master-memory-fraction {master_memory_fraction}
          --region {region}
          --project {gcs_project}
          --service-account {account}
@@ -130,6 +131,8 @@ if __name__ == "__main__":
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
     parser.add_argument('--account', type=str, help='GCP account name')
     parser.add_argument('--worker-machine-type', type=str, required=False, help='Dataproc cluster worker machine type')
+    parser.add_argument('--master-machine-type', type=str, required=False, help='Dataproc cluster master machine type')
+    parser.add_argument('--master-memory-fraction', type=float, default=0.8, help='Dataproc master memory fraction')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--autoscaling-policy', type=str, help='Name of the autoscaling policy that should get used')
@@ -148,6 +151,7 @@ if __name__ == "__main__":
 
     run_in_cluster(cluster_name=args.cluster_name,
                    account=args.account,
+                   master_machine_type=args.master_machine_type if args.master_machine_type else "n1-highmem-16",
                    worker_machine_type=args.worker_machine_type if args.worker_machine_type else "n1-standard-8",
                    region=args.region,
                    gcs_project=args.gcs_project,
@@ -160,5 +164,6 @@ if __name__ == "__main__":
                    avro_path=args.avro_path,
                    leave_cluster_running_at_end=args.leave_cluster_running_at_end,
                    cluster_max_idle_minutes=args.cluster_max_idle_minutes,
-                   cluster_max_age_minutes=args.cluster_max_age_minutes
+                   cluster_max_age_minutes=args.cluster_max_age_minutes,
+                   master_memory_fraction=args.master_memory_fraction
                    )
