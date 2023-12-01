@@ -43,7 +43,6 @@ def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_proje
          --service-account {account}
          --num-master-local-ssds 1
          --num-worker-local-ssds 1 
-         --max-idle=60m
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
          --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
          {cluster_name}
