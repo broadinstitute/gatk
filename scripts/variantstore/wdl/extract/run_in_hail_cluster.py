@@ -117,8 +117,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             pipe = os.popen(delete_cmd)
             pipe.read()
             wait_status = pipe.close()
-            exit_code = os.waitstatus_to_exitcode(wait_status)
-            if exit_code:
+            if wait_status:
+                exit_code = os.waitstatus_to_exitcode(wait_status)
                 raise RuntimeError(f"Unexpected exit code deleting cluster: {exit_code}")
 
 
