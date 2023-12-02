@@ -60,10 +60,10 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
         info(cluster_start_cmd)
         pipe = os.popen(cluster_start_cmd)
         info(pipe.read())
-        ret = pipe.close()
-        if ret:
-            info(ret)
-            raise RuntimeError(f"Unexpected exit code from cluster creation: {ret}")
+        wait_status = pipe.close()
+        if wait_status:
+            exit_code = os.waitstatus_to_exitcode(wait_status)
+            raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
         cluster_client = dataproc.ClusterControllerClient(
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
@@ -91,8 +91,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                 pipe = os.popen(submit_cmd)
                 pipe.read()
                 wait_status = pipe.close()
-                exit_code = os.waitstatus_to_exitcode(wait_status)
-                if exit_code:
+                if wait_status:
+                    exit_code = os.waitstatus_to_exitcode(wait_status)
                     raise RuntimeError(f"Unexpected exit code running submitted job: {exit_code}")
                 break
     except Exception as e:
