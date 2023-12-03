@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiS
 import org.jgrapht.EdgeFactory;
 
 public class AugmentedKmerGraph extends BaseGraph<AugmentedVertex, MultiSampleEdge> {
+    private static final long serialVersionUID = 1l;
 
     private static MyEdgeFactory EDGE_FACTORY = new MyEdgeFactory();
 

@@ -1,26 +1,34 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.api.client.util.Lists;
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public class AlignmentAugmentedGraph {
+public class AlignmentAugmentedAssembler {
 
     // TODO: magic constant, make adjustable
     private static final int MAX_BRANCH_VERTICES = 100;
@@ -29,12 +37,13 @@ public class AlignmentAugmentedGraph {
 
     private final byte minBaseQualityToUseInAssembly;
 
-    public AlignmentAugmentedGraph(final int kmerSize, final byte minBaseQualityToUseInAssembly) {
+    public AlignmentAugmentedAssembler(final int kmerSize, final byte minBaseQualityToUseInAssembly) {
         this.kmerSize = kmerSize;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
     }
 
-    public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner pruner) {
+    public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner,
+                           final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
         // make an prune a simple de Bruijn graph in order to know which kmers are worth tracking
         final PlainDeBruijnGraph initialGraph = new PlainDeBruijnGraph(kmerSize, minBaseQualityToUseInAssembly);
         initialGraph.addSequence("ref", refHaplotype.getBases(), 1, true);
@@ -55,9 +64,11 @@ public class AlignmentAugmentedGraph {
                 .map(pair -> Pair.of(pair.getLeft(), (pair.getRight().getMinimumInteger() + pair.getRight().getMaximumInteger())/2))
                 .toList();
 
+        unambiguousKmers.addAll(kmerizeReference(refHaplotype));
+
         final VertexManager vertexManager = new VertexManager(kmerSize, unambiguousKmers);
 
-        final AugmentedKmerGraph graph = makeAugmentedKmerGraph(reads, vertexManager);
+        final AugmentedKmerGraph graph = makeAugmentedKmerGraph(refHaplotype, reads, vertexManager);
 
         final List<AugmentedVertex> branchVertices = graph.vertexSet().stream()
                 .filter(v -> graph.outDegreeOf(v) > 1).toList();
@@ -98,7 +109,7 @@ public class AlignmentAugmentedGraph {
                 final int count = readsInCluster.size();
                 final double[] mean = new double[decisionVertices.size()];
                 if (count > 0) {
-                    readsInCluster.forEach(read -> MathUtils.addToArrayInPlace(mean, readFeatureMap.get(read));
+                    readsInCluster.forEach(read -> MathUtils.addToArrayInPlace(mean, readFeatureMap.get(read)));
                     MathUtils.applyToArrayInPlace(mean, x -> x / count);
                 }
                 haplotypeMeans.add(mean);
@@ -117,11 +128,9 @@ public class AlignmentAugmentedGraph {
                 AugmentedVertex vertex = decisionVertices.get(startVertexIndex);
                 while (!graph.isSink(vertex)) {
 
-                    while (graph.outDegreeOf(vertex) == 1) {    // zip ahead until the next branch or sink
+                    if (graph.outDegreeOf(vertex) == 1) {    // zip ahead until the next branch or sink
                         vertex = graph.getEdgeTarget(graph.outgoingEdgeOf(vertex));
-                    }
-
-                    if (graph.outDegreeOf(vertex) > 1) {    // it's a branch
+                    } else if (graph.outDegreeOf(vertex) > 1) {    // it's a branch
                         final List<AugmentedVertex> children = new ArrayList<>(graph.outgoingVerticesOf(vertex));
 
                         final double[] childrensMeans = children.stream()
@@ -142,10 +151,66 @@ public class AlignmentAugmentedGraph {
             // done with iteration -- we have assigned reads to centroids and recomputed centroids
         }
 
-        // TODO: turn haplotypes into byte[] arrays
+        // at this point the centroids are arrays of 1, -1, and 0, and at each branch in the haplotype (including when choosing a source)
+        // exactly one of the outgoing vertices has an entry of +1, with the rest having -1
+        final List<Haplotype> haplotyes = new ArrayList<>(haplotypeCentroids.size());
+        for (final double[] centroid : haplotypeCentroids) {
+            final List<AugmentedVertex> vertices = new ArrayList<>();
 
-        // TODO: aliogn these haplotype byte[] arrays to the reference to get full-fledged Haplotypes
+            final int startVertexIndex = sourceVertexIndices.stream()
+                    .max(Comparator.comparingDouble(n -> centroid[n])).get();
+            AugmentedVertex vertex = decisionVertices.get(startVertexIndex);
+            vertices.add(vertex);
 
+            // append a byte (base) after advancing each vertex
+            while (!graph.isSink(vertex)) {
+                if (graph.outDegreeOf(vertex) == 1) {
+                    vertex = graph.getEdgeTarget(graph.outgoingEdgeOf(vertex));
+                } else if (graph.outDegreeOf(vertex) > 1) {    // it's a branch; choose the best child
+                    vertex = graph.outgoingVerticesOf(vertex).stream()
+                            .max(Comparator.comparingDouble(c -> centroid[decisionVertexIndexMap.get(c)])).get();
+                }
+                vertices.add(vertex);
+            }
+            // the source vertex adds a full kmer; all others add a base
+            final ByteBuffer baseBuffer = ByteBuffer.allocate(vertices.size() + kmerSize - 1);
+            baseBuffer.put(vertices.get(0).getSequence());
+            IntStream.range(1, vertices.size()).forEach(n -> baseBuffer.put(vertices.get(n).getSuffix()));
+
+            // TODO: need to check whether it matches the reference! reference
+            // TODO: probably do that by comparing the centroid byte[]
+
+            // TODO: Lines 358- of ReadThreadingAssembler deal with some edge cases that may come up. . .
+            final SmithWatermanAlignment alignment = aligner.align(refHaplotype.getBases(), baseBuffer.array(),
+                    haplotypeToReferenceSWParameters, SWOverhangStrategy.SOFTCLIP);
+
+            // after aligning haplotype to ref (remember, we have done nothing for dangling heads/tails, so the haplotype
+            // may start after / end before the reference) we add any leading and trailing ref bases and pad the CIGAR
+            // with corresponding M sequences.
+            final int leadingRefPadding = alignment.getAlignmentOffset();
+            final int trailingRefPadding = refHaplotype.getBases().length - alignment.getCigar().getReferenceLength() - leadingRefPadding;
+
+            final Cigar paddedCigar = new CigarBuilder()
+                    .add(new CigarElement(leadingRefPadding, CigarOperator.M))
+                    .addAll(alignment.getCigar().getCigarElements())
+                    .add(new CigarElement(trailingRefPadding, CigarOperator.M))
+                    .make();
+
+            final ByteBuffer paddedBaseBuffer = ByteBuffer.allocate(baseBuffer.array().length + leadingRefPadding + trailingRefPadding);
+            paddedBaseBuffer.put(refHaplotype.getBases(), 0, leadingRefPadding);
+            paddedBaseBuffer.put(baseBuffer.array());
+            paddedBaseBuffer.put(refHaplotype.getBases(), refHaplotype.getBases().length - trailingRefPadding, trailingRefPadding);
+
+            final byte[] paddedBases = paddedBaseBuffer.array();
+            final boolean matchesRef = paddedCigar.numCigarElements() == 1 && Arrays.equals(paddedBases, refHaplotype.getBases());
+
+            final Haplotype haplotype = new Haplotype(paddedBases, matchesRef);
+            haplotype.setKmerSize(kmerSize);
+            haplotype.setCigar(paddedCigar);
+            haplotype.setAlignmentStartHapwrtRef(refHaplotype.getAlignmentStartHapwrtRef());
+            haplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
+            haplotyes.add(haplotype);
+        }
     }
 
     private int randomMaxIndex(final Random rand, final double[] array) {
@@ -197,11 +262,22 @@ public class AlignmentAugmentedGraph {
         return features;
     }
 
-    private AugmentedKmerGraph makeAugmentedKmerGraph(Iterable<GATKRead> reads, VertexManager vertexManager) {
+    private AugmentedKmerGraph makeAugmentedKmerGraph(final Haplotype refHaplotype, Iterable<GATKRead> reads, VertexManager vertexManager) {
         final AugmentedKmerGraph graph = new AugmentedKmerGraph(kmerSize);
         vertexManager.allVertices().forEach(graph::addVertex);
 
-        // TODO: thread the reference sequence???
+        final List<Pair<Kmer, Integer>> refKmers = kmerizeReference(refHaplotype);
+        for (int n = 0; n < refKmers.size() - 1; n++) {
+            final Kmer kmer1 = refKmers.get(n).getLeft();
+            final Kmer kmer2 = refKmers.get(n+1).getLeft();
+
+            final AugmentedVertex vertex1 = vertexManager.getVertex(kmer1, refKmers.get(n).getRight()).get();
+            final AugmentedVertex vertex2 = vertexManager.getVertex(kmer2, refKmers.get(n+1).getRight()).get();
+            graph.addEdge(vertex1, vertex2);
+        }
+
+
+        // TODO: code duplication between ref and reads!!!
         for (final GATKRead read : reads) {
             final List<Pair<Kmer, IntRange>> kmers = kmerizeRead(read);
             for (int n = 0; n < kmers.size() - 1; n++) {
@@ -210,7 +286,7 @@ public class AlignmentAugmentedGraph {
 
                 if (kmer1 != null && kmer2 != null) {   // null if unusable kmers due to 'N' or low-qual bases
                     final Optional<AugmentedVertex> vertex1 = vertexManager.getVertex(kmer1, kmers.get(n).getRight());
-                    final Optional<AugmentedVertex> vertex2 = vertexManager.getVertex(kmer1, kmers.get(n+1).getRight());
+                    final Optional<AugmentedVertex> vertex2 = vertexManager.getVertex(kmer2, kmers.get(n+1).getRight());
 
                     if (vertex1.isPresent() && vertex2.isPresent()) {
                         graph.addEdge(vertex1.get(), vertex2.get());
@@ -278,6 +354,14 @@ public class AlignmentAugmentedGraph {
             }
         }
         return result;
+    }
+
+    private List<Pair<Kmer, Integer>> kmerizeReference(final Haplotype refHaplotype) {
+        final byte[] sequence = refHaplotype.getBases();
+        final int refStart = refHaplotype.getStart();
+        return IntStream.range(0, sequence.length - kmerSize + 1)
+                .mapToObj(offset -> Pair.of(new Kmer(sequence, offset, kmerSize), refStart + offset ))
+                .toList();
     }
 
     private static class VertexManager {
