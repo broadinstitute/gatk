@@ -55,6 +55,9 @@
    - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
+   - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
+     - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
+     - The output `samples_not_yet_ingested_file` is a file that contains a list of samples that were found in the list of samples that you provided as input that were NOT found in the sample_info table in the dataset. This (presumably) indicates that these samples need to be ingested.
 1. **TBD Workflow to soft delete samples**
 1. `GvsPopulateAltAllele` workflow
    - **TODO:** needs to be made cumulative so that it can add data to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
