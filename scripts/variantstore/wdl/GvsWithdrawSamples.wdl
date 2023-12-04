@@ -97,6 +97,9 @@ task WithdrawSamples {
       echo "ERROR: NO samples have been withdrawn"
       echo " The following samples were found in the uploaded file that have not yet been ingested into the dataset"
       echo " Either ingest the following samples, or remove them from the upload file"
+      echo "---"
+      cat new_samples.txt
+      echo "---"
       exit 1
     fi
 
