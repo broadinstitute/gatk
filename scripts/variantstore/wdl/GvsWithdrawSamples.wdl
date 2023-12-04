@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# 5
+# 6
 
 workflow GvsWithdrawSamples {
 
@@ -93,7 +93,7 @@ task WithdrawSamples {
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       'UPDATE `~{dataset_name}.sample_info` AS samples SET withdrawn = "~{withdrawn_timestamp}"
         WHERE NOT EXISTS
-          (SELECT * FROM `~{project_id}`.$TEMP_TABLE_NAME AS callset
+          (SELECT * FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` AS callset
             WHERE samples.sample_name = callset.sample_name)
         AND NOT samples.is_control
         AND withdrawn IS NULL' > log_message.txt
