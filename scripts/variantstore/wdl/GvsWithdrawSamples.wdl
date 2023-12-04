@@ -37,8 +37,8 @@ workflow GvsWithdrawSamples {
   }
 
   output {
-    Int num_rows_updated = WithdrawSamples.num_rows_updated
-    File new_samples_file = WithdrawSamples.new_samples_file
+    Int num_samples_withdrawn = WithdrawSamples.num_samples_withdrawn
+    File samples_not_yet_ingested_file = WithdrawSamples.samples_not_yet_ingested_file
     String recorded_git_hash = GetToolVersions.git_hash
   }
 }
@@ -116,8 +116,8 @@ task WithdrawSamples {
     cpu: 1
   }
   output {
-    Int num_rows_updated = read_int("rows_updated.txt")
-    File new_samples_file = "new_samples.txt"
+    Int num_samples_withdrawn = read_int("rows_updated.txt")
+    File samples_not_yet_ingested_file = "new_samples.txt"
   }
 }
 
