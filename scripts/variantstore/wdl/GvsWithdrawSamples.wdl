@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# 7
+# 8
 
 workflow GvsWithdrawSamples {
 
@@ -93,7 +93,7 @@ task WithdrawSamples {
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       'UPDATE `~{dataset_name}.sample_info` AS samples SET withdrawn = "~{withdrawn_timestamp}"
         WHERE NOT EXISTS
-          (SELECT * FROM \`~{project_id}.${TEMP_TABLE_NAME}\` AS callset
+          (SELECT * FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` AS callset
             WHERE samples.sample_name = callset.sample_name)
         AND NOT samples.is_control
         AND withdrawn IS NULL' > log_message.txt
@@ -104,7 +104,7 @@ task WithdrawSamples {
     echo "Determining if there are any new samples that should be upladed"
     bq --apilog=false --project_id=gvs-internal query --format=csv --use_legacy_sql=false \
       'SELECT callset.sample_name
-        FROM \`~{project_id}.${TEMP_TABLE_NAME}\` callset
+        FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
         LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
         WHERE sample_info.sample_name IS NULL' > new_samples.txt
 
