@@ -57,7 +57,7 @@
    - Run if there are any samples to withdraw from the last callset.
    - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
      - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
-     - The output `samples_not_yet_ingested_file` is a file that contains a list of samples that were found in the list of samples that you provided as input that were NOT found in the sample_info table in the dataset. This (presumably) indicates that these samples need to be ingested.
+     - If the workflow fails, it may have failed if the list of smaples that was supplied to it includes samples that have not yet been ingested. To determine if this is the case, inspect the output (STDOUT) of the workflow and if it includes a list of samples that need to be ingested, then do so (or investigate the discreprancy.)
 1. **TBD Workflow to soft delete samples**
 1. `GvsPopulateAltAllele` workflow
    - **TODO:** needs to be made cumulative so that it can add data to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
