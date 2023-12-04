@@ -38,7 +38,6 @@ workflow GvsWithdrawSamples {
 
   output {
     Int num_samples_withdrawn = WithdrawSamples.num_samples_withdrawn
-    File samples_not_yet_ingested_file = WithdrawSamples.samples_not_yet_ingested_file
     String recorded_git_hash = GetToolVersions.git_hash
   }
 }
@@ -86,6 +85,21 @@ task WithdrawSamples {
     echo "Populating Temp Table: $TEMP_TABLE_NAME"
     bq --apilog=false load --project_id=~{project_id} -F "tab" $TEMP_TABLE_NAME sample_names.tsv
 
+    # Now, determine if there are any samples in the uploaded list that are NOT in sample_info and report this
+    echo "Determining if there are any new samples that should be uploaded"
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+      'SELECT callset.sample_name
+        FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
+        LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
+        WHERE sample_info.sample_name IS NULL' > new_samples.txt
+
+    if [ -s new_samples.txt ]; then
+      echo "ERROR: NO samples have been withdrawn"
+      echo " The following samples were found in the uploaded file that have not yet been ingested into the dataset"
+      echo " Either ingest the following samples, or remove them from the upload file"
+      exit 1
+    fi
+
     # Update sample_info.withdrawn by joining on the temp table to figure out which samples should be marked as withdrawn
     echo "Updating samples that should be withdrawn"
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
@@ -97,27 +111,15 @@ task WithdrawSamples {
         AND withdrawn IS NULL' > log_message.txt
 
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
-
-    # Now, determine if there are any samples in the uploaded list that are NOT in sample_info and report this
-    echo "Determining if there are any new samples that should be uploaded"
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-      'SELECT callset.sample_name
-        FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
-        LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
-        WHERE sample_info.sample_name IS NULL' > new_samples.txt
-
-    echo "The following samples in the uploaded list have NOT been loaded into ~{dataset_name}"
-    cat new_samples.txt
   >>>
   runtime {
     docker: gatk_docker
     memory: "3.75 GB"
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 50 HDD"
     cpu: 1
   }
   output {
     Int num_samples_withdrawn = read_int("rows_updated.txt")
-    File samples_not_yet_ingested_file = "new_samples.txt"
   }
 }
 
