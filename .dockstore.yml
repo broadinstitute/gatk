@@ -243,7 +243,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1159_EnhanceGvsWithdrawSamples
          tags:
              - /.*/
    - name: GvsJointVariantCalling

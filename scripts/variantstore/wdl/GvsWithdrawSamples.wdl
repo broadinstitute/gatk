@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# 8
-
 workflow GvsWithdrawSamples {
 
   input {
