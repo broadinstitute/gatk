@@ -100,7 +100,7 @@ task WithdrawSamples {
 
     # Now, determine if there are any samples in the uploaded list that are NOT in sample_info and report this
     echo "Determining if there are any new samples that should be uploaded"
-    bq --apilog=false --project_id=gvs-internal query --format=csv --use_legacy_sql=false \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       'SELECT callset.sample_name
         FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
         LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
