@@ -28,13 +28,13 @@ import java.util.stream.Stream;
 /**
  * Base class for genotyper engines.
  */
-public abstract class GenotypingEngine<Config extends StandardCallerArgumentCollection> {
+public abstract class GenotypingEngine {
 
     private final static int TOO_LONG_PL = 100000;
 
     protected final AlleleFrequencyCalculator alleleFrequencyCalculator;
 
-    protected final Config configuration;
+    private final StandardCallerArgumentCollection configuration;
 
     protected VariantAnnotatorEngine annotationEngine;
 
@@ -63,7 +63,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      *
      * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null} or if {@code samples} is empty.
      */
-    protected GenotypingEngine(final Config configuration,
+    protected GenotypingEngine(final StandardCallerArgumentCollection configuration,
                                final SampleList samples,
                                final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
@@ -89,10 +89,14 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     public Set<VCFInfoHeaderLine> getAppropriateVCFInfoHeaders() {
         final Set<VCFInfoHeaderLine> headerInfo = new LinkedHashSet<>();
-        if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {
+        if ( getGenotypeArgs().annotateNumberOfAllelesDiscovered) {
             headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY));
         }
         return headerInfo;
+    }
+
+    public GenotypeCalculationArgumentCollection getGenotypeArgs() {
+        return getConfiguration().genotypeArgs;
     }
 
     /**
@@ -109,7 +113,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      *
      * @return never {@code null}.
      */
-    public Config getConfiguration() {
+    protected StandardCallerArgumentCollection getConfiguration() {
         return configuration;
     }
 
@@ -131,8 +135,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             return null;
         }
 
-        final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
-        final int maxAltAlleles = configuration.genotypeArgs.maxAlternateAlleles;
+        final int defaultPloidy = getGenotypeArgs().samplePloidy;
+        final int maxAltAlleles = getGenotypeArgs().maxAlternateAlleles;
 
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
@@ -156,7 +160,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
-                    !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                    !outputAlternativeAlleles.siteIsMonomorphic || getConfiguration().annotateAllSitesWithPLs
                             ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0;
 
         // Add 0.0 removes -0.0 occurrences.
@@ -188,11 +192,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod);
+                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, getGenotypeArgs().genotypeAssignmentMethod);
 
-        if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
+        if (getGenotypeArgs().usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
             final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(outputAlleles, genotypes) * -.1;
-            final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+            final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || getConfiguration().annotateAllSitesWithPLs
                     ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
             if (!Double.isNaN(qualUpdate)) {
                 builder.log10PError(qualUpdate);
@@ -260,30 +264,23 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     protected abstract String callSourceString();
 
     /**
-     * Holds information about the alternative allele subsetting based on supporting evidence, genotyping and
-     * output modes.
-     */
-    private static class OutputAlleleSubset {
-        private  final List<Allele> alleles;
-        private  final boolean siteIsMonomorphic;
-        private  final List<Integer> mleCounts;
-
-        private OutputAlleleSubset(final List<Allele> alleles, final List<Integer> mleCounts, final boolean siteIsMonomorphic) {
+         * Holds information about the alternative allele subsetting based on supporting evidence, genotyping and
+         * output modes.
+         */
+        private record OutputAlleleSubset(List<Allele> alleles, List<Integer> mleCounts, boolean siteIsMonomorphic) {
+        private OutputAlleleSubset {
             Utils.nonNull(alleles, "alleles");
             Utils.nonNull(mleCounts, "mleCounts");
-            this.siteIsMonomorphic = siteIsMonomorphic;
-            this.alleles = alleles;
-            this.mleCounts = mleCounts;
         }
 
-        private List<Allele> outputAlleles(final Allele referenceAllele) {
-            return Stream.concat(Stream.of(referenceAllele), alleles.stream()).collect(Collectors.toList());
-        }
+            private List<Allele> outputAlleles(final Allele referenceAllele) {
+                return Stream.concat(Stream.of(referenceAllele), alleles.stream()).collect(Collectors.toList());
+            }
 
-        public List<Integer> alternativeAlleleMLECounts() {
-            return mleCounts;
+            public List<Integer> alternativeAlleleMLECounts() {
+                return mleCounts;
+            }
         }
-    }
 
 
     /**
@@ -308,7 +305,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
                 final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
-                final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.standardConfidenceForCalling);
+                final boolean isPlausible = afCalculationResult.passesThreshold(allele, getGenotypeArgs().standardConfidenceForCalling);
 
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
@@ -415,16 +412,16 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * This does not necessarily emit calls for all sites in a region (see {@link OutputMode}).
      */
     protected boolean emitAllActiveSites() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_ACTIVE_SITES;
+        return getConfiguration().outputMode == OutputMode.EMIT_ALL_ACTIVE_SITES;
     }
 
     protected final boolean passesEmitThreshold(final double conf, final boolean bestGuessIsRef) {
-        return (configuration.outputMode == OutputMode.EMIT_ALL_CONFIDENT_SITES || !bestGuessIsRef) &&
+        return (getConfiguration().outputMode == OutputMode.EMIT_ALL_CONFIDENT_SITES || !bestGuessIsRef) &&
                 passesCallThreshold(conf);
     }
 
     protected final boolean passesCallThreshold(final double conf) {
-        return conf >= configuration.genotypeArgs.standardConfidenceForCalling;
+        return conf >= getGenotypeArgs().standardConfidenceForCalling;
     }
 
     protected Map<String,Object> composeCallAttributes(final VariantContext vc, final List<Integer> alleleCountsofMLE,
@@ -457,7 +454,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals.stream().mapToInt(q -> Math.round(q)).boxed().collect(Collectors.toList()));
         }
 
-        if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {
+        if ( getGenotypeArgs().annotateNumberOfAllelesDiscovered) {
             attributes.put(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY, vc.getAlternateAlleles().size());
         }
 

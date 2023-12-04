@@ -53,12 +53,12 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
     // haplotype caller phases, as consumers
     final private List<Consumer<CallRegionContext>>   phases =
             Arrays.asList(
-                    p -> prepare(p),
-                    p -> assemble(p),
-                    p -> computeReadLikelihoods(p),
-                    p -> uncollapse(p),
-                    p -> filter(p),
-                    p -> genotype(p)
+                    this::prepare,
+                    this::assemble,
+                    this::computeReadLikelihoods,
+                    this::uncollapse,
+                    this::filter,
+                    this::genotype
             );
 
     public RampedHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, AssemblyRegionArgumentCollection assemblyRegionArgs, boolean createBamOutIndex,
@@ -145,7 +145,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
             throw new RuntimeException(e);
         }
     }
-    private class CallRegionContext {
+    private static class CallRegionContext {
 
         // params
         final AssemblyRegion region;
@@ -232,7 +232,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
         context.VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
-            context.features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants).stream().forEach(context.VCpriors::add);
+            context.VCpriors.addAll(context.features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants));
         }
 
         if (hcArgs.sampleNameToUse != null) {
@@ -342,7 +342,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
             if (assemblyDebugOutStream != null) {
                 assemblyDebugOutStream.write("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
-                for (final String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(Haplotype::toString).sorted().collect(Collectors.toList())) {
+                for (final String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(Haplotype::toString).sorted().toList()) {
                     assemblyDebugOutStream.write(haplotype);
                 }
             }

@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * This is pulled out so that every caller isn't exposed to the arguments from every other caller.
  */
-public class StandardCallerArgumentCollection implements Serializable {
+public final class StandardCallerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
