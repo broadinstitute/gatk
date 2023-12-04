@@ -99,7 +99,7 @@ task WithdrawSamples {
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
 
     # Now, determine if there are any samples in the uploaded list that are NOT in sample_info and report this
-    echo "Determining if there are any new samples that should be upladed"
+    echo "Determining if there are any new samples that should be uploaded"
     bq --apilog=false --project_id=gvs-internal query --format=csv --use_legacy_sql=false \
       'SELECT callset.sample_name
         FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
