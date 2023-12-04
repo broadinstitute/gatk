@@ -79,7 +79,9 @@ workflow GvsImportGenomes {
   Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
                                        else if num_samples < max_scatter_for_user then 1
                                             else if is_wgs then num_samples / max_scatter_for_user
-                                                else (num_samples / (max_scatter_for_user * 2))
+                                                else if num_samples < 5001 then (num_samples / (max_scatter_for_user * 2))
+                                                    else if num_samples < 20001 then 100
+                                                         else if num_samples < 50001 then 500
 
   # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
   # and retryable random BQ import errors increases with import batch size / job run time.
