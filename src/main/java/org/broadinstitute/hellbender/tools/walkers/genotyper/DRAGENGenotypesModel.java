@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -70,14 +71,18 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
-                                                                            final DragstrReferenceAnalyzer dragstrs) {
-        return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, Optional.empty(), Optional.empty());
+                                                                            final DragstrReferenceAnalyzer dragstrs,
+                                                                            final Locatable eventLocus) {
+        return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, Optional.empty(), Optional.empty(), eventLocus);
     }
 
     @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
-                                                                            final DragstrReferenceAnalyzer dragstrs, Optional<GenotypingLikelihoods<A>> genotypeLikelihoodsOverride, Optional<GenotypingLikelihoods<A>> genotypePosteriorsOverride) {
+                                                                            final DragstrReferenceAnalyzer dragstrs,
+                                                                            Optional<GenotypingLikelihoods<A>> genotypeLikelihoodsOverride,
+                                                                            Optional<GenotypingLikelihoods<A>> genotypePosteriorsOverride,
+                                                                            final Locatable eventLocus) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
@@ -104,7 +109,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         final int sampleCount = data.numberOfSamples();
         final PloidyModel ploidyModel = data.ploidyModel();
         final List<GenotypeLikelihoods> genotypeLikelihoods = new ArrayList<>(sampleCount);
-        final int variantOffset = data.readLikelihoods().getVariantCallingSubsetApplied().getStart() + allelePadding;
+        final int variantOffset = eventLocus.getStart() + allelePadding;
 
         for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
 

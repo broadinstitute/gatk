@@ -207,7 +207,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
             readAlleleLikelihoods.retainEvidence(read -> readQualifiesForGenotypingPredicate.test(read, variantCallingRelevantOverlap));
-            readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
 
             if (configuration.isSampleContaminationPresent()) {
                 // This warrants future evaluation as to the best way to handle disqualified reads
@@ -390,7 +389,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 // NOTE: we do not want the DRAGEN genotypes model here because it includes FRD and BQD, which only apply once
                 // we have genotypes based on alleles, not haplotypes
                 final GenotypingLikelihoods<Haplotype> log10HaploGenotypeLikelihoods = new IndependentSampleGenotypesModel().calculateLikelihoods(jdReadLikelihoods,
-                        new GenotypingData<>(ploidyModel, jdReadLikelihoods), ref, jdInterval.getStart() - refLoc.getStart(), dragstrs);
+                        new GenotypingData<>(ploidyModel, jdReadLikelihoods), ref, jdInterval.getStart() - refLoc.getStart(), dragstrs, jdInterval);
 
                 // calculate heterozygosity for each event
                 final List<Event> allEvents = jdHaplotypes.stream().flatMap(haplotype -> haplotype.getEventMap().getEvents().stream()).distinct().toList();
@@ -718,7 +717,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
         final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),
-                paddedReference, offsetForRefIntoEvent, dragstrs, genotypeLikelihoodsOverride, genotypePosteriorsOverride);
+                paddedReference, offsetForRefIntoEvent, dragstrs, genotypeLikelihoodsOverride, genotypePosteriorsOverride, mergedVC);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
         for (int s = 0; s < sampleCount; s++) {
