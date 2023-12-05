@@ -26,7 +26,7 @@ def unwrap(string):
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, gcs_project,
                    autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path,
                    avro_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes,
-                   master_memory_fraction):
+                   master_memory_fraction, intermediate_resume_point):
 
     use_classic_vqsr_flag = ""
     if use_classic_vqsr:
@@ -84,6 +84,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                  --vds-path {vds_path}
                  --temp-path {temp_path}
                  {'--avro-path ' + avro_path if avro_path else ''}
+                 {'--intermediate-resume-point ' + intermediate_resume_point if intermediate_resume_point else ''}
                  {use_classic_vqsr_flag}
                 """)
 
@@ -147,6 +148,8 @@ if __name__ == "__main__":
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
+    parser.add_argument('--intermediate-resume-point', type=int, required=False,
+                        help='Intermediate VDS index at which to resume')
     parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
 
     args = parser.parse_args()
@@ -167,5 +170,6 @@ if __name__ == "__main__":
                    leave_cluster_running_at_end=args.leave_cluster_running_at_end,
                    cluster_max_idle_minutes=args.cluster_max_idle_minutes,
                    cluster_max_age_minutes=args.cluster_max_age_minutes,
-                   master_memory_fraction=args.master_memory_fraction
+                   master_memory_fraction=args.master_memory_fraction,
+                   intermediate_resume_point=args.intermediate_resume_point
                    )
