@@ -14,6 +14,9 @@ workflow GvsWithdrawSamples {
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
 
+    # If true, do not fail if we find samples in the uploaded list that have NOT been ingested.
+    Boolean allow_uningested_samples = false
+
     String? gatk_docker
   }
 
@@ -33,11 +36,13 @@ workflow GvsWithdrawSamples {
       sample_name_column_name_in_file = sample_name_column_name_in_file,
       sample_names_to_include_file = sample_names_to_include_file,
       withdrawn_timestamp = withdrawn_timestamp,
+      allow_uningested_samples = allow_uningested_samples,
       gatk_docker = effective_gatk_docker,
   }
 
   output {
     Int num_samples_withdrawn = WithdrawSamples.num_samples_withdrawn
+    File samples_not_yet_ingested_file = WithdrawSamples.samples_not_yet_ingested_file
     String recorded_git_hash = GetToolVersions.git_hash
   }
 }
@@ -51,6 +56,7 @@ task WithdrawSamples {
     File sample_names_to_include_file
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
+    Boolean allow_uningested_samples
     String gatk_docker
   }
 
@@ -59,6 +65,8 @@ task WithdrawSamples {
     # Might not be strictly necessary to make this volatile, but just in case:
     volatile: true
   }
+
+  String permit_uningested_samples = if (allow_uningested_samples) then 'true' else 'false'
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
@@ -93,14 +101,17 @@ task WithdrawSamples {
         LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
         WHERE sample_info.sample_name IS NULL' > new_samples.txt
 
-    if [ -s new_samples.txt ]; then
-      echo "ERROR: NO samples have been withdrawn"
-      echo " The following samples were found in the uploaded file that have not yet been ingested into the dataset"
-      echo " Either ingest the following samples, or remove them from the upload file"
-      echo "---"
-      cat new_samples.txt
-      echo "---"
-      exit 1
+    if [[ -s new_samples.txt ]]; then
+      if [[ ~{permit_uningested_samples} = 'false' ]]; then
+        echo "ERROR: NO samples have been withdrawn"
+        echo " The following samples were found in the uploaded file that have not yet been ingested into the dataset"
+        echo " Either ingest the following samples, or remove them from the upload file"
+        cat new_samples.txt
+        exit 1
+      else
+        echo "The following samples were found in the uploaded file that have not yet been ingested into the dataset"
+        cat new_samples.txt
+      fi
     fi
 
     # Update sample_info.withdrawn by joining on the temp table to figure out which samples should be marked as withdrawn
@@ -123,6 +134,7 @@ task WithdrawSamples {
   }
   output {
     Int num_samples_withdrawn = read_int("rows_updated.txt")
+    File samples_not_yet_ingested_file = "new_samples.txt"
   }
 }
 
