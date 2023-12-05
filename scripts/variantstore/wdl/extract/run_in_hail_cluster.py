@@ -130,8 +130,10 @@ if __name__ == "__main__":
 
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
     parser.add_argument('--account', type=str, help='GCP account name')
-    parser.add_argument('--worker-machine-type', type=str, required=False, help='Dataproc cluster worker machine type')
-    parser.add_argument('--master-machine-type', type=str, required=False, help='Dataproc cluster master machine type')
+    parser.add_argument('--worker-machine-type', type=str, required=False, default="n1-highmem-8",
+                        help='Dataproc cluster worker machine type')
+    parser.add_argument('--master-machine-type', type=str, required=False, default="n1-highmem-16",
+                        help='Dataproc cluster master machine type')
     parser.add_argument('--master-memory-fraction', type=float, default=0.8, help='Dataproc master memory fraction')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
@@ -151,8 +153,8 @@ if __name__ == "__main__":
 
     run_in_cluster(cluster_name=args.cluster_name,
                    account=args.account,
-                   master_machine_type=args.master_machine_type if args.master_machine_type else "n1-highmem-16",
-                   worker_machine_type=args.worker_machine_type if args.worker_machine_type else "n1-standard-8",
+                   master_machine_type=args.master_machine_type,
+                   worker_machine_type=args.worker_machine_type,
                    region=args.region,
                    gcs_project=args.gcs_project,
                    autoscaling_policy=args.autoscaling_policy,
