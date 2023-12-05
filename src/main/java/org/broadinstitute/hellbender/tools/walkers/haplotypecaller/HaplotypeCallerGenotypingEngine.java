@@ -81,7 +81,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
         dragstrParams = DragstrParamUtils.parse(configuration.likelihoodArgs.dragstrParams);
         genotypingModel = hcArgs.applyBQD || hcArgs.applyFRD ?
-                new DRAGENGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.maxEffectiveDepthAdjustment, dragstrParams) :
+                new DRAGENGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.maxEffectiveDepthAdjustment, dragstrParams) :
                 new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.maxGenotypeCount;
         referenceConfidenceMode = configuration.emitReferenceConfidence;

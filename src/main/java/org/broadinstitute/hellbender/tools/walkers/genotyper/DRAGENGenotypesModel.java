@@ -42,24 +42,22 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
     private final boolean computeBQD;
     private final boolean computeFRD;
-    private final int allelePadding;
     private final int maxEffectiveDepthAdjustment;
     private final DragstrParams dragstrParams;
 
-    public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
+    public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel,
                                 final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
         this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY,
-                useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
+                useBQDModel, useFRDModel, maxEffectiveDepthAdjustment,  dragstrParams); }
 
     /*
      *  Initialize model with given maximum allele count and ploidy for caching
      */
     public DRAGENGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
-                                final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
+                                final boolean useBQDModel, final boolean useFRDModel,
                                 final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
         this.computeBQD = useBQDModel;
         this.computeFRD = useFRDModel;
-        this.allelePadding = allelePadding;
         this.maxEffectiveDepthAdjustment = maxEffectiveDepthAdjustment;
         this.dragstrParams = dragstrParams;
 
@@ -109,7 +107,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         final int sampleCount = data.numberOfSamples();
         final PloidyModel ploidyModel = data.ploidyModel();
         final List<GenotypeLikelihoods> genotypeLikelihoods = new ArrayList<>(sampleCount);
-        final int variantOffset = eventLocus.getStart() + allelePadding;
+        final int variantOffset = eventLocus.getStart();
 
         for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
 
