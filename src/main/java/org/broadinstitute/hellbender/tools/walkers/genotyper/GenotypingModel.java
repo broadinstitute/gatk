@@ -17,9 +17,9 @@ public interface GenotypingModel {
 
     default <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(AlleleList<A> genotypingAlleles, GenotypingData<A> data,
         final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs,
-        Optional<GenotypingLikelihoods<A>> genotypeLikelihoodsOverride, Optional<GenotypingLikelihoods<A>> genotypePosteriorsOverride,
+                                                                             Optional<HaploGenotypingResult> haploGenotypingResult,
                                                                              final Locatable eventLocus) {
-        if (genotypeLikelihoodsOverride.isEmpty()) {
+        if (haploGenotypingResult.isEmpty()) {
             return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, eventLocus);
         } else {
             throw new UnsupportedOperationException("This GenotypingModel class does not implement a GL-override mode.");

@@ -71,15 +71,14 @@ public class DRAGENGenotypesModel implements GenotypingModel {
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
                                                                             final DragstrReferenceAnalyzer dragstrs,
                                                                             final Locatable eventLocus) {
-        return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, Optional.empty(), Optional.empty(), eventLocus);
+        return calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent, dragstrs, Optional.empty(), eventLocus);
     }
 
     @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
                                                                             final DragstrReferenceAnalyzer dragstrs,
-                                                                            Optional<GenotypingLikelihoods<A>> genotypeLikelihoodsOverride,
-                                                                            Optional<GenotypingLikelihoods<A>> genotypePosteriorsOverride,
+                                                                            Optional<HaploGenotypingResult> haploGenotypingResult,
                                                                             final Locatable eventLocus) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
