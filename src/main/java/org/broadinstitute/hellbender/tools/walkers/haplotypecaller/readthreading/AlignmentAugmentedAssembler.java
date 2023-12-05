@@ -44,7 +44,7 @@ public class AlignmentAugmentedAssembler {
 
     public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner,
                            final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
-        // make an prune a simple de Bruijn graph in order to know which kmers are worth tracking
+        // make and prune a simple de Bruijn graph in order to know which kmers are worth tracking
         final PlainDeBruijnGraph initialGraph = new PlainDeBruijnGraph(kmerSize, minBaseQualityToUseInAssembly);
         initialGraph.addSequence("ref", refHaplotype.getBases(), 1, true);
         reads.forEach(read -> initialGraph.addRead(read, null));
@@ -115,7 +115,7 @@ public class AlignmentAugmentedAssembler {
                 haplotypeMeans.add(mean);
             }
 
-            // now traverse the graoh to convert double[] haplotype means into int[] features encoding decisions
+            // now traverse the graph to convert double[] haplotype means into int[] features encoding decisions
             haplotypeCentroids.clear();
             for (final double[] haplotypeMean : haplotypeMeans) {
                 final double[] centroid = new double[decisionVertices.size()];
