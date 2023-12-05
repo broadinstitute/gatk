@@ -26,7 +26,7 @@ NOTE: in the WDL created to run this script, the temp directory can be easily de
 
 ## Validate the VDS to ensure that it is ready to be shared
 
-Copy the [VDS Validation python script](vds_validation.py) to the notebook environment.
+Copy the [VDS Validation python script](../../../wdl/extract/vds_validation.py) to the notebook environment.
 Run it with the following arguments:
 
 `--vds-path`: the GCS path to the newly-created VDS
