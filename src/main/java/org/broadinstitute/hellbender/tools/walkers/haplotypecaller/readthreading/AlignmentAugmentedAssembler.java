@@ -7,6 +7,7 @@ import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
@@ -89,19 +90,32 @@ public class AlignmentAugmentedAssembler {
                 .collect(Collectors.toMap(read -> read, read -> featurizeRead(vertexManager, graph, decisionVertices,
                         decisionVertexIndexMap, sourceVertexIndices, read)));
 
-        final List<double[]> haplotypeCentroids = Lists.newArrayList();
+        // the above map with the +1 elements zeroed out
+        final Map<GATKRead, double[]> readNegativeFeatureMap = Utils.stream(reads)
+                .collect(Collectors.toMap(read -> read, read -> MathUtils.applyToArray(readFeatureMap.get(read), x -> Math.min(x,0))));
+
+        List<double[]> haplotypeCentroids = Lists.newArrayList();
         haplotypeCentroids.add(new double[decisionVertices.size()]);
+
+        final Set<GATKRead> readsToSeedNewCluster = new HashSet<>();
 
         final Random rand = new Random();
         for (int iteration = 0; iteration < 10; iteration++) {
             final List<ArrayList<GATKRead>> readsByHaplotype = haplotypeCentroids.stream().map(hc -> new ArrayList<GATKRead>()).toList();
             // assign reads to haplotype via cosine similarity, breaking ties randomly
             for (final GATKRead read : reads) {
-                final double[] features = readFeatureMap.get(read);
-                final double[] haplotypeCosineSimilarities =
-                        haplotypeCentroids.stream().mapToDouble(centroid -> MathUtils.dotProduct(centroid, features)).toArray();
-                int randomBestHaplotypeIndex = randomMaxIndex( rand, haplotypeCosineSimilarities);
-                readsByHaplotype.get(randomBestHaplotypeIndex).add(read);
+                if (!readsToSeedNewCluster.contains(read)) {
+                    final double[] features = readFeatureMap.get(read);
+                    final double[] haplotypeCosineSimilarities =
+                            haplotypeCentroids.stream().mapToDouble(centroid -> MathUtils.dotProduct(centroid, features)).toArray();
+                    int randomBestHaplotypeIndex = randomMaxIndex(rand, haplotypeCosineSimilarities);
+                    readsByHaplotype.get(randomBestHaplotypeIndex).add(read);
+                }
+            }
+
+            if (!readsToSeedNewCluster.isEmpty()) {
+                readsByHaplotype.add(new ArrayList<>(readsToSeedNewCluster));
+                readsToSeedNewCluster.clear();
             }
 
             final List<double[]> haplotypeMeans = new ArrayList<>();
@@ -147,7 +161,54 @@ public class AlignmentAugmentedAssembler {
                 haplotypeCentroids.add(centroid);
             }
 
-            // TODO: make new cluster if necessary
+            // decide which haplotype is the best candidate for splitting
+            double maxOfMaxDisagreements = 0;
+            int clusterToSplit = 0;
+            int indexToSplitBy = 0;
+            for (int n = 0; n < haplotypeCentroids.size(); n++) {
+                final double[] centroid = haplotypeCentroids.get(n);
+                final double[] centroidPositive = MathUtils.applyToArray(centroid, x -> Math.max(x,0));
+                final List<GATKRead> readsInCluster = readsByHaplotype.get(n);
+
+                final double[] totalNegative = new double[centroid.length];
+                readsInCluster.forEach(read -> MathUtils.addToArrayInPlace(totalNegative, readNegativeFeatureMap.get(read)));
+
+                // the entries of this array are the counts of reads in the cluster that reject (-1 entry) a decision
+                // vertex chosen (+1 entry) by the centroid haplotype
+                final double[] disagreement = MathUtils.applyToArrayInPlace(MathArrays.ebeMultiply(centroidPositive, totalNegative), x -> -x);
+                final double maxDisagreement = MathUtils.arrayMax(disagreement);
+
+                if (maxDisagreement >= maxOfMaxDisagreements) {
+                    maxOfMaxDisagreements = maxDisagreement;
+                    clusterToSplit = n;
+                    indexToSplitBy = MathUtils.maxElementIndex(disagreement);
+                }
+            }
+
+            // seed new cluster with reads belonging to the cluster to be split that disagree at the most "controversial"
+            // decision vertex
+            int finalIndexToSplitBy = indexToSplitBy;
+            readsByHaplotype.get(clusterToSplit).stream()
+                    .filter(read -> readFeatureMap.get(read)[finalIndexToSplitBy] == -1)
+                    .forEach(readsToSeedNewCluster::add);
+
+            final Set<Integer> emptyAndRedundantClusters = IntStream.range(0, readsByHaplotype.size())
+                    .filter(n -> readsByHaplotype.get(n).isEmpty()).boxed().collect(Collectors.toSet());
+
+            final Set<double[]> uniqueCentroids = new HashSet<>();
+            for (int n = 0; n < haplotypeCentroids.size(); n++) {
+                final double[] centroid = haplotypeCentroids.get(n);
+                if (!uniqueCentroids.add(centroid)) {
+                    emptyAndRedundantClusters.add(n);
+                }
+            }
+
+            // remove empty and redundant clusters
+            haplotypeCentroids = IntStream.range(0, haplotypeCentroids.size())
+                    .filter(n -> !emptyAndRedundantClusters.contains(n))
+                    .mapToObj(haplotypeCentroids::get)
+                    .toList();
+
             // done with iteration -- we have assigned reads to centroids and recomputed centroids
         }
 
