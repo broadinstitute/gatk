@@ -30,7 +30,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
 
     use_classic_vqsr_flag = "--use-classic-vqsr" if use_classic_vqsr else ''
     intermediate_resume_point_arg = \
-        ('--intermediate-resume-point ' + intermediate_resume_point) if intermediate_resume_point else ''
+        f'--intermediate-resume-point {intermediate_resume_point}' if intermediate_resume_point else ''
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
