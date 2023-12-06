@@ -166,7 +166,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1124
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -185,7 +184,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1060_phasing_into_vds
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -197,7 +195,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
+             - rsa_vs_597
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -236,7 +234,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1124
+             - rsa_vs_597
          tags:
              - /.*/
    - name: GvsWithdrawSamples

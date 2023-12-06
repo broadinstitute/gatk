@@ -55,6 +55,9 @@
    - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
+   - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
+     - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
+     - If the workflow fails, it may have failed if the list of smaples that was supplied to it includes samples that have not yet been ingested. To determine if this is the case, inspect the output (STDOUT) of the workflow and if it includes a list of samples that need to be ingested, then do so (or investigate the discreprancy). Note that there is a boolean variable `allow_uningested_samples` for this workflow that will allow it to pass if this condition occurs.
 1. **TBD Workflow to soft delete samples**
 1. `GvsPopulateAltAllele` workflow
    - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
@@ -78,6 +81,7 @@
     - You will need to run `GvsPrepareRangesCallset` workflow first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
        - The `only_output_vet_tables` input should be set to `true` (the default value is `false`).
+       - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
        - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
        - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
     - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
