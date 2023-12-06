@@ -302,7 +302,6 @@ def import_gvs(refs: 'List[List[str]]',
     with hl._with_flags(no_whole_stage_codegen='1'):
 
         merge_tmp = os.path.join(tmp_dir, 'merge_tmp.vds')
-        hl.current_backend().fs.rmtree(merge_tmp)
         info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
         combiner = hl.vds.new_combiner(output_path=merge_tmp,
                                        vds_paths=vds_paths,
