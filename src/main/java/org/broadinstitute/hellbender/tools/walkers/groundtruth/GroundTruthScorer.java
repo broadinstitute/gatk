@@ -37,6 +37,99 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.zip.GZIPOutputStream;
 
+/**
+ * Converts Ultima reads into flow-based annotation, and provides some general statistics regarding
+ * quality and errors relative to the reference. Ultima data is flow-based, and thus the original computed
+ * quality refers to each flow, rather than each base. In the Ultima cram/bam, there is a per-base representation
+ * of the original flow qualities, where the original quality is distributed along each flow (homopolymer).
+ * In order to reconstitute the original flow information, the tool incorporates the information encoded
+ * in the Ultima cram/bam, and outputs both the read in flow space, as well as a conversion of the aligned
+ * reference portion into flow space, and an alignment score.
+ *
+ * <h3> Input </h3>
+ * <ul>
+ *     <li> Ultima aligned SAM/BAM/CRAM </li>
+ * </ul>
+ *
+ * <h3> Output </h3>
+ * <ul>
+ *     <li>Per read ground truth information CSV and a ground truth scoring quality report, in GATK report format</li>
+ * </ul>
+ *
+ * <h3>CSV Output Description </h3>
+ * csv with the read representation in flow space.  The csv includes the following columns:
+ * <li>ReadName</li>
+ * <li>ReadKey : The signal of the read at each flow according to the flow order</li>
+ * <li>ReadIsReversed : Whether the read is reversed in the alignment</li>
+ * <li>ReadMQ : The mapping quality of the read</li>
+ * <li>ReadRQ : The read rq value</li>
+ * <li>GroundTruthKey : The aligned reference section, translated into per-flow signals</li>
+ * <li>ReadSequence</li>
+ * <li>Score : A flow-based alignment score.  Since the alignment is per-flow, in the case that there’s a cycle skip, the read and reference flow signals will not be aligned, and therefore the score will be inaccurate.</li>
+ * <li>NormalizedScore: A flow-based normalized alignment score</li>
+ * <li>ErrorProbability : The error of each flow (corresponds to the signals in ReadKey)</li>
+ * <li>ReadKeyLength</li>
+ * <li>GroundTruthKeyLength</li>
+ * <li>CycleSkipStatus : One of NS (Non Skip), PCS (Possible Cycle Skip), or CS (Cycle Skip)</li>
+ * <li>Cigar</li>
+ * <li>LowestQBaseTP</li>
+ *
+ * <h3>GATK Report Description</h3>
+ * In the quality report (optional), the following tables are included:
+ *
+ * <li>qualReport:error rate per qual : The error rate for each quality.   Columns:</li>
+ * <ul>
+ *     <li>qual: The encoded quality
+ *     <li>count: The number of times the quality was observed
+ *     <li>error: The error rate of the flows with this qual
+ *     <li>phred: the error translated into a phred score
+ * </ul>
+ *
+ * <li>qual_hmerReport:error rate per qual by hmer. The error rate for each quality and hmer combination.  Columns:</li>
+ * <ul>
+ *     <li>qual: The encoded quality
+ *     <li>hmer: The hmer length
+ *     <li>count: The number of times the quality was observed
+ *     <li>error: The error rate of the flows with this qual
+ * </ul>
+ *
+ * <li>qual_hmer_deviation_base_Report:error rate per qual by hmer and deviation.  The count of errors for each qual, hmer, deviation and base</li>
+ * <ul>
+ *     <li>qual: The encoded quality
+ *     <li>hmer: The hmer length
+ *     <li>deviation: The deviation (difference in signal, relative to the reference)
+ *     <li>base: The base
+ *     <li>count: The number of times the deviation was observed
+ * </ul>
+ *
+ * <li>Phred/qual statistics per flow position report. Various statistics for each flow position in relationship to the found quality value. Columns:</li>
+ * <ul>
+ *     <li>flow - flow position</li>
+ *     <li>count - count of observations</li>
+ *     <li>min - minimal observed quality</li>
+ *     <li>max - maximal observed quality</li>
+ *     <li>mean - mean observed value</li>
+ *     <li>median - median observed value</li>
+ *     <li>std - standard deviation</li>
+ *     <li>p1...Pn - percentil columns, accotding to the --quality-percentiles parameter</li>
+ * </ul>
+ *
+ * <h3>Usage examples</h3>
+ * <pre>
+ * gatk GroundTruthScorer \
+ *   -I input.bam \
+ *   -R reference.fasta.gz
+ *   -L chr20 \
+ *   --output-csv output.csv \
+ *   --report-file report.txt \
+ *   --omit-zeros-from-report \ (optional)
+ *   --features-file dbsnp.chr9.vcf.gz \ (optional)
+ *   --genome-prior genome_prior.csv (optional)
+ * </pre>
+ *
+ * {@GATK.walkertype ReadWalker}
+ */
+
 @CommandLineProgramProperties(
         summary = "Ground Truth Scorer",
         oneLineSummary = "Score reads against a reference/ground truth",
