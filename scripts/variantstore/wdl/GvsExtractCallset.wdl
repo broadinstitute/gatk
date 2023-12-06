@@ -111,13 +111,11 @@ workflow GvsExtractCallset {
 
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
-                                     else if GetNumSamplesLoaded.num_samples < 1000 then 500
-                                          else if GetNumSamplesLoaded.num_samples < 5000 then 1000
-                                               else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
-                                                    else if GetNumSamplesLoaded.num_samples < 50000 then 10000
-                                                         else if GetNumSamplesLoaded.num_samples < 100000 && is_wgs then 20000
-                                                    else if GetNumSamplesLoaded.num_samples < 100000 && !is_wgs then 7500
-                                                              else 40000
+                                   else if GetNumSamplesLoaded.num_samples < 1000 then 500
+                                      else if GetNumSamplesLoaded.num_samples < 5000 then 1000
+                                         else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                            else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                              else if is_wgs then 20000 else 7500
 
 Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
                                 if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
