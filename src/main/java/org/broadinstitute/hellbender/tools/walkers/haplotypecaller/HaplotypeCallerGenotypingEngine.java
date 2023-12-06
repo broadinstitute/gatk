@@ -8,7 +8,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -38,6 +37,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.hipparchus.util.MathArrays;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -323,16 +323,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     /**
      *
      * @param ploidy
-     * @param noCallAlleles
-     * @param loc
      * @param mergedVC
-     * @param haplotypePosteriors
      * @return
      */
-    private GenotypingLikelihoods<Allele> computeAlleleGenotypesFromHaploGenotypes(int ploidy, List<Allele> noCallAlleles, int loc, VariantContext mergedVC, GenotypingLikelihoods<Haplotype> haplotypePosteriors) {
+    private GenotypingLikelihoods<Allele> computeAlleleGenotypesFromHaploGenotypes(final int ploidy, final VariantContext mergedVC, final HaploGenotypingResult haploGenotypingResult) {
+        final GenotypingLikelihoods<Haplotype> haplotypePosteriors = haploGenotypingResult.getPosteriors();
         final List<Haplotype> determinedHaplotypes = haplotypePosteriors.asListOfAlleles(); // this only contains haplotypes whose determined span contains this locus
         final Ordering<Haplotype> haplotypeOrdering = Ordering.explicit(determinedHaplotypes);
-        final Map<Allele, List<Haplotype>> alleleToHaplotypes = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
+        final Map<Allele, List<Haplotype>> alleleToHaplotypes = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, mergedVC.getStart(), determinedHaplotypes, !hcArgs.disableSpanningEventGenotyping);
 
         // map from haplotype pair to corresponding haplo-genotype index (in the canonical GL order)
         final Map<List<Haplotype>, Integer> haploPairToGTIndex = Utils.stream(GenotypeAlleleCounts.iterable(ploidy, haplotypePosteriors.numberOfAlleles()))
@@ -724,15 +722,42 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
 
         // this includes BQD/FRD but does not include priors or the effect of joint detection
-        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),
+        final GenotypingLikelihoods<Allele> likelihoodsWithBQDFRD = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),
                 paddedReference, offsetForRefIntoEvent, dragstrs, mergedVC);
-        // TODO: apply joint detection
 
+        GenotypingLikelihoods<Allele> outputGLs = likelihoodsWithBQDFRD;
+
+        if (haploGenotypingResult.isPresent()) {
+            final GenotypingLikelihoods<Allele> likelihoodsWithoutBQDFRD = new IndependentSampleGenotypesModel().calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),
+                    paddedReference, offsetForRefIntoEvent, dragstrs, mergedVC);
+
+            final int ploidy = 2;   // TODO: don't hard-code this!!!
+            final GenotypingLikelihoods<Allele> jointDetectionPosteriorsWithoutBQDFRD =
+                    computeAlleleGenotypesFromHaploGenotypes(ploidy, mergedVC, haploGenotypingResult.get());
+
+            // the idea is that the effect of joint detection and priors is the difference between joint detection posteriors
+            // and plain old independent samples likelihoods, regardless of whether BQD/FRD are applied.  We compute this
+            // difference in the absence of BQD/FRD, then add it to the BQD/FRD likelihoods.
+
+            final List<GenotypeLikelihoods> posteriorsInSampleOrder = new ArrayList<>();
+            for (int sampleIndex = 0; sampleIndex < likelihoodsWithBQDFRD.numberOfSamples(); sampleIndex++) {
+                final double[] jointDetectionPosterior = jointDetectionPosteriorsWithoutBQDFRD.sampleLikelihoods(sampleIndex).getAsVector();
+                final double[] likelihoods = likelihoodsWithoutBQDFRD.sampleLikelihoods(sampleIndex).getAsVector();
+                final double[] jointDetectionPrior = MathArrays.ebeSubtract(jointDetectionPosterior, likelihoods);
+
+                final double[] jointDetectionPosteriorWithBQDFRD = MathArrays.ebeAdd(jointDetectionPrior,
+                        likelihoodsWithBQDFRD.sampleLikelihoods(sampleIndex).getAsVector());
+
+                posteriorsInSampleOrder.add(GenotypeLikelihoods.fromLog10Likelihoods(jointDetectionPosteriorWithBQDFRD));
+            }
+
+            outputGLs = new GenotypingLikelihoods<>(new IndexedAlleleList<>(mergedVC.getAlleles()), ploidyModel, posteriorsInSampleOrder);
+        }
 
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
         for (int s = 0; s < sampleCount; s++) {
-            result.add(new GenotypeBuilder(samples.getSample(s)).alleles(noCallAlleles).PL(likelihoods.sampleLikelihoods(s).getAsPLs()).make());
+            result.add(new GenotypeBuilder(samples.getSample(s)).alleles(noCallAlleles).PL(outputGLs.sampleLikelihoods(s).getAsPLs()).make());
         }
         return result;
     }
