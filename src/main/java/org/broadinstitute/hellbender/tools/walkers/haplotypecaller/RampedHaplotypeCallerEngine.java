@@ -53,12 +53,12 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
     // haplotype caller phases, as consumers
     final private List<Consumer<CallRegionContext>>   phases =
             Arrays.asList(
-                    this::prepare,
-                    this::assemble,
-                    this::computeReadLikelihoods,
-                    this::uncollapse,
-                    this::filter,
-                    this::genotype
+                    p -> prepare(p),
+                    p -> assemble(p),
+                    p -> computeReadLikelihoods(p),
+                    p -> uncollapse(p),
+                    p -> filter(p),
+                    p -> genotype(p)
             );
 
     public RampedHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, AssemblyRegionArgumentCollection assemblyRegionArgs, boolean createBamOutIndex,
@@ -145,7 +145,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
             throw new RuntimeException(e);
         }
     }
-    private static class CallRegionContext {
+    private class CallRegionContext {
 
         // params
         final AssemblyRegion region;
@@ -232,7 +232,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
         context.VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
-            context.VCpriors.addAll(context.features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants));
+            context.features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants).stream().forEach(context.VCpriors::add);
         }
 
         if (hcArgs.sampleNameToUse != null) {

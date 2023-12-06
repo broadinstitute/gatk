@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SimpleCount implements Locatable, Feature {
+public class SimpleCount implements Locatable, Feature {
 
     private final SimpleInterval interval;
     private final int count;

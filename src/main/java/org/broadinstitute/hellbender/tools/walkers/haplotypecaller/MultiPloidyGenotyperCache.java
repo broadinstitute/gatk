@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,11 +21,18 @@ public final class MultiPloidyGenotyperCache<T extends GenotypingEngine> {
     private final OverlapDetector<SimpleCount> ploidyRegions;
     private final int defaultPloidy;
 
-    public MultiPloidyGenotyperCache(IntFunction<T> ploidyToGenotyper, int defaultPloidy, OverlapDetector<SimpleCount> ploidyRegions){
+
+    /**
+     * Create a new genotyper cache
+     * @param ploidyToGenotyper a function to generate a new GenotypingEngine given a ploidy
+     * @param defaultPloidy the default ploidy value
+     * @param alternatePloidyRegions a set of regions with alternate ploidys
+     */
+    public MultiPloidyGenotyperCache(IntFunction<T> ploidyToGenotyper, int defaultPloidy, OverlapDetector<SimpleCount> alternatePloidyRegions){
+        this.ploidyRegions = Utils.nonNull(alternatePloidyRegions);
+        this.ploidyToGenotyper = Utils.nonNull(ploidyToGenotyper);
         this.defaultPloidy = defaultPloidy;
-        this.ploidyRegions = ploidyRegions;
         this.ploidyToGenotyperMap = new LinkedHashMap<>();
-        this.ploidyToGenotyper = ploidyToGenotyper;
     }
 
     /**
