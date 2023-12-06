@@ -342,7 +342,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
             if (assemblyDebugOutStream != null) {
                 assemblyDebugOutStream.write("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
-                for (final String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(Haplotype::toString).sorted().toList()) {
+                for (final String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(Haplotype::toString).sorted().collect(Collectors.toList())) {
                     assemblyDebugOutStream.write(haplotype);
                 }
             }
