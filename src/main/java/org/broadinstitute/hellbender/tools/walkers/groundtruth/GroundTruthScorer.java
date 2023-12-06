@@ -62,7 +62,7 @@ import java.util.zip.GZIPOutputStream;
  * <li>ReadKey : The signal of the read at each flow according to the flow order</li>
  * <li>ReadIsReversed : Whether the read is reversed in the alignment</li>
  * <li>ReadMQ : The mapping quality of the read</li>
- * <li>ReadRQ : The read rsq value</li>
+ * <li>ReadRQ : The read rq value</li>
  * <li>GroundTruthKey : The aligned reference section, translated into per-flow signals</li>
  * <li>ReadSequence</li>
  * <li>Score : A flow-based alignment score.  Since the alignment is per-flow, in the case that there’s a cycle skip, the read and reference flow signals will not be aligned, and therefore the score will be inaccurate.</li>
