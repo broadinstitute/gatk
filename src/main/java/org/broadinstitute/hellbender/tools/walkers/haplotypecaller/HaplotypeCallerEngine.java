@@ -98,11 +98,6 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     protected final OverlapDetector<SimpleCount> ploidyRegionsOverlapDetector;
 
     /**
-     * List of all custom ploidies provided by user
-     */
-    private final LinkedHashSet<Integer> allCustomPloidies;
-
-    /**
      * Map of user-provided ploidy values to corresponding active region genotyper. Values are checked as valid Integers during
      * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
      */
@@ -185,8 +180,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private static final Allele FAKE_REF_ALLELE = Allele.create("N", true); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
     private static final Allele FAKE_ALT_ALLELE = Allele.create("<FAKE_ALT>", false); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
-    private MultiPloidyGenotyper<HaplotypeCallerGenotypingEngine> genotypingEngines;
-    private MultiPloidyGenotyper<MinimalGenotypingEngine> activeRegionGenotypingEngines;
+    private MultiPloidyGenotyperCache<HaplotypeCallerGenotypingEngine> genotypingEngines;
+    private MultiPloidyGenotyperCache<MinimalGenotypingEngine> activeRegionGenotypingEngines;
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -231,12 +226,11 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         for (SimpleCount region : this.ploidyRegions) {
             if (!IntervalUtils.intervalIsOnDictionaryContig(region.getInterval(), readsHeader.getSequenceDictionary())) {
-                throw new UserException("Invalid region provided for --ploidy-regions at " + region.getContig() + ":" + region.getStart() + "-" + region.getEnd() + ". Contig name or endpoint doesn't match read sequence dictionary.");
+                throw new UserException("Invalid region provided for --" + HaplotypeCallerArgumentCollection.PLOIDY_REGIONS_NAME + " at " + region.getContig() + ":" + region.getStart() + "-" + region.getEnd() + ". Contig name or endpoint doesn't match read sequence dictionary.");
             }
         }
 
         this.ploidyRegionsOverlapDetector = OverlapDetector.create(this.ploidyRegions);
-        this.allCustomPloidies = this.ploidyRegions.stream().map(SimpleCount::getCount).collect(Collectors.toCollection(LinkedHashSet::new));
 
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         initialize(createBamOutIndex, createBamOutMD5);
@@ -284,13 +278,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
-        genotypingEngines = new MultiPloidyGenotyper<>((ploidy) -> {
-                    final HaplotypeCallerArgumentCollection newPloidyHcArgs = hcArgs.copyWithNewPloidy(ploidy);
-                    final HaplotypeCallerGenotypingEngine newGenotypingEngine = new HaplotypeCallerGenotypingEngine(newPloidyHcArgs, samplesList, ! hcArgs.doNotRunPhysicalPhasing, hcArgs.applyBQD);
-                    newGenotypingEngine.setAnnotationEngine(annotationEngine);
-                    return newGenotypingEngine;
-                 },
-                allCustomPloidies,
+        genotypingEngines = new MultiPloidyGenotyperCache<>(this::makeGenotypingEngine,
                 hcArgs.standardArgs.genotypeArgs.samplePloidy,
                 ploidyRegionsOverlapDetector);
 
@@ -344,6 +332,13 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                         hcArgs.likelihoodArgs.expectedErrorRatePerBase, !hcArgs.likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, hcArgs.likelihoodArgs.disableCapReadQualitiesToMapQ, !hcArgs.softClipLowQualityEnds,
                         hcArgs.pileupDetectionArgs.pdhmmOptimization? hcArgs.informativeReadOverlapMargin : -1) //Logic to control whether we apply the pdhmm optimization
                 : null);
+    }
+
+    private HaplotypeCallerGenotypingEngine makeGenotypingEngine(int ploidy) {
+        final HaplotypeCallerArgumentCollection newPloidyHcArgs = hcArgs.copyWithNewPloidy(ploidy);
+        final HaplotypeCallerGenotypingEngine newGenotypingEngine = new HaplotypeCallerGenotypingEngine(newPloidyHcArgs, samplesList, !hcArgs.doNotRunPhysicalPhasing, hcArgs.applyBQD);
+        newGenotypingEngine.setAnnotationEngine(annotationEngine);
+        return newGenotypingEngine;
     }
 
     private boolean isVCFMode() {
@@ -428,7 +423,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         activeRegionArgs.CONTAMINATION_FRACTION = 0.0;
         activeRegionArgs.CONTAMINATION_FRACTION_FILE = null;
 
-        activeRegionGenotypingEngines = new MultiPloidyGenotyper<>(ploidy -> {
+        activeRegionGenotypingEngines = new MultiPloidyGenotyperCache<>(ploidy -> {
                 // Seems that at least with some test data we can lose genuine haploid variation if we use ploidy == 1
                 final int adjustedPloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, ploidy);
                 final StandardCallerArgumentCollection newPloidyActiveArgs = new StandardCallerArgumentCollection();
@@ -438,7 +433,6 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 genotyper.setLogger(logger);
                 return genotyper;
             },
-                allCustomPloidies,
                 hcArgs.standardArgs.genotypeArgs.samplePloidy,
                 ploidyRegionsOverlapDetector
         );
