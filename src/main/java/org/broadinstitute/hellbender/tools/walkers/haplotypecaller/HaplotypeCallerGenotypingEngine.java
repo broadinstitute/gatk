@@ -413,11 +413,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 final Map<Haplotype, Double> log10HaplotypeHetPriors = jdHaplotypes.stream().collect(Collectors.toMap(h->h,
                         h -> h.getEventMap().getEvents().stream().mapToDouble(log10EventHetPriors::get).sum()));
 
-                // TODO: likewise: we are calculating this for the ref haplotype. . .
                 // note that DRAGEN's prior for homozygosity is NOT the same as Hardy-Weinberg equilibrium!
                 // TODO: should the DRAGEN het-hom ratio for haplotypes be the same as for alleles?
                 final Map<Haplotype, Double> log10HaplotypeHomPriors = jdHaplotypes.stream().collect(Collectors.toMap(h->h,
                         h -> log10HaplotypeHetPriors.get(h) - Math.log10(hcArgs.likelihoodArgs.dragstrHetHomRatio)));
+
+                // set hom ref to 0
+                jdHaplotypes.stream().filter(h -> h.getEventMap().size() == 0)
+                        .forEach(h -> log10HaplotypeHomPriors.put(h, 0.0));
 
                 // calculate diploid haplotype-based genotype priors
                 final double[] log10HaploGenotypePriors = new double[GenotypeIndexCalculator.genotypeCount(ploidy, log10HaploGenotypeLikelihoods.numberOfAlleles())];
