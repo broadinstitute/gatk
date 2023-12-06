@@ -29,6 +29,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                    master_memory_fraction, intermediate_resume_point):
 
     use_classic_vqsr_flag = "--use-classic-vqsr" if use_classic_vqsr else ''
+    avro_path_arg = f"--avro-path {avro_path}" if avro_path else ''
+    secondary_script_path_arg = f'--py-files {secondary_script_path}' if secondary_script_path else ''
     intermediate_resume_point_arg = \
         f'--intermediate-resume-point {intermediate_resume_point}' if intermediate_resume_point else ''
 
@@ -74,7 +76,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
-                 --py-files={secondary_script_path}
+                 {secondary_script_path_arg}
                  --cluster={cluster_name}
                  --project {gcs_project}
                  --region={region}
@@ -83,7 +85,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                  --
                  --vds-path {vds_path}
                  --temp-path {temp_path}
-                 --avro-path {avro_path}
+                 {avro_path_arg}
                  {intermediate_resume_point_arg}
                  {use_classic_vqsr_flag}
                 """)
@@ -140,12 +142,12 @@ if __name__ == "__main__":
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--autoscaling-policy', type=str, help='Name of the autoscaling policy that should get used')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
-    parser.add_argument('--secondary-script-path', type=str, required=True,
+    parser.add_argument('--secondary-script-path', type=str, required=False,
                         help='Path to secondary script to run in Hail cluster')
     parser.add_argument("--use-classic-vqsr", action="store_true",
                         help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
-    parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
+    parser.add_argument('--avro-path', type=str, required=False, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
