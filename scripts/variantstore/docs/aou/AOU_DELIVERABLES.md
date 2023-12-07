@@ -57,9 +57,9 @@
    - Run if there are any samples to withdraw from the last callset.
 1. **TBD Workflow to soft delete samples**
 1. `GvsPopulateAltAllele` workflow
-   - **TODO:** needs to be made cumulative so that it can add data to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
    - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - This step is cumulative (as are all of the steps prior), and it is the last step that is--so be sure that all samples have been loaded or withdrawn before progressing to the next step
 1. `GvsCreateFilterSet` workflow
    - This step calculates features from the `alt_allele` table, and trains the VETS filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `filter_set_name`, which you will need to keep track of for the `GvsExtractAvroFilesForHail` WDL. If, for some reason, this step needs to be run multiple times, be sure to use a different `filter_set_name` (the doc has guidance for this, as well).
