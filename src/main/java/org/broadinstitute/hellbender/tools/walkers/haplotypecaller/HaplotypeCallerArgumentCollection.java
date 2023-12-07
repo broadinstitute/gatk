@@ -68,7 +68,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     }
 
     @Argument(fullName = PLOIDY_REGIONS_NAME, shortName = PLOIDY_REGIONS_NAME, doc = "Interval file with column specifying desired ploidy for genotyping models. Overrides default ploidy and user-provided --ploidy argument in specific regions.", optional = true)
-    public FeatureDataSource<NamedFeature> ploidyRegions = null;
+    public FeatureInput<NamedFeature> ploidyRegions = null;
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This

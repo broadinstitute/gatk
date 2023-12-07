@@ -6,6 +6,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -209,7 +210,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Parse the user provided custom ploidy regions into ploidyRegions object containing SimpleCounts
         if (this.hcArgs.ploidyRegions != null) {
-            this.hcArgs.ploidyRegions.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+            FeatureDataSource<NamedFeature> ploidyDataSource = new FeatureDataSource<>(this.hcArgs.ploidyRegions, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, NamedFeature.class);
+            ploidyDataSource.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
         }
 
         for (SimpleCount region : this.ploidyRegions) {
