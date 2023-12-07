@@ -54,7 +54,7 @@ public final class MultiPloidyGenotyperCache<T extends GenotypingEngine> {
      * @return the default genotyper that is configured for the default ploidy
      */
     public T getDefaultGenotypingEngine(){
-        return ploidyToGenotyperMap.get(defaultPloidy);
+        return getCached(defaultPloidy);
     }
 
     /**
@@ -64,6 +64,10 @@ public final class MultiPloidyGenotyperCache<T extends GenotypingEngine> {
      */
     public T getGenotypingEngine(final Locatable region) {
         final int currentPloidy = getPloidyToUseAtThisSite(region);
+        return getCached(currentPloidy);
+    }
+
+    private T getCached(final int currentPloidy) {
         return ploidyToGenotyperMap.computeIfAbsent(currentPloidy, ploidyToGenotyper::apply);
     }
 }
