@@ -10,11 +10,15 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.LongHomopolymerHaplotypeCollapsingEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
@@ -43,8 +47,13 @@ public class AlignmentAugmentedAssembler {
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
     }
 
-    public void doAssembly(final Haplotype refHaplotype, final Iterable<GATKRead> reads, final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner,
-                           final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
+    public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion, final Haplotype refHaplotype,
+                                              final byte[] fullReferenceWithPadding, final SimpleInterval refLoc,
+                                              final Iterable<GATKRead> reads,
+                                              final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner,
+                                              final SmithWatermanAligner aligner,
+                                              final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing,
+                                              final SWParameters haplotypeToReferenceSWParameters) {
         // make and prune a simple de Bruijn graph in order to know which kmers are worth tracking
         final PlainDeBruijnGraph initialGraph = new PlainDeBruijnGraph(kmerSize, minBaseQualityToUseInAssembly);
         initialGraph.addSequence("ref", refHaplotype.getBases(), 1, true);
@@ -214,7 +223,7 @@ public class AlignmentAugmentedAssembler {
 
         // at this point the centroids are arrays of 1, -1, and 0, and at each branch in the haplotype (including when choosing a source)
         // exactly one of the outgoing vertices has an entry of +1, with the rest having -1
-        final List<Haplotype> haplotyes = new ArrayList<>(haplotypeCentroids.size());
+        final List<Haplotype> haplotypes = new ArrayList<>(haplotypeCentroids.size());
         for (final double[] centroid : haplotypeCentroids) {
             final List<AugmentedVertex> vertices = new ArrayList<>();
 
@@ -270,8 +279,24 @@ public class AlignmentAugmentedAssembler {
             haplotype.setCigar(paddedCigar);
             haplotype.setAlignmentStartHapwrtRef(refHaplotype.getAlignmentStartHapwrtRef());
             haplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
-            haplotyes.add(haplotype);
+            haplotypes.add(haplotype);
         }
+
+
+        final AssemblyResultSet resultSet = new AssemblyResultSet();
+        resultSet.setRegionForGenotyping(assemblyRegion);
+        resultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
+        resultSet.setPaddedReferenceLoc(refLoc);
+        final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getPaddedSpan();
+        refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
+        resultSet.add(refHaplotype);
+        resultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
+        haplotypes.forEach(resultSet::add);
+
+        return resultSet;
+
+
+
     }
 
     private int randomMaxIndex(final Random rand, final double[] array) {
