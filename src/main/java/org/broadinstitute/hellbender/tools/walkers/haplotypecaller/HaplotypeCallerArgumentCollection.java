@@ -4,6 +4,7 @@ import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.SerializationUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -67,7 +68,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     }
 
     @Argument(fullName = PLOIDY_REGIONS_NAME, shortName = PLOIDY_REGIONS_NAME, doc = "Interval file with column specifying desired ploidy for genotyping models. Overrides default ploidy and user-provided --ploidy argument in specific regions.", optional = true)
-    public FeatureDataSource<NamedFeature> ploidyRegions = null;
+    public FeatureInput<NamedFeature> ploidyRegions = null;
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
@@ -320,20 +321,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
         return flowMode != FlowMode.NONE;
     }
 
-    // Default constructor
-    public HaplotypeCallerArgumentCollection() {
-        super();
-    }
-
-    // Private constructor for use in copyWithNewPloidy
-    // Allows you to make new instances of hcArgs with identical fields except for genotyper ploidy
-    private HaplotypeCallerArgumentCollection(int ploidy) {
-        this.standardArgs.genotypeArgs.samplePloidy = ploidy;
-    }
-
     // Copy method used to create new hcArgs with same fields except input ploidy model
     public HaplotypeCallerArgumentCollection copyWithNewPloidy(int ploidy) {
-        return new HaplotypeCallerArgumentCollection(ploidy);
+        HaplotypeCallerArgumentCollection newArgsWithNewPloidy = SerializationUtils.clone(this);
+        newArgsWithNewPloidy.standardArgs.genotypeArgs.samplePloidy = ploidy;
+        return newArgsWithNewPloidy;
     }
 
     /**

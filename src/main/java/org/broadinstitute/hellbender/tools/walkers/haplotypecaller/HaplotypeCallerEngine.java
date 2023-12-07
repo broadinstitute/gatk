@@ -6,6 +6,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -97,24 +98,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     protected final OverlapDetector<SimpleCount> ploidyRegionsOverlapDetector;
 
-    /**
-     * Map of user-provided ploidy values to corresponding active region genotyper. Values are checked as valid Integers during
-     * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
-     */
-    private final HashMap<Integer, MinimalGenotypingEngine> ploidyToActiveEvaluationGenotyper = new HashMap<>();
-
     protected ReadThreadingAssembler assemblyEngine = null;
 
     protected ReadLikelihoodCalculationEngine likelihoodCalculationEngine = null;
     private ReadLikelihoodCalculationEngine filterStepLikelihoodCalculationEngine = null;
     // If we are in PDHMM mode we need to hold onto two likelihoods engines for the fallback
     private ReadLikelihoodCalculationEngine pdhmmLikelihoodCalculationEngine = null;
-
-    /**
-     * Map of user-provided ploidy values to corresponding genotyper. Values are checked as valid Integers during
-     * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
-     */
-    protected final HashMap<Integer, HaplotypeCallerGenotypingEngine> ploidyToGenotyperMap = new HashMap<>();
 
     private VariantAnnotatorEngine annotationEngine = null;
 
@@ -221,7 +210,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Parse the user provided custom ploidy regions into ploidyRegions object containing SimpleCounts
         if (this.hcArgs.ploidyRegions != null) {
-            this.hcArgs.ploidyRegions.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+            FeatureDataSource<NamedFeature> ploidyDataSource = new FeatureDataSource<>(this.hcArgs.ploidyRegions, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, NamedFeature.class);
+            ploidyDataSource.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
         }
 
         for (SimpleCount region : this.ploidyRegions) {
