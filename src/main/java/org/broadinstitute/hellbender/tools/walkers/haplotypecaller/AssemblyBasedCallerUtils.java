@@ -17,6 +17,11 @@ import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.AdaptiveChainPruner;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.ChainPruner;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.AlignmentAugmentedAssembler;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -380,12 +385,20 @@ public final class AssemblyBasedCallerUtils {
         }
 
         try {
+            final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner =
+                    new AdaptiveChainPruner<>(argumentCollection.assemblerArgs.initialErrorRateForPruning,
+                            argumentCollection.assemblerArgs.pruningLogOddsThreshold,
+                            argumentCollection.assemblerArgs.pruningSeedingLogOddsThreshold,
+                            argumentCollection.assemblerArgs.maxUnprunedVariants);
+
+            final AssemblyResultSet augmentedAssemblyResultSet = new AlignmentAugmentedAssembler(13, (byte) 10)
+                    .runLocalAssembly(region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc, region.getReads(),
+                            pruner, aligner, haplotypeCollapsing, haplotypeToReferenceSWParameters);
             final AssemblyResultSet assemblyResultSet = bypassAssembly ? assemblyEngine.generateEmptyLLocalAssemblyResult(
                     region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc, haplotypeCollapsing) :
                     assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc,
                             readErrorCorrector, header, aligner, haplotypeCollapsing,
-                            danglingEndSWParameters, haplotypeToReferenceSWParameters)
-                            ;
+                            danglingEndSWParameters, haplotypeToReferenceSWParameters);
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
