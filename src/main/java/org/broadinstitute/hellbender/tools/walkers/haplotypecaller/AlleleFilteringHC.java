@@ -29,7 +29,7 @@ public class AlleleFilteringHC extends AlleleFiltering {
     public AlleleFilteringHC(HaplotypeCallerArgumentCollection _hcargs, OutputStreamWriter assemblyDebugStream, HaplotypeCallerGenotypingEngine _genotypingEngine){
         super(_hcargs, assemblyDebugStream);
         genotypingEngine = _genotypingEngine;
-        GenotypeCalculationArgumentCollection config = genotypingEngine.getConfiguration().genotypeArgs;
+        GenotypeCalculationArgumentCollection config = genotypingEngine.getGenotypeArgs();
          afCalc = AlleleFrequencyCalculator.makeCalculator(config);
     }
 
