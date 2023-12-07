@@ -1049,19 +1049,19 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
         hcArgs.applyBQD = !hcArgs.applyBQD;
-//        hcArgs.dontGenotype = !hcArgs.dontGenotype;
-//        hcArgs.standardArgs.annotateAllSitesWithPLs = !hcArgs.standardArgs.annotateAllSitesWithPLs;
+        hcArgs.dontGenotype = !hcArgs.dontGenotype;
+        hcArgs.standardArgs.annotateAllSitesWithPLs = !hcArgs.standardArgs.annotateAllSitesWithPLs;
 
         // Create copy with different ploidy and check tweaked values (and one control non-changed value) remain in sync
         HaplotypeCallerArgumentCollection hcArgsCopy = hcArgs.copyWithNewPloidy(3);
         Assert.assertEquals(hcArgs.applyBQD, hcArgsCopy.applyBQD);
-//        Assert.assertEquals(hcArgs.dontGenotype, hcArgsCopy.dontGenotype);
-//        Assert.assertEquals(hcArgs.standardArgs.annotateAllSitesWithPLs, hcArgsCopy.standardArgs.annotateAllSitesWithPLs);
-//        Assert.assertEquals(hcArgs.standardArgs.CONTAMINATION_FRACTION, hcArgs.standardArgs.CONTAMINATION_FRACTION);
+        Assert.assertEquals(hcArgs.dontGenotype, hcArgsCopy.dontGenotype);
+        Assert.assertEquals(hcArgs.standardArgs.annotateAllSitesWithPLs, hcArgsCopy.standardArgs.annotateAllSitesWithPLs);
+        Assert.assertEquals(hcArgs.standardArgs.CONTAMINATION_FRACTION, hcArgs.standardArgs.CONTAMINATION_FRACTION);
 
         // Modify other values of copy and check they are now distinct, i.e. a "deep copy" was created above
-//        hcArgsCopy.applyBQD = !hcArgsCopy.applyBQD;
-//        Assert.assertNotEquals(hcArgs.applyBQD, hcArgsCopy.applyBQD);
+        hcArgsCopy.applyBQD = !hcArgsCopy.applyBQD;
+        Assert.assertNotEquals(hcArgs.applyBQD, hcArgsCopy.applyBQD);
     }
 
     // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases
