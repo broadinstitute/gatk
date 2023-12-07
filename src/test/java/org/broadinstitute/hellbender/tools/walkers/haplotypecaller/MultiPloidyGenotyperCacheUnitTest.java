@@ -61,6 +61,12 @@ public class MultiPloidyGenotyperCacheUnitTest extends GATKBaseTest {
         Assert.assertSame(genotypingEngine, genotypingEngine2);
     }
 
+    @Test
+    public void testGetDefaultBeforeInit() {
+        final var detector = getOverlapDetector();
+        final MultiPloidyGenotyperCache<MinimalGenotypingEngine> genotypingCache = new MultiPloidyGenotyperCache<>(this::getEngine, 2, detector);
+        Assert.assertNotNull(genotypingCache.getDefaultGenotypingEngine());
+    }
 
     private MinimalGenotypingEngine getEngine(int ploidy){
         final var args = new StandardCallerArgumentCollection();
