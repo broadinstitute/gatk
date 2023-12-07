@@ -72,8 +72,7 @@ public class AlignmentAugmentedAssembler {
                 .filter(pair -> kmersAfterPruning.contains(pair.getLeft()))
                 .filter(pair -> Math.abs(pair.getRight().getMaximumInteger() - pair.getRight().getMinimumInteger()) < kmerSize)
                 .map(pair -> Pair.of(pair.getLeft(), (pair.getRight().getMinimumInteger() + pair.getRight().getMaximumInteger())/2))
-                .toList();
-
+                .collect(Collectors.toList());
         unambiguousKmers.addAll(kmerizeReference(refHaplotype));
 
         final VertexManager vertexManager = new VertexManager(kmerSize, unambiguousKmers);
@@ -390,7 +389,12 @@ public class AlignmentAugmentedAssembler {
     private List<Pair<Kmer, IntRange>> kmerizeRead(final GATKRead read) {
         final byte[] sequence = read.getBases();
         final byte[] qualities = read.getBaseQualities();
-        final List<Pair<Kmer, IntRange>> result = new ArrayList<>(sequence.length - kmerSize + 1);
+        int numKmers = sequence.length - kmerSize + 1;
+
+        if (numKmers < 1) {
+            return List.of();
+        }
+        final List<Pair<Kmer, IntRange>> result = new ArrayList<>(numKmers);
 
         final int start = read.hasAttribute(ReadUtils.ORIGINAL_SOFTCLIP_START_TAG) ?
                 read.getAttributeAsInteger(ReadUtils.ORIGINAL_SOFTCLIP_START_TAG) : read.getStart();
