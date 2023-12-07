@@ -395,7 +395,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 final List<Event> allEvents = jdHaplotypes.stream().flatMap(haplotype -> haplotype.getEventMap().getEvents().stream()).distinct().toList();
                 final Map<Event, Double> log10EventHetPriors = new HashMap<>();
                 for (final Event event : allEvents) {
-                    final double log10SNPHetPrior = Math.log10(snpHeterozygosity);
+                    final double log10SNPHetPrior = Math.log10(snpHeterozygosity) - GenotypePriorCalculator.LOG10_SNP_NORMALIZATION_CONSTANT;
                     if (event.isSNP()) {
                         log10EventHetPriors.put(event, log10SNPHetPrior);
                     } else {

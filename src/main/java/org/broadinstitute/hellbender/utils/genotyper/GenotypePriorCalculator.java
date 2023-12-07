@@ -39,7 +39,7 @@ public final class GenotypePriorCalculator {
 
     // A snp can go to 3 different bases (standard-nucs - 1), so we normalize SNP lks accordingly. Here is the
     // log10 constant used for that:
-    private static final double LOG10_SNP_NORMALIZATION_CONSTANT =
+    public static final double LOG10_SNP_NORMALIZATION_CONSTANT =
             Math.log10(Nucleotide.STANDARD_BASES.size() - 1);
 
     private final double[] hetValues;
