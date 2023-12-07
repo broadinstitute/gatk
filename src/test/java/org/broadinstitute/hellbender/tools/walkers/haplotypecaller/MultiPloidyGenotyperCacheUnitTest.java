@@ -26,7 +26,7 @@ public class MultiPloidyGenotyperCacheUnitTest extends GATKBaseTest {
                 {"1:10-30", 2},
                 {"1:70-85", 3},
                 {"1:80-93", 3},
-              //  {"1:89-92", 2},  TODO is this a bug?
+                {"1:89-92", 1}, //note that the explicitly set ploidy of 1 overrides the default ploidy 2 here
                 {"1:90-95", 1},
                 {"1:85-120", 5},
                 {"2:200", 2},
