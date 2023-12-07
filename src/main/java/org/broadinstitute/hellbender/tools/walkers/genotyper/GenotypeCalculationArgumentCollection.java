@@ -71,7 +71,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * Using this argument instructs the genotyper to annotate (in the INFO field) the number of alternate alleles that were originally discovered at the site.
      */
     @Argument(fullName = "annotate-with-num-discovered-alleles", doc = "If provided, we will annotate records with the number of alternate alleles that were discovered (but not necessarily genotyped) at a given site", optional = true)
-    public boolean ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = false;
+    public boolean annotateNumberOfAllelesDiscovered = false;
 
     /**
      * The expected heterozygosity value used to compute prior probability that a locus is non-reference.

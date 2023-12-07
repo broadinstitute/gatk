@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 /**
  * HaplotypeCaller's genotyping strategy implementation.
  */
-public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
+public class HaplotypeCallerGenotypingEngine extends GenotypingEngine {
 
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
     private static final OneShotLogger DRAGENConaminationWarning = new OneShotLogger(logger);
@@ -150,7 +150,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         // Walk along each position in the key set and create each event to be outputted
         final Set<Haplotype> calledHaplotypes = new HashSet<>();
         final List<VariantContext> returnCalls = new ArrayList<>();
-        final int ploidy = configuration.genotypeArgs.samplePloidy;
+        final int ploidy = getGenotypeArgs().samplePloidy;
         final List<Allele> noCallAlleles = GATKVariantContextUtils.noCallAlleles(ploidy);
 
         if (withBamOut) {
@@ -198,7 +198,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
 
-            if (configuration.isSampleContaminationPresent()) {
+            if (getConfiguration().isSampleContaminationPresent()) {
                 // This warrants future evaluation as to the best way to handle disqualified reads
                 if (hcArgs.applyBQD || hcArgs.applyFRD) {
                     DRAGENConaminationWarning.warn("\\n=============================================================================" +
@@ -206,7 +206,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                             "\n=============================================================================");
                 }
 
-                readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
+                readAlleleLikelihoods.contaminationDownsampling(getConfiguration().getSampleContamination());
             }
 
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
@@ -595,7 +595,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
         // or the user want to use the contamination filtered set for annotations.
         // Otherwise (else part) we need to do it again.
-        if (hcArgs.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
+        if (hcArgs.useFilteredReadMapForAnnotations || !getConfiguration().isSampleContaminationPresent()) {
             readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
             // the input likelihoods are supposed to have been filtered to only overlapping reads so no need to
             // do it again.

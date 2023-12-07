@@ -1,3 +1,4 @@
+
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.ImmutableMap;
