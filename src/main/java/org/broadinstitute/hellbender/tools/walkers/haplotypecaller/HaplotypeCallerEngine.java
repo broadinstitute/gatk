@@ -97,24 +97,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     protected final OverlapDetector<SimpleCount> ploidyRegionsOverlapDetector;
 
-    /**
-     * Map of user-provided ploidy values to corresponding active region genotyper. Values are checked as valid Integers during
-     * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
-     */
-    private final HashMap<Integer, MinimalGenotypingEngine> ploidyToActiveEvaluationGenotyper = new HashMap<>();
-
     protected ReadThreadingAssembler assemblyEngine = null;
 
     protected ReadLikelihoodCalculationEngine likelihoodCalculationEngine = null;
     private ReadLikelihoodCalculationEngine filterStepLikelihoodCalculationEngine = null;
     // If we are in PDHMM mode we need to hold onto two likelihoods engines for the fallback
     private ReadLikelihoodCalculationEngine pdhmmLikelihoodCalculationEngine = null;
-
-    /**
-     * Map of user-provided ploidy values to corresponding genotyper. Values are checked as valid Integers during
-     * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
-     */
-    protected final HashMap<Integer, HaplotypeCallerGenotypingEngine> ploidyToGenotyperMap = new HashMap<>();
 
     private VariantAnnotatorEngine annotationEngine = null;
 
