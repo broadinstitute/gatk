@@ -45,7 +45,7 @@ public class GenotypeGVCFsEngine
     private VariantAnnotatorEngine annotationEngine = null;
 
     //the genotyping engine
-    private GenotypingEngine forceOutputGenotypingEngine = null;
+    private GenotypingEngine<?> forceOutputGenotypingEngine = null;
     private MinimalGenotypingEngine genotypingEngine = null;
 
     // the INFO field annotation key names to remove
@@ -303,7 +303,7 @@ public class GenotypeGVCFsEngine
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final VariantContext regenotypedVC = builder.genotypes(newGenotypes).make();
 
-        final int maxAltAlleles = genotypingEngine.getGenotypeArgs().maxAlternateAlleles;
+        final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.maxAlternateAlleles;
         List<Allele> allelesToKeep;
 
         //we need to make sure all alleles pass the tlodThreshold

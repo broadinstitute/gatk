@@ -29,7 +29,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
     private static final List<Allele> gtAlleles = GATKVariantContextUtils.noCallAlleles(2);
     private static final SampleList SAMPLES = new IndexedSampleList("test");
 
-    private GenotypingEngine genotypingEngine;
+    private GenotypingEngine<?> genotypingEngine;
     private static final Allele refA = Allele.create("A", true);
 
     @BeforeTest
@@ -41,7 +41,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         genotypingEngine.recordDeletions(deletionVC, Collections.singletonList(altT));
     }
 
-    private static GenotypingEngine getGenotypingEngine() {
+    private static GenotypingEngine<?> getGenotypingEngine() {
         final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
         final StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
         return new MinimalGenotypingEngine(standardArgs, SAMPLES);

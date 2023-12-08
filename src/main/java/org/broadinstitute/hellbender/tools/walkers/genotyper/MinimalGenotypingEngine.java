@@ -19,7 +19,7 @@ import java.util.Collections;
  * used only by the HaplotypeCaller for its isActive() determination. Should not be used for
  * any other purpose!
  */
-public final class MinimalGenotypingEngine extends GenotypingEngine {
+public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
 
     private final DragstrParams dragstrParams;
 
@@ -61,7 +61,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine {
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return getConfiguration().annotateAllSitesWithPLs;
+        return configuration.annotateAllSitesWithPLs;
     }
 
     @Override
@@ -71,8 +71,8 @@ public final class MinimalGenotypingEngine extends GenotypingEngine {
 
     @Override
     public VariantContext calculateGenotypes(final VariantContext vc) {
-        if (dragstrParams == null || getGenotypeArgs().dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc) || referenceContext == null) {
-            final GenotypePriorCalculator gpc = GenotypePriorCalculator.assumingHW(getGenotypeArgs());
+        if (dragstrParams == null || getConfiguration().genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc) || referenceContext == null) {
+            final GenotypePriorCalculator gpc = GenotypePriorCalculator.assumingHW(configuration.genotypeArgs);
             return calculateGenotypes(vc, gpc, Collections.emptyList());
         } else {
 
@@ -90,7 +90,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine {
             final int period = analyzer.period(startOffset);
             final int repeats = analyzer.repeatLength(startOffset);
 
-            final GenotypePriorCalculator gpc = GenotypePriorCalculator.givenDragstrParams(dragstrParams, period, repeats, Math.log10(getGenotypeArgs().snpHeterozygosity), 2.0);
+            final GenotypePriorCalculator gpc = GenotypePriorCalculator.givenDragstrParams(dragstrParams, period, repeats, Math.log10(getConfiguration().genotypeArgs.snpHeterozygosity), 2.0);
             return  calculateGenotypes(vc, gpc, Collections.emptyList());
         }
     }

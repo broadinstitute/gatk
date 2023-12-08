@@ -1,4 +1,3 @@
-
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.ImmutableMap;
@@ -1222,15 +1221,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         // GATK 4 calls on the uncontaminated bam
         // GATK 3 calls on the contaminated bam with contamination correction
         return new Object[][] {
-//                { contaminatedBam15Percent,
-//                  0.15,
-//                  contaminationFile,
-//                  traversalInterval,
-//                  b37_reference_20_21,
-//                  false, // VCF mode
-//                  expectedGATK4UncontaminatedCallsVCF,
-//                  expectedGATK3ContaminationCorrectedCallsVCF
-//                },
+                { contaminatedBam15Percent,
+                  0.15,
+                  contaminationFile,
+                  traversalInterval,
+                  b37_reference_20_21,
+                  false, // VCF mode
+                  expectedGATK4UncontaminatedCallsVCF,
+                  expectedGATK3ContaminationCorrectedCallsVCF
+                },
                 { contaminatedBam15Percent,
                   0.15,
                   contaminationFile,

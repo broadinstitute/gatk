@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.map.DefaultedMap;
-import org.apache.commons.lang3.SerializationUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -18,7 +17,7 @@ import java.util.Map;
 /**
  * This is pulled out so that every caller isn't exposed to the arguments from every other caller.
  */
-public final class StandardCallerArgumentCollection implements Serializable {
+public class StandardCallerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -29,7 +28,7 @@ public final class StandardCallerArgumentCollection implements Serializable {
     public void copyStandardCallerArgsFrom( final StandardCallerArgumentCollection other ) {
         Utils.nonNull(other);
 
-        this.genotypeArgs = SerializationUtils.clone(other.genotypeArgs);
+        this.genotypeArgs = other.genotypeArgs.clone();
         this.CONTAMINATION_FRACTION = other.CONTAMINATION_FRACTION;
         this.CONTAMINATION_FRACTION_FILE = other.CONTAMINATION_FRACTION_FILE != null ? new File(other.CONTAMINATION_FRACTION_FILE.getAbsolutePath()) : null;
         if ( other.sampleContamination != null ) {
