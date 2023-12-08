@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import gov.nih.nlm.ncbi.ngs.NGS;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
