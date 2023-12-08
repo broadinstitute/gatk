@@ -282,6 +282,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1158_PrecisionAndSensivityProbs
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
