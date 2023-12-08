@@ -1,12 +1,13 @@
 # Using OpenJDK 17
 # This Dockerfile does not require any files that are in the GATK4 repo.
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 #### Basic image utilities
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     python3 \
+    python3-pip \
     wget \
     curl \
     bc \
@@ -15,10 +16,13 @@ RUN apt-get update && \
     less \
     bedtools \
     samtools \
+    bcftools \
     tabix \
+    git \
     gpg-agent \
     build-essential \
     openjdk-17-jdk \
+    vim \
     software-properties-common && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
@@ -55,7 +59,7 @@ ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Install miniconda
 ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh 
+ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh
 ENV CONDA_MD5 = "32d73e1bc33fda089d7cd9ef4c1be542616bd8e437d1f77afeeaf7afdb019787"
 ENV CONDA_PATH /opt/miniconda
 ENV PATH $CONDA_PATH/bin:$PATH
@@ -67,4 +71,23 @@ RUN mkdir $DOWNLOAD_DIR && \
     conda clean -afy && \
     find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
-    rm -rf /root/.cache/pip 
+    rm -rf /root/.cache/pip
+
+# Install miniconda
+# Following the instructions from https://docs.conda.io/projects/conda/en/latest/user-guide/install/rpm-debian.html
+# Note that this *does* install just miniconda, despite the package being named "conda"
+# RUN curl https://repo.anaconda.com/pkgs/misc/gpgkeys/anaconda.asc | gpg --dearmor > /tmp/conda.gpg && \
+#    install -o root -g root -m 644 /tmp/conda.gpg /usr/share/keyrings/conda-archive-keyring.gpg && \
+#    gpg --keyring /usr/share/keyrings/conda-archive-keyring.gpg --no-default-keyring --fingerprint 34161F5BF5EB1D4BFBBB8F0A8AEB4F8B29D82806 && \
+#    rm /tmp/conda.gpg && \
+#    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/conda-archive-keyring.gpg] https://repo.anaconda.com/pkgs/misc/debrepo/conda stable main" > /etc/apt/sources.list.d/conda.list && \
+#    apt update && \
+#    apt install conda && \
+#    apt -y clean  && \
+#    apt -y autoclean  && \
+#    apt -y autoremove && \
+#    . /opt/conda/etc/profile.d/conda.sh && \
+#    conda -V
+#
+# ENV CONDA_PATH /opt/conda
+# ENV PATH $CONDA_PATH/bin:$PATH

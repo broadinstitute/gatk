@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.1.0
+ARG BASE_DOCKER=us.gcr.io/broad-dsde-methods/gatk-base-image-staging-area:3.2.0rc3
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
@@ -93,8 +93,8 @@ RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -afy && \
-    find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
-    find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
+    find $CONDA_PATH -follow -type f -name '*.a' -delete && \
+    find $CONDA_PATH -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
