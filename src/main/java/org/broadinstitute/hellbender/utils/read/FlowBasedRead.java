@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
