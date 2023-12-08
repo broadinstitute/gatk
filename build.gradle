@@ -287,7 +287,7 @@ dependencies {
     implementation 'commons-io:commons-io:2.5'
     implementation 'org.reflections:reflections:0.9.10'
 
-    implementation 'it.unimi.dsi:fastutil:7.0.6'
+    implementation 'it.unimi.dsi:fastutil:7.0.13'
 
     implementation 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
     implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'

@@ -65,6 +65,7 @@ public class TwoBitReference implements Serializable, AutoCloseable {
     // The total number of sequences in the file
     private int sequenceCount;
 
+    // LinkedHashMap because the order of the sequence records does matter
     private LinkedHashMap<String, TwoBitSequenceRecord> sequenceRecords;
 
     private SAMSequenceDictionary sequenceDictionary;
@@ -108,7 +109,7 @@ public class TwoBitReference implements Serializable, AutoCloseable {
 
         try {
             // Load the raw contents of the 2bit file into a read-only in-memory ByteBuffer
-            rawBytes = ByteBuffer.wrap(ByteStreams.toByteArray(BucketUtils.openFile(referencePath.getRawInputString()))).asReadOnlyBuffer();
+            rawBytes = ByteBuffer.wrap(ByteStreams.toByteArray(referencePath.getInputStream())).asReadOnlyBuffer();
         } catch ( IOException e ) {
             throw new UserException.CouldNotReadInputFile(referencePath, "Unable to load bytes from 2bit input file", e);
         }
@@ -250,7 +251,7 @@ public class TwoBitReference implements Serializable, AutoCloseable {
             intervals.add(new SimpleInterval(contig, oneBasedInclusiveStart, oneBasedInclusiveEnd));
         }
 
-        return IntervalUtils.sortAndMergeIntervals(intervals, IntervalMergingRule.ALL);
+        return IntervalUtils.sortAndMergeIntervalsFromSameContig(intervals, IntervalMergingRule.ALL);
     }
 
     private void setByteOrder( final ByteOrder byteOrder ) {

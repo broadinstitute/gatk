@@ -1264,8 +1264,8 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(sorted, expected);
     }
 
-    @DataProvider(name = "testSortAndMergeSimpleIntervalsData")
-    public Object[][] testSortAndMergeSimpleIntervalsData() {
+    @DataProvider(name = "testSortAndMergeIntervalsFromSameContigData")
+    public Object[][] testSortAndMergeIntervalsFromSameContigData() {
         return new Object[][] {
                 // All overlapping
                 { Arrays.asList(new SimpleInterval("1", 1, 5),
@@ -1354,22 +1354,6 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                                 new SimpleInterval("1", 100, 300))
                 },
 
-                // Mix of overlapping and adjacent, IntervalMergingRule.ALL, out of order, multiple contigs
-                { Arrays.asList(new SimpleInterval("1", 100, 200),
-                        new SimpleInterval("1", 8, 15),
-                        new SimpleInterval("1", 175, 275),
-                        new SimpleInterval("2", 50, 60),
-                        new SimpleInterval("1", 1, 5),
-                        new SimpleInterval("1", 6, 10),
-                        new SimpleInterval("2", 40, 50),
-                        new SimpleInterval("1", 276, 300),
-                        new SimpleInterval("1", 150, 250)),
-                        IntervalMergingRule.ALL,
-                        Arrays.asList(new SimpleInterval("1", 1, 15),
-                                new SimpleInterval("1", 100, 300),
-                                new SimpleInterval("2", 40, 60))
-                },
-
                 // Empty list
                 { Collections.emptyList(), IntervalMergingRule.ALL, Collections.emptyList() },
 
@@ -1381,13 +1365,19 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "testSortAndMergeSimpleIntervalsData")
-    public void testSortAndMergeSimpleIntervals(final List<SimpleInterval> unmergedIntervals,
-                                                final IntervalMergingRule mergingRule,
-                                                final List<SimpleInterval> expectedMergedIntervals) {
+    @Test(dataProvider = "testSortAndMergeIntervalsFromSameContigData")
+    public void testSortAndMergeIntervalsFromSameContig(final List<SimpleInterval> unmergedIntervals,
+                                                        final IntervalMergingRule mergingRule,
+                                                        final List<SimpleInterval> expectedMergedIntervals) {
 
-        final List<SimpleInterval> actualMergedIntervals = IntervalUtils.sortAndMergeIntervals(unmergedIntervals, mergingRule);
+        final List<SimpleInterval> actualMergedIntervals = IntervalUtils.sortAndMergeIntervalsFromSameContig(unmergedIntervals, mergingRule);
         Assert.assertEquals(actualMergedIntervals, expectedMergedIntervals, "Wrong intervals after sortAndMergeIntervals()");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSortAndMergeIntervalsFromSameContigRejectsMultipleContigs() {
+        final List<SimpleInterval> multiContigIntervals = Arrays.asList(new SimpleInterval("1", 1, 10), new SimpleInterval("1", 5, 15), new SimpleInterval("2", 1, 10));
+        IntervalUtils.sortAndMergeIntervalsFromSameContig(multiContigIntervals, IntervalMergingRule.ALL);
     }
 
     @DataProvider(name="loadIntervalsNonMerge")

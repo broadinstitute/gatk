@@ -26,6 +26,9 @@ public class TwoBitReferenceUnitTest extends GATKBaseTest {
     // TTCCAttgTTGTGATTTTGTGctaTTAAAATGATCAAAACANNNCCCTTAAAAATCTTAT
     // TCTAACCTCTCAANNNCTTTTAAAaatgaNNNATTTCAGTACAGTCGGATGCATCTGTAA
     // AAGATAAAAAtaTaACATTGATTAGTTTgCAAAAATAATTGTTTGACCCCAGTTAAGNga
+    //
+    // Created by running faToTwoBit (https://hgdownload.soe.ucsc.edu/admin/exe/macOSX.x86_64/faToTwoBit)
+    // on a fasta file with the above contents.
     private static final GATKPath maskedTwoBitTest = new GATKPath(packageRootTestDir + "utils/reference/masked.2bit");
 
     @Test
