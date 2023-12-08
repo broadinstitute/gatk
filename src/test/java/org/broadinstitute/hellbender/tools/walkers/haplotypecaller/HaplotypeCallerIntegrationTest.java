@@ -1050,7 +1050,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         hcArgs.applyBQD = !hcArgs.applyBQD;
         hcArgs.dontGenotype = !hcArgs.dontGenotype;
         hcArgs.standardArgs.annotateAllSitesWithPLs = !hcArgs.standardArgs.annotateAllSitesWithPLs;
-        hcArgs.standardArgs.genotypeArgs.annotateNumberOfAllelesDiscovered = !hcArgs.standardArgs.genotypeArgs.annotateNumberOfAllelesDiscovered;
+        hcArgs.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = !hcArgs.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
 
         // Create copy with different ploidy and check tweaked values (and one control non-changed value) remain in sync
         HaplotypeCallerArgumentCollection hcArgsCopy = hcArgs.copyWithNewPloidy(3);
@@ -1058,7 +1058,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(hcArgs.dontGenotype, hcArgsCopy.dontGenotype);
         Assert.assertEquals(hcArgs.standardArgs.annotateAllSitesWithPLs, hcArgsCopy.standardArgs.annotateAllSitesWithPLs);
         Assert.assertEquals(hcArgs.standardArgs.CONTAMINATION_FRACTION, hcArgsCopy.standardArgs.CONTAMINATION_FRACTION);
-        Assert.assertEquals(hcArgs.standardArgs.genotypeArgs.annotateNumberOfAllelesDiscovered, hcArgsCopy.standardArgs.genotypeArgs.annotateNumberOfAllelesDiscovered);
+        Assert.assertEquals(hcArgs.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED, hcArgsCopy.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED);
 
         // Modify other values of copy and check they are now distinct, i.e. a "deep copy" was created above
         hcArgsCopy.applyBQD = !hcArgsCopy.applyBQD;
