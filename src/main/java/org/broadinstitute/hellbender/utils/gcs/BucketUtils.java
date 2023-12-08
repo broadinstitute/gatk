@@ -55,7 +55,6 @@ public final class BucketUtils {
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
     public static final int MAX_TIMEOUT = 120000;
-    public static final int MAX_ATTEMPTS = 15;
 
     private BucketUtils(){} //private so that no one will instantiate this class
 
@@ -461,7 +460,7 @@ public final class BucketUtils {
                 .setReadTimeout(MAX_TIMEOUT)
                 .build())
             .setRetrySettings(RetrySettings.newBuilder()
-                .setMaxAttempts(MAX_ATTEMPTS)
+                .setMaxAttempts(15)
                 .setMaxRetryDelay(Duration.ofMillis(256_000L))
                 .setTotalTimeout(Duration.ofMillis(4000_000L))
                 .setInitialRetryDelay(Duration.ofMillis(1000L))
