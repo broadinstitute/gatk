@@ -321,17 +321,6 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
         return flowMode != FlowMode.NONE;
     }
 
-//    // Default constructor
-//    public HaplotypeCallerArgumentCollection() {
-//        super();
-//    }
-//
-//    // Private constructor for use in copyWithNewPloidy
-//    // Allows you to make new instances of hcArgs with identical fields except for genotyper ploidy
-//    private HaplotypeCallerArgumentCollection(int ploidy) {
-//        this.standardArgs.genotypeArgs.samplePloidy = ploidy;
-//    }
-
     // Copy method used to create new hcArgs with same fields except input ploidy model
     public HaplotypeCallerArgumentCollection copyWithNewPloidy(int ploidy) {
         HaplotypeCallerArgumentCollection newArgsWithNewPloidy = SerializationUtils.clone(this);
