@@ -63,7 +63,7 @@ final barclayVersion = System.getProperty('barclay.version','5.0.0')
 final sparkVersion = System.getProperty('spark.version', '3.3.1')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.6')
 final disqVersion = System.getProperty('disq.version','0.3.8')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.5.0')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.5.1')
 final bigQueryVersion = System.getProperty('bigQuery.version', '2.35.0')
 final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.47.0')
 final guavaVersion = System.getProperty('guava.version', '32.1.3-jre')
@@ -976,7 +976,7 @@ ossIndexAudit {
     outputFormat = 'DEFAULT' // Optional, other values are: 'DEPENDENCY_GRAPH' prints dependency graph showing direct/transitive dependencies, 'JSON_CYCLONE_DX_1_4' prints a CycloneDX 1.4 SBOM in JSON format.
     showAll = false // if true prints all dependencies. By default is false, meaning only dependencies with vulnerabilities will be printed.
     printBanner = true // if true will print ASCII text banner. By default is true.
-    
+
     // ossIndexAudit can be configured to exclude vulnerabilities from matching
     // excludeVulnerabilityIds = ['39d74cc8-457a-4e57-89ef-a258420138c5'] // list containing ids of vulnerabilities to be ignored
     // excludeCoordinates = ['commons-fileupload:commons-fileupload:1.3'] // list containing coordinate of components which if vulnerable should be ignored
