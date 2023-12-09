@@ -1,6 +1,6 @@
 # Using OpenJDK 17
 # This Dockerfile does not require any files that are in the GATK4 repo.
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # Avoid interactive prompts during apt installs/upgrades
 ENV DEBIAN_FRONTEND noninteractive
