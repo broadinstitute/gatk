@@ -7,6 +7,7 @@ RUN apt update && \
     apt full-upgrade -y && \
     apt install -y --no-install-recommends \
     python3 \
+    python3-pip \
     wget \
     curl \
     bc \
