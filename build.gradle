@@ -336,7 +336,7 @@ dependencies {
     implementation 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     implementation 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
 
-    implementation 'org.broadinstitute:http-nio:0.1.0-rc1'
+    implementation 'org.broadinstitute:http-nio:1.0.0'
 
     // Required for COSMIC Funcotator data source:
     implementation 'org.xerial:sqlite-jdbc:3.44.1.0'
