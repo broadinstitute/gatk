@@ -17,10 +17,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -1577,5 +1574,28 @@ public class CanonicalSVCollapserUnitTest {
     public void collapseAlgorithmsTest(final List<List<String>> algorithmLists, final List<String> expectedResult) {
         final List<SVCallRecord> records = algorithmLists.stream().map(list -> SVTestUtils.newDeletionCallRecordWithIdAndAlgorithms("", list)).collect(Collectors.toList());
         Assert.assertEquals(collapser.collapseAlgorithms(records), expectedResult);
+    }
+
+    @Test
+    public void testComplexSubtypeAndIntervals() {
+        final SVCallRecord cpx1 = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                Arrays.asList(new SVCallRecord.ComplexEventInterval("DUP_chr1:6000-8000")),
+                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord cpx2 = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                Arrays.asList(new SVCallRecord.ComplexEventInterval("DUP_chr1:6000-8000")),
+                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord result = collapser.collapse(new SVClusterEngine.OutputCluster(Lists.newArrayList(cpx1, cpx2)));
+        Assert.assertEquals(result.getComplexSubtype(), GATKSVVCFConstants.ComplexVariantSubtype.dDUP);
+        Assert.assertEquals(result.getComplexEventIntervals(), cpx1.getComplexEventIntervals());
     }
 }

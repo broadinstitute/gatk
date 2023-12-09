@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.TestException;
@@ -148,11 +149,13 @@ public class SVClusterEngineTest {
     @Test(expectedExceptions = { IllegalArgumentException.class })
     public void testClusterTogetherInvalidInterval() {
         // End position beyond contig end after padding
-        final SVCallRecord deletion1 = new SVCallRecord("test_del", "chr1", 1000, true, "chr1", 248956423 + SVTestUtils.defaultEvidenceParameters.getWindow(), false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord deletion1 = new SVCallRecord("test_del", "chr1", 1000, true, "chr1", 248956423 + SVTestUtils.defaultEvidenceParameters.getWindow(), false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
-        final SVCallRecord deletion2 = new SVCallRecord("test_del", "chr1", 1000, true, "chr1", 248956422, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord deletion2 = new SVCallRecord("test_del", "chr1", 1000, true, "chr1", 248956422, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
@@ -183,29 +186,34 @@ public class SVClusterEngineTest {
     }
 
     private void testGetMaxClusterableStartingPositionWithAlgorithm(final int start, final int end, final String algorithm) {
-        final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start, true, "chr1", end, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start, true, "chr1", end, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 end - start + 1, Collections.singletonList(algorithm),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final int maxClusterableStart = engine.getLinkage().getMaxClusterableStartingPosition(call1);
 
         final int call2Start = maxClusterableStart;
-        final SVCallRecord call2Depth = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord call2Depth = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 call1.getLength(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
-        final SVCallRecord call2Pesr = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord call2Pesr = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 call1.getLength(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertTrue(engine.getLinkage().areClusterable(call1, call2Depth) || engine.getLinkage().areClusterable(call1, call2Pesr));
 
         final int call3Start = maxClusterableStart + 1;
-        final SVCallRecord call3Depth = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord call3Depth = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 call1.getLength(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
-        final SVCallRecord call3Pesr = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+        final SVCallRecord call3Pesr = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(),
                 call1.getLength(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
@@ -262,12 +270,12 @@ public class SVClusterEngineTest {
     public void testClusterTogetherVaryPositions(final int start1, final int end1, final int start2, final int end2, final boolean result) {
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start1, true,
                 "chr1", end1, false,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, end1 - start1 + 1, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(), end1 - start1 + 1, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                 SVTestUtils.threeGenotypes, Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", start2, true,
                 "chr1", end2, false,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, end2 - start2 + 1, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(), end2 - start2 + 1, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                 SVTestUtils.threeGenotypes, Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertEquals(engine.getLinkage().areClusterable(call1, call2), result);
@@ -278,12 +286,12 @@ public class SVClusterEngineTest {
         for (final GATKSVVCFConstants.StructuralVariantAnnotationType type1 : GATKSVVCFConstants.StructuralVariantAnnotationType.values()) {
             // Pass in null strands to let them be determined automatically
             final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, SVTestUtils.getValidTestStrandA(type1),
-                    "chr1", 2001, SVTestUtils.getValidTestStrandB(type1), type1, null,
+                    "chr1", 2001, SVTestUtils.getValidTestStrandB(type1), type1, null, Collections.emptyList(),
                     SVTestUtils.getLength(1000, 2001, type1), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                     Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
             for (final GATKSVVCFConstants.StructuralVariantAnnotationType type2 : GATKSVVCFConstants.StructuralVariantAnnotationType.values()) {
                 final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, SVTestUtils.getValidTestStrandA(type2),
-                        "chr1", 2001, SVTestUtils.getValidTestStrandB(type2), type2, null,
+                        "chr1", 2001, SVTestUtils.getValidTestStrandB(type2), type2, null, Collections.emptyList(),
                         SVTestUtils.getLength(1000, 2001, type2), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 // Should only cluster together if same type, except CNVs
@@ -303,13 +311,13 @@ public class SVClusterEngineTest {
         for (final Boolean strand1A : bools) {
             for (final Boolean strand1B : bools) {
                 final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, strand1A,
-                        "chr1", 2001, strand1B, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,
+                        "chr1", 2001, strand1B, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
                         null, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 for (final Boolean strand2A : bools) {
                     for (final Boolean strand2B : bools) {
                         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, strand2A,
-                                "chr1", 2001, strand2B, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,
+                                "chr1", 2001, strand2B, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
                                 null, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                         // Should only cluster if strands match
@@ -328,7 +336,7 @@ public class SVClusterEngineTest {
             for (int j = i; j < contigs.size(); j++) {
                 final String contig1B = contigs.get(j);
                 final SVCallRecord call1 = new SVCallRecord("call1", contig1A, 1000, true,
-                        contig1B, 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,
+                        contig1B, 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
                         null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 for (int k = 0; k < contigs.size(); k++) {
@@ -336,7 +344,7 @@ public class SVClusterEngineTest {
                     for (int m = k; m < contigs.size(); m++) {
                         final String contig2B = contigs.get(m);
                         final SVCallRecord call2 = new SVCallRecord("call2", contig2A, 1000, true,
-                                contig2B, 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,
+                                contig2B, 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
                                 null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                         // Should only cluster if contigs match
@@ -356,11 +364,11 @@ public class SVClusterEngineTest {
         );
         for (final List<String> algorithms1 : algorithmsList) {
             final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, true,
-                    "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                    "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                     1002, algorithms1, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
             for (final List<String> algorithms2 : algorithmsList) {
                 final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, true,
-                        "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                        "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                         1002, algorithms2, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 // All combinations should cluster
                 Assert.assertTrue(engine.getLinkage().areClusterable(call1, call2));
@@ -400,15 +408,191 @@ public class SVClusterEngineTest {
         Assert.assertFalse(engine.getLinkage().areClusterable(del1, dup1));
     }
 
+    @DataProvider(name = "testClusterTogetherIntervaledComplexData")
+    public Object[][] testClusterTogetherIntervaledComplexData() {
+        return new Object[][]{
+                // exact match
+                {"chr1", 1000, "chr1", 2000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                            new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500)),
+                            new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1600, 1900))
+                        ),
+                        true
+                },
+                // match within parameters
+                {"chr1", 1100, "chr1", 1900,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                            new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1150, 1550)),
+                            new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1650, 1800))
+                        ),
+                        true
+                },
+                // different contigs
+                {"chr2", 1000, "chr2", 2000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500)),
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1600, 1900))
+                        ),
+                        false
+                },
+                // different coordinates
+                {"chr1", 1600, "chr1", 2400,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500)),
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1600, 1900))
+                        ),
+                        false
+                },
+                // different subtypes
+                {"chr1", 1000, "chr1", 2000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINVdel,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500)),
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1600, 1900))
+                        ),
+                        false
+                },
+                // different number of intervals
+                {"chr1", 1000, "chr1", 2000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500))
+                        ),
+                        false
+                },
+                // different cpx intervals
+                {"chr1", 1000, "chr1", 2000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 800, 1100)),
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1600, 1900))
+                        ),
+                        false
+                },
+                // second cpx interval type is different
+                {"chr1", 1000, "chr1", 2000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500)),
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 1600, 1900))
+                        ),
+                        false
+                },
+        };
+    }
+
+    @Test(dataProvider= "testClusterTogetherIntervaledComplexData")
+    public void testClusterTogetherIntervaledComplex(final String contigA, final int posA, final String contigB, final int posB,
+                                                     final GATKSVVCFConstants.ComplexVariantSubtype subtype,
+                                                     final List<SVCallRecord.ComplexEventInterval> cpxIntervals, final boolean expected) {
+        final SVCallRecord cpx1 = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 2000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                Arrays.asList(new SVCallRecord.ComplexEventInterval("DEL_chr1:1100-1500"), new SVCallRecord.ComplexEventInterval("INV_chr1:1600-1900")),
+                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord cpx2 = new SVCallRecord("cpx2", contigA, posA, null,
+                contigB, posB, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                subtype,
+                cpxIntervals,
+                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        Assert.assertEquals(engine.getLinkage().areClusterable(cpx1, cpx2), expected);
+    }
+
+    @DataProvider(name = "testClusterTogetherInsertedComplexData")
+    public Object[][] testClusterTogetherInsertedComplexData() {
+        return new Object[][]{
+                // exact match
+                {"chr1", 1000, "chr1", 1000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 6000, 8000))
+                        ),
+                        true
+                },
+                // close match
+                {"chr1", 1010, "chr1", 1010,
+                        GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 6200, 7990))
+                        ),
+                        true
+                },
+                // not match by coordinates
+                {"chr1", 2000, "chr1", 3000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 6200, 7990))
+                        ),
+                        false
+                },
+                // not match by subtype
+                {"chr1", 1000, "chr1", 1000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 6000, 8000))
+                        ),
+                        false
+                },
+                // not match by cpx interval
+                {"chr1", 1000, "chr1", 1000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 9000, 11000))
+                        ),
+                        false
+                },
+                // different cpx interval type
+                {"chr1", 1000, "chr1", 1000,
+                        GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                        Arrays.asList(
+                                new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 6000, 8000))
+                        ),
+                        false
+                },
+        };
+    }
+
+    @Test(dataProvider= "testClusterTogetherInsertedComplexData")
+    public void testClusterTogetherInsertedComplex(final String contigA, final int posA, final String contigB, final int posB,
+                                                   final GATKSVVCFConstants.ComplexVariantSubtype subtype,
+                                                   final List<SVCallRecord.ComplexEventInterval> cpxIntervals, final boolean expected) {
+        final SVCallRecord cpx1 = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                Arrays.asList(new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 6000, 8000))),
+                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord cpx2 = new SVCallRecord("cpx2", contigA, posA, null,
+                contigB, posB, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                subtype,
+                cpxIntervals,
+                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        Assert.assertEquals(engine.getLinkage().areClusterable(cpx1, cpx2), expected);
+    }
 
     @Test
     public void testClusterTogetherVaryParameters() {
         final SVClusterEngine testEngine1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, true,
-                "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 1002, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1100, true,
-                "chr1", 2101, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                "chr1", 2101, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 1002, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         // Cluster with default parameters
         Assert.assertTrue(testEngine1.getLinkage().areClusterable(call1, call2));
@@ -447,15 +631,15 @@ public class SVClusterEngineTest {
             throw new TestException("Unimplemented clustering type " + type.name());
         }
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", positionA1, true,
-                "chr1", positionB1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                "chr1", positionB1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 positionB1 - positionA1 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2 = new SVCallRecord("call1", "chr1", positionA2, true,
-                "chr1", positionB2, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                "chr1", positionB2, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 positionB2 - positionA2 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call3 = new SVCallRecord("call1", "chr1", positionA3, true,
-                "chr1", positionB3, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                "chr1", positionB3, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 positionB3 - positionA3 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         engine.add(call1);
@@ -584,7 +768,7 @@ public class SVClusterEngineTest {
                         .make())
                 .collect(Collectors.toList());
         final SVCallRecord recordWithCopyNumber = new SVCallRecord("", "chr1", 1000, SVTestUtils.getValidTestStrandA(svtype),
-                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null,
+                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 alleles, GenotypesContext.copy(genotypesWithCopyNumber), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final Set<String> resultWithCopyNumber =  recordWithCopyNumber.getCarrierSampleSet();
@@ -599,7 +783,7 @@ public class SVClusterEngineTest {
                         .make())
                 .collect(Collectors.toList());
         final SVCallRecord recordWithGenotype = new SVCallRecord("", "chr1", 1000, SVTestUtils.getValidTestStrandA(svtype),
-                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null,
+                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 alleles, GenotypesContext.copy(genotypesWithGenotype), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final Set<String> resultWithGenotype = recordWithGenotype.getCarrierSampleSet();

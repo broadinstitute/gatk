@@ -192,8 +192,8 @@ public class CanonicalSVCollapser {
         final Double quality = collapseQuality(items);
 
         return new SVCallRecord(representative.getId(), representative.getContigA(), start, strandA, representative.getContigB(),
-                end, strandB, type, representative.getComplexSubtype(), length, algorithms, alleles, genotypes, attributes,
-                filters, quality, dictionary);
+                end, strandB, type, representative.getComplexSubtype(), representative.getComplexEventIntervals(),
+                length, algorithms, alleles, genotypes, attributes, filters, quality, dictionary);
     }
 
     protected List<Allele> collapseAlleles(final List<Allele> altAlleles, final Allele refAllele) {

@@ -9,6 +9,9 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Iterator;
+import java.util.List;
+
 /**
  * <p>Main class for SV clustering. Two items are clustered together if they:</p>
  * <ul>
@@ -154,6 +157,13 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
             return false;
         }
 
+        // If complex, test complex intervals
+        if (a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX
+                && b.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX &&
+                !testComplexIntervals(a, b, params.getReciprocalOverlap(), params.getSizeSimilarity(), params.getWindow(), dictionary)) {
+            return false;
+        }
+
         // Reciprocal overlap and size similarity
         // Check bypassed if both are inter-chromosomal
         final Boolean hasReciprocalOverlapAndSizeSimilarity;
@@ -182,6 +192,40 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
+    /**
+     * Performs overlap testing on each pair of complex intervals in two records, requiring each pair to be
+     * sufficiently similar by reciprocal overlap, size similarity, and breakend proximity.
+     */
+    private static boolean testComplexIntervals(final SVCallRecord a, final SVCallRecord b, final double overlapThreshold,
+                                                final double sizeSimilarityThreshold, final int window,
+                                                final SAMSequenceDictionary dictionary) {
+        final List<SVCallRecord.ComplexEventInterval> intervalsA = a.getComplexEventIntervals();
+        final List<SVCallRecord.ComplexEventInterval> intervalsB = b.getComplexEventIntervals();
+        if (intervalsA.size() != intervalsB.size()) {
+            return false;
+        }
+        final Iterator<SVCallRecord.ComplexEventInterval> iterA = intervalsA.iterator();
+        final Iterator<SVCallRecord.ComplexEventInterval> iterB = intervalsB.iterator();
+        for (int i = 0; i < intervalsA.size(); i++) {
+            final SVCallRecord.ComplexEventInterval cpxIntervalA = iterA.next();
+            final SVCallRecord.ComplexEventInterval cpxIintervalB = iterB.next();
+            if (cpxIntervalA.getIntervalType() != cpxIintervalB.getIntervalType()) {
+                return false;
+            }
+            final SimpleInterval intervalA = cpxIntervalA.getInterval();
+            final SimpleInterval intervalB = cpxIintervalB.getInterval();
+            if (!(IntervalUtils.isReciprocalOverlap(intervalA, intervalB, overlapThreshold)
+                    && testSizeSimilarity(intervalA.getLengthOnReference(), intervalB.getLengthOnReference(), sizeSimilarityThreshold)
+                    && testBreakendProximity(new SimpleInterval(intervalA.getContig(), intervalA.getStart(), intervalA.getStart()),
+                    new SimpleInterval(intervalA.getContig(), intervalA.getEnd(), intervalA.getEnd()),
+                    new SimpleInterval(intervalB.getContig(), intervalB.getStart(), intervalB.getStart()),
+                    new SimpleInterval(intervalB.getContig(), intervalB.getEnd(), intervalB.getEnd()), window, dictionary))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static boolean testReciprocalOverlap(final SVCallRecord a, final SVCallRecord b, final double threshold) {
         final SimpleInterval intervalA = new SimpleInterval(a.getContigA(), a.getPositionA(), a.getPositionA() + getLength(a, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP) - 1);
         final SimpleInterval intervalB = new SimpleInterval(b.getContigA(), b.getPositionA(), b.getPositionA() + getLength(b, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP) - 1);
@@ -189,28 +233,36 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     }
 
     private static boolean testSizeSimilarity(final SVCallRecord a, final SVCallRecord b, final double threshold) {
-        final int sizeSimilarityLengthA = getLength(a, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
-        final int sizeSimilarityLengthB = getLength(b, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
-        return Math.min(sizeSimilarityLengthA, sizeSimilarityLengthB) / (double) Math.max(sizeSimilarityLengthA, sizeSimilarityLengthB) >= threshold;
+        return testSizeSimilarity(getLength(a, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY),
+                getLength(b, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY), threshold);
+    }
+
+    private static boolean testSizeSimilarity(final int lengthA, final int lengthB, final double threshold) {
+        return Math.min(lengthA, lengthB) / (double) Math.max(lengthA, lengthB) >= threshold;
     }
 
     private static boolean testBreakendProximity(final SVCallRecord a, final SVCallRecord b, final int window,
                                                  final SAMSequenceDictionary dictionary) {
-        final SimpleInterval intervalA1 = a.getPositionAInterval().expandWithinContig(window, dictionary);
-        final SimpleInterval intervalA2 = a.getPositionBInterval().expandWithinContig(window, dictionary);
-        if (intervalA1 == null) {
-            logger.warn("Invalid start position " + a.getPositionA() + " in record " + a.getId() +
+        return testBreakendProximity(a.getPositionAInterval(), a.getPositionBInterval(),
+                b.getPositionAInterval(), b.getPositionBInterval(), window, dictionary);
+    }
+
+    private static boolean testBreakendProximity(final SimpleInterval intervalA1, final SimpleInterval intervalA2,
+                                                 final SimpleInterval intervalB1, final SimpleInterval intervalB2,
+                                                 final int window, final SAMSequenceDictionary dictionary) {
+        final SimpleInterval intervalA1Padded = intervalA1.expandWithinContig(window, dictionary);
+        final SimpleInterval intervalA2Padded = intervalA2.expandWithinContig(window, dictionary);
+        if (intervalA1Padded == null) {
+            logger.warn("Invalid start position " + intervalA1.getContig() + ":" + intervalA1.getStart() +
                     " - record will not be matched");
             return false;
         }
-        if (intervalA2 == null) {
-            logger.warn("Invalid end position " + a.getPositionB() + " in record " + a.getId() +
+        if (intervalA2Padded == null) {
+            logger.warn("Invalid end position " + intervalA2.getContig() + ":" + intervalA2.getStart() +
                     " - record will not be matched");
             return false;
         }
-        final SimpleInterval intervalB1 = b.getPositionAInterval();
-        final SimpleInterval intervalB2 = b.getPositionBInterval();
-        return intervalA1.overlaps(intervalB1) && intervalA2.overlaps(intervalB2);
+        return intervalA1Padded.overlaps(intervalB1) && intervalA2Padded.overlaps(intervalB2);
     }
 
     /**
@@ -222,9 +274,28 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
             return record.getLength() == null ? missingInsertionLength : Math.max(record.getLength(), 1);
         } else if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.BND) {
             return record.getPositionB() - record.getPositionA() + 1;
+        } else if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
+            return getLengthComplex(record, missingInsertionLength);
         } else {
             // TODO lengths less than 1 shouldn't be valid
             return Math.max(record.getLength() == null ? 1 : record.getLength(), 1);
+        }
+    }
+
+    /**
+     * Returns length to be used for complex variant matching
+     */
+    private static int getLengthComplex(final SVCallRecord record, final int missingInsertionLength) {
+        if (!record.isIntrachromosomal() || record.getPositionA() == record.getPositionB()) {
+            // Insertion types use the sum of cpx intervals, or the "missing" length if there are none
+            if (record.getComplexEventIntervals().isEmpty()) {
+                return missingInsertionLength;
+            } else {
+                return record.getComplexEventIntervals().stream().mapToInt(SVCallRecord.ComplexEventInterval::getLengthOnReference).sum();
+            }
+        } else {
+            // Intervaled types just use the difference in coordinates
+            return record.getPositionB() - record.getPositionA() + 1;
         }
     }
 

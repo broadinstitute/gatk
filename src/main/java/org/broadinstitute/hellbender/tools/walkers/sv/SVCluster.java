@@ -447,9 +447,9 @@ public final class SVCluster extends MultiVariantWalker {
 
         // Build new variant
         final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),
-                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getComplexSubtype(), call.getLength(),
-                call.getAlgorithms(), call.getAlleles(), filledGenotypes, call.getAttributes(), call.getFilters(),
-                call.getLog10PError(), dictionary);
+                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getComplexSubtype(),
+                call.getComplexEventIntervals(), call.getLength(), call.getAlgorithms(), call.getAlleles(), filledGenotypes,
+                call.getAttributes(), call.getFilters(), call.getLog10PError(), dictionary);
         final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(finalCall);
         if (omitMembers) {
             builder.rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);

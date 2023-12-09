@@ -12,6 +12,7 @@ public class GATKSVVariantContextUtils {
 
     public static final Allele BND_ALLELE = Allele.create("<BND>");
     public static final Allele CPX_ALLELE = Allele.create("<CPX>");
+    public static final Allele CTX_ALLELE = Allele.create("<CTX>");
 
     /**
      * Build the list of called alleles based on reference and called copy numbers
