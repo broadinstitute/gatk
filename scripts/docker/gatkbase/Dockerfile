@@ -1,6 +1,9 @@
 # Using OpenJDK 17
 # This Dockerfile does not require any files that are in the GATK4 repo.
-FROM ubuntu:22.04
+FROM ubuntu:20.04
+
+# Avoid interactive prompts during apt installs/upgrades
+ENV DEBIAN_FRONTEND noninteractive
 
 #### Basic image utilities
 RUN apt update && \
@@ -21,7 +24,6 @@ RUN apt update && \
     git \
     gpg-agent \
     build-essential \
-    libblas-dev \
     openjdk-17-jdk \
     vim \
     software-properties-common && \
@@ -60,8 +62,8 @@ ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Install miniconda
 ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.10.0-1-Linux-x86_64.sh
-ENV CONDA_SHA256 "c7a34df472feb69805b64df6e8db58363c5ccab41cd3b40b07e3e6dfb924359a"
+ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh
+ENV CONDA_SHA256 "32d73e1bc33fda089d7cd9ef4c1be542616bd8e437d1f77afeeaf7afdb019787"
 ENV CONDA_PATH /opt/miniconda
 ENV PATH $CONDA_PATH/bin:$PATH
 RUN mkdir $DOWNLOAD_DIR && \
@@ -69,7 +71,5 @@ RUN mkdir $DOWNLOAD_DIR && \
     test "$(sha256sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS=' ' -v ORS='' '{print $1}')" = "$CONDA_SHA256" && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
     rm $DOWNLOAD_DIR/miniconda.sh && \
-    conda config --set auto_update_conda false && \
-    conda config --set solver libmamba && \
     conda clean -afy && \
     rm -rf /root/.cache/pip

@@ -20,7 +20,7 @@ dependencies:
 
 # core python dependencies
 - conda-forge::python=3.6.10        # do not update
-- conda-forge::pip=20.0.2           # specifying channel may cause a warning to be emitted by conda
+- pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
 - conda-forge::mkl=2019.5           # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
 - conda-forge::mkl-service=2.3.0
 - conda-forge::joblib=1.1.1         # must pin joblib - versions after 1.1.1 no longer support python 3.6
