@@ -38,6 +38,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
+    public static String getH5DiffCommand() {
+        // -r: Report mode. Print the differences.
+        // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
+        //                       the system value for epsilon.
+        return "h5diff -r --use-system-epsilon";    }
+
     /**
      * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
      */
@@ -179,11 +185,13 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final String tagAndVariantType = String.format("%s.%s", tag, variantType);
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
 
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s %s",
+        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s/%s %s",
+                getH5DiffCommand(),
                 EXPECTED_TEST_FILES_DIR,
                 tagAndVariantType + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX,
                 outputPrefixAndVariantType + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX));
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s %s",
+        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s/%s %s",
+                getH5DiffCommand(),
                 EXPECTED_TEST_FILES_DIR,
                 tagAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX,
                 outputPrefixAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
@@ -252,10 +260,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 .apply(argsBuilderSNPPlusIndel);
         runCommandLine(argsBuilderSNPPlusIndel);
 
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s %s",
+        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s %s",
+                getH5DiffCommand(),
                 outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX,
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX));
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s %s",
+        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s %s",
+                getH5DiffCommand(),
                 outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX,
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
     }

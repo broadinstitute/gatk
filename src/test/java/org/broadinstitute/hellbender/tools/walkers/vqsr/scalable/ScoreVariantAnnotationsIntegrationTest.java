@@ -36,6 +36,12 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
+    public static String getH5DiffCommand() {
+        // -r: Report mode. Print the differences.
+        // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
+        //                       the system value for epsilon.
+        return "h5diff -r --use-system-epsilon";
+    }
     /**
      * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
      */
@@ -165,10 +171,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         // vcf.idx files are not reproducible
         SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5",
-                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.scores.hdf5 %s.scores.hdf5",
-                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s/%s.annot.hdf5 %s.annot.hdf5",
+                getH5DiffCommand(), EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s/%s.scores.hdf5 %s.scores.hdf5",
+                getH5DiffCommand(), EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
     }
 
     /**
