@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.Varian
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutorException;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -36,12 +37,17 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
-    public static String getH5DiffCommand() {
+    public static void runH5Diff(final String expected, final String actual) {
+        final ProcessController controller = ProcessController.getThreadLocal();
+
         // -r: Report mode. Print the differences.
         // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
         //                       the system value for epsilon.
-        return "h5diff -r --use-system-epsilon";
+        final String[] command = new String[] { "h5diff", "-r", "--use-system-epsilon", expected, actual };
+
+        runProcessAndCaptureOutputInExceptionMessage(controller, command);
     }
+
     /**
      * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
      */
@@ -171,10 +177,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         // vcf.idx files are not reproducible
         SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s/%s.annot.hdf5 %s.annot.hdf5",
-                getH5DiffCommand(), EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        SystemCommandUtilsTest.runSystemCommand(String.format("%s %s/%s.scores.hdf5 %s.scores.hdf5",
-                getH5DiffCommand(), EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        runH5Diff(String.format("%s/%s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag),
+                  String.format("%s.annot.hdf5", outputPrefix));
+        runH5Diff(String.format("%s/%s.scores.hdf5", EXPECTED_TEST_FILES_DIR, tag),
+                String.format("%s.scores.hdf5", outputPrefix));
     }
 
     /**

@@ -55,6 +55,17 @@ public abstract class BaseTest {
 
     /**
      * run an external process and assert that it finishes with exit code 0
+     * if it exits with non-zero, include the process stdout/stderr in the exception message
+     *
+     * @param processController a ProcessController to use
+     * @param command command to run, the 0th element must be the executable name
+     */
+    public static void runProcessAndCaptureOutputInExceptionMessage(final ProcessController processController, final String[] command) {
+        runProcess(processController, command, null,"Process exited with non-zero value. Command: "+ Arrays.toString(command) + "\n", true);
+    }
+
+    /**
+     * run an external process and assert that it finishes with exit code 0
      * @param processController a ProcessController to use
      * @param command command to run, the 0th element must be the executable name
      * @param message error message to display on failure
@@ -71,12 +82,36 @@ public abstract class BaseTest {
      * @param message error message to display on failure
      */
     public static void runProcess(final ProcessController processController, final String[] command, final Map<String, String> environment, final String message) {
+        runProcess(processController, command, environment, message, false);
+    }
+
+    /**
+     * run an external process and assert that it finishes with exit code 0
+     * @param processController a ProcessController to use
+     * @param command command to run, the 0th element must be the executable name
+     * @param environment what to use as the process environment variables
+     * @param message error message to display on failure
+     * @param includeProcessOutputInExceptionMessage if true, include the process's stdout/stderr (if any) in the exception
+     *                                               message thrown upon exit with a non-zero value
+     */
+    public static void runProcess(final ProcessController processController, final String[] command, final Map<String, String> environment, final String message, final boolean includeProcessOutputInExceptionMessage) {
         final ProcessSettings prs = new ProcessSettings(command);
         prs.getStderrSettings().printStandard(true);
         prs.getStdoutSettings().printStandard(true);
+
+        // Capture stdout/stderr to a buffer if we need to include it in the exception message
+        if ( includeProcessOutputInExceptionMessage ) {
+            prs.getStderrSettings().setBufferSize(65536);
+            prs.getStdoutSettings().setBufferSize(65536);
+        }
+
         prs.setEnvironment(environment);
         final ProcessOutput output = processController.exec(prs);
-        Assert.assertEquals(output.getExitValue(), 0, message);
+
+        final String fullMessage = includeProcessOutputInExceptionMessage ?
+                message + "\n***Process stdout:***\n" + output.getStdout() + "\n***Process stderr:***\n" + output.getStderr() :
+                message;
+        Assert.assertEquals(output.getExitValue(), 0, fullMessage);
     }
 
     /**
