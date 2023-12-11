@@ -45,7 +45,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         // -r: Report mode. Print the differences.
         // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
         //                       the system value for epsilon.
-        final String[] command = new String[] { "h5diff", "-r", "--use-system-epsilon", expected, actual };
+        final String[] command = new String[] { "h5diff", "-r", expected, actual };
 
         runProcessAndCaptureOutputInExceptionMessage(controller, command);
     }
