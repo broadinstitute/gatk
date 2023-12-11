@@ -21,6 +21,7 @@ RUN apt update && \
     samtools \
     bcftools \
     tabix \
+    jq \
     git \
     gpg-agent \
     build-essential \
