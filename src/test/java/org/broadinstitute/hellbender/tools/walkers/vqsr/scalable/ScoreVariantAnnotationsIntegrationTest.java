@@ -43,7 +43,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         // -r: Report mode. Print the differences.
         // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
         //                       the system value for epsilon.
-        final String[] command = new String[] { "h5diff", "-r", expected, actual };
+        final String[] command = new String[] { "h5diff", "-r", "--use-system-epsilon", expected, actual };
 
         runProcessAndCaptureOutputInExceptionMessage(controller, command);
     }

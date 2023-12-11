@@ -111,6 +111,10 @@ public abstract class BaseTest {
         final String fullMessage = includeProcessOutputInExceptionMessage ?
                 message + "\n***Process stdout:***\n" + output.getStdout() + "\n***Process stderr:***\n" + output.getStderr() :
                 message;
+
+        // Temporarily print the stdout/stderr unconditionally, for debugging
+        System.err.println(fullMessage);
+
         Assert.assertEquals(output.getExitValue(), 0, fullMessage);
     }
 
