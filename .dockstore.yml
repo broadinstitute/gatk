@@ -291,7 +291,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -301,7 +300,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1102-add-vds-wdl-to-integration-tests
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -311,7 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1144_phasing_revert
+             - rsa_vs_1146
          tags:
              - /.*/
    - name: GvsIngestTieout
