@@ -39,17 +39,6 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
-    public static void runH5Diff(final String expected, final String actual) {
-        final ProcessController controller = ProcessController.getThreadLocal();
-
-        // -r: Report mode. Print the differences.
-        // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
-        //                       the system value for epsilon.
-        final String[] command = new String[] { "h5diff", "-r", "--use-system-epsilon", expected, actual };
-
-        runProcessAndCaptureOutputInExceptionMessage(controller, command);
-    }
-
     /**
      * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
      */
@@ -191,11 +180,13 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final String tagAndVariantType = String.format("%s.%s", tag, variantType);
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
 
-        runH5Diff(String.format("%s/%s", EXPECTED_TEST_FILES_DIR, tagAndVariantType + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX),
-                  String.format("%s", outputPrefixAndVariantType + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX));
+        SystemCommandUtilsTest.runH5Diff(
+                String.format("%s/%s", EXPECTED_TEST_FILES_DIR, tagAndVariantType + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX),
+                String.format("%s", outputPrefixAndVariantType + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX));
 
-        runH5Diff(String.format("%s/%s", EXPECTED_TEST_FILES_DIR, tagAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX),
-                  String.format("%s", outputPrefixAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
+        SystemCommandUtilsTest.runH5Diff(
+                String.format("%s/%s", EXPECTED_TEST_FILES_DIR, tagAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX),
+                String.format("%s", outputPrefixAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
 
         assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType);
 
@@ -261,10 +252,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 .apply(argsBuilderSNPPlusIndel);
         runCommandLine(argsBuilderSNPPlusIndel);
 
-        runH5Diff(outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX,
+        SystemCommandUtilsTest.runH5Diff(
+                outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX,
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.TRAINING_SCORES_HDF5_SUFFIX);
 
-        runH5Diff(outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX,
+        SystemCommandUtilsTest.runH5Diff(
+                outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX,
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX);
     }
 

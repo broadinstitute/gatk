@@ -37,17 +37,6 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
-    public static void runH5Diff(final String expected, final String actual) {
-        final ProcessController controller = ProcessController.getThreadLocal();
-
-        // -r: Report mode. Print the differences.
-        // --use-system-epsilon: Return a difference if and only if the difference between two data values exceeds
-        //                       the system value for epsilon.
-        final String[] command = new String[] { "h5diff", "-r", "--use-system-epsilon", expected, actual };
-
-        runProcessAndCaptureOutputInExceptionMessage(controller, command);
-    }
-
     /**
      * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
      */
@@ -175,11 +164,16 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     private static void assertExpectedOutputs(final String tag,
                                               final String outputPrefix) {
         // vcf.idx files are not reproducible
-        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
-                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        runH5Diff(String.format("%s/%s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag),
-                  String.format("%s.annot.hdf5", outputPrefix));
-        runH5Diff(String.format("%s/%s.scores.hdf5", EXPECTED_TEST_FILES_DIR, tag),
+        SystemCommandUtilsTest.runDiff(
+                String.format("%s/%s.vcf", EXPECTED_TEST_FILES_DIR, tag),
+                String.format("%s.vcf", outputPrefix));
+
+        SystemCommandUtilsTest.runH5Diff(
+                String.format("%s/%s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag),
+                String.format("%s.annot.hdf5", outputPrefix));
+
+        SystemCommandUtilsTest.runH5Diff(
+                String.format("%s/%s.scores.hdf5", EXPECTED_TEST_FILES_DIR, tag),
                 String.format("%s.scores.hdf5", outputPrefix));
     }
 
