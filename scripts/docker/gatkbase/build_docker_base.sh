@@ -7,7 +7,7 @@ set -e
 REPO=broadinstitute
 PROJECT=gatk
 VERSION=2.3.0
-FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
+FULL_PATH=us.gcr.io/broad-dsde-methods/gatk-base-image-staging-area:3.2.0rc6-sl
 
 #################################################
 # Parsing arguments

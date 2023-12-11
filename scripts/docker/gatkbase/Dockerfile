@@ -62,8 +62,8 @@ ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Install miniconda
 ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh
-ENV CONDA_SHA256 "32d73e1bc33fda089d7cd9ef4c1be542616bd8e437d1f77afeeaf7afdb019787"
+ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.10.0-1-Linux-x86_64.sh
+ENV CONDA_SHA256 "c7a34df472feb69805b64df6e8db58363c5ccab41cd3b40b07e3e6dfb924359a"
 ENV CONDA_PATH /opt/miniconda
 ENV PATH $CONDA_PATH/bin:$PATH
 RUN mkdir $DOWNLOAD_DIR && \
@@ -72,4 +72,6 @@ RUN mkdir $DOWNLOAD_DIR && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
     rm $DOWNLOAD_DIR/miniconda.sh && \
     conda clean -afy && \
+    conda config --set auto_update_conda false && \
+    conda config --set solver libmamba && \
     rm -rf /root/.cache/pip
