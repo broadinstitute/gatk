@@ -102,14 +102,14 @@ public class AlignmentAugmentedAssembler {
         final Map<GATKRead, double[]> readNegativeFeatureMap = Utils.stream(reads)
                 .collect(Collectors.toMap(read -> read, read -> MathUtils.applyToArray(readFeatureMap.get(read), x -> Math.min(x,0))));
 
-        List<double[]> haplotypeCentroids = Lists.newArrayList();
+        List<double[]> haplotypeCentroids = new ArrayList<>();
         haplotypeCentroids.add(new double[decisionVertices.size()]);
 
         final Set<GATKRead> readsToSeedNewCluster = new HashSet<>();
 
         final Random rand = new Random();
         for (int iteration = 0; iteration < 10; iteration++) {
-            final List<ArrayList<GATKRead>> readsByHaplotype = haplotypeCentroids.stream().map(hc -> new ArrayList<GATKRead>()).toList();
+            final List<ArrayList<GATKRead>> readsByHaplotype = haplotypeCentroids.stream().map(hc -> new ArrayList<GATKRead>()).collect(Collectors.toList());
             // assign reads to haplotype via cosine similarity, breaking ties randomly
             for (final GATKRead read : reads) {
                 if (!readsToSeedNewCluster.contains(read)) {
@@ -215,7 +215,7 @@ public class AlignmentAugmentedAssembler {
             haplotypeCentroids = IntStream.range(0, haplotypeCentroids.size())
                     .filter(n -> !emptyAndRedundantClusters.contains(n))
                     .mapToObj(haplotypeCentroids::get)
-                    .toList();
+                    .collect(Collectors.toList());
 
             // done with iteration -- we have assigned reads to centroids and recomputed centroids
         }
@@ -320,7 +320,11 @@ public class AlignmentAugmentedAssembler {
                 // the middle of the read, traverse backwards until the last decision vertex
                 if (lastVertexInRead == null) {
                     AugmentedVertex backwardVertex = vertex;
-                    while (!decisionVertexIndexMap.containsKey(backwardVertex)) {
+
+                    // traverse backwards as long as it is possible (in-degree > 0) and unambiguous (in-degree < 2)
+                    // until we reach 1) a source vertex 2) a non-source decision vertex or 3) a vertex with in-degree > 1
+                    // Cases 1 and 2 give us an unambiguous entry in the feature vector; case 3 does not.
+                    while (graph.inDegreeOf(backwardVertex) == 1 && !decisionVertexIndexMap.containsKey(backwardVertex)) {
                         backwardVertex = graph.getEdgeSource(graph.incomingEdgeOf(backwardVertex));
                     }
 
