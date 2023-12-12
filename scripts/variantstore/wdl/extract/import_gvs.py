@@ -298,7 +298,7 @@ def import_gvs(refs: 'List[List[str]]',
     info(f'import_gvs: using target_records (records per partition) of {target_records} for VDS merge')
 
     interval_tmp = os.path.join(tmp_dir, 'interval_checkpoint.ht')
-    target_final_intervals = calculate_new_intervals(first_ref_mt, target_records, interval_tmp)
+    target_final_intervals, _ = calculate_new_intervals(first_ref_mt, target_records, interval_tmp)
 
     with hl._with_flags(no_whole_stage_codegen='1'):
 
