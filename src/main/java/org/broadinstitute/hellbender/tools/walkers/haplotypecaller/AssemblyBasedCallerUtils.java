@@ -391,14 +391,20 @@ public final class AssemblyBasedCallerUtils {
                             argumentCollection.assemblerArgs.pruningSeedingLogOddsThreshold,
                             argumentCollection.assemblerArgs.maxUnprunedVariants);
 
-            final AssemblyResultSet augmentedAssemblyResultSet = new AlignmentAugmentedAssembler(13, (byte) 10)
-                    .runLocalAssembly(region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc, region.getReads(),
-                            pruner, aligner, haplotypeCollapsing, haplotypeToReferenceSWParameters);
-            final AssemblyResultSet assemblyResultSet = bypassAssembly ? assemblyEngine.generateEmptyLLocalAssemblyResult(
+            AssemblyResultSet augmentedAssemblyResultSet = null;
+            int augmentedKmerSize = 13;
+            while (augmentedAssemblyResultSet == null) {
+                augmentedAssemblyResultSet = new AlignmentAugmentedAssembler(augmentedKmerSize, (byte) 10)
+                        .runLocalAssembly(region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc, region.getReads(),
+                                pruner, aligner, haplotypeCollapsing, haplotypeToReferenceSWParameters);
+                augmentedKmerSize += 10;
+            }
+            /*final AssemblyResultSet assemblyResultSet = bypassAssembly ? assemblyEngine.generateEmptyLLocalAssemblyResult(
                     region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc, haplotypeCollapsing) :
                     assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc,
                             readErrorCorrector, header, aligner, haplotypeCollapsing,
-                            danglingEndSWParameters, haplotypeToReferenceSWParameters);
+                            danglingEndSWParameters, haplotypeToReferenceSWParameters); */
+            final AssemblyResultSet assemblyResultSet = augmentedAssemblyResultSet;
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);

@@ -79,6 +79,12 @@ public class AlignmentAugmentedAssembler {
 
         final AugmentedKmerGraph graph = makeAugmentedKmerGraph(refHaplotype, reads, vertexManager);
 
+        // kind of hacky way to deal with homopolymers / STRs causing identical nearby kmers to collapse onto
+        // a single vertex
+        if (graph.hasCycles()) {
+            return null;
+        }
+
         final List<AugmentedVertex> branchVertices = graph.vertexSet().stream()
                 .filter(v -> graph.outDegreeOf(v) > 1).toList();
 

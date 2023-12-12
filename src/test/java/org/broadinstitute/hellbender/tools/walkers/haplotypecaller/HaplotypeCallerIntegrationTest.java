@@ -88,7 +88,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-I", inputFileName,
                 "-R", referenceFileName,
-                "-L", "20:10000000-10010000", //"-L", "20:10000000-10100000",
+                "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
