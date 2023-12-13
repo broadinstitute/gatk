@@ -25,6 +25,7 @@ workflow GvsQuickstartHailIntegration {
 
         File? gatk_override
         String? hail_version
+        String? hail_wheel
         String expected_output_prefix
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -48,6 +49,15 @@ workflow GvsQuickstartHailIntegration {
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+
+    if (defined(hail_version) && defined(hail_wheel)) { # If neither the whl or version is specified, we go with the utils Hail version. Both cannot be specified.
+        call Utils.TerminateWorkflow as HailVersionFail {
+            input:
+                message = "A Hail version and a Hail wheel cannot both be specified",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
@@ -126,6 +136,8 @@ workflow GvsQuickstartHailIntegration {
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
+
     }
 
     output {
@@ -149,7 +161,8 @@ task TieOutVds {
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
         String cloud_sdk_slim_docker
-        String hail_version
+        String? hail_version
+        String? hail_wheel
     }
     parameter_meta {
         tieout_vcfs: {
@@ -200,7 +213,14 @@ task TieOutVds {
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
-        pip install hail==~{hail_version}
+
+
+        if [[ -z "~{hail_wheel}" ]]
+        then
+          pip install ~{hail_wheel}
+        else
+          pip install hail==~{hail_version}
+        fi
 
         export WORK=$PWD/work
         mkdir ${WORK}
