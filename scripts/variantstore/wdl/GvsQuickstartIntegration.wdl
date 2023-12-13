@@ -27,6 +27,7 @@ workflow GvsQuickstartIntegration {
         String? variants_docker
         String? gatk_docker
         String? hail_version
+        String? hail_wheel
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -96,6 +97,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                hail_wheel = hail_wheel,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -122,6 +124,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                hail_wheel = hail_wheel,
         }
 
         if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
