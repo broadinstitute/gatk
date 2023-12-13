@@ -403,7 +403,7 @@ public final class AssemblyBasedCallerUtils {
                     region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc, haplotypeCollapsing) :
                     assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding, paddedReferenceLoc,
                             readErrorCorrector, header, aligner, haplotypeCollapsing,
-                            danglingEndSWParameters, haplotypeToReferenceSWParameters); */
+                            danglingEndSWParameters, haplotypeToReferenceSWParameters);*/
             final AssemblyResultSet assemblyResultSet = augmentedAssemblyResultSet;
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
