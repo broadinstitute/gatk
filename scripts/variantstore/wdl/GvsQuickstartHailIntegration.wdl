@@ -118,6 +118,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             use_classic_VQSR = !use_VQSR_lite,
             avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,

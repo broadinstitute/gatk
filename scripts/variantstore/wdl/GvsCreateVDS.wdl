@@ -11,6 +11,7 @@ workflow GvsCreateVDS {
         String avro_path
         Boolean use_classic_VQSR = false
         String? hail_version
+        String? hail_wheel
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
@@ -47,6 +48,13 @@ workflow GvsCreateVDS {
     }
 
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    if (defined(hail_version) && defined(hail_wheel)) { # If neither the whl or version is specified, we go with the utils Hail version. Both cannot be specified.
+        call Utils.TerminateWorkflow as HailVersionFail {
+            input:
+                message = "A Hail version and a Hail wheel cannot both be specified",
+                basic_docker = effective_variants_docker,
+        }
+    }
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_google_project = select_first([gcs_project, GetToolVersions.google_project])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
@@ -59,6 +67,7 @@ workflow GvsCreateVDS {
             avro_path = avro_path,
             use_classic_VQSR = use_classic_VQSR,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             gcs_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
@@ -93,6 +102,7 @@ task create_vds {
         String avro_path
         Boolean use_classic_VQSR
         String? hail_version
+        String? hail_wheel
 
         String gcs_project
         String workspace_bucket
@@ -110,7 +120,14 @@ task create_vds {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
+
+        if [[ -z "~{hail_wheel}" ]]
+        then
+          pip install ~{hail_wheel}
+        else
+          pip install hail~{'==' + hail_version}
+        fi
+
         pip3 install --upgrade google-cloud-dataproc
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
