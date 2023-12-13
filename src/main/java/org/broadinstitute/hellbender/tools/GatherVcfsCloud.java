@@ -313,7 +313,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
             for (final Path f : inputFiles) {
                 try {
-                    log.debug("Gathering from file: {}", f.toUri().toString());
+                    log.debug("Gathering from file: ", f.toUri().toString());
                     final FeatureReader<VariantContext> variantReader = getReaderFromVCFUri(f, cloudPrefetchBuffer);
                     final PeekableIterator<VariantContext> variantIterator;
 
