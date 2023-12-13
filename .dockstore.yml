@@ -156,6 +156,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-1171-add-whl
        tags:
          - /.*/
    - name: GvsExtractCallset
