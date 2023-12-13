@@ -148,6 +148,9 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples);
         engine = new ClosestSVFinder(linkage, collapser::annotate, !doNotSort, dictionary);
 
+        if (doNotSort) {
+            createOutputVariantIndex = false;
+        }
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader(getEvalHeader()));
     }
