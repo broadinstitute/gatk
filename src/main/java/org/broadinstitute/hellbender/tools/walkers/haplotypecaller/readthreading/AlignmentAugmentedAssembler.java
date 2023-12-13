@@ -79,6 +79,12 @@ public class AlignmentAugmentedAssembler {
 
         final AugmentedKmerGraph graph = makeAugmentedKmerGraph(refHaplotype, reads, vertexManager);
 
+        // TODO: edge case: it is possible that the vertex manager may contain a vertex not contained in the graph
+        // TODO: when this occurs the kmer sequence of the bad vertex exists in the graph at a different position
+        // TODO: so basically, in addition to excluding
+        final List<AugmentedVertex> bad = vertexManager.allVertices().filter(v -> !graph.containsVertex(v)).toList();
+        bad.forEach(v -> vertexManager.removeVertex(v));
+
         // kind of hacky way to deal with homopolymers / STRs causing identical nearby kmers to collapse onto
         // a single vertex
         if (graph.hasCycles()) {
@@ -474,6 +480,14 @@ public class AlignmentAugmentedAssembler {
             kmerMap.values().forEach(clusterer -> clusterer.finish());
         }
 
+        public void removeVertex(final AugmentedVertex v) {
+            final Kmer kmer = new Kmer(v.getSequence());
+            final PositionClusterer clusterer = kmerMap.get(kmer);
+            if (clusterer != null) {
+                clusterer.removeVertex(v);
+            }
+        }
+
         public Optional<AugmentedVertex> getVertex(final Kmer kmer, final IntRange range) {
             final int rangeMin = range.getMinimumInteger();
             final int rangeMax = range.getMaximumInteger();
@@ -528,6 +542,15 @@ public class AlignmentAugmentedAssembler {
         }
 
         public List<AugmentedVertex> getVertices() { return vertices; }
+
+        public void removeVertex(final AugmentedVertex v) {
+            if (Arrays.equals(v.getSequence(), kmer.bases())) {
+                final OptionalInt matchingIndex = IntStream.range(0, vertices.size())
+                        .filter(n -> vertices.get(n).equals(v))
+                        .findFirst();
+                matchingIndex.ifPresent(n -> vertices.remove(n));
+            }
+        }
 
         public void finish() {
             if (finalized) {
