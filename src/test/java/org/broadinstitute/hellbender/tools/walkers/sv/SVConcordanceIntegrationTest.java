@@ -370,4 +370,24 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args, SVConcordance.class.getSimpleName());
     }
+
+    @Test
+    public void testSelfTruthSubsetUnsorted() {
+
+        // Run a vcf against itself but subsetted to fewer samples and variants
+
+        final File output = createTempFile("concord", ".vcf");
+        final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
+        final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.sample_subset.vcf.gz";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcfPath)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcfPath)
+                .add(SVConcordance.UNSORTED_OUTPUT_LONG_NAME, true);
+
+        runCommandLine(args, SVConcordance.class.getSimpleName());
+        assertPerfectConcordance(output, evalVcfPath);
+    }
 }
