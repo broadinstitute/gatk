@@ -60,7 +60,7 @@ repositories {
 final htsjdkVersion = System.getProperty('htsjdk.version','4.1.0')
 final picardVersion = System.getProperty('picard.version','3.1.1')
 final barclayVersion = System.getProperty('barclay.version','5.0.0')
-final sparkVersion = System.getProperty('spark.version', '3.3.1')
+final sparkVersion = System.getProperty('spark.version', '3.5.0')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.6')
 final disqVersion = System.getProperty('disq.version','0.3.8')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.5.1')
@@ -298,8 +298,8 @@ dependencies {
         exclude group: 'org.apache.commons'
     }
 
-    //there is no mllib_2.12.15:3.3.0, so stay use 2.12:3.3.0
-    implementation ('org.apache.spark:spark-mllib_2.12:3.5.0') {
+    // TODO: migrate to mllib_2.12.15?
+    implementation ('org.apache.spark:spark-mllib_2.12:' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
