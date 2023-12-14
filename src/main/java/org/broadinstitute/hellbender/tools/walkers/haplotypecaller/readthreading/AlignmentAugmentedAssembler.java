@@ -79,9 +79,8 @@ public class AlignmentAugmentedAssembler {
 
         final AugmentedKmerGraph graph = makeAugmentedKmerGraph(refHaplotype, reads, vertexManager);
 
-        // TODO: edge case: it is possible that the vertex manager may contain a vertex not contained in the graph
-        // TODO: when this occurs the kmer sequence of the bad vertex exists in the graph at a different position
-        // TODO: so basically, in addition to excluding
+        // edge case: it is possible that the vertex manager may contain a vertex not contained in the graph
+        // when this occurs the kmer sequence of the bad vertex exists in the graph at a different position
         final List<AugmentedVertex> bad = vertexManager.allVertices().filter(v -> !graph.containsVertex(v)).toList();
         bad.forEach(v -> vertexManager.removeVertex(v));
 
