@@ -123,9 +123,9 @@ task create_vds {
 
         if [[ -z "~{hail_wheel}" ]]
         then
-          pip install ~{hail_wheel}
-        else
           pip install hail~{'==' + hail_version}
+        else
+          pip install ~{hail_wheel}
         fi
 
         pip3 install --upgrade google-cloud-dataproc
