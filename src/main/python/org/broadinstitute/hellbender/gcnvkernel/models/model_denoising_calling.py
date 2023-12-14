@@ -7,17 +7,17 @@ from abc import abstractmethod
 from typing import List, Tuple, Set, Dict, Optional
 
 import numpy as np
-import pymc3 as pm
+import pymc as pm
 import scipy.sparse as sp
-import theano as th
-import theano.sparse as tst
-import theano.tensor as tt
-from pymc3 import Normal, Deterministic, DensityDist, Lognormal, Exponential
+import pytensor
+import pytensor.sparse as pst
+import pytensor.tensor as pt
+from pytensor.tensor.shape import unbroadcast
+from pymc import Normal, Deterministic, Potential, Lognormal, Exponential, TruncatedNormal, Uniform
 
 from . import commons
-from .dists import HalfFlat
 from .fancy_model import GeneralizedContinuousModel
-from .theano_hmm import TheanoForwardBackward
+from .pytensor_hmm import PytensorForwardBackward
 from .. import config, types
 from ..structs.interval import Interval, GCContentAnnotation
 from ..structs.metadata import SampleMetadataCollection
@@ -26,6 +26,7 @@ from ..tasks.inference_task_base import HybridInferenceParameters
 _logger = logging.getLogger(__name__)
 
 _eps = commons.eps
+_ard_upper_bound = 1E10
 
 
 class DenoisingModelConfig:
@@ -330,7 +331,7 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
         # interval class log posterior probs
         class_probs_k = np.asarray([1.0 - calling_config.p_active, calling_config.p_active], dtype=types.floatX)
         log_q_tau_tk = np.tile(np.log(class_probs_k), (shared_workspace.num_intervals, 1))
-        shared_workspace.log_q_tau_tk = th.shared(log_q_tau_tk, name="log_q_tau_tk", borrow=config.borrow_numpy)
+        shared_workspace.log_q_tau_tk = pytensor.shared(log_q_tau_tk, name="log_q_tau_tk", borrow=config.borrow_numpy)
 
         # copy number log posterior probs
         log_q_c_stc = np.zeros((shared_workspace.num_samples, shared_workspace.num_intervals,
@@ -345,11 +346,11 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
             sample_log_pi_jc = np.log(np.sum(sample_pi_jkc * class_probs_k[np.newaxis, :, np.newaxis], axis=1))
             for ti in range(shared_workspace.num_intervals):
                 log_q_c_stc[si, ti, :] = sample_log_pi_jc[t_to_j_map[ti], :]
-        shared_workspace.log_q_c_stc = th.shared(log_q_c_stc, name="log_q_c_stc", borrow=config.borrow_numpy)
+        shared_workspace.log_q_c_stc = pytensor.shared(log_q_c_stc, name="log_q_c_stc", borrow=config.borrow_numpy)
 
 
 class DenoisingCallingWorkspace:
-    """This class contains objects (numpy arrays, theano tensors, etc) shared between the denoising model
+    """This class contains objects (numpy arrays, pytensor tensors, etc) shared between the denoising model
     and the copy number caller."""
     def __init__(self,
                  denoising_config: DenoisingModelConfig,
@@ -381,7 +382,7 @@ class DenoisingCallingWorkspace:
         contig_to_j_map = {contig: self.contig_list.index(contig) for contig in self.contig_list}
         t_to_j_map = np.asarray([contig_to_j_map[interval.contig] for interval in interval_list],
                                 dtype=types.small_uint)
-        self.t_to_j_map: types.TensorSharedVariable = th.shared(
+        self.t_to_j_map: types.TensorSharedVariable = pytensor.shared(
             t_to_j_map, name="t_to_j_map", borrow=config.borrow_numpy)
 
         self.global_read_depth_s, average_ploidy_s, self.baseline_copy_number_sj = \
@@ -393,22 +394,23 @@ class DenoisingCallingWorkspace:
             "The highest contig ploidy ({0}) must be smaller or equal to the highest copy number state ({1})".format(
                 max_baseline_copy_number, calling_config.max_copy_number)
 
-        # shared theano tensors from the input data
-        self.n_st: types.TensorSharedVariable = th.shared(
+        # shared pytensor tensors from the input data
+        self.n_st: types.TensorSharedVariable = pytensor.shared(
             n_st.astype(types.med_uint), name="n_st", borrow=config.borrow_numpy)
-        self.average_ploidy_s: types.TensorSharedVariable = th.shared(
+        self.average_ploidy_s: types.TensorSharedVariable = pytensor.shared(
             average_ploidy_s.astype(types.floatX), name="average_ploidy_s", borrow=config.borrow_numpy)
 
         # copy-number event stay probability
         self.dist_t = np.asarray([self.interval_list[ti + 1].distance(self.interval_list[ti])
                                   for ti in range(self.num_intervals - 1)])
         cnv_stay_prob_t = np.exp(-self.dist_t / calling_config.cnv_coherence_length)
-        self.cnv_stay_prob_t = th.shared(cnv_stay_prob_t, name='cnv_stay_prob_t', borrow=config.borrow_numpy)
+        self.cnv_stay_prob_t = pytensor.shared(cnv_stay_prob_t, name='cnv_stay_prob_t', borrow=config.borrow_numpy)
 
         # copy number values for each copy number state
         copy_number_values_c = np.arange(0, calling_config.num_copy_number_states, dtype=types.small_uint)
-        self.copy_number_values_c = th.shared(copy_number_values_c, name='copy_number_values_c',
-                                              borrow=config.borrow_numpy)
+        self.copy_number_values_c = pytensor.shared(copy_number_values_c, name='copy_number_values_c',
+                                                    borrow=config.borrow_numpy)
+
 
         # copy number log posterior and derived quantities (to be initialized by `PosteriorInitializer`)
         self.log_q_c_stc: Optional[types.TensorSharedVariable] = None
@@ -424,7 +426,7 @@ class DenoisingCallingWorkspace:
         # copy number emission log posterior
         log_copy_number_emission_stc = np.zeros(
             (self.num_samples, self.num_intervals, calling_config.num_copy_number_states), dtype=types.floatX)
-        self.log_copy_number_emission_stc: types.TensorSharedVariable = th.shared(
+        self.log_copy_number_emission_stc: types.TensorSharedVariable = pytensor.shared(
             log_copy_number_emission_stc, name="log_copy_number_emission_stc", borrow=config.borrow_numpy)
 
         # class log posterior (to be initialized by `PosteriorInitializer`)
@@ -448,7 +450,7 @@ class DenoisingCallingWorkspace:
 
         # GC bias factors
         # (to be initialized by calling `initialize_bias_inference_vars`)
-        self.W_gc_tg: Optional[tst.SparseConstant] = None
+        self.W_gc_tg: Optional[pst.SparseConstant] = None
 
         # auxiliary data structures for hybrid q_c_expectation_mode calculation
         # (to be initialized by calling `initialize_bias_inference_vars`)
@@ -456,7 +458,7 @@ class DenoisingCallingWorkspace:
 
         # denoised copy ratios
         denoised_copy_ratio_st = np.zeros((self.num_samples, self.num_intervals), dtype=types.floatX)
-        self.denoised_copy_ratio_st: types.TensorSharedVariable = th.shared(
+        self.denoised_copy_ratio_st: types.TensorSharedVariable = pytensor.shared(
             denoised_copy_ratio_st, name="denoised_copy_ratio_st", borrow=config.borrow_numpy)
 
         # initialize posterior
@@ -475,7 +477,7 @@ class DenoisingCallingWorkspace:
         # class emission log posterior
         log_class_emission_tk = np.zeros(
             (self.num_intervals, self.calling_config.num_copy_number_classes), dtype=types.floatX)
-        self.log_class_emission_tk: types.TensorSharedVariable = th.shared(
+        self.log_class_emission_tk: types.TensorSharedVariable = pytensor.shared(
             log_class_emission_tk, name="log_class_emission_tk", borrow=True)
 
         # class assignment prior probabilities
@@ -484,7 +486,7 @@ class DenoisingCallingWorkspace:
         #   The second class is a CNV-active class (all copy number states are equally probable)
         class_probs_k = np.asarray([1.0 - self.calling_config.p_active, self.calling_config.p_active],
                                    dtype=types.floatX)
-        self.class_probs_k: types.TensorSharedVariable = th.shared(
+        self.class_probs_k: types.TensorSharedVariable = pytensor.shared(
             class_probs_k, name='class_probs_k', borrow=config.borrow_numpy)
 
         # class Markov chain log prior (initialized here and remains constant throughout)
@@ -515,7 +517,7 @@ class DenoisingCallingWorkspace:
         # MAP copy number call
         if self.c_map_st is None:
             c_map_st = np.zeros((self.num_samples, self.num_intervals), dtype=types.small_uint)
-            self.c_map_st = th.shared(c_map_st, name="c_map_st", borrow=config.borrow_numpy)
+            self.c_map_st = pytensor.shared(c_map_st, name="c_map_st", borrow=config.borrow_numpy)
         self.c_map_st.set_value(
             np.argmax(self.log_q_c_stc.get_value(borrow=True), axis=2).astype(types.small_uint),
             borrow=config.borrow_numpy)
@@ -524,7 +526,7 @@ class DenoisingCallingWorkspace:
             _logger.debug("Updating CNV-active class bitmask...")
             if self.active_class_bitmask_t is None:
                 active_class_bitmask_t = np.zeros((self.num_intervals,), dtype=bool)
-                self.active_class_bitmask_t = th.shared(
+                self.active_class_bitmask_t = pytensor.shared(
                     active_class_bitmask_t, name="active_class_bitmask_t", borrow=config.borrow_numpy)
 
             # bitmask for intervals of which the probability of being in the silent class is below 0.5
@@ -590,8 +592,8 @@ class DenoisingCallingWorkspace:
         return np.log(trans_tkl)
 
     @staticmethod
-    def _create_sparse_gc_bin_tensor_tg(interval_list: List[Interval], num_gc_bins: int) -> tst.SparseConstant:
-        """Creates a sparse 2d theano tensor with shape (num_intervals, gc_bin). The sparse
+    def _create_sparse_gc_bin_tensor_tg(interval_list: List[Interval], num_gc_bins: int) -> pst.SparseConstant:
+        """Creates a sparse 2d pytensor tensor with shape (num_intervals, gc_bin). The sparse
         tensor represents a 1-hot mapping of each interval to its GC bin index. The range [0, 1]
         is uniformly divided into num_gc_bins.
         """
@@ -609,8 +611,8 @@ class DenoisingCallingWorkspace:
         indptr = np.arange(0, num_intervals + 1)
         scipy_gc_matrix = sp.csr_matrix((data, indices, indptr), shape=(num_intervals, num_gc_bins),
                                         dtype=types.small_uint)
-        theano_gc_matrix: tst.SparseConstant = tst.as_sparse(scipy_gc_matrix)
-        return theano_gc_matrix
+        pytensor_gc_matrix: pst.SparseConstant = pst.as_sparse(scipy_gc_matrix)
+        return pytensor_gc_matrix
 
     @staticmethod
     def _get_baseline_copy_number_and_read_depth(sample_metadata_collection: SampleMetadataCollection,
@@ -700,8 +702,10 @@ class TrivialInitialModelParametersSupplier(InitialModelParametersSupplier):
 
 
 class DenoisingModel(GeneralizedContinuousModel):
+    # PR #8561 some broadcastable arguments in the distributions below in PyMC3 were removed
     """The gCNV coverage denoising model declaration (continuous RVs only; discrete posteriors are assumed
     to be given)."""
+    @pytensor.config.change_flags(compute_test_value="off")
     def __init__(self,
                  denoising_model_config: DenoisingModelConfig,
                  shared_workspace: DenoisingCallingWorkspace,
@@ -715,25 +719,22 @@ class DenoisingModel(GeneralizedContinuousModel):
 
         # interval-specific unexplained variance
         psi_t = Exponential(name='psi_t', lam=1.0 / denoising_model_config.psi_t_scale,
-                            shape=(shared_workspace.num_intervals,),
-                            broadcastable=(False,))
+                            shape=(shared_workspace.num_intervals,))
         register_as_global(psi_t)
 
         # sample-specific unexplained variance
         psi_s = Exponential(name='psi_s', lam=1.0 / denoising_model_config.psi_s_scale,
-                            shape=(shared_workspace.num_samples,),
-                            broadcastable=(False,))
+                            shape=(shared_workspace.num_samples,))
         register_as_sample_specific(psi_s, sample_axis=0)
 
         # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_st = tt.maximum(tt.inv(tt.exp(psi_t.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0),
+        alpha_st = pt.maximum(pt.reciprocal(pt.exp(psi_t.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0),
                               _eps)
 
         # interval-specific mean log bias
-        log_mean_bias_t = Normal(name='log_mean_bias_t', mu=0.0, sd=denoising_model_config.log_mean_bias_std,
+        log_mean_bias_t = Normal(name='log_mean_bias_t', mu=0.0, sigma=denoising_model_config.log_mean_bias_std,
                                  shape=(shared_workspace.num_intervals,),
-                                 broadcastable=(False,),
-                                 testval=initial_model_parameters_supplier.get_init_log_mean_bias_t())
+                                 initval=initial_model_parameters_supplier.get_init_log_mean_bias_t())
         register_as_global(log_mean_bias_t)
 
         # log-normal read depth centered at the global read depth
@@ -743,53 +744,51 @@ class DenoisingModel(GeneralizedContinuousModel):
                                  mu=read_depth_mu_s,
                                  tau=denoising_model_config.depth_correction_tau,
                                  shape=(shared_workspace.num_samples,),
-                                 broadcastable=(False,),
-                                 testval=shared_workspace.global_read_depth_s)
+                                 initval=shared_workspace.global_read_depth_s)
         register_as_sample_specific(read_depth_s, sample_axis=0)
 
         # log bias modelling, starting with the log mean bias
-        log_bias_st = tt.tile(log_mean_bias_t, (shared_workspace.num_samples, 1))
+        log_bias_st = pt.tile(log_mean_bias_t, (shared_workspace.num_samples, 1))
 
         if denoising_model_config.enable_bias_factors:
+            # PR #8651 NOTE: originally used HalfFlat in PyMC3, but this now raises
+            # NotImplementedError: Cannot sample from half_flat variable.
+            # we instead use a Uniform with a very large, unexposed upper bound
             # ARD prior precisions
-            ard_u = HalfFlat(name='ard_u',
-                             shape=(denoising_model_config.max_bias_factors,),
-                             broadcastable=(False,),
-                             testval=initial_model_parameters_supplier.get_init_ard_u())
+            ard_u = Uniform(name='ard_u', lower=0., upper=_ard_upper_bound,
+                            shape=(denoising_model_config.max_bias_factors,),
+                            initval=initial_model_parameters_supplier.get_init_ard_u())
             register_as_global(ard_u)
 
             # bias factors
             W_tu = Normal(name='W_tu', mu=0.0, tau=ard_u.dimshuffle('x', 0),
-                          shape=(shared_workspace.num_intervals, denoising_model_config.max_bias_factors),
-                          broadcastable=(False, False))
+                          shape=(shared_workspace.num_intervals, denoising_model_config.max_bias_factors))
             register_as_global(W_tu)
 
             # sample-specific bias factor loadings
-            z_su = Normal(name='z_su', mu=0.0, sd=1.0,
-                          shape=(shared_workspace.num_samples, denoising_model_config.max_bias_factors),
-                          broadcastable=(False, False))
+            z_su = Normal(name='z_su', mu=0.0, sigma=1.0,
+                          shape=(shared_workspace.num_samples, denoising_model_config.max_bias_factors))
             register_as_sample_specific(z_su, sample_axis=0)
 
             # add contribution to total log bias
             if denoising_model_config.disable_bias_factors_in_active_class:
-                prob_silent_class_t = tt.exp(shared_workspace.log_q_tau_tk[:, 0])
-                log_bias_st += (prob_silent_class_t.dimshuffle('x', 0) * tt.dot(W_tu, z_su.T).T)
+                prob_silent_class_t = pt.exp(shared_workspace.log_q_tau_tk[:, 0])
+                log_bias_st += (prob_silent_class_t.dimshuffle('x', 0) * pt.dot(W_tu, z_su.T).T)
             else:
-                log_bias_st += tt.dot(W_tu, z_su.T).T
+                log_bias_st += pt.dot(W_tu, z_su.T).T
 
         # GC bias
         if denoising_model_config.enable_explicit_gc_bias_modeling:
             # sample-specific GC bias factor loadings
-            z_sg = Normal(name='z_sg', mu=0.0, sd=denoising_model_config.gc_curve_sd,
-                          shape=(shared_workspace.num_samples, denoising_model_config.num_gc_bins),
-                          broadcastable=(False, False))
+            z_sg = Normal(name='z_sg', mu=0.0, sigma=denoising_model_config.gc_curve_sd,
+                          shape=(shared_workspace.num_samples, denoising_model_config.num_gc_bins))
             register_as_sample_specific(z_sg, sample_axis=0)
 
             # add contribution to total log bias
-            log_bias_st += tst.dot(shared_workspace.W_gc_tg, z_sg.T).T
+            log_bias_st += pst.dot(shared_workspace.W_gc_tg, z_sg.T).T
 
         # useful expressions
-        bias_st = tt.exp(log_bias_st)
+        bias_st = pt.exp(log_bias_st)
 
         # the expected number of erroneously mapped reads
         mean_mapping_error_correction_s = eps_mapping * read_depth_s * shared_workspace.average_ploidy_s
@@ -823,8 +822,8 @@ class DenoisingModel(GeneralizedContinuousModel):
                     alpha_st.dimshuffle(0, 1, 'x'),
                     _n_st.dimshuffle(0, 1, 'x'))
                 log_q_c_stc = shared_workspace.log_q_c_stc
-                q_c_stc = tt.exp(log_q_c_stc)
-                return tt.sum(q_c_stc * (_log_copy_number_emission_stc - log_q_c_stc), axis=2)
+                q_c_stc = pt.exp(log_q_c_stc)
+                return pt.sum(q_c_stc * (_log_copy_number_emission_stc - log_q_c_stc), axis=2)
 
         elif denoising_model_config.q_c_expectation_mode == 'hybrid':
             def _copy_number_emission_logp(_n_st):
@@ -834,17 +833,17 @@ class DenoisingModel(GeneralizedContinuousModel):
 
                 # for CNV-active classes, calculate exact posterior expectation
                 mu_active_stc = ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x', 'x')
-                                 * bias_st.dimshuffle(0, 1, 'x')[:, active_class_indices, :]
+                                 * bias_st[:, active_class_indices].dimshuffle(0, 1, 'x')   # PR #8561 switched indexing and dimshuffle to account for case when active_class_indices has a single element
                                  * shared_workspace.copy_number_values_c.dimshuffle('x', 'x', 0)
                                  + mean_mapping_error_correction_s.dimshuffle(0, 'x', 'x'))
-                alpha_active_stc = tt.maximum(tt.inv((tt.exp(psi_t.dimshuffle('x', 0)[:, active_class_indices]
-                                                             + psi_s.dimshuffle(0, 'x')) - 1.0)).dimshuffle(0, 1, 'x'),
+                alpha_active_stc = pt.maximum(pt.reciprocal((pt.exp(psi_t[active_class_indices].dimshuffle('x', 0) # PR #8561 switched indexing and dimshuffle to account for case when active_class_indices has a single element, inv to reciprocal
+                                                                    + psi_s.dimshuffle(0, 'x')) - 1.0)).dimshuffle(0, 1, 'x'),
                                               _eps)
-                n_active_stc = _n_st.dimshuffle(0, 1, 'x')[:, active_class_indices, :]
+                n_active_stc = _n_st[:, active_class_indices].dimshuffle(0, 1, 'x') # PR #8561 switched indexing and dimshuffle to account for case when active_class_indices has a single element
                 active_class_logp_stc = commons.negative_binomial_logp(mu_active_stc, alpha_active_stc, n_active_stc)
                 log_q_c_active_stc = shared_workspace.log_q_c_stc[:, active_class_indices, :]
-                q_c_active_stc = tt.exp(log_q_c_active_stc)
-                active_class_logp = tt.sum(q_c_active_stc * (active_class_logp_stc - log_q_c_active_stc))
+                q_c_active_stc = pt.exp(log_q_c_active_stc)
+                active_class_logp = pt.sum(q_c_active_stc * (active_class_logp_stc - log_q_c_active_stc))
 
                 # for CNV-silent classes, use MAP copy number state
                 mu_silent_st = ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x') * bias_st[:, silent_class_indices]
@@ -852,7 +851,7 @@ class DenoisingModel(GeneralizedContinuousModel):
                                 + mean_mapping_error_correction_s.dimshuffle(0, 'x'))
                 alpha_silent_st = alpha_st[:, silent_class_indices]
                 n_silent_st = _n_st[:, silent_class_indices]
-                silent_class_logp = tt.sum(commons.negative_binomial_logp(mu_silent_st, alpha_silent_st, n_silent_st))
+                silent_class_logp = pt.sum(commons.negative_binomial_logp(mu_silent_st, alpha_silent_st, n_silent_st))
 
                 return active_class_logp + silent_class_logp
 
@@ -862,14 +861,14 @@ class DenoisingModel(GeneralizedContinuousModel):
                     mu_stc,
                     alpha_st.dimshuffle(0, 1, 'x'),
                     _n_st.dimshuffle(0, 1, 'x'))
-                return pm.math.logsumexp(shared_workspace.log_q_c_stc + _log_copy_number_emission_stc, axis=2)
+                return commons.logsumexp(shared_workspace.log_q_c_stc + _log_copy_number_emission_stc, axis=2)
 
         else:
             raise Exception("Unknown q_c expectation mode; an exception should have been raised earlier")
 
-        DensityDist(name='n_st_obs',
-                    logp=_copy_number_emission_logp,
-                    observed=shared_workspace.n_st)
+        # PR #8561 originally DensityDist in PyMC3, but this now raises an error about sampling
+        Potential(name='n_st_obs',
+                  var=_copy_number_emission_logp(shared_workspace.n_st))
 
 
 class CopyNumberEmissionBasicSampler:
@@ -891,7 +890,7 @@ class CopyNumberEmissionBasicSampler:
     def update_approximation(self, approx: pm.approximations.MeanField):
         """Generates a new compiled sampler based on a given approximation.
         Args:
-            approx: an instance of PyMC3 mean-field approximation
+            approx: an instance of PyMC mean-field approximation
 
         Returns:
             None
@@ -907,14 +906,17 @@ class CopyNumberEmissionBasicSampler:
         assert self.is_sampler_initialized, "Posterior approximation is not provided yet"
         return self._simultaneous_log_copy_number_emission_sampler()
 
-    @th.configparser.change_flags(compute_test_value="off")
+    @pytensor.config.change_flags(compute_test_value="off")
     def _get_compiled_simultaneous_log_copy_number_emission_sampler(self, approx: pm.approximations.MeanField):
-        """For a given variational approximation, returns a compiled theano function that draws posterior samples
+        """For a given variational approximation, returns a compiled pytensor function that draws posterior samples
         from log copy number emission probabilities."""
-        log_copy_number_emission_stc = commons.stochastic_node_mean_symbolic(
-            approx, self.denoising_model['log_copy_number_emission_stc'],
-            size=self.inference_params.log_emission_samples_per_round)
-        return th.function(inputs=[], outputs=log_copy_number_emission_stc)
+        log_copy_number_emission_stc = approx.sample_node(
+            node=self.denoising_model['log_copy_number_emission_stc'],
+            size=self.inference_params.log_emission_samples_per_round).mean(axis=0)
+        # must use compile_pymc to pass random_seed for reproducible sampling
+        return pm.pytensorf.compile_pymc(inputs=[],
+                                         outputs=log_copy_number_emission_stc,
+                                         random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
 
 class HHMMClassAndCopyNumberBasicCaller:
@@ -947,7 +949,7 @@ class HHMMClassAndCopyNumberBasicCaller:
           forward-backward algorithm for each sample (see _update_copy_number_log_posterior)
 
         - Given q(c_s), the emission probability of each copy number class (tau) is determined
-          (see _get_update_log_class_emission_tk_theano_func). The class prior and transition probabilities
+          (see _get_update_log_class_emission_tk_pytensor_func). The class prior and transition probabilities
           are fixed hyperparameters. Therefore, q(tau) can be updated immediately using a single run
           of forward-backward algorithm (see _update_class_log_posterior).
     """
@@ -978,10 +980,10 @@ class HHMMClassAndCopyNumberBasicCaller:
                 calling_config.num_copy_number_states,
                 calling_config.p_alt,
                 shared_workspace.baseline_copy_number_sj[si, :])[:, :, :]
-        self.pi_sjkc: types.TensorSharedVariable = th.shared(pi_sjkc, name='pi_sjkc', borrow=config.borrow_numpy)
+        self.pi_sjkc: types.TensorSharedVariable = pytensor.shared(pi_sjkc, name='pi_sjkc', borrow=config.borrow_numpy)
 
         # compiled function for forward-backward updates of copy number posterior
-        self._hmm_q_copy_number = TheanoForwardBackward(
+        self._hmm_q_copy_number = PytensorForwardBackward(
             log_posterior_probs_output_tc=None,
             resolve_nans=False,
             do_thermalization=True,
@@ -994,7 +996,7 @@ class HHMMClassAndCopyNumberBasicCaller:
             # Note:
             #   if p_active == 0, we have to deal with inf - inf expressions properly.
             #   setting resolve_nans = True takes care of such ambiguities.
-            self._hmm_q_class = TheanoForwardBackward(
+            self._hmm_q_class = PytensorForwardBackward(
                 log_posterior_probs_output_tc=shared_workspace.log_q_tau_tk,
                 resolve_nans=(calling_config.p_active == 0),
                 do_thermalization=True,
@@ -1003,13 +1005,13 @@ class HHMMClassAndCopyNumberBasicCaller:
                 include_alpha_beta_output=False)
 
             # compiled function for update of class log emission
-            self._update_log_class_emission_tk_theano_func = self._get_update_log_class_emission_tk_theano_func()
+            self._update_log_class_emission_tk_pytensor_func = self._get_update_log_class_emission_tk_pytensor_func()
         else:
-            self._hmm_q_class: Optional[TheanoForwardBackward] = None
-            self._update_log_class_emission_tk_theano_func = None
+            self._hmm_q_class: Optional[PytensorForwardBackward] = None
+            self._update_log_class_emission_tk_pytensor_func = None
 
         # compiled function for variational update of copy number HMM specs
-        self._get_copy_number_hmm_specs_theano_func = self.get_compiled_copy_number_hmm_specs_theano_func()
+        self._get_copy_number_hmm_specs_pytensor_func = self.get_compiled_copy_number_hmm_specs_pytensor_func()
 
     @staticmethod
     def get_copy_number_prior_for_sample_jkc(num_copy_number_states: int,
@@ -1084,7 +1086,7 @@ class HHMMClassAndCopyNumberBasicCaller:
             cnv_stay_prob_t = self.shared_workspace.cnv_stay_prob_t.get_value(borrow=True)
             log_q_tau_tk = self.shared_workspace.log_q_tau_tk.get_value(borrow=True)
             t_to_j_map = self.shared_workspace.t_to_j_map.get_value(borrow=True)
-            hmm_spec = self._get_copy_number_hmm_specs_theano_func(pi_jkc, cnv_stay_prob_t, log_q_tau_tk, t_to_j_map)
+            hmm_spec = self._get_copy_number_hmm_specs_pytensor_func(pi_jkc, cnv_stay_prob_t, log_q_tau_tk, t_to_j_map)
             log_prior_c = hmm_spec[0]
             log_trans_tcc = hmm_spec[1]
 
@@ -1132,7 +1134,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         return copy_number_update_s, copy_number_log_likelihoods_s
 
     def _update_log_class_emission_tk(self):
-        self._update_log_class_emission_tk_theano_func()
+        self._update_log_class_emission_tk_pytensor_func()
 
     def _update_class_log_posterior(self, class_update_summary_statistic_reducer) -> Tuple[float, float]:
         fb_result = self._hmm_q_class.perform_forward_backward(
@@ -1150,19 +1152,19 @@ class HHMMClassAndCopyNumberBasicCaller:
         self.shared_workspace.update_auxiliary_vars()
 
     @staticmethod
-    @th.configparser.change_flags(compute_test_value="off")
-    def get_compiled_copy_number_hmm_specs_theano_func() -> th.compile.function_module.Function:
+    @pytensor.config.change_flags(compute_test_value="off")
+    def get_compiled_copy_number_hmm_specs_pytensor_func() -> pytensor.compile.Function:
         """Returns a compiled function that calculates the interval-class-averaged and probability-sum-normalized
         log copy number transition matrix and log copy number prior for the first interval
 
-        Returned theano function inputs:
+        Returned pytensor function inputs:
             pi_jkc: a 3d tensor containing copy-number priors for each contig (j) and each class (k)
             cnv_stay_prob_t: probability of staying on the same copy-number state at interval `t`
             log_q_tau_tk: log probability of copy-number classes at interval `t`
             t_to_j_map: a mapping from interval indices (t) to contig indices (j); it is used to unpack
                 `pi_jkc` to `pi_tkc` (see below)
 
-        Returned theano function outputs:
+        Returned pytensor function outputs:
             log_prior_c_first_interval: log probability of copy-number states for the first interval
             log_trans_tab: log transition probability matrix from interval `t` to interval `t+1`
 
@@ -1172,38 +1174,40 @@ class HHMMClassAndCopyNumberBasicCaller:
             refers to contig index.
         """
         # shorthands
-        pi_jkc = tt.tensor3(name='pi_jkc')
-        cnv_stay_prob_t = tt.vector(name='cnv_stay_prob_t')
-        log_q_tau_tk = tt.matrix(name='log_q_tau_tk')
-        t_to_j_map = tt.vector(name='t_to_j_map', dtype=tt.scal.uint32)
+        pi_jkc = pt.tensor3(name='pi_jkc')
+        cnv_stay_prob_t = pt.vector(name='cnv_stay_prob_t')
+        log_q_tau_tk = pt.matrix(name='log_q_tau_tk')
+        t_to_j_map = pt.vector(name='t_to_j_map', dtype=pytensor.scalar.uint32)
+
+
 
         # log prior probability for the first interval
-        log_prior_c_first_interval = tt.dot(tt.log(pi_jkc[t_to_j_map[0], :, :].T), tt.exp(log_q_tau_tk[0, :]))
-        log_prior_c_first_interval -= pm.logsumexp(log_prior_c_first_interval)
+        log_prior_c_first_interval = pt.dot(pt.log(pi_jkc[t_to_j_map[0], :, :].T), pt.exp(log_q_tau_tk[0, :]))
+        log_prior_c_first_interval -= commons.logsumexp(log_prior_c_first_interval)
 
         # log transition matrix
-        cnv_not_stay_prob_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
+        cnv_not_stay_prob_t = pt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
         num_copy_number_states = pi_jkc.shape[2]
-        delta_ab = tt.eye(num_copy_number_states)
+        delta_ab = pt.eye(num_copy_number_states)
 
         # map contig to interval and obtain pi_tkc for the rest of the targets
         pi_tkc = pi_jkc[t_to_j_map[1:], :, :]
 
         # calculate normalized log transition matrix
         # todo use logaddexp
-        log_trans_tkab = tt.log(cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
+        log_trans_tkab = pt.log(cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
                                 + cnv_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
-        q_tau_tkab = tt.exp(log_q_tau_tk[1:, :]).dimshuffle(0, 1, 'x', 'x')
-        log_trans_tab = tt.sum(q_tau_tkab * log_trans_tkab, axis=1)
-        log_trans_tab -= pm.logsumexp(log_trans_tab, axis=2)
+        q_tau_tkab = pt.exp(log_q_tau_tk[1:, :]).dimshuffle(0, 1, 'x', 'x')
+        log_trans_tab = pt.sum(q_tau_tkab * log_trans_tkab, axis=1)
+        log_trans_tab -= commons.logsumexp(log_trans_tab, axis=2)
 
         inputs = [pi_jkc, cnv_stay_prob_t, log_q_tau_tk, t_to_j_map]
         outputs = [log_prior_c_first_interval, log_trans_tab]
 
-        return th.function(inputs=inputs, outputs=outputs)
+        return pytensor.function(inputs=inputs, outputs=outputs)
 
-    @th.configparser.change_flags(compute_test_value="off")
-    def _get_update_log_class_emission_tk_theano_func(self) -> th.compile.function_module.Function:
+    @pytensor.config.change_flags(compute_test_value="off")
+    def _get_update_log_class_emission_tk_pytensor_func(self) -> pytensor.compile.Function:
         """Returns a compiled function that calculates the log interval class emission probability and
         directly updates `log_class_emission_tk` in the workspace.
 
@@ -1221,23 +1225,23 @@ class HHMMClassAndCopyNumberBasicCaller:
         """
         # shorthands
         cnv_stay_prob_t = self.shared_workspace.cnv_stay_prob_t
-        q_c_stc = tt.exp(self.shared_workspace.log_q_c_stc)
+        q_c_stc = pt.exp(self.shared_workspace.log_q_c_stc)
         pi_sjkc = self.pi_sjkc
         t_to_j_map = self.shared_workspace.t_to_j_map
         num_copy_number_states = self.calling_config.num_copy_number_states
 
         # log copy number transition matrix for each class
-        cnv_not_stay_prob_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
-        delta_ab = tt.eye(num_copy_number_states)
+        cnv_not_stay_prob_t = pt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
+        delta_ab = pt.eye(num_copy_number_states)
 
         # calculate log class emission by reducing over samples; see below
-        log_class_emission_cum_sum_tk = tt.zeros((self.shared_workspace.num_intervals - 1,
+        log_class_emission_cum_sum_tk = pt.zeros((self.shared_workspace.num_intervals - 1,
                                                   self.calling_config.num_copy_number_classes),
                                                  dtype=types.floatX)
 
-        # this converts TensorType from row to matrix when number in the edge case when number of intervals is equal to 2
+        # this converts TensorType from row to matrix in the edge case when number of intervals is equal to 2
         # (to avoid type mismatch later on)
-        log_class_emission_cum_sum_tk = tt.unbroadcast(log_class_emission_cum_sum_tk, 0)
+        log_class_emission_cum_sum_tk = unbroadcast(log_class_emission_cum_sum_tk, 0)
 
         def inc_log_class_emission_tk_except_for_first_interval(pi_jkc, q_c_tc, cum_sum_tk):
             """Adds the contribution of a given sample to the log class emission (symbolically).
@@ -1254,15 +1258,15 @@ class HHMMClassAndCopyNumberBasicCaller:
             pi_tkc = pi_jkc[t_to_j_map[1:], :, :]
 
             # todo use logaddexp
-            log_trans_tkab = tt.log(
+            log_trans_tkab = pt.log(
                 cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
                 + cnv_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
             xi_tab = q_c_tc[:-1, :].dimshuffle(0, 1, 'x') * q_c_tc[1:, :].dimshuffle(0, 'x', 1)
-            current_log_class_emission_tk = tt.sum(tt.sum(
+            current_log_class_emission_tk = pt.sum(pt.sum(
                 xi_tab.dimshuffle(0, 'x', 1, 2) * log_trans_tkab, axis=-1), axis=-1)
             return cum_sum_tk + current_log_class_emission_tk
 
-        reduce_output = th.reduce(inc_log_class_emission_tk_except_for_first_interval,
+        reduce_output = pytensor.reduce(inc_log_class_emission_tk_except_for_first_interval,
                                   sequences=[pi_sjkc, q_c_stc],
                                   outputs_info=[log_class_emission_cum_sum_tk])
         log_class_emission_tk_except_for_first_interval = reduce_output[0]
@@ -1270,11 +1274,11 @@ class HHMMClassAndCopyNumberBasicCaller:
         # the first interval
         pi_skc_first = pi_sjkc[:, t_to_j_map[0], :, :]
         q_skc_first = q_c_stc[:, 0, :].dimshuffle(0, 'x', 1)
-        log_class_emission_k_first = tt.sum(tt.sum(tt.log(pi_skc_first) * q_skc_first, axis=0), axis=-1)
+        log_class_emission_k_first = pt.sum(pt.sum(pt.log(pi_skc_first) * q_skc_first, axis=0), axis=-1)
 
         # concatenate first and rest
-        log_class_emission_tk = tt.concatenate((log_class_emission_k_first.dimshuffle('x', 0),
+        log_class_emission_tk = pt.concatenate((log_class_emission_k_first.dimshuffle('x', 0),
                                                 log_class_emission_tk_except_for_first_interval))
 
-        return th.function(inputs=[], outputs=[], updates=[
+        return pytensor.function(inputs=[], outputs=[], updates=[
             (self.shared_workspace.log_class_emission_tk, log_class_emission_tk)])

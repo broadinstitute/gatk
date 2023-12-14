@@ -89,12 +89,12 @@ import java.util.stream.IntStream;
  * the python environment is already set up. Otherwise, the environment must be created and activated as described in the
  * main GATK README.md file.</p>
  *
- * <p>Advanced users may wish to set the <code>THEANO_FLAGS</code> environment variable to override the GATK theano
+ * <p>Advanced users may wish to set the <code>PYTENSOR_FLAGS</code> environment variable to override the GATK PyTensor
  * configuration. For example, by running
- * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk PostprocessGermlineCNVCalls ...</code>, users can specify
- * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
- * at <a href="https://theano-pymc.readthedocs.io/en/latest/library/config.html">
- *     https://theano-pymc.readthedocs.io/en/latest/library/config.html</a>.
+ * <code>PYTENSOR_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk DetermineGermlineContigPloidy ...</code>, users can specify
+ * the PyTensor compilation directory (which is set to <code>$HOME/.pytensor</code> by default).  See PyTensor documentation
+ * at <a href="https://pytensor.readthedocs.io/en/latest/library/config.html">
+ *     https://pytensor.readthedocs.io/en/latest/library/config.html</a>.
  * </p>
  *
  * <h3>Required inputs:</h3>
