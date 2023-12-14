@@ -17,8 +17,8 @@
   "CNVGermlineCaseScatteredWorkflow.gcnv_max_training_epochs": 1,
   "CNVGermlineCaseScatteredWorkflow.gcnv_min_training_epochs": 1,
   "CNVGermlineCaseScatteredWorkflow.gcnv_model_tars": [
-    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-0.tar.gz",
-    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-1.tar.gz"],
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-shard-0.tar.gz",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-shard-1.tar.gz"],
   "CNVGermlineCaseScatteredWorkflow.gcnv_num_thermal_advi_iters": 1,
   "CNVGermlineCaseScatteredWorkflow.intervals": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.interval_list",
   "CNVGermlineCaseScatteredWorkflow.filtered_intervals": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.preprocessed.filtered.interval_list",
