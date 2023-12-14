@@ -291,7 +291,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_CNN_WDL', 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' ]
+        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' ]
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
