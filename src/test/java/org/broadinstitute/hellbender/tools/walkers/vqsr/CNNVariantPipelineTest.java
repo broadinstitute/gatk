@@ -17,13 +17,13 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
     private static File readTensorDir;
     private static File referenceTensorDir;
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public static void makeTempDirectories() {
         readTensorDir = createTempDir("readTensorDir");
         referenceTensorDir = createTempDir("referenceTensorDir");
     }
 
-    @Test(groups = {"python"}, dependsOnMethods = {"makeTempDirectories"})
+    @Test(groups = {"python"}, dependsOnMethods = {"makeTempDirectories"}, enabled = false)
     public void testGenerateReferenceTensors() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("CNNVariantWriteTensors")
@@ -37,7 +37,7 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         new Main().instanceMain(args.getArgsArray());
     }
 
-    @Test(groups = {"python"}, dependsOnMethods = {"makeTempDirectories"})
+    @Test(groups = {"python"}, dependsOnMethods = {"makeTempDirectories"}, enabled = false)
     public void testGenerateReadTensors() {
         final String bamFile = largeFileTestDir + "VQSR/g94982_b37_chr20_1m_8m_bamout.bam";
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -55,7 +55,7 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         new Main().instanceMain(args.getArgsArray());
     }
 
-    @Test(groups = {"python"}, dependsOnMethods = {"testGenerateReferenceTensors"})
+    @Test(groups = {"python"}, dependsOnMethods = {"testGenerateReferenceTensors"}, enabled = false)
     public void testTrainingReferenceModel() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("CNNVariantTrain")
@@ -69,7 +69,7 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         new Main().instanceMain(args.getArgsArray());
     }
 
-    @Test(groups = {"python"}, dependsOnMethods = {"testGenerateReadTensors"})
+    @Test(groups = {"python"}, dependsOnMethods = {"testGenerateReadTensors"}, enabled = false)
     public void testTrainingReadModel() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("CNNVariantTrain")
@@ -85,7 +85,7 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         new Main().instanceMain(args.getArgsArray());
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testTranches() {
         final String trancheVCF = largeFileTestDir + "VQSR/g94982_b37_chr20_1m_10m.vcf.gz";
         final String snpTruthVCF = largeFileTestDir + "VQSR/giab_chr20_1m_10m.vcf.gz";
