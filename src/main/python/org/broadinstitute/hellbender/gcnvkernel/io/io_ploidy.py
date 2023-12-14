@@ -3,7 +3,7 @@ import os
 from typing import List, Dict
 
 import numpy as np
-import pymc3 as pm
+import pymc as pm
 
 from . import io_commons
 from . import io_consts

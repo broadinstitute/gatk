@@ -1,14 +1,14 @@
-import pymc3 as pm
+import pymc as pm
 
 import logging
-from pymc3 import Model
+from pymc import Model
 from typing import Optional, Set, Dict
 
 _logger = logging.getLogger(__name__)
 
 
 class GeneralizedContinuousModel(Model):
-    """An extension of PyMC3 `Model` class with the added functionality of labeling RVs
+    """An extension of PyMC `Model` class with the added functionality of labeling RVs
     as either global or sample-specific (for the purpose of I/O, and structured optimization).
     """
     def __init__(self):
@@ -17,12 +17,9 @@ class GeneralizedContinuousModel(Model):
         self.sample_specific_var_registry: Dict[str, int] = dict()
         super().__init__()
 
-    @staticmethod
-    def _get_var_name(var) -> str:
+    def _get_var_name(self, var) -> str:
         assert hasattr(var, 'name')
-        name = var.name
-        if hasattr(var, 'transformed'):
-            name = var.transformed.name
+        name = self.rvs_to_values[var].name # TODO transformed name
         return name
 
     def _assert_var_is_unannotated(self, var):
@@ -36,7 +33,7 @@ class GeneralizedContinuousModel(Model):
         """Register a variable as global.
 
         Args:
-            var: a PyMC3 free variable
+            var: a PyMC free variable
 
         Returns:
             None
@@ -49,7 +46,7 @@ class GeneralizedContinuousModel(Model):
         """Register a variable as sample-specific.
 
         Args:
-            var: a PyMC3 free variable
+            var: a PyMC free variable
             sample_axis: axis corresponding to sample index (it is used for slicing `var` to obtain single-sample
                 parameters)
 
@@ -64,7 +61,7 @@ class GeneralizedContinuousModel(Model):
         """Verifies that all variables are registered as either as global or sample-specific."""
         _logger.info("Global model variables: " + str(self.global_var_registry))
         _logger.info("Sample-specific model variables: " + str(set(self.sample_specific_var_registry.keys())))
-        model_var_set = {self._get_var_name(var) for var in self.vars}
+        model_var_set = {self._get_var_name(var) for var in self.free_RVs}
         unannotated_vars = model_var_set \
             .difference(self.global_var_registry) \
             .difference(set(self.sample_specific_var_registry.keys()))
