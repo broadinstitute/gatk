@@ -218,9 +218,10 @@ task TieOutVds {
 
         if [[ -z "~{hail_wheel}" ]]
         then
-          pip install hail==~{hail_version}
+          pip install hail~{'==' + hail_version}
         else
-          pip install ~{hail_wheel}
+          gsutil cp ~{hail_wheel} hail_wheel_to_use
+          pip install hail_wheel_to_use
         fi
 
         export WORK=$PWD/work
