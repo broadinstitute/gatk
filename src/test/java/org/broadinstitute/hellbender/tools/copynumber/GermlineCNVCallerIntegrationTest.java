@@ -46,8 +46,8 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     private static final File SIM_INTERVAL_LIST_SHARD_0_ANNOTATED_FILE = new File(GCNV_SIM_DATA_DIR + "sim_intervals_shard_0.annotated.tsv");
     private static final double ALLOWED_DELTA_FOR_DOUBLE_VALUES = 1E-6;
 
-    final List<String> MODEL_FILES_TO_COMPARE = Arrays.asList("log_q_tau_tk.tsv", "mu_ard_u_log__.tsv", "mu_psi_t_log__.tsv",
-            "std_ard_u_log__.tsv", "std_psi_t_log__.tsv", "mu_W_tu.tsv", "mu_log_mean_bias_t.tsv", "std_W_tu.tsv", "std_log_mean_bias_t.tsv");
+    final List<String> MODEL_FILES_TO_COMPARE = Arrays.asList("log_q_tau_tk.tsv", "mu_ard_u_interval__.tsv", "mu_psi_t_log__.tsv",
+            "std_ard_u_interval__.tsv", "std_psi_t_log__.tsv", "mu_W_tu.tsv", "mu_log_mean_bias_t.tsv", "std_W_tu.tsv", "std_log_mean_bias_t.tsv");
     final List<String> CALLS_FILES_TO_COMPARE = Arrays.asList("baseline_copy_number_t.tsv", "log_c_emission_tc.tsv",
             "log_q_c_tc.tsv", "mu_psi_s_log__.tsv", "mu_read_depth_s_log__.tsv",
             "mu_z_su.tsv", "sample_name.txt", "std_psi_s_log__.tsv",
