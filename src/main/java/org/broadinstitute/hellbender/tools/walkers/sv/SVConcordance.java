@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  * of the specific fields. For multi-allelic CNVs, only a copy state concordance metric is
  * annotated. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
  *
- * Note that the output is unsorted.
+ * For large inputs, users may enable the --do-not-sort flag to reduce memory usage.
  *
  * <h3>Inputs</h3>
  *
@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *     <li>
- *         The evaluation VCF annotated with genotype concordance metrics (unsorted)
+ *         The evaluation VCF annotated with genotype concordance metrics
  *     </li>
  * </ul>
  *
