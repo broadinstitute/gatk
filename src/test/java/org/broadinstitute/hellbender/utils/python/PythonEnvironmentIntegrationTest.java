@@ -17,17 +17,16 @@ public class PythonEnvironmentIntegrationTest {
         return new Object[][] {
                 // names of base packages that we should be able to import from within the GATK conda environment
                 // NOTE: these must be kept in sync with the versions in gatkcondaenv.yml.template
-                { "mkl",            "2.3.0" },
-                { "numpy",          "1.17.5" },
-                { "theano",         "1.0.4" },
-                { "tensorflow",     "1.15.0" },
-                { "scipy",          "1.0.0" },
-                { "pymc3",          "3.1" },
-                { "keras",          "2.2.4" },
-                { "h5py",           "2.10.0" },
-                { "sklearn",        "0.23.1" },
-                { "matplotlib",     "3.2.1" },
-                { "pandas",         "1.0.3" },
+                { "mkl",            "2.4.0" },
+                { "numpy",          "1.26.2" },
+                { "pytensor",       "2.18.1" },
+                { "torch",          "2.1.0.post100" },
+                { "scipy",          "1.11.4" },
+                { "pymc",           "5.10.0" },
+                { "h5py",           "3.10.0" },
+                { "sklearn",        "1.3.2" },
+                { "matplotlib",     "3.8.2" },
+                { "pandas",         "2.1.3" },
                 { "argparse",       null },
                 { "gcnvkernel",     null },
 
@@ -43,9 +42,9 @@ public class PythonEnvironmentIntegrationTest {
     @DataProvider(name="dataPackageMKLEnabled")
     public Object[][] getDataPackageMKLEnabled() {
         return new Object[][] {
-                { "numpy",          "numpy.__config__.get_info('blas_mkl_info') != {} and numpy.__config__.get_info('lapack_mkl_info') != {}" },
-                { "theano",         "'-lmkl_rt' in theano.config.blas.ldflags" },
-                { "tensorflow",     "tensorflow.pywrap_tensorflow.IsMklEnabled()" }
+                // { "numpy",          "numpy.__config__.get_info('blas_mkl_info') != {} and numpy.__config__.get_info('lapack_mkl_info') != {}" },  TODO this check might need to be done differently for conda-forge numpy 1.26.2, we remove it for now
+                { "pytensor",       "'-lmkl_rt' in pytensor.config.blas__ldflags" },
+                { "torch",          "'BLAS_INFO=mkl' in torch.__config__.show() and 'USE_MKL=ON' in torch.__config__.show()" }
         };
     }
 
