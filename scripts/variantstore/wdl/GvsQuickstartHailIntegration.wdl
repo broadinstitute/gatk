@@ -220,8 +220,8 @@ task TieOutVds {
         then
           pip install hail~{'==' + hail_version}
         else
-          gsutil cp ~{hail_wheel} hail_wheel_to_use
-          pip install hail_wheel_to_use
+          gsutil cp ~{hail_wheel} $HAILWHEEL
+          pip install $HAILWHEEL
         fi
 
         export WORK=$PWD/work
