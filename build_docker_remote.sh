@@ -125,6 +125,8 @@ echo "running the following gcloud command: ${SUBMIT_COMMAND}"
 echo -n "" >> .gcloudignore
 ${SUBMIT_COMMAND}
 
+echo "Image successfully built and pushed to ${DOCKER_IMAGE_TAG}"
+
 cd ${ORIGINAL_WORKING_DIRECTORY}
 if [ -n "$STAGING_DIR" ] ; then
     rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
