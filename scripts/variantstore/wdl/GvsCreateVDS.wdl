@@ -111,6 +111,7 @@ task create_vds {
 
         String variants_docker
     }
+    String hail_wheel_to_use = "hail-0.2.102-py3-none-any.whl"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -125,8 +126,8 @@ task create_vds {
         then
           pip install hail~{'==' + hail_version}
         else
-          gsutil cp ~{hail_wheel} $HAILWHEEL
-          pip install $HAILWHEEL
+          gsutil cp ~{hail_wheel} ~{hail_wheel_to_use}
+          pip install  ~{hail_wheel_to_use}
         fi
 
         pip3 install --upgrade google-cloud-dataproc

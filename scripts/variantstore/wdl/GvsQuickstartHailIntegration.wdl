@@ -173,6 +173,7 @@ task TieOutVds {
             localization_optional: true
         }
     }
+    String hail_wheel_to_use = "hail-0.2.102-py3-none-any.whl"
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -220,8 +221,8 @@ task TieOutVds {
         then
           pip install hail~{'==' + hail_version}
         else
-          gsutil cp ~{hail_wheel} $HAILWHEEL
-          pip install $HAILWHEEL
+          gsutil cp ~{hail_wheel} ~{hail_wheel_to_use}
+          pip install  ~{hail_wheel_to_use}
         fi
 
         export WORK=$PWD/work
