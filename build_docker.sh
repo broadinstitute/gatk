@@ -10,7 +10,8 @@
 #
 
 # Have script stop if there is an error
-set -e
+PS4='\D{+%F %T} \w $ '
+set -o errexit -o xtrace
 
 REPO=broadinstitute
 PROJECT=gatk

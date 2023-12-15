@@ -340,7 +340,7 @@ public abstract class AlleleFiltering {
                 .forEach(alleleHaplotypeMap.get(notAllele)::add);
 
         final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods = readLikelihoods.marginalize(alleleHaplotypeMap);
-        logger.debug(() -> String.format("GALM: %s %d %d", allele.toString(), alleleHaplotypeMap.get(allele).size(), alleleHaplotypeMap.get(notAllele).size()));
+        logger.debug(() -> String.format("GALM: %s %d %d", allele, alleleHaplotypeMap.get(allele.altAllele()).size(), alleleHaplotypeMap.get(notAllele).size()));
         return alleleLikelihoods;
     }
 

@@ -310,7 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1144_phasing_revert
+             - vs_1178_merge_master
          tags:
              - /.*/
    - name: GvsIngestTieout

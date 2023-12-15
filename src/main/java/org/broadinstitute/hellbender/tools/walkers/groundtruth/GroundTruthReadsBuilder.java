@@ -5,7 +5,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.Tuple;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
