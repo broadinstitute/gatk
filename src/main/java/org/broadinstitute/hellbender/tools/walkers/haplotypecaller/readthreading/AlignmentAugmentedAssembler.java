@@ -264,21 +264,37 @@ public class AlignmentAugmentedAssembler {
             final SmithWatermanAlignment alignment = aligner.align(refHaplotype.getBases(), baseBuffer.array(),
                     haplotypeToReferenceSWParameters, SWOverhangStrategy.SOFTCLIP);
 
+            // TODO: Fix this edge case: if a haplotype has a dangling end that extends PAST the reference haplotype
+            // TODO: ie it starts before and/or ends after the ref haplotype this alignment will yield leading or
+            // TODO: trailing softclips, which will cause the haplotype trimming later to throw an error.
+            // TODO: therefore we need to trim those extra bases and the softclip here
+
+            final Cigar cigar = alignment.getCigar();
+            final int leadingSoftclips = cigar.isLeftClipped() ? cigar.getFirstCigarElement().getLength() : 0;
+            final int trailingSoftclips = cigar.isRightClipped() ? cigar.getLastCigarElement().getLength() : 0;
+            final boolean clippingNeeded = (leadingSoftclips + trailingSoftclips > 0);
+
+            final byte[] trimmedArray =  !clippingNeeded ? baseBuffer.array() :
+                    Arrays.copyOfRange(baseBuffer.array(), leadingSoftclips, baseBuffer.array().length - trailingSoftclips);
+
+            final SmithWatermanAlignment trimmedAlignment = !clippingNeeded ? alignment :
+                    aligner.align(refHaplotype.getBases(), trimmedArray, haplotypeToReferenceSWParameters, SWOverhangStrategy.SOFTCLIP);
+
             // after aligning haplotype to ref (remember, we have done nothing for dangling heads/tails, so the haplotype
             // may start after / end before the reference) we add any leading and trailing ref bases and pad the CIGAR
             // with corresponding M sequences.
-            final int leadingRefPadding = alignment.getAlignmentOffset();
-            final int trailingRefPadding = refHaplotype.getBases().length - alignment.getCigar().getReferenceLength() - leadingRefPadding;
+            final int leadingRefPadding = trimmedAlignment.getAlignmentOffset();
+            final int trailingRefPadding = refHaplotype.getBases().length - trimmedAlignment.getCigar().getReferenceLength() - leadingRefPadding;
 
             final Cigar paddedCigar = new CigarBuilder()
                     .add(new CigarElement(leadingRefPadding, CigarOperator.M))
-                    .addAll(alignment.getCigar().getCigarElements())
+                    .addAll(trimmedAlignment.getCigar().getCigarElements())
                     .add(new CigarElement(trailingRefPadding, CigarOperator.M))
                     .make();
 
-            final ByteBuffer paddedBaseBuffer = ByteBuffer.allocate(baseBuffer.array().length + leadingRefPadding + trailingRefPadding);
+            final ByteBuffer paddedBaseBuffer = ByteBuffer.allocate(trimmedArray.length + leadingRefPadding + trailingRefPadding);
             paddedBaseBuffer.put(refHaplotype.getBases(), 0, leadingRefPadding);
-            paddedBaseBuffer.put(baseBuffer.array());
+            paddedBaseBuffer.put(trimmedArray);
             paddedBaseBuffer.put(refHaplotype.getBases(), refHaplotype.getBases().length - trailingRefPadding, trailingRefPadding);
 
             final byte[] paddedBases = paddedBaseBuffer.array();
