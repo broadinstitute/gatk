@@ -580,8 +580,8 @@ public class AlignmentAugmentedAssembler {
             if (vertices.size() == 1) {
                 return Optional.of(vertices.get(0));
             } else {
-                for (int n = 0; n < clustersAndCounts.size(); n++) {
-                    if (inCluster(position, clustersAndCounts.get(n).getLeft())) {
+                for (int n = 0; n < vertices.size(); n++) {
+                    if (inCluster(position, vertices.get(n).getPosition())) {
                         return Optional.of(vertices.get(n));
                     }
                 }
