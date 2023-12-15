@@ -146,8 +146,10 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   call CollateReports {
     input:
-      all_reports = EvaluateVcfAll.report,
-      filtered_reports = EvaluateVcfFiltered.report,
+      all_snp_reports = EvaluateVcfAll.snp_report,
+      all_indel_reports = EvaluateVcfAll.indel_report,
+      filtered_snp_reports = EvaluateVcfFiltered.snp_report,
+      filtered_indel_reports = EvaluateVcfFiltered.indel_report,
       basic_docker = effective_basic_docker,
   }
 
@@ -457,11 +459,12 @@ task EvaluateVcf {
     # Touch a file with the name of the sample in that directory, so that it's identifiable among the globbed outputs.
     touch ~{output_basename}/~{output_basename}
 
-    touch report.txt
+    touch snp_report.txt
+    touch indel_report.txt
     for type in "snp" "indel"
       do
-        d=$(cat ~{output_basename}/${type}_roc.tsv.gz | gunzip | tail -1 | cut -f3,5,6,7)
-        echo -e "~{output_basename}\t$type\t$d" >> report.txt
+        d=$(cat ~{output_basename}/${type}_roc.tsv.gz | gunzip | tail -1 | cut -f2,3,5,6,7)
+        echo -e "~{output_basename}\t$type\t$d" >> ${type}_report.txt
     done
   >>>
   runtime {
@@ -473,31 +476,44 @@ task EvaluateVcf {
   }
   output {
     File coverage = "chromosomes.to.eval.txt"
-    File report = "report.txt"
+    File snp_report = "snp_report.txt"
+    File indel_report = "indel_report.txt"
     Array[File] outputs = glob("~{output_basename}/*")
   }
 }
 
 task CollateReports {
   input {
-    Array[File] all_reports
-    Array[File] filtered_reports
+    Array[File] all_snp_reports
+    Array[File] all_indel_reports
+    Array[File] filtered_snp_reports
+    Array[File] filtered_indel_reports
     String basic_docker
   }
 
   command {
     set -e -o pipefail
 
-    echo "sample  type  FPs FNs precision sensitivity"
+    echo "Sample  Type  TP  FP  FN  Precision Sensitivity"
     while read -r a;
     do
       cat $a
-    done < ~{write_lines(all_reports)}
+    done < ~{write_lines(all_snp_reports)}
 
     while read -r a;
     do
       cat $a
-    done < ~{write_lines(filtered_reports)}
+    done < ~{write_lines(all_indel_reports)}
+
+    while read -r a;
+    do
+      cat $a
+    done < ~{write_lines(filtered_snp_reports)}
+
+    while read -r a;
+    do
+      cat $a
+    done < ~{write_lines(filtered_indel_reports)}
   }
 
   runtime {
