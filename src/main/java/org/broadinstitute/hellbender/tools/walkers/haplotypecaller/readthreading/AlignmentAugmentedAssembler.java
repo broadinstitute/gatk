@@ -591,8 +591,8 @@ public class AlignmentAugmentedAssembler {
 
         public Optional<AugmentedVertex> getVertexFromMaxPosition(final int maxPosition) {
             int matchIndex = -1;
-            for (int n = 0; n < clustersAndCounts.size(); n++) {
-                if (clustersAndCounts.get(n).getLeft() >= maxPosition) {
+            for (int n = 0; n < vertices.size(); n++) {
+                if (vertices.get(n).getPosition() >= maxPosition) {
                     if (matchIndex != -1) {
                         return Optional.empty();    // multiple matches, ambiguous soft clip
                     }
@@ -605,8 +605,8 @@ public class AlignmentAugmentedAssembler {
 
         public Optional<AugmentedVertex> getVertexFromMinPosition(final int minPosition) {
             int matchIndex = -1;
-            for (int n = 0; n < clustersAndCounts.size(); n++) {
-                if (clustersAndCounts.get(n).getLeft() >= minPosition) {
+            for (int n = 0; n < vertices.size(); n++) {
+                if (vertices.get(n).getPosition() >= minPosition) {
                     if (matchIndex != -1) {
                         return Optional.empty();    // multiple matches, ambiguous soft clip
                     }
