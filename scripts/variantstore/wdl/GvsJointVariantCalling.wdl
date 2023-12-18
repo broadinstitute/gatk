@@ -135,6 +135,7 @@ workflow GvsJointVariantCalling {
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
+            is_wgs = is_wgs,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -219,6 +220,7 @@ workflow GvsJointVariantCalling {
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            is_wgs = is_wgs,
     }
 
     output {
