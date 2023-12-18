@@ -248,6 +248,7 @@ EOF
 
         DEBIAN_FRONTEND=noninteractive
         TZ=America/Boston
+        echo "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" >> /etc/apt/sources.list
         apt update && apt install r-base -y
         chmod a+x ~{monitoring_log_process_script}
         ~{monitoring_log_process_script} ~{representative_monitoring_log} monitoring.pdf
@@ -263,7 +264,7 @@ EOF
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/functionalequivalence/fe_evaluation:1.0.0"
+        docker: "docker.io/broadinstitute/gatk:gatkbase-3.2.0"
         disks: "local-disk 200 HDD"
     }
  }
