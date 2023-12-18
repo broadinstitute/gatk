@@ -207,9 +207,11 @@ public class AlignmentAugmentedAssembler {
             // seed new cluster with reads belonging to the cluster to be split that disagree at the most "controversial"
             // decision vertex
             int finalIndexToSplitBy = indexToSplitBy;
-            readsByHaplotype.get(clusterToSplit).stream()
-                    .filter(read -> readFeatureMap.get(read)[finalIndexToSplitBy] == -1)
-                    .forEach(readsToSeedNewCluster::add);
+            if (!readsByHaplotype.isEmpty()) {
+                readsByHaplotype.get(clusterToSplit).stream()
+                        .filter(read -> readFeatureMap.get(read)[finalIndexToSplitBy] == -1)
+                        .forEach(readsToSeedNewCluster::add);
+            }
 
             final Set<Integer> emptyAndRedundantClusters = IntStream.range(0, readsByHaplotype.size())
                     .filter(n -> readsByHaplotype.get(n).isEmpty()).boxed().collect(Collectors.toSet());
@@ -368,7 +370,15 @@ public class AlignmentAugmentedAssembler {
                     }
                 } else if (decisionVertexIndexMap.containsKey(vertex)) {  // decision vertex
                     // set sibling features to -1 and this feature to +1
-                    graph.outgoingVerticesOf(lastVertexInRead).forEach(v -> features[decisionVertexIndexMap.get(v)] = -1);
+                    // edge case to be aware of: it is possible that the last vertex in the read was NOT a branch even
+                    // though the current vertex is a decision vertex (a different incoming vertex was a branch), so
+                    // if is not necessarily true that all siblings are decision vertices
+                    for (final AugmentedVertex sibling : graph.outgoingVerticesOf(lastVertexInRead)) {
+                        final Integer siblingIndex = decisionVertexIndexMap.get(sibling);
+                        if (siblingIndex != null) {
+                            features[siblingIndex.intValue()] = -1;
+                        }
+                    }
                     features[decisionVertexIndexMap.get(vertex)] = 1;
                 }
             }
