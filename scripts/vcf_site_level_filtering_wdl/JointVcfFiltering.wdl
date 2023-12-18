@@ -150,6 +150,8 @@ task ExtractVariantAnnotations {
         RuntimeAttributes runtime_attributes = {}
     }
 
+    Int disk = select_first([runtime_attributes.disk_size_gb, 100])
+
     parameter_meta {
         input_vcf: {localization_optional: true}
         input_vcf_idx: {localization_optional: true}
@@ -176,7 +178,8 @@ task ExtractVariantAnnotations {
         docker: gatk_docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        disk: disk + " GB"
+        disks: "local-disk " + disk + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
         preemptible: select_first([runtime_attributes.preemptible, 2])
         maxRetries: select_first([runtime_attributes.max_retries, 1])
@@ -208,6 +211,8 @@ task TrainVariantAnnotationsModel {
         RuntimeAttributes runtime_attributes = {}
     }
 
+    Int disk = select_first([runtime_attributes.disk_size_gb, 100])
+
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -231,7 +236,8 @@ task TrainVariantAnnotationsModel {
         docker: gatk_docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        disk: disk + " GB"
+        disks: "local-disk " + disk + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
         preemptible: select_first([runtime_attributes.preemptible, 2])
         maxRetries: select_first([runtime_attributes.max_retries, 1])
@@ -264,6 +270,8 @@ task ScoreVariantAnnotations {
 
         RuntimeAttributes runtime_attributes = {}
     }
+
+    Int disk = select_first([runtime_attributes.disk_size_gb, 100])
 
     parameter_meta {
         input_vcf: {localization_optional: true}
@@ -301,7 +309,8 @@ task ScoreVariantAnnotations {
         docker: gatk_docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 2]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        disk: disk + " GB"
+        disks: "local-disk " + disk + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
         preemptible: select_first([runtime_attributes.preemptible, 2])
         maxRetries: select_first([runtime_attributes.max_retries, 1])
