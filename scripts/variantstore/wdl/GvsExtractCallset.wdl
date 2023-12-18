@@ -109,6 +109,7 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
                                    else if GetNumSamplesLoaded.num_samples < 1000 then 500
