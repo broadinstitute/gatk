@@ -1,14 +1,13 @@
 package org.broadinstitute.hellbender.utils.help;
 
 import htsjdk.samtools.util.Iso8601Date;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.HelpDoclet;
 import org.broadinstitute.barclay.help.TemplateProperties;
 import org.broadinstitute.barclay.help.WDLWorkUnitHandler;
+import org.broadinstitute.barclay.utils.Pair;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -41,18 +40,18 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
     // the type. From a purely string perspective, some of these transforms are no-ops in that no actual
     // conversion is required because the type names are identical in Java and WDL (i.e, File->File or
     // String->String), but they're included here for completeness, and to document the allowed type transitions.
-    private final static Map<Class<?>, ImmutablePair<String, String>> javaToWDLTypeMap =
-            new HashMap<Class<?>, ImmutablePair<String, String>>() {
+    private final static Map<Class<?>, Pair<String, String>> javaToWDLTypeMap =
+            new HashMap<Class<?>, Pair<String, String>>() {
                 private static final long serialVersionUID = 1L;
                 {
                     // GATK-specific File Types
-                    put(GATKPath.class, new ImmutablePair<>(GATKPath.class.getSimpleName(), "File"));
+                    put(GATKPath.class, new Pair<>(GATKPath.class.getSimpleName(), "File"));
                     // FeatureInputs require special handling to account for the generic type param(s)
-                    put(FeatureInput.class, new ImmutablePair<>(FeatureInput.class.getSimpleName(), "File"));
+                    put(FeatureInput.class, new Pair<>(FeatureInput.class.getSimpleName(), "File"));
 
-                    put(Iso8601Date.class, new ImmutablePair<>(Iso8601Date.class.getSimpleName(), "String"));
-                    put(Date.class, new ImmutablePair<>(Date.class.getSimpleName(), "String"));
-                    put(ReadStructure.class, new ImmutablePair<>(ReadStructure.class.getSimpleName(), "String"));
+                    put(Iso8601Date.class, new Pair<>(Iso8601Date.class.getSimpleName(), "String"));
+                    put(Date.class, new Pair<>(Date.class.getSimpleName(), "String"));
+                    put(ReadStructure.class, new Pair<>(ReadStructure.class.getSimpleName(), "String"));
                 }
         };
 
@@ -327,7 +326,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
     protected Pair<String, String> transformToWDLCollectionType(final Class<?> argumentCollectionClass) {
         // required for Picard LiftoverVcf
         return argumentCollectionClass.equals(Collection.class) ?
-                new ImmutablePair<>("Collection", "Array"):
+                new Pair<>("Collection", "Array"):
                 super.transformToWDLCollectionType(argumentCollectionClass);
     }
 
