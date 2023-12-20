@@ -45,6 +45,7 @@ workflow GvsExtractCallset {
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
     Boolean write_cost_to_db = true
+    Boolean is_wgs = true
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -108,14 +109,14 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
-                                     else if GetNumSamplesLoaded.num_samples < 1000 then 500
-                                          else if GetNumSamplesLoaded.num_samples < 5000 then 1000
-                                               else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
-                                                    else if GetNumSamplesLoaded.num_samples < 50000 then 10000
-                                                         else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
-                                                              else 40000
+                                   else if GetNumSamplesLoaded.num_samples < 1000 then 500
+                                      else if GetNumSamplesLoaded.num_samples < 5000 then 1000
+                                         else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                            else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                              else if is_wgs then 20000 else 7500
 
 Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
                                 if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart

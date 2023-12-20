@@ -2,7 +2,7 @@ import os
 from typing import List
 
 import hail as hl
-from hail.vds.combiner.combine import merge_alleles
+from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
 from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, sequenceof, numeric
 
@@ -297,12 +297,12 @@ def import_gvs(refs: 'List[List[str]]',
     target_records = first_ref_mt.count_rows() // total_partitions
     info(f'import_gvs: using target_records (records per partition) of {target_records} for VDS merge')
 
-    target_final_intervals = first_ref_mt._calculate_new_partitions(total_partitions)
+    interval_tmp = os.path.join(tmp_dir, 'interval_checkpoint.ht')
+    target_final_intervals, _ = calculate_new_intervals(first_ref_mt, target_records, interval_tmp)
 
     with hl._with_flags(no_whole_stage_codegen='1'):
 
         merge_tmp = os.path.join(tmp_dir, 'merge_tmp.vds')
-        hl.current_backend().fs.rmtree(merge_tmp)
         info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
         combiner = hl.vds.new_combiner(output_path=merge_tmp,
                                        vds_paths=vds_paths,
