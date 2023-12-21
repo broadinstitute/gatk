@@ -325,50 +325,75 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
+        ref_allele = vd.alleles[0]
+        alt_alleles = vd.alleles[1:]
+        vd = vd.annotate_rows(
+            allele_NO=alt_alleles.map(
+                lambda alt: hl.coalesce(vd.as_vqsr.get(alt).yng_status == 'N', False)),
+            allele_YES=alt_alleles.map(
+                lambda alt: hl.coalesce(vd.as_vqsr.get(alt).yng_status == 'Y', True)),
+            allele_is_snp=alt_alleles.map(lambda alt: hl.is_snp(ref_allele, alt))
+        )
+
         if use_classic_vqsr:
-            vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
-                                     truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+            vd = vd.annotate_globals(
+                tranche_data=tranche.collect(_localize=False),
+                truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold
+            )
 
-            sorted_tranche_data = hl.sorted(vd.tranche_data, key=lambda x: x.truth_sensitivity)
-            vd = vd.annotate_globals(snp_vqslod_threshold=
-                                     sorted_tranche_data.filter(lambda x: (x.model == 'SNP') & (
-                                             x.truth_sensitivity >= truth_sensitivity_snp_threshold))
-                                     .head().min_vqslod
-                                     ,
-                                     indel_vqslod_threshold=sorted_tranche_data.filter(lambda x: (x.model == 'INDEL') & (
-                                             x.truth_sensitivity >= truth_sensitivity_indel_threshold))
-                                     .head().min_vqslod
-                                     )
+            def is_true_snp(tranche_data):
+                return hl.all(
+                    tranch_data.model == 'SNP',
+                    tranch_data.truth_sensitivity >= truth_sensitivity_snp_threshold
+                )
 
-            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
+            def is_true_indel(tranche_data):
+                return hl.all(
+                    tranch_data.model == 'INDEL',
+                    tranch_data.truth_sensitivity >= truth_sensitivity_indel_threshold
+                )
+
+            tranches_sorted_by_truthiness = hl.sorted(vd.tranche_data, key=lambda x: x.truth_sensitivity)
+            vd = vd.annotate_globals(
+                snp_vqslod_threshold=tranches_sorted_by_truthiness.filter(is_true_snp).head().min_vqslod,
+                indel_vqslod_threshold=tranches_sorted_by_truthiness.filter(is_true_indel).head().min_vqslod,
+            )
+
+            def classic_alt_allele_ok(is_snp_and_alt_allele: hl.TupleExpression):
+                is_snp, alt_allele = is_snp_and_alt_allele
+                threshold = hl.if_else(
+                    is_snp,
+                    vd.snp_vqslod_threshold,
+                    vd.indel_vqslod_threshold
+                )
+                return hl.coalesce(vd.as_vqsr.get(alt_allele).vqslod >= threshold, True)
+
+            alt_alleles = vd.alleles[1:]
             vd = vd.annotate_rows(
-                allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-                allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-                allele_is_snp=is_snp,
-                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                        f=lambda is_snp, alt:
-                                        hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
-                                                    hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
-                                                    True))
+                allele_OK=hl.zip(mt.allele_is_snp, alt_alleles).map(classic_alt_allele_ok)
             )
         else:
-            vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
-            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
+            vd = vd.annotate_globals(
+                truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold
+            )
+
+            def new_alt_allele_ok(is_snp_and_alt_allele: hl.TupleExpression):
+                is_snp, alt_allele = is_snp_and_alt_allele
+                threshold = hl.if_else(
+                    is_snp,
+                    vd.truth_sensitivity_snp_threshold,
+                    vd.truth_sensitivity_indel_threshold
+                )
+                return hl.coalesce(
+                    vd.as_vqsr.get(alt).calibration_sensitivity <= threshold
+                    True
+                )
+
+            alt_alleles = vd.alleles[1:]
             vd = vd.annotate_rows(
-                allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-                allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-                allele_is_snp=is_snp,
-                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                      f=lambda is_snp, alt:
-                                      hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
-                                                  hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
-                                                  True))
+                allele_OK=hl.zip(is_snp, alt_alleles).map(new_alt_allele_ok)
             )
 
         lgt = vd.LGT
