@@ -31,7 +31,7 @@ RUN apt update && \
     gpg-agent \
     build-essential \
     libblas-dev \
-    openjdk-17-jdk \
+    openjdk-21-jdk \
     vim \
     software-properties-common && \
     apt -y clean  && \

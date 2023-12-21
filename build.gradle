@@ -5,8 +5,8 @@ buildscript {
         mavenCentral()
      }
     dependencies {
-        classpath 'org.vafer:jdependency:2.9.0'
-        classpath 'org.ow2.asm:asm:9.5'
+        classpath 'org.vafer:jdependency:2.9.0' // these two are necessary until a shadow plugin release that
+        classpath 'org.ow2.asm:asm:9.5'         // includes a fix for https://github.com/johnrengelman/shadow/issues/888
     }
 }
 
