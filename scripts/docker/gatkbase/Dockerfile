@@ -25,7 +25,7 @@ RUN apt update && \
     git \
     gpg-agent \
     build-essential \
-    openjdk-17-jdk \
+    openjdk-21-jdk \
     vim \
     software-properties-common && \
     apt -y clean  && \
