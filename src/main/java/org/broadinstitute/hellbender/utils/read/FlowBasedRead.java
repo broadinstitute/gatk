@@ -860,7 +860,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     private void clipProbs() {
         for ( int i = 0 ; i < getMaxHmer(); i++ ) {
             for ( int j =0; j < getNFlows(); j++) {
-                if ((flowMatrix[i][j] <= fbargs.probabilityRatioThreshold) &&
+                if ((flowMatrix[i][j] <= fillingValue*3) &&
                         (key[j]!=i)) {
                     flowMatrix[i][j] = fillingValue;
                 }

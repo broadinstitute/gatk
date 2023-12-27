@@ -503,7 +503,7 @@ public class GroundTruthScorer extends ReadWalker {
         // write reports
         if ( reportFilePath != null ) {
             final GATKReport report = new GATKReport(
-                    BooleanAccumulator.newReportTable(qualReport, "qual", fbargs.probabilityRatioThreshold, omitZerosFromReport),
+                    BooleanAccumulator.newReportTable(qualReport, "qual", 0.0, omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base", omitZerosFromReport),
                     PercentileReport.newReportTable(percentileReports, qualityPercentiles)
