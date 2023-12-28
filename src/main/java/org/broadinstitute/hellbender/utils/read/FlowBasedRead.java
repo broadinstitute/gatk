@@ -298,7 +298,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         double total = 0;
         for (int i = call; i < maxHmer+1; i++)
             total += flowMatrix[i][flowToSpread];
-        final double fillProb = Math.max(total / numberToFill, fbargs.fillingValue);
+        final double fillProb = Math.max(total / numberToFill, fillingValue);
         for (int i = call; i < maxHmer+1; i++){
             flowMatrix[i][flowToSpread] = fillProb;
         }
@@ -950,7 +950,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         for ( int i = 0 ; i < kr.length; i++ ){
             final int idx = kr[i];
             if (( idx > 1 ) && ( idx < maxHmer) ) {
-                if ((flowMatrix[idx-1][i] > fbargs.fillingValue) && (flowMatrix[idx+1][i] > fbargs.fillingValue)) {
+                if ((flowMatrix[idx-1][i] > fillingValue) && (flowMatrix[idx+1][i] > fillingValue)) {
                     final int fixCell = flowMatrix[idx-1][i] > flowMatrix[idx+1][i] ? idx+1 : idx-1;
                     flowMatrix[fixCell][i] = fillingValue;
                 }
