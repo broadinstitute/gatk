@@ -318,6 +318,8 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
 
         if (fillingValue == 0){
             // estimate the lowest possible error probability and fill the matrix with it
+            // it is not recommended to do this in the M2 or HaplotypeCaller, since obviously the error are not
+            // equally distributed over the homopolymers
             fillingValue = estimateFillingValue()/maxHmer;
         }
 
@@ -409,8 +411,12 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         }
 
         double prob0 = Math.min(probs[qualOfs-1],probs[qualOfs]);
-        // cases where t0 actually does not report anything
-        if (prob0 / getMaxHmer() <= fillingValue * 3) {
+        // cases where t0 actually does not report anything. This awkward situation comes because
+        // if fbargs.fillingValue is zero, the empty cell probability is maximalQuality / getMaxHmer()
+        // while if not, the empty cell probability is fbargs.fillingValue.
+        if ((fbargs.fillingValue == 0) && (prob0 / getMaxHmer() <= fillingValue * 3)) {
+            prob0 = 0;
+        } else if ((fbargs.fillingValue != 0 ) && (prob0 <= fbargs.fillingValue * 3)) {
             prob0 = 0;
         }
 
