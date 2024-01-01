@@ -133,7 +133,7 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
     @Override
     public ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double expectedErrorRate, final boolean capLikelihoods) {
         final double log10ErrorRate = Math.log10(expectedErrorRate);
-        final double largeEventErrorRate = 0.001; // error rate for non-hmer/snv errors that are not seq. errors.
+        final double largeEventErrorRate = Math.max(fbargs.fillingValue, 0.000001); // error rate for non-hmer/snv errors that are not seq. errors.
         final double log10catastrophicErrorRate = Math.log10(largeEventErrorRate);
         return read -> {
             final double maxErrorsForRead = capLikelihoods ? Math.max(MAX_ERRORS_FOR_READ_CAP, Math.ceil(read.getLength() * expectedErrorRate)) : Math.ceil(read.getLength() * expectedErrorRate);
