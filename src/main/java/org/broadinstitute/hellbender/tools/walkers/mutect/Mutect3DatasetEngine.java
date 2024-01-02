@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AssemblyComplexity;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
@@ -126,6 +127,19 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         final int normalDepth = (int) MathUtils.sum(normalADs);
         final boolean hasNormal = normalDepth > 0;
 
+        final List<Allele> allRefAlleles = new ArrayList<>();
+        allRefAlleles.add(vc.getReference());
+        truthVCs.ifPresent(vcs -> vcs.forEach(var -> allRefAlleles.add(var.getReference())));
+        final Allele longestRef = allRefAlleles.stream().sorted(Comparator.comparingInt(Allele::length).reversed()).findFirst().get();
+
+        final List<Allele> remappedAltAlleles = ReferenceConfidenceVariantContextMerger.remapAlleles(vc, longestRef).stream()
+                .skip(1).toList();
+
+        final Set<Allele> truthAlleles = !truthVCs.isPresent() ? Collections.emptySet() : truthVCs.get().stream()
+                .filter(truthVC -> ! truthVC.isFiltered())
+                .flatMap(truthVC -> ReferenceConfidenceVariantContextMerger.remapAlleles(truthVC, longestRef).stream())
+                .collect(Collectors.toSet());
+
         final List<Label> labels = new ArrayList<>(numAlt);
         final Map<Allele, Integer> altDownsampleMap= new HashMap<>();
 
@@ -133,15 +147,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             final double tumorAF = tumorADs[n+1] / ((double) tumorDepth);
             final double normalAF = hasNormal ? normalADs[n+1] / ((double) normalDepth) : 0.0;
             Allele altAllele = vc.getAlternateAllele(n);
+            final Allele remappedAltAlelle = remappedAltAlleles.get(n);
             final String altAlleleString = altAllele.getBaseString();
             final int diff = altAlleleString.length() - refAllele.length();
             final VariantType type = diff == 0 ? VariantType.SNV : ( diff > 0 ? VariantType.INSERTION : VariantType.DELETION);
-
-            // TODO: what about alternative representations?
-            final Set<Allele> truthAlleles = !truthVCs.isPresent() ? Collections.emptySet() : truthVCs.get().stream()
-                    .filter(var -> ! var.isFiltered())
-                    .flatMap(var -> var.getAlternateAlleles().stream())
-                    .collect(Collectors.toSet());
 
             if (trainingMode) {
                 final ArrayBlockingQueue<Integer> unmatchedQueue = unmatchedArtifactAltCounts.get(type);
@@ -150,10 +159,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                 // extremely strict criteria because there are so many germline variants we can afford to waste a lot
                 final boolean definiteGermline = !likelySeqError && popafs[n] < COMMON_POPAF_THRESHOLD &&
                         tumorAF > 0.35 && (!hasNormal || normalAF > 0.35);
-                final boolean trueVariant = truthVCs.isPresent() ? truthAlleles.contains(altAllele) : definiteGermline;
+                final boolean trueVariant = truthVCs.isPresent() ? truthAlleles.contains(remappedAltAlelle) : definiteGermline;
 
                 // low AF in tumor and normal, rare in population implies artifact
-                boolean probableArtifact = !likelySeqError && (truthVCs.isPresent() ? !truthAlleles.contains(altAllele) :
+                boolean probableArtifact = !likelySeqError && (truthVCs.isPresent() ? !truthAlleles.contains(remappedAltAlelle) :
                         (tumorAF < 0.2 && popafs[n] > RARE_POPAF_THRESHOLD));
 
                 if  (probableArtifact) {
