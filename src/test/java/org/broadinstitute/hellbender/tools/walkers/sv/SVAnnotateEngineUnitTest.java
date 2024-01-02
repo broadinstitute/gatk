@@ -752,6 +752,14 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                                 Arrays.asList(GATKSVVCFConstants.PROMOTER, GATKSVVCFConstants.COPY_GAIN,
                                         GATKSVVCFConstants.INTERGENIC),
                                 Arrays.asList("EMMA1", "EMMA2", false)) },
+                // dupINVdup with CG
+                { createVariantContext("chr1", 20, 3500, null, null, null,
+                        "<CPX>", 3480, null, "dupINVdup",
+                        Arrays.asList("DUP_chr1:20-70", "INV_chr1:20-3500", "DUP_chr1:2000-3500")),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.INV_SPAN, GATKSVVCFConstants.COPY_GAIN,
+                                        GATKSVVCFConstants.NONCODING_SPAN, GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA1", "EMMA2", Arrays.asList("DNase", "Enhancer"), false)) },
                 // ignore INV for dDUP; ignore dDUP for promoter; CPX noncoding span; CPX intergenic
                 { createVariantContext("chr1", 1101, 1102, null, null, null,
                         "<CPX>", 700, null, "dDUP_iDEL",
@@ -785,8 +793,8 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                                         GATKSVVCFConstants.INTERGENIC),
                                 Arrays.asList("EMMA1", "EMMA1", true)) },
                 // merge INV + DEL for nearest TSS; noncoding breakpoint for CPX
-                { createVariantContext("chr1", 10, 11, null, null, null,
-                        "<CPX>", 40, null, "delINV",
+                { createVariantContext("chr1", 1400, 1900, null, null, null,
+                        "<CPX>", 500, null, "delINV",
                         Arrays.asList("DEL_chr1:1400-1500", "INV_chr1:1500-1900")),
                         createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT, GATKSVVCFConstants.NEAREST_TSS,
