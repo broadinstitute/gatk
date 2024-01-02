@@ -152,6 +152,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String OMIT_ZEROS_FROM_REPORT = "omit-zeros-from-report";
     public static final String QUALITY_PERCENTILES = "quality-percentiles";
     public static final String EXCLUDE_ZERO_FLOWS = "exclude-zero-flows";
+    public static final String SET_MIN_ERROR_PROB = "set-min-error-prob";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
@@ -415,6 +416,9 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = EXCLUDE_ZERO_FLOWS, doc = "should flows with a call of zero be included in the percentile report?", optional = true)
     public boolean     excludeZeroFlows = false;
 
+    @Argument(fullName =  SET_MIN_ERROR_PROB, doc = "should the minimal reported hmer error rate be set by the user (default: guessed from CRAM)", optional = true)
+    public boolean setMinErrorProb = false;
+
     // locals
     private FlowBasedAlignmentLikelihoodEngine likelihoodCalculationEngine;
     private PrintWriter                         outputCsv;
@@ -437,7 +441,9 @@ public class GroundTruthScorer extends ReadWalker {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-
+        if (!setMinErrorProb) {
+            fbargs.fillingValue = 0;
+        }
         // establish csv fields
         List<String>        order = new LinkedList<>(Arrays.asList(CSV_FIELD_ORDER_BASIC));
         if ( addMeanCalll ) {
