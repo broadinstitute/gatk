@@ -10,7 +10,6 @@ public class FlowBasedArgumentCollection implements Serializable {
     private static final long serialVersionUID = 0;
 
     public static final String FLOW_USE_T0_TAG = "flow-use-t0-tag";
-    public static final String PROBABILITY_RATIO_THRESHOLD_LONG_NAME = "flow-probability-threshold";
     public static final String REMOVE_LONGER_THAN_ONE_INDELS_LONG_NAME = "flow-remove-non-single-base-pair-indels";
     public static final String REMOVE_ONE_TO_ZERO_PROBS_LONG_NAME = "flow-remove-one-zero-probs";
     public static final String NUMBER_OF_POSSIBLE_PROBS_LONG_NAME = "flow-quantization-bins";
