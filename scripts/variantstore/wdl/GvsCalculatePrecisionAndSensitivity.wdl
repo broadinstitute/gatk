@@ -228,7 +228,6 @@ task GatherVcfs {
     Int disk_size_gb = ceil(3*size(input_vcfs, "GiB")) + 500
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
 
@@ -236,8 +235,6 @@ task GatherVcfs {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
-
-    bash ~{monitoring_script} > monitoring.log &
 
     CHR_VCFS_ARG=""
     for file in ~{sep=' ' input_vcfs}
@@ -270,7 +267,6 @@ task GatherVcfs {
   output {
     File output_vcf = "~{output_basename}.vcf.gz"
     File output_vcf_index = "~{output_basename}.vcf.gz.tbi"
-    File monitoring_log = "monitoring.log"
   }
 }
 
