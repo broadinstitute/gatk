@@ -234,10 +234,10 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         //Spread boundary flow probabilities when the read is unclipped
         //in this case the value of the hmer is uncertain
         if ( !fbargs.keepBoundaryFlows ) {
-            if (CigarUtils.countClippedBases(samRecord.getCigar(), Tail.LEFT, CigarOperator.HARD_CLIP) == 0) {
+            if (samRecord.getReadUnmappedFlag() || CigarUtils.countClippedBases(samRecord.getCigar(), Tail.LEFT, CigarOperator.HARD_CLIP) == 0) {
                 spreadFlowLengthProbsAcrossCountsAtFlow(findFirstNonZero(key));
             }
-            if (CigarUtils.countClippedBases(samRecord.getCigar(), Tail.RIGHT, CigarOperator.HARD_CLIP) == 0) {
+            if (samRecord.getReadUnmappedFlag() || CigarUtils.countClippedBases(samRecord.getCigar(), Tail.RIGHT, CigarOperator.HARD_CLIP) == 0) {
                 spreadFlowLengthProbsAcrossCountsAtFlow(findLastNonZero(key));
             }
         }
@@ -1153,7 +1153,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     private double estimateMinErrorProb(){
         final byte[] quals = samRecord.getBaseQualities();
         final byte[] tp = samRecord.getSignedByteArrayAttribute(FLOW_MATRIX_TAG_NAME);
-        byte maxQual = 0;
+        double maxQual = 0;
 
         for (int i = 0; i < quals.length; i++) {
             if (tp[i]!=0){
