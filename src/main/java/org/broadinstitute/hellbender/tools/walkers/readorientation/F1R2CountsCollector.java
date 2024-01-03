@@ -231,4 +231,8 @@ public class F1R2CountsCollector {
     public static List<File> getAltTablesFromExtractedTar(final File extractedTarDir) {
         return Arrays.stream(extractedTarDir.listFiles()).filter(file -> file.getAbsolutePath().endsWith(ALT_TABLE_EXTENSION)).collect(Collectors.toList());
     }
+
+    public static List<File> getAltTablesFromExtractedTar(final File extractedTarDir, final String refContext) {
+        return Arrays.stream(extractedTarDir.listFiles()).filter(file -> file.getAbsolutePath().endsWith(refContext + ALT_TABLE_EXTENSION)).collect(Collectors.toList());
+    }
 }
