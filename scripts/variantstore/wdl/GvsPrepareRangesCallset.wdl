@@ -64,7 +64,7 @@ workflow GvsPrepareCallset {
       fq_sample_mapping_table         = fq_sample_mapping_table,
       fq_temp_table_dataset           = fq_temp_table_dataset,
       fq_destination_dataset          = fq_destination_dataset,
-      temp_table_ttl_in_hours         = 4,
+      temp_table_ttl_in_hours         = 72,
       control_samples                 = control_samples,
       only_output_vet_tables          = only_output_vet_tables,
       write_cost_to_db                = write_cost_to_db,
