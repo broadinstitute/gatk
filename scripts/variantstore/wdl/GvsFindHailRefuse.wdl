@@ -56,6 +56,11 @@ workflow GvsFindHailRefuse {
                 perform_deletion = perform_deletion,
         }
     }
+
+    output {
+        Array[String] nonempty_avro_directories = select_first(FindAvroExtractDirectories.nonempty_avro_directories, FindAvroExtractDirectoriesInSpecifiedSubmission.nonempty_avro_directories)
+        Array[String] nonempty_temp_dirs = select_first(FindHailTempDirectories.nonempty_temp_dirs, FindHailTempDirectoriesInSpecifiedSubmission.nonempty_temp_dirs)
+    }
 }
 
 
@@ -93,7 +98,7 @@ task FindHailTempDirectories {
         do
             python -c "from firecloud import fiss; resp = fiss.fapi.get_workflow_metadata('~{workspace_namespace}', '~{workspace_name}', '${submission}', '${workflow}'); print(resp.text)" > temp.json
             jq -M -r '.. | .inputs?.hail_temp_path? //empty' temp.json >> temp_dirs.txt
-        done < pairs.rxt
+        done < pairs.txt
 
         # Uniquify and delete blank lines
         sort -u temp_dirs.txt | sed '/^[[:space:]]*$/d' > unique_temp_dirs.txt
@@ -113,6 +118,7 @@ task FindHailTempDirectories {
         File pairs = "pairs.txt"
         File temp_dirs = "temp_dirs.txt"
         File unique_temp_dirs = "unique_temp_dirs.txt"
+        Array[String] nonempty_temp_dirs = read_lines("unique_temp_dirs.txt")
     }
 }
 
