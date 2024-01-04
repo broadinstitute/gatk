@@ -14,7 +14,7 @@ workflow GvsPrepareCallset {
     String call_set_identifier
 
     String extract_table_prefix = call_set_identifier
-    Boolean enable_extract_table_ttl = false
+    Boolean enable_extract_table_ttl = true
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name

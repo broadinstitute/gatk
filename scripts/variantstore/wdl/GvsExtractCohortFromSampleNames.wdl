@@ -109,7 +109,7 @@ workflow GvsExtractCohortFromSampleNames {
       fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
       write_cost_to_db                = write_cost_to_db,
       cloud_sdk_docker                = effective_cloud_sdk_docker,
-      enable_extract_table_ttl        = false,
+      enable_extract_table_ttl        = true,
   }
 
   call GvsExtractCallset.GvsExtractCallset {
