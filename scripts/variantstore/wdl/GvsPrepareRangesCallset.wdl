@@ -14,7 +14,7 @@ workflow GvsPrepareCallset {
     String call_set_identifier
 
     String extract_table_prefix = call_set_identifier
-    Boolean enable_extract_table_ttl = false
+    Boolean enable_extract_table_ttl = true
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
@@ -64,7 +64,7 @@ workflow GvsPrepareCallset {
       fq_sample_mapping_table         = fq_sample_mapping_table,
       fq_temp_table_dataset           = fq_temp_table_dataset,
       fq_destination_dataset          = fq_destination_dataset,
-      temp_table_ttl_in_hours         = 72,
+      temp_table_ttl_in_hours         = 4,
       control_samples                 = control_samples,
       only_output_vet_tables          = only_output_vet_tables,
       write_cost_to_db                = write_cost_to_db,

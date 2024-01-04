@@ -196,6 +196,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_597
+             - gg_VS-1163_TTL_Defaulted
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
