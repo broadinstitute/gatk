@@ -88,12 +88,12 @@ task FindHailTempDirectories {
         # Emit submission / workflow id pairs delimited by a space
         if [[ -n "~{submission_id}" ]]
         then
-            sed -n -E 's!.*/submissions/(~{submission_id})/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
+            sed -n -E 's!.*/submissions/(~{submission_id})/GvsCreateVDS/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
         else
-            sed -n -E 's!.*/submissions/([-a-f0-9]+).*/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
+            sed -n -E 's!.*/submissions/([-a-f0-9]+).*/GvsCreateVDS/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
         fi
 
-        # Iterate over submission / workflow id pairs, fetch workflow metadata and extracting hail temp dir if present.
+        # Iterate over submission / workflow id pairs, fetch workflow metadata and extract hail temp dir if present.
         while read -r submission workflow
         do
             python -c "from firecloud import fiss; resp = fiss.fapi.get_workflow_metadata('~{workspace_namespace}', '~{workspace_name}', '${submission}', '${workflow}'); print(resp.text)" > temp.json
