@@ -1,5 +1,11 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.1 - 2024-01-04
+
+### Changed
+
+- Modified GvsPrepareRangesCallset.wdl and GvsExtractCohortFromSampleNames.wdl to make the tables created as part of preparing the callset to *by default* have a time-to-live of 14 days.
+
 ## 0.5.0 - 2023-10-26
 
 ### Changed
