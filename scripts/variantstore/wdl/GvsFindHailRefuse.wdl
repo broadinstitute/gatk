@@ -58,8 +58,8 @@ workflow GvsFindHailRefuse {
     }
 
     output {
-        Array[String] nonempty_avro_directories = select_first(FindAvroExtractDirectories.nonempty_avro_directories, FindAvroExtractDirectoriesInSpecifiedSubmission.nonempty_avro_directories)
-        Array[String] nonempty_temp_dirs = select_first(FindHailTempDirectories.nonempty_temp_dirs, FindHailTempDirectoriesInSpecifiedSubmission.nonempty_temp_dirs)
+        Array[String] nonempty_avro_directories = select_first([FindAvroExtractDirectories.nonempty_avro_directories, FindAvroExtractDirectoriesInSpecifiedSubmission.nonempty_avro_directories])
+        Array[String] nonempty_temp_dirs = select_first([FindHailTempDirectories.nonempty_temp_dirs, FindHailTempDirectoriesInSpecifiedSubmission.nonempty_temp_dirs])
     }
 }
 
