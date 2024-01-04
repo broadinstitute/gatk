@@ -99,7 +99,8 @@ task GetWorkspaceInfo {
       set -o errexit -o nounset -o pipefail -o xtrace
 
       python -c "from firecloud import fiss; resp = fiss.fapi.list_workspaces(); print(resp.text)" > resp.json
-      jq -M -r '.[] | select(.workspace.workspaceId == "~{workspace_id}") | .workspace | {name, namespace}' > pair.json
+      jq -M -r '.[] | select(.workspace.workspaceId == "~{workspace_id}")' > workspace.json
+      jq -M -r '.workspace | {name, namespace}' workspace.json > pair.json
       jq -r .name pair.json > name.txt
       jq -r .namespace pair.json > namespace.txt
   >>>
@@ -111,6 +112,7 @@ task GetWorkspaceInfo {
       String workspace_namespace = read_string("namespace.txt")
       File resp = "resp.json"
       File pair = "pair.json"
+      File workspace = "workspace.json"
   }
 }
 

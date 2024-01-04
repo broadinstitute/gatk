@@ -132,7 +132,7 @@ task FindAvroExtractDirectories {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        if [[ -n "~{submission_id} ]]
+        if [[ -n "~{submission_id}" ]]
         then
             gsutil ls '~{workspace_bucket}/submissions/~{submission_id}/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
         else
