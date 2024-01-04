@@ -98,7 +98,7 @@ task GetWorkspaceInfo {
       PS4='\D{+%F %T} \w $ '
       set -o errexit -o nounset -o pipefail -o xtrace
 
-      python -c "resp = firecloud.fiss.fapi.list_workspaces(); print(resp.text)" > resp.json
+      python -c "from firecloud import fiss; resp = fiss.fapi.list_workspaces(); print(resp.text)" > resp.json
       jq -M -r '.[] | select(.workspace.workspaceId == "~{workspace_id}") | .workspace | {name, namespace}' > pair.json
       jq -r .name pair.json > name.txt
       jq -r .namespace pair.json > namespace.txt

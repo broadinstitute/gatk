@@ -68,6 +68,10 @@ task FindHailTempDirectories {
         String? submission_id
         Boolean perform_deletion
     }
+    meta {
+        # Don't cache this, we might clean up the directory and then re-run a configuration that repopulates it.
+        volatile: true
+    }
     command <<<
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -87,7 +91,7 @@ task FindHailTempDirectories {
         # Iterate over submission / workflow id pairs, fetch workflow metadata and extracting hail temp dir if present.
         while read -r submission workflow
         do
-            python -c "resp = firecloud.fiss.fapi.get_workflow_metadata('~{workspace_namespace}', '~{workspace_name}', '${submission}', '${workflow}'); print(resp.text)" > temp.json
+            python -c "from firecloud import fiss; resp = fiss.fapi.get_workflow_metadata('~{workspace_namespace}', '~{workspace_name}', '${submission}', '${workflow}'); print(resp.text)" > temp.json
             jq -M -r '.. | .inputs?.hail_temp_path? //empty' temp.json >> temp_dirs.txt
         done < pairs.rxt
 
@@ -119,6 +123,10 @@ task FindAvroExtractDirectories {
         String workspace_bucket
         String? submission_id
         Boolean perform_deletion
+    }
+    meta {
+        # Do not cache in case new runs are made in a workspace that was previously cleaned up.
+        volatile: true
     }
     command <<<
         PS4='\D{+%F %T} \w $ '
