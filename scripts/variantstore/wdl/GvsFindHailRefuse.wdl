@@ -132,12 +132,25 @@ task FindAvroExtractDirectories {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        # Searching for Avros might fail and that's okay
+        set +o errexit
         if [[ -n "~{submission_id}" ]]
         then
-            gsutil ls '~{workspace_bucket}/submissions/~{submission_id}/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
+            gsutil ls '~{workspace_bucket}/submissions/~{submission_id}/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt 2> err.txt
         else
-            gsutil ls '~{workspace_bucket}/submissions/*/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
+            gsutil ls '~{workspace_bucket}/submissions/*/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt 2> err.txt
         fi
+
+        if [[ $? -eq 1 ]]
+        then
+            if !grep "CommandException: One or more URLs matched no objects" err.txt
+            then
+                echo "gsutil ls failed for unknown reason, failing."
+                exit 1
+            fi
+        fi
+
+        set -o errexit
 
         # post process the above to get just the Avro directory paths
         sed -n -E 's!(.*/call-OutputPath/avro).*!\1!p' avros.txt | sort -u > avro_directories.txt
@@ -155,5 +168,6 @@ task FindAvroExtractDirectories {
     }
     output {
         Array[String] nonempty_avro_directories = read_lines("avro_directories.txt")
+        File err = "err.txt"
     }
 }
