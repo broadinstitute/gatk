@@ -202,8 +202,8 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final File outputTarGZ12 = createTempFile("f1r212",".tar.gz");
         final String sample1 = "SAMPLE1";
         final String sample2 = "SAMPLE2";
-        final File sam1 = createSyntheticSam(10, 1, "SAMPLE1");
-        final File sam2 = createSyntheticSam(20, 2, "SAMPLE2");
+        final File sam1 = createSyntheticSam(10, 1, sample1);
+        final File sam2 = createSyntheticSam(20, 2, sample2);
 
         final String[] args1 = {
                 "-R", hg19_chr1_1M_Reference,
@@ -232,8 +232,12 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final File extractedDir12 = createTempDir("extracted12");
         IOUtils.extractTarGz(outputTarGZ12.toPath(), extractedDir12.toPath());
 
+        for (final String context : List.of("ACC", "TGC", "CAA")) {
+            IntegrationTestSpec.assertEqualTextFiles(new File(extractedDir1, sample1 + "." + context + F1R2CountsCollector.ALT_TABLE_EXTENSION),
+                    new File(extractedDir12, sample1 + "." + context + F1R2CountsCollector.ALT_TABLE_EXTENSION));
+        }
 
-        for (final String extension : new String[] {F1R2CountsCollector.REF_HIST_EXTENSION, F1R2CountsCollector.ALT_HIST_EXTENSION, F1R2CountsCollector.ALT_TABLE_EXTENSION}) {
+        for (final String extension : List.of(F1R2CountsCollector.REF_HIST_EXTENSION, F1R2CountsCollector.ALT_HIST_EXTENSION)) {
             IntegrationTestSpec.assertEqualTextFiles(new File(extractedDir1, sample1 + extension),
                     new File(extractedDir12, sample1 + extension));
         }
