@@ -159,7 +159,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                 final List<AltSiteRecord> altDesignMatrixRevComp = reverseRecordsBySample.getOrDefault(sample, Collections.emptyList());
                 // Warning: the below method will mutate the content of {@link altDesignMatrixRevComp} and append to {@code altDesignMatrix}
                 mergeDesignMatrices(altDesignMatrix, altDesignMatrixRevComp);
-                
+
                 if (combinedRefHistograms.getSumOfValues() == 0 || altDesignMatrix.isEmpty()) {
                     logger.info(String.format("Skipping the reference context %s as we didn't find either the ref or alt table for the context", refContext));
                     continue;
