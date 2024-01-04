@@ -38,7 +38,7 @@ workflow GvsFindHailRefuse {
     }
 
     if (defined(submission_id_to_search)) {
-        call FindAvroExtractDirectoriesInSpecifiedSubmission {
+        call FindAvroExtractDirectories as FindAvroExtractDirectoriesInSpecifiedSubmission {
             input:
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 submission_id = select_first([submission_id_to_search]),
@@ -52,7 +52,7 @@ workflow GvsFindHailRefuse {
                 workspace_namespace = GetWorkspaceInfo.workspace_namespace,
                 workspace_name = GetWorkspaceInfo.workspace_name,
                 variants_docker = GetToolVersions.variants_docker,
-                submission_id = submission_id_to_search,
+                submission_id = select_first([submission_id_to_search]),
                 perform_deletion = perform_deletion,
         }
     }
@@ -77,7 +77,7 @@ task FindHailTempDirectories {
         gsutil ls '~{workspace_bucket}/submissions/*/GvsCreateVDS/' > create_vds_raw.txt
 
         # Emit submission / workflow id pairs delimited by a space
-        if ! [[ "~{submission_id}" == "" ]]
+        if [[ -n "~{submission_id}" ]]
         then
             sed -n -E 's!.*/submissions/(~{submission_id})/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
         else
@@ -117,46 +117,19 @@ task FindAvroExtractDirectories {
     input {
         String variants_docker
         String workspace_bucket
+        String? submission_id
         Boolean perform_deletion
     }
     command <<<
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        gsutil ls '~{workspace_bucket}/submissions/*/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
-
-        # post process the above to get just the Avro directory paths
-        sed -n -E 's!(.*/call-OutputPath/avro).*!\1!p' avros.txt | sort -u > avro_directories.txt
-
-        if [[ "~{perform_deletion}" == "true" ]]
+        if [[ -n "~{submission_id} ]]
         then
-            for avro_directory in $(cat avro_directories.txt)
-            do
-                gsutil rm -rf "${avro_directory}"
-            done
+            gsutil ls '~{workspace_bucket}/submissions/~{submission_id}/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
+        else
+            gsutil ls '~{workspace_bucket}/submissions/*/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
         fi
-    >>>
-    runtime {
-        docker: variants_docker
-    }
-    output {
-        Array[String] nonempty_avro_directories = read_lines("avro_directories.txt")
-    }
-}
-
-
-task FindAvroExtractDirectoriesInSpecifiedSubmission {
-    input {
-        String variants_docker
-        String workspace_bucket
-        String submission_id
-        Boolean perform_deletion
-    }
-    command <<<
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        gsutil ls '~{workspace_bucket}/submissions/~{submission_id}/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt
 
         # post process the above to get just the Avro directory paths
         sed -n -E 's!(.*/call-OutputPath/avro).*!\1!p' avros.txt | sort -u > avro_directories.txt
