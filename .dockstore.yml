@@ -349,6 +349,16 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsFindHailRefuse
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsFindHailRefuse.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+             - vs_1022_vds_cleanup
+         tags:
+             - /.*/
    - name: HailFromWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
