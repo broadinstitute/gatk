@@ -13,6 +13,12 @@ workflow GvsFindHailRefuse {
 
     call Utils.GetToolVersions
 
+    call Utils.GetWorkspaceInfo {
+        input:
+            variants_docker = GetToolVersions.variants_docker,
+            workspace_id = GetToolVersions.workspace_id,
+    }
+
     if (!defined(submission_id_to_search)) {
         call FindAvroExtractDirectories {
             input:
@@ -21,11 +27,11 @@ workflow GvsFindHailRefuse {
                 perform_deletion = perform_deletion,
         }
 
-        call FindHailTempDirectoriese {
+        call FindHailTempDirectories {
             input:
                 workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_namespace = GetToolVersions.workspace_namespace,
-                workspace_name = GetToolVersions.workspace_name,
+                workspace_namespace = GetWorkspaceInfo.workspace_namespace,
+                workspace_name = GetWorkspaceInfo.workspace_name,
                 variants_docker = GetToolVersions.variants_docker,
                 perform_deletion = perform_deletion,
         }
@@ -39,18 +45,27 @@ workflow GvsFindHailRefuse {
                 variants_docker = GetToolVersions.variants_docker,
                 perform_deletion = perform_deletion,
         }
+
+        call FindHailTempDirectories as FindHailTempDirectoriesInSpecifiedSubmission {
+            input:
+                workspace_bucket = GetToolVersions.workspace_bucket,
+                workspace_namespace = GetWorkspaceInfo.workspace_namespace,
+                workspace_name = GetWorkspaceInfo.workspace_name,
+                variants_docker = GetToolVersions.variants_docker,
+                submission_id = submission_id_to_search,
+                perform_deletion = perform_deletion,
+        }
     }
-
-
 }
 
 
-task FindHailTempDirectoriese {
+task FindHailTempDirectories {
     input {
         String variants_docker
         String workspace_bucket
         String workspace_namespace
         String workspace_name
+        String? submission_id
         Boolean perform_deletion
     }
     command <<<
@@ -62,19 +77,38 @@ task FindHailTempDirectoriese {
         gsutil ls '~{workspace_bucket}/submissions/*/GvsCreateVDS/' > create_vds_raw.txt
 
         # Emit submission / workflow id pairs delimited by a space
-        sed -n -E 's!.*/submissions/([-a-f0-9]+).*/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
+        if ! [[ "~{submission_id}" == "" ]]
+        then
+            sed -n -E 's!.*/submissions/(~{submission_id})/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
+        else
+            sed -n -E 's!.*/submissions/([-a-f0-9]+).*/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
+        fi
+
+        # Iterate over submission / workflow id pairs, fetch workflow metadata and extracting hail temp dir if present.
         while read -r submission workflow
         do
-            python -c "from firecloud import fiss; fiss.fapi.get_workflow_metadata(...)"
+            python -c "resp = firecloud.fiss.fapi.get_workflow_metadata('~{workspace_namespace}', '~{workspace_name}', '${submission}', '${workflow}'); print(resp.text)" > temp.json
+            jq -M -r '.. | .inputs?.hail_temp_path? //empty' temp.json >> temp_dirs.txt
         done < pairs.rxt
 
+        # Uniquify and delete blank lines
+        sort -u temp_dirs.txt | sed '/^[[:space:]]*$/d' > unique_temp_dirs.txt
 
+        if [[ "~{perform_deletion}" == "true" ]]
+        then
+            for dir in $(cat unique_temp_dirs.txt)
+            do
+                gsutil rm -rf "${dir}"
+            done
+        fi
     >>>
     runtime {
         docker: variants_docker
     }
     output {
-        Array[String] avro_paths = read_lines("avro_directories.txt")
+        File pairs = "pairs.txt"
+        File temp_dirs = "temp_dirs.txt"
+        File unique_temp_dirs = "unique_temp_dirs.txt"
     }
 }
 
