@@ -13,12 +13,6 @@ workflow GvsFindHailRefuse {
 
     call Utils.GetToolVersions
 
-    call Utils.GetWorkspaceInfo {
-        input:
-            variants_docker = GetToolVersions.variants_docker,
-            workspace_id = GetToolVersions.workspace_id,
-    }
-
     call FindAvroExtractDirectories {
         input:
             workspace_bucket = GetToolVersions.workspace_bucket,
@@ -30,9 +24,6 @@ workflow GvsFindHailRefuse {
     call FindHailTempDirectories {
         input:
             workspace_bucket = GetToolVersions.workspace_bucket,
-            workspace_namespace = GetWorkspaceInfo.workspace_namespace,
-            workspace_name = GetWorkspaceInfo.workspace_name,
-            submission_id = submission_id_to_search,
             variants_docker = GetToolVersions.variants_docker,
             perform_deletion = perform_deletion,
     }
@@ -102,56 +93,32 @@ task FindHailTempDirectories {
     input {
         String variants_docker
         String workspace_bucket
-        String workspace_namespace
-        String workspace_name
-        String? submission_id
         Boolean perform_deletion
     }
     meta {
-        # Don't cache this, we might clean up the directory and then re-run a configuration that repopulates it.
+        # Don't cache this, we might clean up the directory and then run a workflow that repopulates it.
         volatile: true
     }
     command <<<
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # This gets paths like <workspace bucket>/submissions/<submission id>/GvsCreateVDS/<workflow id>'.
-        # We will need both the submission id and workflow id when we call into FISS.
-        gsutil ls '~{workspace_bucket}/submissions/*/GvsCreateVDS/' > create_vds_raw.txt
-
-        # Emit submission / workflow id pairs delimited by a space
-        if [[ -n "~{submission_id}" ]]
+        set +o errexit
+        gsutil ls "gs://~{workspace_bucket}/hail-temp/hail-temp-*" > temp_dirs.txt
+        if [[ $? -eq 1 ]]
         then
-            sed -n -E 's!.*/submissions/(~{submission_id})/**/GvsCreateVDS/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
-        else
-            sed -n -E 's!.*/submissions/([-a-f0-9]+).*/**/GvsCreateVDS/([-a-f0-9]+)/$!\1 \2!p' create_vds_raw.txt > pairs.txt
+            if ! grep "CommandException: One or more URLs matched no objects" err.txt
+            then
+                echo "gsutil ls failed for unknown reason, failing."
+                exit 1
+            fi
         fi
-
-        # Iterate over submission / workflow id pairs, fetch workflow metadata and extract hail temp dir if present.
-        while read -r submission workflow
-        do
-            python -c "from firecloud import fiss; resp = fiss.fapi.get_workflow_metadata('~{workspace_namespace}', '~{workspace_name}', '${submission}', '${workflow}'); print(resp.text)" > temp.json
-            jq -M -r '.. | .inputs?.hail_temp_path? //empty' temp.json >> temp_dirs.txt
-        done < pairs.txt
-
-        # Uniquify and delete blank lines
-        sort -u temp_dirs.txt | sed '/^[[:space:]]*$/d' > unique_temp_dirs.txt
-
-        if [[ "~{perform_deletion}" == "true" ]]
-        then
-            for dir in $(cat unique_temp_dirs.txt)
-            do
-                gsutil rm -rf "${dir}"
-            done
-        fi
+        set -o errexit
     >>>
     runtime {
         docker: variants_docker
     }
     output {
-        File pairs = "pairs.txt"
-        File temp_dirs = "temp_dirs.txt"
-        File unique_temp_dirs = "unique_temp_dirs.txt"
-        Array[String] nonempty_temp_dirs = read_lines("unique_temp_dirs.txt")
+        Array[String] nonempty_temp_dirs = read_lines("temp_dirs.txt")
     }
 }
