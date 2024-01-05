@@ -275,7 +275,7 @@ public class GroundTruthScorer extends ReadWalker {
                         maxNonZeroIndex = i;
                     }
                 }
-                probThreshold = Math.pow(-(double)maxNonZeroIndex/10,10);
+                probThreshold = Math.pow(10,-((double)maxNonZeroIndex)/10);
             }
             for (int i = 0; i < report.length; i++) {
                 if ( omitZeros && i != 0 && report[i].getCount() == 0 )
