@@ -114,6 +114,14 @@ task FindHailTempDirectories {
             fi
         fi
         set -o errexit
+
+        if [[ "~{perform_deletion}" == "true" ]]
+        then
+            for avro_directory in $(cat temp_dirs.txt)
+            do
+                gsutil rm -rf "${avro_directory}"
+            done
+        fi
     >>>
     runtime {
         docker: variants_docker
