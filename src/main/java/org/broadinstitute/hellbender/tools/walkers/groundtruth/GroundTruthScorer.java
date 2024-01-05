@@ -260,13 +260,23 @@ public class GroundTruthScorer extends ReadWalker {
         }
 
         // create a GATK report from a set of accumulators without nesting into their bins
-        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, final double probThreshold, final boolean omitZeros) {
+        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, double probThreshold, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name + "Report", "error rate per " + name, 4);
             table.addColumn(name, "%d");
             table.addColumn("count", "%d");
             table.addColumn("error", "%f");
             table.addColumn("phred", "%d");
+
             int rowIndex = 0;
+            int maxNonZeroIndex = 0;
+            if (probThreshold == 0){
+                for (int i = 0; i < report.length; i++){
+                    if (report[i].getCount() != 0){
+                        maxNonZeroIndex = i;
+                    }
+                }
+                probThreshold = Math.pow(-(double)maxNonZeroIndex/10,10);
+            }
             for (int i = 0; i < report.length; i++) {
                 if ( omitZeros && i != 0 && report[i].getCount() == 0 )
                     continue;
