@@ -144,12 +144,12 @@ task FindAvroExtractDirectories {
         then
             gsutil ls '~{workspace_bucket}/submissions/~{submission_id}/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt 2> err.txt
         else
-            gsutil ls '~{workspace_bucket}/submissions/*/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt 2> err.txt
+            gsutil ls '~{workspace_bucket}/submissions/*/**/GvsExtractAvroFilesForHail/*/call-OutputPath/avro/**/*.avro' > avros.txt 2> err.txt
         fi
 
         if [[ $? -eq 1 ]]
         then
-            if !grep "CommandException: One or more URLs matched no objects" err.txt
+            if ! grep "CommandException: One or more URLs matched no objects" err.txt
             then
                 echo "gsutil ls failed for unknown reason, failing."
                 exit 1
