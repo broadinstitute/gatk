@@ -104,7 +104,7 @@ task FindHailTempDirectories {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         set +o errexit
-        gsutil ls "~{workspace_bucket}/hail-temp/hail-temp-*" > temp_dirs.txt
+        gsutil ls "~{workspace_bucket}/hail-temp/hail-temp-*" > temp_dirs.txt 2> err.txt
         if [[ $? -eq 1 ]]
         then
             if ! grep "CommandException: One or more URLs matched no objects" err.txt
