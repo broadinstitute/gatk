@@ -166,6 +166,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1127_extract_oom
          tags:
              - /.*/
    - name: GvsImportGenomes
