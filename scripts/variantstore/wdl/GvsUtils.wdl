@@ -20,6 +20,8 @@ task GetToolVersions {
   String effective_version = select_first([git_branch_or_tag, version])
 
   String workspace_id_output = "workspace_id.txt"
+  String workspace_name_output = "workspace_name.txt"
+  String workspace_namespace_output = "workspace_namespace.txt"
   String workspace_bucket_output = "workspace_bucket.txt"
   String submission_id_output = "submission_id.txt"
   String workflow_id_output = "workflow_id.txt"
@@ -81,38 +83,6 @@ task GetToolVersions {
     String submission_id = read_string(submission_id_output)
     String workflow_id = read_string(workflow_id_output)
     String google_project = read_string(google_project_output)
-  }
-}
-
-
-task GetWorkspaceInfo {
-  input {
-      String variants_docker
-      String workspace_id
-  }
-  meta {
-      # Don't even think about caching this.
-      volatile: true
-  }
-  command <<<
-      PS4='\D{+%F %T} \w $ '
-      set -o errexit -o nounset -o pipefail -o xtrace
-
-      python -c "from firecloud import fiss; resp = fiss.fapi.list_workspaces(); print(resp.text)" > resp.json
-      jq -M -r '.[] | select(.workspace.workspaceId == "~{workspace_id}")' resp.json > workspace.json
-      jq -M -r '.workspace | {name, namespace}' workspace.json > pair.json
-      jq -r .name pair.json > name.txt
-      jq -r .namespace pair.json > namespace.txt
-  >>>
-  runtime {
-      docker: variants_docker
-  }
-  output {
-      String workspace_name = read_string("name.txt")
-      String workspace_namespace = read_string("namespace.txt")
-      File resp = "resp.json"
-      File pair = "pair.json"
-      File workspace = "workspace.json"
   }
 }
 
