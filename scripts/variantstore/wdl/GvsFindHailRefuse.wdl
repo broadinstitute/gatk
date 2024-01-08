@@ -8,7 +8,7 @@ workflow GvsFindHailRefuse {
         Boolean perform_deletion = false
     }
     parameter_meta {
-        submission_id_to_search: "If defined, the submission id under which to search for GvsExtractAvroFilesForHail and GvsCreateVDS workflow runs, useful for testing against integration test runs. If undefined, search all submissions in the current workspace, which will only find top-level invocations of GvsExtractAvroFilesForHail and GvsCreateVDS and not invocations as subworkflows of GvsQuickstartIntegration."
+        submission_id_to_search: "If defined, the submission id in the current workspace under which to search for Avro files, useful for testing against specific integration test runs. If undefined, search all submissions in the current workspace."
     }
 
     call Utils.GetToolVersions
