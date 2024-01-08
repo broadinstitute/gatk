@@ -264,6 +264,7 @@ workflows:
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
              - vs_1099_composite_object_inputs
+             - gvs_0.5.1
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
