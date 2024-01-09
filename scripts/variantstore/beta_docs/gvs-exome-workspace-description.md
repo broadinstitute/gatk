@@ -125,7 +125,7 @@ If you don’t plan to create subcohorts of your data, you can delete your BigQu
     * Any relevant log information
 
 ### Workspace Citation
-If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta).
+If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS Exomes beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta).
 
 Details on citing Terra workspaces can be found in [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652).
 
@@ -136,7 +136,9 @@ Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace wa
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date       | Change                                    | Author         |
-|------------|-------------------------------------------|----------------|
-| 09/08/2023 | First release of the exomes workspace.       | George Grant |
+| Date       | Change                                  | Author       |
+|------------|-----------------------------------------|--------------|
+| 09/08/2023 | First release of the exomes workspace.  | George Grant |
+| 01/10/2024 | Second release of the exomes workspace. | Bec Asch     |
+
 
