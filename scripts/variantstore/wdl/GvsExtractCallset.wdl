@@ -118,9 +118,15 @@ workflow GvsExtractCallset {
                                             else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                               else if is_wgs then 20000 else 7500
 
-Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
-                                if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                     else 500])
+  Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
+                                                                  if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                                                  else 500])
+
+  Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
+                                     else if effective_scatter_count <= 100 then 40
+                                          else if effective_scatter_count <= 500 then 20
+                                               else 12
+
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
     File? none = ""
@@ -215,7 +221,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
         disk_override                      = disk_override,
-        memory_override                    = extract_memory_override_gib,
+        memory_gib                         = effective_extract_memory_gib,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
         write_cost_to_db                   = write_cost_to_db,
@@ -310,7 +316,7 @@ task ExtractTask {
     Int? extract_preemptible_override
     Int? extract_maxretries_override
     Int? disk_override
-    Int? memory_override
+    Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
 
@@ -327,7 +333,6 @@ task ExtractTask {
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
-  Int default_memory_gib = 12
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -351,7 +356,7 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
     fi
 
-    gatk --java-options "-Xmx~{select_first([memory_override, default_memory_gib]) - 3}g" \
+    gatk --java-options "-Xmx~{memory_gib - 3}g" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
@@ -399,7 +404,7 @@ task ExtractTask {
   >>>
   runtime {
     docker: gatk_docker
-    memory: select_first([memory_override, default_memory_gib]) + " GB"
+    memory: memory_gib + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
     preemptible: select_first([extract_preemptible_override, "2"])
