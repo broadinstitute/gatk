@@ -18,7 +18,7 @@ workflow GvsExtractCallset {
     String query_project = project_id
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
-    Int? extract_memory_override
+    Int? extract_memory_override_gib
     Int? disk_override
     Boolean zero_pad_output_vcf_filenames = true
 
@@ -215,7 +215,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
         disk_override                      = disk_override,
-        memory_override                    = extract_memory_override,
+        memory_override                    = extract_memory_override_gib,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
         write_cost_to_db                   = write_cost_to_db,
