@@ -213,8 +213,6 @@ task HandleRuntimesTask {
     command <<<
         set -xeuo pipefail
 
-        source activate fe_evaluation
-
         cat <<'EOF' > sumRuntime.py
 import os
 import sys
