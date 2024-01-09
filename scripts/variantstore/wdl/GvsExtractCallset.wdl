@@ -18,7 +18,7 @@ workflow GvsExtractCallset {
     String query_project = project_id
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
-    Int? memory_override
+    Int? extract_memory_override
     Int? disk_override
     Boolean zero_pad_output_vcf_filenames = true
 
@@ -215,7 +215,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
         disk_override                      = disk_override,
-        memory_override                    = memory_override,
+        memory_override                    = extract_memory_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
         write_cost_to_db                   = write_cost_to_db,
@@ -327,9 +327,12 @@ task ExtractTask {
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
+  Int default_memory_gib = 12
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -348,7 +351,7 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
     fi
 
-    gatk --java-options "-Xmx9g" \
+    gatk --java-options "-Xmx~{select_first([memory_override, default_memory_gib]) - 3}g" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
@@ -396,7 +399,7 @@ task ExtractTask {
   >>>
   runtime {
     docker: gatk_docker
-    memory: select_first([memory_override, 12]) + " GB"
+    memory: select_first([memory_override, default_memory_gib]) + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
     preemptible: select_first([extract_preemptible_override, "2"])
