@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-workflow GvsFindHailRefuse {
+workflow GvsFindHailCruft {
     input {
         String? submission_id_to_search
         Boolean perform_deletion = false
@@ -104,13 +104,16 @@ task FindHailTempDirectories {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         set +o errexit
-        gsutil ls "~{workspace_bucket}/hail-temp/hail-temp-*" > temp_dirs.txt 2> err.txt
+        gsutil ls "~{workspace_bucket}/hail-temp/hail-temp-*" > temp_temp_dirs.txt 2> err.txt
         if [[ $? -eq 1 ]]
         then
             if ! grep "CommandException: One or more URLs matched no objects" err.txt
             then
                 echo "gsutil ls failed for unknown reason, failing."
                 exit 1
+            else
+                # Extract only the directory paths from the "gsutil ls"
+                grep -E ':$' temp_temp_dirs.txt | sed -E -n 's!(.*).$!\1!p' > temp_dirs.txt
             fi
         fi
         set -o errexit

@@ -349,9 +349,9 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: GvsFindHailRefuse
+   - name: GvsFindHailCruft
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsFindHailRefuse.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsFindHailCruft.wdl
      filters:
          branches:
              - master
