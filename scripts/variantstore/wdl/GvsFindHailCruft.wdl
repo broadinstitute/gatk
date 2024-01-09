@@ -111,6 +111,9 @@ task FindHailTempDirectories {
             then
                 echo "gsutil ls failed for unknown reason, failing."
                 exit 1
+            else
+                # leave an empty temp_dirs.txt so delocalization does not fail
+                touch temp_dirs.txt
             fi
         else
             # Extract only the directory paths from the "gsutil ls"
