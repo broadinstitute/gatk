@@ -129,7 +129,7 @@ If you use plan to publish data analyzed using the GVS workflow, please cite the
 
 Details on citing Terra workspaces can be found in [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652).
 
-Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
+Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Exomes_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta
 
 ### License
 **Copyright Broad Institute, 2023 | Apache**  
