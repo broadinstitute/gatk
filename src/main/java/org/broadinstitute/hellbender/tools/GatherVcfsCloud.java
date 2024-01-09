@@ -305,7 +305,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
         try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(outputFile)
                 .setReferenceDictionary(sequenceDictionary).setOptions(options).build()) {
 
-            final ProgressLogger progress = new ProgressLogger(log, 10000);
+            final ProgressLogger progress = new ProgressLogger(log);
             VariantContext lastContext = null;
             Path lastFile = null;
             VCFHeader firstHeader = null;
