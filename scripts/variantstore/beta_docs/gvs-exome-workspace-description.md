@@ -139,6 +139,6 @@ The workflow script is released under the Apache License, Version 2.0 (full lice
 | Date       | Change                                  | Author       |
 |------------|-----------------------------------------|--------------|
 | 09/08/2023 | First release of the exomes workspace.  | George Grant |
-| 01/10/2024 | Second release of the exomes workspace. | Bec Asch     |
+| 01/09/2024 | Second release of the exomes workspace. | Bec Asch     |
 
 
