@@ -111,10 +111,10 @@ task FindHailTempDirectories {
             then
                 echo "gsutil ls failed for unknown reason, failing."
                 exit 1
-            else
-                # Extract only the directory paths from the "gsutil ls"
-                grep -E ':$' temp_temp_dirs.txt | sed -E -n 's!(.*).$!\1!p' > temp_dirs.txt
             fi
+        else
+            # Extract only the directory paths from the "gsutil ls"
+            grep -E ':$' temp_temp_dirs.txt | sed -E -n 's!(.*).$!\1!p' > temp_dirs.txt
         fi
         set -o errexit
 
