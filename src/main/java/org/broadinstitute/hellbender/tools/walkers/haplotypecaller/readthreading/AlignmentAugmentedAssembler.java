@@ -70,7 +70,7 @@ public class AlignmentAugmentedAssembler {
 
         final List<Pair<Kmer, Integer>> unambiguousKmers = rangedKmers.stream()
                 .filter(pair -> kmersAfterPruning.contains(pair.getLeft()))
-                .filter(pair -> Math.abs(pair.getRight().getMaximumInteger() - pair.getRight().getMinimumInteger()) < kmerSize)
+                .filter(pair -> pair.getRight().getMinimumInteger() > 0 && Math.abs(pair.getRight().getMaximumInteger() - pair.getRight().getMinimumInteger()) < kmerSize)
                 .map(pair -> Pair.of(pair.getLeft(), (pair.getRight().getMinimumInteger() + pair.getRight().getMaximumInteger())/2))
                 .collect(Collectors.toList());
         unambiguousKmers.addAll(kmerizeReference(refHaplotype));
