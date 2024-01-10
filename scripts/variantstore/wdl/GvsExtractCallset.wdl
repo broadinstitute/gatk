@@ -165,18 +165,18 @@ workflow GvsExtractCallset {
         cloud_sdk_docker = effective_cloud_sdk_docker,
       }
 
-#    call Utils.IsVQSRLite {
-#      input:
-#        project_id = query_project,
-#        fq_filter_set_info_table = "~{fq_filter_set_info_table}",
-#        filter_set_name = filter_set_name,
-#        cloud_sdk_docker = effective_cloud_sdk_docker,
-#    }
+    call Utils.IsVQSRLite {
+      input:
+        project_id = query_project,
+        fq_filter_set_info_table = "~{fq_filter_set_info_table}",
+        filter_set_name = filter_set_name,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
   }
 
   # If we're not using the VQSR filters, set it to Lite (really shouldn't matter one way or the other)
   # Otherwise use the auto-derived flag.
-  Boolean use_VQSR_lite = false # select_first([IsVQSRLite.is_vqsr_lite, true])
+  Boolean use_VQSR_lite = select_first([IsVQSRLite.is_vqsr_lite, true])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:
