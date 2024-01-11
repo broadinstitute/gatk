@@ -146,7 +146,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCreateVDS
@@ -156,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_1095
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -195,7 +193,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_597
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -255,7 +252,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
          tags:
              - /.*/
    - name: GvsBeta
@@ -313,7 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
+             - rsa_vs_1155
          tags:
              - /.*/
    - name: GvsIngestTieout
