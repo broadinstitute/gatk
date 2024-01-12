@@ -757,6 +757,7 @@ public class ExtractCohortEngine {
         }
 
         final String callGT = sampleRecord.getCallGT();
+        genotypeBuilder.phased(callGT.contains("|"));
 
         String[] splitGT = callGT.split("[/|]");
         // This should match against anything like ".", "./.", ".|.", "././.", ".|.|.", etc

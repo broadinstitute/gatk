@@ -148,7 +148,10 @@ def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract
               call_AD       STRING,
               AS_QUALapprox STRING,
               QUALapprox    STRING,
-              call_PL       STRING	
+              call_PL       STRING,
+              call_PGT      STRING,
+              call_PID      STRING,
+              call_PS       INT64	
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
@@ -225,7 +228,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids):
     def get_ref_subselect(fq_vet_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
+        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS FROM \n" \
               f" `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
@@ -234,7 +237,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
         if len(partition_samples) > 0:
             subs = {}
-            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL) \n WITH \n"
+            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS) \n WITH \n"
             fq_vet_table = f"{fq_ranges_dataset}.{VET_TABLE_PREFIX}{i:03}"
             j = 1
 
