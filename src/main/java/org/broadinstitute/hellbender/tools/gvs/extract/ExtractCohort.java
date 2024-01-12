@@ -234,6 +234,9 @@ public abstract class ExtractCohort extends ExtractTool {
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHASE_SET_KEY));
 
         headerLines.addAll(extraHeaders);
 

@@ -824,12 +824,12 @@ public class ExtractCohortEngine {
 
         final String callPID = sampleRecord.getCallPID();
         if (callPID != null) {
-            genotypeBuilder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, callPGT);
+            genotypeBuilder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, callPID);
         }
 
         final String callPS = sampleRecord.getCallPS();
         if (callPS != null) {
-            genotypeBuilder.GQ(Integer.parseInt(callPS));
+            genotypeBuilder.attribute(GATKVCFConstants.PHASE_SET_KEY, Integer.parseInt(callPS));
         }
 
         final String callPL = sampleRecord.getCallPL();
