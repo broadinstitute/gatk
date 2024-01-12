@@ -168,6 +168,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -246,6 +247,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsJointVariantCalling
@@ -255,7 +257,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
          tags:
              - /.*/
    - name: GvsBeta
@@ -266,7 +267,6 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
-             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
@@ -276,7 +276,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - bulk_ingest_staging
          tags:
              - /.*/
    - name: GvsCalculatePrecisionAndSensitivity
@@ -286,6 +285,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -313,7 +313,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -332,6 +331,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsExtractAvroFilesForHail
@@ -341,6 +341,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCallsetStatistics
@@ -350,6 +351,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsFindHailCruft
@@ -359,7 +361,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1022_vds_cleanup
          tags:
              - /.*/
    - name: HailFromWdl
@@ -368,7 +369,6 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
