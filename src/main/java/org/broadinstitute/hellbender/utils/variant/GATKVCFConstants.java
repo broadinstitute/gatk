@@ -138,6 +138,7 @@ public final class GATKVCFConstants {
     public static final String MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY = "MQ0";
     public static final String HAPLOTYPE_CALLER_PHASING_GT_KEY =    "PGT";
     public static final String HAPLOTYPE_CALLER_PHASING_ID_KEY =    "PID";
+    public static final String PHASE_SET_KEY =                      "PS";
     public static final String PHRED_SCALED_POSTERIORS_KEY =        "PP"; //FamilyLikelihoodsUtils / PosteriorLikelihoodsUtils
     public static final String REFERENCE_GENOTYPE_QUALITY =         "RGQ";
     public static final String STRAND_COUNT_BY_SAMPLE_KEY =         "SAC";

@@ -817,6 +817,21 @@ public class ExtractCohortEngine {
             genotypeBuilder.GQ(Integer.parseInt(callGQ));
         }
 
+        final String callPGT = sampleRecord.getCallPGT();
+        if (callPGT != null) {
+            genotypeBuilder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, callPGT);
+        }
+
+        final String callPID = sampleRecord.getCallPID();
+        if (callPID != null) {
+            genotypeBuilder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, callPGT);
+        }
+
+        final String callPS = sampleRecord.getCallPS();
+        if (callPS != null) {
+            genotypeBuilder.GQ(Integer.parseInt(callPS));
+        }
+
         final String callPL = sampleRecord.getCallPL();
         if (this.emitPLs && callPL != null) {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());

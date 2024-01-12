@@ -44,6 +44,9 @@ public class SchemaUtils {
     public static final String SUM_AD = "SUM_AD";
     public static final String RAW_AD = "RAW_AD";
     public static final String CALL_PL = GENOTYPE_FIELD_PREFIX + "PL";
+    public static final String CALL_PGT = GENOTYPE_FIELD_PREFIX + "PGT";
+    public static final String CALL_PID = GENOTYPE_FIELD_PREFIX + "PID";
+    public static final String CALL_PS = GENOTYPE_FIELD_PREFIX + "PS";
 
     //Filtering table
     public static final String FILTER_SET_NAME = "filter_set_name";

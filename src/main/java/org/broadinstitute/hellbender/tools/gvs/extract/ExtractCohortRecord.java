@@ -25,6 +25,11 @@ public class ExtractCohortRecord implements Locatable {
     private final String qualapprox;
     private final String asQualapprox;
     private final String callPL;
+    private final String callPGT;
+
+    private final String callPID;
+
+    private final String callPS;
 
     // COHORT_FIELDS
 //    public static final ImmutableSet<String> COHORT_FIELDS = ImmutableSet.of(
@@ -38,7 +43,10 @@ public class ExtractCohortRecord implements Locatable {
 //            SchemaUtils.CALL_RGQ,
 //            SchemaUtils.QUALapprox,
 //            SchemaUtils.AS_QUALapprox,
-//            SchemaUtils.CALL_PL);//, AS_VarDP);
+//            SchemaUtils.CALL_PL,
+//            SchemaUtils.CALL_PGT,
+//            SchemaUtils.CALL_PID,
+//            SchemaUtils.CALL_PS);//, AS_VarDP);
 
     // If the requested key is missing in an Avro record:
     //
@@ -71,6 +79,11 @@ public class ExtractCohortRecord implements Locatable {
         this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
 
+        // Phasing-specific fields
+        this.callPGT = Objects.toString(genericRecord.get(SchemaUtils.CALL_PGT), null);
+        this.callPID = Objects.toString(genericRecord.get(SchemaUtils.CALL_PID), null);
+        this.callPS = Objects.toString(genericRecord.get(SchemaUtils.CALL_PS), null);
+
         // to keep callRGQ final...
         String tmpRGQ = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_RGQ), null);
 
@@ -86,10 +99,10 @@ public class ExtractCohortRecord implements Locatable {
 
     // constructor for single base reference
     public ExtractCohortRecord(long location, long sampleId, String state) {
-        this(location, sampleId, state, null, null, null, null, null, null, null, null, null );
+        this(location, sampleId, state, null, null, null, null, null, null, null, null, null, null, null, null );
     }
 
-    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callAD, String callGQ, String callRGQ, String qualapprox, String asQualapprox, String callPL) {
+    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callAD, String callGQ, String callRGQ, String qualapprox, String asQualapprox, String callPL, String callPGT, String callPID, String callPS) {
         this.location = location;
         this.sampleId = sampleId;
         this.contig = SchemaUtils.decodeContig(location);
@@ -106,6 +119,9 @@ public class ExtractCohortRecord implements Locatable {
         this.qualapprox = qualapprox;
         this.asQualapprox = asQualapprox;
         this.callPL = callPL;
+        this.callPGT = callPGT;
+        this.callPID = callPID;
+        this.callPS = callPS;
     }
 
     @Override
@@ -140,6 +156,12 @@ public class ExtractCohortRecord implements Locatable {
     public String getAsQUALApprox() { return this.asQualapprox; }
 
     public String getCallPL() { return this.callPL; }
+
+    public String getCallPGT() { return callPGT; }
+
+    public String getCallPID() { return callPID; }
+
+    public String getCallPS() { return callPS; }
 
     public String toString() {
         return ReflectionToStringBuilder.toString(this);
