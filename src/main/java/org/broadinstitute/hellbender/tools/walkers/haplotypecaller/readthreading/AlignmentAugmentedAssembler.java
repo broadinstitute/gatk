@@ -430,7 +430,7 @@ public class AlignmentAugmentedAssembler {
     private List<Pair<Kmer, IntRange>> kmerizeRead(final GATKRead read) {
         final byte[] sequence = read.getBases();
         final byte[] qualities = read.getBaseQualities();
-        int numKmers = sequence.length - kmerSize + 1;
+        final int numKmers = sequence.length - kmerSize + 1;
 
         if (numKmers < 1) {
             return List.of();
@@ -441,6 +441,9 @@ public class AlignmentAugmentedAssembler {
                 read.getAttributeAsInteger(ReadUtils.ORIGINAL_SOFTCLIP_START_TAG) : read.getStart();
         final int end = read.hasAttribute(ReadUtils.ORIGINAL_SOFTCLIP_END_TAG) ?
                 read.getAttributeAsInteger(ReadUtils.ORIGINAL_SOFTCLIP_END_TAG) : read.getEnd();
+        final int leadingSoftclips = start - read.getStart();
+        final int trailingSoftclips = read.getEnd() - end;
+        final int numKmersBeforeTrailingSoftclips = numKmers - trailingSoftclips;
 
         int lastUnusableReadOffset = -1;   // last kmer-disqualifying base within the current kmer span
         for (int n = Math.min(kmerSize, sequence.length) - 1; n >= 0; n--) {
@@ -464,15 +467,18 @@ public class AlignmentAugmentedAssembler {
                         break;
                     } else {
                         final int endOfKmer = readOffset + kmerSize - 1;
+
+                        final boolean overlapsLeadingSoftclip = readOffset < leadingSoftclips;
+                        final boolean overlapsTrailingSoftclip = readOffset >= numKmersBeforeTrailingSoftclips;
+
                         if (!baseIsUsableForAssembly(sequence[endOfKmer], qualities[endOfKmer])) {
                             lastUnusableReadOffset = endOfKmer;
                         }
 
                         if (lastUnusableReadOffset < readOffset) {  // make a kmer
                             final Kmer kmer = new Kmer(sequence, readOffset, kmerSize);
-                            final int rangeMin = refPosition < start ? Integer.MIN_VALUE : refPosition;
-                            // TODO: verify that this is > and not >=
-                            final int rangeMax = refPosition > end ? Integer.MAX_VALUE : refPosition;
+                            final int rangeMin = overlapsLeadingSoftclip ? Integer.MIN_VALUE : refPosition;
+                            final int rangeMax = overlapsTrailingSoftclip ? Integer.MAX_VALUE : refPosition;
                             result.add(Pair.of(kmer, new IntRange(rangeMin, rangeMax)));
                         } else {
                             result.add(Pair.of(null, new IntRange(refPosition)));   // unusable kmer
