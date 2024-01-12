@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -126,6 +127,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -135,6 +137,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -146,7 +149,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCreateVDS
@@ -156,7 +158,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_1095
+         - EchoCallset
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -175,6 +177,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -184,6 +187,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -195,7 +199,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_597
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
