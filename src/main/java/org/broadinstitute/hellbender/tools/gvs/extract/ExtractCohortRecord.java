@@ -80,9 +80,9 @@ public class ExtractCohortRecord implements Locatable {
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
 
         // Phasing-specific fields
-        this.callPGT = Objects.toString(genericRecord.get(SchemaUtils.CALL_PGT), null);
-        this.callPID = Objects.toString(genericRecord.get(SchemaUtils.CALL_PID), null);
-        this.callPS = Objects.toString(genericRecord.get(SchemaUtils.CALL_PS), null);
+        this.callPGT = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_PGT), null);
+        this.callPID = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_PID), null);
+        this.callPS  = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_PS), null);
 
         // to keep callRGQ final...
         String tmpRGQ = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_RGQ), null);
