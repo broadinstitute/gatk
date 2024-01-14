@@ -68,6 +68,7 @@ public class ExtractCohortEngine {
     private final String vetRangesFQDataSet;
 
     private final String fqRangesExtractVetTable;
+    private final List<String> extractVetFields;
     private final String fqRangesExtractRefTable;
 
     private final GATKPath vetAvroFileName;
@@ -116,6 +117,7 @@ public class ExtractCohortEngine {
                                final Map<Long, String> sampleIdToName,
                                final String vetRangesFQDataSet,
                                final String fqRangesExtractVetTable,
+                               final VetVersionEnum vetVersion,
                                final String fqRangesExtractRefTable,
                                final GATKPath vetAvroFileName,
                                final GATKPath refRangesAvroFileName,
@@ -161,6 +163,17 @@ public class ExtractCohortEngine {
 
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
+
+        if (vetVersion == VetVersionEnum.V2) {
+            this.extractVetFields = SchemaUtils.EXTRACT_VET_V2_FIELDS;
+        }
+        else if (vetVersion == VetVersionEnum.V1) {
+            this.extractVetFields = SchemaUtils.EXTRACT_VET_V1_FIELDS;
+        }
+        else {
+            // This can't happen.
+            throw new GATKException("Unknown vet_version " + vetVersion + " supplied");
+        }
         this.fqRangesExtractRefTable = fqRangesExtractRefTable;
 
         this.vetAvroFileName = vetAvroFileName;
@@ -877,7 +890,7 @@ public class ExtractCohortEngine {
         Map<Integer, LinkedList<Set<Long>>> tableMap = SampleList.mapSampleIdsToTableIndexes(sampleIdsToExtract);
         for (int tableIndex : tableMap.keySet()) {
             TableReference vetTableRef =
-                    new TableReference(fqDatasetName + ".vet_" + String.format("%03d", tableIndex), SchemaUtils.EXTRACT_VET_FIELDS);
+                    new TableReference(fqDatasetName + ".vet_" + String.format("%03d", tableIndex), this.extractVetFields);
 
             // TODO: Comment as to why (specific sample list clause)
             for (Set<Long> chunkSampleIds : tableMap.get(tableIndex)) {
@@ -1031,8 +1044,7 @@ public class ExtractCohortEngine {
                                                                                                final VariantBitSet vbs
     ) {
 
-        TableReference tableRef =
-                new TableReference(fqVetTable, SchemaUtils.EXTRACT_VET_FIELDS);
+        TableReference tableRef = new TableReference(fqVetTable, this.extractVetFields);
 
         // We need to look upstream MAX_DELETION_SIZE bases in case there is a deletion that begins before
         // the requested range, but spans into our processing range.  We don't use a "length" or end position
