@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
