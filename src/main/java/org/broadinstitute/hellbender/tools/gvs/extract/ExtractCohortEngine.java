@@ -117,7 +117,7 @@ public class ExtractCohortEngine {
                                final Map<Long, String> sampleIdToName,
                                final String vetRangesFQDataSet,
                                final String fqRangesExtractVetTable,
-                               final VetRangesExtractVersionEnum vetVersion,
+                               final VetRangesExtractVersionEnum vetRangesExtractTableVersion,
                                final String fqRangesExtractRefTable,
                                final GATKPath vetAvroFileName,
                                final GATKPath refRangesAvroFileName,
@@ -164,15 +164,15 @@ public class ExtractCohortEngine {
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
 
-        if (vetVersion == VetRangesExtractVersionEnum.V2) {
+        if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V2) {
             this.extractVetFields = SchemaUtils.EXTRACT_VET_V2_FIELDS;
         }
-        else if (vetVersion == VetRangesExtractVersionEnum.V1) {
+        else if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V1) {
             this.extractVetFields = SchemaUtils.EXTRACT_VET_V1_FIELDS;
         }
         else {
             // This can't happen.
-            throw new GATKException("Unknown vet_version " + vetVersion + " supplied");
+            throw new GATKException("Unknown vet_version " + vetRangesExtractTableVersion + " supplied");
         }
         this.fqRangesExtractRefTable = fqRangesExtractRefTable;
 
