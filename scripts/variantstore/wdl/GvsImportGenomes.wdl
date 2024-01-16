@@ -376,7 +376,9 @@ task ProcessVCFHeaders {
   }
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     python3 /app/process_sample_vcf_headers.py \
       --project_id=~{project_id} \
@@ -407,7 +409,9 @@ task SetIsLoadedColumn {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
 
   command <<<
-    set -ex
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 

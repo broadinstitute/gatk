@@ -374,9 +374,9 @@ task AssertTableSizesAreExpected {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
