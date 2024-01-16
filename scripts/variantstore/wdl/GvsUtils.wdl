@@ -73,7 +73,7 @@ task GetToolVersions {
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
     String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2024-01-12-alpine-463c6cf1d"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_01_12_4c8d9cbdb62ba51372fdb4d14ad3861c08d45de6"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_01_15_bfef5835bbadb311fce042bc57afade8c7aec6ed"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
@@ -849,6 +849,54 @@ task IsUsingCompressedReferences {
     docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
+task GetExtractVetTableVersion {
+  input {
+    String query_project
+    String data_project
+    String dataset_name
+    String table_name
+    String cloud_sdk_docker
+  }
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bq --apilog=false query --project_id=~{query_project} --format=csv --use_legacy_sql=false '
+      SELECT
+        count(1)
+      FROM
+        `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+      WHERE
+        table_name = "~{table_name}" AND column_name = "call_PS" ' | sed 1d > count.txt
+
+    count=$(cat count.txt)
+    if [[ $count -eq 1 ]]
+    then
+      echo "V2" > version_file.txt
+    elif [[ $count -eq 0 ]]
+    then
+      echo "V1" > version_file.txt
+    else
+      echo "Unexpected count ($count) for column name 'call_PS'"
+      exit 1;
+    fi
+  >>>
+
+  output {
+    String version = read_string("version_file.txt")
+    File count_file = "count.txt"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
     preemptible: 3
     cpu: 1
   }
