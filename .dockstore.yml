@@ -167,6 +167,7 @@ workflows:
              - master
              - ah_var_store
              - gg_VS-1058_AddPhasingToVcf
+             - vs_1127_extract_oom
          tags:
              - /.*/
    - name: GvsImportGenomes
