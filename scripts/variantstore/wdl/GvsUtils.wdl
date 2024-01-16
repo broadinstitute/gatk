@@ -871,16 +871,19 @@ task GetExtractVetTableVersion {
       SELECT
         count(1)
       FROM
-        `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        `~{data_project}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
       WHERE
         table_name = "~{table_name}" AND column_name = "call_PS" ' | sed 1d > count.txt
 
     count=$(cat count.txt)
+    echo COUNT ${count}
     if [[ $count -eq 1 ]]
     then
+      echo "Hello"
       echo "V2" > version_file.txt
     elif [[ $count -eq 0 ]]
     then
+      echo "There"
       echo "V1" > version_file.txt
     else
       echo "Unexpected count ($count) for column name 'call_PS'"
