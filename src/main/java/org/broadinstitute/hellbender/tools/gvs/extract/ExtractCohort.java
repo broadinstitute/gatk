@@ -61,21 +61,20 @@ public abstract class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "vet-ranges-extract-fq-table",
-            doc = "EXPERIMENTAL - ",
+            doc = "Fully qualified name for the VET table proepared for extract.",
             optional = true
     )
     private String fqRangesExtractVetTable = null;
 
-    @Argument(fullName = "vet-version",
-            shortName = "vet_ver",
-            doc = "Version of the vet table - for maintaining backwards-compatibility",
+    @Argument(fullName = "vet-ranges-extract-table-version",
+            doc = "Version of the vet ranges extract table - for maintaining backwards-compatibility",
             optional = true)
-    private VetVersionEnum vetVersion = VetVersionEnum.V2;
+    private VetRangesExtractVersionEnum vetRangesExtractTableVersion = VetRangesExtractVersionEnum.V2;
 
 
     @Argument(
             fullName = "ref-ranges-extract-fq-table",
-            doc = "EXPERIMENTAL - ",
+            doc = "Fully qualified name for the REF_RANGES table proepared for extract.",
             optional = true
     )
     private String fqRangesExtractRefTable = null;
@@ -366,7 +365,7 @@ public abstract class ExtractCohort extends ExtractTool {
 
         reference = directlyAccessEngineReferenceDataSource();
 
-        if (vetVersion == VetVersionEnum.V2) {
+        if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V2) {
             extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
             extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
             extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHASE_SET_KEY));
@@ -410,7 +409,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         sampleIdToName,
                         vetRangesFQDataSet,
                         fqRangesExtractVetTable,
-                        vetVersion,
+                        vetRangesExtractTableVersion,
                         fqRangesExtractRefTable,
                         vetAvroFileName,
                         refRangesAvroFileName,
@@ -439,7 +438,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         sampleIdToName,
                         vetRangesFQDataSet,
                         fqRangesExtractVetTable,
-                        vetVersion,
+                        vetRangesExtractTableVersion,
                         fqRangesExtractRefTable,
                         vetAvroFileName,
                         refRangesAvroFileName,

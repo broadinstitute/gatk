@@ -117,7 +117,7 @@ public class ExtractCohortEngine {
                                final Map<Long, String> sampleIdToName,
                                final String vetRangesFQDataSet,
                                final String fqRangesExtractVetTable,
-                               final VetVersionEnum vetVersion,
+                               final VetRangesExtractVersionEnum vetVersion,
                                final String fqRangesExtractRefTable,
                                final GATKPath vetAvroFileName,
                                final GATKPath refRangesAvroFileName,
@@ -164,10 +164,10 @@ public class ExtractCohortEngine {
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
 
-        if (vetVersion == VetVersionEnum.V2) {
+        if (vetVersion == VetRangesExtractVersionEnum.V2) {
             this.extractVetFields = SchemaUtils.EXTRACT_VET_V2_FIELDS;
         }
-        else if (vetVersion == VetVersionEnum.V1) {
+        else if (vetVersion == VetRangesExtractVersionEnum.V1) {
             this.extractVetFields = SchemaUtils.EXTRACT_VET_V1_FIELDS;
         }
         else {

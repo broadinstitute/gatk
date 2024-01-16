@@ -212,7 +212,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         fq_cohort_extract_table            = fq_cohort_extract_table,
         fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
-        vet_version                        = GetExtractVetTableVersion.version,
+        vet_extract_table_version          = GetExtractVetTableVersion.version,
         read_project_id                    = query_project,
         do_not_filter_override             = do_not_filter_override,
         fq_filter_set_info_table           = fq_filter_set_info_table,
@@ -299,8 +299,7 @@ task ExtractTask {
     String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
-    # TODO - change the name of this because it's the extract vet version.
-    String? vet_version
+    String? vet_extract_table_version
     String read_project_id
     String output_file
     String? output_gcs_dir
@@ -364,7 +363,7 @@ task ExtractTask {
     gatk --java-options "-Xmx9g" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
-        ~{"--vet-version " + vet_version} \
+        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \
