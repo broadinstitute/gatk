@@ -879,14 +879,14 @@ task GetExtractVetTableVersion {
     echo COUNT ${count}
     if [[ $count -eq 1 ]]
     then
-      echo "Hello"
+      echo "Found a column named 'call_PS' in ~{table_name} - thus this is version V2"
       echo "V2" > version_file.txt
     elif [[ $count -eq 0 ]]
     then
-      echo "There"
+      echo "Did NOT Find a column named 'call_PS' in ~{table_name} - thus this is version V1"
       echo "V1" > version_file.txt
     else
-      echo "Unexpected count ($count) for column name 'call_PS'"
+      echo "Unexpected count ($count) for column name 'call_PS' in ~{table_name}"
       exit 1;
     fi
   >>>
