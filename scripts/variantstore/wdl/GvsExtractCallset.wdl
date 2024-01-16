@@ -364,7 +364,7 @@ task ExtractTask {
     gatk --java-options "-Xmx9g" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
-        ~{"--vet_version " + vet_version} \
+        ~{"--vet-version " + vet_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \
