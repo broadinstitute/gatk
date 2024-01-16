@@ -61,7 +61,7 @@ public abstract class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "vet-ranges-extract-fq-table",
-            doc = "Fully qualified name for the VET table proepared for extract.",
+            doc = "Fully qualified name for the VET table prepared for extract.",
             optional = true
     )
     private String fqRangesExtractVetTable = null;
@@ -74,7 +74,7 @@ public abstract class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "ref-ranges-extract-fq-table",
-            doc = "Fully qualified name for the REF_RANGES table proepared for extract.",
+            doc = "Fully qualified name for the REF_RANGES table prepared for extract.",
             optional = true
     )
     private String fqRangesExtractRefTable = null;
