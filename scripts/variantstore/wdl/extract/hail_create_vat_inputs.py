@@ -54,7 +54,8 @@ def failing_gts_to_no_call(vds):
      FT is False => GT assigned no-call
      FT is missing => GT keeps its current value
     """
-    vd = vds.variant_data
+    gt_vds = replace_lgt_with_gt(vds)
+    vd = gt_vds.variant_data
     filtered_vd = vd.annotate_entries(GT=hl.or_missing(hl.coalesce(vd.FT, True), vd.GT))
     # GT will not line up with the LGT but this version of the VDS data will be sliced and not fully moved anywhere
     return hl.vds.VariantDataset(vds.reference_data, filtered_vd)
