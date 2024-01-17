@@ -246,6 +246,7 @@ EOF
 
         DEBIAN_FRONTEND=noninteractive
         TZ=America/Boston
+        wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
         echo "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" >> /etc/apt/sources.list
         apt update && apt install r-base -y
         chmod a+x ~{monitoring_log_process_script}
