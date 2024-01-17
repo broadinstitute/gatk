@@ -111,7 +111,7 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-      --ignore-safety-checks
+      --ignore-safety-checks \
       --gather-type ~{gather_type} \
       --create-output-variant-index false \
       -I ~{sep=' -I ' input_vcfs} \
