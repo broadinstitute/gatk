@@ -131,7 +131,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
     @Argument(fullName = "progress-logger-frequency",
             doc = "The frequency with which the progress is logged to output (i.e. every N records)")
-    public static Integer progressLoggerFrequency = 100000;
+    public static Integer progressLoggerFrequency = 10000;
 
     @Advanced
     @Argument(fullName = IGNORE_SAFETY_CHECKS_LONG_NAME, doc = "Disable sanity checks to improve performance, may result in silently creating corrupted outputs data")
