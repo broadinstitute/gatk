@@ -8,5 +8,6 @@ Steps for creating a new version of GVS:
    1. Update `.dockstore.yml` for `GvsBeta` and `GvsExtractCohortFromSampleNames` to add the new release branch.
    1. Commit these changes and push the new branch to origin e.g. `git push --set-upstream origin <new branch name>`
 1. Update the `GvsBeta` and `GvsExtractCohortFromSampleNames` workflows in Dockstore to make the new branch the default version.
+1. Update the [GVS Beta](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta/workflows) and [GVS Exomes Beta](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta/workflows) workspaces so their `GvsBeta` workflow configuration is set to the new version. Don't forget to hit the 'Save' button when you're done!
 
 Done!
