@@ -1,6 +1,7 @@
  package org.broadinstitute.hellbender.utils;
 
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
@@ -273,6 +274,25 @@ public final class SimpleInterval implements Locatable, Serializable {
          return new SimpleInterval(getContig(),
                  Math.max(getStart(), that.getStart()),
                  Math.min( getEnd(), that.getEnd()) );
+     }
+
+     /**
+      * Get section of starting interval (this) that is not overlapped by the other interval (that)
+      * @param that - interval to subtract from starting interval. Must overlap (but not fully contain) starting interval
+      * @return - SimpleInterval representing the portion of starting interval (this) not overlapped by other interval (that)
+      */
+     @VisibleForTesting
+     public SimpleInterval subtract(final Locatable that) {
+         Utils.validateArg(this.overlaps(that), () ->
+                 "SimpleIntervaL::subtract(): The two intervals need to overlap: " + this + ", " + that);
+         Utils.validateArg(!that.contains(this), () ->
+                 "SimpleIntervaL::subtract(): Interval to subtract " + that + " cannot contain starting interval " + this);
+         if (this.getStart() < that.getStart()) {
+             return new SimpleInterval(this.getContig(), this.getStart(), that.getStart());
+         }
+         else {
+             return new SimpleInterval(this.getContig(), that.getEnd(), this.getEnd());
+         }
      }
 
      /**

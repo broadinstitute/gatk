@@ -25,12 +25,6 @@ import java.util.*;
 public class SVAnnotateEngineUnitTest extends GATKBaseTest {
     private final File TOY_GTF_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + "unittest.gtf");
     private final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + "noncoding.unittest.bed");
-    private final Set<String> MSV_EXON_OVERLAP_CLASSIFICATIONS = Sets.newHashSet(GATKSVVCFConstants.LOF,
-            GATKSVVCFConstants.INT_EXON_DUP,
-            GATKSVVCFConstants.DUP_PARTIAL,
-            GATKSVVCFConstants.PARTIAL_EXON_DUP,
-            GATKSVVCFConstants.COPY_GAIN,
-            GATKSVVCFConstants.TSS_DUP);
 
 
     // Pairs of intervals with different relationships to check if first (variant) interval spans second (feature)
@@ -182,7 +176,8 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(actualDeletionConsequence, expectedDeletionConsequence);
 
         final String actualCopyNumberVariantConsequence =
-                SVAnnotateEngine.annotateCopyNumberVariant(toyVariant, toyTranscript, MSV_EXON_OVERLAP_CLASSIFICATIONS);
+                SVAnnotateEngine.annotateCopyNumberVariant(toyVariant, toyTranscript,
+                        SVAnnotateEngine.MSV_EXON_OVERLAP_CLASSIFICATIONS);
         Assert.assertEquals(actualCopyNumberVariantConsequence, expectedCopyNumberVariantConsequence);
 
         final String actualInversionConsequence = SVAnnotateEngine.annotateInversion(toyVariant, toyTranscript);
@@ -436,14 +431,22 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
     @DataProvider(name = "proteinCodingConsequences")
     public Object[][] getProteinCodingConsequences() {
         return new Object[][] {
+                // protein-coding consequence -> not intergenic
                 { createVariantConsequenceDict(
                         new String[]{GATKSVVCFConstants.TSS_DUP, GATKSVVCFConstants.PARTIAL_DISPERSED_DUP},
                         new String[]{"HES4", "SAMD11"}),
                         false
                 },
+                // partial dispersed dup does not count towards protein-coding consequences for this
                 { createVariantConsequenceDict(
                         new String[]{GATKSVVCFConstants.PARTIAL_DISPERSED_DUP},
                         new String[]{"SAMD11"}),
+                        true
+                },
+                // ignore noncoding consequences
+                { createVariantConsequenceDict(
+                        new String[]{GATKSVVCFConstants.NONCODING_BREAKPOINT, GATKSVVCFConstants.PROMOTER},
+                        new String[]{"Enhancer", "RP1"}),
                         true
                 },
                 { new HashMap<>(),
@@ -457,8 +460,39 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
             final Map<String, Set<String>> variantConsequenceDict,
             final boolean expectedIsIntergenic
     ){
-        final boolean actualIsIntergenic = SVAnnotateEngine.isIntergenic(variantConsequenceDict);
+        final boolean actualIsIntergenic = SVAnnotateEngine.isIntergenic(variantConsequenceDict,
+                SVAnnotateEngine.PROTEIN_CODING_CONSEQUENCES);
         Assert.assertEquals(actualIsIntergenic, expectedIsIntergenic);
+    }
+
+    @DataProvider(name = "complexSubtypes")
+    public Object[][] getComplexSubtypes() {
+        return new Object[][] {
+                { null, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.delINV, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.INVdel, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.dupINV, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.INVdup, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.delINVdel, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.dupINVdup, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.delINVdup, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.dupINVdel, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.dDUP, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL, true },
+                { GATKSVVCFConstants.ComplexVariantSubtype.INS_iDEL, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.CTX_PQ_QP, false }
+        };
+    }
+
+    @Test(dataProvider = "complexSubtypes")
+    public void testIncludesDispersedDuplication(
+            final GATKSVVCFConstants.ComplexVariantSubtype complexType,
+            final boolean expectedIncludesDispersedDuplication
+    ){
+        final boolean actualIncludesDispersedDuplication = SVAnnotateEngine.includesDispersedDuplication(complexType,
+                SVAnnotateEngine.COMPLEX_SUBTYPES_WITH_DISPERSED_DUP);
+        Assert.assertEquals(actualIncludesDispersedDuplication, expectedIncludesDispersedDuplication);
     }
 
 
