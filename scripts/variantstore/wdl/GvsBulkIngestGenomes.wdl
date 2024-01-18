@@ -180,7 +180,6 @@ task GenerateImportFofnFromDataTable {
     String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
 
     command <<<
-
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -263,8 +262,9 @@ task SplitBulkImportFofn {
     }
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         cut -f 1 ~{import_fofn} > sample_names.txt
         cut -f 2 ~{import_fofn} > vcf_file_names.txt
