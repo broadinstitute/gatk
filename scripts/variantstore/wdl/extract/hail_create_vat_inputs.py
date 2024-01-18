@@ -10,7 +10,7 @@ import create_vat_inputs
 # filtering:
 # hard filter bad sites: hard_filter_non_passing_sites()
 # hard filter based on FT flag:
-# get GT, replace_lgt_with_gt(), swap to no-calls: failing_gts_to_no_call(), (no longer need to replace_lgt_with_gt now that lgt is included in the VDS)
+# get GT, replace_lgt_with_gt(), swap to no-calls: failing_gts_to_no_call()
 # track how many sites have more than 50 alt alleles TODO: we currently aren't tracking this, are we?
 # drop 50+ alternate alleles
 # calculate the AC, AN, AF, SC, for the full population and for the subpopulations
