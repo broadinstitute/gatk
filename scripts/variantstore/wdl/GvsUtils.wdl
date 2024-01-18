@@ -73,7 +73,7 @@ task GetToolVersions {
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
     String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-12-14-alpine-2476d080b"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_10_31_e7746ce7c38a8226bcac5b89284782de2a4cdda1"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_01_17_c1ac3790f65266568937bf1fd29bbd71b2879a4f"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
@@ -111,9 +111,11 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-      --ignore-safety-checks --gather-type ~{gather_type} \
+      --ignore-safety-checks \
+      --gather-type ~{gather_type} \
       --create-output-variant-index false \
       -I ~{sep=' -I ' input_vcfs} \
+      --progress-logger-frequency 100000 \
       --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
