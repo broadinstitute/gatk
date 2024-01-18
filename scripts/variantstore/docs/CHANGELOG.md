@@ -1,5 +1,15 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.2 - 2024-01-17
+
+### Changed
+
+- Updated release process to version `GvsExtractCohortFromSampleNames` in addition to `GvsBeta`.
+
+### Fixed
+
+- `OutOfMemoryExceptions` conditions with default settings in `ExtractTask` addressed, memory override now passed through correctly.
+
 ## 0.5.1 - 2024-01-04
 
 ### Changed

@@ -126,6 +126,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1103_GatherVcfsLoggingTooMuch
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -288,6 +289,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1103_GatherVcfsLoggingTooMuch
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -297,6 +299,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1103_GatherVcfsLoggingTooMuch
          tags:
              - /.*/
    - name: GvsQuickstartIntegration

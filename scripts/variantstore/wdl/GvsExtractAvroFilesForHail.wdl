@@ -162,7 +162,9 @@ task ExtractFromNonSuperpartitionedTables {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
@@ -244,7 +246,10 @@ task ExtractFromSuperpartitionedTables {
     }
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
@@ -337,7 +342,9 @@ task GenerateHailScripts {
     }
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
         # Unlike many implementations, at the time of this writing this works on both Debian and Alpine based images
