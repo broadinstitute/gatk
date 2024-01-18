@@ -100,7 +100,7 @@ public class FlowFeatureMapperUtils {
             }
         }
 
-        if ( score < 0 && !args.keepNegatives && score != -1.0 ) {
+        if ( score < 0 && !args.keepNegatives ) {
             score = args.negativeScoreOverride;
         }
 

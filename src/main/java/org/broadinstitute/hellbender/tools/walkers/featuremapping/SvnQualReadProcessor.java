@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedList;
@@ -335,7 +336,11 @@ public class SvnQualReadProcessor {
 
     }
 
-    public void writeStats(final String path) throws IOException {
+    public void writeStats(String path) throws IOException {
+
+        // if a folder name provided, make sure it ends with /
+        if ( (new File(path)).isDirectory() && !path.endsWith("/") )
+            path += "/";
 
         final String bqPath = path + "_bq.csv";
         logger.info("writing BQ stats into " + bqPath);
