@@ -216,6 +216,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-887_StreamlineVATTsvExtract
          tags:
              - /.*/
    - name: GvsValidateVat

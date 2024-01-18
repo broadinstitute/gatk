@@ -14,12 +14,12 @@ workflow GvsCreateVATFilesFromBigQuery {
         Int? merge_vcfs_disk_size_override
         Boolean precondition_met = true
         String? cloud_sdk_docker
-        String? cloud_sdk_slim_docker
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+    String small_contig_for_header = "chrY"
 
-    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker)) {
+    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -27,8 +27,19 @@ workflow GvsCreateVATFilesFromBigQuery {
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
-    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+    call BigQueryExportVat as BigQueryExportVatForHeader {
+        input:
+            contig = small_contig_for_header,
+            project_id = project_id,
+            dataset_name = dataset_name,
+            output_path = output_path + "export_for_header/",
+            add_header = true,
+            vat_table = vat_table_name,
+            load_jsons_done = precondition_met,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
 
     scatter(i in range(length(contig_array)) ) {
         call BigQueryExportVat {
@@ -36,20 +47,30 @@ workflow GvsCreateVATFilesFromBigQuery {
                 contig = contig_array[i],
                 project_id = project_id,
                 dataset_name = dataset_name,
-                output_path = output_path,
+                output_path = output_path + "export/",
                 vat_table = vat_table_name,
                 load_jsons_done = precondition_met,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
 
+    call GetHeader {
+        input:
+            export_done = BigQueryExportVatForHeader.done,
+            header_contig = small_contig_for_header,
+            output_path = output_path + "export_for_header/",
+            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
     call MergeVatTSVs {
         input:
             export_done = BigQueryExportVat.done,
             contig_array = contig_array,
-            output_path = output_path,
+            header_tsv_file = GetHeader.header_tsv_file,
+            output_path = output_path + "export/",
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     output {
@@ -68,11 +89,12 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
+        Boolean add_header = false
         Boolean load_jsons_done
         String cloud_sdk_docker
     }
 
-    String export_path = output_path + "export/" + contig + "/*.tsv.gz"
+    String export_path = output_path + contig + "/*.tsv.gz"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -88,7 +110,7 @@ task BigQueryExportVat {
         format="CSV",
         compression="GZIP",
         overwrite=true,
-        header=false,
+        header=~{add_header},
         field_delimiter="\t") AS
         SELECT
         vid,
@@ -214,14 +236,14 @@ task BigQueryExportVat {
     }
 }
 
-task MergeVatTSVs {
+task GetHeader {
     input {
-        Array[Boolean] export_done
-        Array[String] contig_array
+        Boolean export_done
+        String header_contig
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String cloud_sdk_slim_docker
+        String cloud_sdk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -235,21 +257,75 @@ task MergeVatTSVs {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        apt-get update
-        apt-get install tabix
+
+        # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
+        echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
+
+        mkdir TSVs
+        echo_date "copying files from ~{output_path}~{header_contig}/*.tsv.gz"
+        gcloud storage cp ~{output_path}~{header_contig}/*.tsv.gz TSVs/
+        tsv_files=(TSVs/*.tsv.gz)
+
+        # Get the first file and strip off its header.
+        # We can't safely pipe to `head -1` because while `head` will exit successfully after reading the first line, the
+        # pipeline will continue trying to write data to the `head` process. If this happens we'll get a 141 exit code and
+        # with `set -o pipefail` turned on this will fail our task. As a workaround use this `<(...)` temp file construct.
+        # https://news.ycombinator.com/item?id=9255830
+        head -1 <(gzip -cd ${tsv_files[0]}) | gzip > header.tsv.gz
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "4 GB"
+        preemptible: 3
+        cpu: "2"
+        disks: "local-disk ~{disk_size} HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File header_tsv_file = "header.tsv.gz"
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task MergeVatTSVs {
+    input {
+        Array[Boolean] export_done
+        Array[String] contig_array
+        File header_tsv_file
+        String output_path
+
+        Int? merge_vcfs_disk_size_override
+        String cloud_sdk_docker
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    # going large with the default to make gsutil -m cp really zippy
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 500
+
+    command <<<
+        # Kick off the monitoring script
+        bash ~{monitoring_script} > monitoring.log &
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         mkdir TSVs
         contigs=( ~{sep=' ' contig_array} )
+        cp ~{header_tsv_file} header.gz
         files="header.gz"
 
         echo_date "looping over contigs: $contigs"
         for i in "${contigs[@]}"
         do
-            echo_date "copying files from ~{output_path}export/$i/*.tsv.gz"
-            gcloud storage cp ~{output_path}export/$i/*.tsv.gz TSVs/
+            echo_date "copying files from ~{output_path}$i/*.tsv.gz"
+            gcloud storage cp ~{output_path}$i/*.tsv.gz TSVs/
             echo_date "concatenating local tsv.gz files"
 
             # the internet says that * is deterministic, see https://serverfault.com/questions/122737/in-bash-are-wildcard-expansions-guaranteed-to-be-in-order
@@ -260,21 +336,15 @@ task MergeVatTSVs {
             files="$files vat_$i.tsv.gz"
         done
 
-        echo_date "making header.gz"
-        # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
-        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfr_ac\tgnomad_nfr_an\tgnomad_nfr_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype" | gzip > header.gz
-
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz
-        echo_date "bgzipping concatenated file"
-        cat vat_complete.tsv.gz | gunzip | bgzip > vat_complete.bgz.tsv.gz
-        echo_date "copying bgzipped file to ~{output_path}"
-        gcloud storage cp vat_complete.bgz.tsv.gz ~{output_path}
+        echo_date "copying output file to ~{output_path}"
+        gcloud storage cp vat_complete.tsv.gz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: cloud_sdk_slim_docker
+        docker: cloud_sdk_docker
         memory: "4 GB"
         preemptible: 3
         cpu: "2"
@@ -283,7 +353,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Outputs:
     output {
-        File tsv_file = "vat_complete.bgz.tsv.gz"
+        File tsv_file = "vat_complete.tsv.gz"
         File monitoring_log = "monitoring.log"
     }
 }
