@@ -147,7 +147,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCreateVDS
@@ -167,7 +166,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1127_extract_oom
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -197,7 +195,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_597
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -254,7 +251,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
          tags:
              - /.*/
    - name: GvsBeta
@@ -275,7 +271,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - bulk_ingest_staging
          tags:
              - /.*/
    - name: GvsCalculatePrecisionAndSensitivity
@@ -314,6 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1195
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -359,7 +355,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1022_vds_cleanup
          tags:
              - /.*/
    - name: HailFromWdl
