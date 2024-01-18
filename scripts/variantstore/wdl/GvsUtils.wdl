@@ -111,9 +111,11 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-      --ignore-safety-checks --gather-type ~{gather_type} \
+      --ignore-safety-checks \
+      --gather-type ~{gather_type} \
       --create-output-variant-index false \
       -I ~{sep=' -I ' input_vcfs} \
+      --progress-logger-frequency 100000 \
       --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
