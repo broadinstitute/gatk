@@ -159,6 +159,7 @@ task AssignIds {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
     num_samples=$(wc -l < ~{sample_names})
 
     # make sure that sample names were actually passed, fail if empty
@@ -247,7 +248,9 @@ task CreateCostObservabilityTable {
     # not volatile: true, always run this when asked
   }
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     TABLE="~{dataset_name}.cost_observability"

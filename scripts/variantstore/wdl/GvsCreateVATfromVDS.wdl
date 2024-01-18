@@ -192,7 +192,9 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         cp ~{schema_filepath}* .
 
@@ -238,6 +240,8 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
@@ -281,7 +285,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
     # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -382,11 +388,11 @@ task AnnotateVCF {
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
 
     command <<<
-        bash ~{monitoring_script} > monitoring.log &
-
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
 
         # There's an issue with how the projects/broad-dsde-cromwell-dev/global/images/nirvana-3-18-1-references-2023-01-03
         # disk image was built: while all the reference files do exist on the image they are not at the expected
@@ -482,6 +488,8 @@ task PrepVtAnnotationJson {
     String output_vt_gcp_path = output_path + 'vt/'
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Kick off the monitoring script
@@ -530,6 +538,8 @@ task PrepGenesAnnotationJson {
     String output_genes_gcp_path = output_path + 'genes/'
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
@@ -596,14 +606,18 @@ task BigQueryLoadJson {
     String genes_path = output_path + 'genes/*'
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         DATE=86400 ## 24 hours in seconds
 
-        set +e
+        set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
         BQ_SHOW_RC=$?
-        set -e
+        set -o errexit
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
@@ -615,10 +629,10 @@ task BigQueryLoadJson {
         echo ~{genes_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
 
-        set +e
+        set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
         BQ_SHOW_RC=$?
-        set -e
+        set -o errexit
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating a pre-vat table ~{dataset_name}.~{genes_table}"

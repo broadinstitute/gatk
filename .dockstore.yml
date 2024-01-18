@@ -316,7 +316,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1146
              - gg_VS-1058_AddPhasingToVcf
          tags:
              - /.*/
