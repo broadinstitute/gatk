@@ -341,6 +341,10 @@ task SchemaNoNullRequiredFields {
     String results_file = "results.txt"
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
@@ -478,6 +482,10 @@ task SchemaPrimaryKey {
     String results_file = "results.txt"
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
@@ -533,6 +541,10 @@ task SchemaEnsemblTranscripts {
     String results_file = "results.txt"
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
@@ -589,6 +601,10 @@ task SchemaNonzeroAcAn {
     String results_file = "results.txt"
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
@@ -650,6 +666,7 @@ task SchemaNullTranscriptsExist {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT

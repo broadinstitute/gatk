@@ -288,6 +288,10 @@ task SelectVariants {
   Int max_heap = memory_mb - 500
 
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       SelectVariants \
         -L ~{sep=' -L ' chromosomes} \
@@ -324,7 +328,9 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     python3 /app/add_max_as_vqs_score.py ~{input_vcf} > ~{output_basename}.vcf
   >>>
@@ -348,17 +354,21 @@ task IsVQSRLite {
 
   String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
 
-  command {
-    set +e
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     # See if there are any non-header lines that contain the string 'CALIBRATION_SENSITIVITY'. If so, grep will return 0 else 1
+    set +o errexit
     grep -v '^#' ~{input_vcf} | grep CALIBRATION_SENSITIVITY > /dev/null
     if [[ $? -eq 0 ]]; then
       echo "true" > ~{is_vqsr_lite_file}
     else
       echo "false" > ~{is_vqsr_lite_file}
     fi
-  }
+    set -o errexit
+  >>>
 
   runtime {
     docker: basic_docker
@@ -382,13 +392,17 @@ task BgzipAndTabix {
     Int disk_size_gb = ceil(3 * size(input_vcf, "GiB")) + 500
   }
 
-  command {
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     # note that bgzip has an option (-i) to index the bgzipped output, but this file is not a tabix file
     # note also that we use '-c' so that bgzip doesn't create the bgzipped file in place, rather it's in a location
     # where it's easy to output from the task.
     bgzip -c ~{input_vcf} > ~{output_basename}.vcf.gz
     tabix ~{output_basename}.vcf.gz
-  }
+  >>>
   runtime {
     docker: gotc_imputation_docker
     cpu: cpu
@@ -428,7 +442,9 @@ task EvaluateVcf {
   String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
 
   command <<<
-    set -e -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     chromosomes=( ~{sep=' ' chromosomes} )
 
@@ -487,8 +503,10 @@ task CollateReports {
     String basic_docker
   }
 
-  command {
-    set -e -o pipefail
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "Sample  Type  TP  FP  FN  Precision Sensitivity"
     while read -r a;
@@ -510,7 +528,7 @@ task CollateReports {
     do
       cat $a
     done < ~{write_lines(filtered_indel_reports)}
-  }
+  >>>
 
   runtime {
     docker: basic_docker
@@ -530,6 +548,10 @@ task CountInputVcfs {
     String basic_docker
   }
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     wc -l < ~{input_vcf_fofn} > num_vcfs.txt
   >>>
   output {

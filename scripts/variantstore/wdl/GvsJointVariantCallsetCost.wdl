@@ -103,7 +103,10 @@ task FullCosts {
     # storage_api_cost
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         cat ~{cost_observability_json} | jq '.| map(
         (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}),
         (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost})

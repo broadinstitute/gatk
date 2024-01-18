@@ -230,11 +230,13 @@ task MergeVatTSVs {
     Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 500
 
     command <<<
-        # Kick off the monitoring script
-        bash ~{monitoring_script} > monitoring.log &
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Kick off the monitoring script
+        bash ~{monitoring_script} > monitoring.log &
+
         apt-get update
         apt-get install tabix
 

@@ -117,7 +117,9 @@ task PrepareRangesCallsetTask {
   }
 
   command <<<
-      set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
       echo ~{sample_list_param}
 

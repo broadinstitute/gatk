@@ -106,7 +106,10 @@ task MergeVCFs {
     }
   }
 
-  command {
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -127,7 +130,7 @@ task MergeVCFs {
       gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
       gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
     fi
-  }
+  >>>
 
   runtime {
     docker: gatk_docker
@@ -186,10 +189,9 @@ task SplitIntervals {
   }
 
   command <<<
-    # Updating to use standard shell boilerplate
+    # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
-    set -e
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -249,8 +251,9 @@ task GetBQTableLastModifiedDatetime {
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
   # that isn't in the right format (e.g. an error)
   command <<<
-    set -o xtrace
-    set -o errexit
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -299,7 +302,9 @@ task GetBQTablesMaxLastModifiedTimestamp {
   # ------------------------------------------------
   # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -338,7 +343,6 @@ task BuildGATKJar {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    # Much of this could/should be put into a Docker image.
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -406,7 +410,6 @@ task CreateDatasetForTest {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    # Much of this could/should be put into a Docker image.
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -470,7 +473,6 @@ task BuildGATKJarAndCreateDataset {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    # Much of this could/should be put into a Docker image.
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -543,7 +545,9 @@ task TerminateWorkflow {
   }
 
   command <<<
-    set -o errexit
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     # To avoid issues with special characters within the message, write the message to a file.
     cat > message.txt <<FIN
@@ -582,6 +586,10 @@ task ScaleXYBedValues {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         bash ~{monitoring_script} > monitoring.log &
 
         python3 /app/scale_xy_bed_values.py \
@@ -621,7 +629,9 @@ task GetNumSamplesLoaded {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -664,6 +674,10 @@ task CountSuperpartitions {
     }
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         bash ~{monitoring_script} > monitoring.log &
 
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
@@ -701,7 +715,9 @@ task ValidateFilterSetName {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -749,7 +765,9 @@ task IsVQSRLite {
   String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -875,7 +893,9 @@ task IndexVcf {
     String index_extension = if is_compressed then ".tbi" else ".idx"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -927,7 +947,9 @@ task SelectVariants {
     String local_index = basename(input_vcf_index)
 
     command <<<
-      set -e
+      # Prepend date, time and pwd to xtrace log entries.
+      PS4='\D{+%F %T} \w $ '
+      set -o errexit -o nounset -o pipefail -o xtrace
 
       bash ~{monitoring_script} > monitoring.log &
 
@@ -971,6 +993,10 @@ task MergeTsvs {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
+      # Prepend date, time and pwd to xtrace log entries.
+      PS4='\D{+%F %T} \w $ '
+      set -o errexit -o nounset -o pipefail -o xtrace
+
       bash ~{monitoring_script} > monitoring.log &
 
       echo -n > ~{output_file_name}
@@ -998,7 +1024,9 @@ task SummarizeTaskMonitorLogs {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     INPUTS="~{sep=" " inputs}"
     if [[ -z "$INPUTS" ]]; then
@@ -1060,7 +1088,9 @@ task PopulateFilterSetInfo {
   Int max_heap = memory_mb - 500
 
   command <<<
-    set -eo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
