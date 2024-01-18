@@ -36,6 +36,7 @@
 1. `GvsBulkIngestGenomes` workflow
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - Set `process_vcf_headers` to true to include sample header information in your database. This includes information such as DRAGAN version. This slows down the ingestion process by about 30%, so if you dont care about this addtional data, leave it as false.
    - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and `use_compressed_references` to true (this will further compress the reference data).
    - `GvsBulkIngestGenomes` performs the functions of both `GvsAssignIds` and `GvsImportGenomes` with a much more scalable design. Detailed bulk ingest documentation can be found [here](../gvs-bulk-ingest-details.md).
 1. `GvsAssignIds` workflow
