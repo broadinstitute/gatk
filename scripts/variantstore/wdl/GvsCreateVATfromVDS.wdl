@@ -418,6 +418,7 @@ task AnnotateVCF {
 
         # Take the parent of the parent directory of this file as root of the locally mounted references:
         DATA_SOURCES_FOLDER=/nirvana_references
+        mkdir ${DATA_SOURCES_FOLDER}
 
         # Download the references
         dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
