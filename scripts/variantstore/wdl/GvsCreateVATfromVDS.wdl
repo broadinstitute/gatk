@@ -401,23 +401,26 @@ task AnnotateVCF {
 
         # Find where the reference disk should have been mounted on this VM.  Note this is referred to as a "candidate
         # mount point" because we do not actually confirm this is a reference disk until the following code block.
-        CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
-        if [[ -z ${CANDIDATE_MOUNT_POINT} ]]; then
-            >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
-            exit 1
-        fi
-
-        # Find one particular reference under the mount path. Note this is not the same reference as was specified in the
-        # `inputs` section, so this would only be present if the volume we're looking at is in fact a reference disk.
-        REFERENCE_FILE="Homo_sapiens.GRCh38.Nirvana.dat"
-        REFERENCE_PATH=$(find ${CANDIDATE_MOUNT_POINT} -name "${REFERENCE_FILE}")
-        if [[ -z ${REFERENCE_PATH} ]]; then
-            >&2 echo "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
-            exit 1
-        fi
+        # CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
+        # if [[ -z ${CANDIDATE_MOUNT_POINT} ]]; then
+        #     >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
+        #     exit 1
+        # fi
+        #
+        # # Find one particular reference under the mount path. Note this is not the same reference as was specified in the
+        # # `inputs` section, so this would only be present if the volume we're looking at is in fact a reference disk.
+        # REFERENCE_FILE="Homo_sapiens.GRCh38.Nirvana.dat"
+        # REFERENCE_PATH=$(find ${CANDIDATE_MOUNT_POINT} -name "${REFERENCE_FILE}")
+        # if [[ -z ${REFERENCE_PATH} ]]; then
+        #     >&2 echo "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
+        #     exit 1
+        # fi
 
         # Take the parent of the parent directory of this file as root of the locally mounted references:
-        DATA_SOURCES_FOLDER="$(dirname $(dirname ${REFERENCE_PATH}))"
+        DATA_SOURCES_FOLDER=/nirvana_references
+
+        # Download the references
+        dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
 
         # =======================================
         echo "Creating custom annotations"
