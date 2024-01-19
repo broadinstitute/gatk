@@ -338,6 +338,7 @@ EOF
         docker: "us.gcr.io/broad-dsde-methods/functionalequivalence/fe_evaluation:1.0.0"
         memory: "2 GB"
         disks: "local-disk 20 HDD"
+        maxRetries: 3
     }
 
     output {

@@ -265,6 +265,7 @@ EOF
     runtime {
         docker: "docker.io/broadinstitute/gatk:gatkbase-3.2.0"
         disks: "local-disk 200 HDD"
+        maxRetries: 3
     }
  }
 
@@ -442,6 +443,7 @@ EOF
         docker: "us.gcr.io/broad-dsde-methods/functionalequivalence/fe_evaluation:1.0.0"
         preemptible: select_first([preemptible, 0])
         disks: "local-disk 200 HDD"
+        maxRetries: 3
     }
 }
 
@@ -458,6 +460,7 @@ task MergePNGs {
         docker: "us.gcr.io/broad-dsde-methods/functionalequivalence/merge_pngs:1.0.0"
         memory: "8 GB"
         disks: "local-disk 20 HDD"
+        maxRetries: 3
     }
 
     output{
