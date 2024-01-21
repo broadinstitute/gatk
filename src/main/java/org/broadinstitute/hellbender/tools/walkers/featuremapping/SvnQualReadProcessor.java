@@ -247,7 +247,7 @@ public class SvnQualReadProcessor {
             if ( qualityInterpolator != null ) {
                 qual = (byte)qualityInterpolator.value(qual);
             }
-            char ch = SAMUtils.phredToFastq(Math.min(qual, MAX_PHRED_SCORE));
+            char ch = SAMUtils.phredToFastq(Math.max(0, Math.min(qual, MAX_PHRED_SCORE)));
             qualString.append(ch);
         }
 
