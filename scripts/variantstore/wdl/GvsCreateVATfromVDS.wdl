@@ -416,8 +416,7 @@ task AnnotateVCF {
         #     exit 1
         # fi
 
-        # Take the parent of the parent directory of this file as root of the locally mounted references:
-        DATA_SOURCES_FOLDER=/nirvana_references
+        DATA_SOURCES_FOLDER=/cromwell_root/nirvana_references
         mkdir ${DATA_SOURCES_FOLDER}
 
         # Download the references
