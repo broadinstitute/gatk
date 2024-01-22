@@ -25,9 +25,8 @@ Also note that our usage for this project is very bursty, we anticipate having a
 ## Calculate Quota To be Requested
 The default quota for this value is 50. The number that you will want for the quota is likely closer to 500 and will require some calculations to land on precisely.
 
-The Calculations initially got us to 500 Write Streams—for two streams
-Currently, however there are three WriteStreams that we use. One for variant information (into the vet_xxx tables) and a second for reference information (into the ref_ranges_xxx tables) and lastly a sample information stream that will put the headers into place.
-
+The calculations initially got us to 500 write streams for two distinct types of stream. 
+Currently, however, there are three possible types of write streams that we use. One for variant information (into the vet_xxx tables), a second for reference information (into the ref_ranges_xxx tables) and lastly a sample information stream that will put the headers into place (if that feature is turned on).
 
 Google has told us that it would be technically feasible to apply 45k per 4 hours, but we've settled on 30k per 4 hours.
 
@@ -40,11 +39,3 @@ And our request will be 30k for each of those blocks
 For scale test:
 Google increased the quota to 4k per 4 hours.
 Roughly 2.5K / hour or 60K samples / day. Scattered 500 wide while using two WriteAPI streams -- one for variant data and one for reference data
-
-
-
-
-
-
-
-
