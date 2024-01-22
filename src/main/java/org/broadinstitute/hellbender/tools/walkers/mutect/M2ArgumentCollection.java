@@ -85,7 +85,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     public static final int DEFAULT_MUTECT3_REF_DOWNSAMPLE = 10;
     public static final int DEFAULT_MUTECT3_ALT_DOWNSAMPLE = 20;
-    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 20;
+    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 1;
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 1; }
