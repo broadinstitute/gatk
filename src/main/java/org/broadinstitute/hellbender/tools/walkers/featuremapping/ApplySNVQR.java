@@ -81,6 +81,7 @@ public final class ApplySNVQR extends ReadWalker {
     private SvnQualReadProcessor                readProcessor;
     private FlowFeatureMapperUtils.Args         utilArgs;
     private JSONObject                          conf;
+    private AddFlowSNVQuality                   addFlowSNVQuality = new AddFlowSNVQuality();
 
     @Override
     public void onTraversalStart() {
@@ -152,40 +153,47 @@ public final class ApplySNVQR extends ReadWalker {
             return;
         }
 
-        // find features in read
-        final List<MappedFeature> readFeatures = new LinkedList<>();
-        final AtomicReference<FlowBasedRead> flowRead = new AtomicReference<>();
-        mapper.forEachOnRead(read, referenceContext, fr -> {
-            if ( logger.isDebugEnabled() ) {
-                logger.debug("fr: " + fr);
-            }
+        // add flow SNV
+        addFlowSNVQuality.addBaseQuality(read, getHeaderForReads());
 
-            // create flow read?
-            if ( flowRead.get() == null ) {
-                final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(utilArgs.header, read);
-                flowRead.set(new FlowBasedRead(read, rgInfo.flowOrder, rgInfo.maxClass, utilArgs.fbArgs));
-            }
-            fr.flowRead = flowRead.get();
+        // if more complex, go do it the hard way
+        if ( aqArgs.model != null && aqArgs.conf != null ) {
 
-            // score the feature
-            fr.score = FlowFeatureMapperUtils.scoreFeature(fr, utilArgs);
-
-            // score for validation mode?
-            fr.scoreForBase = new double[SequenceUtil.VALID_BASES_UPPER.length];
-            for ( int baseIndex = 0 ; baseIndex < fr.scoreForBase.length ; baseIndex++ ) {
-                final byte base = SequenceUtil.VALID_BASES_UPPER[baseIndex];
-                boolean incl = base != fr.readBases[0];
-                if ( incl ) {
-                    fr.scoreForBase[baseIndex] = FlowFeatureMapperUtils.scoreFeature(fr, base, utilArgs);
-                } else {
-                    fr.scoreForBase[baseIndex] = Double.NaN;
+            // find features in read
+            final List<MappedFeature> readFeatures = new LinkedList<>();
+            final AtomicReference<FlowBasedRead> flowRead = new AtomicReference<>();
+            mapper.forEachOnRead(read, referenceContext, fr -> {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("fr: " + fr);
                 }
-            }
-            readFeatures.add(fr);
-        });
 
-        // if we accumulated features for this read, incorporate them in on the read level
-        readProcessor.incorporateReadFeatures(read, readFeatures, getHeaderForReads());
+                // create flow read?
+                if (flowRead.get() == null) {
+                    final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(utilArgs.header, read);
+                    flowRead.set(new FlowBasedRead(read, rgInfo.flowOrder, rgInfo.maxClass, utilArgs.fbArgs));
+                }
+                fr.flowRead = flowRead.get();
+
+                // score the feature
+                fr.score = FlowFeatureMapperUtils.scoreFeature(fr, utilArgs);
+
+                // score for validation mode?
+                fr.scoreForBase = new double[SequenceUtil.VALID_BASES_UPPER.length];
+                for (int baseIndex = 0; baseIndex < fr.scoreForBase.length; baseIndex++) {
+                    final byte base = SequenceUtil.VALID_BASES_UPPER[baseIndex];
+                    boolean incl = base != fr.readBases[0];
+                    if (incl) {
+                        fr.scoreForBase[baseIndex] = FlowFeatureMapperUtils.scoreFeature(fr, base, utilArgs);
+                    } else {
+                        fr.scoreForBase[baseIndex] = Double.NaN;
+                    }
+                }
+                readFeatures.add(fr);
+            });
+
+            // if we accumulated features for this read, incorporate them in on the read level
+            readProcessor.incorporateReadFeatures(read, readFeatures, getHeaderForReads());
+        }
 
         // write read to output
         outputWriter.addRead(read);
