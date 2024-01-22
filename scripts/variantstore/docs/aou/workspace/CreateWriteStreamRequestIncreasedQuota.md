@@ -4,6 +4,10 @@ BigQuery Storage API CreateWriteStream quota for small regions per minute per re
 
 Note that once the quota has been adjusted, it will not necessarily be visible as anything other than the default on this page.
 
+| Quota                                                                                       | Default                                                                                                | Notes                                                                                                                                                          | 
+|---------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `CreateWriteStream` requests  | 10,000 streams every hour, per project per region | You can call CreateWriteStream up to 10,000 times per hour per project per region. Consider using the default stream if you don't need exactly-once semantics. |
+For more information, see [Google's quota documentation](https://cloud.google.com/bigquery/quotas)
 
 ## File a Google Support Ticket
 You can point to [this ticket](https://console.cloud.google.com/support/cases/detail/v2/47548796?project=broad-dsde-methods) as an example. It is summarized below.
@@ -24,6 +28,7 @@ Also note that our usage for this project is very bursty, we anticipate having a
 
 ## Calculate Quota To be Requested
 The default quota for this value is 50. The number that you will want for the quota is likely closer to 500 and will require some calculations to land on precisely.
+This is the value that will be input for `load_data_batch` and is necessary to input for large amounts of data.
 
 The calculations initially got us to 500 write streams for two distinct types of stream. 
 Currently, however, there are three possible types of write streams that we use. One for variant information (into the vet_xxx tables), a second for reference information (into the ref_ranges_xxx tables) and lastly a sample information stream that will put the headers into place (if that feature is turned on).
@@ -31,9 +36,19 @@ Currently, however, there are three possible types of write streams that we use.
 Google has told us that it would be technically feasible to apply 45k per 4 hours, but we've settled on 30k per 4 hours.
 
 For Echo:
-We are going to be using 3 streams per sample instead of 2. So we are going to scatter by 333 (okay lets say 350) wide
-So we are hoping for 10K samples each 4 hour block (Google Quotas are in 4 hour chunks)
-And our request will be 30k for each of those blocks
+We calculated that the `load_data_batch` should be set to 1245 without a quota increase.
+
+In Echo there are 414,830 non-control samples that need to be loaded during the bulk ingest process.
+We are going to be using 3 streams per sample (variant data, reference data and header info -- sometimes we only load the first 2).
+Based on Google docs, the default is 10,000 streams per hour, and we need three streams per sample.
+
+
+We are going to scatter 414830 samples by 333 wide. So 1245 is our batch size
+414830 / 333 = 1245.
+
+Our quota increase request will be 30k instead of 10k. If we get it, we can tripe our `load_data_batch` size.
+
+
 
 
 For scale test:

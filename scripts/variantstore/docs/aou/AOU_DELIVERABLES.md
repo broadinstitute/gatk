@@ -6,6 +6,7 @@
   - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
   - There is a quota that needs to be upgraded for the process of Bulk Ingest.
     When we ingest data, we use the Write API, which is part of BQ’s Storage API. Since we are hitting this API with so much data all at once, we want to increase our CreateWriteStream quota. Follow the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md).
+    Once that quota has been increased, the `load_data_batch` value needs to be updated based on calculations in the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md) doc. Even if no increased quota is granted, this doc goes over how to choose the value for this param.
   - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
     - Update the .dockstore.yml file on that feature branch to add the feature branch for all the WDLs that will be loaded into the workspace in the next step.
 - Once the workspace requested above has been created and permissioned, populate with the following WDLs:
