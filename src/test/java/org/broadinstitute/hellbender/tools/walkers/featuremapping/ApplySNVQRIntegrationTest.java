@@ -17,7 +17,7 @@ import java.util.List;
 
 public class ApplySNVQRIntegrationTest extends CommandLineProgramTest {
 
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
     private static final double DOUBLE_EPSILON = 0.001;
 
     private static String testDir = publicTestDir + FlowTestConstants.APPLY_SNVQR_DATA_DIR;

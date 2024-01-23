@@ -40,6 +40,23 @@ public class FlowFeatureMapperUtils {
 
     public static double scoreFeature(final MappedFeature fr, byte altBase, Args args) {
 
+        // shortcut - if looking for a score for the original base, see if an already computed BQ can help
+        if ( altBase == 0 && fr.read.hasAttribute("BQ") ) {
+            final byte[] attr = fr.read.getAttributeAsString("BQ").getBytes();
+            final byte q = attr[fr.readBasesOffset];
+            return qualityToScore(q);
+        }
+
+        // shortcut - if looking for a score for the alternate base, see if an already computed qX can help
+        if ( altBase != 0 ) {
+            final String name = "q" + Character.toLowerCase((char)altBase);
+            if ( fr.read.hasAttribute(name) ) {
+                final byte[] attr = fr.read.getAttributeAsString(name).getBytes();
+                final byte q = attr[fr.readBasesOffset];
+                return qualityToScore(q);
+            }
+        }
+
         // build haplotypes
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(args.header, fr.read);
         final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase);
@@ -105,6 +122,13 @@ public class FlowFeatureMapperUtils {
         }
 
         return score;
+    }
+
+    // TEMP!!! - this is really just a placeholder - I'm still waiting on information as to how to map quality into score.
+    private static double qualityToScore(byte q) {
+        int phred = q - 33;
+        return (double)phred / 10.0;
+
     }
 
     public static double computeLikelihoodLocal(final FlowBasedRead read, final FlowBasedHaplotype haplotype, final int hapKeyLength, final boolean debug) {
