@@ -21,9 +21,9 @@ public final class AddFlowSNVQuality  {
     public static final int ERROR_PROB_BANDS = 3;
 
     public double minErrorRate = 1e-3;
-    public int maxQualityScore = 93;
+    public double maxErrorRate = 1 - minErrorRate;
+    public int maxQualityScore = 60;
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
-
 
     public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr) {
 
@@ -41,7 +41,7 @@ public final class AddFlowSNVQuality  {
         read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, convertPhredToString(phred));
         for ( int i = 0 ; i < flowOrderLength ; i++ ) {
             final String name = ApplySNVQR.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
-            read.setAttribute(name, convertErrorProbToPhred(snvResultRef.get()[i]));
+            read.setAttribute(name, convertPhredToString(convertErrorProbToPhred(snvResultRef.get()[i])));
         }
     }
 
@@ -98,9 +98,16 @@ public final class AddFlowSNVQuality  {
         for ( int flow = 0 ; flow < key.length ; flow++ ) {
             if ( key[flow] != 0 ) {
 
-                // establish hmer quality
-                allBaseProb0.clear();;
-                allBaseProb1.clear();;
+                // establish initial stat
+                allBaseProb0.clear();
+                allBaseProb1.clear();
+                for ( int i = 0 ; i < flowOrderLength ; i++ ) {
+                    double p = (i == (flow % flowOrderLength)) ? 0 : maxErrorRate;
+                    allBaseProb0.put(flowOrder[i], p);
+                    allBaseProb1.put(flowOrder[i], p);
+                }
+
+                    // establish hmer quality
                 final int         hmerLength = key[flow];
                 final double[]    hmerBaseErrorProbs = generateHmerBaseErrorProbabilities(key, errorProbBands, flow, flowOrderLength, flowOrder, allBaseProb0, allBaseProb1);
 

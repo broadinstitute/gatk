@@ -350,7 +350,7 @@ public class SvnQualReadProcessor {
         logger.info("zeroCount report (details are location offset from end of read):");
         zeroCountStats.getBins().forEach((k, v) -> {
             logger.info(String.format("%d: %d - %s", k.intValue(), v.get(),
-                    (k.intValue() != 1) ? zeroCountStats.getAuxBins().get(k).toDigest() : ""));
+                    (k.intValue() != 1) ? zeroCountStats.getAuxBins().get(k).getBins().toString() : ""));
         });
     }
 

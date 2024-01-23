@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.groundtruth.SeriesStats;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -39,6 +40,7 @@ import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -79,7 +81,12 @@ public final class ApplySNVQR extends ReadWalker {
     @Advanced
     @Hidden
     @Argument(fullName="debug-use-add-flow-base-quality-algorithm", doc = "", optional = true)
-    public boolean debugAddFlowBaseQualityAlgorithm = false;
+    public boolean debugAddFlowBaseQualityAlgorithm = true;
+
+    @Advanced
+    @Hidden
+    @Argument(fullName="debug-collect-stats-into", doc = "", optional = true)
+    public String debugCollectStatsInto = "/tmp/ApplySNVQR_stats";
 
     // locals
     private FeatureMapper                       mapper;
@@ -87,6 +94,10 @@ public final class ApplySNVQR extends ReadWalker {
     private FlowFeatureMapperUtils.Args         utilArgs;
     private JSONObject                          conf;
     private AddFlowSNVQuality                   addFlowSNVQuality = new AddFlowSNVQuality();
+    private SeriesStats                         inputQualStats = new SeriesStats();
+    private SeriesStats                         outputBQStats = new SeriesStats();
+    private SeriesStats                         outputQXStats = new SeriesStats();
+
 
     @Override
     public void onTraversalStart() {
@@ -135,6 +146,9 @@ public final class ApplySNVQR extends ReadWalker {
                 if ( aqArgs.statsPathPrefix != null )
                     readProcessor.writeStats(aqArgs.statsPathPrefix);
             }
+
+            if ( debugCollectStatsInto != null )
+                printStats(debugCollectStatsInto);
         } catch (IOException e) {
             throw new GATKException("", e);
         }
@@ -157,6 +171,10 @@ public final class ApplySNVQR extends ReadWalker {
         if ( ((read.getFlags() & VENDOR_QUALITY_CHECK_FLAG) != 0) && !includeQcFailedReads ) {
             return;
         }
+
+        // collect input stats
+        if ( debugCollectStatsInto != null )
+            collectInputStats(read);
 
         // add flow SNV
         if ( debugAddFlowBaseQualityAlgorithm ) {
@@ -202,8 +220,41 @@ public final class ApplySNVQR extends ReadWalker {
             readProcessor.incorporateReadFeatures(read, readFeatures, getHeaderForReads());
         }
 
+        // collect output stats
+        if ( debugCollectStatsInto != null ) {
+            collectOutputStats(read);
+        }
+
         // write read to output
         outputWriter.addRead(read);
+    }
+
+    private void collectInputStats(GATKRead read) {
+        for ( byte q : read.getBaseQualitiesNoCopy() ) {
+            inputQualStats.add(q);
+        }
+    }
+
+    private void collectOutputStats(GATKRead read) {
+        if ( read.hasAttribute("BQ") ) {
+            for ( byte q : read.getAttributeAsString("BQ").getBytes() ) {
+                outputBQStats.add(q - 33);
+            }
+        }
+        final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(utilArgs.header, read);
+        for ( int i = 0 ; i < 4 ; i++ ) {
+            String attrValue = read.getAttributeAsString(attrNameForNonCalledBase(rgInfo.flowOrder.getBytes()[i]));
+            for ( byte q : attrValue.getBytes() ) {
+                outputQXStats.add(q - 33);
+            }
+        }
+    }
+
+    private void printStats(final String fname) throws IOException {
+
+        inputQualStats.csvWrite(fname + ".inputQual.csv");
+        outputBQStats.csvWrite(fname + ".outputBQ.csv");
+        outputQXStats.csvWrite(fname + ".outputQX.csv");
     }
 
     static public String attrNameForNonCalledBase(byte nonCalledBase) {

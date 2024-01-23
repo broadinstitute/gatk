@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.groundtruth;
 
-import org.apache.commons.collections.map.LazySortedMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -11,6 +12,8 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeriesStats {
+
+    private static final Logger logger = LogManager.getLogger(SeriesStats.class);
 
     // local state
     private double last = Double.NaN;
@@ -23,9 +26,10 @@ public class SeriesStats {
     private Map<Double, SeriesStats> auxBins = new LinkedHashMap<>();
 
     public void csvWrite(final String path) throws IOException {
+        logger.info("Writing SeriesStats " + toDigest() + " into " + path);
         PrintWriter pw = new PrintWriter(path);
         pw.println("value,count");
-        boolean intKeys = (count == intCount);
+        boolean intKeys = isIntKeys();
         for (Map.Entry<Double, AtomicInteger> entry : bins.entrySet() ) {
             if ( intKeys ) {
                 pw.println(String.format("%d,%d", entry.getKey().intValue(), entry.getValue().get()));
@@ -157,6 +161,14 @@ public class SeriesStats {
     }
 
     public String toDigest() {
-        return this.bins.toString();
+        if ( isIntKeys() ) {
+            return String.format("count=%d, min=%d, max=%d, median=%d, bin.count=%d", getCount(), (int)getMin(), (int)getMax(), (int)getMedian(), getBins().size());
+        } else {
+            return String.format("count=%d, min=%f, max=%f, median=%f, bin.count=%d", getCount(), getMin(), getMax(), getMedian(), getBins().size());
+        }
+    }
+
+    private boolean isIntKeys() {
+        return (count == intCount);
     }
 }
