@@ -40,7 +40,7 @@ public final class AddFlowSNVQuality  {
         // install in read
         read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, convertPhredToString(phred));
         for ( int i = 0 ; i < flowOrderLength ; i++ ) {
-            final String name = String.format("q%c", rgInfo.flowOrder.charAt(i));
+            final String name = ApplySNVQR.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
             read.setAttribute(name, convertErrorProbToPhred(snvResultRef.get()[i]));
         }
     }

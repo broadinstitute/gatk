@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import static htsjdk.samtools.SAMUtils.MAX_PHRED_SCORE;
 
@@ -117,7 +116,7 @@ public class SvnQualReadProcessor {
         // get snvqr strings
         byte[][] qX = new byte[SequenceUtil.VALID_BASES_UPPER.length][];
         for ( int i = 0 ; i < qX.length ; i++  ) {
-            qX[i] = read.getAttributeAsString(attrNameForNonCalledBase(SequenceUtil.VALID_BASES_UPPER[i])).getBytes();
+            qX[i] = read.getAttributeAsString(ApplySNVQR.attrNameForNonCalledBase(SequenceUtil.VALID_BASES_UPPER[i])).getBytes();
         }
 
         // check that all lengths are the same
@@ -256,11 +255,7 @@ public class SvnQualReadProcessor {
                 "generated SNVQR length %d is different than quality length %d", qualString.length(), read.getBaseQualitiesNoCopy().length);
 
         // create attribute, named qa, qc, etc
-        read.setAttribute(attrNameForNonCalledBase(nonCalledBase), qualString.toString());
-    }
-
-    private String attrNameForNonCalledBase(byte nonCalledBase) {
-        return ("Q" + (char)nonCalledBase).toLowerCase();
+        read.setAttribute(ApplySNVQR.attrNameForNonCalledBase(nonCalledBase), qualString.toString());
     }
 
     private void buildNewQualString(GATKRead read) {
@@ -268,7 +263,7 @@ public class SvnQualReadProcessor {
         // get snvqr strings
         byte[][] qX = new byte[SequenceUtil.VALID_BASES_UPPER.length][];
         for ( int i = 0 ; i < qX.length ; i++  ) {
-            qX[i] = read.getAttributeAsString(attrNameForNonCalledBase(SequenceUtil.VALID_BASES_UPPER[i])).getBytes();
+            qX[i] = read.getAttributeAsString(ApplySNVQR.attrNameForNonCalledBase(SequenceUtil.VALID_BASES_UPPER[i])).getBytes();
         }
 
         // build new quality string (BQ)

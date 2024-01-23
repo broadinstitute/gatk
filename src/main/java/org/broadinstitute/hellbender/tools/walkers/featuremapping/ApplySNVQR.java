@@ -76,6 +76,11 @@ public final class ApplySNVQR extends ReadWalker {
     @ArgumentCollection
     public ApplySNVQRArgumentCollection aqArgs = new ApplySNVQRArgumentCollection();
 
+    @Advanced
+    @Hidden
+    @Argument(fullName="debug-use-add-flow-base-quality-algorithm", doc = "", optional = true)
+    public boolean debugAddFlowBaseQualityAlgorithm = false;
+
     // locals
     private FeatureMapper                       mapper;
     private SvnQualReadProcessor                readProcessor;
@@ -154,10 +159,12 @@ public final class ApplySNVQR extends ReadWalker {
         }
 
         // add flow SNV
-        addFlowSNVQuality.addBaseQuality(read, getHeaderForReads());
+        if ( debugAddFlowBaseQualityAlgorithm ) {
+            addFlowSNVQuality.addBaseQuality(read, getHeaderForReads());
+        }
 
         // if more complex, go do it the hard way
-        if ( aqArgs.model != null && aqArgs.conf != null ) {
+        if ( aqArgs.model != null || aqArgs.conf != null || !read.hasAttribute(attrNameForNonCalledBase('A')) ) {
 
             // find features in read
             final List<MappedFeature> readFeatures = new LinkedList<>();
@@ -197,6 +204,14 @@ public final class ApplySNVQR extends ReadWalker {
 
         // write read to output
         outputWriter.addRead(read);
+    }
+
+    static public String attrNameForNonCalledBase(byte nonCalledBase) {
+        return attrNameForNonCalledBase((char)nonCalledBase);
+    }
+
+    static public String attrNameForNonCalledBase(char nonCalledBase) {
+        return "q" + Character.toLowerCase(nonCalledBase);
     }
 }
 
