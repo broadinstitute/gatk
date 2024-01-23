@@ -35,36 +35,28 @@ public final class AddFlowSNVQuality  {
         // generate base quality
         final AtomicReference<double[][]> snvResultRef = new AtomicReference<>();
         final double[]      baseErrorProb = generateBaseErrorProbability(fbRead, flowOrderLength, rgInfo.flowOrder.getBytes(), snvResultRef);
-        final byte[]        phred = convertErrorProbToPhred(baseErrorProb);
 
         // install in read
-        read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, convertPhredToString(phred));
+        read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, new String(convertErrorProbToPhred(baseErrorProb, true)));
         for ( int i = 0 ; i < flowOrderLength ; i++ ) {
             final String name = ApplySNVQR.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
-            read.setAttribute(name, convertPhredToString(convertErrorProbToPhred(snvResultRef.get()[i])));
+            read.setAttribute(name, new String(convertErrorProbToPhred(snvResultRef.get()[i], true)));
         }
     }
 
-    private byte[] convertErrorProbToPhred(double[] errorProb) {
+    private byte[] convertErrorProbToPhred(double[] errorProb, boolean asciiBase) {
+
+        final byte floor = asciiBase ? (byte)PHRED_ASCII_BASE : 0;
 
         final byte[] phred = new byte[errorProb.length];
         for ( int i = 0 ; i < errorProb.length ; i++ ) {
             if ( errorProb[i] == 0 ) {
-                phred[i] = (byte)(maxQualityScore);
+                phred[i] = (byte)(maxQualityScore + floor);
             } else {
-                phred[i] = (byte)Math.min((maxQualityScore), (int) (-10 * Math.log10(errorProb[i])));
+                phred[i] = (byte)(Math.min((maxQualityScore), (int) (-10 * Math.log10(errorProb[i]))) + floor);
             }
         }
         return phred;
-    }
-
-    private String convertPhredToString(final byte[] phred) {
-
-        final byte[] s = new byte[phred.length];
-        for ( int i = 0 ; i < phred.length ; i++ ) {
-            s[i] = (byte)(phred[i] + PHRED_ASCII_BASE);
-        }
-        return new String(s);
     }
 
     private int calcFlowOrderLength(String flowOrder) {
@@ -101,13 +93,9 @@ public final class AddFlowSNVQuality  {
                 // establish initial stat
                 allBaseProb0.clear();
                 allBaseProb1.clear();
-                for ( int i = 0 ; i < flowOrderLength ; i++ ) {
-                    double p = (i == (flow % flowOrderLength)) ? 0 : maxErrorRate;
-                    allBaseProb0.put(flowOrder[i], p);
-                    allBaseProb1.put(flowOrder[i], p);
-                }
+                int flow_i = (flow % flowOrderLength);
 
-                    // establish hmer quality
+                // establish hmer quality
                 final int         hmerLength = key[flow];
                 final double[]    hmerBaseErrorProbs = generateHmerBaseErrorProbabilities(key, errorProbBands, flow, flowOrderLength, flowOrder, allBaseProb0, allBaseProb1);
 
@@ -121,6 +109,8 @@ public final class AddFlowSNVQuality  {
                     for ( int i = 0 ; i < flowOrderLength ; i++ ) {
                         if ( allBaseProb0.containsKey(flowOrder[i]) ) {
                             snvResult[i][base - 1] = allBaseProb0.get(flowOrder[i]);
+                        } else if ( i != flow_i ) {
+                            snvResult[i][base - 1] = maxErrorRate;
                         }
                     }
                 }
@@ -139,6 +129,10 @@ public final class AddFlowSNVQuality  {
                             final double p = allBaseProb1.get(flowOrder[i]);
                             for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
                                 snvResult[i][base - 1 - j] = p;
+                            }
+                        } else if ( i != flow_i ) {
+                            for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
+                                snvResult[i][base - 1 - j] = maxErrorRate;
                             }
                         }
                     }

@@ -77,7 +77,8 @@ public class ApplySNVQRIntegrationTest extends CommandLineProgramTest {
                 "--limit-score", "10",
                 "--debug-read-name", "30020185_2-UGAv3-182-1989782468",
                 "--verbosity", "INFO",
-                "--stats-path-prefix", "/tmp/apply_stats"
+                "--stats-path-prefix", "/tmp/apply_stats",
+                "--debug-collect-stats-into", "/tmp/stats",
         };
 
         // run the tool

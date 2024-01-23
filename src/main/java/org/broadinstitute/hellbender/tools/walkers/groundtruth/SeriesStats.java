@@ -59,10 +59,11 @@ public class SeriesStats {
         count++;
 
         // save in bins
-        if ( bins.containsKey(v) ) {
-            bins.get(v).incrementAndGet();
+        final Double key = v;
+        if ( bins.containsKey(key) ) {
+            bins.get(key).incrementAndGet();
         } else {
-            bins.put(v, new AtomicInteger(1));
+            bins.put(key, new AtomicInteger(1));
         }
     }
 

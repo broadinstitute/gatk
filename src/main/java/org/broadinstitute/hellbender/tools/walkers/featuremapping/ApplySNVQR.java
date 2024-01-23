@@ -80,13 +80,8 @@ public final class ApplySNVQR extends ReadWalker {
 
     @Advanced
     @Hidden
-    @Argument(fullName="debug-use-add-flow-base-quality-algorithm", doc = "", optional = true)
-    public boolean debugAddFlowBaseQualityAlgorithm = true;
-
-    @Advanced
-    @Hidden
     @Argument(fullName="debug-collect-stats-into", doc = "", optional = true)
-    public String debugCollectStatsInto = "/tmp/ApplySNVQR_stats";
+    public String debugCollectStatsInto = null;
 
     // locals
     private FeatureMapper                       mapper;
@@ -97,7 +92,6 @@ public final class ApplySNVQR extends ReadWalker {
     private SeriesStats                         inputQualStats = new SeriesStats();
     private SeriesStats                         outputBQStats = new SeriesStats();
     private SeriesStats                         outputQXStats = new SeriesStats();
-
 
     @Override
     public void onTraversalStart() {
@@ -177,9 +171,7 @@ public final class ApplySNVQR extends ReadWalker {
             collectInputStats(read);
 
         // add flow SNV
-        if ( debugAddFlowBaseQualityAlgorithm ) {
-            addFlowSNVQuality.addBaseQuality(read, getHeaderForReads());
-        }
+        addFlowSNVQuality.addBaseQuality(read, getHeaderForReads());
 
         // if more complex, go do it the hard way
         if ( aqArgs.model != null || aqArgs.conf != null || !read.hasAttribute(attrNameForNonCalledBase('A')) ) {
