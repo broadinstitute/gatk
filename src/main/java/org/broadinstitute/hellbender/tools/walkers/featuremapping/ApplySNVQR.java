@@ -1,18 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.writer.Options;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -24,23 +14,13 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.groundtruth.SeriesStats;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -91,7 +71,9 @@ public final class ApplySNVQR extends ReadWalker {
     private AddFlowSNVQuality                   addFlowSNVQuality = new AddFlowSNVQuality();
     private SeriesStats                         inputQualStats = new SeriesStats();
     private SeriesStats                         outputBQStats = new SeriesStats();
-    private SeriesStats                         outputQXStats = new SeriesStats();
+    private SeriesStats                         outputQAltStats = new SeriesStats();
+    private SeriesStats                         outputQCalledStats = new SeriesStats();
+    private SeriesStats                         outputSumPStats = new SeriesStats();
 
     @Override
     public void onTraversalStart() {
@@ -236,11 +218,25 @@ public final class ApplySNVQR extends ReadWalker {
             }
         }
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(utilArgs.header, read);
+        final byte[] bases = read.getBasesNoCopy();
+        final double[] sumP = new double[bases.length];
         for ( int i = 0 ; i < 4 ; i++ ) {
-            String attrValue = read.getAttributeAsString(attrNameForNonCalledBase(rgInfo.flowOrder.getBytes()[i]));
+            byte altBase = rgInfo.flowOrder.getBytes()[i];
+            String attrValue = read.getAttributeAsString(attrNameForNonCalledBase(altBase));
+            int ofs = 0;
             for ( byte q : attrValue.getBytes() ) {
-                outputQXStats.add(q - 33);
+                if ( bases[ofs] != altBase ) {
+                    outputQAltStats.add(q - 33);
+                } else {
+                    outputQCalledStats.add(q - 33);
+                }
+                sumP[ofs] += Math.pow(10.0, (q - 33) / -10.0);
+                ofs++;
+
             }
+        }
+        for ( double p : sumP ) {
+            outputSumPStats.add(p);
         }
     }
 
@@ -248,7 +244,9 @@ public final class ApplySNVQR extends ReadWalker {
 
         inputQualStats.csvWrite(fname + ".inputQual.csv");
         outputBQStats.csvWrite(fname + ".outputBQ.csv");
-        outputQXStats.csvWrite(fname + ".outputQX.csv");
+        outputQAltStats.csvWrite(fname + ".outputQAlt.csv");
+        outputQCalledStats.csvWrite(fname + ".outputQCalled.csv");
+        outputSumPStats.csvWrite(fname + ".outputSumP.csv");
     }
 
     static public String attrNameForNonCalledBase(byte nonCalledBase) {

@@ -145,6 +145,28 @@ public final class AddFlowSNVQuality  {
             }
         }
 
+        // adjust probability of called bases so that sum will be 1
+        final byte[] bases = fbRead.getBasesNoCopy();
+        for ( int ofs = 0 ; ofs < bases.length ; ofs++ ) {
+
+            // go through alt bases and accumulate p, find out index of called bases (in flow order)
+            final byte calledBase = bases[ofs];
+            double altP = 0;
+            int calledIndex = -1;
+            for (int i = 0; i < flowOrderLength; i++) {
+                if ( calledBase != flowOrder[i] ) {
+                    altP += snvResult[i][ofs];
+                } else {
+                    calledIndex = i;
+                }
+            }
+
+            // install probability in called base slot
+            if ( calledIndex >= 0 ) {
+                snvResult[calledIndex][ofs] = Math.max(0, 1 - altP);
+            }
+        }
+
         return result;
     }
 
