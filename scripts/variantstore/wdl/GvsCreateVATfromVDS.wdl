@@ -373,6 +373,8 @@ task AnnotateVCF {
             "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
 
         String variants_nirvana_docker
+
+        File omim_annotations = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga"
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -420,7 +422,7 @@ task AnnotateVCF {
         mkdir ${DATA_SOURCES_FOLDER}
 
         # Special-case download OMIM from where the Delta reference disk uses it
-        gcloud storage cp gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga ${DATA_SOURCES_FOLDER}
+        ln $(find /cromwell_root OMIM_20220516.nga) ${DATA_SOURCES_FOLDER}
 
         # Download the references
         dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
