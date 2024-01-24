@@ -419,6 +419,9 @@ task AnnotateVCF {
         DATA_SOURCES_FOLDER=/cromwell_root/nirvana_references
         mkdir ${DATA_SOURCES_FOLDER}
 
+        # Special-case download OMIM from where the Delta reference disk uses it
+        gcloud storage cp gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga ${DATA_SOURCES_FOLDER}
+
         # Download the references
         dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
 
