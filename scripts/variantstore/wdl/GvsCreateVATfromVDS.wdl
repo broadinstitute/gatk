@@ -422,7 +422,7 @@ task AnnotateVCF {
         mkdir ${DATA_SOURCES_FOLDER}
 
         # Special-case download OMIM from where the Delta reference disk uses it
-        ln $(find /cromwell_root OMIM_20220516.nga) ${DATA_SOURCES_FOLDER}
+        ln $(find /cromwell_root -name OMIM_20220516.nga) ${DATA_SOURCES_FOLDER}
 
         # Download the references
         dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
