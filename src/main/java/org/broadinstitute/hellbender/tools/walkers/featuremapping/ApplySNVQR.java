@@ -99,9 +99,11 @@ public final class ApplySNVQR extends ReadWalker {
         outputWriter = createSAMWriter(output, true);
         mapper = new SNVMapper(aqArgs);
 
-        // enforce requirement for sorted input
-        if ( getHeaderForReads().getSortOrder() != SAMFileHeader.SortOrder.coordinate ) {
-            throw new IllegalArgumentException("input file must be coordinated sorted");
+        // enforce requirement for sorted input if model provided
+        if ( aqArgs.model != null ) {
+            if (getHeaderForReads().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
+                throw new IllegalArgumentException("input file must be coordinated sorted");
+            }
         }
 
         // load configuration
