@@ -471,6 +471,7 @@ task AnnotateVCF {
         memory: "64 GB"
         cpu: "4"
         preemptible: 3
+        maxRetries: 2
         disks: "local-disk 2000 HDD"
     }
     # ------------------------------------------------
