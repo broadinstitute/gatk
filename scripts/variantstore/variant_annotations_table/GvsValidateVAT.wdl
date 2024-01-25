@@ -349,7 +349,7 @@ task SchemaNoNullRequiredFields {
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
 
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             contig,
             position,
@@ -488,7 +488,7 @@ task SchemaPrimaryKey {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             vid,
             transcript,
