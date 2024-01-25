@@ -421,11 +421,11 @@ task AnnotateVCF {
         DATA_SOURCES_FOLDER=/cromwell_root/nirvana_references
         mkdir ${DATA_SOURCES_FOLDER}
 
-        # Special-case download OMIM from where the Delta reference disk uses it
-        ln ~{omim_annotations} ${DATA_SOURCES_FOLDER}
-
         # Download the references
         dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
+
+        # Special-case link in the OMIM .nsa bundle we downloaded separately.
+        ln ~{omim_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
 
         # =======================================
         echo "Creating custom annotations"
