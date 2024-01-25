@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -199,6 +200,9 @@ public final class ApplySNVQR extends ReadWalker {
         // collect output stats
         if ( debugCollectStatsInto != null ) {
             collectOutputStats(read);
+            if ( aqArgs.debugReadName.size() != 0 && aqArgs.debugReadName.contains(read.getName()) ) {
+                dumpOutputRead(read);
+            }
         }
 
         // write read to output
@@ -237,6 +241,81 @@ public final class ApplySNVQR extends ReadWalker {
         }
         for ( double p : sumP ) {
             outputSumPStats.add(p);
+        }
+    }
+
+    // dump read as a csv for easier analysis
+    private void dumpOutputRead(GATKRead read) {
+
+        try {
+            // open file
+            final String fname = debugCollectStatsInto + "." + read.getName() + ".csv";
+            logger.info("dumping read into: " + fname);
+            final PrintWriter pw = new PrintWriter(fname);
+
+            // write header
+            final StringBuilder hdr = new StringBuilder();
+            hdr.append("pos,base,qual,tp,t0,bq");
+            final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), read);
+            for (int i = 0; i < 4; i++) {
+                hdr.append(",");
+                hdr.append(attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i)));
+            }
+            hdr.append(",qCalled");
+            pw.println(hdr);
+
+            // access data
+            final byte[] bases = read.getBasesNoCopy();
+            final byte[] quals = read.getBaseQualitiesNoCopy();
+            final byte[] tp = read.getAttributeAsByteArray("tp");
+            final byte[] t0 = read.getAttributeAsByteArray("t0");
+            final byte[] bq = read.getAttributeAsString("BQ").getBytes();
+            final byte[][] qX = new byte[4][];
+            for (int i = 0; i < 4; i++) {
+                qX[i] = read.getAttributeAsString(attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i))).getBytes();
+            }
+
+            // write lines
+            List<String> line = new LinkedList<>();
+            for (int pos = 0; pos < bases.length; pos++) {
+                line.clear();
+
+                // position
+                line.add(Integer.toString(pos));
+
+                // base, qual
+                line.add(Character.toString(bases[pos]));
+                line.add(Integer.toString(quals[pos]));
+
+                // tp,t0,bq
+                line.add(Integer.toString(tp[pos]));
+                line.add(Integer.toString(t0[pos] - 33));
+                line.add(Integer.toString(bq[pos] - 33));
+
+                // qX
+                int calledIndex = -1;
+                for (int i = 0; i < 4; i++) {
+                    line.add(Integer.toString(qX[i][pos] - 33));
+                    if ( bases[pos] == rgInfo.flowOrder.charAt(i) ) {
+                        calledIndex = i;
+                    }
+                }
+
+                // qCalled
+                if ( calledIndex >= 0 ) {
+                    line.add(Integer.toString(qX[calledIndex][pos] - 33));
+                } else {
+                    line.add("-1");
+                }
+
+                // write the line
+                pw.println(StringUtils.join(line, ','));
+            }
+
+            // close file
+            pw.close();
+        } catch (IOException e) {
+            throw new GATKException("", e);
         }
     }
 

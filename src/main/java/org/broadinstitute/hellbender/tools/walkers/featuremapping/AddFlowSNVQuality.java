@@ -20,7 +20,7 @@ public final class AddFlowSNVQuality  {
     public static final int ERROR_PROB_BAND_1MORE = 2;
     public static final int ERROR_PROB_BANDS = 3;
 
-    public double minErrorRate = 1e-3;
+    public double minErrorRate = 1e-6;
     public double maxErrorRate = 1 - minErrorRate;
     public int maxQualityScore = 60;
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
@@ -110,7 +110,7 @@ public final class AddFlowSNVQuality  {
                         if ( allBaseProb0.containsKey(flowOrder[i]) ) {
                             snvResult[i][base - 1] = allBaseProb0.get(flowOrder[i]);
                         } else if ( i != flow_i ) {
-                            snvResult[i][base - 1] = maxErrorRate;
+                            snvResult[i][base - 1] = minErrorRate;
                         }
                     }
                 }
@@ -132,7 +132,7 @@ public final class AddFlowSNVQuality  {
                             }
                         } else if ( i != flow_i ) {
                             for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
-                                snvResult[i][base - 1 - j] = maxErrorRate;
+                                snvResult[i][base - 1 - j] = minErrorRate;
                             }
                         }
                     }
