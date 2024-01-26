@@ -142,7 +142,6 @@ def get_location_filters_from_interval_list(interval_list):
 
 
 def get_unpacked_location_filters_from_interval_list(interval_list):
-def get_unpacked_location_filters_from_interval_list(interval_list):
     interval_test = pybedtools.BedTool(interval_list)
     location_clause_list = [f"(UnpackRefRangeInfo(packed_ref_data).location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND UnpackRefRangeInfo(packed_ref_data).len <= {interval.end - interval.start})"
                             for interval in interval_test]
