@@ -132,6 +132,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         truthVCs.ifPresent(vcs -> vcs.forEach(var -> allRefAlleles.add(var.getReference())));
         final Allele longestRef = allRefAlleles.stream().sorted(Comparator.comparingInt(Allele::length).reversed()).findFirst().get();
 
+        // skip(1) excludes the reference allele
         final List<Allele> remappedAltAlleles = ReferenceConfidenceVariantContextMerger.remapAlleles(vc, longestRef).stream()
                 .skip(1).toList();
 
