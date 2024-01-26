@@ -136,14 +136,16 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 
 def get_unpacked_location_filters_from_interval_list(interval_list):
     interval_test = pybedtools.BedTool(interval_list)
-    location_clause_list = [f"(UnpackRefRangeInfo(packed_ref_data).location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND UnpackRefRangeInfo(packed_ref_data).location <= CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))})"
+    location_clause_list = [f"""(UnpackRefRangeInfo(packed_ref_data).location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
+            AND UnpackRefRangeInfo(packed_ref_data).location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
                             for interval in interval_test]
     return "AND (" + " OR ".join(location_clause_list) + ")"
 
 
 def get_location_filters_from_interval_list(interval_list):
     interval_test = pybedtools.BedTool(interval_list)
-    location_clause_list = [f"(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"
+    location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
+            AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
                             for interval in interval_test]
     return "AND (" + " OR ".join(location_clause_list) + ")"
 
