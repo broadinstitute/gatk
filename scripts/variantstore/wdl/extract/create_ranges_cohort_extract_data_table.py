@@ -3,7 +3,6 @@ import uuid
 import datetime
 import argparse
 import pybedtools
-import os
 import re
 
 from google.cloud import bigquery
@@ -136,14 +135,15 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 
 
 def get_location_filters_from_interval_list(interval_list):
-    interval_test = pybedtools.BedTool(os.path.basename(interval_list))
+    interval_test = pybedtools.BedTool(interval_list)
     location_clause_list = [f"(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND length <= {interval.end - interval.start})"
                             for interval in interval_test]
     return "AND (" + " OR ".join(location_clause_list) + ")"
 
 
 def get_unpacked_location_filters_from_interval_list(interval_list):
-    interval_test = pybedtools.BedTool(os.path.basename(interval_list))
+def get_unpacked_location_filters_from_interval_list(interval_list):
+    interval_test = pybedtools.BedTool(interval_list)
     location_clause_list = [f"(UnpackRefRangeInfo(packed_ref_data).location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND UnpackRefRangeInfo(packed_ref_data).len <= {interval.end - interval.start})"
                             for interval in interval_test]
     return "AND (" + " OR ".join(location_clause_list) + ")"
