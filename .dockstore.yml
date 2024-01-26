@@ -195,6 +195,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1164
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
