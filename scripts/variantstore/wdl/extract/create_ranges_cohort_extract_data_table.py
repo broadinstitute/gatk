@@ -134,16 +134,23 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
-def get_location_filters_from_interval_list(interval_list):
+def get_ref_location_filters_from_interval_list(interval_list):
     interval_test = pybedtools.BedTool(interval_list)
     location_clause_list = [f"(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND length <= {interval.end - interval.start})"
                             for interval in interval_test]
     return "AND (" + " OR ".join(location_clause_list) + ")"
 
 
-def get_unpacked_location_filters_from_interval_list(interval_list):
+def get_ref_unpacked_location_filters_from_interval_list(interval_list):
     interval_test = pybedtools.BedTool(interval_list)
     location_clause_list = [f"(UnpackRefRangeInfo(packed_ref_data).location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND UnpackRefRangeInfo(packed_ref_data).len <= {interval.end - interval.start})"
+                            for interval in interval_test]
+    return "AND (" + " OR ".join(location_clause_list) + ")"
+
+
+def get_vet_location_filters_from_interval_list(interval_list):
+    interval_test = pybedtools.BedTool(interval_list)
+    location_clause_list = [f"(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"
                             for interval in interval_test]
     return "AND (" + " OR ".join(location_clause_list) + ")"
 
@@ -201,9 +208,9 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
     location_string = ""
     if interval_list:
         if use_compressed_references:
-            location_string = get_unpacked_location_filters_from_interval_list(interval_list)
+            location_string = get_ref_unpacked_location_filters_from_interval_list(interval_list)
         else:
-            location_string = get_location_filters_from_interval_list(interval_list)
+            location_string = get_ref_location_filters_from_interval_list(interval_list)
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT location, sample_id, length, state FROM \n" \
@@ -248,7 +255,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids, interval_list):
     location_string = ""
     if interval_list:
-        location_string = get_location_filters_from_interval_list(interval_list)
+        location_string = get_vet_location_filters_from_interval_list(interval_list)
 
     def get_ref_subselect(fq_vet_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
