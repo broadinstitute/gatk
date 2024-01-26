@@ -146,7 +146,7 @@ task PrepareRangesCallsetTask {
           ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db} \
           ~{true="--use_compressed_references True" false='' use_compressed_references} \
           ~{true="--enable_extract_table_ttl True" false='' enable_extract_table_ttl} \
-          ~{"--enable_extract_table_ttl " + interval_list}
+          ~{"--interval_list " + interval_list}
 
   >>>
   output {
