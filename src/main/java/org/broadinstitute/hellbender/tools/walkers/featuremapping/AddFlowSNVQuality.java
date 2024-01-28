@@ -20,12 +20,18 @@ public final class AddFlowSNVQuality  {
     public static final int ERROR_PROB_BAND_1MORE = 2;
     public static final int ERROR_PROB_BANDS = 3;
 
-    public double minErrorRate = 1e-6;
-    public double maxErrorRate = 1 - minErrorRate;
+    public double minLikelihoodProbRate = 1e-6;
     public int maxQualityScore = 60;
+
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
 
-    public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr) {
+    public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double limitPhoreScore) {
+
+        // take in phred score limit
+        if ( !Double.isNaN(limitPhoreScore) ) {
+            maxQualityScore = (int)limitPhoreScore;
+            minLikelihoodProbRate = Math.pow(10, -limitPhoreScore / 10.0);
+        }
 
         // convert to a flow base read
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(hdr, read);
@@ -73,7 +79,7 @@ public final class AddFlowSNVQuality  {
          * for a description of the flow probabilities see {@link FlowBasedRead#flowMatrix}
          */
         final int[]       key = fbRead.getKey();
-        final double[][]  errorProbBands = extractErrorProbBands(fbRead, minErrorRate);
+        final double[][]  errorProbBands = extractErrorProbBands(fbRead, minLikelihoodProbRate);
         final double[]    result = new double[fbRead.getBasesNoCopy().length];
 
         final double[][]  snvResult = new double[flowOrderLength][];
@@ -110,7 +116,7 @@ public final class AddFlowSNVQuality  {
                         if ( allBaseProb0.containsKey(flowOrder[i]) ) {
                             snvResult[i][base - 1] = allBaseProb0.get(flowOrder[i]);
                         } else if ( i != flow_i ) {
-                            snvResult[i][base - 1] = minErrorRate;
+                            snvResult[i][base - 1] = minLikelihoodProbRate;
                         }
                     }
                 }
@@ -128,11 +134,11 @@ public final class AddFlowSNVQuality  {
                         if ( allBaseProb1.containsKey(flowOrder[i]) ) {
                             final double p = allBaseProb1.get(flowOrder[i]);
                             for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
-                                snvResult[i][base - 1 - j] = p;
+                                snvResult[i][base - 1 - j] = (j == 0) ? p : minLikelihoodProbRate; // all but last get the min prob
                             }
                         } else if ( i != flow_i ) {
                             for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
-                                snvResult[i][base - 1 - j] = minErrorRate;
+                                snvResult[i][base - 1 - j] = minLikelihoodProbRate;
                             }
                         }
                     }

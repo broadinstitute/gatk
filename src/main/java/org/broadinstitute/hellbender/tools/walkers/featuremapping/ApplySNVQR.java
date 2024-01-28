@@ -104,7 +104,7 @@ public final class ApplySNVQR extends ReadWalker {
         utilArgs = new FlowFeatureMapperUtils.Args();
         utilArgs.header = getHeaderForReads();
         utilArgs.fbArgs = fbargs;
-        utilArgs.limitScore = aqArgs.limitScore;
+        utilArgs.limitScore = !Double.isNaN(aqArgs.limitPhoreScore) ? (aqArgs.limitPhoreScore / 10.0) : Double.NaN;
         utilArgs.debugNegatives = aqArgs.debugNegatives;
         utilArgs.keepNegatives = aqArgs.keepNegatives;
         utilArgs.negativeScoreOverride = aqArgs.negativeScoreOverride;
@@ -156,7 +156,7 @@ public final class ApplySNVQR extends ReadWalker {
             collectInputStats(read);
 
         // add flow SNV
-        addFlowSNVQuality.addBaseQuality(read, getHeaderForReads());
+        addFlowSNVQuality.addBaseQuality(read, getHeaderForReads(), aqArgs.limitPhoreScore);
 
         // if more complex, go do it the hard way
         if ( aqArgs.model != null || aqArgs.conf != null || !read.hasAttribute(attrNameForNonCalledBase('A')) ) {

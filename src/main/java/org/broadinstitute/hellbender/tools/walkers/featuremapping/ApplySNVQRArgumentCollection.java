@@ -16,8 +16,8 @@ public class ApplySNVQRArgumentCollection implements Serializable{
     /**
      *  maximum value for delta in score
      **/
-    @Argument(fullName = "limit-score", doc = "Limit value for score", optional = true)
-    public double limitScore = Double.NaN;
+    @Argument(fullName = "limit-phred-score", doc = "Limit value for phred scores", optional = true)
+    public double limitPhoreScore = Double.NaN;
 
     /**
      *  include duplicate read?
