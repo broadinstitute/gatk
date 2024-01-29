@@ -28,6 +28,7 @@ workflow GvsCreateVATfromVDS {
         String? variants_docker
         String? gatk_docker
         String? variants_nirvana_docker
+        Boolean use_reference_disk = true
     }
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -113,6 +114,7 @@ workflow GvsCreateVATfromVDS {
                 output_annotated_file_name = "${vcf_filename}_annotated",
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
                 variants_nirvana_docker = effective_variants_nirvana_docker,
+                use_reference_disk = use_reference_disk,
         }
 
         call PrepVtAnnotationJson {
@@ -375,6 +377,7 @@ task AnnotateVCF {
         String variants_nirvana_docker
 
         File omim_annotations = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga"
+        Boolean use_reference_disk
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -396,36 +399,42 @@ task AnnotateVCF {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # There's an issue with how the projects/broad-dsde-cromwell-dev/global/images/nirvana-3-18-1-references-2023-01-03
-        # disk image was built: while all the reference files do exist on the image they are not at the expected
-        # locations. The following code works around this issue and should continue to work even after a corrected
-        # version of the Nirvana reference image is deployed into Terra.
+        if [[ "~{use_reference_disk}" == "true" ]]
+        then
+            # There's an issue with how the projects/broad-dsde-cromwell-dev/global/images/nirvana-3-18-1-references-2023-01-03
+            # disk image was built: while all the reference files do exist on the image they are not at the expected
+            # locations. The following code works around this issue and should continue to work even after a corrected
+            # version of the Nirvana reference image is deployed into Terra.
 
-        # Find where the reference disk should have been mounted on this VM.  Note this is referred to as a "candidate
-        # mount point" because we do not actually confirm this is a reference disk until the following code block.
-        # CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
-        # if [[ -z ${CANDIDATE_MOUNT_POINT} ]]; then
-        #     >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
-        #     exit 1
-        # fi
-        #
-        # # Find one particular reference under the mount path. Note this is not the same reference as was specified in the
-        # # `inputs` section, so this would only be present if the volume we're looking at is in fact a reference disk.
-        # REFERENCE_FILE="Homo_sapiens.GRCh38.Nirvana.dat"
-        # REFERENCE_PATH=$(find ${CANDIDATE_MOUNT_POINT} -name "${REFERENCE_FILE}")
-        # if [[ -z ${REFERENCE_PATH} ]]; then
-        #     >&2 echo "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
-        #     exit 1
-        # fi
+            # Find where the reference disk should have been mounted on this VM.  Note this is referred to as a "candidate
+            # mount point" because we do not actually confirm this is a reference disk until the following code block.
+            CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
+            if [[ -z ${CANDIDATE_MOUNT_POINT} ]]; then
+                >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
+                exit 1
+            fi
 
-        DATA_SOURCES_FOLDER=/cromwell_root/nirvana_references
-        mkdir ${DATA_SOURCES_FOLDER}
+            # Find one particular reference under the mount path. Note this is not the same reference as was specified in the
+            # `inputs` section, so this would only be present if the volume we're looking at is in fact a reference disk.
+            REFERENCE_FILE="Homo_sapiens.GRCh38.Nirvana.dat"
+            REFERENCE_PATH=$(find ${CANDIDATE_MOUNT_POINT} -name "${REFERENCE_FILE}")
+            if [[ -z ${REFERENCE_PATH} ]]; then
+                >&2 echo "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
+                exit 1
+            fi
 
-        # Download the references
-        dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
+            # Take the parent of the parent directory of this file as root of the locally mounted references:
+            DATA_SOURCES_FOLDER="$(dirname $(dirname ${REFERENCE_PATH}))"
+        else
+            DATA_SOURCES_FOLDER=/cromwell_root/nirvana_references
+            mkdir ${DATA_SOURCES_FOLDER}
 
-        # Special-case link in the OMIM .nsa bundle we downloaded separately.
-        ln ~{omim_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+            # Download the references
+            dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
+
+            # Special-case link in the OMIM .nsa bundle we downloaded separately.
+            ln ~{omim_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+        fi
 
         # =======================================
         echo "Creating custom annotations"
