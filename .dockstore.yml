@@ -222,6 +222,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1054_can_has_vatburger
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
