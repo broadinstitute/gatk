@@ -349,22 +349,22 @@ task SchemaNoNullRequiredFields {
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
 
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             contig,
             position,
             vid,
             concat(
-              case(vid is null) when true then 'vid ' else '' end,
-              case(contig is null) when true then 'contig ' else '' end,
-              case(position is null) when true then 'position ' else '' end,
-              case(ref_allele is null) when true then 'ref_allele ' else '' end,
-              case(alt_allele is null) when true then 'alt_allele ' else '' end,
-              case(gvs_all_ac is null) when true then 'gvs_all_ac ' else '' end,
-              case(gvs_all_an is null) when true then 'gvs_all_an ' else '' end,
-              case(gvs_all_af is null) when true then 'gvs_all_af ' else '' end,
-              case(variant_type is null) when true then 'variant_type ' else '' end,
-              case(genomic_location is null) when true then 'genomic_location ' else '' end
+              case(vid is null) when true then "vid " else "" end,
+              case(contig is null) when true then "contig " else "" end,
+              case(position is null) when true then "position " else "" end,
+              case(ref_allele is null) when true then "ref_allele " else "" end,
+              case(alt_allele is null) when true then "alt_allele " else "" end,
+              case(gvs_all_ac is null) when true then "gvs_all_ac " else "" end,
+              case(gvs_all_an is null) when true then "gvs_all_an " else "" end,
+              case(gvs_all_af is null) when true then "gvs_all_af " else "" end,
+              case(variant_type is null) when true then "variant_type " else "" end,
+              case(genomic_location is null) when true then "genomic_location " else "" end
            ) AS null_fields
         FROM
             `~{fq_vat_table}`
@@ -488,7 +488,7 @@ task SchemaPrimaryKey {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             vid,
             transcript,
