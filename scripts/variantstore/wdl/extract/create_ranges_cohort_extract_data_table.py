@@ -139,7 +139,10 @@ def get_unpacked_location_filters_from_interval_list(interval_list):
     location_clause_list = [f"""(UnpackRefRangeInfo(packed_ref_data).location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
             AND UnpackRefRangeInfo(packed_ref_data).location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
                             for interval in interval_test]
-    return "AND (" + " OR ".join(location_clause_list) + ")"
+    if len(location_clause_list) > 5000:
+        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+        return ""
+    return "(" + " OR ".join(location_clause_list) + ")"
 
 
 def get_location_filters_from_interval_list(interval_list):
@@ -147,7 +150,10 @@ def get_location_filters_from_interval_list(interval_list):
     location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
             AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
                             for interval in interval_test]
-    return "AND (" + " OR ".join(location_clause_list) + ")"
+    if len(location_clause_list) > 5000:
+        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+        return ""
+    return "(" + " OR ".join(location_clause_list) + ")"
 
 
 def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl):
@@ -210,13 +216,13 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT location, sample_id, length, state FROM \n" \
-              f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza}) {location_string}), "
+              f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
     def get_compressed_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT UnpackRefRangeInfo(packed_ref_data).location as location, sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state FROM \n" \
-              f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza}) {location_string}), "
+              f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
     for i in range(1, REF_VET_TABLE_COUNT + 1):
@@ -240,7 +246,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 
             sql = helper_function_definitions + insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
-                  f" (SELECT * FROM q_all)"
+                  f" (SELECT * FROM q_all WHERE {location_string})"
             print(sql)
             print(f"{fq_ref_table} query is {utils.utf8len(sql) / (1024 * 1024)} MB in length")
             query_return = utils.execute_with_retry(client, "populate destination table with reference data", sql)
