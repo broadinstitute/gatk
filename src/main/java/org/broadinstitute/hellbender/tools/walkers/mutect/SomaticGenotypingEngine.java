@@ -176,7 +176,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
             if (hasNormal) {
                 callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY,
-                        Arrays.stream(normalArtifactLogOdds.asDoubleArray(tumorAltAlleles)).map(x->-MathUtils.logToLog10(x)).toArray());
+                        Arrays.stream(normalArtifactLogOdds.asDoubleArray(tumorAltAlleles)).map(x->MathUtils.logToLog10(x)).toArray());
                 callVcb.attribute(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY,
                         Arrays.stream(normalLogOdds.asDoubleArray(tumorAltAlleles)).map(MathUtils::logToLog10).toArray());
             }
