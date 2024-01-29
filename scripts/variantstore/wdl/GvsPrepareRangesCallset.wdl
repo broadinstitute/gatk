@@ -46,10 +46,18 @@ workflow GvsPrepareCallset {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
+  call Utils.GetBQTableLastModifiedDatetime as RefTableDatetimeCheck {
+    input:
+      project_id = project_id,
+      fq_table = "~{project_id}.~{dataset_name}.ref_ranges_001",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call Utils.IsUsingCompressedReferences {
     input:
       project_id = query_project,
       dataset_name = dataset_name,
+      ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 

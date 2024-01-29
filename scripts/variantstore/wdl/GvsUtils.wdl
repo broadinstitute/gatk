@@ -820,6 +820,7 @@ task IsUsingCompressedReferences {
   input {
     String project_id
     String dataset_name
+    String ref_table_timestamp
     String cloud_sdk_docker
   }
   command <<<
