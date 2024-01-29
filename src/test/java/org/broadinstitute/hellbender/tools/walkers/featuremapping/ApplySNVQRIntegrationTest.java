@@ -17,7 +17,7 @@ import java.util.List;
 
 public class ApplySNVQRIntegrationTest extends CommandLineProgramTest {
 
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
     private static final double DOUBLE_EPSILON = 0.001;
 
     private static String testDir = publicTestDir + FlowTestConstants.APPLY_SNVQR_DATA_DIR;
@@ -42,7 +42,7 @@ public class ApplySNVQRIntegrationTest extends CommandLineProgramTest {
                 "-L", "chr1:1-10122",
                 "--model", testDir + "/model.json",
                 "--conf", testDir + "/config.json",
-                "--limit-score", "10",
+                "--limit-phred-score", "50",
                 "--debug-read-name", "30020185_2-UGAv3-182-1989782468",
                 "--verbosity", "INFO",
                 "--stats-path-prefix", "/tmp/apply_stats"
@@ -74,7 +74,7 @@ public class ApplySNVQRIntegrationTest extends CommandLineProgramTest {
                 "-I", publicTestDir + FlowTestConstants.APPLY_SNVQR_DATA_DIR + "/snv_apply_snvqr_input.bam",
                 "-L", "chr1:1-10122",
                 "--conf", testDir + "/config_no_model.json",
-                "--limit-score", "10",
+                "--limit-phred-score", "50",
                 "--debug-read-name", "30020185_2-UGAv3-182-1989782468",
                 "--verbosity", "INFO",
                 "--stats-path-prefix", "/tmp/apply_stats",
@@ -106,7 +106,7 @@ public class ApplySNVQRIntegrationTest extends CommandLineProgramTest {
                 "-O", outputFile.getAbsolutePath(),
                 "-I", publicTestDir + FlowTestConstants.APPLY_SNVQR_DATA_DIR + "/snv_apply_snvqr_input.bam",
                 "-L", "chr1:1-15000",
-                "--limit-score", "10",
+                "--limit-phred-score", "50",
                 "--debug-read-name", "30020185_2-UGAv3-182-1989782468",
                 "--verbosity", "INFO",
                 "--stats-path-prefix", "/tmp/apply_stats",

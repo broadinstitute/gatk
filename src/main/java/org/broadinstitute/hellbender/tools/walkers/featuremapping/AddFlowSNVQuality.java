@@ -57,7 +57,7 @@ public final class AddFlowSNVQuality  {
             if ( errorProb[i] == 0 ) {
                 phred[i] = (byte)(maxQualityScore + floor);
             } else {
-                phred[i] = (byte)(Math.min((maxQualityScore), (int) (-10 * Math.log10(errorProb[i]))) + floor);
+                phred[i] = (byte)(Math.min(maxQualityScore, Math.round(-10 * Math.log10(errorProb[i]))) + floor);
             }
         }
         return phred;
@@ -105,17 +105,13 @@ public final class AddFlowSNVQuality  {
 
                 // fill in
 
-                // first base of the read gets the original error probability of the hmer, otherwise use computed error probability
-                if ( base == 0 ) {
-                    result[base++] = errorProbBands[ERROR_PROB_BAND_KEY][flow];
-                } else {
-                    result[base++] = hmerBaseErrorProbs[0];  // first base, or only base in case of a single base hmer
-                    for ( int i = 0 ; i < flowOrderLength ; i++ ) {
-                        if ( allBaseProb0.containsKey(flowOrder[i]) ) {
-                            snvResult[i][base - 1] = allBaseProb0.get(flowOrder[i]);
-                        } else if ( i != flow_i ) {
-                            snvResult[i][base - 1] = minLikelihoodProbRate;
-                        }
+                // install value in first byte of the hmer
+                result[base++] = hmerBaseErrorProbs[0];  // first base, or only base in case of a single base hmer
+                for ( int i = 0 ; i < flowOrderLength ; i++ ) {
+                    if ( allBaseProb0.containsKey(flowOrder[i]) ) {
+                        snvResult[i][base - 1] = allBaseProb0.get(flowOrder[i]);
+                    } else if ( i != flow_i ) {
+                        snvResult[i][base - 1] = minLikelihoodProbRate;
                     }
                 }
 
@@ -142,14 +138,14 @@ public final class AddFlowSNVQuality  {
                     }
                 }
 
-                // override result for the last base with the orignal hmer error probability
+                // override result for the last base with the original hmer error probability
                 if ( base == result.length ) {
                     result[base - 1] = errorProbBands[ERROR_PROB_BAND_KEY][flow];
                 }
             }
         }
 
-        // adjust probability of called bases so that sum will be 1
+        // adjust probability of called bases so that sum will be 1, also enforce min prob
         final byte[] bases = fbRead.getBasesNoCopy();
         for ( int ofs = 0 ; ofs < bases.length ; ofs++ ) {
 
@@ -159,6 +155,7 @@ public final class AddFlowSNVQuality  {
             int calledIndex = -1;
             for (int i = 0; i < flowOrderLength; i++) {
                 if ( calledBase != flowOrder[i] ) {
+                     snvResult[i][ofs] = Math.max(minLikelihoodProbRate, snvResult[i][ofs]);
                     altP += snvResult[i][ofs];
                 } else {
                     calledIndex = i;
@@ -168,6 +165,9 @@ public final class AddFlowSNVQuality  {
             // install probability in called base slot
             if ( calledIndex >= 0 ) {
                 snvResult[calledIndex][ofs] = Math.max(0, 1 - altP);
+
+                // at this point, bq becomes trivial (?)
+                result[ofs] = 1 - snvResult[calledIndex][ofs];
             }
         }
 
