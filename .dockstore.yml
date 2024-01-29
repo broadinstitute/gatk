@@ -289,7 +289,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1204
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -309,7 +308,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1195
+             - rsa_vs_1204
          tags:
              - /.*/
    - name: GvsIngestTieout
