@@ -23,9 +23,7 @@ public final class AddFlowSNVQuality  {
     public double minLikelihoodProbRate = 1e-6;
     public int maxQualityScore = 60;
 
-    public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
-
-    public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double limitPhoreScore) {
+    public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double limitPhoreScore, FlowBasedArgumentCollection fbargs) {
 
         // take in phred score limit
         if ( !Double.isNaN(limitPhoreScore) ) {

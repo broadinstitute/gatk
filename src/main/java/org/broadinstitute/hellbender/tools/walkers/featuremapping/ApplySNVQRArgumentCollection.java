@@ -4,7 +4,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 
 import java.io.Serializable;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -17,7 +16,7 @@ public class ApplySNVQRArgumentCollection implements Serializable{
      *  maximum value for delta in score
      **/
     @Argument(fullName = "limit-phred-score", doc = "Limit value for phred scores", optional = true)
-    public double limitPhoreScore = Double.NaN;
+    public double limitPhredScore = Double.NaN;
 
     /**
      *  include duplicate read?
