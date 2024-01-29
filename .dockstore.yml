@@ -289,7 +289,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1103_GatherVcfsLoggingTooMuch
+             - rsa_vs_1204
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
