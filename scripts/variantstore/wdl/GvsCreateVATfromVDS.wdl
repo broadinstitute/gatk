@@ -432,7 +432,9 @@ task AnnotateVCF {
             # Download the references
             dotnet /Nirvana/Downloader.dll --ga GRCh38 --out ${DATA_SOURCES_FOLDER}
 
-            # Special-case link in the OMIM .nsa bundle we downloaded separately.
+            # As of 2024-01-24 OMIM is no longer included among the bundle of annotation resources pulled down by the
+            # Nirvana downloader. As this annotation set is currently central for our VAT logic, special-case link in
+            # the OMIM .nsa bundle we downloaded back when we made the Delta reference disk:
             ln ~{omim_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
         fi
 
