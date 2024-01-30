@@ -136,12 +136,14 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 
 def get_location_filters_from_interval_list(interval_list):
     interval_test = pybedtools.BedTool(interval_list)
+    # check to make sure there aren't too many locations to build a SQL query from
+    if len(interval_test) > 5000:
+        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+        return ""
+
     location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
             AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
                             for interval in interval_test]
-    if len(location_clause_list) > 5000:
-        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
-        return ""
     return "WHERE (" + " OR ".join(location_clause_list) + ")"
 
 
@@ -195,10 +197,11 @@ def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references, interval_list):
-    # split file into files with x lines and then run
     location_string = ""
     if interval_list:
         location_string = get_location_filters_from_interval_list(interval_list)
+
+    # split file into files with x lines and then run
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT location, sample_id, length, state FROM \n" \
@@ -245,6 +248,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
     if interval_list:
         location_string = get_location_filters_from_interval_list(interval_list)
 
+    # split file into files with x lines and then run
     def get_ref_subselect(fq_vet_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
