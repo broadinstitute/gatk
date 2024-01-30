@@ -9,6 +9,7 @@ workflow GvsValidateVat {
         String dataset_name
         String vat_table_name
         String? cloud_sdk_docker
+        String? variants_docker
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
@@ -21,6 +22,7 @@ workflow GvsValidateVat {
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     call Utils.GetBQTableLastModifiedDatetime {
         input:
@@ -149,6 +151,13 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call CheckForNullColumns {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            variants_docker = effective_variants_docker
+    }
+
     call GenerateFinalReport {
         input:
             pf_flags = [
@@ -165,7 +174,8 @@ workflow GvsValidateVat {
                        SubpopulationAlleleNumber.pass,
                        DuplicateAnnotations.pass,
                        SchemaAAChangeAndExonNumberConsistent.pass,
-                       SpotCheckForAAChangeAndExonNumberConsistency.pass
+                       SpotCheckForAAChangeAndExonNumberConsistency.pass,
+                       CheckForNullColumns.pass
                        ],
             validation_names = [
                                EnsureVatTableHasVariants.name,
@@ -181,7 +191,8 @@ workflow GvsValidateVat {
                                SubpopulationAlleleNumber.name,
                                DuplicateAnnotations.name,
                                SchemaAAChangeAndExonNumberConsistent.name,
-                               SpotCheckForAAChangeAndExonNumberConsistency.name
+                               SpotCheckForAAChangeAndExonNumberConsistency.name,
+                               CheckForNullColumns.name
                                ],
             validation_results = [
                                  EnsureVatTableHasVariants.result,
@@ -197,7 +208,8 @@ workflow GvsValidateVat {
                                  SubpopulationAlleleNumber.result,
                                  DuplicateAnnotations.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
-                                 SpotCheckForAAChangeAndExonNumberConsistency.result
+                                 SpotCheckForAAChangeAndExonNumberConsistency.result,
+                                 CheckForNullColumns.result
                                  ],
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
@@ -1239,6 +1251,35 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     output {
         Boolean pass = read_boolean(pf_file)
         String name = "SpotCheckForAAChangeAndExonNumberConsistency"
+        String result = read_string(results_file)
+    }
+}
+
+task CheckForNullColumns {
+    input {
+        String project_id
+        String fq_vat_table
+        String variants_docker
+    }
+    String vat_schema_json_filename = "vat_schema.json"
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+
+    command <<<
+        python3 ./check_vat_columns.py --fq_vat_table ~{fq_vat_table} --query_project ~{project_id} --schema_file ~{vat_schema_json_filename} --pass_file ~{pf_file}  --results_file ~{results_file}
+    >>>
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "CheckForNullColumns"
         String result = read_string(results_file)
     }
 }
