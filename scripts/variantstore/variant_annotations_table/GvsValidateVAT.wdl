@@ -1264,6 +1264,14 @@ task CheckForNullColumns {
     String pf_file = "pf.txt"
     String results_file = "results.txt"
 
+    command <<<
+        python3 /app/check_vat_columns.py --fq_vat_table ~{fq_vat_table} \
+            --query_project ~{project_id} \
+            --schema_file_input /data/variant_annotation_table/schema/vat_schema.json \
+            --pass_file_output ~{pf_file} \
+            --results_file_output ~{results_file}
+    >>>
+
     runtime {
         docker: variants_docker
         memory: "3 GB"
@@ -1271,14 +1279,6 @@ task CheckForNullColumns {
         preemptible: 3
         cpu: 1
     }
-
-    command <<<
-        python3 /app/check_vat_columns.py --fq_vat_table ~{fq_vat_table} \
-                                     --query_project ~{project_id} \
-                                     --schema_file_input /data/variant_annotation_table/schema/vat_schema.json \
-                                     --pass_file_output ~{pf_file} \
-                                     --results_file_output ~{results_file}
-    >>>
 
     output {
         Boolean pass = read_boolean(pf_file)
