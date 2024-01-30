@@ -1031,8 +1031,7 @@ task ClinvarSignificance {
           echo "true" > ~{pf_file}
         else
           tr '\n' ', ' < missing_clinvar_classes.txt > missing_clinvar_classes.csv
-          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification: " > ~{results_file}
-          cat missing_clinvar_classes.csv >> ~{results_file}
+          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification: $(cat missing_clinvar_classes.csv)" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
