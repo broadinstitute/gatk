@@ -1274,7 +1274,7 @@ task CheckForNullColumns {
     }
 
     command <<<
-        python3 ./check_vat_columns.py --fq_vat_table ~{fq_vat_table} --query_project ~{project_id} --schema_file ~{vat_schema_json_filename} --pass_file ~{pf_file}  --results_file ~{results_file}
+        python3 check_vat_columns.py --fq_vat_table ~{fq_vat_table} --query_project ~{project_id} --schema_file ~{vat_schema_json_filename} --pass_file ~{pf_file}  --results_file ~{results_file}
     >>>
 
     output {
