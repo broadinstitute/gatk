@@ -22,7 +22,7 @@
 ##INFO=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length by allele">
 ##INFO=<ID=MMQ,Number=R,Type=Integer,Description="median mapping quality by allele">
 ##INFO=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
-##INFO=<ID=NALOD,Number=A,Type=Float,Description="Negative log 10 odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=NALOD,Number=A,Type=Float,Description="Log 10 odds of artifact in normal with same allele fraction as tumor">
 ##INFO=<ID=NCount,Number=1,Type=Integer,Description="Count of N bases in the pileup">
 ##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal log 10 likelihood ratio of diploid het or hom alt genotypes">
 ##INFO=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
