@@ -291,7 +291,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1103_GatherVcfsLoggingTooMuch
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -311,7 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1155
+             - rsa_vs_1204
          tags:
              - /.*/
    - name: GvsIngestTieout
