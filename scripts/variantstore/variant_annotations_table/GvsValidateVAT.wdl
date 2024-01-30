@@ -155,6 +155,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
             variants_docker = effective_variants_docker
     }
 
@@ -173,6 +174,7 @@ workflow GvsValidateVat {
                        SubpopulationAlleleCount.pass,
                        SubpopulationAlleleNumber.pass,
                        DuplicateAnnotations.pass,
+                       ClinvarSignificance.pass,
                        SchemaAAChangeAndExonNumberConsistent.pass,
                        SpotCheckForAAChangeAndExonNumberConsistency.pass,
                        CheckForNullColumns.pass
@@ -190,6 +192,7 @@ workflow GvsValidateVat {
                                SubpopulationAlleleCount.name,
                                SubpopulationAlleleNumber.name,
                                DuplicateAnnotations.name,
+                               ClinvarSignificance.name,
                                SchemaAAChangeAndExonNumberConsistent.name,
                                SpotCheckForAAChangeAndExonNumberConsistency.name,
                                CheckForNullColumns.name
@@ -207,6 +210,7 @@ workflow GvsValidateVat {
                                  SubpopulationAlleleCount.result,
                                  SubpopulationAlleleNumber.result,
                                  DuplicateAnnotations.result,
+                                 ClinvarSignificance.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
                                  SpotCheckForAAChangeAndExonNumberConsistency.result,
                                  CheckForNullColumns.result
@@ -1259,6 +1263,7 @@ task CheckForNullColumns {
     input {
         String project_id
         String fq_vat_table
+        String last_modified_timestamp
         String variants_docker
     }
     String pf_file = "pf.txt"
@@ -1345,6 +1350,3 @@ task GenerateFinalReport {
         cpu: 1
     }
 }
-
-
-## TODO It would be great to spot check a few well known variants / genes
