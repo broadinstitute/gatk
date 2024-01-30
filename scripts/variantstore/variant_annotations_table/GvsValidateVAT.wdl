@@ -1019,10 +1019,10 @@ task ClinvarSignificance {
         risk factor
         uncertain significance' > expected_clinvar_classes.csv
 
-        comm -23 <(sort bq_clinvar_classes.csv) expected_clinvar_classes.csv > missing_clinvar_classes.csv
+        comm -23 <(sort bq_clinvar_classes.csv) expected_clinvar_classes.csv > missing_clinvar_classes.txt
 
         NUMRESULTS=$( wc -l bq_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 13+
-        NUMMISS=$( wc -l missing_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 0
+        NUMMISS=$( wc -l missing_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 0
 
         echo "false" > ~{pf_file}
         # If the result of the query has fewer than 13 rows, that means clinvar_classification must not have all the expected values
@@ -1030,7 +1030,7 @@ task ClinvarSignificance {
           echo "The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > ~{results_file}
           echo "true" > ~{pf_file}
         else
-          tr '\n' ', ' < missing_clinvar_classes.csv
+          tr '\n' ', ' < missing_clinvar_classes.txt > missing_clinvar_classes.csv
           echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification: " > ~{results_file}
           cat missing_clinvar_classes.csv >> ~{results_file}
         fi
