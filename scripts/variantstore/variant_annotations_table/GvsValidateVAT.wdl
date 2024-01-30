@@ -1261,7 +1261,6 @@ task CheckForNullColumns {
         String fq_vat_table
         String variants_docker
     }
-    String vat_schema_json_filename = "vat_schema.json"
     String pf_file = "pf.txt"
     String results_file = "results.txt"
 
@@ -1274,7 +1273,7 @@ task CheckForNullColumns {
     }
 
     command <<<
-        python3 check_vat_columns.py --fq_vat_table ~{fq_vat_table} --query_project ~{project_id} --schema_file ~{vat_schema_json_filename} --pass_file ~{pf_file}  --results_file ~{results_file}
+        python3 check_vat_columns.py --fq_vat_table ~{fq_vat_table} --query_project ~{project_id} --schema_file_input /data/variant_annotation_table/schema/vat_schema.json --pass_file_output ~{pf_file}  --results_file_output ~{results_file}
     >>>
 
     output {
