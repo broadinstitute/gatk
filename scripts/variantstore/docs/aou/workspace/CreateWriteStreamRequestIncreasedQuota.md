@@ -1,8 +1,8 @@
 ## Request Additional Quota for Bulk Ingest
 BigQuery Storage API CreateWriteStream quota for small regions per minute per region for region : us-central1
-(the region for our project is us-central1 so that is the quota we needed to request an update on)
+(the region for our project is us-central1 so that is the quota we needed to request an update on).
 
-Note that once the quota has been adjusted, it will not necessarily be visible as anything other than the default on this page.
+**Note** that once the quota has been adjusted, it will not necessarily be visible as anything other than the default on this page.
 
 | Quota                                                                                       | Default                                                                                                | Notes                                                                                                                                                          | 
 |---------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -12,15 +12,13 @@ For more information, see [Google's quota documentation](https://cloud.google.co
 ## File a Google Support Ticket
 You can point to [this ticket](https://console.cloud.google.com/support/cases/detail/v2/47548796?project=broad-dsde-methods) as an example. It is summarized below.
 
-Case title: In the project terra-e40eac26 we are hitting theBigQuery Write API quota "RESOURCE_EXHAUSTED"..." (see below in details)
-Category: Technical > BigQuery > API - Storage API and Streaming
-Project ID: projects/broad-dsde-methods
-Observed error message:
+- Case title: In the project terra-e40eac26 we are hitting theBigQuery Write API quota "RESOURCE_EXHAUSTED"..." (see below in details)
+- Category: Technical > BigQuery > API - Storage API and Streaming
+- Project ID: projects/broad-dsde-methods
+- Observed error message:
 com.google.api.gax.rpc.ResourceExhaustedException: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: Exceeds 'CreateWriteStream requests' quota, user_id: project0000002c6ed4d198_us (status: INSUFFICIENT_TOKENS), you can issue a raise quota request through Google Cloud Console. 
-Be sure to include this full error message in the request description. Before requesting an increase, please ensure your existing streams have enough utilization in terms of write traffic. For guidelines see https://cloud.google.com/bigquery/docs/write-api-best-practices#limit_the_rate_of_stream_creation. Entity: projects/aou-genomics-curation-prod/datasets/delcho_v2/tables/ref_ranges_001
-
-Case description:
-In the project terra-e40eac26 we were using the BigQuery Write API to load data into BigQuery and had many failures with the message "RESOURCE_EXHAUSTED: Exceeds 'CreateWriteStream requests' quota, user_id: project0000002c6ed4d198_us (status: INSUFFICIENT_TOKENS), you can issue a raise quota request through Google Cloud Console." 
+- Be sure to include this full error message in the request description. Before requesting an increase, please ensure your existing streams have enough utilization in terms of write traffic. For guidelines see https://cloud.google.com/bigquery/docs/write-api-best-practices#limit_the_rate_of_stream_creation. Entity: projects/aou-genomics-curation-prod/datasets/delcho_v2/tables/ref_ranges_001
+- Case description: In the project terra-e40eac26 we were using the BigQuery Write API to load data into BigQuery and had many failures with the message "RESOURCE_EXHAUSTED: Exceeds 'CreateWriteStream requests' quota, user_id: project0000002c6ed4d198_us (status: INSUFFICIENT_TOKENS), you can issue a raise quota request through Google Cloud Console." 
 When I used the Google Cloud Console to investigate, the Quota "CreateWriteStream requests quota for us region per minute," showed 0% usage for the past seven days. We are contacting you to get this quota increased.
 Note that this support ticket is just like 46139869, for which I believe the ultimate outcome was a quota increase: "Our product team have completed the quota change to 30K per 4 hours based on our discussion".
 Also note that our usage for this project is very bursty, we anticipate having a high volume of CreateWriteStream requests for several days and then it should die down to a much more limited amount.
