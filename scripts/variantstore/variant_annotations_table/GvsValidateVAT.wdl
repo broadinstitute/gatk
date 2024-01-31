@@ -9,6 +9,7 @@ workflow GvsValidateVat {
         String dataset_name
         String vat_table_name
         String? cloud_sdk_docker
+        String? variants_docker
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
@@ -21,6 +22,7 @@ workflow GvsValidateVat {
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     call Utils.GetBQTableLastModifiedDatetime {
         input:
@@ -149,6 +151,14 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call CheckForNullColumns {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            variants_docker = effective_variants_docker
+    }
+
     call GenerateFinalReport {
         input:
             pf_flags = [
@@ -164,8 +174,10 @@ workflow GvsValidateVat {
                        SubpopulationAlleleCount.pass,
                        SubpopulationAlleleNumber.pass,
                        DuplicateAnnotations.pass,
+                       ClinvarSignificance.pass,
                        SchemaAAChangeAndExonNumberConsistent.pass,
-                       SpotCheckForAAChangeAndExonNumberConsistency.pass
+                       SpotCheckForAAChangeAndExonNumberConsistency.pass,
+                       CheckForNullColumns.pass
                        ],
             validation_names = [
                                EnsureVatTableHasVariants.name,
@@ -180,8 +192,10 @@ workflow GvsValidateVat {
                                SubpopulationAlleleCount.name,
                                SubpopulationAlleleNumber.name,
                                DuplicateAnnotations.name,
+                               ClinvarSignificance.name,
                                SchemaAAChangeAndExonNumberConsistent.name,
-                               SpotCheckForAAChangeAndExonNumberConsistency.name
+                               SpotCheckForAAChangeAndExonNumberConsistency.name,
+                               CheckForNullColumns.name
                                ],
             validation_results = [
                                  EnsureVatTableHasVariants.result,
@@ -196,8 +210,10 @@ workflow GvsValidateVat {
                                  SubpopulationAlleleCount.result,
                                  SubpopulationAlleleNumber.result,
                                  DuplicateAnnotations.result,
+                                 ClinvarSignificance.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
-                                 SpotCheckForAAChangeAndExonNumberConsistency.result
+                                 SpotCheckForAAChangeAndExonNumberConsistency.result,
+                                 CheckForNullColumns.result
                                  ],
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
@@ -987,7 +1003,7 @@ task ClinvarSignificance {
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
-        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
+        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.txt
 
         echo 'affects
         association
@@ -1001,12 +1017,12 @@ task ClinvarSignificance {
         pathogenic
         protective
         risk factor
-        uncertain significance' > expected_clinvar_classes.csv
+        uncertain significance' > expected_clinvar_classes.txt
 
-        comm -23 <(sort bq_clinvar_classes.csv) expected_clinvar_classes.csv > missing_clinvar_classes.csv
+        comm -23 <(sort bq_clinvar_classes.txt) expected_clinvar_classes.txt > missing_clinvar_classes.txt
 
-        NUMRESULTS=$( wc -l bq_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 13+
-        NUMMISS=$( wc -l missing_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 0
+        NUMRESULTS=$( wc -l bq_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 13+
+        NUMMISS=$( wc -l missing_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 0
 
         echo "false" > ~{pf_file}
         # If the result of the query has fewer than 13 rows, that means clinvar_classification must not have all the expected values
@@ -1014,8 +1030,8 @@ task ClinvarSignificance {
           echo "The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > ~{results_file}
           echo "true" > ~{pf_file}
         else
-          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification" > ~{results_file}
-          cat missing_clinvar_classes.csv >> ~{results_file}
+          tr "\n" ", " < missing_clinvar_classes.txt > missing_clinvar_classes_list.txt
+          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification: $(cat missing_clinvar_classes_list.txt)" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -1243,6 +1259,39 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     }
 }
 
+task CheckForNullColumns {
+    input {
+        String project_id
+        String fq_vat_table
+        String last_modified_timestamp
+        String variants_docker
+    }
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        python3 /app/check_vat_columns.py --fq_vat_table ~{fq_vat_table} \
+            --query_project ~{project_id} \
+            --schema_file_input /data/variant_annotation_table/schema/vat_schema.json \
+            --pass_file_output ~{pf_file} \
+            --results_file_output ~{results_file}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "CheckForNullColumns"
+        String result = read_string(results_file)
+    }
+}
+
 task GenerateFinalReport {
     input {
         Array[Boolean] pf_flags
@@ -1301,6 +1350,3 @@ task GenerateFinalReport {
         cpu: 1
     }
 }
-
-
-## TODO It would be great to spot check a few well known variants / genes
