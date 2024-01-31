@@ -11,7 +11,7 @@ import utils
 
 
 def write_output_files(fq_vat_table, empty_columns, pass_file_output, results_file_output):
-    with open(pass_file_output, 'w') as pass_file,  open(results_file_output, 'w') as results_file :
+    with open(pass_file_output, 'w') as pass_file,  open(results_file_output, 'w') as results_file:
         if empty_columns != []:
             pass_file.write('false')
             results_file.write(f"The following columns in {fq_vat_table} are empty: ({', '.join(empty_columns)})")

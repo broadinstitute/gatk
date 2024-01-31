@@ -1003,7 +1003,7 @@ task ClinvarSignificance {
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
-        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
+        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.txt
 
         echo 'affects
         association
@@ -1017,11 +1017,11 @@ task ClinvarSignificance {
         pathogenic
         protective
         risk factor
-        uncertain significance' > expected_clinvar_classes.csv
+        uncertain significance' > expected_clinvar_classes.txt
 
-        comm -23 <(sort bq_clinvar_classes.csv) expected_clinvar_classes.csv > missing_clinvar_classes.txt
+        comm -23 <(sort bq_clinvar_classes.txt) expected_clinvar_classes.txt > missing_clinvar_classes.txt
 
-        NUMRESULTS=$( wc -l bq_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 13+
+        NUMRESULTS=$( wc -l bq_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 13+
         NUMMISS=$( wc -l missing_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 0
 
         echo "false" > ~{pf_file}
@@ -1030,8 +1030,8 @@ task ClinvarSignificance {
           echo "The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > ~{results_file}
           echo "true" > ~{pf_file}
         else
-          tr '\n' ', ' < missing_clinvar_classes.txt > missing_clinvar_classes.csv
-          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification: $(cat missing_clinvar_classes.csv)" > ~{results_file}
+          tr "\n" ", " < missing_clinvar_classes.txt > missing_clinvar_classes_list.txt
+          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification: $(cat missing_clinvar_classes_list.txt)" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
