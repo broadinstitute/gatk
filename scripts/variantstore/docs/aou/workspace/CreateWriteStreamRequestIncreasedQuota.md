@@ -36,19 +36,20 @@ Google has told us that it would be technically feasible to apply 45k per 4 hour
 For Echo:
 We calculated that the `load_data_batch` should be set to 1245 without a quota increase.
 
+From previously run ingest tasks, we were able to determine how many samples (genomes) are loaded by a single thread in an hour by examining the logs for one thread. That gave us 10-15 minutes as an estimate.
+From there we determined the theoretical CreateWriteStream usage of a single thread per hour, and then calculated how many threads we could support based upon that.
+
 In Echo there are 414,830 non-control samples that need to be loaded during the bulk ingest process.
+
 We are going to be using 3 streams per sample (variant data, reference data and header info -- sometimes we only load the first 2).
-Based on Google docs, the default is 10,000 streams per hour, and we need three streams per sample.
+Based on Google documentation, the default is 10,000 streams per hour, and we need three streams per sample.
 
 
 We are going to scatter 414830 samples by 333 wide. So 1245 is our batch size
 414830 / 333 = 1245.
 
-Our quota increase request will be 30k instead of 10k. If we get it, we can tripe our `load_data_batch` size.
 
 
-
-
-For scale test:
+For our scale test:
 Google increased the quota to 4k per 4 hours.
 Roughly 2.5K / hour or 60K samples / day. Scattered 500 wide while using two WriteAPI streams -- one for variant data and one for reference data
