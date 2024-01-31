@@ -1152,20 +1152,17 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     //Finds the quality that is being set when the probability of error is very low
     private double estimateMinErrorProb(){
         final byte[] quals = samRecord.getBaseQualities();
-        final byte[] tp = samRecord.getSignedByteArrayAttribute(FLOW_MATRIX_TAG_NAME);
         double maxQual = 0;
 
         for (int i = 0; i < quals.length; i++) {
-            if (tp[i]!=0){
-                continue;
-            }
             if (quals[i] > maxQual){
                 maxQual = quals[i];
             }
         }
-        // in the very rare case when there is no tp=0 anywhere, just return the default "filling value"
+
+        // in the very rare case when there is no qualities
         if (maxQual==0){
-            return FlowBasedArgumentCollection.DEFAULT_FILLING_VALUE;
+            maxQual = 40;
         }
         return Math.pow(10, -maxQual / 10);
     }
