@@ -345,6 +345,7 @@ task LoadData {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-header-processing ~{process_vcf_headers} \
+        --load-headers-only true \
         --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz

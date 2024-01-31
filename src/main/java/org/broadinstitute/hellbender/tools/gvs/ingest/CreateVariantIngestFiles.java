@@ -168,6 +168,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean storeCompressedReferences = false;
 
+    @Argument(
+            fullName = "load-headers-only",
+            doc = "Load header data and a STARTED load status row only, do not write vets, ref_ranges or a FINISHED load status row.",
+            optional = true
+    )
+    public boolean loadHeadersOnly = false;
+
     private boolean shouldWriteLoadStatusStarted = true;
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
@@ -196,6 +203,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
         }
 
+        if (enableVCFHeaderProcessing && loadHeadersOnly) {
+            throw new RuntimeIOException("--load-headers-only and --enable-vcf-header-processing specified, not clear what to do");
+        }
+
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);
 
@@ -203,7 +214,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        if (enableVCFHeaderProcessing) {
+        if (enableVCFHeaderProcessing || loadHeadersOnly) {
+            // get an set of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
+            // to put into the header line scratch table
             Set<String> nonCommandLineHeaders = new HashSet<>();
             for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
                 if (line.getKey().contains("CommandLine")) {
@@ -215,9 +228,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
         }
-
-        // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
-        // to put into the header line scratch table
 
         String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
@@ -248,7 +258,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
             } else if (state == LoadStatus.LoadState.PARTIAL) {
-                if (enableReferenceRanges) {
+                if (enableReferenceRanges && !loadHeadersOnly) {
                     refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
@@ -256,7 +266,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     }
                 }
 
-                if (enableVet) {
+                if (enableVet && !loadHeadersOnly) {
                     vetRowsExist = VetCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (vetRowsExist) {
                         logger.warn("Vet enabled for sample id = {}, name = {} but preexisting vet rows found, skipping vet writes.",
@@ -264,7 +274,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     }
                 }
 
-                if ((refRangesRowsExist || !enableReferenceRanges) && (vetRowsExist || !enableVet)) {
+                if (!loadHeadersOnly && (refRangesRowsExist || !enableReferenceRanges) && (vetRowsExist || !enableVet)) {
                     // Write the status finished row and exit 0.
                     logger.warn("Found load status started row with vet and ref written as needed, writing load status finished row for sample name = {}, id = {}",
                             sampleName, sampleId);
@@ -272,9 +282,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     System.exit(0);
                 }
 
-                // Log that we're going to write the vet and/or ref_ranges rows as appropriate.
-                logger.warn("Found load status started row but not load status finished row for sample id = {}, name = {}; writing tables: vet = {}, ref_ranges = {}",
-                        sampleId, sampleName, !vetRowsExist && enableVet, !refRangesRowsExist && enableReferenceRanges);
+                // Log that we're going to write the vet and/or ref_ranges and/or header rows as appropriate.
+                logger.warn("Found load status started row but no load status finished row for sample id = {}, name = {}; writing tables: vet = {}, ref_ranges = {}, headers = {}",
+                        sampleId, sampleName, !vetRowsExist && enableVet, !refRangesRowsExist && enableReferenceRanges,
+                        enableVCFHeaderProcessing || loadHeadersOnly);
                 // Do not write the started status as that has already been written.
                 shouldWriteLoadStatusStarted = false;
             }
@@ -293,14 +304,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
         }
 
-        if (enableReferenceRanges && !refRangesRowsExist) {
+        if (enableReferenceRanges && !refRangesRowsExist && !loadHeadersOnly) {
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
         }
 
-        if (enableVet && !vetRowsExist) {
+        if (enableVet && !vetRowsExist && !loadHeadersOnly) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
-        if (enableVCFHeaderProcessing) {
+        if (enableVCFHeaderProcessing || loadHeadersOnly) {
             vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
         }
 
@@ -382,8 +393,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator.commitData();
         }
 
-        // upload the load status table
-        if (outputType == CommonCode.OutputType.BQ) {
+        // Upload the load status table unless we are only loading headers.
+        if (outputType == CommonCode.OutputType.BQ && !loadHeadersOnly) {
             loadStatus.writeLoadStatusFinished(sampleId);
         }
 
