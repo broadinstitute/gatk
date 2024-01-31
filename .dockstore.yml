@@ -333,6 +333,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1207
          tags:
              - /.*/
    - name: GvsCallsetStatistics
