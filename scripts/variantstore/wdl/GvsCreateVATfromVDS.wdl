@@ -6,8 +6,11 @@ import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCr
 
 workflow GvsCreateVATfromVDS {
     input {
-        File input_sites_only_vcf
+        File vds_top_dir_path
         File ancestry_file
+        String hail_version
+        Boolean use_classic_VQSR = false
+        Boolean leave_hail_cluster_running_at_end = true
 
         String project_id
         String? git_branch_or_tag
@@ -56,9 +59,22 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
+    call GenerateSitesOnlyVcf {
+        input:
+            vds_path = vds_top_dir_path,
+            use_classic_VQSR = use_classic_VQSR,
+            project_id = project_id,
+            hail_version = hail_version,
+            workspace_bucket = GetToolVersions.workspace_bucket,
+            region = "us-central1",
+            gcs_subnetwork_name = "subnetwork",
+            leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
+            variants_docker = effective_variants_docker,
+    }
+
     call Utils.IndexVcf {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
             gatk_docker = effective_gatk_docker,
     }
 
@@ -75,7 +91,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
+    String sites_only_vcf_basename = basename(basename(GenerateSitesOnlyVcf.sites_only_vcf, ".gz"), ".vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -83,7 +99,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = input_sites_only_vcf,
+                input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
@@ -176,7 +192,97 @@ workflow GvsCreateVATfromVDS {
     }
 }
 
-################################################################################
+
+task GenerateSitesOnlyVcf {
+    input {
+        String vds_path
+        Boolean use_classic_VQSR
+        String project_id
+        String workspace_bucket
+        String region
+        String gcs_subnetwork_name
+        Boolean leave_cluster_running_at_end
+        String hail_version
+        String? hail_temp_path
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Float? master_memory_fraction
+
+        String variants_docker
+    }
+    String prefix = "vds-to-sites-only-vcf"
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        account_name=$(gcloud config list account --format "value(core.account)")
+
+        pip3 install --upgrade pip
+        pip3 install hail~{'==' + hail_version}
+        pip3 install --upgrade google-cloud-dataproc
+
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+
+        cluster_name="~{prefix}-${hex}"
+        echo ${cluster_name} > cluster_name.txt
+
+        if [[ -z "~{hail_temp_path}" ]] then
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
+
+        # Set up the autoscaling policy
+        cat > auto-scale-policy.yaml <<FIN
+            workerConfig:
+                minInstances: 2
+                maxInstances: 2
+            secondaryWorkerConfig:
+                maxInstances: 500
+                basicAlgorithm:
+                cooldownPeriod: 120s
+            yarnConfig:
+                scaleUpFactor: 1.0
+                scaleDownFactor: 1.0
+                gracefulDecommissionTimeout: 120s
+        FIN
+        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{project_id} --source=auto-scale-policy.yaml --region=~{region} --quiet
+
+        # Run the hail python script to make a VDS
+        python3 ./run_in_hail_cluster.py \
+            --script-path /app/hail_gvs_import.py \
+            --secondary-script-path /app/import_gvs.py \
+            --account ${account_name} \
+            --autoscaling-policy gvs-autoscaling-policy \
+            --region ~{region} \
+            --gcs-project ~{project_id} \
+            --cluster-name ${cluster_name} \
+            --vds-path ~{vds_path} \
+            --temp-path ${hail_temp_path} \
+            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+            ~{'--master-memory-fraction ' + master_memory_fraction} \
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
+            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
+    >>>
+    runtime {
+        memory: "6.5 GB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: 0
+        docker: variants_docker
+        bootDiskSizeGb: 10
+    }
+
+    output {
+        String cluster_name = read_string("cluster_name.txt")
+        File sites_only_vcf = ""
+    }
+}
+
 
 task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
