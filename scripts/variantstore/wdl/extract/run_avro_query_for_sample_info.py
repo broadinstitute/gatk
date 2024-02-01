@@ -33,7 +33,6 @@ def get_number_of_partitions(dataset_name, project_id):
 
 
 def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix):
-    # num_of_tables = get_number_of_partitions(dataset_name, project_id)
     num_of_tables = get_number_of_partitions(dataset_name, project_id)
 
     for i in range(1, num_of_tables + 1):
@@ -56,7 +55,7 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Construct and run queries to generate sample avro files from GVS BigQuery dataset')
     parser.add_argument('--call_set_identifier', type=str,
-                        help='callset identifier used to track costs in cost_observability table', default='false')
+                        help='callset identifier used to track costs in cost_observability table', required=True)
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--avro_prefix', type=str, help='prefix for the Avro file path', required=True)
