@@ -62,7 +62,6 @@ workflow GvsJointVariantCalling {
 
         File? training_python_script
         File? scoring_python_script
-
     }
 
     # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use

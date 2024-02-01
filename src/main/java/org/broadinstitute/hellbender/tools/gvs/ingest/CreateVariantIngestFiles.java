@@ -204,7 +204,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         if (enableVCFHeaderProcessing && loadHeadersOnly) {
-            throw new RuntimeIOException("--load-headers-only and --enable-vcf-header-processing specified, not clear what to do");
+            throw new RuntimeIOException("--load-headers-only and --enable-vcf-header-processing both true, not a supported configuration");
         }
 
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
@@ -284,7 +284,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
                 // Log that we're going to write the vet and/or ref_ranges and/or header rows as appropriate.
                 logger.warn("Found load status started row but no load status finished row for sample id = {}, name = {}; writing tables: vet = {}, ref_ranges = {}, headers = {}",
-                        sampleId, sampleName, !vetRowsExist && enableVet, !refRangesRowsExist && enableReferenceRanges,
+                        sampleId, sampleName, !loadHeadersOnly && !vetRowsExist && enableVet, !loadHeadersOnly && !refRangesRowsExist && enableReferenceRanges,
                         enableVCFHeaderProcessing || loadHeadersOnly);
                 // Do not write the started status as that has already been written.
                 shouldWriteLoadStatusStarted = false;
