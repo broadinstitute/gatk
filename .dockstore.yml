@@ -222,7 +222,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1156
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
@@ -360,7 +359,6 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
