@@ -143,6 +143,15 @@ workflow GvsBulkIngestGenomes {
             is_wgs = is_wgs,
     }
 
+    if (load_headers_only) {
+        # TODO Insert judgey header logic here, then:
+        call Utils.TerminateWorkflow as HeadersLoaded {
+            input:
+                message = "Header data successfully loaded, exiting.",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
