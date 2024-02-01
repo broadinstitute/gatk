@@ -33,6 +33,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    Boolean load_headers_only = false
     String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
@@ -141,11 +142,13 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
         process_vcf_headers = process_vcf_headers,
+        load_headers_only = load_headers_only,
         billing_project_id = billing_project_id,
         use_compressed_references = use_compressed_references,
     }
   }
- if (process_vcf_headers) {
+
+ if (process_vcf_headers || load_headers_only) {
    call ProcessVCFHeaders {
      input:
        variants_docker = effective_variants_docker,
@@ -227,6 +230,7 @@ task LoadData {
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
     Boolean process_vcf_headers
+    Boolean load_headers_only
 
     String gatk_docker
     File? gatk_override
@@ -345,7 +349,7 @@ task LoadData {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-header-processing ~{process_vcf_headers} \
-        --load-headers-only true \
+        --load-headers-only ~{load_headers_only} \
         --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz

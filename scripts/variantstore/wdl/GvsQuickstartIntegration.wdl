@@ -34,6 +34,9 @@ workflow GvsQuickstartIntegration {
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-01-18/"
 
+    Boolean process_vcf_headers = false
+    Boolean load_headers_only = true
+
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
@@ -99,6 +102,8 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                process_vcf_headers = process_vcf_headers,
+                load_headers_only = load_headers_only,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -125,6 +130,8 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                process_vcf_headers = process_vcf_headers,
+                load_headers_only = load_headers_only,
         }
 
         if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
@@ -170,6 +177,8 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                process_vcf_headers = process_vcf_headers,
+                load_headers_only = load_headers_only,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -196,6 +205,8 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                process_vcf_headers = process_vcf_headers,
+                load_headers_only = load_headers_only,
         }
 
         if (QuickstartVcfVQSRClassicIntegration.used_tighter_gcp_quotas) {

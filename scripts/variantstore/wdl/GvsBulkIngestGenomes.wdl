@@ -45,6 +45,7 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_maxretries_override
         String? billing_project_id
         Boolean process_vcf_headers = false
+        Boolean load_headers_only = false
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
@@ -104,6 +105,7 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
             process_vcf_headers = process_vcf_headers,
+            load_headers_only = load_headers_only,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references
     }
@@ -136,6 +138,7 @@ workflow GvsBulkIngestGenomes {
             billing_project_id = billing_project_id,
             use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
+            load_headers_only = load_headers_only,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
             is_wgs = is_wgs,
     }
