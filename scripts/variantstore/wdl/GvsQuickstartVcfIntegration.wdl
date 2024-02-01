@@ -12,7 +12,6 @@ workflow GvsQuickstartVcfIntegration {
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
         Boolean process_vcf_headers = false
-        Boolean load_headers_only = true
         String drop_state = "FORTY"
         String dataset_suffix
         Boolean is_wgs = true
@@ -85,7 +84,6 @@ workflow GvsQuickstartVcfIntegration {
             use_classic_VQSR = !use_VQSR_lite,
             use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
-            load_headers_only = load_headers_only,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",

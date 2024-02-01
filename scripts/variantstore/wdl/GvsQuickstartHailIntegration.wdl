@@ -34,9 +34,6 @@ workflow GvsQuickstartHailIntegration {
         String? workspace_bucket
         String? workspace_id
         String? submission_id
-
-        Boolean process_vcf_headers = false
-        Boolean load_headers_only = false
     }
 
     String project_id = "gvs-internal"
@@ -70,8 +67,7 @@ workflow GvsQuickstartHailIntegration {
             use_VQSR_lite = use_VQSR_lite,
             use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
-            process_vcf_headers = process_vcf_headers,
-            load_headers_only = load_headers_only,
+            process_vcf_headers = true,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,
