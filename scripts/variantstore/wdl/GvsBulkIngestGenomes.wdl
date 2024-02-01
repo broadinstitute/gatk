@@ -148,6 +148,7 @@ workflow GvsBulkIngestGenomes {
         call Utils.TerminateWorkflow as HeadersLoaded {
             input:
                 message = "Header data successfully loaded, exiting.",
+                go = ImportGenomes.done,
                 basic_docker = effective_basic_docker,
         }
     }

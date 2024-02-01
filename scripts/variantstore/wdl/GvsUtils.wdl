@@ -536,6 +536,7 @@ task BuildGATKJarAndCreateDataset {
 
 task TerminateWorkflow {
   input {
+    Boolean go = true
     String message
     String basic_docker
   }
