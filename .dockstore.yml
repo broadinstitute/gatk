@@ -182,6 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1187_headers_only_ingest
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
