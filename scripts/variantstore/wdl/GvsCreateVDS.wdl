@@ -187,7 +187,7 @@ task create_vds {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}",
-            "use-classic-vqsr" : "~{use_classic_VQSR}"
+            "use-classic-vqsr": ~{true='"True"' false='"False"' use_classic_VQSR}
         }
         FIN
 
