@@ -69,7 +69,6 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             items = ijson.items(input_file, '', use_float=True)
             arguments = items.__next__();
             custom_script_args = [f"--{key} {arguments.get(key)}" for key in arguments.keys()]
-        custom_script_arg = "\n".join(custom_script_args)
 
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
@@ -83,7 +82,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                  --account {account}
                  --driver-log-levels root=WARN
                  --
-                 {custom_script_arg}
+                 {' '.join(custom_script_args)}
                 """)
 
                 info("Running: " + submit_cmd)
