@@ -215,7 +215,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         if (enableVCFHeaderProcessing || loadHeadersOnly) {
-            // get an set of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
+            // get a set of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
             // to put into the header line scratch table
             Set<String> nonCommandLineHeaders = new HashSet<>();
             for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
