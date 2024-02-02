@@ -6,7 +6,6 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
-        String? git_branch_or_tag
         String vds_destination_path
         String avro_path
         Boolean use_classic_VQSR = false
@@ -22,6 +21,8 @@ workflow GvsCreateVDS {
         String region = "us-central1"
         String? gcs_project
         String? workspace_bucket
+
+        String? git_branch_or_tag
         String? variants_docker
     }
     parameter_meta {
@@ -181,25 +182,31 @@ task create_vds {
         FIN
         gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
+        cat > script-arguments.json <<FIN
+        {
+            "vds-path": ~{vds_path},
+            "temp-path": ${hail_temp_path},
+            "avro-path": ~{avro_path},
+            "use-classic-vqsr" : ~{use_classic_VQSR},
+            "leave-cluster-running-at-end":  ~{leave_cluster_running_at_end}
+        }
+        FIN
+
         # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/hail_gvs_import.py \
-            --secondary-script-path /app/import_gvs.py \
+            --secondary-script-path-list /app/import_gvs.py \
+            --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
             --gcs-project ~{gcs_project} \
             --cluster-name ${cluster_name} \
-            --avro-path ~{avro_path} \
-            --vds-path ~{vds_path} \
-            --temp-path ${hail_temp_path} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
             ~{'--intermediate-resume-point ' + intermediate_resume_point} \
-            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
-            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
-    >>>
+   >>>
 
     runtime {
         memory: "6.5 GB"
