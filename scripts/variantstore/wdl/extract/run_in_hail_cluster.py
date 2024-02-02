@@ -142,7 +142,6 @@ if __name__ == "__main__":
                         help='List of paths to secondary scripts to run in Hail cluster')
     parser.add_argument('--script-arguments-json-path', type=str, required=True,
                         help='JSON file of arguments for script')
-    parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
     parser.add_argument('--intermediate-resume-point', type=int, required=False,
