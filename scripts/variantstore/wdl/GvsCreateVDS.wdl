@@ -182,6 +182,7 @@ task create_vds {
         FIN
         gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
+        # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
             "vds-path": "~{vds_path}",
@@ -254,18 +255,24 @@ task validate_vds {
         echo ${cluster_name} > cluster_name.txt
         hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
-        # The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > script-arguments.json <<FIN
+        {
+            "vds-path": "~{vds_path}",
+            "temp-path": "${hail_temp_path}"
+        }
+        FIN
 
         # Run the hail python script to validate a VDS
+        # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
         --script-path /app/vds_validation.py \
+        --script-arguments-json-path script-arguments.json \
         --account ${account_name} \
         --autoscaling-policy gvs-autoscaling-policy \
         --region ~{region} \
         --gcs-project ~{gcs_project} \
-        --cluster-name ${cluster_name} \
-        --vds-path ~{vds_path} \
-        --temp-path ${hail_temp_path}
+        --cluster-name ${cluster_name}
     >>>
 
     runtime {
