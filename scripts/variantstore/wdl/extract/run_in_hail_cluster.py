@@ -141,7 +141,6 @@ if __name__ == "__main__":
                         help='List of paths to secondary scripts to run in Hail cluster')
     parser.add_argument('--script-arguments-json-path', type=str, required=True,
                         help='JSON file of arguments for script')
-                        help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
@@ -160,8 +159,6 @@ if __name__ == "__main__":
                    script_path=args.script_path,
                    secondary_script_path_list=args.secondary_script_path_list,
                    script_arguments_json_path=args.script_arguments_json_path,
-                   vds_path=args.vds_path,
-                   temp_path=args.temp_path,
                    leave_cluster_running_at_end=args.leave_cluster_running_at_end,
                    cluster_max_idle_minutes=args.cluster_max_idle_minutes,
                    cluster_max_age_minutes=args.cluster_max_age_minutes,
