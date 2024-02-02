@@ -8,9 +8,10 @@ workflow GvsCreateVATfromVDS {
     input {
         File vds_top_dir_path
         File ancestry_file
-        String hail_version
+        File hail_generate_sites_only_script
         Boolean use_classic_VQSR = false
         Boolean leave_hail_cluster_running_at_end = true
+        String? hail_version
 
         String project_id
         String? git_branch_or_tag
@@ -53,6 +54,7 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -65,7 +67,9 @@ workflow GvsCreateVATfromVDS {
             vds_path = vds_top_dir_path,
             use_classic_VQSR = use_classic_VQSR,
             project_id = project_id,
-            hail_version = hail_version,
+            hail_version = effective_hail_version,
+            hail_generate_sites_only_script = hail_generate_sites_only_script,
+            ancestry_file = ancestry_file,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
@@ -205,6 +209,8 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
+        File hail_generate_sites_only_script
+        File ancestry_file
         String? hail_temp_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
@@ -213,6 +219,8 @@ task GenerateSitesOnlyVcf {
         String variants_docker
     }
     String prefix = "vds-to-sites-only-vcf"
+    String sites_only_vcf_script = basename(hail_generate_sites_only_script)
+
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -230,6 +238,9 @@ task GenerateSitesOnlyVcf {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
+
+        sites_only_vcf_filename="~{prefix}-${hex}.sites-only.vcf"
+        echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
         if [[ -z "~{hail_temp_path}" ]] then
             hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
@@ -253,22 +264,30 @@ task GenerateSitesOnlyVcf {
         FIN
         gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{project_id} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
+        cat > script-arguments.json <<FIN
+        {
+            "vds_input_path": "~{vds_path}",
+            "temp_path": "${hail_temp_path}",
+            "ancestry_input_path": ~{ancestry_file},
+            "sites_only_output_path" : "${sites_only_vcf_filename}"
+        }
+        FIN
+
         # Run the hail python script to make a VDS
+        gsutil cp ~{sites_only_vcf_script} /app/
+
         python3 ./run_in_hail_cluster.py \
-            --script-path /app/hail_gvs_import.py \
-            --secondary-script-path /app/import_gvs.py \
+            --script-path ~{sites_only_vcf_script} \
+            --secondary-script-path /app/create_vat_inputs.py \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
             --gcs-project ~{project_id} \
             --cluster-name ${cluster_name} \
-            --vds-path ~{vds_path} \
-            --temp-path ${hail_temp_path} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
-            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
-            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
     runtime {
         memory: "6.5 GB"
@@ -281,7 +300,7 @@ task GenerateSitesOnlyVcf {
 
     output {
         String cluster_name = read_string("cluster_name.txt")
-        File sites_only_vcf = ""
+        File sites_only_vcf = read_string("sites_only_vcf_filename")
     }
 }
 
