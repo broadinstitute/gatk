@@ -224,7 +224,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1156
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
