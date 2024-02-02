@@ -142,10 +142,9 @@ if __name__ == "__main__":
                         help='List of paths to secondary scripts to run in Hail cluster')
     parser.add_argument('--script-arguments-json-path', type=str, required=True,
                         help='JSON file of arguments for script')
+    parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
-    parser.add_argument('--intermediate-resume-point', type=int, required=False,
-                        help='Intermediate VDS index at which to resume')
 
     args = parser.parse_args()
 

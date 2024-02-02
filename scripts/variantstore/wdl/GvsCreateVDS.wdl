@@ -187,8 +187,7 @@ task create_vds {
             "vds-path": ~{vds_path},
             "temp-path": ${hail_temp_path},
             "avro-path": ~{avro_path},
-            "use-classic-vqsr" : ~{use_classic_VQSR},
-            "leave-cluster-running-at-end":  ~{leave_cluster_running_at_end}
+            "use-classic-vqsr" : ~{use_classic_VQSR}
         }
         FIN
 
@@ -206,6 +205,7 @@ task create_vds {
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
             ~{'--intermediate-resume-point ' + intermediate_resume_point} \
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
    >>>
 
     runtime {
