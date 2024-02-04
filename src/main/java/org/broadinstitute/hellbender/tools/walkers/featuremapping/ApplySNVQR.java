@@ -109,6 +109,9 @@ public final class ApplySNVQR extends ReadWalker {
         utilArgs.keepNegatives = aqArgs.keepNegatives;
         utilArgs.negativeScoreOverride = aqArgs.negativeScoreOverride;
 
+        // configure addFlowSnvqQuality
+        addFlowSNVQuality.setArgs(aqArgs);
+
         readProcessor = new SvnQualReadProcessor(aqArgs, conf);
     }
 

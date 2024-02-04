@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
@@ -22,6 +23,7 @@ public final class AddFlowSNVQuality  {
 
     public double minLikelihoodProbRate = 1e-6;
     public int maxQualityScore = 60;
+    private ApplySNVQRArgumentCollection aqArgs;
 
     public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double limitPhoreScore, FlowBasedArgumentCollection fbargs) {
 
@@ -103,8 +105,6 @@ public final class AddFlowSNVQuality  {
                 final int         hmerLength = key[flow];
                 final double[]    hmerBaseErrorProbs = generateHmerBaseErrorProbabilities(key, errorProbBands, flow, flowOrderLength, flowOrder, allBaseProb0, allBaseProb1);
 
-                // fill in
-
                 // install value in first byte of the hmer
                 result[base++] = hmerBaseErrorProbs[0];  // first base, or only base in case of a single base hmer
                 for ( int i = 0 ; i < flowOrderLength ; i++ ) {
@@ -161,14 +161,15 @@ public final class AddFlowSNVQuality  {
                     calledIndex = i;
                 }
             }
+            if ( calledBase < 0 ) {
+                throw new GATKException(String.format("failed to locate called base %c in flow order %s", (char)calledBase, flowOrder));
+            }
 
             // install probability in called base slot
-            if ( calledIndex >= 0 ) {
-                snvResult[calledIndex][ofs] = Math.max(0, 1 - altP);
+            snvResult[calledIndex][ofs] = Math.max(0, 1 - altP);
 
-                // at this point, bq becomes trivial (?)
-                result[ofs] = 1 - snvResult[calledIndex][ofs];
-            }
+            // at this point, bq becomes trivial (?)
+            result[ofs] = 1 - snvResult[calledIndex][ofs];
         }
 
         return result;
@@ -211,7 +212,7 @@ public final class AddFlowSNVQuality  {
     }
 
     @VisibleForTesting
-    protected static double[] generateHmerBaseErrorProbabilities(final int[] key, final double[][] errorProbBands, final int flow,
+    protected double[] generateHmerBaseErrorProbabilities(final int[] key, final double[][] errorProbBands, final int flow,
                                                                  final int flowOrderLength, byte[] flowOrder,
                                                                  Map<Byte, Double> allBaseProb0, Map<Byte, Double> allBaseProb1) {
 
@@ -227,36 +228,48 @@ public final class AddFlowSNVQuality  {
         return errorProbs;
     }
 
-    private static double generateSidedHmerBaseErrorProbability(final int[] key, final double[][] errorProbBands, final int flow, final int sideIncr,
+    private double generateSidedHmerBaseErrorProbability(final int[] key, final double[][] errorProbBands, final int flow, final int sideIncr,
                                                                 final int flowOrderLength, final byte[] flowOrder, final Map<Byte, Double> allBaseProb) {
 
         // create a key slice of the area around the flow/hmer.
-        final int minIndex = Math.max(flow - flowOrderLength + 1, 0);
-        final int maxIndex = Math.min(flow + flowOrderLength - 1, key.length - 1);
+        final int minIndex = Math.max(flow - (flowOrderLength - 1), 0);
+        final int maxIndex = Math.min(flow + (flowOrderLength - 1), key.length - 1);
         final int[] slice = Arrays.copyOfRange(key, minIndex, maxIndex + 1);
         final int hmerLength = key[flow];
+        final double[] p12 = new double[2];
 
         // walk the flows towards the side until (and including) the first non-zero key
         // on hmers of length 1 we walk both sides
-        final byte            flowByte = flowOrder[flow % flowOrderLength];
-        final List<int[]>     slices = new LinkedList<>();
-        final List<Byte>      slicesBytes = new LinkedList<>();
+        final class SliceInfo {
+            int[] slice;
+            byte altByte;
+            int sideFlow;
+        }
+        final List<SliceInfo> slices = new LinkedList<>();
         final int[]           incrs = (hmerLength != 1)
                                             ? new int[] { sideIncr }
                                             : new int[] { sideIncr, -sideIncr};
         for (int incr : incrs) {
             for (int sideFlow = flow + incr; sideFlow >= 0 && sideFlow < key.length; sideFlow += incr) {
 
+                // side flow can no overflow the slice
+                if ( sideFlow < maxIndex || sideFlow > maxIndex ) {
+                    break;
+                }
+
                 // create a alternative key slice by incrementing sideFlow and decrementing flow
                 final int[] altSlice = Arrays.copyOf(slice, slice.length);
                 altSlice[sideFlow - minIndex] += 1;
                 altSlice[flow - minIndex] -= 1;
-                if (sliceIsValid(altSlice, flowOrderLength)) {
-                    slices.add(altSlice);
-                    slicesBytes.add(flowOrder[sideFlow % flowOrderLength]);
+                if ( sliceIsValid(altSlice, flowOrderLength) ) {
+                    SliceInfo si = new SliceInfo();
+                    si.slice = altSlice;
+                    si.altByte = flowOrder[sideFlow % flowOrderLength];
+                    si.sideFlow = sideFlow;
+                    slices.add(si);
                 }
 
-                // is the sideFlow non-zero? if so, break
+                // is the sideFlow (the first encountered) non-zero? if so, break
                 if (key[sideFlow] != 0) {
                     break;
                 }
@@ -265,39 +278,67 @@ public final class AddFlowSNVQuality  {
 
         // at this point, we have a list of valid slices. figure out the error probability for each of them
         // and compute the base quality
-        final double keyP = sliceProb(slice, minIndex, key, errorProbBands);
+        final double keyP = sliceProb(slice, minIndex, key, errorProbBands, flow, flow, null);
         double sumP = keyP;
-        int sliceIndex = 0;
-        for ( int[] s : slices ) {
-            final double sliceP = sliceProb(s, minIndex, key, errorProbBands);
-            final byte sliceByte = slicesBytes.get(sliceIndex);
+        for ( final SliceInfo si : slices ) {
+            final double sliceP = sliceProb(si.slice, minIndex, key, errorProbBands, flow, si.sideFlow, p12);
             if ( allBaseProb != null ) {
-                allBaseProb.put(sliceByte, sliceP);
+                allBaseProb.put(si.altByte, getSnvq(sliceP, p12[0], p12[1]));
             }
             sumP += sliceP;
-            sliceIndex++;
         }
         final double ep = 1 - (keyP / sumP);
 
         return ep;
     }
 
-    // compute probability for a slice
-    private static double sliceProb(int[] slice, int minIndex, int[] key, double[][] errorProbBands) {
-
-        double p = 1.0;
-        for ( int i = 0 ; i < slice.length ; i++ ) {
-            final int band;
-            if ( slice[i] < key[i + minIndex] ) {
-                band = ERROR_PROB_BAND_1LESS;
-            } else if ( slice[i] > key[i + minIndex] ) {
-                band = ERROR_PROB_BAND_1MORE;
-            } else {
-                band = ERROR_PROB_BAND_KEY;
-            }
-            p *= errorProbBands[band][i + minIndex];
+    private double getSnvq(final double sliceP, final double p1, final double p2) {
+        if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Legacy ) {
+            return sliceP;
+        } else if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Optimistic ) {
+            return (p1 * p2);
+        } else if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Pessimistic ) {
+            return (1 - (1 - p1) * (1 - p2));
+        } else if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Geometric ) {
+            return Math.sqrt((p1 * p2) * (1 - (1 - p1) * (1 - p2)));
+        } else {
+            throw new GATKException("unknown snvqMode: " +  aqArgs.snvMode);
         }
-        return p;
+    }
+
+    // compute probability for a slice
+    private static double sliceProb(final int[] slice, final int minIndex, final int[] key, final double[][] errorProbBands,
+                                        final int flow, final int sideFlow, double[] p12) {
+
+        double accumulatedP = 1.0;
+        int key_i = minIndex;
+        for ( int i = 0 ; i < slice.length ; i++, key_i++ ) {
+            final int hmer = key[key_i];
+            final int band;
+            if ( slice[i] == (hmer - 1) ) {
+                band = ERROR_PROB_BAND_1LESS;
+            } else if ( slice[i] == (hmer + 1) ) {
+                band = ERROR_PROB_BAND_1MORE;
+            } else if ( slice[i] == hmer ){
+                band = ERROR_PROB_BAND_KEY;
+            } else {
+                throw new GATKException("slice[i] and hmer are too far apart: " + slice[i] + " " + hmer);
+            }
+            final double p = errorProbBands[band][key_i];
+            accumulatedP *= p;
+
+            // collect p1/p2 (flow and sideFlow probs)
+            if ( p12 != null ) {
+                if ( key_i == flow ) {
+                    p12[0] = p;
+                }
+                if ( key_i == sideFlow ) {
+                    p12[1] = p;
+                }
+            }
+        }
+
+        return accumulatedP;
     }
 
     private static boolean sliceIsValid(final int[] slice, final int flowOrderLength) {
@@ -317,5 +358,9 @@ public final class AddFlowSNVQuality  {
 
         // if here, not found -> valid
         return true;
+    }
+
+    public void setArgs(ApplySNVQRArgumentCollection aqArgs) {
+        this.aqArgs = aqArgs;
     }
 }

@@ -12,8 +12,16 @@ import java.util.List;
 public class ApplySNVQRArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
 
+    public enum SnvqModeEnum {
+        Legacy,
+        Optimistic,
+        Pessimistic,
+        Geometric
+    };
+
     /**
-     *  maximum value for delta in score
+     *  maximum value for
+     *  delta in score
      **/
     @Argument(fullName = "limit-phred-score", doc = "Limit value for phred scores", optional = true)
     public double limitPhredScore = Double.NaN;
@@ -29,6 +37,12 @@ public class ApplySNVQRArgumentCollection implements Serializable{
      **/
     @Argument(fullName = "keep-supplementary-alignments", doc = "keep supplementary alignments ?", optional = true)
     public boolean keepSupplementaryAlignments = false;
+
+    /**
+     * snvq computation mode
+     */
+    @Argument(fullName = "snvq-mode", doc = "ksnvq computation mode", optional = true)
+    public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
 
     /**
      *  debug read names?
