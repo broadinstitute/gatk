@@ -71,7 +71,7 @@ workflow GvsCreateVATfromVDS {
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
             hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
-            ancestry_file = ancestry_file,
+            ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
@@ -212,7 +212,7 @@ task GenerateSitesOnlyVcf {
         Boolean leave_cluster_running_at_end
         String hail_version
         String hail_generate_sites_only_script_path
-        File ancestry_file
+        String ancestry_file_path
         String? hail_temp_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
@@ -255,15 +255,12 @@ task GenerateSitesOnlyVcf {
         {
             "vds_input_path": "~{vds_path}",
             "temp_path": "${hail_temp_path}",
-            "ancestry_input_path": "/app/~{basename(ancestry_file)}",
+            "ancestry_input_path": "~{ancestry_file_path}",
             "sites_only_output_path" : "${sites_only_vcf_filename}"
         }
         FIN
 
-        cat script-arguments.json
-
         # Run the hail python script to make a VDS
-        gsutil cp ~{ancestry_file} /app/
         gsutil cp ~{hail_generate_sites_only_script_path} /app/
 
         # Run the hail python script to make a sites-only VCF from a VDS
@@ -343,6 +340,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
+        String ancestry_file_path = input_ancestry_file
     }
 }
 

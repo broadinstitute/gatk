@@ -94,7 +94,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                     raise RuntimeError(f"Unexpected exit code running submitted job: {exit_code}")
                 break
     except Exception as e:
-        info(f"Generic Exception: '{e}'...")
+        info(e)
         raise
     finally:
         if leave_cluster_running_at_end:
