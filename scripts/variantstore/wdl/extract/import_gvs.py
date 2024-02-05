@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Tuple, Any
 
 import hail as hl
 from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
@@ -10,6 +10,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
 @typecheck(refs=sequenceof(sequenceof(str)),
            vets=sequenceof(sequenceof(str)),
            sample_mapping=sequenceof(str),
+           sample_info=sequenceof(str),
            site_filtering_data=sequenceof(str),
            vqsr_filtering_data=sequenceof(str),
            vqsr_tranche_data=sequenceof(str),
@@ -27,6 +28,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
                sample_mapping: 'List[str]',
+               sample_info: 'List[str]',
                site_filtering_data: 'List[str]',
                vqsr_filtering_data: 'List[str]',
                vqsr_tranche_data: 'List[str]',
@@ -108,6 +110,8 @@ def import_gvs(refs: 'List[List[str]]',
         and the inner lists contain all files in a sample group.
     sample_mapping : List[str]
         Paths to sample mapping Avro files.
+    sample_info : List[str]
+        Paths to per-group sample list Avro files.
     site_filtering_data : List[str]
         Paths to site filtering files.
     vqsr_filtering_data : List[str]
@@ -180,7 +184,7 @@ def import_gvs(refs: 'List[List[str]]',
     info('import_gvs: Importing and collecting sample mapping lookup table')
 
     samp = hl.import_avro(sample_mapping)
-    sample_mapping_dict = samp.aggregate(hl.dict(hl.agg.collect((samp.sample_id, samp.sample_name))))
+    sample_id_to_real_name = samp.aggregate(hl.dict(hl.agg.collect((samp.sample_id, samp.sample_name))))
 
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
     vqsr_path = os.path.join(tmp_dir, 'vqsr.ht')
@@ -213,6 +217,8 @@ def import_gvs(refs: 'List[List[str]]',
 
     with hl._with_flags(use_new_shuffle='1'):
         for idx in range(len(refs)):
+            sample_info_group = sample_info[idx]
+            assert os.path.basename(sample_info_group) == '000000000000.{idx:03}.avro', sample_info_group
             ref_group = refs[idx]
             var_group = vets[idx]
             path = os.path.join(tmp_dir, f'sample_group_{idx+1}.vds')
@@ -224,18 +230,39 @@ def import_gvs(refs: 'List[List[str]]',
                 continue
 
             info(f'import_gvs: scanning group {idx+1}/{len(refs)}...')
-            ref_ht = hl.import_avro(ref_group)
+            info('import_gvs: collecting sample IDs...')
+            # We must assign each sample id to a unique, within-group index before we execute the
+            # per group import. Rather than scan the entire ref or var table to find all sample ids,
+            # GVS generates for us one (sample_id, sample_name) Avro per group. Note that, in
+            # theory, a sample nominally in this group *could* have zero variants and/or zero
+            # reference blocks.
+            sample_info_ht = hl.import_avro(sample_info_group)
+            sample_info_ht_fields = set(sample_info_ht.row.keys())
+            assert set('sample_id', 'sample_name').issubset(sample_info_ht_fields), sample_info_ht.row
 
-            # Note -- availability of sample IDs statically would make import more efficient
-            info(f'import_gvs: collecting sample IDs...')
-            sample_ids = sorted(list(ref_ht.aggregate(hl.agg.collect_as_set(ref_ht.sample_id))))
-            samples = [sample_mapping_dict[s] for s in sample_ids]
-            samples_lit = hl.literal(samples, hl.tarray(hl.tstr))
+            sample_ids, sample_names = sample_info_ht.aggregate((
+                hl.agg.collect(sample_info_ht.sample_id),
+                hl.agg.collect(sample_info_ht.sample_name),
+            ))
+
+            non_str_name: List[Tuple[Any, str, str]] = []
+            mismatches: List[Tuple[Any, str, str]] = []
+            for sample_id, sample_info_name in zip(sample_ids, sample_names):
+                sample_mapping_name = sample_id_to_real_name[sample_id]
+                triplet = (sample_id, sample_info_name, sample_mapping_name)
+                if sample_info_name != sample_mapping_name:
+                    mismatches += triplet
+                if not isinstance(sample_info_name, str) or not isinstance(sample_mapping_name, str):
+                    non_str_name += triplet
+            assert len(mismatches) == 0 and len(non_str_name) == 0, (mismatches, non_str_name)
+
+            sample_names_lit = hl.literal(sample_names, hl.tarray(hl.tstr))
             sample_ids_lit = hl.literal(sample_ids, hl.tarray(hl.tint32))
+
             n_new_samples = len(sample_ids)
             n_samples += n_new_samples
-            assert n_new_samples == len(samples), (n_new_samples, len(samples))
 
+            ref_ht = hl.import_avro(ref_group)
             new_loc = translate_locus(ref_ht.location)
 
             # transform fields to Hail expectations (locus object, GQ int32, end as absolute instead of relative
@@ -246,8 +273,7 @@ def import_gvs(refs: 'List[List[str]]',
             ref_ht = ref_ht.group_by(ref_ht.locus).aggregate(data_per_sample=hl.agg.collect(ref_ht.row.drop('locus')))
             ref_ht = ref_ht.transmute(entries=convert_array_with_id_keys_to_dense_array(ref_ht.data_per_sample, sample_ids_lit))
 
-            # vds column keys assume string sample IDs
-            ref_ht = ref_ht.annotate_globals(col_data=samples_lit.map(lambda s: hl.struct(s=s)),
+            ref_ht = ref_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)),
                                              ref_block_max_length=ref_block_max_length)
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
 
@@ -275,7 +301,7 @@ def import_gvs(refs: 'List[List[str]]',
                 local_allele_lookup=local_allele_lookup)
 
             var_ht = var_ht.transmute(entries=convert_array_with_id_keys_to_dense_array(var_ht.data_per_sample, sample_ids_lit))
-            var_ht = var_ht.annotate_globals(col_data=samples_lit.map(lambda s: hl.struct(s=hl.str(s))))
+            var_ht = var_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)))
             var_mt = var_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
 
             # replace 'local_alleles' strings with indices using our global lookup table
