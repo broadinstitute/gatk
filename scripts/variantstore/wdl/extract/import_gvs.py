@@ -209,7 +209,9 @@ def import_gvs(refs: 'List[List[str]]',
     with hl._with_flags(use_new_shuffle='1'):
         for idx in range(len(refs)):
             sample_mapping_group = sample_mapping[idx]
-            assert os.path.basename(sample_mapping_group) == '000000000000.{idx:03}.avro', sample_mapping_group
+            assert os.path.basename(sample_mapping_group) == f'000000000000.{idx:03}.avro', (
+                sample_mapping_group, os.path.basename(sample_mapping_group), f'000000000000.{idx:03}.avro'
+            )
             ref_group = refs[idx]
             var_group = vets[idx]
             path = os.path.join(tmp_dir, f'sample_group_{idx+1}.vds')
