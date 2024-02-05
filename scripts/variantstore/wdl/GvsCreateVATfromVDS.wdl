@@ -290,7 +290,7 @@ task GenerateSitesOnlyVcf {
 
     output {
         String cluster_name = read_string("cluster_name.txt")
-        File sites_only_vcf = read_string("sites_only_vcf_filename")
+        File sites_only_vcf = read_string("sites_only_vcf_filename.txt")
     }
 }
 
