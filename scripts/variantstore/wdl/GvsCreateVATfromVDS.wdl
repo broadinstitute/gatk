@@ -221,7 +221,6 @@ task GenerateSitesOnlyVcf {
         String variants_docker
     }
     String prefix = "vds-to-sites-only-vcf"
-    String sites_only_vcf_script = basename(hail_generate_sites_only_script)
 
 
     command <<<
@@ -276,10 +275,10 @@ task GenerateSitesOnlyVcf {
         FIN
 
         # Run the hail python script to make a VDS
-        gsutil cp ~{sites_only_vcf_script} /app/
+        gsutil cp ~{hail_generate_sites_only_script} /app/
 
         python3 /app/run_in_hail_cluster.py \
-            --script-path /app/~{sites_only_vcf_script} \
+            --script-path /app/~{basename(hail_generate_sites_only_script)} \
             --secondary-script-path /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
