@@ -10,7 +10,6 @@ from hail.typecheck import typecheck, sequenceof, numeric
 @typecheck(refs=sequenceof(sequenceof(str)),
            vets=sequenceof(sequenceof(str)),
            sample_mapping=sequenceof(str),
-           sample_info=sequenceof(str),
            site_filtering_data=sequenceof(str),
            vqsr_filtering_data=sequenceof(str),
            vqsr_tranche_data=sequenceof(str),
@@ -28,7 +27,6 @@ from hail.typecheck import typecheck, sequenceof, numeric
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
                sample_mapping: 'List[str]',
-               sample_info: 'List[str]',
                site_filtering_data: 'List[str]',
                vqsr_filtering_data: 'List[str]',
                vqsr_tranche_data: 'List[str]',
@@ -110,8 +108,6 @@ def import_gvs(refs: 'List[List[str]]',
         and the inner lists contain all files in a sample group.
     sample_mapping : List[str]
         Paths to sample mapping Avro files.
-    sample_info : List[str]
-        Paths to per-group sample list Avro files.
     site_filtering_data : List[str]
         Paths to site filtering files.
     vqsr_filtering_data : List[str]
@@ -181,11 +177,6 @@ def import_gvs(refs: 'List[List[str]]',
         sdict = hl.dict(arr.map(lambda x: (x.sample_id, x.drop('sample_id', *drop))))
         return hl.rbind(sdict, lambda sdict: ids.map(lambda x: sdict.get(x)))
 
-    info('import_gvs: Importing and collecting sample mapping lookup table')
-
-    samp = hl.import_avro(sample_mapping)
-    sample_id_to_real_name = samp.aggregate(hl.dict(hl.agg.collect((samp.sample_id, samp.sample_name))))
-
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
     vqsr_path = os.path.join(tmp_dir, 'vqsr.ht')
 
@@ -217,8 +208,8 @@ def import_gvs(refs: 'List[List[str]]',
 
     with hl._with_flags(use_new_shuffle='1'):
         for idx in range(len(refs)):
-            sample_info_group = sample_info[idx]
-            assert os.path.basename(sample_info_group) == '000000000000.{idx:03}.avro', sample_info_group
+            sample_mapping_group = sample_mapping[idx]
+            assert os.path.basename(sample_mapping_group) == '000000000000.{idx:03}.avro', sample_mapping_group
             ref_group = refs[idx]
             var_group = vets[idx]
             path = os.path.join(tmp_dir, f'sample_group_{idx+1}.vds')
@@ -236,25 +227,20 @@ def import_gvs(refs: 'List[List[str]]',
             # GVS generates for us one (sample_id, sample_name) Avro per group. Note that, in
             # theory, a sample nominally in this group *could* have zero variants and/or zero
             # reference blocks.
-            sample_info_ht = hl.import_avro(sample_info_group)
-            sample_info_ht_fields = set(sample_info_ht.row.keys())
-            assert set('sample_id', 'sample_name').issubset(sample_info_ht_fields), sample_info_ht.row
+            sample_ht = hl.import_avro(sample_mapping_group)
+            sample_ht_fields = set(sample_ht.row.keys())
+            assert set('sample_id', 'sample_name').issubset(sample_ht_fields), sample_ht.row
 
-            sample_ids, sample_names = sample_info_ht.aggregate((
-                hl.agg.collect(sample_info_ht.sample_id),
-                hl.agg.collect(sample_info_ht.sample_name),
+            sample_ids, sample_names = sample_ht.aggregate((
+                hl.agg.collect(sample_ht.sample_id),
+                hl.agg.collect(sample_ht.sample_name),
             ))
 
             non_str_name: List[Tuple[Any, str, str]] = []
-            mismatches: List[Tuple[Any, str, str]] = []
-            for sample_id, sample_info_name in zip(sample_ids, sample_names):
-                sample_mapping_name = sample_id_to_real_name[sample_id]
-                triplet = (sample_id, sample_info_name, sample_mapping_name)
-                if sample_info_name != sample_mapping_name:
-                    mismatches += triplet
-                if not isinstance(sample_info_name, str) or not isinstance(sample_mapping_name, str):
-                    non_str_name += triplet
-            assert len(mismatches) == 0 and len(non_str_name) == 0, (mismatches, non_str_name)
+            for sample_id, sample_name in zip(sample_ids, sample_names):
+                if not isinstance(sample_name, str):
+                    non_str_name += (sample_id, sample_name)
+            assert len(non_str_name) == 0, non_str_name
 
             sample_names_lit = hl.literal(sample_names, hl.tarray(hl.tstr))
             sample_ids_lit = hl.literal(sample_ids, hl.tarray(hl.tint32))
