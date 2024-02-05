@@ -161,6 +161,25 @@ def import_gvs(refs: 'List[List[str]]',
         raise ValueError(f"reference genome {reference_genome.name!r} has no sequence file."
                          f"\n  Add the sequence with `<rg>.add_sequence(...)`")
 
+    def convert_gvs_locus_key_to_hail_locus_key(ht: hl.Table) -> hl.Table:
+        '''Convert a Table ordered by GVS-style locus to a Table keyed by hl.locus without a shuffle.
+
+        GVS site filters, VQSR filters, refs, and vets tables are always ordered by locus; however, the locus is encoded
+        in the high digits of a 64-bit integer. The naive conversion requires a distribued sort ("shuffle") because
+        Hail cannot prove that (a) the imported Table is ordered and (b) that :func:`.translate_locus` is `order-preserving
+        <https://en.wikipedia.org/wiki/Monotonic_function>`__ ::
+
+            ht = ht.transmute(locus=translate_locus(site.location)
+            ht = ht.key_by('locus')
+
+        Hail provides an expert escape hatch when we know that a table is ordered: :func:`hl.Table._key_by_assert_sorted`.
+        This method verifies at run-time that the partition key-intervals are ordered and that the keys are ordered within
+        each partition.
+        '''
+        assert 'location' in ht.row.keys()
+        ht = ht.transmute(locus=translate_locus(site.location))
+        return ht._key_by_assert_sorted('locus')
+
     def translate_locus(location):
         """Translates an int64-encoded locus into a locus object."""
         factor = 1000000000000
@@ -190,19 +209,15 @@ def import_gvs(refs: 'List[List[str]]',
     else:
         info('import_gvs: Importing and writing site filters to temporary storage')
         site = hl.import_avro(site_filtering_data)
+        site = convert_gvs_locus_key_to_hail_locus_key(site)
         site = site.transmute(
-            locus=translate_locus(site.location),
             filters=hl.set(site.filters.split(','))
         )
-        site = site.key_by('locus')
         site.write(site_path, overwrite=True)
 
         info('import_gvs: Importing and writing VQSR filter data to temporary storage')
         vqsr = hl.import_avro(vqsr_filtering_data)
-        vqsr = vqsr.transmute(
-            locus=translate_locus(vqsr.location)
-        )
-        vqsr = vqsr.key_by('locus')
+        vqsr = convert_gvs_locus_key_to_hail_locus_key(vqsr)
         vqsr.write(vqsr_path, overwrite=True)
 
     if use_classic_vqsr:
@@ -236,13 +251,10 @@ def import_gvs(refs: 'List[List[str]]',
             n_samples += n_new_samples
             assert n_new_samples == len(samples), (n_new_samples, len(samples))
 
-            new_loc = translate_locus(ref_ht.location)
-
+            ref_ht = convert_gvs_locus_key_to_hail_locus_key(ref_ht)
             # transform fields to Hail expectations (locus object, GQ int32, end as absolute instead of relative
-            ref_ht = ref_ht.transmute(locus=new_loc,
-                                      GQ=translate_state(ref_ht.state),
-                                      END=new_loc.position + hl.int32(ref_ht.length) - 1)
-            ref_ht = ref_ht.key_by('locus')
+            ref_ht = ref_ht.transmute(GQ=translate_state(ref_ht.state),
+                                      END=ref_ht.position + hl.int32(ref_ht.length) - 1)
             ref_ht = ref_ht.group_by(ref_ht.locus).aggregate(data_per_sample=hl.agg.collect(ref_ht.row.drop('locus')))
             ref_ht = ref_ht.transmute(entries=convert_array_with_id_keys_to_dense_array(ref_ht.data_per_sample, sample_ids_lit))
 
@@ -252,13 +264,12 @@ def import_gvs(refs: 'List[List[str]]',
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
 
             var_ht = hl.import_avro(var_group)
-            var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
-                                      local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
+            var_ht = convert_gvs_locus_key_to_hail_locus_key(var_ht)
+            var_ht = var_ht.transmute(local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
                                       LGT=hl.parse_call(var_ht.GT),
                                       LAD=var_ht.AD.split(',').map(lambda x: hl.int32(x)),
                                       GQ=hl.int32(var_ht.GQ),
                                       RGQ=hl.int32(var_ht.RGQ))
-            var_ht = var_ht.key_by('locus')
             var_ht = var_ht.group_by(var_ht.locus).aggregate(data_per_sample=hl.agg.collect(var_ht.row.drop('locus')))
 
             alleles_list = hl.array(hl.set(var_ht.data_per_sample.map(lambda x:x.local_alleles)))
