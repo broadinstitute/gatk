@@ -188,8 +188,7 @@ task create_vds {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}",
-            "intermediate-resume-point": ~{intermediate_resume_point}
-            ~{", intermediate-resume-point:" + intermediate_resume_point}
+            ~{", intermediate-resume-point: " + intermediate_resume_point}
             ~{true='", use-classic-vqsr": "True"' false='' use_classic_VQSR}
         }
         FIN

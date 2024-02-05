@@ -10,7 +10,7 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
         String hail_generate_sites_only_script_path
         Boolean use_classic_VQSR = false
-        Boolean leave_hail_cluster_running_at_end = true
+        Boolean leave_hail_cluster_running_at_end = false
         String? hail_version
         String? workspace_gcs_project
 
