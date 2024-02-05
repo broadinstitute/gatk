@@ -8,7 +8,7 @@ workflow GvsCreateVATfromVDS {
     input {
         File vds_top_dir_path
         File ancestry_file
-        File hail_generate_sites_only_script
+        String hail_generate_sites_only_script_path
         Boolean use_classic_VQSR = false
         Boolean leave_hail_cluster_running_at_end = true
         String? hail_version
@@ -70,7 +70,7 @@ workflow GvsCreateVATfromVDS {
             use_classic_VQSR = use_classic_VQSR,
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
-            hail_generate_sites_only_script = hail_generate_sites_only_script,
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             ancestry_file = ancestry_file,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
@@ -211,7 +211,7 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
-        File hail_generate_sites_only_script
+        String hail_generate_sites_only_script_path
         File ancestry_file
         String? hail_temp_path
         Int? cluster_max_idle_minutes
@@ -275,10 +275,10 @@ task GenerateSitesOnlyVcf {
         FIN
 
         # Run the hail python script to make a VDS
-        gsutil cp ~{hail_generate_sites_only_script} /app/
+        gsutil cp ~{hail_generate_sites_only_script_path} /app/
 
         python3 /app/run_in_hail_cluster.py \
-            --script-path /app/~{basename(hail_generate_sites_only_script)} \
+            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
             --secondary-script-path /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
