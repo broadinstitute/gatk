@@ -278,8 +278,8 @@ task GenerateSitesOnlyVcf {
         # Run the hail python script to make a VDS
         gsutil cp ~{sites_only_vcf_script} /app/
 
-        python3 ./run_in_hail_cluster.py \
-            --script-path ~{sites_only_vcf_script} \
+        python3 /app/run_in_hail_cluster.py \
+            --script-path /app/~{sites_only_vcf_script} \
             --secondary-script-path /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
