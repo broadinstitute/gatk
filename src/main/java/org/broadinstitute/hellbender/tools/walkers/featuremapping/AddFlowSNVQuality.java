@@ -253,7 +253,7 @@ public final class AddFlowSNVQuality  {
             for (int sideFlow = flow + incr; sideFlow >= 0 && sideFlow < key.length; sideFlow += incr) {
 
                 // side flow can no overflow the slice
-                if ( sideFlow < maxIndex || sideFlow > maxIndex ) {
+                if ( sideFlow < minIndex || sideFlow > maxIndex ) {
                     break;
                 }
 
