@@ -12,6 +12,7 @@ workflow GvsCreateVATfromVDS {
         Boolean use_classic_VQSR = false
         Boolean leave_hail_cluster_running_at_end = true
         String? hail_version
+        String? workspace_gcs_project
 
         String project_id
         String? git_branch_or_tag
@@ -55,6 +56,7 @@ workflow GvsCreateVATfromVDS {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
+    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -66,7 +68,7 @@ workflow GvsCreateVATfromVDS {
         input:
             vds_path = vds_top_dir_path,
             use_classic_VQSR = use_classic_VQSR,
-            project_id = project_id,
+            workspace_project = effective_google_project,
             hail_version = effective_hail_version,
             hail_generate_sites_only_script = hail_generate_sites_only_script,
             ancestry_file = ancestry_file,
@@ -203,7 +205,7 @@ task GenerateSitesOnlyVcf {
     input {
         String vds_path
         Boolean use_classic_VQSR
-        String project_id
+        String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
@@ -262,7 +264,7 @@ task GenerateSitesOnlyVcf {
                 scaleDownFactor: 1.0
                 gracefulDecommissionTimeout: 120s
         FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{project_id} --source=auto-scale-policy.yaml --region=~{region} --quiet
+        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         cat > script-arguments.json <<FIN
         {
@@ -283,7 +285,7 @@ task GenerateSitesOnlyVcf {
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
-            --gcs-project ~{project_id} \
+            --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
