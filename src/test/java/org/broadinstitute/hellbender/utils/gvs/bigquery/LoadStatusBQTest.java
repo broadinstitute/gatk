@@ -42,15 +42,15 @@ public class LoadStatusBQTest extends GATKBaseTest {
     public void testUpdateStatus() {
         LoadStatus loadStatus = new LoadStatus(BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, TEMP_TABLE_NAME);
 
-        Assert.assertEquals(loadStatus.getSampleLoadState(1), LoadStatus.LoadState.NONE);
+        Assert.assertEquals(loadStatus.getSampleLoadState(1, false), LoadStatus.LoadState.NONE);
 
         loadStatus.writeLoadStatusStarted(1);
-        Assert.assertEquals(loadStatus.getSampleLoadState(1), LoadStatus.LoadState.PARTIAL);
+        Assert.assertEquals(loadStatus.getSampleLoadState(1, false), LoadStatus.LoadState.PARTIAL);
 
         loadStatus.writeLoadStatusFinished(1);
-        Assert.assertEquals(loadStatus.getSampleLoadState(1), LoadStatus.LoadState.COMPLETE);
+        Assert.assertEquals(loadStatus.getSampleLoadState(1, false), LoadStatus.LoadState.COMPLETE);
 
-        Assert.assertEquals(loadStatus.getSampleLoadState(2), LoadStatus.LoadState.NONE);
+        Assert.assertEquals(loadStatus.getSampleLoadState(2, false), LoadStatus.LoadState.NONE);
 
     }
 }

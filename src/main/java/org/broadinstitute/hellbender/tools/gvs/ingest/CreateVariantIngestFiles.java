@@ -177,6 +177,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private boolean shouldWriteLoadStatusStarted = true;
 
+    private boolean shouldWriteHeadersWritten = true;
+
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -253,9 +255,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
 
-            LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
+            LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId, loadHeadersOnly);
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
+                System.exit(0);
+            } else if (loadHeadersOnly && state == LoadStatus.LoadState.HEADERS_WRITTEN) {
+                logger.info("Sample id " + sampleId + " has already had its headers written, exiting successfully.");
                 System.exit(0);
             } else if (state == LoadStatus.LoadState.PARTIAL) {
                 if (enableReferenceRanges && !loadHeadersOnly) {
@@ -319,6 +324,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        if (loadHeadersOnly) {
+            // Nothing to do here, exit quickly.
+            return;
+        }
 
         // get the intervals this variant covers
         final GenomeLoc variantGenomeLoc = intervalArgumentGenomeLocSortedSet.getGenomeLocParser().createGenomeLoc(variant.getContig(), variant.getStart(), variant.getEnd());
@@ -363,6 +372,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public Object onTraversalSuccess() {
         if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
             loadStatus.writeLoadStatusStarted(sampleId);
+        }
+
+        if (outputType == CommonCode.OutputType.BQ && shouldWriteHeadersWritten) {
+            loadStatus.writeLoadStatusHeadersWritten(sampleId);
         }
 
         if (vcfHeaderLineScratchCreator != null) {

@@ -21,8 +21,8 @@ import static org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils.ext
 public class LoadStatus {
     static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.gvs.ingest.LoadStatus.class);
 
-    private enum LoadStatusValues { STARTED, FINISHED }
-    public enum LoadState { NONE, PARTIAL, COMPLETE }
+    private enum LoadStatusValues { STARTED, HEADERS_WRITTEN, FINISHED }
+    public enum LoadState { NONE, HEADERS_WRITTEN, PARTIAL, COMPLETE }
 
     private final String projectID;
     private final String datasetName;
@@ -50,7 +50,7 @@ public class LoadStatus {
         return builder.build();
     }
 
-    public LoadState getSampleLoadState(long sampleId) {
+    public LoadState getSampleLoadState(long sampleId, boolean loadHeadersOnly) {
         String query = "SELECT " + SchemaUtils.LOAD_STATUS_FIELD_NAME +
                 " FROM `" + projectID + "." + datasetName + "." + loadStatusTableName + "` " +
                 " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId +
@@ -67,6 +67,8 @@ public class LoadStatus {
             if (LoadStatusValues.STARTED.toString().equals(status)) {
                 hasStarted = true;
                 inProcessCount++;
+            } else if (loadHeadersOnly && LoadStatusValues.HEADERS_WRITTEN.toString().equals(status)) {
+                return LoadState.HEADERS_WRITTEN;
             } else if (LoadStatusValues.FINISHED.toString().equals(status)) {
                 if (hasStarted) {
                     inProcessCount--;
@@ -84,6 +86,10 @@ public class LoadStatus {
 
     public void writeLoadStatusStarted(long sampleId) {
         writeLoadStatus(LoadStatusValues.STARTED, sampleId);
+    }
+
+    public void writeLoadStatusHeadersWritten(long sampleId) {
+        writeLoadStatus(LoadStatusValues.HEADERS_WRITTEN, sampleId);
     }
 
     public void writeLoadStatusFinished(long sampleId) {
