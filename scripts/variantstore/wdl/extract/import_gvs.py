@@ -229,7 +229,7 @@ def import_gvs(refs: 'List[List[str]]',
             # GVS generates for us one (sample_id, sample_name) Avro per group. Note that, in
             # theory, a sample nominally in this group *could* have zero variants and/or zero
             # reference blocks.
-            sample_ht = hl.import_avro(sample_mapping_group)
+            sample_ht = hl.import_avro([sample_mapping_group])
             sample_ht_fields = set(sample_ht.row.keys())
             assert set('sample_id', 'sample_name').issubset(sample_ht_fields), sample_ht.row
 
