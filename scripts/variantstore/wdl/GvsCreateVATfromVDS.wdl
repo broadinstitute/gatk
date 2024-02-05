@@ -279,7 +279,7 @@ task GenerateSitesOnlyVcf {
 
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
-            --secondary-script-path /app/create_vat_inputs.py \
+            --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
