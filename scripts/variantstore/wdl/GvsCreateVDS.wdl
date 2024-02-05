@@ -193,6 +193,8 @@ task create_vds {
         }
         FIN
 
+        cat script-arguments.json
+
         # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/hail_gvs_import.py \
