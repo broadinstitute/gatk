@@ -10,9 +10,11 @@ The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in
 
 ### Generate a Sites-Only VCF
 
-You will want to set up a [notebook in a similar configuration](../docs/aou/vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) as you did for creating the VAT (minus the custom wheel) and then copy two python scripts for running locally in the notebook. The two scripts are:
+Set up a notebook in a configuration suitable for working with a VDS of the size being used as the input to VAT creation. The steps followed during the
+Delta callset for [creating a Hail cluster in a notebook](../docs/aou/vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) should be helpful here, adjusting the number of workers and preemptibles as needed.
+Once the cluster is up and running, copy two python scripts for running locally in the notebook:
 
-* `create_vat_inputs.py` which you can get via `curl -O https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/create_vat_inputs.py`
+* `create_vat_inputs.py` which you can get via the following command, replacing `your_branch_name` as appropriate: `curl -O https://raw.githubusercontent.com/broadinstitute/gatk/your_branch_name/scripts/variantstore/wdl/extract/create_vat_inputs.py`
 * The `hail_create_vat_inputs.py` output from the task `GenerateHailScripts` from the run of `GvsExtractAvroFilesForHail` workflow that was used to generate the VDS.
 
 Once you have copied them, run `python3 hail_create_vat_inputs.py` with the following input(s):
