@@ -279,6 +279,7 @@ task GenerateSitesOnlyVcf {
         python3 ./run_in_hail_cluster.py \
             --script-path ~{sites_only_vcf_script} \
             --secondary-script-path /app/create_vat_inputs.py \
+            --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
