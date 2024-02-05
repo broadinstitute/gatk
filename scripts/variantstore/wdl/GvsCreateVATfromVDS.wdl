@@ -269,7 +269,7 @@ task GenerateSitesOnlyVcf {
         {
             "vds_input_path": "~{vds_path}",
             "temp_path": "${hail_temp_path}",
-            "ancestry_input_path": "~{ancestry_file}",
+            "ancestry_input_path": "/app/~{base_name(ancestry_file)}",
             "sites_only_output_path" : "${sites_only_vcf_filename}"
         }
         FIN
@@ -277,6 +277,7 @@ task GenerateSitesOnlyVcf {
         cat script-arguments.json
 
         # Run the hail python script to make a VDS
+        gsutil cp ~{ancestry_file} /app/
         gsutil cp ~{hail_generate_sites_only_script_path} /app/
 
         python3 /app/run_in_hail_cluster.py \
