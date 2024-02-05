@@ -269,7 +269,7 @@ task GenerateSitesOnlyVcf {
         {
             "vds_input_path": "~{vds_path}",
             "temp_path": "${hail_temp_path}",
-            "ancestry_input_path": ~{ancestry_file},
+            "ancestry_input_path": "~{ancestry_file}",
             "sites_only_output_path" : "${sites_only_vcf_filename}"
         }
         FIN
@@ -291,6 +291,7 @@ task GenerateSitesOnlyVcf {
             ~{'--master-memory-fraction ' + master_memory_fraction} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
+
     runtime {
         memory: "6.5 GB"
         disks: "local-disk 100 SSD"

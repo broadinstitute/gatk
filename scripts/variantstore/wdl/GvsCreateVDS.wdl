@@ -187,7 +187,9 @@ task create_vds {
         {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
-            "avro-path": "~{avro_path}"
+            "avro-path": "~{avro_path}",
+            "intermediate-resume-point": ~{intermediate_resume_point}
+            ~{", intermediate-resume-point:" + intermediate_resume_point}
             ~{true='", use-classic-vqsr": "True"' false='' use_classic_VQSR}
         }
         FIN
@@ -205,9 +207,8 @@ task create_vds {
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
-            ~{'--intermediate-resume-point ' + intermediate_resume_point} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
-   >>>
+    >>>
 
     runtime {
         memory: "6.5 GB"
