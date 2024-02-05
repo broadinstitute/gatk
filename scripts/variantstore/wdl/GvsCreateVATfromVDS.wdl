@@ -220,7 +220,7 @@ task GenerateSitesOnlyVcf {
 
         String variants_docker
     }
-    String prefix = "vds-to-sites-only-vcf"
+    String prefix = "sites-only-vcf"
 
 
     command <<<
@@ -243,28 +243,14 @@ task GenerateSitesOnlyVcf {
         sites_only_vcf_filename="~{prefix}-${hex}.sites-only.vcf"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
-        if [[ -z "~{hail_temp_path}" ]] then
+        if [[ -z "~{hail_temp_path}" ]]
+        then
             hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
         else
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Set up the autoscaling policy
-        cat > auto-scale-policy.yaml <<FIN
-        workerConfig:
-            minInstances: 2
-            maxInstances: 2
-        secondaryWorkerConfig:
-            maxInstances: 500
-        basicAlgorithm:
-            cooldownPeriod: 120s
-            yarnConfig:
-                scaleUpFactor: 1.0
-                scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 120s
-        FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
-
+        # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
             "vds_input_path": "~{vds_path}",
@@ -280,6 +266,7 @@ task GenerateSitesOnlyVcf {
         gsutil cp ~{ancestry_file} /app/
         gsutil cp ~{hail_generate_sites_only_script_path} /app/
 
+        # Run the hail python script to make a sites-only VCF from a VDS
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
             --secondary-script-path-list /app/create_vat_inputs.py \
