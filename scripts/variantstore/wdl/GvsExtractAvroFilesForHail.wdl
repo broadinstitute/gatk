@@ -118,7 +118,7 @@ workflow GvsExtractAvroFilesForHail {
 
     call GenerateHailScripts {
         input:
-            go_non_superpartitioned = [ExtractFromFilterTables.done, ExtractFromSampleInfoTable.done],
+            go_non_superpartitioned = ExtractFromFilterTables.done && ExtractFromSampleInfoTable.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromFilterTables.output_prefix,
             variants_docker = effective_variants_docker,
@@ -379,7 +379,7 @@ task ExtractFromSuperpartitionedTables {
 task GenerateHailScripts {
     input {
         String avro_prefix
-        Array[Boolean] go_non_superpartitioned
+        Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
         String variants_docker
     }
