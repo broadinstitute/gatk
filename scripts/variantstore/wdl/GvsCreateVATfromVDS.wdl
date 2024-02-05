@@ -269,7 +269,7 @@ task GenerateSitesOnlyVcf {
         {
             "vds_input_path": "~{vds_path}",
             "temp_path": "${hail_temp_path}",
-            "ancestry_input_path": "/app/~{base_name(ancestry_file)}",
+            "ancestry_input_path": "/app/~{basename(ancestry_file)}",
             "sites_only_output_path" : "${sites_only_vcf_filename}"
         }
         FIN
