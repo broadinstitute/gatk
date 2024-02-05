@@ -266,13 +266,13 @@ task validate_vds {
         # Run the hail python script to validate a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
-        --script-path /app/vds_validation.py \
-        --script-arguments-json-path script-arguments.json \
-        --account ${account_name} \
-        --autoscaling-policy gvs-autoscaling-policy \
-        --region ~{region} \
-        --gcs-project ~{gcs_project} \
-        --cluster-name ${cluster_name}
+            --script-path /app/vds_validation.py \
+            --script-arguments-json-path script-arguments.json \
+            --account ${account_name} \
+            --autoscaling-policy gvs-autoscaling-policy \
+            --region ~{region} \
+            --gcs-project ~{gcs_project} \
+            --cluster-name ${cluster_name}
     >>>
 
     runtime {

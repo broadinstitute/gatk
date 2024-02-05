@@ -250,13 +250,13 @@ task GenerateSitesOnlyVcf {
 
         # Set up the autoscaling policy
         cat > auto-scale-policy.yaml <<FIN
-            workerConfig:
-                minInstances: 2
-                maxInstances: 2
-            secondaryWorkerConfig:
-                maxInstances: 500
-                basicAlgorithm:
-                cooldownPeriod: 120s
+        workerConfig:
+            minInstances: 2
+            maxInstances: 2
+        secondaryWorkerConfig:
+            maxInstances: 500
+        basicAlgorithm:
+            cooldownPeriod: 120s
             yarnConfig:
                 scaleUpFactor: 1.0
                 scaleDownFactor: 1.0
