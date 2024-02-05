@@ -274,6 +274,8 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
+        cat script-arguments.json
+
         # Run the hail python script to make a VDS
         gsutil cp ~{hail_generate_sites_only_script_path} /app/
 
