@@ -378,10 +378,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             loadStatus.writeLoadStatusStarted(sampleId);
         }
 
-        if (outputType == CommonCode.OutputType.BQ && shouldWriteHeadersWritten) {
-            loadStatus.writeLoadStatusHeadersWritten(sampleId);
-        }
-
         if (vcfHeaderLineScratchCreator != null) {
             try {
                 vcfHeaderLineScratchCreator.apply(allLineHeaders);
@@ -390,6 +386,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
+
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteHeadersWritten) {
+                loadStatus.writeLoadStatusHeadersWritten(sampleId);
+            }
         }
 
         if (refCreator != null) {
