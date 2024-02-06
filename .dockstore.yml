@@ -155,6 +155,8 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_1200
+         - dking-rsa-per-group-sample-info
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -202,6 +204,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1200
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery

@@ -6,7 +6,6 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
-        String? git_branch_or_tag
         String vds_destination_path
         String avro_path
         Boolean use_classic_VQSR = false
@@ -20,8 +19,10 @@ workflow GvsCreateVDS {
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String region = "us-central1"
-        String? gcs_project
+        String? workspace_gcs_project
         String? workspace_bucket
+
+        String? git_branch_or_tag
         String? variants_docker
     }
     parameter_meta {
@@ -51,7 +52,7 @@ workflow GvsCreateVDS {
     }
 
 
-    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(gcs_project) || !defined(hail_version)) {
+    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(workspace_gcs_project) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -60,7 +61,7 @@ workflow GvsCreateVDS {
 
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_google_project = select_first([gcs_project, GetToolVersions.google_project])
+    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
@@ -88,7 +89,7 @@ workflow GvsCreateVDS {
             hail_version = effective_hail_version,
             hail_temp_path = hail_temp_path,
             intermediate_resume_point = intermediate_resume_point,
-            gcs_project = effective_google_project,
+            workspace_gcs_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
@@ -105,7 +106,7 @@ workflow GvsCreateVDS {
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
-            gcs_project = effective_google_project,
+            workspace_gcs_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
@@ -133,7 +134,7 @@ task create_vds {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String gcs_project
+        String workspace_gcs_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
@@ -179,26 +180,33 @@ task create_vds {
                 scaleDownFactor: 1.0
                 gracefulDecommissionTimeout: 120s
         FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
+        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
+
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > script-arguments.json <<FIN
+        {
+            "vds-path": "~{vds_path}",
+            "temp-path": "${hail_temp_path}",
+            "avro-path": "~{avro_path}"
+            ~{", intermediate-resume-point: " + intermediate_resume_point}
+            ~{true='", use-classic-vqsr": "True"' false='' use_classic_VQSR}
+        }
+        FIN
 
         # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/hail_gvs_import.py \
-            --secondary-script-path /app/import_gvs.py \
+            --secondary-script-path-list /app/import_gvs.py \
+            --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
-            --gcs-project ~{gcs_project} \
+            --gcs-project ~{workspace_gcs_project} \
             --cluster-name ${cluster_name} \
-            --avro-path ~{avro_path} \
-            --vds-path ~{vds_path} \
-            --temp-path ${hail_temp_path} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
-            ~{'--intermediate-resume-point ' + intermediate_resume_point} \
-            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end} \
-            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 
     runtime {
@@ -222,7 +230,7 @@ task validate_vds {
         String prefix
         String vds_path
         String? hail_version
-        String gcs_project
+        String workspace_gcs_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
@@ -247,18 +255,24 @@ task validate_vds {
         echo ${cluster_name} > cluster_name.txt
         hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
-        # The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > script-arguments.json <<FIN
+        {
+            "vds-path": "~{vds_path}",
+            "temp-path": "${hail_temp_path}"
+        }
+        FIN
 
         # Run the hail python script to validate a VDS
+        # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
-        --script-path /app/vds_validation.py \
-        --account ${account_name} \
-        --autoscaling-policy gvs-autoscaling-policy \
-        --region ~{region} \
-        --gcs-project ~{gcs_project} \
-        --cluster-name ${cluster_name} \
-        --vds-path ~{vds_path} \
-        --temp-path ${hail_temp_path}
+            --script-path /app/vds_validation.py \
+            --script-arguments-json-path script-arguments.json \
+            --account ${account_name} \
+            --autoscaling-policy gvs-autoscaling-policy \
+            --region ~{region} \
+            --gcs-project ~{workspace_gcs_project} \
+            --cluster-name ${cluster_name}
     >>>
 
     runtime {

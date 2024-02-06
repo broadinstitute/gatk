@@ -6,8 +6,13 @@ import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCr
 
 workflow GvsCreateVATfromVDS {
     input {
-        File input_sites_only_vcf
+        File vds_top_dir_path
         File ancestry_file
+        String hail_generate_sites_only_script_path
+        Boolean use_classic_VQSR = false
+        Boolean leave_hail_cluster_running_at_end = false
+        String? hail_version
+        String? workspace_gcs_project
 
         String project_id
         String? git_branch_or_tag
@@ -50,6 +55,8 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
+    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -57,9 +64,24 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
+    call GenerateSitesOnlyVcf {
+        input:
+            vds_path = vds_top_dir_path,
+            use_classic_VQSR = use_classic_VQSR,
+            workspace_project = effective_google_project,
+            hail_version = effective_hail_version,
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+            ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
+            workspace_bucket = GetToolVersions.workspace_bucket,
+            region = "us-central1",
+            gcs_subnetwork_name = "subnetwork",
+            leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
+            variants_docker = effective_variants_docker,
+    }
+
     call Utils.IndexVcf {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
             gatk_docker = effective_gatk_docker,
     }
 
@@ -76,7 +98,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
+    String sites_only_vcf_basename = basename(basename(GenerateSitesOnlyVcf.sites_only_vcf, ".gz"), ".vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -84,7 +106,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = input_sites_only_vcf,
+                input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
@@ -178,7 +200,100 @@ workflow GvsCreateVATfromVDS {
     }
 }
 
-################################################################################
+
+task GenerateSitesOnlyVcf {
+    input {
+        String vds_path
+        Boolean use_classic_VQSR
+        String workspace_project
+        String workspace_bucket
+        String region
+        String gcs_subnetwork_name
+        Boolean leave_cluster_running_at_end
+        String hail_version
+        String hail_generate_sites_only_script_path
+        String ancestry_file_path
+        String? hail_temp_path
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Float? master_memory_fraction
+
+        String variants_docker
+    }
+    String prefix = "sites-only-vcf"
+
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        account_name=$(gcloud config list account --format "value(core.account)")
+
+        pip3 install --upgrade pip
+        pip3 install hail~{'==' + hail_version}
+        pip3 install --upgrade google-cloud-dataproc
+
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+
+        cluster_name="~{prefix}-${hex}"
+        echo ${cluster_name} > cluster_name.txt
+
+        sites_only_vcf_filename="~{prefix}-${hex}.sites-only.vcf"
+        echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
+
+        if [[ -z "~{hail_temp_path}" ]]
+        then
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
+
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > script-arguments.json <<FIN
+        {
+            "vds_input_path": "~{vds_path}",
+            "temp_path": "${hail_temp_path}",
+            "ancestry_input_path": "~{ancestry_file_path}",
+            "sites_only_output_path" : "${sites_only_vcf_filename}"
+        }
+        FIN
+
+        # Run the hail python script to make a VDS
+        gsutil cp ~{hail_generate_sites_only_script_path} /app/
+
+        # Run the hail python script to make a sites-only VCF from a VDS
+        python3 /app/run_in_hail_cluster.py \
+            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
+            --secondary-script-path-list /app/create_vat_inputs.py \
+            --script-arguments-json-path script-arguments.json \
+            --account ${account_name} \
+            --autoscaling-policy gvs-autoscaling-policy \
+            --region ~{region} \
+            --gcs-project ~{workspace_project} \
+            --cluster-name ${cluster_name} \
+            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+            ~{'--master-memory-fraction ' + master_memory_fraction} \
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
+    >>>
+
+    runtime {
+        memory: "6.5 GB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: 0
+        docker: variants_docker
+        bootDiskSizeGb: 10
+    }
+
+    output {
+        String cluster_name = read_string("cluster_name.txt")
+        File sites_only_vcf = read_string("sites_only_vcf_filename.txt")
+    }
+}
+
 
 task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
@@ -225,6 +340,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
+        String ancestry_file_path = input_ancestry_file
     }
 }
 
