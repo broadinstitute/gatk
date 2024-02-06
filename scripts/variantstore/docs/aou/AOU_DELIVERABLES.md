@@ -36,6 +36,7 @@
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and `use_compressed_references` to true (this will further compress the reference data).
    - `GvsBulkIngestGenomes` performs the functions of both `GvsAssignIds` and `GvsImportGenomes` with a much more scalable design. Detailed bulk ingest documentation can be found [here](../gvs-bulk-ingest-details.md).
+   - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsAssignIds` workflow
    - For use with **control** samples only!
    - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` will create a unique GVS ID for each sample (`sample_id`) and update the BQ `sample_info` table (creating it if it doesn't exist). This workflow takes care of creating the BQ `vet_*`, `ref_ranges_*` and `cost_observability` tables needed for the sample IDs generated.
