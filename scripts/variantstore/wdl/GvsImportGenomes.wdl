@@ -159,12 +159,14 @@ workflow GvsImportGenomes {
    }
  }
 
-  call SetIsLoadedColumn {
-    input:
-      load_done = LoadData.done,
-      project_id = project_id,
-      dataset_name = dataset_name,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
+  if (!load_headers_only) {
+    call SetIsLoadedColumn {
+      input:
+        load_done = LoadData.done,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
   }
 
   output {
