@@ -156,6 +156,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_vs_1200
+         - per-group-sample-info
        tags:
          - /.*/
    - name: GvsExtractCallset
