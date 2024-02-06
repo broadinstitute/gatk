@@ -233,7 +233,7 @@ def import_gvs(refs: 'List[List[str]]',
             sample_ht_fields = set(sample_ht.row.keys())
             assert {'sample_id', 'sample_name'}.issubset(sample_ht_fields), sample_ht.row
 
-                    sample_ids, sample_names = sample_ht.aggregate((
+            sample_ids, sample_names = sample_ht.aggregate((
                 hl.agg.collect(sample_ht.sample_id),
                 hl.agg.collect(sample_ht.sample_name),
             ))
