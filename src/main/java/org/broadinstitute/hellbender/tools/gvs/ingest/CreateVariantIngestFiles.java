@@ -293,7 +293,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                         enableVCFHeaderProcessing || loadHeadersOnly);
                 // Do not write the started status as that has already been written.
                 shouldWriteLoadStatusStarted = false;
-                // Do write headers written if we are only writing headers and we write headers successfully.
+                // Write HEADERS_WRITTEN status only for a successful `loadHeadersOnly` run.
                 if (loadHeadersOnly) {
                     shouldWriteHeadersWritten = true;
                 }
