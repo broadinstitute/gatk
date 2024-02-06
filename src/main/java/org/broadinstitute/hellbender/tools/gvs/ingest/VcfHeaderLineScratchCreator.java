@@ -55,8 +55,6 @@ public class VcfHeaderLineScratchCreator {
                 boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
                 boolean vcfNonScratchHeaderRowsExist = doNonScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
                 if (vcfScratchHeaderRowsExist || vcfNonScratchHeaderRowsExist) {
-                    // TODO is this idempotent? i.e. if we run this multiple times will we get multiple copies of header
-                    // TODO data for the same sample?
                     vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash, isExpectedUnique));
                 }
                 else {
