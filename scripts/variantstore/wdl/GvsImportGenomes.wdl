@@ -102,6 +102,7 @@ workflow GvsImportGenomes {
       external_sample_names = external_sample_names,
       num_samples = num_samples,
       table_name = "sample_info",
+      load_headers_only = load_headers_only,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -302,7 +303,7 @@ task LoadData {
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
             samples.sample_name = temp.sample_name WHERE
-            samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE ( status="FINISHED" ~{true='OR status = "HEADERS_LOADED"' false='' load_headers_only} )) AND
+            samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE ( status="FINISHED" ~{true='OR status = "HEADERS_WRITTEN"' false='' load_headers_only} )) AND
             samples.withdrawn is NULL' > sample_map.csv
 
     ## delete the table that was only needed for this ingest test
@@ -459,6 +460,7 @@ task GetUningestedSampleIds {
     Int num_samples
     String table_name
     String cloud_sdk_docker
+    Boolean load_headers_only = false
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -519,7 +521,7 @@ task GetUningestedSampleIds {
 
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-          samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
+          samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE ( status="FINISHED" ~{true='OR status = "HEADERS_WRITTEN"' false='' load_headers_only} )) AND
           samples.withdrawn is NULL
 
     ' > sample_map.csv
