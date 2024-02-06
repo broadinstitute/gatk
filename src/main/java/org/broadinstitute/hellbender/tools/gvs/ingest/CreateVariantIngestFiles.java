@@ -170,7 +170,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(
             fullName = "load-headers-only",
-            doc = "Load header data and a STARTED load status row only, do not write vets, ref_ranges or a FINISHED load status row.",
+            doc = "Load scratch header data, STARTED and HEADERS_WRITTEN load status rows. Do not write vets, ref_ranges or a FINISHED load status row.",
             optional = true
     )
     public boolean loadHeadersOnly = false;

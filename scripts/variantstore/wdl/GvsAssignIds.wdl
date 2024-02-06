@@ -37,7 +37,7 @@ workflow GvsAssignIds {
   }
 
   if (process_vcf_headers && load_headers_only) {
-    call Utils.TerminateWorkflow as HeaderParamaterError {
+    call Utils.TerminateWorkflow as HeaderParameterError {
       input:
         message = "Error: both process_vcf_headers and load_headers_only set to true",
         basic_docker = effective_cloud_sdk_docker,

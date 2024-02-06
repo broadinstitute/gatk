@@ -144,7 +144,7 @@ workflow GvsBulkIngestGenomes {
     }
 
     if (load_headers_only) {
-        # TODO Insert judgy header logic here, then:
+        # TODO Insert judgy header logic (aka VS-1215) here, then:
         call Utils.TerminateWorkflow as HeadersLoaded {
             input:
                 message = "Header data successfully loaded, exiting.",
