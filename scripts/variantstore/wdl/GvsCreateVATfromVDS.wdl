@@ -217,8 +217,9 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
+        String cluser_name = GenerateSitesOnlyVcf.cluster_name
         File dropped_sites_file = MergeTsvs.output_file
+        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }

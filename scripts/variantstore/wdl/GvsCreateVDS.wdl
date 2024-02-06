@@ -6,42 +6,40 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVDS {
     input {
-        String vds_destination_path
         String avro_path
-        Boolean use_classic_VQSR = false
-        Boolean leave_cluster_running_at_end = false
-        Int? intermediate_resume_point
-        Int? cluster_max_idle_minutes
-        Int? cluster_max_age_minutes
-        Float? master_memory_fraction
-        String? hail_version
-        String? hail_temp_path
+        String vds_destination_path
+
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
+        String? hail_temp_path
+        Int? intermediate_resume_point
         String region = "us-central1"
-        String? workspace_gcs_project
-        String? workspace_bucket
+
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Boolean leave_cluster_running_at_end = false
+        Float? master_memory_fraction
+        Boolean use_classic_VQSR = false
 
         String? git_branch_or_tag
+        String? hail_version
         String? variants_docker
+        String? workspace_bucket
+        String? workspace_project
     }
+
     parameter_meta {
-        # Analysis parameters, i.e., parameters that go to the Hail python code (submission_script below)
         avro_path : {
             help: "Input location for the avro files"
         }
-        vds_output_path: {
+        vds_destination_path: {
             help: "Location for the final created VDS"
         }
-        # Cluster parameters
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
         }
         gcs_subnetwork_name: {
             help: "Set to 'subnetwork' if running in Terra Cromwell"
-        }
-        region: {
-            help: "us-central1"
         }
         hail_temp_path: {
             help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
@@ -49,10 +47,12 @@ workflow GvsCreateVDS {
         intermediate_resume_point: {
             help: "Index at which to resume creating intermediate VDSes."
         }
+        region: {
+            help: "us-central1"
+        }
     }
 
-
-    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(workspace_gcs_project) || !defined(hail_version)) {
+    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(workspace_project) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -61,7 +61,7 @@ workflow GvsCreateVDS {
 
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
+    String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
@@ -80,7 +80,7 @@ workflow GvsCreateVDS {
         }
     }
 
-    call create_vds {
+    call CreateVds {
         input:
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
@@ -89,7 +89,7 @@ workflow GvsCreateVDS {
             hail_version = effective_hail_version,
             hail_temp_path = hail_temp_path,
             intermediate_resume_point = intermediate_resume_point,
-            workspace_gcs_project = effective_google_project,
+            workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
@@ -100,13 +100,13 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call validate_vds {
+    call ValidateVds {
         input:
-            go = select_first([create_vds.done, true]),
+            go = CreateVds.done,
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
-            workspace_gcs_project = effective_google_project,
+            workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
@@ -114,13 +114,14 @@ workflow GvsCreateVDS {
     }
 
     output {
-        String cluster_name = create_vds.cluster_name
+        String create_cluster_name = CreateVds.cluster_name
+        String validate_cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
 
 }
 
-task create_vds {
+task CreateVds {
     input {
         String prefix
         String vds_path
@@ -134,7 +135,7 @@ task create_vds {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String workspace_gcs_project
+        String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
@@ -180,7 +181,7 @@ task create_vds {
                 scaleDownFactor: 1.0
                 gracefulDecommissionTimeout: 120s
         FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_gcs_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
+        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -201,7 +202,7 @@ task create_vds {
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
-            --gcs-project ~{workspace_gcs_project} \
+            --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
@@ -224,13 +225,13 @@ task create_vds {
     }
 }
 
-task validate_vds {
+task ValidateVds {
     input {
         Boolean go
         String prefix
         String vds_path
         String? hail_version
-        String workspace_gcs_project
+        String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
@@ -271,7 +272,7 @@ task validate_vds {
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
-            --gcs-project ~{workspace_gcs_project} \
+            --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name}
     >>>
 
