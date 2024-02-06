@@ -241,7 +241,7 @@ def import_gvs(refs: 'List[List[str]]',
             non_str_name: List[Tuple[Any, str, str]] = []
             for sample_id, sample_name in zip(sample_ids, sample_names):
                 if not isinstance(sample_name, str):
-            non_str_name += (sample_id, sample_name)
+                    non_str_name += (sample_id, sample_name)
             assert len(non_str_name) == 0, non_str_name
 
             sample_names_lit = hl.literal(sample_names, hl.tarray(hl.tstr))
@@ -301,8 +301,8 @@ def import_gvs(refs: 'List[List[str]]',
             vds = hl.vds.VariantDataset(ref_mt, var_mt)
             vds.write(path, overwrite=True)
 
-            if skip_final_merge:
-                info("import_gvs: skipping final merge")
+    if skip_final_merge:
+        info("import_gvs: skipping final merge")
         return
 
     # compute partitioning for the final VDS
