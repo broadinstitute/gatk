@@ -155,7 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - dking-rsa-per-group-sample-info
+         - rsa_vs_1207
        tags:
          - /.*/
    - name: GvsExtractCallset
