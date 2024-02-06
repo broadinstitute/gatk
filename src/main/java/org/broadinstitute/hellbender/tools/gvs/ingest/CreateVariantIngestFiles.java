@@ -293,7 +293,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                         enableVCFHeaderProcessing || loadHeadersOnly);
                 // Do not write the started status as that has already been written.
                 shouldWriteLoadStatusStarted = false;
-                // Do write headers written if we are only writing headers and we writer headers successfully.
+                // Do write headers written if we are only writing headers and we write headers successfully.
                 if (loadHeadersOnly) {
                     shouldWriteHeadersWritten = true;
                 }
@@ -410,7 +410,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator.commitData();
         }
 
-        // Upload the load status table unless we are only loading headers.
+        // Update the load status table unless we are only loading headers.
         if (outputType == CommonCode.OutputType.BQ && !loadHeadersOnly) {
             loadStatus.writeLoadStatusFinished(sampleId);
         }
