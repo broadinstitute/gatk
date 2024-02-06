@@ -231,7 +231,7 @@ def import_gvs(refs: 'List[List[str]]',
             # reference blocks.
             sample_ht = hl.import_avro([sample_mapping_group])
             sample_ht_fields = set(sample_ht.row.keys())
-            assert {'sample_id', 'sample_name}.issubset(sample_ht_fields), sample_ht.row
+            assert {'sample_id', 'sample_name'}.issubset(sample_ht_fields), sample_ht.row
 
                     sample_ids, sample_names = sample_ht.aggregate((
                 hl.agg.collect(sample_ht.sample_id),
