@@ -23,6 +23,7 @@ workflow GvsCreateVDS {
 
         String? git_branch_or_tag
         String? hail_version
+        File? hail_wheel
         String? variants_docker
         String? workspace_bucket
         String? workspace_project
@@ -50,6 +51,12 @@ workflow GvsCreateVDS {
         region: {
             help: "us-central1"
         }
+        hail_version: {
+            help: "Optional Hail version, defaults to 0.2.126. Cannot define both this parameter and `hail_wheel`."
+        }
+        hail_wheel: {
+            help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
+        }
     }
 
     if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(workspace_project) || !defined(hail_version)) {
@@ -62,6 +69,15 @@ workflow GvsCreateVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
+
+    if (defined(hail_version) && defined(hail_wheel)) {
+        call Utils.TerminateWorkflow as BothHailVersionAndHailWheelDefined {
+            input:
+                message = "Cannot define both `hail_version` and `hail_wheel`, exiting.",
+                basic_docker = effective_variants_docker,
+        }
+    }
+
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
@@ -87,6 +103,7 @@ workflow GvsCreateVDS {
             avro_path = avro_path,
             use_classic_VQSR = use_classic_VQSR,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
@@ -129,6 +146,7 @@ task CreateVds {
         Boolean use_classic_VQSR
         Boolean leave_cluster_running_at_end
         String? hail_version
+        File? hail_wheel
         String? hail_temp_path
         Int? intermediate_resume_point
         Int? cluster_max_idle_minutes
@@ -151,7 +169,14 @@ task CreateVds {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
+
+        if [[ ! -z "~{hail_wheel}" ]]
+        then
+            pip3 install ~{hail_wheel}
+        else
+            pip3 install hail~{'==' + hail_version}
+        fi
+
         pip3 install --upgrade google-cloud-dataproc
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
