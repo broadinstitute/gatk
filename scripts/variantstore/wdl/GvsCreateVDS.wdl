@@ -27,6 +27,7 @@ workflow GvsCreateVDS {
         String? variants_docker
         String? workspace_bucket
         String? workspace_project
+        String? cloud_sdk_slim_docker
     }
 
     parameter_meta {
@@ -69,6 +70,7 @@ workflow GvsCreateVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
 
     if (defined(hail_version) && defined(hail_wheel)) {
         call Utils.TerminateWorkflow as BothHailVersionAndHailWheelDefined {
@@ -98,6 +100,7 @@ workflow GvsCreateVDS {
 
     call CreateVds {
         input:
+            go = select_first([NeedHailTempPath.done, NeedIntermediateResumePoint.done, true]),
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             avro_path = avro_path,
@@ -110,7 +113,7 @@ workflow GvsCreateVDS {
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = effective_variants_docker,
+            variants_docker = if (defined(hail_wheel)) then effective_cloud_sdk_slim_docker else effective_variants_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
@@ -140,6 +143,7 @@ workflow GvsCreateVDS {
 
 task CreateVds {
     input {
+        Boolean go = true
         String prefix
         String vds_path
         String avro_path

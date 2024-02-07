@@ -115,6 +115,7 @@ workflow GvsQuickstartHailIntegration {
             gcs_subnetwork_name = "subnetwork",
             region = "us-central1",
             variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             cluster_max_age_minutes = 120,
             cluster_max_idle_minutes = 60,
     }
