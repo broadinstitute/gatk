@@ -78,7 +78,7 @@ task BigQueryExportVat {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # note: tab delimiter and compression creates tsv.gz files
@@ -170,9 +170,9 @@ task BigQueryExportVat {
         gnomad_fin_ac,
         gnomad_fin_an,
         gnomad_fin_af,
-        gnomad_nfr_ac,
-        gnomad_nfr_an,
-        gnomad_nfr_af,
+        gnomad_nfe_ac,
+        gnomad_nfe_an,
+        gnomad_nfe_af,
         gnomad_sas_ac,
         gnomad_sas_an,
         gnomad_sas_af,
@@ -264,7 +264,7 @@ task MergeVatTSVs {
 
         echo_date "making header.gz"
         # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
-        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfr_ac\tgnomad_nfr_an\tgnomad_nfr_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype" | gzip > header.gz
+        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfe_ac\tgnomad_nfe_an\tgnomad_nfe_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype" | gzip > header.gz
 
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz

@@ -72,7 +72,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2024-01-19-alpine-f53db7781"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2024-02-07-alpine-2f44c9557"
     String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_01_18_cea8973af4051ad87635dceb1eb1b9ca32ef628d"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -820,6 +820,7 @@ task IsUsingCompressedReferences {
   input {
     String project_id
     String dataset_name
+    String ref_table_timestamp
     String cloud_sdk_docker
   }
   command <<<
