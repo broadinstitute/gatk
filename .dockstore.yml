@@ -334,6 +334,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1214_mini_vdses_for_hail
          tags:
              - /.*/
    - name: GvsCallsetStatistics

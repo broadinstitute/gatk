@@ -108,7 +108,7 @@ workflow GvsExtractAvroFilesForHail {
                 dataset_name = dataset_name,
                 call_set_identifier = call_set_identifier,
                 avro_sibling = OutputPath.out,
-                num_superpartitions = CountSuperpartitions.num_superpartitions,
+                num_superpartitions = 1,
                 shard_index = i,
                 num_shards = scatter_width,
                 variants_docker = effective_variants_docker,
