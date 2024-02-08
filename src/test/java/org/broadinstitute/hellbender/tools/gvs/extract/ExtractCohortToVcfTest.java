@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.tools.gvs.common.VetRangesExtractVersionEnum;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
@@ -59,6 +60,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("local-sort-max-records-in-ram", 10000000)
             .add("ref-ranges-avro-file-name", quickstart10mbRefRangesAvroFile)
             .add("vet-avro-file-name", quickstart10mbVetAvroFile)
+            .add("vet-ranges-extract-table-version", VetRangesExtractVersionEnum.V2)
             .add("sample-file", quickstartSampleListFile)
             .add("L", "chr20:10000000-20000000");
 
@@ -95,6 +97,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("local-sort-max-records-in-ram", 10000000)
         .add("ref-ranges-avro-file-name", quickstart10mbRefRangesAvroFile)
         .add("vet-avro-file-name", quickstart10mbVetAvroFile)
+        .add("vet-ranges-extract-table-version", VetRangesExtractVersionEnum.V2)
         .add("sample-file", quickstartSampleListFile)
         .add("L", "chr20:10000000-20000000");
 
