@@ -48,33 +48,6 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    # only run these tests if the callset is a certain size
-    if (GetNumSamplesLoaded.num_samples > 10000) {
-        call ClinvarSignificance {
-            input:
-                project_id = project_id,
-                fq_vat_table = fq_vat_table,
-                last_modified_timestamp = VatDateTime.last_modified_timestamp,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
-
-        call SpotCheckForAAChangeAndExonNumberConsistency {
-            input:
-                project_id = project_id,
-                fq_vat_table = fq_vat_table,
-                last_modified_timestamp = VatDateTime.last_modified_timestamp,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
-
-        call CheckForNullColumns {
-            input:
-                project_id = project_id,
-                fq_vat_table = fq_vat_table,
-                last_modified_timestamp = VatDateTime.last_modified_timestamp,
-                variants_docker = effective_variants_docker
-        }
-    }
-
     call EnsureVatTableHasVariants {
         input:
             project_id = project_id,
@@ -179,67 +152,147 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    call GenerateFinalReport {
-        input:
-            pf_flags = [
-                       EnsureVatTableHasVariants.pass,
-                       SpotCheckForExpectedTranscripts.pass,
-                       SchemaOnlyOneRowPerNullTranscript.pass,
-                       SchemaNullTranscriptsExist.pass,
-                       SchemaNoNullRequiredFields.pass,
-                       SchemaPrimaryKey.pass,
-                       SchemaEnsemblTranscripts.pass,
-                       SchemaNonzeroAcAn.pass,
-                       SubpopulationMax.pass,
-                       SubpopulationAlleleCount.pass,
-                       SubpopulationAlleleNumber.pass,
-                       DuplicateAnnotations.pass,
-                       ClinvarSignificance.pass,
-                       SchemaAAChangeAndExonNumberConsistent.pass,
-                       SpotCheckForAAChangeAndExonNumberConsistency.pass,
-                       CheckForNullColumns.pass
-                       ],
-            validation_names = [
-                               EnsureVatTableHasVariants.name,
-                               SpotCheckForExpectedTranscripts.name,
-                               SchemaOnlyOneRowPerNullTranscript.name,
-                               SchemaNullTranscriptsExist.name,
-                               SchemaNoNullRequiredFields.name,
-                               SchemaPrimaryKey.name,
-                               SchemaEnsemblTranscripts.name,
-                               SchemaNonzeroAcAn.name,
-                               SubpopulationMax.name,
-                               SubpopulationAlleleCount.name,
-                               SubpopulationAlleleNumber.name,
-                               DuplicateAnnotations.name,
-                               ClinvarSignificance.name,
-                               SchemaAAChangeAndExonNumberConsistent.name,
-                               SpotCheckForAAChangeAndExonNumberConsistency.name,
-                               CheckForNullColumns.name
-                               ],
-            validation_results = [
-                                 EnsureVatTableHasVariants.result,
-                                 SpotCheckForExpectedTranscripts.result,
-                                 SchemaOnlyOneRowPerNullTranscript.result,
-                                 SchemaNullTranscriptsExist.result,
-                                 SchemaNoNullRequiredFields.result,
-                                 SchemaPrimaryKey.result,
-                                 SchemaEnsemblTranscripts.result,
-                                 SchemaNonzeroAcAn.result,
-                                 SubpopulationMax.result,
-                                 SubpopulationAlleleCount.result,
-                                 SubpopulationAlleleNumber.result,
-                                 DuplicateAnnotations.result,
-                                 ClinvarSignificance.result,
-                                 SchemaAAChangeAndExonNumberConsistent.result,
-                                 SpotCheckForAAChangeAndExonNumberConsistency.result,
-                                 CheckForNullColumns.result
-                                 ],
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+    # only check certain things if the callset is larger than 10,000 samples (a guess)
+    Boolean callset_is_small = GetNumSamplesLoaded.num_samples > 10000
+    if (!callset_is_small) {
+        call ClinvarSignificance {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call SpotCheckForAAChangeAndExonNumberConsistency {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call CheckForNullColumns {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                variants_docker = effective_variants_docker
+        }
+
+        call GenerateFinalReport as GenerateFinalReportLargeCallset {
+            input:
+                pf_flags = [
+                           EnsureVatTableHasVariants.pass,
+                           SpotCheckForExpectedTranscripts.pass,
+                           SchemaOnlyOneRowPerNullTranscript.pass,
+                           SchemaNullTranscriptsExist.pass,
+                           SchemaNoNullRequiredFields.pass,
+                           SchemaPrimaryKey.pass,
+                           SchemaEnsemblTranscripts.pass,
+                           SchemaNonzeroAcAn.pass,
+                           SubpopulationMax.pass,
+                           SubpopulationAlleleCount.pass,
+                           SubpopulationAlleleNumber.pass,
+                           DuplicateAnnotations.pass,
+                           ClinvarSignificance.pass,
+                           SchemaAAChangeAndExonNumberConsistent.pass,
+                           SpotCheckForAAChangeAndExonNumberConsistency.pass,
+                           CheckForNullColumns.pass
+                           ],
+                validation_names = [
+                                   EnsureVatTableHasVariants.name,
+                                   SpotCheckForExpectedTranscripts.name,
+                                   SchemaOnlyOneRowPerNullTranscript.name,
+                                   SchemaNullTranscriptsExist.name,
+                                   SchemaNoNullRequiredFields.name,
+                                   SchemaPrimaryKey.name,
+                                   SchemaEnsemblTranscripts.name,
+                                   SchemaNonzeroAcAn.name,
+                                   SubpopulationMax.name,
+                                   SubpopulationAlleleCount.name,
+                                   SubpopulationAlleleNumber.name,
+                                   DuplicateAnnotations.name,
+                                   ClinvarSignificance.name,
+                                   SchemaAAChangeAndExonNumberConsistent.name,
+                                   SpotCheckForAAChangeAndExonNumberConsistency.name,
+                                   CheckForNullColumns.name
+                                   ],
+                validation_results = [
+                                     EnsureVatTableHasVariants.result,
+                                     SpotCheckForExpectedTranscripts.result,
+                                     SchemaOnlyOneRowPerNullTranscript.result,
+                                     SchemaNullTranscriptsExist.result,
+                                     SchemaNoNullRequiredFields.result,
+                                     SchemaPrimaryKey.result,
+                                     SchemaEnsemblTranscripts.result,
+                                     SchemaNonzeroAcAn.result,
+                                     SubpopulationMax.result,
+                                     SubpopulationAlleleCount.result,
+                                     SubpopulationAlleleNumber.result,
+                                     DuplicateAnnotations.result,
+                                     ClinvarSignificance.result,
+                                     SchemaAAChangeAndExonNumberConsistent.result,
+                                     SpotCheckForAAChangeAndExonNumberConsistency.result,
+                                     CheckForNullColumns.result
+                                     ],
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+    }
+
+    if (callset_is_small) {
+        call GenerateFinalReport as GenerateFinalReportSmallCallset {
+            input:
+                pf_flags = [
+                           EnsureVatTableHasVariants.pass,
+                           SpotCheckForExpectedTranscripts.pass,
+                           SchemaOnlyOneRowPerNullTranscript.pass,
+                           SchemaNullTranscriptsExist.pass,
+                           SchemaNoNullRequiredFields.pass,
+                           SchemaPrimaryKey.pass,
+                           SchemaEnsemblTranscripts.pass,
+                           SchemaNonzeroAcAn.pass,
+                           SubpopulationMax.pass,
+                           SubpopulationAlleleCount.pass,
+                           SubpopulationAlleleNumber.pass,
+                           DuplicateAnnotations.pass,
+                           SchemaAAChangeAndExonNumberConsistent.pass
+                           ],
+                validation_names = [
+                                   EnsureVatTableHasVariants.name,
+                                   SpotCheckForExpectedTranscripts.name,
+                                   SchemaOnlyOneRowPerNullTranscript.name,
+                                   SchemaNullTranscriptsExist.name,
+                                   SchemaNoNullRequiredFields.name,
+                                   SchemaPrimaryKey.name,
+                                   SchemaEnsemblTranscripts.name,
+                                   SchemaNonzeroAcAn.name,
+                                   SubpopulationMax.name,
+                                   SubpopulationAlleleCount.name,
+                                   SubpopulationAlleleNumber.name,
+                                   DuplicateAnnotations.name,
+                                   SchemaAAChangeAndExonNumberConsistent.name,
+                                   ],
+                validation_results = [
+                                     EnsureVatTableHasVariants.result,
+                                     SpotCheckForExpectedTranscripts.result,
+                                     SchemaOnlyOneRowPerNullTranscript.result,
+                                     SchemaNullTranscriptsExist.result,
+                                     SchemaNoNullRequiredFields.result,
+                                     SchemaPrimaryKey.result,
+                                     SchemaEnsemblTranscripts.result,
+                                     SchemaNonzeroAcAn.result,
+                                     SubpopulationMax.result,
+                                     SubpopulationAlleleCount.result,
+                                     SubpopulationAlleleNumber.result,
+                                     DuplicateAnnotations.result,
+                                     SchemaAAChangeAndExonNumberConsistent.result
+                                     ],
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
     }
 
     output {
-        String validation_results = GenerateFinalReport.results
+        String validation_results = select_first([GenerateFinalReportLargeCallset.results, GenerateFinalReportSmallCallset.results])
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }
