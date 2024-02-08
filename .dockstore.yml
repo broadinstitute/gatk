@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_1207
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -305,6 +306,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1207
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -332,6 +334,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1207
          tags:
              - /.*/
    - name: GvsCallsetStatistics
@@ -358,7 +361,6 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
