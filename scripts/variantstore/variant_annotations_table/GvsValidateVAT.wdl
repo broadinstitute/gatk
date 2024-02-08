@@ -526,10 +526,10 @@ task SchemaOnlyOneRowPerNullTranscript {
             transcript_source is NULL AND
             transcript is NULL
         GROUP BY vid
-        HAVING num_rows > 1' > bq_variant_count.csv
+        HAVING num_rows > 1' > bq_variant_count.txt
 
         # get number of lines in bq query output
-        NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
+        NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.txt)
 
         echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there were vids with null transcripts and multiple
@@ -538,8 +538,8 @@ task SchemaOnlyOneRowPerNullTranscript {
             echo "The VAT table ~{fq_vat_table} only has 1 row per vid with a null transcript" > ~{results_file}
             echo "true" > ~{pf_file}
         else
-            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row: [csv output follows] " > ~{results_file}
-            cat bq_variant_count.csv >> ~{results_file}
+            tr "\n" "; " < bq_variant_count.txt > bq_variant_count_list.txt
+            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row:  $(cat bq_variant_count_list.txt) " > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
