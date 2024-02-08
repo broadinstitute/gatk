@@ -239,7 +239,7 @@ task CreateVds {
         # Run the hail python script to make a VDS
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_gvs_import_script} \
-            --secondary-script-path ~{gvs_import_script} \
+            --secondary-script-path-list ~{gvs_import_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -324,9 +324,7 @@ task ValidateVds {
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
-            --cluster-name ${cluster_name} \
-            --vds-path ~{vds_path} \
-            --temp-path ${hail_temp_path}
+            --cluster-name ${cluster_name}
     >>>
 
     runtime {
