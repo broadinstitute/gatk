@@ -63,7 +63,8 @@ workflow GvsExtractCallset {
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
   String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
-  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__VET_DATA"
+  String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
@@ -187,6 +188,15 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  call Utils.GetExtractVetTableVersion {
+    input:
+      query_project = query_project,
+      data_project = project_id,
+      dataset_name = dataset_name,
+      table_name = fq_ranges_cohort_vet_extract_table_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}.vcf.gz"
@@ -208,6 +218,7 @@ workflow GvsExtractCallset {
         fq_cohort_extract_table            = fq_cohort_extract_table,
         fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
+        vet_extract_table_version          = GetExtractVetTableVersion.version,
         read_project_id                    = query_project,
         do_not_filter_override             = do_not_filter_override,
         fq_filter_set_info_table           = fq_filter_set_info_table,
@@ -294,6 +305,7 @@ task ExtractTask {
     String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
+    String? vet_extract_table_version
     String read_project_id
     String output_file
     String? output_gcs_dir
@@ -359,6 +371,7 @@ task ExtractTask {
     gatk --java-options "-Xmx~{memory_gib - 3}g" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \

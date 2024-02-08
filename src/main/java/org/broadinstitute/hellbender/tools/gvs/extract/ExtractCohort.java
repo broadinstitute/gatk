@@ -61,14 +61,20 @@ public abstract class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "vet-ranges-extract-fq-table",
-            doc = "EXPERIMENTAL - ",
+            doc = "Fully qualified name for the VET table prepared for extract.",
             optional = true
     )
     private String fqRangesExtractVetTable = null;
 
+    @Argument(fullName = "vet-ranges-extract-table-version",
+            doc = "Version of the vet ranges extract table - for maintaining backwards-compatibility",
+            optional = true)
+    private VetRangesExtractVersionEnum vetRangesExtractTableVersion = VetRangesExtractVersionEnum.V2;
+
+
     @Argument(
             fullName = "ref-ranges-extract-fq-table",
-            doc = "EXPERIMENTAL - ",
+            doc = "Fully qualified name for the REF_RANGES table prepared for extract.",
             optional = true
     )
     private String fqRangesExtractRefTable = null;
@@ -234,7 +240,6 @@ public abstract class ExtractCohort extends ExtractTool {
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
-
         headerLines.addAll(extraHeaders);
 
         final VCFHeader header = new VCFHeader(headerLines, sampleNames);
@@ -360,6 +365,12 @@ public abstract class ExtractCohort extends ExtractTool {
 
         reference = directlyAccessEngineReferenceDataSource();
 
+        if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V2) {
+            extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+            extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+            extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHASE_SET_KEY));
+        }
+
         header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
@@ -398,6 +409,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         sampleIdToName,
                         vetRangesFQDataSet,
                         fqRangesExtractVetTable,
+                        vetRangesExtractTableVersion,
                         fqRangesExtractRefTable,
                         vetAvroFileName,
                         refRangesAvroFileName,
@@ -426,6 +438,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         sampleIdToName,
                         vetRangesFQDataSet,
                         fqRangesExtractVetTable,
+                        vetRangesExtractTableVersion,
                         fqRangesExtractRefTable,
                         vetAvroFileName,
                         refRangesAvroFileName,
