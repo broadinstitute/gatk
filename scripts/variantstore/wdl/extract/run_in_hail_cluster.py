@@ -1,6 +1,6 @@
 import argparse
+import ijson
 import os
-import uuid
 from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
@@ -24,15 +24,7 @@ def unwrap(string):
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, gcs_project,
-                   autoscaling_policy, script_path, secondary_script_path, use_classic_vqsr, vds_path, temp_path,
-                   avro_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes,
-                   master_memory_fraction, intermediate_resume_point):
-
-    use_classic_vqsr_flag = "--use-classic-vqsr" if use_classic_vqsr else ''
-    avro_path_arg = f"--avro-path {avro_path}" if avro_path else ''
-    secondary_script_path_arg = f'--py-files {secondary_script_path}' if secondary_script_path else ''
-    intermediate_resume_point_arg = \
-        f'--intermediate-resume-point {intermediate_resume_point}' if intermediate_resume_point else ''
+                   autoscaling_policy, script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
@@ -71,6 +63,13 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
         )
 
+        # prepare custom arguments
+        secondary_script_path_arg = f'--py-files {" ".join(secondary_script_path_list)}' if secondary_script_path_list else ''
+        with open(script_arguments_json_path, 'r') as input_file:
+            items = ijson.items(input_file, '', use_float=True)
+            arguments = items.__next__();
+            custom_script_args = [f"--{key} {arguments.get(key)}" for key in arguments.keys()]
+
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
                 submit_cmd = unwrap(f"""
@@ -83,11 +82,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                  --account {account}
                  --driver-log-levels root=WARN
                  --
-                 --vds-path {vds_path}
-                 --temp-path {temp_path}
-                 {avro_path_arg}
-                 {intermediate_resume_point_arg}
-                 {use_classic_vqsr_flag}
+                 {' '.join(custom_script_args)}
                 """)
 
                 info("Running: " + submit_cmd)
@@ -142,18 +137,13 @@ if __name__ == "__main__":
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--autoscaling-policy', type=str, help='Name of the autoscaling policy that should get used')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
-    parser.add_argument('--secondary-script-path', type=str, required=False,
-                        help='Path to secondary script to run in Hail cluster')
-    parser.add_argument("--use-classic-vqsr", action="store_true",
-                        help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
-    parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
-    parser.add_argument('--avro-path', type=str, required=False, help='Avro URL')
-    parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
+    parser.add_argument('--secondary-script-path-list', type=str, required=False, action="append", default=[],
+                        help='List of paths to secondary scripts to run in Hail cluster')
+    parser.add_argument('--script-arguments-json-path', type=str, required=True,
+                        help='JSON file of arguments for script')
+    parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
-    parser.add_argument('--intermediate-resume-point', type=int, required=False,
-                        help='Intermediate VDS index at which to resume')
-    parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
 
     args = parser.parse_args()
 
@@ -165,14 +155,10 @@ if __name__ == "__main__":
                    gcs_project=args.gcs_project,
                    autoscaling_policy=args.autoscaling_policy,
                    script_path=args.script_path,
-                   secondary_script_path=args.secondary_script_path,
-                   use_classic_vqsr=args.use_classic_vqsr,
-                   vds_path=args.vds_path,
-                   temp_path=args.temp_path,
-                   avro_path=args.avro_path,
+                   secondary_script_path_list=args.secondary_script_path_list,
+                   script_arguments_json_path=args.script_arguments_json_path,
                    leave_cluster_running_at_end=args.leave_cluster_running_at_end,
                    cluster_max_idle_minutes=args.cluster_max_idle_minutes,
                    cluster_max_age_minutes=args.cluster_max_age_minutes,
                    master_memory_fraction=args.master_memory_fraction,
-                   intermediate_resume_point=args.intermediate_resume_point
                    )

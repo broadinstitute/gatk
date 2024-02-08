@@ -6,33 +6,61 @@ import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCr
 
 workflow GvsCreateVATfromVDS {
     input {
-        File input_sites_only_vcf
         File ancestry_file
-
-        String project_id
-        String? git_branch_or_tag
         String dataset_name
         String filter_set_name
-        String? vat_version
-
-        Int effective_scatter_count = 10
-
+        String hail_generate_sites_only_script_path
         String output_path
-        Int? split_intervals_disk_size_override
-        Int? split_intervals_mem_override
-        Int? merge_vcfs_disk_size_override
+        String project_id
+        File vds_path
 
         String? basic_docker
+        String? git_branch_or_tag
+        String? hail_version
+        String? vat_version
+        String? workspace_gcs_project
+
+        Int effective_scatter_count = 10
+        Boolean leave_hail_cluster_running_at_end = false
+        Int? merge_vcfs_disk_size_override
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
+        Boolean use_classic_VQSR = false
+        Boolean use_reference_disk = true
+
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
-        String? variants_docker
         String? gatk_docker
+        String? variants_docker
         String? variants_nirvana_docker
-        Boolean use_reference_disk = true
     }
 
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    parameter_meta {
+        ancestry_file: {
+            help: "TSV file in GCS where the first column is the research ID and the last is the derived ancestry"
+        }
+        dataset_name: {
+            help: "BigQuery dataset name for GVS"
+        }
+        filter_set_name: {
+            help: "name of the filter set used to generate the callset in GVS"
+        }
+        hail_generate_sites_only_script_path: {
+            help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
+        }
+        output_path: {
+            help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
+        }
+        project_id: {
+            help: "Google project ID for the GVS BigQuery dataset"
+        }
+        vds_path: {
+            help: "the top-level directory of the GVS VDS to be used to create the VAT"
+        }
+    }
 
+
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
@@ -50,6 +78,8 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
+    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -57,9 +87,24 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
+    call GenerateSitesOnlyVcf {
+        input:
+            vds_path = vds_path,
+            use_classic_VQSR = use_classic_VQSR,
+            workspace_project = effective_google_project,
+            hail_version = effective_hail_version,
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+            ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
+            workspace_bucket = GetToolVersions.workspace_bucket,
+            region = "us-central1",
+            gcs_subnetwork_name = "subnetwork",
+            leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
+            variants_docker = effective_variants_docker,
+    }
+
     call Utils.IndexVcf {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
             gatk_docker = effective_gatk_docker,
     }
 
@@ -76,7 +121,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
+    String sites_only_vcf_basename = basename(GenerateSitesOnlyVcf.sites_only_vcf, ".sites-only.vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -84,7 +129,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = input_sites_only_vcf,
+                input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
@@ -172,13 +217,107 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
+        String cluser_name = GenerateSitesOnlyVcf.cluster_name
         File dropped_sites_file = MergeTsvs.output_file
+        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 
-################################################################################
+
+task GenerateSitesOnlyVcf {
+    input {
+        String vds_path
+        Boolean use_classic_VQSR
+        String workspace_project
+        String workspace_bucket
+        String region
+        String gcs_subnetwork_name
+        Boolean leave_cluster_running_at_end
+        String hail_version
+        String hail_generate_sites_only_script_path
+        String ancestry_file_path
+        String? hail_temp_path
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Float? master_memory_fraction
+
+        String variants_docker
+    }
+    String prefix = "sites-only-vcf"
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        account_name=$(gcloud config list account --format "value(core.account)")
+
+        pip3 install --upgrade pip
+        pip3 install hail~{'==' + hail_version}
+        pip3 install --upgrade google-cloud-dataproc
+
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+
+        cluster_name="~{prefix}-${hex}"
+        echo ${cluster_name} > cluster_name.txt
+
+        sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
+        echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
+
+        if [[ -z "~{hail_temp_path}" ]]
+        then
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
+
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > script-arguments.json <<FIN
+        {
+            "vds_input_path": "~{vds_path}",
+            "temp_path": "${hail_temp_path}",
+            "ancestry_input_path": "~{ancestry_file_path}",
+            "sites_only_output_path" : "${sites_only_vcf_filename}"
+        }
+        FIN
+
+        # Run the hail python script to make a VDS
+        gsutil cp ~{hail_generate_sites_only_script_path} /app/
+
+        # Run the hail python script to make a sites-only VCF from a VDS
+        # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
+        python3 /app/run_in_hail_cluster.py \
+            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
+            --secondary-script-path-list /app/create_vat_inputs.py \
+            --script-arguments-json-path script-arguments.json \
+            --account ${account_name} \
+            --autoscaling-policy gvs-autoscaling-policy \
+            --region ~{region} \
+            --gcs-project ~{workspace_project} \
+            --cluster-name ${cluster_name} \
+            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+            ~{'--master-memory-fraction ' + master_memory_fraction} \
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
+    >>>
+
+    runtime {
+        memory: "6.5 GB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: 0
+        docker: variants_docker
+        bootDiskSizeGb: 10
+    }
+
+    output {
+        String cluster_name = read_string("cluster_name.txt")
+        File sites_only_vcf = read_string("sites_only_vcf_filename.txt")
+    }
+}
+
 
 task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
@@ -207,8 +346,6 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
             --custom_annotations_template_path ~{custom_annotations_template_filename}
     >>>
 
-    # ------------------------------------------------
-    # Runtime settings:
     runtime {
         docker: variants_docker
         memory: "1 GB"
@@ -216,8 +353,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         File vat_schema_json_file = vat_schema_json_filename
         File variant_transcript_schema_json_file = variant_transcript_schema_json_filename
@@ -225,6 +361,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
+        String ancestry_file_path = input_ancestry_file
     }
 }
 
@@ -255,8 +392,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         --output_custom_annotations_tsv ~{output_custom_annotations_filename}
 
     >>>
-    # ------------------------------------------------
-    # Runtime settings:
+
     runtime {
         docker: variants_docker
         memory: "7 GiB"
@@ -264,8 +400,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         preemptible: 3
         disks: "local-disk " + disk_size + " HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         File output_vcf = output_vcf_name
         File output_custom_annotations_file = output_custom_annotations_filename
@@ -343,8 +478,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
         echo_date "VAT: finished"
     >>>
-    # ------------------------------------------------
-    # Runtime settings:
+
     runtime {
         docker: variants_docker
         maxRetries: 3
@@ -353,8 +487,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         cpu: "8"
         disks: "local-disk " + disk_size + " HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         File track_dropped = "track_dropped.tsv"
         File output_vcf = "deduplicated.vcf"
@@ -475,8 +608,7 @@ task AnnotateVCF {
         --out ~{positions_annotation_json_name}
 
     >>>
-    # ------------------------------------------------
-    # Runtime settings:
+
     runtime {
         docker: variants_nirvana_docker
         memory: "64 GB"
@@ -485,8 +617,7 @@ task AnnotateVCF {
         maxRetries: 2
         disks: "local-disk 2000 HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         File genes_annotation_json = "~{gene_annotation_json_name}"
         File positions_annotation_json = "~{positions_annotation_json_name}"
@@ -526,8 +657,7 @@ task PrepVtAnnotationJson {
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
 
     >>>
-    # ------------------------------------------------
-    # Runtime settings:
+
     runtime {
         docker: variants_docker
         memory: "7 GB"
@@ -535,8 +665,7 @@ task PrepVtAnnotationJson {
         cpu: "1"
         disks: "local-disk 500 HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         File vat_vt_json="~{output_vt_json}"
         Boolean done = true
@@ -575,8 +704,7 @@ task PrepGenesAnnotationJson {
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
     >>>
-    # ------------------------------------------------
-    # Runtime settings:
+
     runtime {
         docker: variants_docker
         memory: "7 GB"
@@ -584,8 +712,7 @@ task PrepGenesAnnotationJson {
         cpu: "1"
         disks: "local-disk 500 HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         File vat_genes_json="~{output_genes_json}"
         Boolean done = true
@@ -795,8 +922,7 @@ task BigQueryLoadJson {
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
         on v.gene_symbol = g.gene_symbol'
     >>>
-    # ------------------------------------------------
-    # Runtime settings:
+
     runtime {
         docker: cloud_sdk_docker
         memory: "3 GB"
@@ -804,8 +930,7 @@ task BigQueryLoadJson {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Outputs:
+
     output {
         String vat_table_name = vat_table
         Boolean done = true
