@@ -346,6 +346,10 @@ task GetHailScripts {
     input {
         String variants_docker
     }
+    meta {
+        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
+        # the script content should also stay the same.
+    }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
