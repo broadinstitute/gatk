@@ -13,6 +13,7 @@ workflow GvsValidateVat {
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
+    String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -24,18 +25,61 @@ workflow GvsValidateVat {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-    call Utils.GetBQTableLastModifiedDatetime {
+    call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+        input:
+        project_id = project_id,
+        fq_table = fq_vat_table,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    call Utils.GetNumSamplesLoaded {
+        input:
+            fq_sample_table = fq_sample_table,
+            project_id = project_id,
+            sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+            control_samples = false,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    call Utils.GetBQTableLastModifiedDatetime as VatDateTime {
         input:
             project_id = project_id,
             fq_table = fq_vat_table,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    # only run these tests if the callset is a certain size
+    if (GetNumSamplesLoaded.num_samples > 10000) {
+        call ClinvarSignificance {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call SpotCheckForAAChangeAndExonNumberConsistency {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call CheckForNullColumns {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                variants_docker = effective_variants_docker
+        }
+    }
+
     call EnsureVatTableHasVariants {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -43,7 +87,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -51,7 +95,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -59,7 +103,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -67,7 +111,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -75,7 +119,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -83,7 +127,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -91,7 +135,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -99,7 +143,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -107,7 +151,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -115,7 +159,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -123,15 +167,7 @@ workflow GvsValidateVat {
         input:
             query_project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call ClinvarSignificance {
-        input:
-            project_id = project_id,
-            fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -139,24 +175,8 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call SpotCheckForAAChangeAndExonNumberConsistency {
-        input:
-            project_id = project_id,
-            fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call CheckForNullColumns {
-        input:
-            project_id = project_id,
-            fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            variants_docker = effective_variants_docker
     }
 
     call GenerateFinalReport {

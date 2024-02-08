@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_1200
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -203,7 +202,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1200
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -224,7 +222,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1200
+             - rsa_vs_823
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
