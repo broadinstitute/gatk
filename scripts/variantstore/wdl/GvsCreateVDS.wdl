@@ -113,7 +113,7 @@ workflow GvsCreateVDS {
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = if (defined(hail_wheel)) then effective_cloud_sdk_slim_docker else effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
@@ -162,7 +162,7 @@ task CreateVds {
         String region
         String gcs_subnetwork_name
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
 
     command <<<
@@ -184,7 +184,7 @@ task CreateVds {
         pip3 install --upgrade google-cloud-dataproc
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
@@ -244,7 +244,7 @@ task CreateVds {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
 
@@ -279,7 +279,7 @@ task ValidateVds {
         pip3 install --upgrade google-cloud-dataproc
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
