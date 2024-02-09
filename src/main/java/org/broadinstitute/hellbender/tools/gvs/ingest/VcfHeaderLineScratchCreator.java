@@ -25,7 +25,7 @@ public class VcfHeaderLineScratchCreator {
     }
 
     public static boolean doNonScratchRowsExistFor(String projectId, String datasetName, Long sampleId) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName, "", "sample_id", sampleId);
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, "sample_vcf_header", "sample_id", sampleId);
     }
 
     private static boolean doScratchRowsExistFor(String projectId, String datasetName, String headerLineHash) {
