@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
-import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.storage.v1.*;
 import io.grpc.StatusRuntimeException;
 import org.apache.logging.log4j.LogManager;
@@ -15,14 +14,34 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
 public class LoadStatus {
     static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.gvs.ingest.LoadStatus.class);
 
-    private enum LoadStatusValues { STARTED, HEADERS_WRITTEN, FINISHED }
-    public enum LoadState { NONE, HEADERS_WRITTEN, PARTIAL, COMPLETE }
+    private enum LoadStatusValue { STARTED, HEADERS_LOADED, FINISHED }
+    public static class LoadState {
+        private final Set<LoadStatusValue> statusValues;
+
+        public LoadState(Set<LoadStatusValue> statusValues) {
+            this.statusValues = statusValues;
+        }
+
+        public boolean isComplete() {
+            return statusValues.contains(LoadStatusValue.FINISHED);
+        }
+
+        public boolean areHeadersLoaded() {
+            return statusValues.contains(LoadStatusValue.HEADERS_LOADED);
+        }
+
+        public boolean isStarted() {
+            return statusValues.contains(LoadStatusValue.STARTED);
+        }
+    }
 
     private final String projectID;
     private final String datasetName;
@@ -50,7 +69,7 @@ public class LoadStatus {
         return builder.build();
     }
 
-    public LoadState getSampleLoadState(long sampleId, boolean loadHeadersOnly) {
+    public LoadState getSampleLoadState(long sampleId) {
         String query = "SELECT " + SchemaUtils.LOAD_STATUS_FIELD_NAME +
                 " FROM `" + projectID + "." + datasetName + "." + loadStatusTableName + "` " +
                 " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId +
@@ -58,45 +77,29 @@ public class LoadStatus {
 
         BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(projectID, query, true, null);
 
-        boolean hasStarted = false;
-        int inProcessCount = 0;
+        Set<LoadStatusValue> loadStatusValues =
+                results.result.streamAll().map(v -> LoadStatusValue.valueOf(v.toString())).collect(Collectors.toSet());
 
-        // Iterate over the records in the SAMPLE_LOAD_STATUS table (in insertion order) to find corresponding FINISHED for each STARTED record
-        for ( final FieldValueList row : results.result.iterateAll() ) {
-            final String status = row.get(0).getStringValue();
-            if (LoadStatusValues.STARTED.toString().equals(status)) {
-                hasStarted = true;
-                inProcessCount++;
-            } else if (loadHeadersOnly && LoadStatusValues.HEADERS_WRITTEN.toString().equals(status)) {
-                return LoadState.HEADERS_WRITTEN;
-            } else if (LoadStatusValues.FINISHED.toString().equals(status)) {
-                if (hasStarted) {
-                    inProcessCount--;
-                } else {
-                    // Should this be an error?
-                    logger.warn("Found Load Status 'FINISHED' where no previous Load Status: 'STARTED' for sample " + sampleId);
-                }
-            }
+        if (loadStatusValues.contains(LoadStatusValue.FINISHED) && !loadStatusValues.contains(LoadStatusValue.STARTED)) {
+            // Should this be an error?
+            logger.warn("Found Load Status 'FINISHED' where no previous Load Status: 'STARTED' for sample " + sampleId);
         }
-        if (!hasStarted) {
-            return LoadState.NONE;
-        }
-        return inProcessCount == 0 ? LoadState.COMPLETE : LoadState.PARTIAL;
+        return new LoadState(loadStatusValues);
     }
 
     public void writeLoadStatusStarted(long sampleId) {
-        writeLoadStatus(LoadStatusValues.STARTED, sampleId);
+        writeLoadStatus(LoadStatusValue.STARTED, sampleId);
     }
 
-    public void writeLoadStatusHeadersWritten(long sampleId) {
-        writeLoadStatus(LoadStatusValues.HEADERS_WRITTEN, sampleId);
+    public void writeVCFHeadersLoaded(long sampleId) {
+        writeLoadStatus(LoadStatusValue.HEADERS_LOADED, sampleId);
     }
 
     public void writeLoadStatusFinished(long sampleId) {
-        writeLoadStatus(LoadStatusValues.FINISHED, sampleId);
+        writeLoadStatus(LoadStatusValue.FINISHED, sampleId);
     }
 
-    protected void writeLoadStatus(LoadStatusValues status, long sampleId) {
+    protected void writeLoadStatus(LoadStatusValue status, long sampleId) {
         final ExponentialBackOff backoff = new ExponentialBackOff.Builder().
                 setInitialIntervalMillis(2000).
                 setMaxIntervalMillis(30000).

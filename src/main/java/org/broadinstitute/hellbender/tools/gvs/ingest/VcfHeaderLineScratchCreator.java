@@ -20,6 +20,14 @@ public class VcfHeaderLineScratchCreator {
     private static final String NON_SCRATCH_TABLE_NAME = "vcf_header_lines";
     private static final String SCRATCH_TABLE_NAME = "vcf_header_lines_scratch";
 
+    public static boolean doScratchRowsExistFor(String projectId, String datasetName, Long sampleId) {
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, "vcf_header_lines_scratch", "sample_id", sampleId);
+    }
+
+    public static boolean doNonScratchRowsExistFor(String projectId, String datasetName, Long sampleId) {
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, "", "sample_id", sampleId);
+    }
+
     private static boolean doScratchRowsExistFor(String projectId, String datasetName, String headerLineHash) {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, SCRATCH_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
     }

@@ -42,15 +42,26 @@ public class LoadStatusBQTest extends GATKBaseTest {
     public void testUpdateStatus() {
         LoadStatus loadStatus = new LoadStatus(BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, TEMP_TABLE_NAME);
 
-        Assert.assertEquals(loadStatus.getSampleLoadState(1, false), LoadStatus.LoadState.NONE);
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).isStarted());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
 
         loadStatus.writeLoadStatusStarted(1);
-        Assert.assertEquals(loadStatus.getSampleLoadState(1, false), LoadStatus.LoadState.PARTIAL);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
+
+        loadStatus.writeVCFHeadersLoaded(1);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areHeadersLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
 
         loadStatus.writeLoadStatusFinished(1);
-        Assert.assertEquals(loadStatus.getSampleLoadState(1, false), LoadStatus.LoadState.COMPLETE);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areHeadersLoaded());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).isComplete());
 
-        Assert.assertEquals(loadStatus.getSampleLoadState(2, false), LoadStatus.LoadState.NONE);
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).isStarted());
 
     }
 }
