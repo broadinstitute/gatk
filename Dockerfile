@@ -2,7 +2,6 @@ ARG BASE_DOCKER=mattmcl.azurecr.io/gatk:latest
 FROM ${BASE_DOCKER} AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
-
 RUN ls . && \
     ADD . /gatk && \
     WORKDIR /gatk && \
