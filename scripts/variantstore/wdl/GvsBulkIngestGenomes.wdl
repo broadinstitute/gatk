@@ -44,8 +44,8 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
+        Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
-        Boolean load_headers_only = false
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
@@ -105,7 +105,6 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
             load_vcf_headers = load_vcf_headers,
-            load_headers_only = load_headers_only,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references
     }
@@ -137,13 +136,13 @@ workflow GvsBulkIngestGenomes {
             drop_state = drop_state,
             billing_project_id = billing_project_id,
             use_compressed_references = use_compressed_references,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             load_vcf_headers = load_vcf_headers,
-            load_headers_only = load_headers_only,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
             is_wgs = is_wgs,
     }
 
-    if (load_headers_only) {
+    if (!load_vet_and_ref_ranges && load_vcf_headers) {
         # TODO Insert judgy header logic (aka VS-1215) here, then:
         call Utils.TerminateWorkflow as HeadersLoaded {
             input:

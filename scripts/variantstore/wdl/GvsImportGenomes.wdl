@@ -32,8 +32,8 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
+    Boolean load_vet_and_ref_ranges = true
     Boolean load_vcf_headers = false
-    Boolean load_headers_only = false
     String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
@@ -102,7 +102,8 @@ workflow GvsImportGenomes {
       external_sample_names = external_sample_names,
       num_samples = num_samples,
       table_name = "sample_info",
-      load_headers_only = load_headers_only,
+      load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+      load_vcf_headers = load_vcf_headers,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -142,24 +143,24 @@ workflow GvsImportGenomes {
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
+        load_vet_and_ref_ranges = load_vet_and_ref_ranges,
         load_vcf_headers = load_vcf_headers,
-        load_headers_only = load_headers_only,
         billing_project_id = billing_project_id,
         use_compressed_references = use_compressed_references,
     }
   }
 
- if (load_vcf_headers || load_headers_only) {
-   call ProcessVCFHeaders {
-     input:
-       variants_docker = effective_variants_docker,
-       load_done = LoadData.done,
-       dataset_name = dataset_name,
-       project_id = project_id,
-   }
- }
+  if (load_vcf_headers) {
+    call ProcessVCFHeaders {
+      input:
+        variants_docker = effective_variants_docker,
+        load_done = LoadData.done,
+        dataset_name = dataset_name,
+        project_id = project_id,
+    }
+  }
 
-  if (!load_headers_only) {
+  if (load_vet_and_ref_ranges) {
     call SetIsLoadedColumn {
       input:
         load_done = LoadData.done,
@@ -232,17 +233,14 @@ task LoadData {
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
+    Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
-    Boolean load_headers_only
 
     String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
   }
-
-  Boolean load_ref_ranges = true
-  Boolean load_vet = true
 
   meta {
     description: "Load data into BigQuery using the Write Api"
@@ -265,6 +263,8 @@ task LoadData {
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String table_name = "sample_info"
+
+  Boolean load_headers_only = !load_vet_and_ref_ranges && load_vcf_headers
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -345,14 +345,13 @@ task LoadData {
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
         --output-type BQ \
-        --enable-reference-ranges ~{load_ref_ranges} \
-        --enable-vet ~{load_vet} \
+        --enable-reference-ranges ~{load_vet_and_ref_ranges} \
+        --enable-vet ~{load_vet_and_ref_ranges} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-headers ~{load_vcf_headers} \
-        --load-headers-only ~{load_headers_only} \
         --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz
@@ -381,6 +380,9 @@ task ProcessVCFHeaders {
     String project_id
     Array[String] load_done
     String variants_docker
+  }
+  meta {
+    volatile: true
   }
 
   command <<<
@@ -462,7 +464,8 @@ task GetUningestedSampleIds {
     Int num_samples
     String table_name
     String cloud_sdk_docker
-    Boolean load_headers_only = false
+    Boolean load_vet_and_ref_ranges
+    Boolean load_vcf_headers
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -473,6 +476,7 @@ task GetUningestedSampleIds {
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String temp_table="~{dataset_name}.sample_names_to_load"
+  Boolean load_headers_only = !load_vet_and_ref_ranges && load_vcf_headers
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
