@@ -15,7 +15,7 @@ workflow GvsAssignIds {
     File external_sample_names
     Boolean samples_are_controls = false
 
-    Boolean process_vcf_headers = false
+    Boolean load_vcf_headers = false
     Boolean load_headers_only = false
 
     Boolean use_compressed_references = false
@@ -36,10 +36,10 @@ workflow GvsAssignIds {
     }
   }
 
-  if (process_vcf_headers && load_headers_only) {
+  if (load_vcf_headers && load_headers_only) {
     call Utils.TerminateWorkflow as HeaderParameterError {
       input:
-        message = "Error: both process_vcf_headers and load_headers_only set to true",
+        message = "Error: both load_vcf_headers and load_headers_only set to true",
         basic_docker = effective_cloud_sdk_docker,
     }
   }
@@ -71,7 +71,7 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  if (process_vcf_headers || load_headers_only) {
+  if (load_vcf_headers || load_headers_only) {
     call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
       input:
         project_id = project_id,

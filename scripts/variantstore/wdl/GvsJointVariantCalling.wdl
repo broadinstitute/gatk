@@ -22,7 +22,7 @@ workflow GvsJointVariantCalling {
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
         Boolean use_compressed_references = false
-        Boolean process_vcf_headers = false
+        Boolean load_vcf_headers = false
         Boolean load_headers_only = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
@@ -132,7 +132,7 @@ workflow GvsJointVariantCalling {
             sample_set_name = sample_set_name,
             billing_project_id = billing_project_id,
             use_compressed_references = use_compressed_references,
-            process_vcf_headers = process_vcf_headers,
+            load_vcf_headers = load_vcf_headers,
             load_headers_only = load_headers_only,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
