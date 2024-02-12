@@ -99,7 +99,7 @@ workflow GvsCreateVATfromVDS {
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     call Utils.IndexVcf {
@@ -242,7 +242,7 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -255,7 +255,7 @@ task GenerateSitesOnlyVcf {
 
         pip3 install --upgrade pip
         pip3 install hail~{'==' + hail_version}
-        pip3 install --upgrade google-cloud-dataproc
+        pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
         hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
@@ -308,7 +308,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
 
