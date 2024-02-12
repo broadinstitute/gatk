@@ -13,6 +13,7 @@ workflow GvsValidateVat {
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
+    String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -24,7 +25,23 @@ workflow GvsValidateVat {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-    call Utils.GetBQTableLastModifiedDatetime {
+    call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+        input:
+        project_id = project_id,
+        fq_table = fq_vat_table,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    call Utils.GetNumSamplesLoaded {
+        input:
+            fq_sample_table = fq_sample_table,
+            project_id = project_id,
+            sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+            control_samples = false,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    call Utils.GetBQTableLastModifiedDatetime as VatDateTime {
         input:
             project_id = project_id,
             fq_table = fq_vat_table,
@@ -35,7 +52,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -43,7 +60,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -51,7 +68,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -59,7 +76,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -67,7 +84,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -75,7 +92,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -83,7 +100,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -91,7 +108,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -99,7 +116,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -107,7 +124,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -115,7 +132,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -123,15 +140,7 @@ workflow GvsValidateVat {
         input:
             query_project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call ClinvarSignificance {
-        input:
-            project_id = project_id,
-            fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -139,87 +148,151 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    call SpotCheckForAAChangeAndExonNumberConsistency {
-        input:
-            project_id = project_id,
-            fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+    # only check certain things if the callset is larger than 10,000 samples (a guess)
+    Boolean callset_is_small = GetNumSamplesLoaded.num_samples < 10000
+    if (!callset_is_small) {
+        call ClinvarSignificance {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call SpotCheckForAAChangeAndExonNumberConsistency {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call CheckForNullColumns {
+            input:
+                project_id = project_id,
+                fq_vat_table = fq_vat_table,
+                last_modified_timestamp = VatDateTime.last_modified_timestamp,
+                variants_docker = effective_variants_docker
+        }
+
+        call GenerateFinalReport as GenerateFinalReportLargeCallset {
+            input:
+                pf_flags = [
+                           EnsureVatTableHasVariants.pass,
+                           SpotCheckForExpectedTranscripts.pass,
+                           SchemaOnlyOneRowPerNullTranscript.pass,
+                           SchemaNullTranscriptsExist.pass,
+                           SchemaNoNullRequiredFields.pass,
+                           SchemaPrimaryKey.pass,
+                           SchemaEnsemblTranscripts.pass,
+                           SchemaNonzeroAcAn.pass,
+                           SubpopulationMax.pass,
+                           SubpopulationAlleleCount.pass,
+                           SubpopulationAlleleNumber.pass,
+                           DuplicateAnnotations.pass,
+                           ClinvarSignificance.pass,
+                           SchemaAAChangeAndExonNumberConsistent.pass,
+                           SpotCheckForAAChangeAndExonNumberConsistency.pass,
+                           CheckForNullColumns.pass
+                           ],
+                validation_names = [
+                                   EnsureVatTableHasVariants.name,
+                                   SpotCheckForExpectedTranscripts.name,
+                                   SchemaOnlyOneRowPerNullTranscript.name,
+                                   SchemaNullTranscriptsExist.name,
+                                   SchemaNoNullRequiredFields.name,
+                                   SchemaPrimaryKey.name,
+                                   SchemaEnsemblTranscripts.name,
+                                   SchemaNonzeroAcAn.name,
+                                   SubpopulationMax.name,
+                                   SubpopulationAlleleCount.name,
+                                   SubpopulationAlleleNumber.name,
+                                   DuplicateAnnotations.name,
+                                   ClinvarSignificance.name,
+                                   SchemaAAChangeAndExonNumberConsistent.name,
+                                   SpotCheckForAAChangeAndExonNumberConsistency.name,
+                                   CheckForNullColumns.name
+                                   ],
+                validation_results = [
+                                     EnsureVatTableHasVariants.result,
+                                     SpotCheckForExpectedTranscripts.result,
+                                     SchemaOnlyOneRowPerNullTranscript.result,
+                                     SchemaNullTranscriptsExist.result,
+                                     SchemaNoNullRequiredFields.result,
+                                     SchemaPrimaryKey.result,
+                                     SchemaEnsemblTranscripts.result,
+                                     SchemaNonzeroAcAn.result,
+                                     SubpopulationMax.result,
+                                     SubpopulationAlleleCount.result,
+                                     SubpopulationAlleleNumber.result,
+                                     DuplicateAnnotations.result,
+                                     ClinvarSignificance.result,
+                                     SchemaAAChangeAndExonNumberConsistent.result,
+                                     SpotCheckForAAChangeAndExonNumberConsistency.result,
+                                     CheckForNullColumns.result
+                                     ],
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
     }
 
-    call CheckForNullColumns {
-        input:
-            project_id = project_id,
-            fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            variants_docker = effective_variants_docker
-    }
-
-    call GenerateFinalReport {
-        input:
-            pf_flags = [
-                       EnsureVatTableHasVariants.pass,
-                       SpotCheckForExpectedTranscripts.pass,
-                       SchemaOnlyOneRowPerNullTranscript.pass,
-                       SchemaNullTranscriptsExist.pass,
-                       SchemaNoNullRequiredFields.pass,
-                       SchemaPrimaryKey.pass,
-                       SchemaEnsemblTranscripts.pass,
-                       SchemaNonzeroAcAn.pass,
-                       SubpopulationMax.pass,
-                       SubpopulationAlleleCount.pass,
-                       SubpopulationAlleleNumber.pass,
-                       DuplicateAnnotations.pass,
-                       ClinvarSignificance.pass,
-                       SchemaAAChangeAndExonNumberConsistent.pass,
-                       SpotCheckForAAChangeAndExonNumberConsistency.pass,
-                       CheckForNullColumns.pass
-                       ],
-            validation_names = [
-                               EnsureVatTableHasVariants.name,
-                               SpotCheckForExpectedTranscripts.name,
-                               SchemaOnlyOneRowPerNullTranscript.name,
-                               SchemaNullTranscriptsExist.name,
-                               SchemaNoNullRequiredFields.name,
-                               SchemaPrimaryKey.name,
-                               SchemaEnsemblTranscripts.name,
-                               SchemaNonzeroAcAn.name,
-                               SubpopulationMax.name,
-                               SubpopulationAlleleCount.name,
-                               SubpopulationAlleleNumber.name,
-                               DuplicateAnnotations.name,
-                               ClinvarSignificance.name,
-                               SchemaAAChangeAndExonNumberConsistent.name,
-                               SpotCheckForAAChangeAndExonNumberConsistency.name,
-                               CheckForNullColumns.name
-                               ],
-            validation_results = [
-                                 EnsureVatTableHasVariants.result,
-                                 SpotCheckForExpectedTranscripts.result,
-                                 SchemaOnlyOneRowPerNullTranscript.result,
-                                 SchemaNullTranscriptsExist.result,
-                                 SchemaNoNullRequiredFields.result,
-                                 SchemaPrimaryKey.result,
-                                 SchemaEnsemblTranscripts.result,
-                                 SchemaNonzeroAcAn.result,
-                                 SubpopulationMax.result,
-                                 SubpopulationAlleleCount.result,
-                                 SubpopulationAlleleNumber.result,
-                                 DuplicateAnnotations.result,
-                                 ClinvarSignificance.result,
-                                 SchemaAAChangeAndExonNumberConsistent.result,
-                                 SpotCheckForAAChangeAndExonNumberConsistency.result,
-                                 CheckForNullColumns.result
-                                 ],
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+    if (callset_is_small) {
+        call GenerateFinalReport as GenerateFinalReportSmallCallset {
+            input:
+                pf_flags = [
+                           EnsureVatTableHasVariants.pass,
+                           SpotCheckForExpectedTranscripts.pass,
+                           SchemaOnlyOneRowPerNullTranscript.pass,
+                           SchemaNullTranscriptsExist.pass,
+                           SchemaNoNullRequiredFields.pass,
+                           SchemaPrimaryKey.pass,
+                           SchemaEnsemblTranscripts.pass,
+                           SchemaNonzeroAcAn.pass,
+                           SubpopulationMax.pass,
+                           SubpopulationAlleleCount.pass,
+                           SubpopulationAlleleNumber.pass,
+                           DuplicateAnnotations.pass,
+                           SchemaAAChangeAndExonNumberConsistent.pass
+                           ],
+                validation_names = [
+                                   EnsureVatTableHasVariants.name,
+                                   SpotCheckForExpectedTranscripts.name,
+                                   SchemaOnlyOneRowPerNullTranscript.name,
+                                   SchemaNullTranscriptsExist.name,
+                                   SchemaNoNullRequiredFields.name,
+                                   SchemaPrimaryKey.name,
+                                   SchemaEnsemblTranscripts.name,
+                                   SchemaNonzeroAcAn.name,
+                                   SubpopulationMax.name,
+                                   SubpopulationAlleleCount.name,
+                                   SubpopulationAlleleNumber.name,
+                                   DuplicateAnnotations.name,
+                                   SchemaAAChangeAndExonNumberConsistent.name,
+                                   ],
+                validation_results = [
+                                     EnsureVatTableHasVariants.result,
+                                     SpotCheckForExpectedTranscripts.result,
+                                     SchemaOnlyOneRowPerNullTranscript.result,
+                                     SchemaNullTranscriptsExist.result,
+                                     SchemaNoNullRequiredFields.result,
+                                     SchemaPrimaryKey.result,
+                                     SchemaEnsemblTranscripts.result,
+                                     SchemaNonzeroAcAn.result,
+                                     SubpopulationMax.result,
+                                     SubpopulationAlleleCount.result,
+                                     SubpopulationAlleleNumber.result,
+                                     DuplicateAnnotations.result,
+                                     SchemaAAChangeAndExonNumberConsistent.result
+                                     ],
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
     }
 
     output {
-        String validation_results = GenerateFinalReport.results
+        String validation_results = select_first([GenerateFinalReportLargeCallset.results, GenerateFinalReportSmallCallset.results])
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }
@@ -465,8 +538,8 @@ task SchemaOnlyOneRowPerNullTranscript {
             echo "The VAT table ~{fq_vat_table} only has 1 row per vid with a null transcript" > ~{results_file}
             echo "true" > ~{pf_file}
         else
-            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row: [csv output follows] " > ~{results_file}
-            cat bq_variant_count.csv >> ~{results_file}
+            tr "\n" "; " < bq_variant_count.csv > bq_variant_count_list.txt
+            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row:  $(cat bq_variant_count_list.txt) " > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
