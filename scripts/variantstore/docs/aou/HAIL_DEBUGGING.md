@@ -10,4 +10,4 @@ If the cluster has already been deleted, most diagnostic information has been lo
 gcloud dataproc clusters diagnose <cluster ID> --region=<region> --project=<project ID>
 ```
 
-This might take a minute or two and will produce an archive of a ton of cluster logs.  Once you've copied this someplace else, feel free to delete the custer using your @firecloud.org account in the Google Cloud Console at https://console.cloud.google.com/dataproc/clusters for the workspace Google project ID.
+This might take a minute or two and will produce an archive of a ton of cluster logs.  Once you've copied this someplace else, feel free to delete the custer using your `@firecloud.org` account in the Google Cloud Console at https://console.cloud.google.com/dataproc/clusters for the workspace Google project ID.

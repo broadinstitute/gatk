@@ -19,7 +19,7 @@ configuration. If this option is not selected the `AnnotateVCF` tasks will refus
 - The `vds_path` input is the same value that was set for `vds_destination_path` in `GvsCreateVds.wdl`.
 - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
-Optional input of note:
+Optional inputs of note:
 
 - `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
 - If you are debugging a hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
