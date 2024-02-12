@@ -78,7 +78,7 @@ public class LoadStatus {
         BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(projectID, query, true, null);
 
         Set<LoadStatusValue> loadStatusValues =
-                results.result.streamAll().map(v -> LoadStatusValue.valueOf(v.toString())).collect(Collectors.toSet());
+                results.result.streamAll().map(v -> LoadStatusValue.valueOf(v.get(0).getStringValue())).collect(Collectors.toSet());
 
         if (loadStatusValues.contains(LoadStatusValue.FINISHED) && !loadStatusValues.contains(LoadStatusValue.STARTED)) {
             // Should this be an error?
