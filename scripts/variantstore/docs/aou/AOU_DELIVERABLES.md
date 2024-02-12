@@ -6,7 +6,7 @@
   - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
 - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
     - Update the .dockstore.yml file on that feature branch to add the feature branch for all the WDLs that will be loaded into the workspace in the next step.
-- Once the workspace requested above has been created and permissioned, populate with the following WDLs:
+- Once the requested workspace has been created and permissioned, populate with the following WDLs:
   - [GvsBulkIngestGenomes](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsBulkIngestGenomes) workflow
   - [GvsAssignIds](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsAssignIds) workflow
   - [GvsImportGenomes](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsImportGenomes) workflow
@@ -20,6 +20,8 @@
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
+  - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS:ah_var_store?tab=info) workflow
+  - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
 - Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
   - Placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Run the steps in the notebook:
@@ -78,6 +80,8 @@
    - The `vds_path` path input to this workflow represents the output path for the VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in `#dsp-variants`.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
+   - If you are debugging a hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the guidelines for debugging issues with Hail](HAIL_DEBUGGING.md).
+
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
@@ -95,9 +99,8 @@
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
 
 ## Deliverables (via email to stakeholders once the above steps are complete)
-To get the VDS someplace secure and accessible for delivery, see [Delivering a VDS](vds/delivery/Delivering%20a%20VDS.md)
-This includes details of how to get the VDS to the AoU delivery bucket as well as VDS naming conventions.
-The Callset Stats and S&P files can be simply gsutil cp-ed to the AoU delivery bucket since they are so much smaller.
+
+The Callset Stats and S&P files can be simply `gsutil cp`ed to the AoU delivery bucket since they are so much smaller.
 1. GCS location of the VDS in the AoU delivery bucket
 2. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
 3. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket

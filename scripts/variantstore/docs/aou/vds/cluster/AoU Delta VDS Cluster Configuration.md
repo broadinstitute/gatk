@@ -1,6 +1,6 @@
-# Delta VDS Hail Cluster Configuration
+# VDS Hail Cluster Configuration
 
-To work with a Delta-sized VDS (roughly 250K samples) we use our PMI ops accounts to create a cluster in a Terra
+To work with a AoU-callset-sized VDS (roughly 250K samples) we use our PMI ops accounts to create a cluster in a Terra
 customized Jupyter notebook with the following configuration:
 
 ![AoU Delta Cluster Config](AoU%20Delta%20VDS%20Cluster%20Configuration.png)
@@ -23,11 +23,29 @@ printf "\nspark.driver.memory=85g\n" >> /etc/spark/conf/spark-defaults.conf
 memory this value should be adjusted to avoid using too little or too much memory. Please ask the Hail team in Zulip if
 uncertain what value to use.
 
-## Installing the current Hail wheel
+## Installing the current Hail wheel or Hail version
 
-Once the cluster is up and running, open a notebook terminal. Within the terminal copy down the latest Hail wheel. **
-Note:** you will need the proxy group of your PMI ops account to have at least the "Storage Object Viewer" role on the
+Once the cluster is up and running, open a notebook terminal. 
+
+### Hail Version ###
+
+Within the terminal run (where `<hail version>` is the agreed-upon version of Hail to use):
+
+```
+pip3 install --upgrade pip
+pip3 install hail==<hail version>
+pip3 install --upgrade google-cloud-dataproc
+
+```
+
+
+### Hail Wheel ###
+
+If you are using a wheel instead of a released version of Hail (the preferred method), within the terminal copy down the latest Hail wheel. 
+
+**Note:** you will need the proxy group of your PMI ops account to have at least the "Storage Object Viewer" role on the
 bucket where the Hail wheel lives.
+
 
 ```
 $ gsutil -m cp gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl .
@@ -44,8 +62,9 @@ $ pip install --force-reinstall hail-0.2.102-py3-none-any.whl
 
 Finally start up a Python REPL and import Hail:
 
-```python
+```
+python
 >>> import hail as hl
 ```
 
-You're now ready to work with a Delta-scale Hail VDS. 
+You're now ready to work with an AoU-callset-scale Hail VDS. 
