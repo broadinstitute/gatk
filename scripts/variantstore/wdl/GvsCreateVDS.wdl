@@ -276,8 +276,8 @@ task ValidateVds {
         String prefix
         String vds_path
         String? hail_version
-        String workspace_project
         File? hail_wheel
+        String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
