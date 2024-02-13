@@ -138,6 +138,7 @@ workflow GvsCreateVDS {
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
