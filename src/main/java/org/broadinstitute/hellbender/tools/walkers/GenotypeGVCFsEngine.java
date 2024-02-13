@@ -373,8 +373,6 @@ public class GenotypeGVCFsEngine
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
         args.genotypeArgs = genotypeArgs.clone();
 
-        //keep hom ref calls even if no PLs
-        args.genotypeArgs.genotypeAssignmentMethod = GenotypeAssignmentMethod.PREFER_PLS;
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
