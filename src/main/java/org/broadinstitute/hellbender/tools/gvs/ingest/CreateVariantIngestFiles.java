@@ -280,6 +280,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                             logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping vcf header writes.",
                                     sampleId, sampleName);
                         } else {
+                            logger.info("vcfdebug: VCF Headers should be written!");
                             shouldWriteVCFHeadersLoaded = true;
                         }
                     }
@@ -376,11 +377,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        logger.info("vcfdebug: Traversal has succeeded!");
         if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
+            logger.info("vcfdebug: Writing load status started row");
             loadStatus.writeLoadStatusStarted(sampleId);
         }
 
         if (vcfHeaderLineScratchCreator != null) {
+            logger.info("vcfdebug: VCF Headers lines creator is not null");
             try {
                 vcfHeaderLineScratchCreator.apply(allLineHeaders);
             } catch (IOException ioe) {
@@ -389,7 +393,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
 
+            logger.info("vcfdebug: shouldWriteLoadStatusStarted is " + shouldWriteVCFHeadersLoaded);
             if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoaded) {
+                logger.info("vcfdebug: Writing vcf headers loaded status row");
                 loadStatus.writeVCFHeadersLoaded(sampleId);
             }
         }
