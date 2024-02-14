@@ -679,8 +679,8 @@ public class SVAnnotateEngine {
         final int pos = variant.getStart();
         final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
         final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos);
+        final List<String> cpxIntervals = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null);
         if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CPX)) {
-            final List<String> cpxIntervals = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null);
             if (cpxIntervals.isEmpty()) {
                 throw new UserException("Complex (CPX) variant must contain CPX_INTERVALS INFO field");
             }
@@ -695,14 +695,22 @@ public class SVAnnotateEngine {
                         new SimpleInterval(chrom, pos, pos + 1)));
             }
         } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)) {
-            intervals = new ArrayList<>(2);
-            intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));  // CHROM:POS-POS+1
-            // annotate both breakpoints of translocation - CHR2:END2-END2+1
+            // if SVTYPE is CTX and CPX_TYPE is CTX_INV, add INV from CTX_INTERVALS
+            if (complexType == GATKSVVCFConstants.ComplexVariantSubtype.CTX_INV && !cpxIntervals.isEmpty()) {
+                intervals = getComplexAnnotationIntervals(parseComplexIntervals(cpxIntervals), complexType);
+            } else {
+                intervals = new ArrayList<>(2);
+            }
+            // annotate POS and END separately in case END != POS+1, such as in the case of CTX_INV
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chrom, pos, pos)));
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chrom, variant.getEnd(), variant.getEnd())));
+            // annotate breakpoints of translocation on CHR2 - END2 and END2+1
+            // TODO: update if POS2 is added to accommodate complex translocations
             if (chr2 == null) {
                 throw new UserException("Translocation (CTX) variant represented as a single record must contain CHR2 INFO field");
             }
-            intervals.add(new SVSegment(overallSVType,
-                    new SimpleInterval(chr2, end2, end2 + 1)));
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chr2, end2, end2)));
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chr2, end2 + 1, end2 + 1)));
         } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)){
             intervals = new ArrayList<>(2);
             final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
