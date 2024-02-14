@@ -80,7 +80,7 @@
    - The `vds_path` path input to this workflow represents the output path for the VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in `#dsp-variants`.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
-   - If you are debugging a hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
+   - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
 
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow first, if it has not been run already

@@ -3,7 +3,7 @@
 To work with a AoU-callset-sized VDS (roughly 250K samples) we use our PMI ops accounts to create a cluster in a Terra
 customized Jupyter notebook with the following configuration:
 
-![AoU Delta Cluster Config](AoU%20Delta%20VDS%20Cluster%20Configuration.png)
+![AoU Cluster Config](AoU%20VDS%20Cluster%20Configuration.png)
 
 The startup script can be found at the following location. Permissions may need to be adjust to allow one's
 Terra proxy group to read this object:

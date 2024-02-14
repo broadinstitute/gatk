@@ -5,7 +5,7 @@ The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in
 
 ### VAT WDLs
 
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates a sites only VCF  from a VDS and then uses that and an ancestry file TSV to build the variant annotations table.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS and then uses that and an ancestry file TSV to build the variant annotations table.
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
 ### Run GvsCreateVATfromVDS
@@ -22,7 +22,7 @@ configuration. If this option is not selected the `AnnotateVCF` tasks will refus
 Optional inputs of note:
 
 - `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
-- If you are debugging a hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
+- If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
 
 There are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.  The VAT table is created by that query fresh each time so that there is no risk of duplicates.
 
