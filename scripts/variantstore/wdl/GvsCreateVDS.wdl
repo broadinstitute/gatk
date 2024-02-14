@@ -23,9 +23,12 @@ workflow GvsCreateVDS {
 
         String? git_branch_or_tag
         String? hail_version
+        File? hail_wheel
+        String? basic_docker
         String? variants_docker
         String? workspace_bucket
         String? workspace_project
+        String? cloud_sdk_slim_docker
     }
 
     parameter_meta {
@@ -50,25 +53,43 @@ workflow GvsCreateVDS {
         region: {
             help: "us-central1"
         }
+        hail_version: {
+            help: "Optional Hail version, defaults to 0.2.126. Cannot define both this parameter and `hail_wheel`."
+        }
+        hail_wheel: {
+            help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
+        }
     }
 
-    if (!defined(variants_docker) || !defined(workspace_bucket) || !defined(workspace_project) || !defined(hail_version)) {
+
+    if (!defined(variants_docker) || !defined(basic_docker) || !defined(cloud_sdk_slim_docker) || !defined(workspace_bucket) || !defined(workspace_project) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
         }
     }
 
-    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
+
+    if (defined(hail_version) && defined(hail_wheel)) {
+        call Utils.TerminateWorkflow as BothHailVersionAndHailWheelDefined {
+            input:
+                message = "Cannot define both `hail_version` and `hail_wheel`, exiting.",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
         call Utils.TerminateWorkflow as NeedHailTempPath {
             input:
                 message = "GvsCreateVDS called with an intermediate resume point but no specified hail temp path from which to resume",
-                basic_docker = effective_variants_docker, # intentionally mismatched as basic was not already defined and this should be a superset
+                basic_docker = effective_basic_docker,
         }
     }
 
@@ -76,8 +97,13 @@ workflow GvsCreateVDS {
         call Utils.TerminateWorkflow as NeedIntermediateResumePoint {
             input:
                 message = "GvsCreateVDS called with no intermediate resume point but a specified hail temp path, which isn't a known use case",
-                basic_docker = effective_variants_docker, # intentionally mismatched as basic was not already defined and this should be a superset
+                basic_docker = effective_basic_docker,
         }
+    }
+
+    call GetHailScripts {
+        input:
+            variants_docker = effective_variants_docker,
     }
 
     call CreateVds {
@@ -87,13 +113,17 @@ workflow GvsCreateVDS {
             avro_path = avro_path,
             use_classic_VQSR = use_classic_VQSR,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
+            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            gvs_import_script = GetHailScripts.gvs_import_script,
+            hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
@@ -103,14 +133,17 @@ workflow GvsCreateVDS {
     call ValidateVds {
         input:
             go = CreateVds.done,
+            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            vds_validation_script = GetHailScripts.vds_validation_script,
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     output {
@@ -118,7 +151,6 @@ workflow GvsCreateVDS {
         String validate_cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
-
 }
 
 task CreateVds {
@@ -128,7 +160,11 @@ task CreateVds {
         String avro_path
         Boolean use_classic_VQSR
         Boolean leave_cluster_running_at_end
+        File hail_gvs_import_script
+        File gvs_import_script
+        File run_in_hail_cluster_script
         String? hail_version
+        File? hail_wheel
         String? hail_temp_path
         Int? intermediate_resume_point
         Int? cluster_max_idle_minutes
@@ -140,7 +176,7 @@ task CreateVds {
         String region
         String gcs_subnetwork_name
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
 
     command <<<
@@ -151,11 +187,18 @@ task CreateVds {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
-        pip3 install --upgrade google-cloud-dataproc
+
+        if [[ ! -z "~{hail_wheel}" ]]
+        then
+            pip3 install ~{hail_wheel}
+        else
+            pip3 install hail~{'==' + hail_version}
+        fi
+
+        pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
@@ -195,9 +238,9 @@ task CreateVds {
         FIN
 
         # Run the hail python script to make a VDS
-        python3 /app/run_in_hail_cluster.py \
-            --script-path /app/hail_gvs_import.py \
-            --secondary-script-path-list /app/import_gvs.py \
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{hail_gvs_import_script} \
+            --secondary-script-path-list ~{gvs_import_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -215,7 +258,7 @@ task CreateVds {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
 
@@ -228,14 +271,17 @@ task CreateVds {
 task ValidateVds {
     input {
         Boolean go
+        File run_in_hail_cluster_script
+        File vds_validation_script
         String prefix
         String vds_path
         String? hail_version
+        File? hail_wheel
         String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
 
     command <<<
@@ -246,11 +292,18 @@ task ValidateVds {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
-        pip3 install --upgrade google-cloud-dataproc
+
+        if [[ ! -z "~{hail_wheel}" ]]
+        then
+            pip3 install ~{hail_wheel}
+        else
+            pip3 install hail~{'==' + hail_version}
+        fi
+
+        pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
@@ -265,9 +318,8 @@ task ValidateVds {
         FIN
 
         # Run the hail python script to validate a VDS
-        # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
-        python3 /app/run_in_hail_cluster.py \
-            --script-path /app/vds_validation.py \
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -281,10 +333,40 @@ task ValidateVds {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
     output {
         String cluster_name = read_string("cluster_name.txt")
+    }
+}
+
+task GetHailScripts {
+    input {
+        String variants_docker
+    }
+    meta {
+        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
+        # the script content should also stay the same.
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Not sure why this is required but without it:
+        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
+
+        mkdir app
+        cp /app/*.py app
+    >>>
+    output {
+        File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
+        File hail_gvs_import_script = "app/hail_gvs_import.py"
+        File gvs_import_script = "app/import_gvs.py"
+        File vds_validation_script = "app/vds_validation.py"
+    }
+    runtime {
+        docker: variants_docker
     }
 }

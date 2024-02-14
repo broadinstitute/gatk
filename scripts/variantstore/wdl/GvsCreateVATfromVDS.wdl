@@ -17,6 +17,7 @@ workflow GvsCreateVATfromVDS {
         String? basic_docker
         String? git_branch_or_tag
         String? hail_version
+        File? hail_wheel
         String? vat_version
         String? workspace_gcs_project
 
@@ -93,13 +94,14 @@ workflow GvsCreateVATfromVDS {
             use_classic_VQSR = use_classic_VQSR,
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
             hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     call Utils.IndexVcf {
@@ -235,6 +237,7 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
+        File? hail_wheel
         String hail_generate_sites_only_script_path
         String ancestry_file_path
         String? hail_temp_path
@@ -242,7 +245,7 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -254,8 +257,14 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
-        pip3 install --upgrade google-cloud-dataproc
+        if [[ ! -z "~{hail_wheel}" ]]
+        then
+            pip3 install ~{hail_wheel}
+        else
+            pip3 install hail~{'==' + hail_version}
+        fi
+
+        pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
         hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
@@ -308,7 +317,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
 
