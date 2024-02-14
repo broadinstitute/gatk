@@ -27,8 +27,7 @@ def check_ref_blocks(vds):
 
 	LEN = rd.END - rd.locus_start + 1
 
-	# assert rd.aggregate_entries(hl.agg.all(hl.all(rd.GQ > 0, LEN >= 0, LEN <= rd.ref_block_max_length)))
-	assert rd.aggregate_entries(hl.agg.all(hl.all(LEN >= 0, LEN <= 1000)))
+	assert rd.aggregate_entries(hl.agg.all(hl.all(rd.GQ > 0, LEN >= 0, LEN <= rd.ref_block_max_length)))
 
 def check_densify_small_region(vds):
 	print('running densify on 200kb region')
