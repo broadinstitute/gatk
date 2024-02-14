@@ -455,7 +455,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         // genotypes
         final GenotypesContext genotypes = GenotypesContext.create();
-        //TODO for reviewer, in this combine GVCFs context, should this be using the old (sometimes nocall behavior) here or the new assignment that often guesses to homref. 
+        //TODO for reviewer, in this combine GVCFs context, should this be using the old (sometimes nocall behavior) here or the new assignment that often guesses to homref.
         final GenotypeAssignmentMethod assignmentMethod = makeGenotypeCalls ? GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN : GenotypeAssignmentMethod.SET_TO_NO_CALL;
         for (final VariantContext vc : vcs) {
             for (final Genotype g : vc.getGenotypes()) {
