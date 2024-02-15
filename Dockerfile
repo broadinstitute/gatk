@@ -15,7 +15,7 @@ RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt-key list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
     add-apt-repository universe && apt update && \
-    apt-get --assume-yes install git-lfs && \
+    apt-get --assume-yes install git-lfs python-is-python3 && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove && \
