@@ -241,6 +241,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         boolean vetRowsExist = false;
         boolean vcfHeaderRowsExist = false;
         boolean loadHeadersOnly = !enableReferenceRanges && !enableVet && enableVCFHeaders;
+
+        logger.info("vcfdebug: enableVCFHeaders is " + enableVCFHeaders);
+
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
@@ -279,9 +282,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                         if (vcfHeaderRowsExist) {
                             logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping vcf header writes.",
                                     sampleId, sampleName);
-                        } else {
-                            logger.info("vcfdebug: VCF Headers should be written!");
-                            shouldWriteVCFHeadersLoaded = true;
                         }
                     }
                 }
@@ -300,6 +300,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 // Do not write the started status as that has already been written.
                 shouldWriteLoadStatusStarted = false;
             }
+
+            shouldWriteVCFHeadersLoaded = enableVCFHeaders && !vcfHeaderRowsExist;
+            logger.info("vcfdebug: shouldWriteVCFHeadersLoaded is " + shouldWriteVCFHeadersLoaded);
         }
 
         // To set up the missing positions
@@ -322,7 +325,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && !vetRowsExist && !loadHeadersOnly) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
-        if (enableVCFHeaders || loadHeadersOnly) {
+        if (enableVCFHeaders) {
             vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
         }
 
@@ -330,8 +333,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        boolean loadHeadersOnly = !enableReferenceRanges && !enableVet && enableVCFHeaders;
-        if (loadHeadersOnly) {
+        if (!enableReferenceRanges && !enableVet && enableVCFHeaders) {
             // Nothing to do here, exit quickly.
             return;
         }
@@ -393,7 +395,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
 
-            logger.info("vcfdebug: shouldWriteLoadStatusStarted is " + shouldWriteVCFHeadersLoaded);
+            logger.info("vcfdebug: shouldWriteVCFHeadersLoaded is " + shouldWriteVCFHeadersLoaded);
             if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoaded) {
                 logger.info("vcfdebug: Writing vcf headers loaded status row");
                 loadStatus.writeVCFHeadersLoaded(sampleId);
