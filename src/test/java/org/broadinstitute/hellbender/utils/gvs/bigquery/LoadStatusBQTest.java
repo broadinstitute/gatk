@@ -42,26 +42,27 @@ public class LoadStatusBQTest extends GATKBaseTest {
     public void testUpdateStatus() {
         LoadStatus loadStatus = new LoadStatus(BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, TEMP_TABLE_NAME);
 
-        Assert.assertFalse(loadStatus.getSampleLoadState(1).isStarted());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areVariantsLoaded());
         Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
-        Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
 
-        loadStatus.writeLoadStatusStarted(1);
-        Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
+        loadStatus.writeReferencesLoadedStatus(1);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areVariantsLoaded());
         Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
-        Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
+
+        loadStatus.writeVariantsLoadedStatus(1);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areVariantsLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
 
         loadStatus.writeHeadersLoadedStatus(1);
-        Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areVariantsLoaded());
         Assert.assertTrue(loadStatus.getSampleLoadState(1).areHeadersLoaded());
-        Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
 
-        loadStatus.writeLoadStatusFinished(1);
-        Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
-        Assert.assertTrue(loadStatus.getSampleLoadState(1).areHeadersLoaded());
-        Assert.assertTrue(loadStatus.getSampleLoadState(1).isComplete());
-
-        Assert.assertFalse(loadStatus.getSampleLoadState(2).isStarted());
-
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).areReferencesLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).areVariantsLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).areHeadersLoaded());
     }
 }
