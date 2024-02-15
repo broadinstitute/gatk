@@ -167,11 +167,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean storeCompressedReferences = false;
 
-    private boolean shouldWriteReferencesLoadedStatus = false;
+    private boolean shouldWriteReferencesLoadedStatusRow = false;
 
-    private boolean shouldWriteVariantsLoadedStatus = false;
+    private boolean shouldWriteVariantsLoadedStatusRow = false;
 
-    private boolean shouldWriteVCFHeadersLoadedStatus = false;
+    private boolean shouldWriteVCFHeadersLoadedStatusRow = false;
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
@@ -224,9 +224,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         String tableNumber = String.format("%03d", sampleTableNumber);
 
-        boolean refRangesRowsExist;
-        boolean vetRowsExist;
-        boolean vcfHeaderRowsExist;
+        boolean refRangesRowsExist = false;
+        boolean vetRowsExist = false;
+        boolean vcfHeaderRowsExist = false;
 
         // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
         // some class members that the CreateVariantIngestFilesTest expects to be initialized.
@@ -238,7 +238,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
 
-            // Legacy "FINISHED" state that indicates variants and references completely loaded.
+            // Legacy "FINISHED" state indicates variants and references completely loaded.
             if (state.isFinished()) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
@@ -252,10 +252,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
                                 sampleId, sampleName);
-                    } else {
-                        refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
                     }
-                    shouldWriteReferencesLoadedStatus = true;
+                    shouldWriteReferencesLoadedStatusRow = true;
                 }
             }
 
@@ -267,10 +265,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     if (vetRowsExist) {
                         logger.warn("Vet enabled for sample id = {}, name = {} but preexisting vet rows found, skipping vet writes.",
                                 sampleId, sampleName);
-                    } else {
-                        vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
                     }
-                    shouldWriteVariantsLoadedStatus = true;
+                    shouldWriteVariantsLoadedStatusRow = true;
                 }
             }
 
@@ -287,22 +283,31 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                         if (vcfHeaderRowsExist) {
                             logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping VCF header writes.",
                                     sampleId, sampleName);
-                        } else {
-                            buildAllVcfLineHeaders();
-                            vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
                         }
                     }
-                    shouldWriteVCFHeadersLoadedStatus = true;
+                    shouldWriteVCFHeadersLoadedStatusRow = true;
                 }
+            }
+
+            if (enableReferenceRanges && !refRangesRowsExist) {
+                refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
+            }
+
+            if (enableVet && !vetRowsExist) {
+                vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
+            }
+            if (enableVCFHeaders && !vcfHeaderRowsExist) {
+                buildAllVcfLineHeaders();
+                vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
             }
 
             logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
                     enableReferenceRanges, enableVet, enableVCFHeaders);
             logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
-                    shouldWriteReferencesLoadedStatus, shouldWriteVariantsLoadedStatus, shouldWriteVCFHeadersLoadedStatus);
+                    shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
 
             if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
-                    !shouldWriteReferencesLoadedStatus && !shouldWriteVariantsLoadedStatus && !shouldWriteVCFHeadersLoadedStatus) {
+                    !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow) {
                 logger.info("No data to be written, exiting successfully.");
                 System.exit(0);
             }
@@ -366,7 +371,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
 
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoadedStatus) {
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoadedStatusRow) {
                 loadStatus.writeHeadersLoadedStatus(sampleId);
             }
         }
@@ -383,14 +388,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteReferencesLoadedStatus) {
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteReferencesLoadedStatusRow) {
                 loadStatus.writeReferencesLoadedStatus(sampleId);
             }
         }
 
         if (vetCreator != null) {
             vetCreator.commitData();
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteVariantsLoadedStatus) {
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteVariantsLoadedStatusRow) {
                 loadStatus.writeVariantsLoadedStatus(sampleId);
             }
         }
