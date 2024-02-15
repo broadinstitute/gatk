@@ -197,7 +197,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (!enableVet && !enableReferenceRanges && !enableVCFHeaders) {
             throw new RuntimeIOException("Invalid invocation: variants, references, and VCF header writing all set to false");
         }
-        //set up output directory
+
+        // Set up output directory:
         if (!outputDir.exists() && !outputDir.mkdir()) {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
         }
@@ -205,26 +206,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);
 
-        // TODO should we reuse the SampleList class or move these methods there?
-        // TODO if you change here, also change in CreateArrayIngestFiles
-        // Get sample name
-        final VCFHeader inputVCFHeader = getHeaderForVariants();
-        if (enableVCFHeaders) {
-            // get a set of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
-            // to put into the header line scratch table
-            Set<String> nonCommandLineHeaders = new HashSet<>();
-            for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
-                if (line.getKey().contains("CommandLine")) {
-                    allLineHeaders.put(line.toString(), true);
-                }
-                else {
-                    nonCommandLineHeaders.add(line.toString());
-                }
-            }
-            allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
-        }
-
-        String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
+        String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(getHeaderForVariants()) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }
@@ -242,25 +224,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         String tableNumber = String.format("%03d", sampleTableNumber);
 
-        boolean refRangesRowsExist = false;
-        boolean vetRowsExist = false;
-        boolean vcfHeaderRowsExist = false;
+        boolean refRangesRowsExist;
+        boolean vetRowsExist;
+        boolean vcfHeaderRowsExist;
+
+        // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
+        // some class members that the CreateVariantIngestFilesTest expects to be initialized.
+        SAMSequenceDictionary seqDictionary = initializeGQThresholdsAndIntervals();
 
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
-            // To set up the missing positions
-            SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
-
-            final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
-            intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
-
-            if (gqStateToIgnore != null) {
-                gqStatesToIgnore.add(gqStateToIgnore);
-                if (dropAboveGqThreshold) {
-                    gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
-                }
-            }
-
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
@@ -315,6 +288,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                             logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping VCF header writes.",
                                     sampleId, sampleName);
                         } else {
+                            buildAllVcfLineHeaders();
                             vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
                         }
                     }
@@ -435,5 +409,37 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vcfHeaderLineScratchCreator != null) {
             vcfHeaderLineScratchCreator.closeTool();
         }
+    }
+
+    private void buildAllVcfLineHeaders() {
+        // get a set of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
+        // to put into the header line scratch table
+        Set<String> nonCommandLineHeaders = new HashSet<>();
+        for (VCFHeaderLine line : getHeaderForVariants().getMetaDataInInputOrder()) {
+            if (line.getKey().contains("CommandLine")) {
+                allLineHeaders.put(line.toString(), true);
+            }
+            else {
+                nonCommandLineHeaders.add(line.toString());
+            }
+        }
+        allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
+    }
+
+    // TODO: there's alomst certainly a better name for this chunk of logic but tbh I'm not really sure what it's doing.
+    private SAMSequenceDictionary initializeGQThresholdsAndIntervals() {
+        // To set up the missing positions
+        SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
+
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
+        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
+
+        if (gqStateToIgnore != null) {
+            gqStatesToIgnore.add(gqStateToIgnore);
+            if (dropAboveGqThreshold) {
+                gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
+            }
+        }
+        return seqDictionary;
     }
 }
