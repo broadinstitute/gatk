@@ -230,7 +230,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
         // some class members that the CreateVariantIngestFilesTest expects to be initialized.
-        SAMSequenceDictionary seqDictionary = initializeGQThresholdsAndIntervals();
+        SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
 
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
@@ -426,8 +426,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
     }
 
-    // TODO: there's alomst certainly a better name for this chunk of logic but tbh I'm not really sure what it's doing.
-    private SAMSequenceDictionary initializeGQThresholdsAndIntervals() {
+    // TODO: there's almost certainly a better name for this chunk of logic...
+    private SAMSequenceDictionary initializeGQConfigurationAndIntervals() {
         // To set up the missing positions
         SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
 
