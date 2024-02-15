@@ -1,0 +1,25 @@
+steps:
+  # Step to enable experimental features in Docker and build with --squash
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Enable Docker experimental features
+        echo '{"experimental":true}' | sudo tee /etc/docker/daemon.json
+        sudo service docker restart
+        # Build and squash the Docker image
+        docker build --squash -t $$_DOCKER_IMAGE_TAG . 
+
+  # Step to push the image to a registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$$_DOCKER_IMAGE_TAG']
+
+# Substitute variables
+substitutions:
+  _DOCKER_IMAGE_TAG: 'gcr.io/your-project-id/your-image-name:tag'
+
+# Machine type and timeout settings
+options:
+  machineType: 'N1_HIGHCPU_32'
+  timeout: '86400s'  # 24 hours in seconds
