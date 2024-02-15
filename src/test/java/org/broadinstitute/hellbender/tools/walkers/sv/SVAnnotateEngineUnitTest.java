@@ -481,7 +481,8 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                 { GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL, true },
                 { GATKSVVCFConstants.ComplexVariantSubtype.INS_iDEL, false },
                 { GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ, false },
-                { GATKSVVCFConstants.ComplexVariantSubtype.CTX_PQ_QP, false }
+                { GATKSVVCFConstants.ComplexVariantSubtype.CTX_PQ_QP, false },
+                { GATKSVVCFConstants.ComplexVariantSubtype.CTX_INV, false }
         };
     }
 
@@ -564,8 +565,10 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                         GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ,
                         GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
                         createListOfSVSegments(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
-                                new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263977),
-                                        new SimpleInterval("chr19", 424309, 424310) }),
+                                new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263976),
+                                        new SimpleInterval("chr2", 86263977, 86263977),
+                                        new SimpleInterval("chr19", 424309, 424309),
+                                        new SimpleInterval("chr19", 424310, 424310) }),
                         null },
                 { createVariantContext("chr2", 86263976, 86263976, null, 424309, "G",
                         "G]chr19:424309]", null, null,"CTX_PP/QQ", null),
@@ -575,11 +578,27 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                                 new SimpleInterval("chr2", 86263976, 86263976))),
                         null},
                 { createVariantContext("chr2", 86263977, 86263977, null, 424309, "A",
-                        "[chr19:424310[A", null, null, "CTX_PP/QQ", null),
+                        "[chr19:424310[A", -1, null, "CTX_PP/QQ", null),
                         GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ,
                         GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                         Arrays.asList(new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
                                 new SimpleInterval("chr2", 86263977, 86263977))),
+                        null },
+                { createVariantContext("chr4", 21923233, 22506191, "chr8", 107912008, "N",
+                        "<CTX>", null, null, "CTX_INV",
+                        Collections.singletonList("INV_chr4:21923233-22506191")),
+                        GATKSVVCFConstants.ComplexVariantSubtype.CTX_INV,
+                        GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
+                        Arrays.asList(new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
+                                        new SimpleInterval("chr4", 21923233, 22506191)),
+                                new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
+                                        new SimpleInterval("chr4", 21923233, 21923233)),
+                                new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
+                                        new SimpleInterval("chr4", 22506191, 22506191)),
+                                new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
+                                        new SimpleInterval("chr8", 107912008, 107912008)),
+                                new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX,
+                                        new SimpleInterval("chr8", 107912009, 107912009)) ),
                         null },
                 { createVariantContext("chr2", 205522308, 205522384, "chr2", null, "N",
                         "<INV>", 76, null, null, null),
@@ -862,6 +881,13 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                         createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.PROMOTER,GATKSVVCFConstants.INTERGENIC),
                                 Arrays.asList("EMMA2", true)) },
+                // CTX_INV - this test case is not interchromosomal because the test GTF only has chr1
+                { createVariantContext("chr1", 10, 1010, "chr1", 2300, null,
+                        "<CTX>", -1, null, "CTX_INV", Arrays.asList("INV_chr1:10-1010")),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.INV_SPAN, GATKSVVCFConstants.NONCODING_SPAN,
+                                        GATKSVVCFConstants.LOF, GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA1", "DNase", "EMMA2", false))},
                 // check annotate promoter for all segments in multi-segment SV
                 { createVariantContext("chr1", 30, 30, "chr1", 3030, null,
                         "<BND>", null, "-+", null, null),

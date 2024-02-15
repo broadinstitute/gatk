@@ -91,7 +91,8 @@ public final class GATKSVVCFConstants {
         dDUP_iDEL,
         INS_iDEL,
         CTX_PP_QQ,
-        CTX_PQ_QP
+        CTX_PQ_QP,
+        CTX_INV
     }
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
