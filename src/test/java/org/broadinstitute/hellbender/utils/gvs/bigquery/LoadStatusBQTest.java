@@ -51,7 +51,7 @@ public class LoadStatusBQTest extends GATKBaseTest {
         Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
         Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
 
-        loadStatus.writeVCFHeadersLoaded(1);
+        loadStatus.writeHeadersLoadedStatus(1);
         Assert.assertTrue(loadStatus.getSampleLoadState(1).isStarted());
         Assert.assertTrue(loadStatus.getSampleLoadState(1).areHeadersLoaded());
         Assert.assertFalse(loadStatus.getSampleLoadState(1).isComplete());
