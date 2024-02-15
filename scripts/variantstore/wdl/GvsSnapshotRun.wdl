@@ -22,7 +22,7 @@ workflow GvsSnapshotTest {
     call Utils.SnapshotTables {
         input:
             project_id = "gvs-internal",
-            dataset_name = "hatcher_microsoft_walkthrough",
+            dataset_name = "hatcher_microsoft_walkthrough_v2",
             snapshot_dataset = "hatcher_vs_299_test_storage",
             retrieval_key = "test_run",
             snapshot = true,
