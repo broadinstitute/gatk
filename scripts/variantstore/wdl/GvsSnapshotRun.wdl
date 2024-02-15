@@ -8,27 +8,24 @@ workflow GvsSnapshotTest {
         String? cloud_sdk_docker
     }
 
-#    String project_id
-#    String dataset_name
-#    String snapshot_dataset
-#    String storage_key
+
 #    Array[String] table_patterns
-#    Boolean snapshot = true
-#    String cloud_sdk_docker
 
-    call Utils.GetToolVersions {
-        input:
-            git_branch_or_tag = git_branch_or_tag,
-    }
-
-    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+#    call Utils.GetToolVersions {
+#        input:
+#            git_branch_or_tag = git_branch_or_tag,
+#    }
+#
+#    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
 
 
     call Utils.SnapshotTables {
         input:
-            project_id = "gvs-dev",
+            project_id = "gvs-internal",
             dataset_name = "hatcher_microsoft_walkthrough",
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-
+            snapshot_dataset = "hatcher_vs_299_test_storage",
+            retrieval_key = "test_run",
+            snapshot = true,
+            cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
     }
 }

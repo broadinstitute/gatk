@@ -1152,7 +1152,7 @@ task SnapshotTables {
     String project_id = ""
     String dataset_name = ""
     String snapshot_dataset = ""
-    String storage_key = ""
+    String retrieval_key = ""
 #    Array[String] table_patterns
     Boolean snapshot = true
     String cloud_sdk_docker
@@ -1175,18 +1175,18 @@ task SnapshotTables {
     # 3. smashes together the whitespace, as the columns are separated by variable amounts and it can confuse cut
     # 4. uses cut to get just the table names
 
-    echo "Running the empty task"
-    exit 0
+    echo "Running the empty task to snapshot from ~{dataset_name} to ~{snapshot_dataset} associated with key ~{retrieval_key}"
 
-#    TABLE_NAMES=`bq ls --max_results 1000 "${PROJECT_ID}:${SOURCE_DATASET}" | \
-#    tail -n +3 | \
-#    tr -s ' ' | \
-#    cut -d ' ' -f 2`
-#
-#
-#    for tb in $TABLE_NAMES
-#    do
-#    echo "Snapshotting $tb"
+
+    TABLE_NAMES=`bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
+    tail -n +3 | \
+    tr -s ' ' | \
+    cut -d ' ' -f 2`
+
+
+    for tb in $TABLE_NAMES
+    do
+    echo "Snapshotting $tb"
 #    SNAP_NAME="${IDENTIFIER}_${DT}${SNAPSHOT_DIVIDER_TOKEN}${tb}"
 #
 #    echo "moving ${PROJECT_ID}:${SOURCE_DATASET}.${tb} to ${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
@@ -1198,7 +1198,7 @@ task SnapshotTables {
 #    "${PROJECT_ID}:${SOURCE_DATASET}.${tb}" \
 #    "${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
 #
-#    done
+    done
 
 
   >>>
