@@ -570,9 +570,9 @@ public class SVAnnotateEngine {
      *      protein-coding consequences
      */
     @VisibleForTesting
-    protected static List<SVSegment> getComplexAnnotationIntervals(final List<SVSegment> cpxIntervals,
+    protected static ArrayList<SVSegment> getComplexAnnotationIntervals(final List<SVSegment> cpxIntervals,
                                                                    final GATKSVVCFConstants.ComplexVariantSubtype complexType) {
-        final List<SVSegment> segments = new ArrayList<>(cpxIntervals.size());
+        final ArrayList<SVSegment> segments = new ArrayList<>(cpxIntervals.size());
         final List<SimpleInterval> dupIntervals = new ArrayList<>(cpxIntervals.size());
         SimpleInterval inversionIntervalToAdjust = null;
         boolean keepSegment;
