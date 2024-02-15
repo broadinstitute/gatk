@@ -288,29 +288,29 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     shouldWriteVCFHeadersLoadedStatusRow = true;
                 }
             }
+        }
 
-            if (enableReferenceRanges && !refRangesRowsExist) {
-                refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
-            }
+        if (enableReferenceRanges && !refRangesRowsExist) {
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
+        }
 
-            if (enableVet && !vetRowsExist) {
-                vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
-            }
-            if (enableVCFHeaders && !vcfHeaderRowsExist) {
-                buildAllVcfLineHeaders();
-                vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
-            }
+        if (enableVet && !vetRowsExist) {
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
+        }
+        if (enableVCFHeaders && !vcfHeaderRowsExist) {
+            buildAllVcfLineHeaders();
+            vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
+        }
 
-            logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
-                    enableReferenceRanges, enableVet, enableVCFHeaders);
-            logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
-                    shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
+        logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
+                enableReferenceRanges, enableVet, enableVCFHeaders);
+        logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
+                shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
 
-            if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
-                    !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow) {
-                logger.info("No data to be written, exiting successfully.");
-                System.exit(0);
-            }
+        if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
+                !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow) {
+            logger.info("No data to be written, exiting successfully.");
+            System.exit(0);
         }
     }
 
