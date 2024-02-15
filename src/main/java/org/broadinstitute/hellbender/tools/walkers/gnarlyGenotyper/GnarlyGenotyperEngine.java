@@ -391,14 +391,10 @@ public final class GnarlyGenotyperEngine {
     protected void makeGenotypeCall(final Genotype g, final GenotypeBuilder gb,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
-        if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
-            //gb.alleles(GATKVariantContextUtils.noCallAlleles(g.getAlleles().size())).noGQ();
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.SET_TO_NO_CALL,
-                    genotypeLikelihoods, allelesToUse, null);
-        } else {
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
-                    genotypeLikelihoods, allelesToUse, null);
-        }
+        final GenotypeAssignmentMethod assignmentMethod = GATKVariantContextUtils.isInformative(genotypeLikelihoods)
+                ? GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN
+                : GenotypeAssignmentMethod.SET_TO_NO_CALL;
+        GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, genotypeLikelihoods, allelesToUse, null);
     }
 
     /**
