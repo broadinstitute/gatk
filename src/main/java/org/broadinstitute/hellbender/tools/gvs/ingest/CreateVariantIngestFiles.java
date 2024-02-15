@@ -167,8 +167,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean storeCompressedReferences = false;
 
-    private boolean shouldWriteLoadStatusStarted = true;
-
     private boolean shouldWriteReferencesLoadedStatus = false;
 
     private boolean shouldWriteVariantsLoadedStatus = false;
@@ -196,6 +194,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+        if (!enableVet && !enableReferenceRanges && !enableVCFHeaders) {
+            throw new RuntimeIOException("Invalid invocation: variants, references, and VCF header writing all set to false");
+        }
         //set up output directory
         if (!outputDir.exists() && !outputDir.mkdir()) {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
@@ -273,7 +274,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             if (enableReferenceRanges) {
                 if (state.areReferencesLoaded()) {
                     logger.info("Sample ID {}: Reference ranges writing enabled but REFERENCES_LOADED status row found, skipping.", sampleId);
-                    shouldWriteReferencesLoadedStatus = false;
                 } else {
                     refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
@@ -289,7 +289,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             if (enableVet) {
                 if (state.areVariantsLoaded()) {
                     logger.info("Sample ID {}: Variant writing enabled but VARIANTS_LOADED status row found, skipping.", sampleId);
-                    shouldWriteVariantsLoadedStatus = false;
                 } else {
                     vetRowsExist = VetCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (vetRowsExist) {
@@ -305,7 +304,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             if (enableVCFHeaders) {
                 if (state.areHeadersLoaded()) {
                     logger.info("Sample ID {}: VCF Header writing enabled but HEADERS_LOADED status row found, skipping.", sampleId);
-                    shouldWriteVCFHeadersLoadedStatus = false;
                 } else {
                     vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doScratchRowsExistFor(projectID, datasetName, sampleId);
                     if (vcfHeaderRowsExist) {
@@ -322,6 +320,17 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     }
                     shouldWriteVCFHeadersLoadedStatus = true;
                 }
+            }
+
+            logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
+                    enableReferenceRanges, enableVet, enableVCFHeaders);
+            logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
+                    shouldWriteReferencesLoadedStatus, shouldWriteVariantsLoadedStatus, shouldWriteVCFHeadersLoadedStatus);
+
+            if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
+                    !shouldWriteReferencesLoadedStatus && !shouldWriteVariantsLoadedStatus && !shouldWriteVCFHeadersLoadedStatus) {
+                logger.info("No data to be written, exiting successfully.");
+                System.exit(0);
             }
         }
     }
