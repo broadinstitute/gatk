@@ -20,7 +20,7 @@ IMAGE_VERSION=$1
 IMAGE_NAME="us.gcr.io/broad-dsde-methods/gatk-base-image-staging-area"
 DOCKER_IMAGE_TAG="${IMAGE_NAME}:gatkbase-${IMAGE_VERSION}"
 
-gcloud builds submit --tag ${DOCKER_IMAGE_TAG} --timeout=24h --machine-type n1_highcpu_32
+gcloud builds submit --config=cloudbuild.yaml --substitutions=_DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG}
 
 if [ $? -ne 0 ]; then
     echo "gcloud builds submit failed"
