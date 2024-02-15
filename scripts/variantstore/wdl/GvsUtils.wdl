@@ -1146,3 +1146,69 @@ task PopulateFilterSetInfo {
     File monitoring_log = "monitoring.log"
   }
 }
+
+task SnapshotTables {
+  input {
+    String project_id = ""
+    String dataset_name = ""
+    String snapshot_dataset = ""
+    String storage_key = ""
+#    Array[String] table_patterns
+    Boolean snapshot = true
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+  }
+
+  String table_mappings_table = "table_mappings"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # This little snippet
+    # 1. Uses bq to get the list of all tables in a dataset
+    # 2. drops the first two lines (it's the column names and a line of undescores that are a visual separator)
+    # 3. smashes together the whitespace, as the columns are separated by variable amounts and it can confuse cut
+    # 4. uses cut to get just the table names
+
+    echo "Running the empty task"
+    exit 0
+
+#    TABLE_NAMES=`bq ls --max_results 1000 "${PROJECT_ID}:${SOURCE_DATASET}" | \
+#    tail -n +3 | \
+#    tr -s ' ' | \
+#    cut -d ' ' -f 2`
+#
+#
+#    for tb in $TABLE_NAMES
+#    do
+#    echo "Snapshotting $tb"
+#    SNAP_NAME="${IDENTIFIER}_${DT}${SNAPSHOT_DIVIDER_TOKEN}${tb}"
+#
+#    echo "moving ${PROJECT_ID}:${SOURCE_DATASET}.${tb} to ${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
+#
+#    bq cp \
+#    --project_id="${PROJECT_ID}" \
+#    --snapshot \
+#    --no_clobber \
+#    "${PROJECT_ID}:${SOURCE_DATASET}.${tb}" \
+#    "${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
+#
+#    done
+
+
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ~{disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 0
+    cpu: 1
+  }
+}

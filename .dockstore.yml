@@ -361,6 +361,16 @@ workflows:
              - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
+    # Destroy this later once testing is done
+   - name: GvsSnapshotRun
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsSnapshotRun.wdl
+     filters:
+       branches:
+         - master
+         - VS-299-spike-speed-up-integration-tests
+       tags:
+         - /.*/
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
