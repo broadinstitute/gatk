@@ -1205,10 +1205,9 @@ task SnapshotTables {
 
   runtime {
     docker: cloud_sdk_docker
-    memory: "${memory_mb} MiB"
-    disks: "local-disk ~{disk_size_gb} HDD"
-    bootDiskSizeGb: 15
-    preemptible: 0
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
     cpu: 1
   }
 }

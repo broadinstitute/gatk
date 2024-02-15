@@ -28,7 +28,7 @@ workflow GvsSnapshotTest {
         input:
             project_id = "gvs-dev",
             dataset_name = "hatcher_microsoft_walkthrough",
-            cloud_sdk = effective_cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
 
     }
 }
