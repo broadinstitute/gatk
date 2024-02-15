@@ -1000,7 +1000,7 @@ task SelectVariants {
 
     Boolean is_compressed = basename(local_vcf, "gz") != local_vcf
     String output_vcf_name = output_basename + if is_compressed then ".vcf.gz" else ".vcf"
-    String output_vcf_index_name = output_basename + if is_compressed then ".tbi" else ".idx"
+    String output_vcf_index_name = output_basename + if is_compressed then ".vcf.gz.tbi" else ".vcf.idx"
 
     command <<<
       # Prepend date, time and pwd to xtrace log entries.
