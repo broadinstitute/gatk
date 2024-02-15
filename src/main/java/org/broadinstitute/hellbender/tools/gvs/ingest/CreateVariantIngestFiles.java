@@ -242,8 +242,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         boolean vcfHeaderRowsExist = false;
         boolean loadHeadersOnly = !enableReferenceRanges && !enableVet && enableVCFHeaders;
 
-        logger.info("vcfdebug: enableVCFHeaders is " + enableVCFHeaders);
-
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
@@ -253,7 +251,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
             } else if (loadHeadersOnly && state.areHeadersLoaded()) {
-                logger.info("Sample id " + sampleId + " has already had its headers written, exiting successfully.");
+                logger.info("Running with enableVCFHeaders = true and both enableReferenceRanges and enableVet = false:");
+                logger.info("VCF headers for sample id " + sampleId + " have already been loaded, exiting successfully.");
                 System.exit(0);
             } else if (state.isStarted()) { // started but not complete, may or may not have headers loaded
                 if (enableReferenceRanges) {
@@ -273,15 +272,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 }
 
                 if (enableVCFHeaders) {
-                    vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doScratchRowsExistFor(projectID, datasetName, sampleId);
-                    if (vcfHeaderRowsExist) {
-                        logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header scratch rows found, skipping vcf header writes.",
+                    if (state.areHeadersLoaded()) {
+                        logger.warn("VCF header writing enabled for sample id = {}, name = {} but HEADERS_LOADED status row found, skipping VCF header writes.",
                                 sampleId, sampleName);
+                        vcfHeaderRowsExist = true;
                     } else {
-                        vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doNonScratchRowsExistFor(projectID, datasetName, sampleId);
+                        vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doScratchRowsExistFor(projectID, datasetName, sampleId);
                         if (vcfHeaderRowsExist) {
-                            logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping vcf header writes.",
+                            logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header scratch rows found, skipping VCF header writes.",
                                     sampleId, sampleName);
+                        } else {
+                            vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doNonScratchRowsExistFor(projectID, datasetName, sampleId);
+                            if (vcfHeaderRowsExist) {
+                                logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping VCF header writes.",
+                                        sampleId, sampleName);
+                            }
                         }
                     }
                 }
@@ -302,7 +307,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
 
             shouldWriteVCFHeadersLoaded = enableVCFHeaders && !vcfHeaderRowsExist;
-            logger.info("vcfdebug: shouldWriteVCFHeadersLoaded is " + shouldWriteVCFHeadersLoaded);
         }
 
         // To set up the missing positions
@@ -379,14 +383,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        logger.info("vcfdebug: Traversal has succeeded!");
         if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
-            logger.info("vcfdebug: Writing load status started row");
             loadStatus.writeLoadStatusStarted(sampleId);
         }
 
         if (vcfHeaderLineScratchCreator != null) {
-            logger.info("vcfdebug: VCF Headers lines creator is not null");
             try {
                 vcfHeaderLineScratchCreator.apply(allLineHeaders);
             } catch (IOException ioe) {
@@ -395,9 +396,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
 
-            logger.info("vcfdebug: shouldWriteVCFHeadersLoaded is " + shouldWriteVCFHeadersLoaded);
             if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoaded) {
-                logger.info("vcfdebug: Writing vcf headers loaded status row");
                 loadStatus.writeVCFHeadersLoaded(sampleId);
             }
         }
