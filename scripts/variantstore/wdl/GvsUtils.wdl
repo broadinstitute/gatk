@@ -1184,7 +1184,7 @@ task SnapshotTables {
     cut -d ' ' -f 2`
 
     # token based on current date and time
-#    DT=$(date '+%Y%m%d_%s')
+    DT=$(date '+%Y%m%d_%s')
 
     for tb in $TABLE_NAMES
     do
@@ -1194,7 +1194,7 @@ task SnapshotTables {
 
 
     # we want to avoid collisions when the same table is copied more than once, so throw that time token on the end
-#    DEST_TABLE="${tb}_${DT}
+    DEST_TABLE="${tb}_${DT}
 
     # make a record of the table and the associated key for looking it back up
 #    bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
