@@ -24,7 +24,8 @@ workflow GvsSnapshotTest {
             project_id = "gvs-internal",
             dataset_name = "hatcher_microsoft_walkthrough_v2",
             snapshot_dataset = "hatcher_vs_299_test_storage",
-            retrieval_key = "test_run",
+            run_name = "test_run",
+            retrieval_key = "post-extract",
             snapshot = true,
             cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
     }
