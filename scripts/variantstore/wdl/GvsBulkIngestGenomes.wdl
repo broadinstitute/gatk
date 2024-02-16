@@ -78,6 +78,14 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
+    if (!load_vcf_headers && !load_vet_and_ref_ranges) {
+        call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
+            input:
+                message = "GvsBulkIngestGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     call GenerateImportFofnFromDataTable {
         input:
             variants_docker = effective_variants_docker,

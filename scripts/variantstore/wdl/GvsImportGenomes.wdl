@@ -32,6 +32,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
+    # At least one of these "load" inputs must be true
     Boolean load_vet_and_ref_ranges = true
     Boolean load_vcf_headers = false
     String? basic_docker
@@ -66,6 +67,14 @@ workflow GvsImportGenomes {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  if (!load_vcf_headers && !load_vet_and_ref_ranges) {
+    call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
+      input:
+        message = "GvsBulkIngestGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+        basic_docker = effective_basic_docker,
+    }
+  }
 
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
@@ -301,15 +310,26 @@ task LoadData {
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
-    # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
-      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
-            samples.sample_name = temp.sample_name WHERE
-            samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE ( status="FINISHED" ~{true='OR status="HEADERS_WRITTEN"' false='' load_headers_only} )) AND
-            samples.withdrawn is NULL' > sample_map.csv
+    # Get sample map of samples that haven't been loaded yet
+    # Break out individual queries into "status buckets" for all of the statuses we care about.
+    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
+    do
+      cat > query.txt <<FIN
+        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+        samples.sample_name = temp.sample_name WHERE
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = "$status" AND
+        samples.withdrawn is NULL
+FIN
+      cat query.txt |
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
+        $status.status_bucket.csv
+    done
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
+
+    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    cat *.status_bucket.csv | sort --unique > sample_map.csv
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
@@ -464,6 +484,7 @@ task GetUningestedSampleIds {
     Int num_samples
     String table_name
     String cloud_sdk_docker
+    # At least one of these "load" inputs must be true
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
   }
@@ -522,15 +543,26 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
-    # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
-
-      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
+    # Get sample map of samples that haven't been loaded yet
+    # Break out individual queries into "status buckets" for all of the statuses we care about.
+    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
+    do
+      cat > query.txt <<FIN
+        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-          samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE ( status="FINISHED" ~{true='OR status="HEADERS_WRITTEN"' false='' load_headers_only} )) AND
-          samples.withdrawn is NULL
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = "$status" AND
+        samples.withdrawn is NULL
+FIN
+      cat query.txt |
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
+        $status.status_bucket.csv
+    done
 
-    ' > sample_map.csv
+    ## delete the table that was only needed for this ingest test
+    bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
+
+    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    cat *.status_bucket.csv | sort --unique > sample_map.csv
 
     cut -d, -f1 sample_map.csv > gvs_ids.csv
 
