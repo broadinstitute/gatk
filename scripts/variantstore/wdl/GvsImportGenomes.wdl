@@ -312,11 +312,11 @@ task LoadData {
     # Break out individual queries into "status buckets" for all of the statuses we care about.
     for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
     do
-      echo '
+      echo "
         SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = "$status" AND
-        samples.withdrawn is NULL' > query.txt
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status' AND
+        samples.withdrawn is NULL" > query.txt
 
       cat query.txt |
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
@@ -544,11 +544,11 @@ task GetUningestedSampleIds {
     # Break out individual queries into "status buckets" for all of the statuses we care about.
     for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
     do
-      echo '
+      echo "
         SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = "$status" AND
-        samples.withdrawn is NULL' > query.txt
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status' AND
+        samples.withdrawn is NULL" > query.txt
 
       cat query.txt |
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
