@@ -998,6 +998,10 @@ task SelectVariants {
     String local_vcf = basename(input_vcf)
     String local_index = basename(input_vcf_index)
 
+    Boolean is_compressed = basename(local_vcf, "gz") != local_vcf
+    String output_vcf_name = output_basename + if is_compressed then ".vcf.gz" else ".vcf"
+    String output_vcf_index_name = output_basename + if is_compressed then ".vcf.gz.tbi" else ".vcf.idx"
+
     command <<<
       # Prepend date, time and pwd to xtrace log entries.
       PS4='\D{+%F %T} \w $ '
@@ -1016,7 +1020,7 @@ task SelectVariants {
           ~{"-L " + interval_list} \
           ~{"--select-type-to-include " + type_to_include} \
           ~{true="--exclude-filtered true" false="" exclude_filtered} \
-          -O ~{output_basename}.vcf
+          -O ~{output_vcf_name}
     >>>
 
     runtime {
@@ -1029,8 +1033,8 @@ task SelectVariants {
     }
 
     output {
-        File output_vcf = "~{output_basename}.vcf"
-        File output_vcf_index = "~{output_basename}.vcf.idx"
+        File output_vcf = output_vcf_name
+        File output_vcf_index = output_vcf_index_name
         File monitoring_log = "monitoring.log"
     }
 }
