@@ -462,7 +462,7 @@ task SetIsLoadedColumn {
                      INNER JOIN `~{dataset_name}.sample_load_status` AS sls2
                      ON sls1.sample_id = sls2.sample_id
                      AND sls1.status = "STARTED"
-                     AND sls2.status = "FINISHED")'
+                     AND sls2.status = "VARIANTS_LOADED")'
   >>>
   runtime {
     docker: cloud_sdk_docker
