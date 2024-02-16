@@ -204,13 +204,23 @@ workflow GvsCreateVATfromVDS {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call DeduplicateVatInBigQuery {
+        input:
+            original_vat_table_name = BigQueryLoadJson.vat_table_name,
+            deduplicated_vat_table_name = BigQueryLoadJson.vat_table_name + "_dedup",
+            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+            project_id = project_id,
+            dataset_name = dataset_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
         input:
             project_id = project_id,
             git_branch_or_tag = git_branch_or_tag,
             git_hash = GetToolVersions.git_hash,
             dataset_name = dataset_name,
-            vat_table_name = BigQueryLoadJson.vat_table_name,
+            vat_table_name = DeduplicateVatInBigQuery.vat_table_name,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
             precondition_met = BigQueryLoadJson.done,
@@ -219,7 +229,7 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        String cluser_name = GenerateSitesOnlyVcf.cluster_name
+        String cluster_name = GenerateSitesOnlyVcf.cluster_name
         File dropped_sites_file = MergeTsvs.output_file
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
@@ -942,6 +952,77 @@ task BigQueryLoadJson {
 
     output {
         String vat_table_name = vat_table
+        Boolean done = true
+    }
+}
+
+task DeduplicateVatInBigQuery {
+     meta {
+         # since the WDL will not see the updated data (its getting put in a gcp bucket)
+         volatile: true
+     }
+
+     input {
+        String original_vat_table_name
+        String deduplicated_vat_table_name
+        File? nirvana_schema
+
+        String project_id
+        String dataset_name
+        String cloud_sdk_docker
+     }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        DATE=86400 ## 24 hours in seconds
+
+        # TODO - Add a check that the input VAT table exists
+        # TODO - Make the input VAT disappear once this completes?
+
+        set +e
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+        echo "Creating the de-duplicated vat table ~{dataset_name}.~{deduplicated_vat_table_name}"
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name} ~{nirvana_schema}
+        else
+        bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name}
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name} ~{nirvana_schema}
+        fi
+        echo "And putting data into it"
+
+        # Now we query the original VAT table and recreate it, but remove any rows that appear twice.
+
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{deduplicated_vat_table_name} --replace --project_id=~{project_id} \
+        ' SELECT * EXCEPT(row_number) FROM (
+            SELECT
+                *,
+                row_number()
+                    over (partition by vid, transcript)
+                    row_number
+            FROM
+                `~{dataset_name}.~{original_vat_table_name}`
+            )
+            where row_number = 1;
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String vat_table_name = deduplicated_vat_table_name
         Boolean done = true
     }
 }
