@@ -578,6 +578,7 @@ FIN
     Int min_table_id = ceil(read_float("min_sample_id"))
     File sample_map = "sample_map.csv"
     File gvs_ids = "gvs_ids.csv"
+    Array[File] status_buckets = glob("*.status_bucket.csv")
   }
 }
 
