@@ -327,8 +327,10 @@ task LoadData {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
-    # -r keeps the header at the top
-    cat *.status_bucket.csv | sort -r -u > sample_map.csv
+    # Add a header manually:
+    echo "sample_id,sample_name" > sample_map.csv
+    # The real header sorts to the bottom of the file, delete that.
+    cat *.status_bucket.csv | sort -u | sed '$d' >> sample_map.csv
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
@@ -560,8 +562,10 @@ task GetUningestedSampleIds {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
-    # -r keeps the header at the top
-    cat *.status_bucket.csv | sort -r -u > sample_map.csv
+    # Add a header manually:
+    echo "sample_id,sample_name" > sample_map.csv
+    # The real header sorts to the bottom of the file, delete that.
+    cat *.status_bucket.csv | sort -u | sed '$d' >> sample_map.csv
 
     cut -d, -f1 sample_map.csv > gvs_ids.csv
 
