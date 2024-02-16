@@ -228,10 +228,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         boolean vetRowsExist = false;
         boolean vcfHeaderRowsExist = false;
 
-        // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
-        // some class members that the CreateVariantIngestFilesTest expects to be initialized.
-        SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
-
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
@@ -290,6 +286,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
         }
 
+        // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
+        // some class members that the CreateVariantIngestFilesTest expects to be initialized.
+        SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
+
         if (enableReferenceRanges && !refRangesRowsExist) {
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
         }
@@ -317,7 +317,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         if (!enableReferenceRanges && !enableVet && enableVCFHeaders) {
-            // Nothing to do here, exit quickly.
+            // Nothing to do here, exit ASAP.
             return;
         }
 
