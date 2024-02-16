@@ -1183,13 +1183,24 @@ task SnapshotTables {
     tr -s ' ' | \
     cut -d ' ' -f 2`
 
+    # token based on current date and time
+    DT=$(date '+%Y%m%d_%s')
 
     for tb in $TABLE_NAMES
     do
     echo "Snapshotting $tb"
-#    SNAP_NAME="${IDENTIFIER}_${DT}${SNAPSHOT_DIVIDER_TOKEN}${tb}"
-#
-#    echo "moving ${PROJECT_ID}:${SOURCE_DATASET}.${tb} to ${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
+
+    # This is where we decide whether or not this table is included.
+
+
+    # we want to avoid collisions when the same table is copied more than once, so throw that time token on the end
+    DEST_TABLE = "${tb}_${DT}
+
+    # make a record of the table and the associated key for looking it back up
+    bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
+    'INSERT INTO ~{snapshot_dataset}.table_mappings (key, table_name, original_table_name) VALUES ("~{retrieval_key}", "${DEST_TABLE}", "${tb}")'
+
+     echo "would be moving ~{project_id}:~{dataset_name}.${tb} to ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}"
 #
 #    bq cp \
 #    --project_id="${PROJECT_ID}" \
