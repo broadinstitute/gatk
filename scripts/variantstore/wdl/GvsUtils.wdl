@@ -1203,12 +1203,12 @@ task SnapshotTables {
 
     echo "would be moving ~{project_id}:~{dataset_name}.${tb} to ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}"
 
-#    bq cp \
-#    --project_id="~{project_id}" \
-#    --snapshot \
-#    --no_clobber \
-#    "${PROJECT_ID}:${SOURCE_DATASET}.${tb}" \
-#    "${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
+    # actually copy the tables over into the holding dataset
+    bq cp \
+    --project_id="~{project_id}" \
+    --no_clobber \
+    ~{project_id}:~{dataset_name}."${tb}" \
+    ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}
 
     done
 
