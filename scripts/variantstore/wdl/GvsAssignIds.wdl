@@ -15,7 +15,8 @@ workflow GvsAssignIds {
     File external_sample_names
     Boolean samples_are_controls = false
 
-    Boolean load_vcf_headers = false
+    Boolean load_vet_and_ref_ranges
+    Boolean load_vcf_headers
 
     Boolean use_compressed_references = false
     String? cloud_sdk_docker
@@ -118,15 +119,17 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
-    input:
-      project_id = project_id,
-      git_branch_or_tag = git_branch_or_tag,
-      git_hash = effective_git_hash,
-      dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      use_compressed_references = use_compressed_references,
+  if (load_vet_and_ref_ranges) {
+    call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
+      input:
+        project_id = project_id,
+        git_branch_or_tag = git_branch_or_tag,
+        git_hash = effective_git_hash,
+        dataset_name = dataset_name,
+        max_table_id = AssignIds.max_table_id,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        use_compressed_references = use_compressed_references,
+    }
   }
 
   output {

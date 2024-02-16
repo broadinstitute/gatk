@@ -113,6 +113,7 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
             load_vcf_headers = load_vcf_headers,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references
     }
