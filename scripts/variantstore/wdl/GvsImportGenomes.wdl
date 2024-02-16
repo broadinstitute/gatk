@@ -315,7 +315,7 @@ task LoadData {
       echo "
         SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status' AND
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
         samples.withdrawn is NULL" > query.txt
 
       cat query.txt |
@@ -547,7 +547,7 @@ task GetUningestedSampleIds {
       echo "
         SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status' AND
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
         samples.withdrawn is NULL" > query.txt
 
       cat query.txt |
