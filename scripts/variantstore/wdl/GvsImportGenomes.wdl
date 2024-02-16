@@ -458,7 +458,7 @@ task SetIsLoadedColumn {
     WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
     from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
     WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN
-    (SELECT sls1.sample_id FROM `~{dataset_name}.sample_load_status` AS references_status
+    (SELECT references_status.sample_id FROM `~{dataset_name}.sample_load_status` AS references_status
                      INNER JOIN `~{dataset_name}.sample_load_status` AS variants_status
                      ON references_status.sample_id = variants_status.sample_id
                      AND references_status.status = "REFERENCES_LOADED"
