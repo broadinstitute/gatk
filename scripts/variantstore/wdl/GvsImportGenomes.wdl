@@ -273,8 +273,6 @@ task LoadData {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String table_name = "sample_info"
 
-  Boolean load_headers_only = !load_vet_and_ref_ranges && load_vcf_headers
-
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -497,7 +495,6 @@ task GetUningestedSampleIds {
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String temp_table="~{dataset_name}.sample_names_to_load"
-  Boolean load_headers_only = !load_vet_and_ref_ranges && load_vcf_headers
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
