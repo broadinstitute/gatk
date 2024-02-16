@@ -287,7 +287,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1232_SelectVariantsExtensionFix
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -297,7 +296,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1232_SelectVariantsExtensionFix
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -308,7 +306,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1214_for_merge
-             - gg_VS-1232_SelectVariantsExtensionFix
          tags:
              - /.*/
    - name: GvsIngestTieout
