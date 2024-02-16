@@ -1199,17 +1199,17 @@ task SnapshotTables {
 
     # make a record of the table and the associated key for looking it back up
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
-    "INSERT INTO ~{snapshot_dataset}.table_mappings (group, key, table_name, original_table_name) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${DEST_TABLE}\", \"${tb}\")"
+    "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, table_name, original_table_name) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${DEST_TABLE}\", \"${tb}\")"
 
     echo "would be moving ~{project_id}:~{dataset_name}.${tb} to ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}"
-#
+
 #    bq cp \
-#    --project_id="${PROJECT_ID}" \
+#    --project_id="~{project_id}" \
 #    --snapshot \
 #    --no_clobber \
 #    "${PROJECT_ID}:${SOURCE_DATASET}.${tb}" \
 #    "${PROJECT_ID}:${SNAPSHOT_DATASET}.${SNAP_NAME}"
-#
+
     done
 
 
