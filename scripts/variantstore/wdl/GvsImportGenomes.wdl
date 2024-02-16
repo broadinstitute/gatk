@@ -551,7 +551,7 @@ task GetUningestedSampleIds {
         samples.withdrawn is NULL' > query.txt
 
       cat query.txt |
-        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
         $status.status_bucket.csv
     done
 
