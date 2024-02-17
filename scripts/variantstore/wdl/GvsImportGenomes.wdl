@@ -71,7 +71,7 @@ workflow GvsImportGenomes {
   if (!load_vcf_headers && !load_vet_and_ref_ranges) {
     call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
       input:
-        message = "GvsBulkIngestGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+        message = "GvsImportGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
         basic_docker = effective_basic_docker,
     }
   }
