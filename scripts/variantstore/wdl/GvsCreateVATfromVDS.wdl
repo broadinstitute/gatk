@@ -88,6 +88,12 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
+    call GetHailScripts {
+        input:
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+            variants_docker = effective_variants_docker,
+    }
+
     call GenerateSitesOnlyVcf {
         input:
             vds_path = vds_path,
@@ -95,7 +101,9 @@ workflow GvsCreateVATfromVDS {
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            hail_generate_sites_only_script = GetHailScripts.hail_generate_sites_only_script,
+            create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
@@ -248,7 +256,9 @@ task GenerateSitesOnlyVcf {
         Boolean leave_cluster_running_at_end
         String hail_version
         File? hail_wheel
-        String hail_generate_sites_only_script_path
+        File run_in_hail_cluster_script
+        File hail_generate_sites_only_script
+        File create_vat_inputs_script
         String ancestry_file_path
         String? hail_temp_path
         Int? cluster_max_idle_minutes
@@ -302,14 +312,11 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
-        # Run the hail python script to make a VDS
-        gsutil cp ~{hail_generate_sites_only_script_path} /app/
-
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
-        python3 /app/run_in_hail_cluster.py \
-            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
-            --secondary-script-path-list /app/create_vat_inputs.py \
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{hail_generate_sites_only_script} \
+            --secondary-script-path-list ~{create_vat_inputs_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -1025,4 +1032,38 @@ task DeduplicateVatInBigQuery {
         String vat_table_name = deduplicated_vat_table_name
         Boolean done = true
     }
+}
+
+task GetHailScripts {
+    input {
+        File hail_generate_sites_only_script_path
+        String variants_docker
+    }
+    meta {
+        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
+        # the script content should also stay the same.
+    }
+    String hail_generate_sites_only_script_name = basename(hail_generate_sites_only_script_path)
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Not sure why this is required but without it:
+        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
+
+        mkdir app
+        cp /app/*.py app
+        cp ~{hail_generate_sites_only_script_path} app
+        ls -ltrh app
+    >>>
+        output {
+            File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
+            File create_vat_inputs_script = "app/create_vat_inputs.py"
+            File hail_generate_sites_only_script = "app/~{hail_generate_sites_only_script_name}"
+        }
+        runtime {
+            docker: variants_docker
+        }
 }
