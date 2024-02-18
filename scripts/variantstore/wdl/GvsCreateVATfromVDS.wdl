@@ -102,6 +102,7 @@ workflow GvsCreateVATfromVDS {
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            foo_path = hail_generate_sites_only_script_path,
             hail_generate_sites_only_script = GetHailScripts.hail_generate_sites_only_script,
             create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
@@ -256,6 +257,7 @@ task GenerateSitesOnlyVcf {
         Boolean leave_cluster_running_at_end
         String hail_version
         File? hail_wheel
+        File foo_path
         File run_in_hail_cluster_script
         File hail_generate_sites_only_script
         File create_vat_inputs_script
@@ -311,6 +313,8 @@ task GenerateSitesOnlyVcf {
             "sites_only_output_path" : "${sites_only_vcf_filename}"
         }
         FIN
+
+        gsutil cp ~{foo_path} /app/
 
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
@@ -1017,7 +1021,7 @@ task DeduplicateVatInBigQuery {
             FROM
                 `~{dataset_name}.~{original_vat_table_name}`
             )
-            where row_number = 1;
+            where row_number = 1'
     >>>
 
     runtime {
