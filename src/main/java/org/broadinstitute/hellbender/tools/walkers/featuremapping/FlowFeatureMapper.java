@@ -303,9 +303,7 @@ public final class FlowFeatureMapper extends ReadWalker {
                 headerInfo.add(new VCFInfoHeaderLine(scoreNameForBase(baseIndex), 1, VCFHeaderLineType.Float, "Base specific mapping score"));
             }
         }
-        if ( fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff ) {
-            headerInfo.add(new VCFInfoHeaderLine(VCF_ADJACENT_REF_DIFF, 1, VCFHeaderLineType.Flag, "Adjacent base filter indication: indel in the adjacent 5 bases to the considered base on the read"));
-        }
+        headerInfo.add(new VCFInfoHeaderLine(VCF_ADJACENT_REF_DIFF, 1, VCFHeaderLineType.Flag, "Adjacent base filter indication: indel in the adjacent 5 bases to the considered base on the read"));
 
         // add anvqr features
         for ( final SnvqrFeature feature : snvqrFeatures ) {
