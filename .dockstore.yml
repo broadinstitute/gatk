@@ -232,6 +232,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gvs_0.5.3
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -260,7 +261,7 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
-             - vs_1099_composite_object_inputs
+             - gvs_0.5.3
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
