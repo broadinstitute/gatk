@@ -5,9 +5,9 @@
 ### Changed
 
 Updated the representation of sample load states in the `sample_load_status` table from using `STARTED` and `FINISHED`
-to using `HEADERS_LOADED`, `REFERENCES_LOADED` and `VARIANTS_LOADED`. The updated status-writing code should be backward
+to using `HEADERS_LOADED`, `REFERENCES_LOADED` and `VARIANTS_LOADED`. The new status reading/writing code is backward
 compatible with the old `STARTED` and `FINISHED` states if those have already been used within a callset. The new statuses
-should allow for faster recovery if an ingest task or workflow is preempted or aborted and thenb restarted.
+should allow for faster recovery if an ingest task or workflow is preempted or aborted and then restarted.
 
 ## 0.5.2 - 2024-01-17
 
