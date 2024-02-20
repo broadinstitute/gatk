@@ -22,7 +22,8 @@ workflow GvsJointVariantCalling {
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
         Boolean use_compressed_references = false
-        Boolean process_vcf_headers = false
+        Boolean load_vet_and_ref_ranges = true
+        Boolean load_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
@@ -131,7 +132,8 @@ workflow GvsJointVariantCalling {
             sample_set_name = sample_set_name,
             billing_project_id = billing_project_id,
             use_compressed_references = use_compressed_references,
-            process_vcf_headers = process_vcf_headers,
+            load_vcf_headers = load_vcf_headers,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
