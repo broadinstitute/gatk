@@ -1172,6 +1172,13 @@ task GetTableListFromDataset {
     ~{"grep -vE '" + exclude_regex + " table_names.txt > filtered_tables.txt && cp filtered_tables.txt table_names.txt"}
     >>>
 
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
   output {
     File table_names = "table_names.txt"
   }
