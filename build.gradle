@@ -354,8 +354,8 @@ dependencies {
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
     // pgen jni
-    //implementation('pgen-jni:pgenlib:0.1.6l-SNAPSHOT')
-    implementation files('lib/mac/pgen.jar')
+    implementation('pgen-jni:pgenlib:0.2.8b-SNAPSHOT')
+    //implementation files('lib/mac/pgen.jar')
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
