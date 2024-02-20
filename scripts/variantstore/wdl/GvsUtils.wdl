@@ -1146,6 +1146,7 @@ task PopulateFilterSetInfo {
     File monitoring_log = "monitoring.log"
   }
 }
+
 task GetTableListFromDataset {
   input {
     String project_id
@@ -1184,7 +1185,7 @@ task GetTableListFromDataset {
   }
 }
 
-  task SnapshotTables {
+task SnapshotTables {
   input {
     String project_id
     String dataset_name
@@ -1229,14 +1230,15 @@ task GetTableListFromDataset {
     echo "Snapshotting $tb"
 
     # This is where we decide whether or not this table is included.
+    # First, look up the timestamp for this table
+    LASTMODIFIED=$(bq --apilog=false --project_id=~{project_id} --format=json show ~{dataset_name}.${tb} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+    echo "Table $tb last modified at timestamp $LASTMODIFIED"
 
+    # This is where we'd look up the metadata table and see if it had an entry for this run already.
+    # ...but not now
 
     # we want to avoid collisions when the same table is copied more than once, so throw that time token on the end
     DEST_TABLE="${tb}_${DT}"
-
-    # make a record of the table and the associated key for looking it back up
-    bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
-    "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, table_name, original_table_name) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${DEST_TABLE}\", \"${tb}\")"
 
     echo "would be moving ~{project_id}:~{dataset_name}.${tb} to ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}"
 
@@ -1246,6 +1248,12 @@ task GetTableListFromDataset {
     --no_clobber \
     ~{project_id}:~{dataset_name}."${tb}" \
     ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}
+
+
+    # make a record of the table and the associated key for looking it back up
+    bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
+    "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, local_table_name, original_table_name, original_table_last_modified) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${DEST_TABLE}\", \"${tb}\", $LASTMODIFIED)"
+
 
     done
 
