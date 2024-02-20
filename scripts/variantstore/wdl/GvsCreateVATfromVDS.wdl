@@ -214,8 +214,8 @@ workflow GvsCreateVATfromVDS {
 
     call DeduplicateVatInBigQuery {
         input:
-            original_vat_table_name = BigQueryLoadJson.vat_table_name,
-            deduplicated_vat_table_name = BigQueryLoadJson.vat_table_name + "_dedup",
+            vat_table_name_name = BigQueryLoadJson.vat_table_name,
+            vat_table_w_dups_name = BigQueryLoadJson.vat_table_w_dups_name,
             nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
             project_id = project_id,
             dataset_name = dataset_name,
@@ -770,8 +770,12 @@ task BigQueryLoadJson {
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
 
-    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
+    # This is the name of the vat table. Due to sharding (VS-1191) there may be some duplicated entries.
+    # So we create it here, and then deduplicate it in a later step, naming THAT output with the final, true VAT table name
+    String vat_table_w_dups = filter_set_name + "_vat" + effective_vat_version + "_w_dups"
     String vat_table = filter_set_name + "_vat" + effective_vat_version
+
+    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
     String variant_transcript_table = filter_set_name + "_vat_vt" + effective_vat_version
     String genes_table = filter_set_name + "_vat_genes" + effective_vat_version
 
@@ -816,18 +820,18 @@ task BigQueryLoadJson {
         bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
         set +e
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table_w_dups} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Creating the vat table ~{dataset_name}.~{vat_table}"
-            bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+            echo "Creating the vat table ~{dataset_name}.~{vat_table_w_dups}"
         else
-            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
-            bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+            echo "Dropping and recreating the vat table ~{dataset_name}.~{vat_table_w_dups}"
+            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table_w_dups}
         fi
-        echo "And putting data into it"
+        bq --apilog=false mk --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_w_dups} ~{nirvana_schema}
+        echo "Loading data into it"
 
         # Now we run a giant query in BQ to get this all in the right table and join the genes properly
         # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
@@ -835,7 +839,7 @@ task BigQueryLoadJson {
         # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
         # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
 
-        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table_w_dups} --replace --project_id=~{project_id} \
         'SELECT
             v.vid,
             v.transcript,
@@ -958,6 +962,7 @@ task BigQueryLoadJson {
     }
 
     output {
+        String vat_table_w_dups_name = vat_table_w_dups
         String vat_table_name = vat_table
         Boolean done = true
     }
@@ -970,8 +975,8 @@ task DeduplicateVatInBigQuery {
      }
 
      input {
-        String original_vat_table_name
-        String deduplicated_vat_table_name
+        String vat_table_w_dups_name
+        String vat_table_name_name
         File? nirvana_schema
 
         String project_id
@@ -992,22 +997,21 @@ task DeduplicateVatInBigQuery {
         # TODO - Make the input VAT disappear once this completes?
 
         set +e
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table_name_name} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
-        echo "Creating the de-duplicated vat table ~{dataset_name}.~{deduplicated_vat_table_name}"
-        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name} ~{nirvana_schema}
+            echo "Creating the final vat table ~{dataset_name}.~{vat_table_name_name}"
         else
-        bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name}
-        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{deduplicated_vat_table_name} ~{nirvana_schema}
+            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table_name_name}
         fi
-        echo "And putting data into it"
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{vat_table_name_name} ~{nirvana_schema}
+        echo "Loading data into it"
 
         # Now we query the original VAT table and recreate it, but remove any rows that appear twice.
 
-        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{deduplicated_vat_table_name} --replace --project_id=~{project_id} \
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table_name_name} --replace --project_id=~{project_id} \
         ' SELECT * EXCEPT(row_number) FROM (
             SELECT
                 *,
@@ -1015,7 +1019,7 @@ task DeduplicateVatInBigQuery {
                     over (partition by vid, transcript)
                     row_number
             FROM
-                `~{dataset_name}.~{original_vat_table_name}`
+                `~{dataset_name}.~{vat_table_w_dups_name}`
             )
             where row_number = 1'
     >>>
@@ -1029,7 +1033,7 @@ task DeduplicateVatInBigQuery {
     }
 
     output {
-        String vat_table_name = deduplicated_vat_table_name
+        String vat_table_name = vat_table_name_name
         Boolean done = true
     }
 }
