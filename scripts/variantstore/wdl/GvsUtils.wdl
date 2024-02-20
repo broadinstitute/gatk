@@ -1169,7 +1169,7 @@ task GetTableListFromDataset {
     cut -d ' ' -f 2 > table_names.txt
 
     # If there is an EXCLUDE regex, run that over the file here too using grep.  We'll want to override the original file
-    ~{"grep -vE '" + exclude_regex + " table_names.txt > filtered_tables.txt && cp filtered_tables.txt table_names.txt"}
+    ~{"grep -vE '" + exclude_regex + "' table_names.txt > filtered_tables.txt && cp filtered_tables.txt table_names.txt"}
     >>>
 
   runtime {
