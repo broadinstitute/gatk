@@ -1146,8 +1146,38 @@ task PopulateFilterSetInfo {
     File monitoring_log = "monitoring.log"
   }
 }
+task GetTableListFromDataset {
+  input {
+    String project_id
+    String dataset_name
+    String? exclude_regex
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+  }
 
-task SnapshotTables {
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
+    tail -n +3 | \
+    tr -s ' ' | \
+    cut -d ' ' -f 2 > table_names.txt
+
+    # If there is an EXCLUDE regex, run that over the file here too using grep.  We'll want to override the original file
+    ~{"grep -vE '" + exclude_regex + " table_names.txt > filtered_tables.txt && cp filtered_tables.txt table_names.txt"}
+    >>>
+
+  output {
+    File table_names = "table_names.txt"
+  }
+}
+
+  task SnapshotTables {
   input {
     String project_id
     String dataset_name
