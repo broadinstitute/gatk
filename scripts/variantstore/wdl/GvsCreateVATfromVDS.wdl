@@ -209,7 +209,6 @@ workflow GvsCreateVATfromVDS {
             project_id = project_id,
             dataset_name = dataset_name,
             output_path = output_path,
-            effective_vat_version = effective_vat_version,
             base_vat_table_name = vat_table_name,
             prep_vt_json_done = PrepVtAnnotationJson.done,
             prep_genes_json_done = PrepGenesAnnotationJson.done,
@@ -758,7 +757,6 @@ task BigQueryLoadJson {
     }
 
     input {
-        String effective_vat_version
         String base_vat_table_name
         File? nirvana_schema
         File? vt_schema
@@ -992,9 +990,6 @@ task DeduplicateVatInBigQuery {
 
         DATE=86400 ## 24 hours in seconds
 
-        # TODO - Add a check that the input VAT table exists
-        # TODO - Make the input VAT disappear once this completes?
-
         set +e
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} > /dev/null
         BQ_SHOW_RC=$?
@@ -1059,7 +1054,6 @@ task GetHailScripts {
         mkdir app
         cp /app/*.py app
         cp ~{hail_generate_sites_only_script_path} app
-        ls -ltrh app
     >>>
         output {
             File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
