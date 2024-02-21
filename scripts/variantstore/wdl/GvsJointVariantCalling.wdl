@@ -141,7 +141,7 @@ workflow GvsJointVariantCalling {
     }
 
     if (snapshotRun && defined(snapshotRunName)) {
-        call Utils.SnapshotTables as SnapshotTables {
+        call Utils.SnapshotTables as SnapshotTables1 {
             input:
                 project_id = project_id,
                 dataset_name = dataset_name,
@@ -165,7 +165,7 @@ workflow GvsJointVariantCalling {
     }
 
     if (snapshotRun && defined(snapshotRunName)) {
-        call Utils.SnapshotTables as SnapshotTables {
+        call Utils.SnapshotTables as SnapshotTables2 {
             input:
                 project_id = project_id,
                 dataset_name = dataset_name,
@@ -201,7 +201,7 @@ workflow GvsJointVariantCalling {
     }
 
     if (snapshotRun && defined(snapshotRunName)) {
-        call Utils.SnapshotTables as SnapshotTables {
+        call Utils.SnapshotTables as SnapshotTables3 {
             input:
                 project_id = project_id,
                 dataset_name = dataset_name,
@@ -233,7 +233,7 @@ workflow GvsJointVariantCalling {
     }
 
     if (snapshotRun && defined(snapshotRunName)) {
-        call Utils.SnapshotTables as SnapshotTables {
+        call Utils.SnapshotTables as SnapshotTables4 {
             input:
                 project_id = project_id,
                 dataset_name = dataset_name,
