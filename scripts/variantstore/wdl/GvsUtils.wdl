@@ -1249,7 +1249,7 @@ task SnapshotTables {
 
     # This returns an empty array if there are no values.  But if there IS a value AND it matches, we can reuse that table
     if [ $TABLE_JSON != "[]" ]; then
-      echo "There was a previous entry for this table ${td}.  Seeing if we can use it"
+      echo "There was a previous entry for this table ${tb}.  Seeing if we can use it"
 
       # Pull out the timestamp from the bq json and validate it
       LASTSTOREDMODIFIED=`echo $TABLE_JSON | python3 -c "import sys, json; print(json.load(sys.stdin)[0]['last_modified']);"`
