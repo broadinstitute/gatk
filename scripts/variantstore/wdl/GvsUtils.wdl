@@ -1229,7 +1229,7 @@ task GetHailScripts {
       cp ~{hail_generate_sites_only_script_path} app
     else
       touch ~{hail_generate_sites_only_script_name} # a dummy output file as WDL doesn't support optional outputs
-      cp ~{hail_generate_sites_only_script_path} app
+      cp ~{hail_generate_sites_only_script_name} app
     fi
   >>>
   output {
