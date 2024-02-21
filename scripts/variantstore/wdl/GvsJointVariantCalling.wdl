@@ -45,6 +45,8 @@ workflow GvsJointVariantCalling {
         # runs and feature development.
         File? gatk_override
 
+        Boolean snapshotRun = false
+        String? snapshotRunName
         Boolean is_wgs = true
         File? interval_list
 
@@ -138,6 +140,18 @@ workflow GvsJointVariantCalling {
             is_wgs = is_wgs,
     }
 
+    if (snapshotRun && defined(snapshotRunName)) {
+        call Utils.SnapshotTables as SnapshotTables {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                snapshot_dataset = "hatcher_vs_299_test_storage",
+                run_name = snapshotRunName,
+                retrieval_key = "after_bulk_ingest_before_alt_allele",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+    }
+
     call PopulateAltAllele.GvsPopulateAltAllele {
         input:
             git_branch_or_tag = git_branch_or_tag,
@@ -149,6 +163,19 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
+
+    if (snapshotRun && defined(snapshotRunName)) {
+        call Utils.SnapshotTables as SnapshotTables {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                snapshot_dataset = "hatcher_vs_299_test_storage",
+                run_name = snapshotRunName,
+                retrieval_key = "after_alt_allele_before_filter_set",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+    }
+
 
     call CreateFilterSet.GvsCreateFilterSet {
         input:
@@ -173,6 +200,18 @@ workflow GvsJointVariantCalling {
             scoring_python_script = scoring_python_script,
     }
 
+    if (snapshotRun && defined(snapshotRunName)) {
+        call Utils.SnapshotTables as SnapshotTables {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                snapshot_dataset = "hatcher_vs_299_test_storage",
+                run_name = snapshotRunName,
+                retrieval_key = "after_filter_set_before_prepare",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+    }
+
     call PrepareRangesCallset.GvsPrepareCallset {
         input:
             call_set_identifier = call_set_identifier,
@@ -191,6 +230,18 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             enable_extract_table_ttl = true,
+    }
+
+    if (snapshotRun && defined(snapshotRunName)) {
+        call Utils.SnapshotTables as SnapshotTables {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                snapshot_dataset = "hatcher_vs_299_test_storage",
+                run_name = snapshotRunName,
+                retrieval_key = "after_prepare_callset_before_extract",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
     }
 
     String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
