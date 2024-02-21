@@ -1235,7 +1235,7 @@ task SnapshotTables {
 
     # Basic validation of the value that we got back
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-      echo "Last modified stamp for table ${tb}: $LASTMODIFIED
+      echo "Last modified stamp for table ${tb}: $LASTMODIFIED"
     else
       echo "ERROR: Couldn't get proper Last modified stamp for table ${tb}. Got "${LASTMODIFIED}"
     fi
@@ -1246,8 +1246,6 @@ task SnapshotTables {
     TABLE_JSON=$(bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false --format=json \
     "SELECT original_table_last_modified as last_modified, local_table_name FROM ~{project_id}.~{dataset_name}.table_mappings WHERE table_group = \"~{run_name}\" AND original_table_name = \"${tb}\" GROUP BY original_table_last_modified, local_table_name ORDER BY original_table_last_modified ASC LIMIT 1")
 
-
-    # This returns an empty array if there are no values.  But if there IS a value AND it matches, we can reuse that table
 
     # This returns an empty array if there are no values.  But if there IS a value AND it matches, we can reuse that table
     if [ $TABLE_JSON != "[]" ]; then

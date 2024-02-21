@@ -17,20 +17,21 @@ workflow GvsSnapshotTest {
 #    }
 #
 #    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
-    call Utils.GetTableListFromDataset as TableNames {
-        input:
-        project_id = "gvs-internal",
-        dataset_name = "hatcher_microsoft_walkthrough_v2",
-        cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
-    }
-    # run it again, filtering out vet data for testing purposes
-    call Utils.GetTableListFromDataset as TableNamesFiltered {
-        input:
-        project_id = "gvs-internal",
-        dataset_name = "hatcher_microsoft_walkthrough_v2",
-        exclude_regex = "vet",
-        cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
-    }
+
+#    call Utils.GetTableListFromDataset as TableNames {
+#        input:
+#        project_id = "gvs-internal",
+#        dataset_name = "hatcher_microsoft_walkthrough_v2",
+#        cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
+#    }
+#    # run it again, filtering out vet data for testing purposes
+#    call Utils.GetTableListFromDataset as TableNamesFiltered {
+#        input:
+#        project_id = "gvs-internal",
+#        dataset_name = "hatcher_microsoft_walkthrough_v2",
+#        exclude_regex = "vet",
+#        cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
+#    }
 
     call Utils.SnapshotTables as SnapshotTables {
         input:
