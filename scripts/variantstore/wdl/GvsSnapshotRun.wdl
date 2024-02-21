@@ -32,7 +32,7 @@ workflow GvsSnapshotTest {
         cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
     }
 
-    call Utils.SnapshotTables {
+    call Utils.SnapshotTables as SnapshotTables {
         input:
             project_id = "gvs-internal",
             dataset_name = "hatcher_microsoft_walkthrough_v2",
