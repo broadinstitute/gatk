@@ -249,6 +249,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-299-spike-speed-up-integration-tests
          tags:
              - /.*/
    - name: GvsBeta
