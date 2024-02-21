@@ -4,8 +4,8 @@ import "GvsUtils.wdl" as Utils
  #
 workflow GvsSnapshotTest {
     input {
-        String? git_branch_or_tag
-        String? cloud_sdk_docker
+        String run_name = "test_run"
+        String retrieval_key = "post-extract"
     }
 
 
