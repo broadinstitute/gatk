@@ -1268,7 +1268,7 @@ task SnapshotTables {
         # make a record of the table and the associated key for looking it back up
         bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
         "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, local_table_name, original_table_name, original_table_last_modified, is_not_modified) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${PREEXISTING_TABLE}\", \"${tb}\", $LASTMODIFIED, true)"
-        break;
+        continue
       fi
     fi
 
