@@ -1216,7 +1216,6 @@ task SnapshotTables {
 
     echo "Running the empty task to snapshot from ~{dataset_name} to ~{snapshot_dataset} associated with key ~{retrieval_key}"
 
-
     TABLE_NAMES=`bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
     tail -n +3 | \
     tr -s ' ' | \
@@ -1234,13 +1233,56 @@ task SnapshotTables {
     LASTMODIFIED=$(bq --apilog=false --project_id=~{project_id} --format=json show ~{dataset_name}.${tb} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     echo "Table $tb last modified at timestamp $LASTMODIFIED"
 
+    # Basic validation of the value that we got back
+    if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
+      echo "Last modified stamp for table ${tb}: $LASTMODIFIED
+    else
+      echo "ERROR: Couldn't get proper Last modified stamp for table ${tb}. Got "${LASTMODIFIED}"
+    fi
+
+
     # This is where we'd look up the metadata table and see if it had an entry for this run already.
-    # ...but not now
+    # DOCUMENT THIS SQL LATER
+    TABLE_JSON=$(bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false --format=json \
+    "SELECT original_table_last_modified as last_modified, local_table_name FROM ~{project_id}.~{dataset_name}.table_mappings WHERE table_group = \"~{run_name}\" AND original_table_name = \"${tb}\" GROUP BY original_table_last_modified, local_table_name ORDER BY original_table_last_modified ASC LIMIT 1")
+
+
+    # This returns an empty array if there are no values.  But if there IS a value AND it matches, we can reuse that table
+
+    # This returns an empty array if there are no values.  But if there IS a value AND it matches, we can reuse that table
+    if [ $TABLE_JSON != "[]" ]; then
+      echo "There was a previous entry for this table ${td}.  Seeing if we can use it"
+
+      # Pull out the timestamp from the bq json and validate it
+      LASTSTOREDMODIFIED=`echo $TABLE_JSON | python3 -c "import sys, json; print(json.load(sys.stdin)[0]['last_modified']);"`
+      if [[ $LASTSTOREDMODIFIED =~ ^[0-9]+$ ]]; then
+        echo "Last stored copy during this run was modified at time: ${LASTSTOREDMODIFIED}"
+      else
+        echo "unable to parse the last stored value for this table"
+        exit 1
+      fi
+
+      if [ $LASTSTOREDMODIFIED == $LASTMODIFIED ]; then
+        # pull out the table name we'll use from the json as well
+        PREEXISTING_TABLE=`echo $TABLE_JSON | python3 -c "import sys, json; print(json.load(sys.stdin)[0]['local_table_name']);"`
+        echo "Since the data hasn't changed, using existing table $PREEXISTING_TABLE"
+
+        # make a record of the table and the associated key for looking it back up
+        bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
+        "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, local_table_name, original_table_name, original_table_last_modified, is_not_modified) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${PREEXISTING_TABLE}\", \"${tb}\", $LASTMODIFIED, true)"
+        break;
+      fi
+    fi
+
+    # We couldn't find an old table to reuse.  Copy it over ane make a new entry
+
+    echo "There was no previous version that we could use"
+    # This is the first time we've seen this particular table in this grouping (usually a run of a single callset) so we need to copy the table over
 
     # we want to avoid collisions when the same table is copied more than once, so throw that time token on the end
     DEST_TABLE="${tb}_${DT}"
 
-    echo "would be moving ~{project_id}:~{dataset_name}.${tb} to ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}"
+    echo "Moving ~{project_id}:~{dataset_name}.${tb} to ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}"
 
     # actually copy the tables over into the holding dataset
     bq cp \
@@ -1249,11 +1291,9 @@ task SnapshotTables {
     ~{project_id}:~{dataset_name}."${tb}" \
     ~{project_id}:~{snapshot_dataset}.${DEST_TABLE}
 
-
     # make a record of the table and the associated key for looking it back up
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false \
-    "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, local_table_name, original_table_name, original_table_last_modified) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${DEST_TABLE}\", \"${tb}\", $LASTMODIFIED)"
-
+    "INSERT INTO ~{snapshot_dataset}.table_mappings (table_group, key, local_table_name, original_table_name, original_table_last_modified, is_not_modified) VALUES (\"~{run_name}\", \"~{retrieval_key}\", \"${DEST_TABLE}\", \"${tb}\", $LASTMODIFIED, false)"
 
     done
 
