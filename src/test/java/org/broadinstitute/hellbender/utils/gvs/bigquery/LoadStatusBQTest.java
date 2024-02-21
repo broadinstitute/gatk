@@ -42,15 +42,27 @@ public class LoadStatusBQTest extends GATKBaseTest {
     public void testUpdateStatus() {
         LoadStatus loadStatus = new LoadStatus(BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, TEMP_TABLE_NAME);
 
-        Assert.assertEquals(loadStatus.getSampleLoadState(1), LoadStatus.LoadState.NONE);
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areVariantsLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
 
-        loadStatus.writeLoadStatusStarted(1);
-        Assert.assertEquals(loadStatus.getSampleLoadState(1), LoadStatus.LoadState.PARTIAL);
+        loadStatus.writeReferencesLoadedStatus(1);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areVariantsLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
 
-        loadStatus.writeLoadStatusFinished(1);
-        Assert.assertEquals(loadStatus.getSampleLoadState(1), LoadStatus.LoadState.COMPLETE);
+        loadStatus.writeVariantsLoadedStatus(1);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areVariantsLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(1).areHeadersLoaded());
 
-        Assert.assertEquals(loadStatus.getSampleLoadState(2), LoadStatus.LoadState.NONE);
+        loadStatus.writeHeadersLoadedStatus(1);
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areReferencesLoaded());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areVariantsLoaded());
+        Assert.assertTrue(loadStatus.getSampleLoadState(1).areHeadersLoaded());
 
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).areReferencesLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).areVariantsLoaded());
+        Assert.assertFalse(loadStatus.getSampleLoadState(2).areHeadersLoaded());
     }
 }
