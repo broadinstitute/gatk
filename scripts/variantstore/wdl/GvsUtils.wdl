@@ -1212,7 +1212,7 @@ task GetHailScripts {
     # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
     # the script content should also stay the same.
   }
-  String hail_generate_sites_only_script_name = if (defined(hail_generate_sites_only_script_path)) then basename(hail_generate_sites_only_script_path) else "dummy.txt"
+  String hail_generate_sites_only_script_name = if (defined(hail_generate_sites_only_script_path)) then basename(select_first([hail_generate_sites_only_script_path])) else "dummy.txt"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
