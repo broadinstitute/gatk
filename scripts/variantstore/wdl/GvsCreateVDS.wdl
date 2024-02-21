@@ -101,7 +101,7 @@ workflow GvsCreateVDS {
         }
     }
 
-    call GetHailScripts {
+    call Utils.GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
     }
@@ -338,35 +338,5 @@ task ValidateVds {
     }
     output {
         String cluster_name = read_string("cluster_name.txt")
-    }
-}
-
-task GetHailScripts {
-    input {
-        String variants_docker
-    }
-    meta {
-        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
-        # the script content should also stay the same.
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        # Not sure why this is required but without it:
-        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
-
-        mkdir app
-        cp /app/*.py app
-    >>>
-    output {
-        File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
-        File hail_gvs_import_script = "app/hail_gvs_import.py"
-        File gvs_import_script = "app/import_gvs.py"
-        File vds_validation_script = "app/vds_validation.py"
-    }
-    runtime {
-        docker: variants_docker
     }
 }

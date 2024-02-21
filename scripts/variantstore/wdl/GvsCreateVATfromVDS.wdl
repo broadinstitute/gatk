@@ -92,9 +92,9 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    call GetHailScripts {
+    call Utils.GetHailScripts {
         input:
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+#            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             variants_docker = effective_variants_docker,
     }
 
@@ -1030,37 +1030,4 @@ task DeduplicateVatInBigQuery {
         String vat_table = output_vat_table_name
         Boolean done = true
     }
-}
-
-task GetHailScripts {
-    input {
-        File hail_generate_sites_only_script_path
-        String variants_docker
-    }
-    meta {
-        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
-        # the script content should also stay the same.
-    }
-    String hail_generate_sites_only_script_name = basename(hail_generate_sites_only_script_path)
-
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        # Not sure why this is required but without it:
-        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
-
-        mkdir app
-        cp /app/*.py app
-        cp ~{hail_generate_sites_only_script_path} app
-    >>>
-        output {
-            File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
-            File create_vat_inputs_script = "app/create_vat_inputs.py"
-            File hail_generate_sites_only_script = "app/~{hail_generate_sites_only_script_name}"
-        }
-        runtime {
-            docker: variants_docker
-        }
 }

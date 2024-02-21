@@ -1202,3 +1202,42 @@ task PopulateFilterSetInfo {
     File monitoring_log = "monitoring.log"
   }
 }
+
+task GetHailScripts {
+  input {
+    File? hail_generate_sites_only_script_path
+    String variants_docker
+  }
+  meta {
+    # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
+    # the script content should also stay the same.
+  }
+  String hail_generate_sites_only_script_name = basename(hail_generate_sites_only_script_path)
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Not sure why this is required but without it:
+    # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
+
+    mkdir app
+    cp /app/*.py app
+
+    if [[ ! -z "~{hail_generate_sites_only_script_path}" ]]; then
+      cp ~{hail_generate_sites_only_script_path} app
+    fi
+  >>>
+  output {
+    File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
+    File hail_gvs_import_script = "app/hail_gvs_import.py"
+    File gvs_import_script = "app/import_gvs.py"
+    File vds_validation_script = "app/vds_validation.py"
+    File create_vat_inputs_script = "app/create_vat_inputs.py"
+    File hail_generate_sites_only_script = "app/~{hail_generate_sites_only_script_name}"
+  }
+  runtime {
+    docker: variants_docker
+  }
+}
