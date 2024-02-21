@@ -46,7 +46,7 @@ workflow GvsJointVariantCalling {
         File? gatk_override
 
         Boolean snapshotRun = false
-        String? snapshotRunName
+        String snapshotRunName = "snapshot_name_override_me"
         Boolean is_wgs = true
         File? interval_list
 
@@ -140,7 +140,7 @@ workflow GvsJointVariantCalling {
             is_wgs = is_wgs,
     }
 
-    if (snapshotRun && defined(snapshotRunName)) {
+    if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables1 {
             input:
                 project_id = project_id,
@@ -164,7 +164,7 @@ workflow GvsJointVariantCalling {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    if (snapshotRun && defined(snapshotRunName)) {
+    if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables2 {
             input:
                 project_id = project_id,
@@ -200,7 +200,7 @@ workflow GvsJointVariantCalling {
             scoring_python_script = scoring_python_script,
     }
 
-    if (snapshotRun && defined(snapshotRunName)) {
+    if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables3 {
             input:
                 project_id = project_id,
@@ -232,7 +232,7 @@ workflow GvsJointVariantCalling {
             enable_extract_table_ttl = true,
     }
 
-    if (snapshotRun && defined(snapshotRunName)) {
+    if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables4 {
             input:
                 project_id = project_id,
