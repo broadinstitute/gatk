@@ -71,6 +71,7 @@ public class Haplotype extends SimpleAllele implements Locatable{
      * @param alignmentStartHapwrtRef offset of this haplotype w.r.t. the reference (NOTE: this is NOT the aligned start, but an offset to a hypothetical reference array)
      * @param cigar the cigar that maps this haplotype to the reference sequence
      */
+    @SuppressWarnings("this-escape")
     public Haplotype( final byte[] bases, final boolean isRef, final int alignmentStartHapwrtRef, final Cigar cigar) {
         this(bases, isRef);
         this.alignmentStartHapwrtRef = alignmentStartHapwrtRef;

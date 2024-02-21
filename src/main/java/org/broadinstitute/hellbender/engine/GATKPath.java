@@ -140,7 +140,7 @@ public class GATKPath extends HtsPath implements TaggedArgument, Serializable {
     }
 
     @Override
-    public void setTag(String tagName) {
+    public final void setTag(String tagName) {
         this.tagName = tagName;
     }
 
@@ -150,7 +150,7 @@ public class GATKPath extends HtsPath implements TaggedArgument, Serializable {
     }
 
     @Override
-    public void setTagAttributes(final Map<String, String> attributes) {
+    public final void setTagAttributes(final Map<String, String> attributes) {
             this.tagAttributes = attributes;
     }
 

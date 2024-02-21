@@ -698,7 +698,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             final SimpleInterval wholeTig = new SimpleInterval(tig0.getSequenceName(), 1, refSeqLen);
             refSeq = Arrays.copyOf(refSource.queryAndPrefetch(wholeTig).getBases(), refSeqLen);
             for ( int idx = 0; idx < refSeqLen; ++idx ) {
-                switch ( refSeq[idx] &= UPPERCASE_MASK ) { // make into upper case
+                switch ( refSeq[idx] &= (byte) UPPERCASE_MASK) { // make into upper case
                     case 'A':
                     case 'C':
                     case 'G':

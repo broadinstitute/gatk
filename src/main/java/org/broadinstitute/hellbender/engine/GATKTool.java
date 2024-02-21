@@ -54,12 +54,15 @@ import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
 public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected final ReadInputArgumentCollection readArguments = requiresReads() ? new RequiredReadInputArgumentCollection() : new OptionalReadInputArgumentCollection();
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
@@ -73,6 +76,7 @@ public abstract class GATKTool extends CommandLineProgram {
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
@@ -112,9 +116,11 @@ public abstract class GATKTool extends CommandLineProgram {
 
     // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
+    @SuppressWarnings("this-escape")
     public int cloudPrefetchBuffer = getDefaultCloudPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
+    @SuppressWarnings("this-escape")
     public int cloudIndexPrefetchBuffer = getDefaultCloudIndexPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_LONG_NAME,

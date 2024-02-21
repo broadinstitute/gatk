@@ -30,7 +30,6 @@ public class PloidyTable {
                 }
             );
             samplePloidyMap = reader.stream().collect(Collectors.toMap(PloidyRecord::getSample, r -> r));
-            reader.close();
         } catch (final IOException e) {
             throw new GATKException("IO error while reading ploidy table", e);
         }

@@ -27,6 +27,7 @@ import java.util.Spliterator;
 public abstract class MultiVariantWalker extends VariantWalkerBase {
 
     @ArgumentCollection
+    @SuppressWarnings("this-escape")
     protected MultiVariantInputArgumentCollection multiVariantInputArgumentCollection = getMultiVariantInputArgumentCollection();
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager

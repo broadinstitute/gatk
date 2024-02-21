@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
+@SuppressWarnings("this-escape")
 public abstract class HybridADVIArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -67,7 +68,8 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
         }
     }
 
-    public abstract Object getDefaultValue(final HybridADVIArgument arg);
+    public abstract Object
+    getDefaultValue(final HybridADVIArgument arg);
 
     @Argument(
             doc="Adamax optimizer learning rate.",
