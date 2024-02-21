@@ -1237,7 +1237,7 @@ task SnapshotTables {
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
       echo "Last modified stamp for table ${tb}: $LASTMODIFIED"
     else
-      echo "ERROR: Couldn't get proper Last modified stamp for table ${tb}. Got "${LASTMODIFIED}"
+      echo "ERROR: Couldn't get proper Last modified stamp for table ${tb}. Got ${LASTMODIFIED}"
     fi
 
 
