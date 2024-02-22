@@ -96,7 +96,7 @@ workflow GvsCreateVATfromVDS {
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.IndexVcf {
