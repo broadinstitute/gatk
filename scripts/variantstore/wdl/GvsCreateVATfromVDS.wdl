@@ -96,7 +96,7 @@ workflow GvsCreateVATfromVDS {
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            variants_docker = variants_docker,
     }
 
     call Utils.IndexVcf {
@@ -239,7 +239,7 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String cloud_sdk_slim_docker
+        String variants_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -308,7 +308,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: cloud_sdk_slim_docker
+        docker: variants_docker
         bootDiskSizeGb: 10
     }
 
