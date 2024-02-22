@@ -1228,8 +1228,10 @@ task GetHailScripts {
     if [[ -z "~{hail_generate_sites_only_script_path}" ]]; then
       # If the hail_generate_sites_only_script was not provided as an input, then create a dummy file so that we can output *something*
       touch ~{hail_generate_sites_only_script_name} # a dummy output file as WDL doesn't support optional outputs
+      cp ~{hail_generate_sites_only_script_name} app
+    else
+      cp ~{hail_generate_sites_only_script_path} app
     fi
-    cp ~{hail_generate_sites_only_script_name} app
   >>>
   output {
     File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
