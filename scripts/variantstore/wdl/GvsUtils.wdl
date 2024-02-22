@@ -1147,6 +1147,9 @@ task PopulateFilterSetInfo {
   }
 }
 
+
+
+
 task GetTableListFromDataset {
   input {
     String project_id
@@ -1194,7 +1197,6 @@ task SnapshotTables {
     String retrieval_key
     String? exclude_regex
     Boolean go = true
-    Boolean snapshot = true
     String cloud_sdk_docker
   }
   meta {
@@ -1217,11 +1219,6 @@ task SnapshotTables {
 
     echo "Running the empty task to snapshot from ~{dataset_name} to ~{snapshot_dataset} associated with key ~{retrieval_key}"
 
-#    TABLE_NAMES=`bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
-#    tail -n +3 | \
-#    tr -s ' ' | \
-#    cut -d ' ' -f 2`
-
     bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
     tail -n +3 | \
     tr -s ' ' | \
@@ -1234,7 +1231,6 @@ task SnapshotTables {
     # token based on current date and time
     DT=$(date '+%Y%m%d_%s')
 
-#    for tb in $TABLE_NAMES
     for tb in `cat table_names.txt`
     do
     echo "Snapshotting $tb"
@@ -1306,6 +1302,78 @@ task SnapshotTables {
 
     done
 
+
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+
+  output {
+    Boolean done = true
+  }
+}
+
+
+task RestoreSnapshotForRun {
+  input {
+    String project_id
+    String dest_dataset
+    String snapshot_dataset
+    String run_name
+    String start_retrieval_key
+    String end_retrieval_key
+    Boolean go = true
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+  }
+
+  String table_mappings_table = "table_mappings"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # this hunk of sql will get the tables that we need to restore along with info about whether or not they are expected to change
+    bq --apilog=false --project_id=gvs-internal query --use_legacy_sql=false --format=csv "WITH end_state AS ((SELECT original_table_name, local_table_name, is_not_modified FROM \`~{project_id}.~{snapshot_dataset}.table_mappings\` WHERE table_group = \"~{run_name}\" AND key = \"~{end_retrieval_key}\")) SELECT start_run.original_table_name, start_run.local_table_name, end_state.is_not_modified FROM \`~{project_id}.~{snapshot_dataset}.table_mappings\` as start_run join end_state ON start_run.original_table_name = end_state.original_table_name WHERE start_run.table_group = \"~{run_name}\" AND start_run.key = \"~{start_retrieval_key}\"" | \
+    while IFS=',' read -r -a row; do
+      # ignore the header
+      if [ ${row[0]} == "original_table_name" ]; then
+        continue
+      fi
+
+      echo "Processing entry ${row[@]}";
+
+      original_table=${row[0]}
+      local_table=${row[1]}
+      is_not_modified=${row[2]}
+
+      if [ $is_not_modified == "true" ]; then
+        echo "restore table $original_table as a SNAPSHOT"
+        bq cp \
+        --project_id="~{project_id}" \
+        --no_clobber \
+        --snapshot=true
+        ~{project_id}:~{snapshot_dataset}."${local_table}" \
+        ~{project_id}:~{dest_dataset}.${original_table}
+      else
+        echo "restore table $original_table as a CLONE"
+        bq cp \
+        --project_id="~{project_id}" \
+        --no_clobber \
+        --clone=true
+        ~{project_id}:~{snapshot_dataset}."${local_table}" \
+        ~{project_id}:~{dest_dataset}.${original_table}
+      fi
+    done
 
   >>>
 
