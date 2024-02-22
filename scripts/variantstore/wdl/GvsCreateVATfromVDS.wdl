@@ -94,7 +94,7 @@ workflow GvsCreateVATfromVDS {
 
     call Utils.GetHailScripts {
         input:
-#            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             variants_docker = effective_variants_docker,
     }
 
