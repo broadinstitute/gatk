@@ -1192,7 +1192,8 @@ task SnapshotTables {
     String snapshot_dataset
     String run_name
     String retrieval_key
-#    Array[String] table_patterns
+    String? exclude_regex
+    Boolean go = true
     Boolean snapshot = true
     String cloud_sdk_docker
   }
@@ -1216,15 +1217,25 @@ task SnapshotTables {
 
     echo "Running the empty task to snapshot from ~{dataset_name} to ~{snapshot_dataset} associated with key ~{retrieval_key}"
 
-    TABLE_NAMES=`bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
+#    TABLE_NAMES=`bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
+#    tail -n +3 | \
+#    tr -s ' ' | \
+#    cut -d ' ' -f 2`
+
+    bq ls --project_id=~{project_id} --max_results 1000 ~{project_id}:~{dataset_name} | \
     tail -n +3 | \
     tr -s ' ' | \
-    cut -d ' ' -f 2`
+    cut -d ' ' -f 2 > table_names.txt
+
+    # If there is an EXCLUDE regex, run that over the file here too using grep.  We'll want to override the original file
+    ~{"grep -vE '" + exclude_regex + "' table_names.txt > filtered_tables.txt && cp filtered_tables.txt table_names.txt"}
+
 
     # token based on current date and time
     DT=$(date '+%Y%m%d_%s')
 
-    for tb in $TABLE_NAMES
+#    for tb in $TABLE_NAMES
+    for tb in `cat table_names.txt`
     do
     echo "Snapshotting $tb"
 

@@ -143,11 +143,13 @@ workflow GvsJointVariantCalling {
     if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables1 {
             input:
+                go = BulkIngestGenomes.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 snapshot_dataset = "hatcher_vs_299_test_storage",
                 run_name = snapshotRunName,
                 retrieval_key = "after_bulk_ingest_before_alt_allele",
+                exclude_regex = "temp",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
@@ -167,11 +169,13 @@ workflow GvsJointVariantCalling {
     if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables2 {
             input:
+                go = GvsPopulateAltAllele.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 snapshot_dataset = "hatcher_vs_299_test_storage",
                 run_name = snapshotRunName,
                 retrieval_key = "after_alt_allele_before_filter_set",
+                exclude_regex = "temp",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
@@ -203,11 +207,13 @@ workflow GvsJointVariantCalling {
     if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables3 {
             input:
+                go = GvsCreateFilterSet.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 snapshot_dataset = "hatcher_vs_299_test_storage",
                 run_name = snapshotRunName,
                 retrieval_key = "after_filter_set_before_prepare",
+                exclude_regex = "temp",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
@@ -235,11 +241,13 @@ workflow GvsJointVariantCalling {
     if (snapshotRun) {
         call Utils.SnapshotTables as SnapshotTables4 {
             input:
+                go = GvsPrepareCallset.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 snapshot_dataset = "hatcher_vs_299_test_storage",
                 run_name = snapshotRunName,
                 retrieval_key = "after_prepare_callset_before_extract",
+                exclude_regex = "temp",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
