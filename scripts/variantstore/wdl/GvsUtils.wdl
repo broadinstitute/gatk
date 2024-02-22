@@ -1361,7 +1361,7 @@ task RestoreSnapshotForRun {
         bq cp \
         --project_id="~{project_id}" \
         --no_clobber \
-        --snapshot=true
+        --snapshot=true \
         ~{project_id}:~{snapshot_dataset}."${local_table}" \
         ~{project_id}:~{dest_dataset}.${original_table}
       else
@@ -1369,7 +1369,7 @@ task RestoreSnapshotForRun {
         bq cp \
         --project_id="~{project_id}" \
         --no_clobber \
-        --clone=true
+        --clone=true \
         ~{project_id}:~{snapshot_dataset}."${local_table}" \
         ~{project_id}:~{dest_dataset}.${original_table}
       fi
