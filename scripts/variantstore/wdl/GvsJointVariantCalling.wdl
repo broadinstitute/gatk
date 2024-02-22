@@ -154,12 +154,13 @@ workflow GvsJointVariantCalling {
         }
     }
 
+    Boolean goToAltAllele = select_first([SnapshotTables1.done, BulkIngestGenomes.done])
     call PopulateAltAllele.GvsPopulateAltAllele {
         input:
             git_branch_or_tag = git_branch_or_tag,
             git_hash = effective_git_hash,
             call_set_identifier = call_set_identifier,
-            go = BulkIngestGenomes.done,
+            go = goToAltAllele,
             dataset_name = dataset_name,
             project_id = project_id,
             variants_docker = effective_variants_docker,
@@ -181,9 +182,11 @@ workflow GvsJointVariantCalling {
     }
 
 
+    Boolean goToFilterSet = select_first([SnapshotTables2.done, GvsPopulateAltAllele.done])
+
     call CreateFilterSet.GvsCreateFilterSet {
         input:
-            go = GvsPopulateAltAllele.done,
+            go = goToFilterSet,
             git_branch_or_tag = git_branch_or_tag,
             git_hash = effective_git_hash,
             dataset_name = dataset_name,
@@ -218,10 +221,12 @@ workflow GvsJointVariantCalling {
         }
     }
 
+    Boolean goToPrepare = select_first([SnapshotTables3.done, GvsCreateFilterSet.done])
+
     call PrepareRangesCallset.GvsPrepareCallset {
         input:
             call_set_identifier = call_set_identifier,
-            go = GvsCreateFilterSet.done,
+            go = goToPrepare,
             git_branch_or_tag = git_branch_or_tag,
             git_hash = effective_git_hash,
             dataset_name = dataset_name,

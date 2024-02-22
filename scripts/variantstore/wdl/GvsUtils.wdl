@@ -1316,4 +1316,8 @@ task SnapshotTables {
     preemptible: 3
     cpu: 1
   }
+
+  output {
+    Boolean done = true
+  }
 }
