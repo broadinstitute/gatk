@@ -11,7 +11,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            vets=sequenceof(sequenceof(str)),
            sample_mapping=sequenceof(str),
            site_filtering_data=sequenceof(str),
-           vqsr_filtering_data=sequenceof(str),
+           filtering_data=sequenceof(str),
            vqsr_tranche_data=sequenceof(str),
            final_path=str,
            tmp_dir=str,
@@ -28,7 +28,7 @@ def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
                sample_mapping: 'List[str]',
                site_filtering_data: 'List[str]',
-               vqsr_filtering_data: 'List[str]',
+               filtering_data: 'List[str]',
                vqsr_tranche_data: 'List[str]',
                final_path: 'str',
                tmp_dir: 'str',
@@ -70,7 +70,7 @@ def import_gvs(refs: 'List[List[str]]',
       - `site_filtering_data` -- The site filters are converted from a comma-delimited string
         to a `set<str>` value in Hail. This set contains all unique filters applied, and is
         an empty set for loci with no record in the input site filtering table.
-      - `vqsr_filtering_data` -- The VQSR data records information specific to a
+      - `filtering_data` -- The filter data records information specific to a
         (locus, alternate allele) pair. This data is read in as a dictionary in the row
         scope of the resulting variant table, where keys of the dictionary are an alternate
         allele string, where the dictionary values are the full records from the input VQSR
@@ -110,8 +110,8 @@ def import_gvs(refs: 'List[List[str]]',
         Paths to sample mapping Avro files.
     site_filtering_data : List[str]
         Paths to site filtering files.
-    vqsr_filtering_data : List[str]
-        Paths to VQSR filtering files.
+    filtering_data : List[str]
+        Paths to filtering set info files.
     vqsr_tranche_data : List[str]
         Paths to VQSR tranche files.
     final_path : :class:`str`
@@ -192,8 +192,8 @@ def import_gvs(refs: 'List[List[str]]',
         site = site.key_by('locus')
         site.write(site_path, overwrite=True)
 
-        info('import_gvs: Importing and writing VQSR filter data to temporary storage')
-        vqsr = hl.import_avro(vqsr_filtering_data)
+        info('import_gvs: Importing and writing filter data to temporary storage')
+        vqsr = hl.import_avro(filtering_data)
         vqsr = vqsr.transmute(
             locus=translate_locus(vqsr.location)
         )

@@ -37,7 +37,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr, i
             refs=argsfn('refs'),
             sample_mapping=argsfn('sample_mapping'),
             site_filtering_data=argsfn('site_filtering_data'),
-            vqsr_filtering_data=argsfn('vqsr_filtering_data'),
+            filtering_data=argsfn('filtering_data'),
             vqsr_tranche_data=argsfn('vqsr_tranche_data'),
             reference_genome=rg38,
             final_path=vds_path,
@@ -68,7 +68,7 @@ def gcs_generate_avro_args(bucket, blob_prefix, key):
     * refs (list of lists, one outer list per GVS superpartition of 4000 samples max)
     * sample_mapping (list)
     * site_filtering_data (list)
-    * vqsr_filtering_data (list)
+    * filtering_data (list)
     * vqsr_tranche_data (list)
     """
 

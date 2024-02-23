@@ -233,7 +233,7 @@ task ExtractFromFilterTables {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/filtering_data/filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, type as model, ref, alt, ~{vqs_score_field}, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
