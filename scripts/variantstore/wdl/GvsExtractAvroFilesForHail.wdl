@@ -171,7 +171,8 @@ task ExtractFromSampleInfoTable {
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
-        python3 /app/run_avro_query_for_sample_info.py --avro_prefix ${avro_prefix} \
+        python3 /app/run_avro_query_for_sample_info.py \
+            --avro_prefix ${avro_prefix} \
             --call_set_identifier ~{call_set_identifier} \
             --dataset_name ~{dataset_name} \
             --project_id=~{project_id}
