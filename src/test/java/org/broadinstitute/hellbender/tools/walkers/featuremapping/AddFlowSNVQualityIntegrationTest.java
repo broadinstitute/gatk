@@ -13,7 +13,7 @@ public class AddFlowSNVQualityIntegrationTest extends CommandLineProgramTest {
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
     private static final double DOUBLE_EPSILON = 0.001;
 
-    private static String testDir = publicTestDir + FlowTestConstants.APPLY_SNVQR_DATA_DIR;
+    private static String testDir = publicTestDir + FlowTestConstants.ADD_FLOW_SNVQ_DATA_DIR;
 
     @Test
     public void assertThatExpectedOutputUpdateToggleIsDisabled() {
@@ -23,15 +23,15 @@ public class AddFlowSNVQualityIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testBasic() throws IOException {
 
-        final File outputDir = createTempDir("testApplySNVQRTest");
-        final String filename = "snv_apply_snvqr_output.sam";
+        final File outputDir = createTempDir("testAddFlowSNVQTest");
+        final String filename = "add_flow_snvq_output.sam";
         final File expectedFile = new File(testDir + "/" + filename);
         final File outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedFile : new File(outputDir + "/" + filename);
 
         final String[] args = new String[] {
                 "-R", largeFileTestDir + "/Homo_sapiens_assembly38.fasta.gz",
                 "-O", outputFile.getAbsolutePath(),
-                "-I", publicTestDir + FlowTestConstants.APPLY_SNVQR_DATA_DIR + "/snv_apply_snvqr_input.bam",
+                "-I", publicTestDir + FlowTestConstants.ADD_FLOW_SNVQ_DATA_DIR + "/add_flow_snvq_input.bam",
                 "-L", "chr1:1-15000",
                 "--limit-phred-score", "50",
                 "--debug-read-name", "30020185_2-UGAv3-182-1989782468",
