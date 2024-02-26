@@ -128,7 +128,6 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
      *  adjacent-ref-diff mode - if not specified, this feature is off
      **/
     @Hidden
-    @Argument(fullName = "tag-bases-with-adjacent-ref-diff", doc = "In this mode bases that have an adjacent difference from the reference on the same read are not discarded, and tagged with X_ADJACENT_REF_DIFF", optional = true)
+    @Argument(fullName = "tag-bases-with-adjacent-ref-diff", doc = "In this mode bases that have an adjacent difference from the reference on the same read are not discarded, and tagged with X_ADJACENT_REF_DIFFm", optional = true)
     public boolean tagBasesWithAdjacentRefDiff = false;
-
 }

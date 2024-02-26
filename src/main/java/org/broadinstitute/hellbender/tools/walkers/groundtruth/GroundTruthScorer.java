@@ -17,7 +17,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.featuremapping.FlowFeatureMapperUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.featuremapping.FlowFeatureMapper;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
@@ -152,13 +151,13 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String OMIT_ZEROS_FROM_REPORT = "omit-zeros-from-report";
     public static final String QUALITY_PERCENTILES = "quality-percentiles";
     public static final String EXCLUDE_ZERO_FLOWS = "exclude-zero-flows";
-    public static final String SET_MIN_ERROR_PROB = "set-min-error-prob";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
     private static final int BASE_VALUE_MAX = FlowBasedRead.DEFAULT_FLOW_ORDER.length() - 1;
 
     private static final double NORMALIZED_SCORE_THRESHOLD_DEFAULT = -0.1;
+    private static final double DEFAULT_RATIO_THRESHOLD = 0.003;
 
     /*
      Private accumulator class for counting false/true observations (hence Boolean).
@@ -260,23 +259,13 @@ public class GroundTruthScorer extends ReadWalker {
         }
 
         // create a GATK report from a set of accumulators without nesting into their bins
-        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, double probThreshold, final boolean omitZeros) {
+        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, final double probThreshold, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name + "Report", "error rate per " + name, 4);
             table.addColumn(name, "%d");
             table.addColumn("count", "%d");
             table.addColumn("error", "%f");
             table.addColumn("phred", "%d");
-
             int rowIndex = 0;
-            int maxNonZeroIndex = 0;
-            if (probThreshold == 0){
-                for (int i = 0; i < report.length; i++){
-                    if (report[i].getCount() != 0){
-                        maxNonZeroIndex = i;
-                    }
-                }
-                probThreshold = Math.pow(10,-((double)maxNonZeroIndex)/10);
-            }
             for (int i = 0; i < report.length; i++) {
                 if ( omitZeros && i != 0 && report[i].getCount() == 0 )
                     continue;
@@ -426,9 +415,6 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = EXCLUDE_ZERO_FLOWS, doc = "should flows with a call of zero be included in the percentile report?", optional = true)
     public boolean     excludeZeroFlows = false;
 
-    @Argument(fullName =  SET_MIN_ERROR_PROB, doc = "should the minimal reported hmer error rate be set by the user (default: guessed from CRAM)", optional = true)
-    public boolean setMinErrorProb = false;
-
     // locals
     private FlowBasedAlignmentLikelihoodEngine likelihoodCalculationEngine;
     private PrintWriter                         outputCsv;
@@ -451,9 +437,7 @@ public class GroundTruthScorer extends ReadWalker {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        if (!setMinErrorProb) {
-            fbargs.fillingValue = 0;
-        }
+
         // establish csv fields
         List<String>        order = new LinkedList<>(Arrays.asList(CSV_FIELD_ORDER_BASIC));
         if ( addMeanCalll ) {
@@ -519,7 +503,7 @@ public class GroundTruthScorer extends ReadWalker {
         // write reports
         if ( reportFilePath != null ) {
             final GATKReport report = new GATKReport(
-                    BooleanAccumulator.newReportTable(qualReport, "qual", 0.0, omitZerosFromReport),
+                    BooleanAccumulator.newReportTable(qualReport, "qual", DEFAULT_RATIO_THRESHOLD, omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base", omitZerosFromReport),
                     PercentileReport.newReportTable(percentileReports, qualityPercentiles)
@@ -572,7 +556,7 @@ public class GroundTruthScorer extends ReadWalker {
 
         // compute score
         final int         hapKeyLength = flowHaplotype.getKeyLength();
-        final double      score = FlowFeatureMapperUtils.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
+        final double      score = FlowFeatureMapper.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
         final double      normalizedScore = score / flowRead.getKeyLength();
         if ( normalizedScore < normalizedScoreThreshold )
             return;
@@ -886,7 +870,7 @@ public class GroundTruthScorer extends ReadWalker {
 
             // determine quality
             final double        prob = Precision.round(errorProb[flow], (QUAL_VALUE_MAX / 10) + 1);
-            final int           qual = (int)Math.round(-10 * Math.log10(prob));
+            final int           qual = (int)Math.ceil(-10 * Math.log10(prob));
 
             // determine if matches reference
             final int           deviation = readKey[flow] - hapKey[flow];

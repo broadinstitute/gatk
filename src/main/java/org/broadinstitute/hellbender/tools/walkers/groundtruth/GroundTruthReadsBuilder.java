@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.tools.walkers.featuremapping.FlowFeatureMapper;
-import org.broadinstitute.hellbender.tools.walkers.featuremapping.FlowFeatureMapperUtils;
 import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
@@ -672,7 +671,7 @@ public final class GroundTruthReadsBuilder extends PartialReadWalker {
 
         // compute alternative score
         final int         hapKeyLength = flowHaplotype.getKeyLength();
-        final double      score = FlowFeatureMapperUtils.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
+        final double      score = FlowFeatureMapper.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
 
         return score;
     }
@@ -696,7 +695,7 @@ public final class GroundTruthReadsBuilder extends PartialReadWalker {
 
         // compute alternative score
         final int         hapKeyLength = flowHaplotype.getKeyLength();
-        final double      score = FlowFeatureMapperUtils.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
+        final double      score = FlowFeatureMapper.computeLikelihoodLocal(flowRead, flowHaplotype, hapKeyLength, false);
 
         // debug
         if ( debugMode ) {
