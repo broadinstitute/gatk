@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
@@ -21,8 +20,6 @@ import java.util.function.Consumer;
  */
 
 public class SNVMapper implements FeatureMapper {
-
-    static final int SUROUND_DEFUALT = 5;
 
     final int         surroundBefore;
     final int         surroundAfter;
@@ -46,18 +43,6 @@ public class SNVMapper implements FeatureMapper {
         reportAllAlts = fmArgs.reportAllAlts;
         tagBasesWithAdjacentRefDiff = fmArgs.tagBasesWithAdjacentRefDiff;
         generateNonRefFeatures = false;
-
-        init();
-    }
-
-    public SNVMapper(ApplySNVQRArgumentCollection aqArgs) {
-        surroundBefore = SUROUND_DEFUALT;
-        surroundAfter = SUROUND_DEFUALT;
-        smqSize = null;
-        smqSizeMean = null;
-        reportAllAlts = true;
-        tagBasesWithAdjacentRefDiff = true;
-        generateNonRefFeatures = true;
 
         init();
     }

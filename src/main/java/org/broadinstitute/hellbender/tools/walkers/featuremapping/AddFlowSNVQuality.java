@@ -2,16 +2,63 @@ package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.groundtruth.SeriesStats;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class AddFlowSNVQuality  {
+@CommandLineProgramProperties(
+        summary = "SNV Quality Tool (flow space processing)",
+        oneLineSummary = "<add description>",
+        programGroup = FlowBasedProgramGroup.class
+)
+
+@DocumentedFeature
+@ExperimentalFeature
+public final class AddFlowSNVQuality extends ReadWalker {
+
+    private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
+
+    private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "File to which reads should be written")
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
+    public GATKPath output = null;
+    private SAMFileGATKReadWriter outputWriter;
+
+    @Advanced
+    @Argument(fullName=INCLUDE_QC_FAILED_READS_FULL_NAME, doc = "include reads with QC failed flag", optional = true)
+    public boolean includeQcFailedReads = false;
+
+    @ArgumentCollection
+    public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
+
+    @ArgumentCollection
+    public AddFlowSNVQualityArgumentCollection aqArgs = new AddFlowSNVQualityArgumentCollection();
+
+    @Advanced
+    @Hidden
+    @Argument(fullName="debug-collect-stats-into", doc = "", optional = true)
+    public String debugCollectStatsInto = null;
 
     public static final String BASE_QUALITY_ATTRIBUTE_NAME = "BQ";
     public static final char PHRED_ASCII_BASE = '!';
@@ -23,7 +70,198 @@ public final class AddFlowSNVQuality  {
 
     public double minLikelihoodProbRate = 1e-6;
     public int maxQualityScore = 60;
-    private ApplySNVQRArgumentCollection aqArgs;
+
+    // locals
+    private SeriesStats                         inputQualStats = new SeriesStats();
+    private SeriesStats                         outputBQStats = new SeriesStats();
+    private SeriesStats                         outputQAltStats = new SeriesStats();
+    private SeriesStats                         outputQCalledStats = new SeriesStats();
+    private SeriesStats                         outputSumPStats = new SeriesStats();
+
+    @Override
+    public void onTraversalStart() {
+        super.onTraversalStart();
+        outputWriter = createSAMWriter(output, true);
+    }
+
+    @Override
+    public void closeTool() {
+        super.closeTool();
+        if ( outputWriter != null ) {
+            outputWriter.close();
+        }
+
+        try {
+            if ( debugCollectStatsInto != null )
+                printStats(debugCollectStatsInto);
+        } catch (IOException e) {
+            throw new GATKException("", e);
+        }
+    }
+
+    @Override
+    public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+
+        // include dups?
+        if ( read.isDuplicate() && !aqArgs.includeDupReads ) {
+            return;
+        }
+
+        // include supplementary alignments?
+        if ( read.isSupplementaryAlignment() && !aqArgs.keepSupplementaryAlignments ) {
+            return;
+        }
+
+        // include qc-failed reads?
+        if ( ((read.getFlags() & VENDOR_QUALITY_CHECK_FLAG) != 0) && !includeQcFailedReads ) {
+            return;
+        }
+
+        // collect input stats
+        if ( debugCollectStatsInto != null )
+            collectInputStats(read);
+
+        // add SNVQ attributes
+        addBaseQuality(read, getHeaderForReads(), aqArgs.limitPhredScore, fbargs);
+
+        // collect output stats
+        if ( debugCollectStatsInto != null ) {
+            collectOutputStats(read);
+            if ( aqArgs.debugReadName.size() != 0 && aqArgs.debugReadName.contains(read.getName()) ) {
+                dumpOutputRead(read);
+            }
+        }
+
+        // write read to output
+        outputWriter.addRead(read);
+    }
+
+    private void collectInputStats(GATKRead read) {
+        for ( byte q : read.getBaseQualitiesNoCopy() ) {
+            inputQualStats.add(q);
+        }
+    }
+
+    private void collectOutputStats(GATKRead read) {
+        if ( read.hasAttribute("BQ") ) {
+            for ( byte q : read.getAttributeAsString("BQ").getBytes() ) {
+                outputBQStats.add(q - 33);
+            }
+        }
+        final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), read);
+        final byte[] bases = read.getBasesNoCopy();
+        final double[] sumP = new double[bases.length];
+        for ( int i = 0 ; i < 4 ; i++ ) {
+            byte altBase = rgInfo.flowOrder.getBytes()[i];
+            String attrValue = read.getAttributeAsString(attrNameForNonCalledBase(altBase));
+            int ofs = 0;
+            for ( byte q : attrValue.getBytes() ) {
+                if ( bases[ofs] != altBase ) {
+                    outputQAltStats.add(q - 33);
+                } else {
+                    outputQCalledStats.add(q - 33);
+                }
+                sumP[ofs] += Math.pow(10.0, (q - 33) / -10.0);
+                ofs++;
+
+            }
+        }
+        for ( double p : sumP ) {
+            outputSumPStats.add(p);
+        }
+    }
+
+    // dump read as a csv for easier analysis
+    private void dumpOutputRead(GATKRead read) {
+
+        try {
+            // open file
+            final String fname = debugCollectStatsInto + "." + read.getName() + ".csv";
+            logger.info("dumping read into: " + fname);
+            final PrintWriter pw = new PrintWriter(fname);
+
+            // write header
+            final StringBuilder hdr = new StringBuilder();
+            hdr.append("pos,base,qual,tp,t0,bq");
+            final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), read);
+            for (int i = 0; i < 4; i++) {
+                hdr.append(",");
+                hdr.append(attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i)));
+            }
+            hdr.append(",qCalled");
+            pw.println(hdr);
+
+            // access data
+            final byte[] bases = read.getBasesNoCopy();
+            final byte[] quals = read.getBaseQualitiesNoCopy();
+            final byte[] tp = read.getAttributeAsByteArray("tp");
+            final byte[] t0 = read.getAttributeAsByteArray("t0");
+            final byte[] bq = read.getAttributeAsString("BQ").getBytes();
+            final byte[][] qX = new byte[4][];
+            for (int i = 0; i < 4; i++) {
+                qX[i] = read.getAttributeAsString(attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i))).getBytes();
+            }
+
+            // write lines
+            List<String> line = new LinkedList<>();
+            for (int pos = 0; pos < bases.length; pos++) {
+                line.clear();
+
+                // position
+                line.add(Integer.toString(pos));
+
+                // base, qual
+                line.add(Character.toString(bases[pos]));
+                line.add(Integer.toString(quals[pos]));
+
+                // tp,t0,bq
+                line.add(Integer.toString(tp[pos]));
+                line.add(Integer.toString(t0[pos] - 33));
+                line.add(Integer.toString(bq[pos] - 33));
+
+                // qX
+                int calledIndex = -1;
+                for (int i = 0; i < 4; i++) {
+                    line.add(Integer.toString(qX[i][pos] - 33));
+                    if ( bases[pos] == rgInfo.flowOrder.charAt(i) ) {
+                        calledIndex = i;
+                    }
+                }
+
+                // qCalled
+                if ( calledIndex >= 0 ) {
+                    line.add(Integer.toString(qX[calledIndex][pos] - 33));
+                } else {
+                    line.add("-1");
+                }
+
+                // write the line
+                pw.println(StringUtils.join(line, ','));
+            }
+
+            // close file
+            pw.close();
+        } catch (IOException e) {
+            throw new GATKException("", e);
+        }
+    }
+
+    private void printStats(final String fname) throws IOException {
+
+        inputQualStats.csvWrite(fname + ".inputQual.csv");
+        outputBQStats.csvWrite(fname + ".outputBQ.csv");
+        outputQAltStats.csvWrite(fname + ".outputQAlt.csv");
+        outputQCalledStats.csvWrite(fname + ".outputQCalled.csv");
+        outputSumPStats.csvWrite(fname + ".outputSumP.csv");
+    }
+
+    static public String attrNameForNonCalledBase(byte nonCalledBase) {
+        return attrNameForNonCalledBase((char)nonCalledBase);
+    }
+
+    static public String attrNameForNonCalledBase(char nonCalledBase) {
+        return "q" + Character.toLowerCase(nonCalledBase);
+    }
 
     public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double limitPhoreScore, FlowBasedArgumentCollection fbargs) {
 
@@ -35,7 +273,7 @@ public final class AddFlowSNVQuality  {
 
         // convert to a flow base read
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(hdr, read);
-        final FlowBasedRead   fbRead = new FlowBasedRead(read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+        final FlowBasedRead fbRead = new FlowBasedRead(read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
         final int flowOrderLength = calcFlowOrderLength(rgInfo.flowOrder);
 
         // generate base quality
@@ -45,7 +283,7 @@ public final class AddFlowSNVQuality  {
         // install in read
         read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, new String(convertErrorProbToPhred(baseErrorProb, true)));
         for ( int i = 0 ; i < flowOrderLength ; i++ ) {
-            final String name = ApplySNVQR.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
+            final String name = AddFlowSNVQuality.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
             read.setAttribute(name, new String(convertErrorProbToPhred(snvResultRef.get()[i], true)));
         }
     }
@@ -155,7 +393,7 @@ public final class AddFlowSNVQuality  {
             int calledIndex = -1;
             for (int i = 0; i < flowOrderLength; i++) {
                 if ( calledBase != flowOrder[i] ) {
-                     snvResult[i][ofs] = Math.max(minLikelihoodProbRate, snvResult[i][ofs]);
+                    snvResult[i][ofs] = Math.max(minLikelihoodProbRate, snvResult[i][ofs]);
                     altP += snvResult[i][ofs];
                 } else {
                     calledIndex = i;
@@ -213,8 +451,8 @@ public final class AddFlowSNVQuality  {
 
     @VisibleForTesting
     protected double[] generateHmerBaseErrorProbabilities(final int[] key, final double[][] errorProbBands, final int flow,
-                                                                 final int flowOrderLength, byte[] flowOrder,
-                                                                 Map<Byte, Double> allBaseProb0, Map<Byte, Double> allBaseProb1) {
+                                                          final int flowOrderLength, byte[] flowOrder,
+                                                          Map<Byte, Double> allBaseProb0, Map<Byte, Double> allBaseProb1) {
 
         // result is left/right error probabilities
         final double[]          errorProbs = new double[2];
@@ -229,7 +467,7 @@ public final class AddFlowSNVQuality  {
     }
 
     private double generateSidedHmerBaseErrorProbability(final int[] key, final double[][] errorProbBands, final int flow, final int sideIncr,
-                                                                final int flowOrderLength, final byte[] flowOrder, final Map<Byte, Double> allBaseProb) {
+                                                         final int flowOrderLength, final byte[] flowOrder, final Map<Byte, Double> allBaseProb) {
 
         // create a key slice of the area around the flow/hmer.
         final int minIndex = Math.max(flow - (flowOrderLength - 1), 0);
@@ -247,8 +485,8 @@ public final class AddFlowSNVQuality  {
         }
         final List<SliceInfo> slices = new LinkedList<>();
         final int[]           incrs = (hmerLength != 1)
-                                            ? new int[] { sideIncr }
-                                            : new int[] { sideIncr, -sideIncr};
+                ? new int[] { sideIncr }
+                : new int[] { sideIncr, -sideIncr};
         for (int incr : incrs) {
             for (int sideFlow = flow + incr; sideFlow >= 0 && sideFlow < key.length; sideFlow += incr) {
 
@@ -293,13 +531,13 @@ public final class AddFlowSNVQuality  {
     }
 
     private double getSnvq(final double sliceP, final double p1, final double p2) {
-        if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Legacy ) {
+        if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Legacy ) {
             return sliceP;
-        } else if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Optimistic ) {
+        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Optimistic ) {
             return (p1 * p2);
-        } else if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Pessimistic ) {
+        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Pessimistic ) {
             return (1 - (1 - p1) * (1 - p2));
-        } else if ( aqArgs.snvMode == ApplySNVQRArgumentCollection.SnvqModeEnum.Geometric ) {
+        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Geometric ) {
             return Math.sqrt((p1 * p2) * (1 - (1 - p1) * (1 - p2)));
         } else {
             throw new GATKException("unknown snvqMode: " +  aqArgs.snvMode);
@@ -308,7 +546,7 @@ public final class AddFlowSNVQuality  {
 
     // compute probability for a slice
     private static double sliceProb(final int[] slice, final int minIndex, final int[] key, final double[][] errorProbBands,
-                                        final int flow, final int sideFlow, double[] p12) {
+                                    final int flow, final int sideFlow, double[] p12) {
 
         double accumulatedP = 1.0;
         int key_i = minIndex;
@@ -359,8 +597,5 @@ public final class AddFlowSNVQuality  {
         // if here, not found -> valid
         return true;
     }
-
-    public void setArgs(ApplySNVQRArgumentCollection aqArgs) {
-        this.aqArgs = aqArgs;
-    }
 }
+

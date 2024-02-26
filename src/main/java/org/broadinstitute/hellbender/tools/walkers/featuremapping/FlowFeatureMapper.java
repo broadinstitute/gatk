@@ -111,15 +111,12 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     VCF_SMQ_LEFT_MEAN = "X_SMQ_LEFT_MEAN";
     private static final String     VCF_SMQ_RIGHT_MEAN = "X_SMQ_RIGHT_MEAN";
     private static final String     VCF_ADJACENT_REF_DIFF = "X_ADJACENT_REF_DIFF";
-    private static final String     VCF_SNVQR_PREFIX = "X_SNVQR_";
 
     private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
 
     private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
 
     final private List<CopyAttrInfo> copyAttrInfo = new LinkedList<>();
-
-    final private List<SnvqrFeature> snvqrFeatures = new LinkedList<>();
 
     // order here is according to SequenceUtil.VALID_BASES_UPPER
     final static private String scoreForBaseNames[] = new String[SequenceUtil.VALID_BASES_UPPER.length];
@@ -203,16 +200,6 @@ public final class FlowFeatureMapper extends ReadWalker {
         utilArgs.debugReadName = fmArgs.debugReadName;
         utilArgs.limitScore = fmArgs.limitScore;
         utilArgs.keepNegatives = fmArgs.keepNegatives;
-
-        // load apply snvqr features
-        if ( fmArgs.addApplySNVQRFeatures != null ) {
-            SnvqrFeatureFactory.setFillEdgeBaseWithValue("N");
-            for ( final String nameList : fmArgs.addApplySNVQRFeatures ) {
-                for (final String name : nameList.split(",")) {
-                    snvqrFeatures.add(SnvqrFeatureFactory.getFeature(name, null));
-                }
-            }
-        }
 
         // open output vcf
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
@@ -304,11 +291,6 @@ public final class FlowFeatureMapper extends ReadWalker {
             }
         }
         headerInfo.add(new VCFInfoHeaderLine(VCF_ADJACENT_REF_DIFF, 1, VCFHeaderLineType.Flag, "Adjacent base filter indication: indel in the adjacent 5 bases to the considered base on the read"));
-
-        // add anvqr features
-        for ( final SnvqrFeature feature : snvqrFeatures ) {
-            headerInfo.add(new VCFInfoHeaderLine(VCF_SNVQR_PREFIX + feature.getName().toUpperCase(), 1, VCFHeaderLineType.String, "AppleSNVQR: " + feature.getName()));
-        }
 
         final VCFHeader vcfHeader = new VCFHeader(headerInfo);
         vcfHeader.setSequenceDictionary(sequenceDictionary);
@@ -477,15 +459,6 @@ public final class FlowFeatureMapper extends ReadWalker {
                 } else {
                     vcb.attribute(attrName, fr.read.getAttributeAsString(info.name));
                 }
-            }
-        }
-
-        // add snvqr features
-        for ( final SnvqrFeature feature : snvqrFeatures ) {
-            if ( feature.isNonCalledBasedIndependent() ) {
-                vcb.attribute(VCF_SNVQR_PREFIX + feature.getName().toUpperCase(), feature.getObjectValue(fr));
-            } else {
-                vcb.attribute(VCF_SNVQR_PREFIX + feature.getName().toUpperCase(), feature.getObjectValue(fr, fr.refBases[0], getHeaderForReads()));
             }
         }
 

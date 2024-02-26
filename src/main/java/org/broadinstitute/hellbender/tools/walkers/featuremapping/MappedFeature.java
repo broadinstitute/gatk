@@ -4,7 +4,6 @@ import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Arrays;
-import java.util.Map;
 
 public class MappedFeature implements Comparable<MappedFeature> {
 
@@ -29,8 +28,6 @@ public class MappedFeature implements Comparable<MappedFeature> {
 
     double scoreForBase[];
     boolean adjacentRefDiff;
-
-    Map<String, Object> vcfAttrCache;
 
     FlowBasedRead flowRead;
 
