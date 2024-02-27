@@ -156,6 +156,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_vs_817
+         - EchoCallset
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -290,6 +291,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -337,6 +339,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_817
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCallsetStatistics
