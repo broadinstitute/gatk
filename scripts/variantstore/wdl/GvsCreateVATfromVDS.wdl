@@ -9,7 +9,6 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
         String dataset_name
         String filter_set_name
-        String hail_generate_sites_only_script_path
         String output_path
         String project_id
         File vds_path
@@ -45,9 +44,6 @@ workflow GvsCreateVATfromVDS {
         }
         filter_set_name: {
             help: "name of the filter set used to generate the callset in GVS"
-        }
-        hail_generate_sites_only_script_path: {
-            help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
         }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
