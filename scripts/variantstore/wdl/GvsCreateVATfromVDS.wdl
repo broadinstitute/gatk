@@ -298,7 +298,7 @@ task GenerateSitesOnlyVcf {
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
-            --script-path /app/hail_create_vat_inputs.py \
+            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
             --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
