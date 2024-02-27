@@ -123,7 +123,7 @@ workflow GvsCreateVDS {
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
@@ -143,7 +143,7 @@ workflow GvsCreateVDS {
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     output {
@@ -176,7 +176,7 @@ task CreateVds {
         String region
         String gcs_subnetwork_name
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
 
     command <<<
@@ -258,7 +258,7 @@ task CreateVds {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
 
@@ -281,7 +281,7 @@ task ValidateVds {
         String workspace_bucket
         String region
         String gcs_subnetwork_name
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
 
     command <<<
@@ -333,7 +333,7 @@ task ValidateVds {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
     output {

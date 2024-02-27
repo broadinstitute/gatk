@@ -9,6 +9,7 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
         String dataset_name
         String filter_set_name
+        String hail_generate_sites_only_script_path
         String output_path
         String project_id
         File vds_path
@@ -44,6 +45,9 @@ workflow GvsCreateVATfromVDS {
         }
         filter_set_name: {
             help: "name of the filter set used to generate the callset in GVS"
+        }
+        hail_generate_sites_only_script_path: {
+            help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
         }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
@@ -91,12 +95,13 @@ workflow GvsCreateVATfromVDS {
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     call Utils.IndexVcf {
@@ -233,13 +238,14 @@ task GenerateSitesOnlyVcf {
         Boolean leave_cluster_running_at_end
         String hail_version
         File? hail_wheel
+        String hail_generate_sites_only_script_path
         String ancestry_file_path
         String? hail_temp_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -261,7 +267,7 @@ task GenerateSitesOnlyVcf {
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
@@ -286,10 +292,13 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
+        # Run the hail python script to make a VDS
+        gsutil cp ~{hail_generate_sites_only_script_path} /app/
 
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
-        python3 /app/run_in_hail_cluster.py --script-path /app/hail_create_vat_inputs.py \
+        python3 /app/run_in_hail_cluster.py \
+            --script-path /app/hail_create_vat_inputs.py \
             --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
@@ -308,7 +317,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
 
