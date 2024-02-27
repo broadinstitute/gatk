@@ -68,6 +68,7 @@ public class ExtractCohortEngine {
     private final String vetRangesFQDataSet;
 
     private final String fqRangesExtractVetTable;
+    private final List<String> extractVetFields;
     private final String fqRangesExtractRefTable;
 
     private final GATKPath vetAvroFileName;
@@ -116,6 +117,7 @@ public class ExtractCohortEngine {
                                final Map<Long, String> sampleIdToName,
                                final String vetRangesFQDataSet,
                                final String fqRangesExtractVetTable,
+                               final VetRangesExtractVersionEnum vetRangesExtractTableVersion,
                                final String fqRangesExtractRefTable,
                                final GATKPath vetAvroFileName,
                                final GATKPath refRangesAvroFileName,
@@ -161,6 +163,17 @@ public class ExtractCohortEngine {
 
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
+
+        if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V2) {
+            this.extractVetFields = SchemaUtils.EXTRACT_VET_V2_FIELDS;
+        }
+        else if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V1) {
+            this.extractVetFields = SchemaUtils.EXTRACT_VET_V1_FIELDS;
+        }
+        else {
+            // This can't happen.
+            throw new GATKException("Unknown vet_version " + vetRangesExtractTableVersion + " supplied");
+        }
         this.fqRangesExtractRefTable = fqRangesExtractRefTable;
 
         this.vetAvroFileName = vetAvroFileName;
@@ -757,6 +770,7 @@ public class ExtractCohortEngine {
         }
 
         final String callGT = sampleRecord.getCallGT();
+        genotypeBuilder.phased(callGT.contains("|"));
 
         String[] splitGT = callGT.split("[/|]");
         // This should match against anything like ".", "./.", ".|.", "././.", ".|.|.", etc
@@ -816,6 +830,21 @@ public class ExtractCohortEngine {
             genotypeBuilder.GQ(Integer.parseInt(callGQ));
         }
 
+        final String callPGT = sampleRecord.getCallPGT();
+        if (callPGT != null) {
+            genotypeBuilder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, callPGT);
+        }
+
+        final String callPID = sampleRecord.getCallPID();
+        if (callPID != null) {
+            genotypeBuilder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, callPID);
+        }
+
+        final String callPS = sampleRecord.getCallPS();
+        if (callPS != null) {
+            genotypeBuilder.attribute(GATKVCFConstants.PHASE_SET_KEY, Integer.parseInt(callPS));
+        }
+
         final String callPL = sampleRecord.getCallPL();
         if (this.emitPLs && callPL != null) {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
@@ -861,7 +890,7 @@ public class ExtractCohortEngine {
         Map<Integer, LinkedList<Set<Long>>> tableMap = SampleList.mapSampleIdsToTableIndexes(sampleIdsToExtract);
         for (int tableIndex : tableMap.keySet()) {
             TableReference vetTableRef =
-                    new TableReference(fqDatasetName + ".vet_" + String.format("%03d", tableIndex), SchemaUtils.EXTRACT_VET_FIELDS);
+                    new TableReference(fqDatasetName + ".vet_" + String.format("%03d", tableIndex), this.extractVetFields);
 
             // TODO: Comment as to why (specific sample list clause)
             for (Set<Long> chunkSampleIds : tableMap.get(tableIndex)) {
@@ -1015,8 +1044,7 @@ public class ExtractCohortEngine {
                                                                                                final VariantBitSet vbs
     ) {
 
-        TableReference tableRef =
-                new TableReference(fqVetTable, SchemaUtils.EXTRACT_VET_FIELDS);
+        TableReference tableRef = new TableReference(fqVetTable, this.extractVetFields);
 
         // We need to look upstream MAX_DELETION_SIZE bases in case there is a deletion that begins before
         // the requested range, but spans into our processing range.  We don't use a "length" or end position

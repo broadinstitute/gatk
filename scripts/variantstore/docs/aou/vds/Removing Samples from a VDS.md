@@ -8,8 +8,7 @@ of the VDS with the samples in question filtered out, and then save this new VDS
 ## Configuring the Terra notebook cluster
 
 Please follow the instructions
-in [AoU Delta VDS Cluster Configuration](cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) to set up a Delta-scale
-cluster.
+in [AoU VDS Cluster Configuration](cluster/AoU%20VDS%20Cluster%20Configuration.md) to set up an AoU-scale cluster.
 
 ## Create a filtered VDS
 

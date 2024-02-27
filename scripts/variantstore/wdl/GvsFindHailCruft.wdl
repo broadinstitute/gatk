@@ -46,6 +46,7 @@ task FindAvroExtractDirectories {
         volatile: true
     }
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
@@ -100,6 +101,7 @@ task FindHailTempDirectories {
         volatile: true
     }
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 

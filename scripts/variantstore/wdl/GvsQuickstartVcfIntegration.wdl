@@ -11,7 +11,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
-        Boolean process_vcf_headers = false
+        Boolean load_vcf_headers = false
         String drop_state = "FORTY"
         String dataset_suffix
         Boolean is_wgs = true
@@ -83,7 +83,7 @@ workflow GvsQuickstartVcfIntegration {
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
             use_compressed_references = use_compressed_references,
-            process_vcf_headers = process_vcf_headers,
+            load_vcf_headers = load_vcf_headers,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",
@@ -374,9 +374,9 @@ task AssertTableSizesAreExpected {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \

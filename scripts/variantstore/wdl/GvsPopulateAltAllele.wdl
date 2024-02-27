@@ -93,7 +93,9 @@ task GetMaxSampleId {
   }
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -133,7 +135,10 @@ task GetVetTableNames {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:populate_alt_allele"
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # if the maximum sample_id value is evenly divisible by 4000, then max_sample_id / 4000 will
@@ -194,7 +199,9 @@ task CreateAltAlleleTable {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:create_alt_allele"
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
@@ -259,7 +266,9 @@ task PopulateAltAlleleTable {
   Array[String] vet_table_names = read_lines(vet_table_names_file)
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     VET_TABLES_ARRAY=(~{sep=" " vet_table_names})
 

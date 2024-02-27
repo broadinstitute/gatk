@@ -15,7 +15,8 @@ workflow GvsAssignIds {
     File external_sample_names
     Boolean samples_are_controls = false
 
-    Boolean process_vcf_headers = false
+    Boolean load_vet_and_ref_ranges
+    Boolean load_vcf_headers
 
     Boolean use_compressed_references = false
     String? cloud_sdk_docker
@@ -61,7 +62,8 @@ workflow GvsAssignIds {
       partitioned = "false",
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
-  if (process_vcf_headers) {
+
+  if (load_vcf_headers) {
     call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
       input:
         project_id = project_id,
@@ -117,15 +119,17 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
-    input:
-      project_id = project_id,
-      git_branch_or_tag = git_branch_or_tag,
-      git_hash = effective_git_hash,
-      dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      use_compressed_references = use_compressed_references,
+  if (load_vet_and_ref_ranges) {
+    call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
+      input:
+        project_id = project_id,
+        git_branch_or_tag = git_branch_or_tag,
+        git_hash = effective_git_hash,
+        dataset_name = dataset_name,
+        max_table_id = AssignIds.max_table_id,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        use_compressed_references = use_compressed_references,
+    }
   }
 
   output {
@@ -159,6 +163,7 @@ task AssignIds {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
     num_samples=$(wc -l < ~{sample_names})
 
     # make sure that sample names were actually passed, fail if empty
@@ -247,7 +252,9 @@ task CreateCostObservabilityTable {
     # not volatile: true, always run this when asked
   }
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     TABLE="~{dataset_name}.cost_observability"

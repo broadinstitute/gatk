@@ -77,6 +77,10 @@ task WorkflowComputeCosts {
     Array[String] excluded_ids = prefix('--exclude ', excluded_submission_ids)
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         python3 /app/workflow_compute_costs.py \
             --workspace_namespace '~{workspace_namespace}' \
             --workspace_name '~{workspace_name}' \

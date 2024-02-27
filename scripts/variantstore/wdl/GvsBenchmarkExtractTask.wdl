@@ -154,7 +154,10 @@ task ExtractTask {
     # ------------------------------------------------
     # Run our command:
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
         df -h
@@ -213,7 +216,10 @@ task SumBytes {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python -c "
     import sys;
     total_bytes = sum(float(i.strip()) for i in sys.stdin);
@@ -243,7 +249,10 @@ task CreateManifest {
     }
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
         echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
         sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt

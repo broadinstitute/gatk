@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.VetRangesExtractVersionEnum;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -56,6 +57,7 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
                                    final Map<Long, String> sampleIdToName,
                                    final String vetRangesFQDataSet,
                                    final String fqRangesExtractVetTable,
+                                   final VetRangesExtractVersionEnum vetVersion,
                                    final String fqRangesExtractRefTable,
                                    final GATKPath vetAvroFileName,
                                    final GATKPath refRangesAvroFileName,
@@ -84,6 +86,7 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
                 sampleIdToName,
                 vetRangesFQDataSet,
                 fqRangesExtractVetTable,
+                vetVersion,
                 fqRangesExtractRefTable,
                 vetAvroFileName,
                 refRangesAvroFileName,

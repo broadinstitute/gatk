@@ -91,7 +91,7 @@ gnomad_ordering = [
     "asj",
     "eas",
     "fin",
-    "nfr",
+    "nfe",
     "oth",
     "sas"
 ]

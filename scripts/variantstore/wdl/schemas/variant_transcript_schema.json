@@ -546,20 +546,20 @@
     "mode": "Nullable"
   },
   {
-    "description": "gnomAD: allele count in the nfr subpop.",
-    "name": "gnomad_nfr_ac",
+    "description": "gnomAD: allele count in the nfe subpop.",
+    "name": "gnomad_nfe_ac",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "gnomAD: allele number in the nfr subpop.",
-    "name": "gnomad_nfr_an",
+    "description": "gnomAD: allele number in the nfe subpop.",
+    "name": "gnomad_nfe_an",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "gnomAD: allele frequency in the nfr subpop.",
-    "name": "gnomad_nfr_af",
+    "description": "gnomAD: allele frequency in the nfe subpop.",
+    "name": "gnomad_nfe_af",
     "type": "Float",
     "mode": "Nullable"
   },

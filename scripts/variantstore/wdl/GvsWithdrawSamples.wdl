@@ -69,7 +69,10 @@ task WithdrawSamples {
   String permit_uningested_samples = if (allow_uningested_samples) then 'true' else 'false'
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # get just the sample_name values from sample_names_to_include_file based on the

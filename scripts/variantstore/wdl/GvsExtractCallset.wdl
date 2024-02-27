@@ -18,7 +18,7 @@ workflow GvsExtractCallset {
     String query_project = project_id
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
-    Int? memory_override
+    Int? extract_memory_override_gib
     Int? disk_override
     Boolean zero_pad_output_vcf_filenames = true
 
@@ -63,7 +63,8 @@ workflow GvsExtractCallset {
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
   String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
-  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__VET_DATA"
+  String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
@@ -118,9 +119,15 @@ workflow GvsExtractCallset {
                                             else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                               else if is_wgs then 20000 else 7500
 
-Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
-                                if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                     else 500])
+  Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
+                                                                  if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                                                  else 500])
+
+  Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
+                                     else if effective_scatter_count <= 100 then 40
+                                          else if effective_scatter_count <= 500 then 20
+                                               else 12
+
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
     File? none = ""
@@ -181,6 +188,15 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  call Utils.GetExtractVetTableVersion {
+    input:
+      query_project = query_project,
+      data_project = project_id,
+      dataset_name = dataset_name,
+      table_name = fq_ranges_cohort_vet_extract_table_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}.vcf.gz"
@@ -202,6 +218,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         fq_cohort_extract_table            = fq_cohort_extract_table,
         fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
+        vet_extract_table_version          = GetExtractVetTableVersion.version,
         read_project_id                    = query_project,
         do_not_filter_override             = do_not_filter_override,
         fq_filter_set_info_table           = fq_filter_set_info_table,
@@ -215,7 +232,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
         disk_override                      = disk_override,
-        memory_override                    = memory_override,
+        memory_gib                         = effective_extract_memory_gib,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
         write_cost_to_db                   = write_cost_to_db,
@@ -288,6 +305,7 @@ task ExtractTask {
     String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
+    String? vet_extract_table_version
     String read_project_id
     String output_file
     String? output_gcs_dir
@@ -310,7 +328,7 @@ task ExtractTask {
     Int? extract_preemptible_override
     Int? extract_maxretries_override
     Int? disk_override
-    Int? memory_override
+    Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
 
@@ -329,7 +347,9 @@ task ExtractTask {
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -348,9 +368,10 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
     fi
 
-    gatk --java-options "-Xmx9g" \
+    gatk --java-options "-Xmx~{memory_gib - 3}g" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \
@@ -396,7 +417,7 @@ task ExtractTask {
   >>>
   runtime {
     docker: gatk_docker
-    memory: select_first([memory_override, 12]) + " GB"
+    memory: memory_gib + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
     preemptible: select_first([extract_preemptible_override, "2"])
@@ -425,7 +446,10 @@ task SumBytes {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python3 -c "
     import sys;
     total_bytes = sum(float(i.strip()) for i in sys.stdin);
@@ -456,7 +480,10 @@ task CreateManifest {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
     echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
     sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt

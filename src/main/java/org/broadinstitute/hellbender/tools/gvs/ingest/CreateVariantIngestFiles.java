@@ -84,6 +84,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public boolean enableVet = true;
 
+    @Argument(
+            fullName = "enable-vcf-headers",
+            doc = "write VCF header lines",
+            optional = true
+    )
+    public boolean enableVCFHeaders = false;
+
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
             doc = "Sample name to sample id mapping. This must be provided if gvs-sample-id is not",
@@ -139,7 +146,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public String datasetName = null;
 
-
     @Argument(
             fullName = "force-loading-from-non-allele-specific",
             doc = "Even if there are allele-specific (AS) annotations, use backwards compatibility mode",
@@ -155,20 +161,17 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public boolean skipLoadingVqsrFields = false;
 
     @Argument(
-            fullName = "enable-vcf-header-processing",
-            doc = "Ingest some sample VCF header lines and store in BigQuery dataset",
-            optional = true
-    )
-    public boolean enableVCFHeaderProcessing = false;
-
-    @Argument(
             fullName = "use-compressed-refs",
             doc = "Store the ref_ranges data in a compressed format. Saves about 40% on storage",
             optional = true
     )
     public boolean storeCompressedReferences = false;
 
-    private boolean shouldWriteLoadStatusStarted = true;
+    private boolean shouldWriteReferencesLoadedStatusRow = false;
+
+    private boolean shouldWriteVariantsLoadedStatusRow = false;
+
+    private boolean shouldWriteVCFHeadersLoadedStatusRow = false;
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
@@ -191,7 +194,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        //set up output directory
+        if (!enableVet && !enableReferenceRanges && !enableVCFHeaders) {
+            throw new RuntimeIOException("Invalid invocation: variants, references, and VCF header writing all set to false");
+        }
+
+        // Set up output directory:
         if (!outputDir.exists() && !outputDir.mkdir()) {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
         }
@@ -199,27 +206,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);
 
-        // TODO should we reuse the SampleList class or move these methods there?
-        // TODO if you change here, also change in CreateArrayIngestFiles
-        // Get sample name
-        final VCFHeader inputVCFHeader = getHeaderForVariants();
-        if (enableVCFHeaderProcessing) {
-            Set<String> nonCommandLineHeaders = new HashSet<>();
-            for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
-                if (line.getKey().contains("CommandLine")) {
-                    allLineHeaders.put(line.toString(), true);
-                }
-                else {
-                    nonCommandLineHeaders.add(line.toString());
-                }
-            }
-            allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
-        }
-
-        // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
-        // to put into the header line scratch table
-
-        String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
+        String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(getHeaderForVariants()) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }
@@ -239,59 +226,69 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         boolean refRangesRowsExist = false;
         boolean vetRowsExist = false;
+        boolean vcfHeaderRowsExist = false;
+
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
-            if (state == LoadStatus.LoadState.COMPLETE) {
+
+            // Legacy "FINISHED" state indicates variants and references completely loaded.
+            if (state.isFinished()) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
-            } else if (state == LoadStatus.LoadState.PARTIAL) {
-                if (enableReferenceRanges) {
+            }
+
+            if (enableReferenceRanges) {
+                if (state.areReferencesLoaded()) {
+                    logger.info("Sample ID {}: Reference ranges writing enabled but REFERENCES_LOADED status row found, skipping.", sampleId);
+                } else {
                     refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
                                 sampleId, sampleName);
                     }
+                    shouldWriteReferencesLoadedStatusRow = true;
                 }
+            }
 
-                if (enableVet) {
+            if (enableVet) {
+                if (state.areVariantsLoaded()) {
+                    logger.info("Sample ID {}: Variant writing enabled but VARIANTS_LOADED status row found, skipping.", sampleId);
+                } else {
                     vetRowsExist = VetCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (vetRowsExist) {
                         logger.warn("Vet enabled for sample id = {}, name = {} but preexisting vet rows found, skipping vet writes.",
                                 sampleId, sampleName);
                     }
+                    shouldWriteVariantsLoadedStatusRow = true;
                 }
+            }
 
-                if ((refRangesRowsExist || !enableReferenceRanges) && (vetRowsExist || !enableVet)) {
-                    // Write the status finished row and exit 0.
-                    logger.warn("Found load status started row with vet and ref written as needed, writing load status finished row for sample name = {}, id = {}",
-                            sampleName, sampleId);
-                    loadStatus.writeLoadStatusFinished(sampleId);
-                    System.exit(0);
+            if (enableVCFHeaders) {
+                if (state.areHeadersLoaded()) {
+                    logger.info("Sample ID {}: VCF Header writing enabled but HEADERS_LOADED status row found, skipping.", sampleId);
+                } else {
+                    vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doScratchRowsExistFor(projectID, datasetName, sampleId);
+                    if (vcfHeaderRowsExist) {
+                        logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header scratch rows found, skipping VCF header writes.",
+                                sampleId, sampleName);
+                    } else {
+                        vcfHeaderRowsExist = VcfHeaderLineScratchCreator.doNonScratchRowsExistFor(projectID, datasetName, sampleId);
+                        if (vcfHeaderRowsExist) {
+                            logger.warn("VCF header writing enabled for sample id = {}, name = {} but preexisting VCF header non-scratch rows found, skipping VCF header writes.",
+                                    sampleId, sampleName);
+                        }
+                    }
+                    shouldWriteVCFHeadersLoadedStatusRow = true;
                 }
-
-                // Log that we're going to write the vet and/or ref_ranges rows as appropriate.
-                logger.warn("Found load status started row but not load status finished row for sample id = {}, name = {}; writing tables: vet = {}, ref_ranges = {}",
-                        sampleId, sampleName, !vetRowsExist && enableVet, !refRangesRowsExist && enableReferenceRanges);
-                // Do not write the started status as that has already been written.
-                shouldWriteLoadStatusStarted = false;
             }
         }
 
-        // To set up the missing positions
-        SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
-
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
-        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
-
-        if (gqStateToIgnore != null) {
-            gqStatesToIgnore.add(gqStateToIgnore);
-            if (dropAboveGqThreshold) {
-                gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
-            }
-        }
+        // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
+        // some class members that the CreateVariantIngestFilesTest expects to be initialized.
+        SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
 
         if (enableReferenceRanges && !refRangesRowsExist) {
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
@@ -300,14 +297,29 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && !vetRowsExist) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
-        if (enableVCFHeaderProcessing) {
+        if (enableVCFHeaders && !vcfHeaderRowsExist) {
+            buildAllVcfLineHeaders();
             vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
         }
 
+        logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
+                enableReferenceRanges, enableVet, enableVCFHeaders);
+        logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
+                shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
+
+        if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
+                !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow) {
+            logger.info("No data to be written, exiting successfully.");
+            System.exit(0);
+        }
     }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        if (!enableReferenceRanges && !enableVet && enableVCFHeaders) {
+            // Nothing to do here, exit ASAP.
+            return;
+        }
 
         // get the intervals this variant covers
         final GenomeLoc variantGenomeLoc = intervalArgumentGenomeLocSortedSet.getGenomeLocParser().createGenomeLoc(variant.getContig(), variant.getStart(), variant.getEnd());
@@ -350,10 +362,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
-            loadStatus.writeLoadStatusStarted(sampleId);
-        }
-
         if (vcfHeaderLineScratchCreator != null) {
             try {
                 vcfHeaderLineScratchCreator.apply(allLineHeaders);
@@ -362,6 +370,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
+
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoadedStatusRow) {
+                loadStatus.writeHeadersLoadedStatus(sampleId);
+            }
         }
 
         if (refCreator != null) {
@@ -376,15 +388,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteReferencesLoadedStatusRow) {
+                loadStatus.writeReferencesLoadedStatus(sampleId);
+            }
         }
 
         if (vetCreator != null) {
             vetCreator.commitData();
-        }
-
-        // upload the load status table
-        if (outputType == CommonCode.OutputType.BQ) {
-            loadStatus.writeLoadStatusFinished(sampleId);
+            if (outputType == CommonCode.OutputType.BQ && shouldWriteVariantsLoadedStatusRow) {
+                loadStatus.writeVariantsLoadedStatus(sampleId);
+            }
         }
 
         return 0;
@@ -401,5 +414,37 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vcfHeaderLineScratchCreator != null) {
             vcfHeaderLineScratchCreator.closeTool();
         }
+    }
+
+    private void buildAllVcfLineHeaders() {
+        // get a set of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
+        // to put into the header line scratch table
+        Set<String> nonCommandLineHeaders = new HashSet<>();
+        for (VCFHeaderLine line : getHeaderForVariants().getMetaDataInInputOrder()) {
+            if (line.getKey().contains("CommandLine")) {
+                allLineHeaders.put(line.toString(), true);
+            }
+            else {
+                nonCommandLineHeaders.add(line.toString());
+            }
+        }
+        allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
+    }
+
+    // TODO: there's almost certainly a better name for this chunk of logic...
+    private SAMSequenceDictionary initializeGQConfigurationAndIntervals() {
+        // To set up the missing positions
+        SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
+
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
+        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
+
+        if (gqStateToIgnore != null) {
+            gqStatesToIgnore.add(gqStateToIgnore);
+            if (dropAboveGqThreshold) {
+                gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
+            }
+        }
+        return seqDictionary;
     }
 }

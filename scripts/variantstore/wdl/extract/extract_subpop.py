@@ -7,6 +7,7 @@ valid_subpopulations = [
  "eas",
  "eur",
  "mid",
+ "nfe",
  "oth",
  "sas"
 ]

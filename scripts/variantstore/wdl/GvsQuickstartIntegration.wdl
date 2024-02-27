@@ -27,11 +27,12 @@ workflow GvsQuickstartIntegration {
         String? variants_docker
         String? gatk_docker
         String? hail_version
+        Boolean chr20_X_Y_only = true
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-10-03-quicker/"
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-01-18/"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -52,11 +53,13 @@ workflow GvsQuickstartIntegration {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    call FilterIntervalListChromosomes {
-        input:
-            full_interval_list = full_wgs_interval_list,
-            chromosomes = ["chrX", "chrY", "chr20"],
-            variants_docker = effective_variants_docker,
+    if (chr20_X_Y_only) {
+        call FilterIntervalListChromosomes {
+            input:
+                full_interval_list = full_wgs_interval_list,
+                chromosomes = ["chrX", "chrY", "chr20"],
+                variants_docker = effective_variants_docker,
+        }
     }
 
     if (!use_default_dockers) {
@@ -81,7 +84,7 @@ workflow GvsQuickstartIntegration {
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = true,
-                interval_list = FilterIntervalListChromosomes.out,
+                interval_list = select_first([FilterIntervalListChromosomes.out, full_wgs_interval_list]),
                 expected_output_prefix = expected_output_prefix,
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
@@ -305,7 +308,7 @@ task FilterIntervalListChromosomes {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         python3 /app/filter_interval_list_chromosomes.py --input-interval-list ~{full_interval_list} \
-        --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
+          --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
     >>>
     runtime {
         docker: variants_docker

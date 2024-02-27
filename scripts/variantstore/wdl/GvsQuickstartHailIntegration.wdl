@@ -67,7 +67,7 @@ workflow GvsQuickstartHailIntegration {
             use_VQSR_lite = use_VQSR_lite,
             use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
-            process_vcf_headers = true,
+            load_vcf_headers = true,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,
@@ -114,7 +114,9 @@ workflow GvsQuickstartHailIntegration {
             cluster_prefix = "vds-cluster",
             gcs_subnetwork_name = "subnetwork",
             region = "us-central1",
+            basic_docker = effective_basic_docker,
             variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             cluster_max_age_minutes = 120,
             cluster_max_idle_minutes = 60,
     }

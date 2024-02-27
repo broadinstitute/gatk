@@ -133,7 +133,7 @@ workflow GvsExtractCohortFromSampleNames {
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
-      memory_override = extract_memory_override,
+      extract_memory_override_gib = extract_memory_override,
       disk_override = extract_disk_override,
       interval_list = working_interval_list,
 
