@@ -7,8 +7,7 @@ workflow GvsSnapshotTest {
         String run_name = "test_run"
         String retrieval_key = "post-extract"
         String target_restore_dataset
-        String start_retrieval_key
-        String end_retrieval_key
+        String comparison_key
     }
 
 
@@ -47,15 +46,27 @@ workflow GvsSnapshotTest {
 #    }
 
 
-    call Utils.RestoreSnapshotForRun as RestoreSnapshot {
+#    call Utils.RestoreSnapshotForRun as RestoreSnapshot {
+#        input:
+#            project_id = "gvs-internal",
+#            dest_dataset = target_restore_dataset,
+#            snapshot_dataset = "hatcher_vs_299_test_storage",
+#            run_name = run_name,
+#            start_retrieval_key = start_retrieval_key,
+#            end_retrieval_key = end_retrieval_key,
+#            cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
+#    }
+
+    
+    call Utils.CheckResultsAgainstStoredState as CheckResultsOfRun {
         input:
             project_id = "gvs-internal",
-            dest_dataset = target_restore_dataset,
+            run_dataset = target_restore_dataset,
             snapshot_dataset = "hatcher_vs_299_test_storage",
             run_name = run_name,
-            start_retrieval_key = start_retrieval_key,
-            end_retrieval_key = end_retrieval_key,
+            comparison_key = comparison_key,
             cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
     }
+
 
 }

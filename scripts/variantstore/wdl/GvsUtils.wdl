@@ -1389,3 +1389,80 @@ task RestoreSnapshotForRun {
     Boolean done = true
   }
 }
+
+task CheckResultsAgainstStoredState {
+  input {
+    String project_id
+    String run_dataset
+    String snapshot_dataset
+    String run_name
+    String comparison_key
+    Boolean go = true
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+  }
+
+  String table_mappings_table = "table_mappings"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    touch diffs.txt
+
+    # Get all of the tables listed in the snapshot
+    bq --apilog=false --project_id=gvs-internal query --use_legacy_sql=false --format=csv "SELECT original_table_name, local_table_name, is_not_modified FROM \`~{project_id}.~{snapshot_dataset}.table_mappings\` WHERE table_group = \"~{run_name}\" AND key = \"~{comparison_key}\"" | \
+    while IFS=',' read -r -a row; do
+      # ignore the header
+      if [ ${row[0]} == "original_table_name" ]; then
+        continue
+      fi
+
+      echo "Checking table ${row[@]}";
+
+      original_table=${row[0]}
+      local_table=${row[1]}
+      is_not_modified=${row[2]}
+
+      # don't bother checking those that say they aren't modified. They were initialized from snapshots so the run would have failed during its run if they tried to modify them
+      if [ $is_not_modified == "true" ]; then
+        echo "This table isn't supposed to have been modified during this step, so we're aren't checking it (as the run would have failed if there was a modification attempt"
+        continue
+      else
+        # Do the sql query that naively compares both tables.  Can't really intelligently detect when the data just changes, but will report them as missing/added
+        echo "Checking $original_table to look for modifications"
+        # this is where we COULD fork to either do a naive check like this or one where we have certain fields that we view as a key, so we can detect UPDATES as well.
+        bq --apilog=false --project_id=gvs-internal query --use_legacy_sql=false --format=pretty "WITH StoredData AS ( SELECT truth_data as row_data, FARM_FINGERPRINT(FORMAT(\"%T\", truth_data)) as comparison_row_hash FROM \`~{project_id}.~{snapshot_dataset}.${local_table}\` as truth_data ), DataToValidate AS ( SELECT new_data as row_data, FARM_FINGERPRINT(FORMAT(\"%T\", new_data)) as comparison_row_hash FROM \`~{project_id}.~{run_dataset}.${original_table}\` as new_data ) SELECT IF(stored.comparison_row_hash IS NULL,\"Present in new data\",\"Missing from old data\") AS Change, IF(stored.comparison_row_hash IS NULL,new_data.row_data, stored.row_data).* FROM StoredData stored FULL OUTER JOIN DataToValidate new_data ON stored.comparison_row_hash = new_data.comparison_row_hash WHERE stored.comparison_row_hash IS NULL OR new_data.comparison_row_hash IS NULL LIMIT 100" > comparison.txt
+
+        if [ -s comparison.txt  ]; then
+          # uh oh.  This file is non-empty.
+          echo "DIFFERENCES IN TABLE $original_table\n\n" >> diffs.txt
+          cat comparison.txt >> diffs.txt
+        fi
+      fi
+    done
+
+    if [ -s diffs.txt ]; then
+      # We've detected differences, sadly.
+      exit 1
+    fi
+
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+
+  output {
+    File differences = "diffs.txt"
+    Boolean done = true
+  }
+}
