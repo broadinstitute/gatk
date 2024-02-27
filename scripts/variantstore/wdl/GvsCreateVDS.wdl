@@ -284,6 +284,11 @@ task ValidateVds {
         String cloud_sdk_slim_docker
     }
 
+    meta {
+        # should always be run
+        volatile: true
+    }
+
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '

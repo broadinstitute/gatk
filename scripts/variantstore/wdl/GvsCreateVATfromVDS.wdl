@@ -9,7 +9,6 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
         String dataset_name
         String filter_set_name
-        String hail_generate_sites_only_script_path
         String output_path
         String project_id
         File vds_path
@@ -45,9 +44,6 @@ workflow GvsCreateVATfromVDS {
         }
         filter_set_name: {
             help: "name of the filter set used to generate the callset in GVS"
-        }
-        hail_generate_sites_only_script_path: {
-            help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
         }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
@@ -98,8 +94,6 @@ workflow GvsCreateVATfromVDS {
             use_classic_VQSR = use_classic_VQSR,
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
@@ -250,10 +244,7 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
-        File? hail_wheel
-        String hail_generate_sites_only_script_path
         String ancestry_file_path
-        String? hail_temp_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
@@ -270,12 +261,7 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        if [[ ! -z "~{hail_wheel}" ]]
-        then
-            pip3 install ~{hail_wheel}
-        else
-            pip3 install hail~{'==' + hail_version}
-        fi
+        pip3 install hail~{'==' + hail_version}
 
         pip3 install --upgrade google-cloud-dataproc ijson
 
@@ -288,12 +274,7 @@ task GenerateSitesOnlyVcf {
         sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
-        if [[ -z "~{hail_temp_path}" ]]
-        then
-            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
-        else
-            hail_temp_path="~{hail_temp_path}"
-        fi
+        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -305,13 +286,10 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
-        # Run the hail python script to make a VDS
-        gsutil cp ~{hail_generate_sites_only_script_path} /app/
-
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
-            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
+            --script-path /app/hail_create_vat_inputs.py \
             --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \

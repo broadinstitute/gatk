@@ -116,20 +116,8 @@ workflow GvsExtractAvroFilesForHail {
         }
     }
 
-    call GenerateHailScripts {
-        input:
-            go_non_superpartitioned = ExtractFromFilterTables.done && ExtractFromSampleInfoTable.done,
-            go_superpartitioned = ExtractFromSuperpartitionedTables.done,
-            avro_prefix = ExtractFromFilterTables.output_prefix,
-            variants_docker = effective_variants_docker,
-    }
     output {
-        File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
-        File hail_create_vat_inputs_script = GenerateHailScripts.hail_create_vat_inputs_script
-        String vds_output_path = GenerateHailScripts.vds_output_path
-        String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
-        String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
-        String avro_prefix = ExtractFromFilterTables.output_prefix
+        String avro_path = ExtractFromFilterTables.output_prefix
         String recorded_git_hash = effective_git_hash
     }
 }
@@ -183,7 +171,8 @@ task ExtractFromSampleInfoTable {
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
-        python3 /app/run_avro_query_for_sample_info.py --avro_prefix ${avro_prefix} \
+        python3 /app/run_avro_query_for_sample_info.py \
+            --avro_prefix ${avro_prefix} \
             --call_set_identifier ~{call_set_identifier} \
             --dataset_name ~{dataset_name} \
             --project_id=~{project_id}
@@ -370,77 +359,6 @@ task ExtractFromSuperpartitionedTables {
         Boolean done = true
     }
 
-    runtime {
-        docker: variants_docker
-        disks: "local-disk 500 HDD"
-    }
-}
-
-task GenerateHailScripts {
-    input {
-        String avro_prefix
-        Boolean go_non_superpartitioned
-        Array[Boolean] go_superpartitioned
-        String variants_docker
-    }
-    meta {
-        # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
-        volatile: true
-    }
-    parameter_meta {
-        go_non_superpartitioned: "Sync on completion of non-superpartitioned extract"
-        go_superpartitioned: "Sync on completion of all superpartitioned extract shards"
-    }
-
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
-        # Unlike many implementations, at the time of this writing this works on both Debian and Alpine based images
-        # so it should continue to work even if the `variantstore` image switches to Alpine:
-        # https://stackoverflow.com/a/34329799
-        rand=$(od -vN 4 -An -tx1 /dev/urandom | tr -d " ")
-
-        # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
-        write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
-
-        vds_output_path="${write_prefix}/gvs_export.vds"
-        echo $vds_output_path > vds_output_path.txt
-
-        tmpfile=$(mktemp)
-        # `sed` can use delimiters other than `/`. This is required here since the replacement GCS paths will
-        # contain `/` characters.
-        cat /app/hail_gvs_import.py |
-            sed "s;@AVRO_PREFIX@;~{avro_prefix};" |
-            sed "s;@WRITE_PREFIX@;${write_prefix};" > ${tmpfile}
-        mv ${tmpfile} hail_gvs_import.py
-
-        vcf_output_path="${write_prefix}/gvs_export.vcf"
-        echo $vcf_output_path > vcf_output_path.txt
-        sites_only_vcf_output_path="${write_prefix}/gvs_sites_only.vcf"
-        echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
-        vat_tsv_output_path="${write_prefix}/vat_inputs.tsv"
-        echo $vat_tsv_output_path > vat_inputs_output_path.txt
-
-        tmpfile=$(mktemp)
-        cat /app/hail_create_vat_inputs.py |
-            sed "s;@VDS_INPUT_PATH@;${vds_output_path};" |
-            sed "s;@SITES_ONLY_VCF_OUTPUT_PATH@;${sites_only_vcf_output_path};" |
-            sed "s;@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@;${vat_tsv_output_path};" > ${tmpfile}
-        mv ${tmpfile} hail_create_vat_inputs.py
-
-    >>>
-
-    output {
-        Boolean done = true
-        String vds_output_path = read_string('vds_output_path.txt')
-        String sites_only_vcf_output_path = read_string('sites_only_vcf_output_path.txt')
-        String vat_inputs_output_path = read_string('vat_inputs_output_path.txt')
-        File hail_gvs_import_script = 'hail_gvs_import.py'
-        File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
-    }
     runtime {
         docker: variants_docker
         disks: "local-disk 500 HDD"
