@@ -92,12 +92,6 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    call Utils.GetHailScripts {
-        input:
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
-            variants_docker = effective_variants_docker,
-    }
-
     call GenerateSitesOnlyVcf {
         input:
             vds_path = vds_path,
@@ -105,15 +99,13 @@ workflow GvsCreateVATfromVDS {
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
-            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            hail_generate_sites_only_script = GetHailScripts.hail_generate_sites_only_script,
-            create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
+            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.IndexVcf {
@@ -259,16 +251,14 @@ task GenerateSitesOnlyVcf {
         Boolean leave_cluster_running_at_end
         String hail_version
         File? hail_wheel
-        File run_in_hail_cluster_script
-        File hail_generate_sites_only_script
-        File create_vat_inputs_script
+        String hail_generate_sites_only_script_path
         String ancestry_file_path
         String? hail_temp_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String cloud_sdk_slim_docker
+        String variants_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -290,7 +280,7 @@ task GenerateSitesOnlyVcf {
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
@@ -315,11 +305,14 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
+        # Run the hail python script to make a VDS
+        gsutil cp ~{hail_generate_sites_only_script_path} /app/
+
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
-        python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{hail_generate_sites_only_script} \
-            --secondary-script-path-list ~{create_vat_inputs_script} \
+        python3 /app/run_in_hail_cluster.py \
+            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
+            --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -337,7 +330,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: cloud_sdk_slim_docker
+        docker: variants_docker
         bootDiskSizeGb: 10
     }
 
@@ -773,7 +766,6 @@ task BigQueryLoadJson {
     # So we create it here, and then deduplicate it in a later step
     String vat_table_name = base_vat_table_name + "_w_dups"
 
-    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
     String variant_transcript_table = base_vat_table_name + "_variants"
     String genes_table = base_vat_table_name + "_genes"
 
@@ -966,12 +958,12 @@ task BigQueryLoadJson {
 }
 
 task DeduplicateVatInBigQuery {
-     meta {
-         # since the WDL will not see the updated data (its getting put in a gcp bucket)
-         volatile: true
-     }
+    meta {
+        # since the WDL will not see the updated data (it's getting put in a gcp bucket)
+        volatile: true
+    }
 
-     input {
+    input {
         String input_vat_table_name
         String output_vat_table_name
         File? nirvana_schema
@@ -979,7 +971,8 @@ task DeduplicateVatInBigQuery {
         String project_id
         String dataset_name
         String cloud_sdk_docker
-     }
+    }
+
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
