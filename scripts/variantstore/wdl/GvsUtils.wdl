@@ -1406,7 +1406,7 @@ task CheckResultsAgainstStoredState {
   }
 
   String table_mappings_table = "table_mappings"
-
+  String are_differences_present_file = "are_differences_present.txt"
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -1422,7 +1422,7 @@ task CheckResultsAgainstStoredState {
         continue
       fi
 
-      echo "Checking table ${row[@]}";
+#      echo "Checking table ${row[@]}";
 
       original_table=${row[0]}
       local_table=${row[1]}
@@ -1440,7 +1440,7 @@ task CheckResultsAgainstStoredState {
 
         if [ -s comparison.txt  ]; then
           # uh oh.  This file is non-empty.
-          echo "DIFFERENCES IN TABLE $original_table\n\n" >> diffs.txt
+          echo "DIFFERENCES IN TABLE $original_table" >> diffs.txt
           cat comparison.txt >> diffs.txt
         fi
       fi
@@ -1448,7 +1448,9 @@ task CheckResultsAgainstStoredState {
 
     if [ -s diffs.txt ]; then
       # We've detected differences, sadly.
-      exit 1
+      echo "true" > ~{are_differences_present_file}
+    else
+      echo "false" > ~{are_differences_present_file}
     fi
 
   >>>
@@ -1463,6 +1465,7 @@ task CheckResultsAgainstStoredState {
 
   output {
     File differences = "diffs.txt"
+    Boolean differences_present = read_boolean(are_differences_present_file)
     Boolean done = true
   }
 }

@@ -57,7 +57,7 @@ workflow GvsSnapshotTest {
 #            cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine",
 #    }
 
-    
+
     call Utils.CheckResultsAgainstStoredState as CheckResultsOfRun {
         input:
             project_id = "gvs-internal",
