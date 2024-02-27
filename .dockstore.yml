@@ -291,7 +291,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - EchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -338,7 +337,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - EchoCallset
              - rsa_vs_817
          tags:
              - /.*/
