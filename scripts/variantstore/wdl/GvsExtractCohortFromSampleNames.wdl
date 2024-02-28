@@ -50,7 +50,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
-  if (!defined(git_branch_or_tag) || !defined(gatk_docker) || !defined(gatk_override) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+  if (!defined(git_branch_or_tag) || !defined(gatk_docker)  || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
