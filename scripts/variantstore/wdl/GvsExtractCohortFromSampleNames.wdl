@@ -13,19 +13,20 @@ workflow GvsExtractCohortFromSampleNames {
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
 
-    String query_project
     String gvs_project
     String gvs_dataset
     String call_set_identifier
-    String cohort_table_prefix
+    String cohort_table_prefix = call_set_identifier
+    String query_project = gvs_project
 
     # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
-    String destination_dataset_name
-    String destination_project_id
+    String destination_dataset_name = gvs_dataset
+    String destination_project_id = gvs_project
     String? fq_gvs_extraction_temp_tables_dataset
-    String extraction_uuid
+    String extraction_uuid = call_set_identifier
     String filter_set_name
-    String output_file_base_name
+    String output_file_base_name = call_set_identifier
+    Boolean? control_samples
 
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
@@ -97,19 +98,21 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
-      call_set_identifier             = cohort_table_prefix,
-      extract_table_prefix            = cohort_table_prefix,
-      sample_names_to_extract         = cohort_sample_names_file,
-      project_id                      = gvs_project,
-      query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
-      query_project                   = query_project,
-      dataset_name                    = gvs_dataset, # unused if fq_* args are given
-      destination_project             = destination_project_id,
-      destination_dataset             = destination_dataset_name,
-      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
-      write_cost_to_db                = write_cost_to_db,
-      cloud_sdk_docker                = effective_cloud_sdk_docker,
-      enable_extract_table_ttl        = true,
+      call_set_identifier = call_set_identifier,
+      extract_table_prefix = cohort_table_prefix,
+      sample_names_to_extract = cohort_sample_names_file,
+      project_id = gvs_project,
+      query_labels = ["extraction_uuid=~{extraction_uuid}"],
+      query_project = query_project,
+      dataset_name = gvs_dataset, # unused if fq_* args are given
+      destination_project = destination_project_id,
+      destination_dataset = destination_dataset_name,
+      fq_temp_table_dataset = fq_gvs_extraction_temp_tables_dataset,
+      write_cost_to_db = write_cost_to_db,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+      enable_extract_table_ttl = true,
+      interval_list = working_interval_list,
+      control_samples = control_samples,
   }
 
   call GvsExtractCallset.GvsExtractCallset {
@@ -121,7 +124,7 @@ workflow GvsExtractCohortFromSampleNames {
       call_set_identifier = call_set_identifier,
       cohort_project_id = destination_project_id,
       cohort_dataset_name = destination_dataset_name,
-      extract_table_prefix = cohort_table_prefix,
+      extract_table_prefix = GvsPrepareCallset.full_extract_table_prefix,
 
       scatter_count = effective_scatter_count,
       filter_set_name = filter_set_name,
@@ -143,6 +146,8 @@ workflow GvsExtractCohortFromSampleNames {
 
   output {
     Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+    Array[File] output_vcfs = GvsExtractCallset.output_vcfs
+    Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
     String recorded_git_hash = GetToolVersions.git_hash
   }
 
