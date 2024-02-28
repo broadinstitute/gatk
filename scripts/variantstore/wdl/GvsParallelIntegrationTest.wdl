@@ -7,7 +7,7 @@ import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 
-workflow GvsQuickstartVcfIntegration {
+workflow GvsQuickstartParallelIntegrationTests {
     input {
         String git_branch_or_tag
         String? git_hash
