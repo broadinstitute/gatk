@@ -23,6 +23,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String? cloud_sdk_docker
     String? gatk_docker
     String? git_branch_or_tag
+    String? gatk_override
     String? gotc_imputation_docker
     String? real_time_genomics_docker
     String? variants_docker
@@ -51,7 +52,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
   }
 
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
-  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_real_time_genomics_docker = select_first([real_time_genomics_docker, GetToolVersions.real_time_genomics_docker])
   String effective_gotc_imputation_docker = select_first([gotc_imputation_docker, GetToolVersions.gotc_imputation_docker])
@@ -73,8 +75,11 @@ workflow GvsCalculatePrecisionAndSensitivity {
       filter_set_name = filter_set_name,
       control_samples = true,
       interval_list = interval_list,
-      git_branch_or_tag = git_branch_or_tag,
       cloud_sdk_docker = effective_cloud_sdk_docker,
+      gatk_docker = effective_gatk_docker,
+      gatk_override = gatk_override,
+      git_branch_or_tag = git_branch_or_tag,
+      variants_docker = effective_variants_docker,
   }
 
   call GatherVcfs {
