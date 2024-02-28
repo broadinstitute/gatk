@@ -33,7 +33,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     call_set_identifier: "The name of the callset for which we are calculating precision and sensitivity."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
-    interval_list: "The intervals over which to calculate precision and sensitivity. If this is passed, it will ignore the input 'chromosomes'"
+    interval_list: "The intervals over which to calculate precision and sensitivity."
     project_id: "The Google Project ID where the GVS lives."
     sample_names: "A list of the sample names that are controls and that will be used for the analysis. For every element on the list of sample names there must be a corresponding element on the list of `truth_vcfs`, `truth_vcf_indices`, and `truth_beds`."
     truth_vcfs: "A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`."
@@ -166,62 +166,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[Array[File]] filtered_eval_outputs = EvaluateVcfFiltered.outputs
     Array[Array[File]] all_eval_outputs = EvaluateVcfAll.outputs
     String recorded_git_hash = GetToolVersions.git_hash
-  }
-}
-
-task IsVcfOnChromosomes {
-  input {
-    File input_vcf_fofn
-    Int index
-    Array[String] chromosomes
-    String variants_docker
-  }
-
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
-
-    # Get a one-based line number from the zero-based input index.
-    line_number=$((~{index} + 1))
-    input_vcf_path=$(sed -n "${line_number}p" ~{input_vcf_fofn})
-
-    input_vcf=$(basename ${input_vcf_path})
-    gcloud storage cp ${input_vcf_path} ${input_vcf}
-    cat ${input_vcf} | gunzip | grep -v '^#' | cut -f 1 | sort | uniq > chrom.txt
-    NL=$(cat chrom.txt | wc -l)
-    if [ $NL -ne 1 ]; then
-      echo "${input_vcf_path} has either no records or records on multiple chromosomes"
-      exit 1
-    fi
-
-    mkdir output
-    output_vcf_name=${input_vcf}
-    touch output/${output_vcf_name}
-    VCF_CHR=$(cat chrom.txt)
-    chromosomes=( ~{sep=' ' chromosomes} )
-
-    for i in "${chromosomes[@]}"
-    do
-      if [ $VCF_CHR = $i ]; then
-        cp ${input_vcf} output/${output_vcf_name}
-        echo "Including ${input_vcf_path} as it is on $i."
-        break
-      else
-        touch output/${output_vcf_name}
-        echo "Skipping ${input_vcf_path} as it is not on $i."
-      fi
-    done
-  >>>
-
-  runtime {
-    docker: variants_docker
-    disks: "local-disk 100 HDD"
-    memory: "2 GiB"
-    preemptible: 3
-  }
-  output {
-    Array[File] output_vcf = glob("output/*")
   }
 }
 
@@ -485,7 +429,6 @@ task EvaluateVcf {
 
   }
   output {
-    File coverage = "chromosomes.to.eval.txt"
     File snp_report = "snp_report.txt"
     File indel_report = "indel_report.txt"
     Array[File] outputs = glob("~{output_basename}/*")
