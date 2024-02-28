@@ -374,7 +374,7 @@ workflows:
          - /.*/
    - name: GvsParallelIntegrationTest
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsParallelIntegrationTest.wdl.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsParallelIntegrationTest.wdl
      filters:
        branches:
          - master
