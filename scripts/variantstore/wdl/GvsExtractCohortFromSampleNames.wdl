@@ -42,20 +42,26 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_mem_override
 
     String? git_branch_or_tag
+    String? gatk_docker
     File? gatk_override
     String? cloud_sdk_docker
+    String? variants_docker
   }
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
-  # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
-  # no calling WDLs that might supply `git_hash`).
-  call Utils.GetToolVersions {
-    input:
-      git_branch_or_tag = git_branch_or_tag,
+  if (!defined(git_branch_or_tag) || !defined(gatk_docker) || !defined(gatk_override) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
   }
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_git_hash = select_first([git_branch_or_tag, GetToolVersions.git_hash])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -96,6 +102,8 @@ workflow GvsExtractCohortFromSampleNames {
   # allow an interval list to be passed in, but default it to our standard one if no args are here
   File working_interval_list = select_first([interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
 
+
+  #   if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker)) {
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
       call_set_identifier = call_set_identifier,
@@ -113,6 +121,9 @@ workflow GvsExtractCohortFromSampleNames {
       enable_extract_table_ttl = true,
       interval_list = working_interval_list,
       control_samples = control_samples,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+      git_hash = effective_git_hash,
+      variants_docker = effective_variants_docker,
   }
 
   call GvsExtractCallset.GvsExtractCallset {
@@ -140,7 +151,12 @@ workflow GvsExtractCohortFromSampleNames {
       disk_override = extract_disk_override,
       interval_list = working_interval_list,
 
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
+      gatk_docker = effective_gatk_docker,
+      git_hash = effective_git_hash,
+      variants_docker = effective_variants_docker,
       write_cost_to_db = write_cost_to_db
   }
 
@@ -148,7 +164,7 @@ workflow GvsExtractCohortFromSampleNames {
     Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
     Array[File] output_vcfs = GvsExtractCallset.output_vcfs
     Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
-    String recorded_git_hash = GetToolVersions.git_hash
+    String recorded_git_hash = effective_git_hash
   }
 
 }
