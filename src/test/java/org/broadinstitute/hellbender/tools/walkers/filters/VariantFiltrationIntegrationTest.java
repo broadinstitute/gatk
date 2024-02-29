@@ -45,17 +45,18 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @DataProvider(name="masks")
     public Object[][] masks() {
         return new String[][]{
-                {"foo", "--mask " + getToolTestDataDir() + "vcfexample2.vcf", "testVariantFiltration_testMask1.vcf"},
-                {"foo", "--mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask2.vcf"},
-                {"foo", "--" + VariantFiltration.MASK_EXTENSION_LONG_NAME + " 10 --mask:VCF " + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask3.vcf"},
-                {"foo", "--apply-allele-specific-filters --mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask4.vcf"}
+                {"-mask-name foo", "--mask " + getToolTestDataDir() + "vcfexample2.vcf", "testVariantFiltration_testMask1.vcf"},
+                {"-mask-name foo", "--mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask2.vcf"},
+                {"-mask-name foo", "--" + VariantFiltration.MASK_EXTENSION_LONG_NAME + " 10 --mask:VCF " + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask3.vcf"},
+                {"-mask-name foo", "--apply-allele-specific-filters --mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask4.vcf"},
+                {"-mask-name foo1 -mask-name foo2", "--mask " + getToolTestDataDir() + "vcfMaskpt1.vcf --mask " + getToolTestDataDir() + "vcfMaskpt2.vcf", "testVariantFiltration_testMask5.vcf"}
         };
     }
 
     @Test(dataProvider = "masks")
     public void testMask(final String maskName, final String mask, final String expected) throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -mask-name " + maskName + " " + mask),
+                baseTestString("vcfexample2.vcf", " " + maskName + " " + mask),
                 Arrays.asList(getToolTestDataDir() + "expected/" + expected)
         );
 
@@ -81,11 +82,19 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testMask", this);
     }
 
-    @Test
-    public void testMaskReversed() throws IOException {
+    @DataProvider(name="maskReversed")
+    public Object[][] maskReversed() {
+        return new String[][]{
+                {"-mask-name outsideGoodSites", "-filter-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMask.bed", "testVariantFiltration_testMaskReversed.vcf"},
+                {"-mask-name outsideGoodSites1 -mask-name outsideGoodSites2", "-filter-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMaskpt1.bed --mask:BED " + getToolTestDataDir() + "goodMaskpt2.bed", "testVariantFiltration_testMaskReversed2.vcf"},
+        };
+    }
+
+    @Test(dataProvider = "maskReversed")
+    public void testMaskReversed(final String maskName, final String mask, final String expected) throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -mask-name outsideGoodSites -filter-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMask.bed"),
-                Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testMaskReversed.vcf")
+                baseTestString("vcfexample2.vcf", " " + maskName + " " + mask),
+                Arrays.asList(getToolTestDataDir() + "expected/" + expected)
         );
 
         spec.executeTest("testMaskReversed", this);
