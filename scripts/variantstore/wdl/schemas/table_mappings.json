@@ -1,0 +1,37 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "table_group",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "key",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "local_table_name",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "original_table_name",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "original_table_last_modified",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "is_not_modified",
+    "type": "BOOLEAN"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "is_not_modified",
+    "type": "BOOLEAN"
+  }
+]
