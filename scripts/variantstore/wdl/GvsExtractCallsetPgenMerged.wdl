@@ -28,18 +28,23 @@ workflow GvsExtractCallsetMerged {
         String query_project = project_id
         # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
         Int? scatter_count
+        Int? extract_memory_override_gib
+        Int? disk_override
+
         Boolean zero_pad_output_pgen_filenames = true
 
         # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
         String drop_state = "NONE"
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-        Boolean use_interval_weights = true
-        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
+        String? variants_docker
+        String? cloud_sdk_docker
+        String? gatk_docker
+        String? git_branch_or_tag
+        String? git_hash
         File? gatk_override
-        String? extract_docker_override
-        String gatk_docker
 
         String output_file_base_name = filter_set_name
 
@@ -74,13 +79,18 @@ workflow GvsExtractCallsetMerged {
             filter_set_name = filter_set_name,
             query_project = query_project,
             scatter_count = scatter_count,
+            extract_memory_override_gib = extract_memory_override_gib,
+            disk_override = disk_override,
             zero_pad_output_pgen_filenames = zero_pad_output_pgen_filenames,
             drop_state = drop_state,
             interval_list = interval_list,
-            use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
-            gatk_override = gatk_override,
+            variants_docker = variants_docker,
+            cloud_sdk_docker = cloud_sdk_docker,
             gatk_docker = gatk_docker,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = git_hash,
+            gatk_override = gatk_override,
             output_file_base_name = output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
@@ -91,7 +101,6 @@ workflow GvsExtractCallsetMerged {
             x_bed_weight_scaling = x_bed_weight_scaling,
             y_bed_weight_scaling = y_bed_weight_scaling,
             write_cost_to_db = write_cost_to_db,
-            extract_docker_override = extract_docker_override
     }
 
     call SplitFilesByChromosome {

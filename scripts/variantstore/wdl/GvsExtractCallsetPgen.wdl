@@ -32,7 +32,7 @@ workflow GvsExtractCallset {
         String query_project = project_id
         # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
         Int? scatter_count
-        Int? memory_override
+        Int? extract_memory_override_gib
         Int? disk_override
         # If true, the output files will be named with a zero-padded interval number prefix
         # If false, the output files will be named with a non-zero-padded interval number suffix
@@ -42,12 +42,14 @@ workflow GvsExtractCallset {
         String drop_state = "NONE"
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-        Boolean use_interval_weights = true
-        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
+        String? variants_docker
+        String? cloud_sdk_docker
+        String? gatk_docker
+        String? git_branch_or_tag
+        String? git_hash
         File? gatk_override
-        String? extract_docker_override
-        String gatk_docker
 
         String output_file_base_name = filter_set_name
 
@@ -77,7 +79,8 @@ workflow GvsExtractCallset {
     String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
     String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
     String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
-    String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__VET_DATA"
+    String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
+    String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
 
     String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
     Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
@@ -87,25 +90,39 @@ workflow GvsExtractCallset {
 
     String intervals_file_extension = if (zero_pad_output_pgen_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
 
+    if (!defined(git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     call Utils.ScaleXYBedValues {
         input:
             interval_weights_bed = interval_weights_bed,
             x_bed_weight_scaling = x_bed_weight_scaling,
-            y_bed_weight_scaling = y_bed_weight_scaling
+            y_bed_weight_scaling = y_bed_weight_scaling,
+	    variants_docker = effective_variants_docker,
     }
 
     call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
         input:
             project_id = project_id,
-            fq_table = fq_sample_table
+            fq_table = fq_sample_table,
+	    cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call Utils.GetNumSamplesLoaded {
         input:
-            fq_sample_table = fq_samples_to_extract_table,
+            fq_sample_table = fq_sample_table,
             project_id = project_id,
             control_samples = control_samples,
-            sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp
+            sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
+	    cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
@@ -115,8 +132,16 @@ workflow GvsExtractCallset {
                                                  else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
                                                       else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                                            else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
-                                                                else 34000
+                                                                 else 34000
 
+    Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
+                                                                if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                                                else 500])
+
+    Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
+                                       else if effective_scatter_count <= 100 then 40
+                                           else if effective_scatter_count <= 500 then 20
+                                               else 12
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
@@ -128,21 +153,22 @@ workflow GvsExtractCallset {
             ref_fasta = reference,
             ref_fai = reference_index,
             ref_dict = reference_dict,
-            interval_weights_bed = if (use_interval_weights) then ScaleXYBedValues.xy_scaled_bed else none,
+            interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
             output_gcs_dir = output_gcs_dir,
             split_intervals_extra_args = split_intervals_extra_args,
-            split_intervals_disk_size_override = split_intervals_disk_size_override,
+            split_intervals_disk_size_override = effective_split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
+            gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
-            gatk_docker = gatk_docker
     }
 
     call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
         input:
             project_id = project_id,
-            fq_table = "~{fq_filter_set_info_table}"
+            fq_table = "~{fq_filter_set_info_table}",
+	    cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     if ( !do_not_filter_override ) {
@@ -151,14 +177,16 @@ workflow GvsExtractCallset {
                 project_id = query_project,
                 fq_filter_set_info_table = "~{fq_filter_set_info_table}",
                 filter_set_name = filter_set_name,
-                filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp
+                filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
         call Utils.IsVQSRLite {
             input:
                 project_id = query_project,
                 fq_filter_set_info_table = "~{fq_filter_set_info_table}",
-                filter_set_name = filter_set_name
+                filter_set_name = filter_set_name,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
 
@@ -171,9 +199,18 @@ workflow GvsExtractCallset {
             query_project = query_project,
             data_project = project_id,
             dataset_name = dataset_name,
-            table_patterns = tables_patterns_for_datetime_check
+            table_patterns = tables_patterns_for_datetime_check,
+	    cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call Utils.GetExtractVetTableVersion {
+        input:
+            query_project = query_project,
+            data_project = project_id,
+            dataset_name = dataset_name,
+            table_name = fq_ranges_cohort_vet_extract_table_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
     scatter(i in range(length(SplitIntervalsTarred.interval_filenames))) {
         String interval_filename = SplitIntervalsTarred.interval_filenames[i]
         String pgen_basename = if (zero_pad_output_pgen_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
@@ -186,6 +223,7 @@ workflow GvsExtractCallset {
                 max_alt_alleles                    = max_alt_alleles,
                 lenient_ploidy_validation          = lenient_ploidy_validation,
                 use_VQSR_lite                      = use_VQSR_lite,
+		gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
                 reference                          = reference,
                 reference_index                    = reference_index,
@@ -197,6 +235,7 @@ workflow GvsExtractCallset {
                 fq_cohort_extract_table            = fq_cohort_extract_table,
                 fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
                 fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
+                vet_extract_table_version          = GetExtractVetTableVersion.version,
                 read_project_id                    = query_project,
                 do_not_filter_override             = do_not_filter_override,
                 fq_filter_set_info_table           = fq_filter_set_info_table,
@@ -211,23 +250,24 @@ workflow GvsExtractCallset {
                 extract_preemptible_override       = extract_preemptible_override,
                 extract_maxretries_override        = extract_maxretries_override,
                 disk_override                      = disk_override,
-                memory_override                    = memory_override,
+                memory_gib                         = effective_extract_memory_gib,
                 emit_pls                           = emit_pls,
                 emit_ads                           = emit_ads,
                 write_cost_to_db                   = write_cost_to_db,
-                docker_override                    = select_first([extract_docker_override, gatk_docker])
         }
     }
 
     call SumBytes {
         input:
-            file_sizes_bytes = flatten([ExtractTask.output_pgen_bytes, ExtractTask.output_pvar_bytes, ExtractTask.output_psam_bytes])
+            file_sizes_bytes = flatten([ExtractTask.output_pgen_bytes, ExtractTask.output_pvar_bytes, ExtractTask.output_psam_bytes]),
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call CreateManifest {
         input:
             manifest_lines = ExtractTask.manifest,
-            output_gcs_dir = output_gcs_dir
+            output_gcs_dir = output_gcs_dir,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     if (control_samples == false) {
@@ -235,7 +275,8 @@ workflow GvsExtractCallset {
         call Utils.GetBQTableLastModifiedDatetime {
             input:
                 project_id = query_project,
-                fq_table = fq_samples_to_extract_table
+                fq_table = fq_samples_to_extract_table,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
         call GenerateSampleListFile {
@@ -243,7 +284,8 @@ workflow GvsExtractCallset {
                 fq_samples_to_extract_table = fq_samples_to_extract_table,
                 samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
                 output_gcs_dir = output_gcs_dir,
-                query_project = query_project
+                query_project = query_project,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
 
@@ -256,6 +298,7 @@ workflow GvsExtractCallset {
         Float total_pgens_size_mb = SumBytes.total_mb
         File manifest = CreateManifest.manifest
         File? sample_name_list = GenerateSampleListFile.sample_name_list
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }
@@ -292,6 +335,7 @@ task ExtractTask {
         String fq_cohort_extract_table
         String fq_ranges_cohort_ref_extract_table
         String fq_ranges_cohort_vet_extract_table
+        String? vet_extract_table_version
         String read_project_id
         String output_pgen_basename
         Boolean zero_pad_output_pgen_filenames
@@ -310,12 +354,12 @@ task ExtractTask {
         Boolean write_cost_to_db
 
         # Runtime Options:
+        String gatk_docker
         File? gatk_override
-        String? docker_override
         Int? extract_preemptible_override
         Int? extract_maxretries_override
         Int? disk_override
-        Int? memory_override
+        Int memory_gib
 
         Int? local_sort_max_records_in_ram = 10000000
 
@@ -332,7 +376,9 @@ task ExtractTask {
     String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
     command <<<
-        set -eux
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -355,14 +401,11 @@ task ExtractTask {
 
         # Extract the intervals file from the intervals tarball
         tar -xf ~{interval_files_tar} ~{interval_filename}
-        
-        # Calculate the memory size we'll use for extraction as 3/4 of the total memory
-        JAVA_MEM=$(echo "scale=0; 0.75 * ${MEM_SIZE}" | bc)
-        JAVA_MEM=$(printf "%.0f" ${JAVA_MEM})
 
-        gatk --java-options "-Xmx${JAVA_MEM}g" \
+        gatk --java-options "-Xmx~{memory_gib - 3}g" \
         ExtractCohortToPgen \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \
@@ -419,8 +462,8 @@ task ExtractTask {
         echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_PVAR_DEST},${OUTPUT_FILE_PVAR_BYTES},${OUTPUT_FILE_PSAM_DEST},${OUTPUT_FILE_PSAM_BYTES} >> manifest.txt
     >>>
     runtime {
-        docker: select_first([docker_override, "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots/gatk-remote-builds:klydon-fc3a5d17fbab35f51e58e740452ead60b908d6b7-4.4.0.0-78-gfc3a5d17f"])
-        memory: select_first([memory_override, 12]) + " GB"
+        docker: gatk_docker
+        memory: memory_gib + " GB"
         disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
         bootDiskSizeGb: 15
         preemptible: select_first([extract_preemptible_override, "2"])
@@ -445,13 +488,17 @@ task ExtractTask {
 task SumBytes {
     input {
         Array[Float] file_sizes_bytes
+        String cloud_sdk_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python3 -c "
         import sys;
         total_bytes = sum(float(i.strip()) for i in sys.stdin);
@@ -459,7 +506,7 @@ task SumBytes {
         print(total_mb);"
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -475,13 +522,16 @@ task CreateManifest {
     input {
         Array[String] manifest_lines
         String? output_gcs_dir
+        String cloud_sdk_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
         MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
         echo "pgen_file_location, pgen_file_bytes, pvar_file_location, pvar_file_bytes, psam_file_location, psam_file_bytes" >> manifest.txt
         sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
@@ -498,7 +548,7 @@ task CreateManifest {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -513,6 +563,7 @@ task GenerateSampleListFile {
         String query_project
 
         String? output_gcs_dir
+        String cloud_sdk_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -531,7 +582,8 @@ task GenerateSampleListFile {
 
         echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-        bq --apilog=false --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
+        bq --apilog=false --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} \ 
+	   'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
 
         if [ -n "$OUTPUT_GCS_DIR" ]; then
         gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
@@ -542,7 +594,7 @@ task GenerateSampleListFile {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3

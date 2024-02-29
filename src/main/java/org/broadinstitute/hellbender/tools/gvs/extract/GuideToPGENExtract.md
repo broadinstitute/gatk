@@ -89,6 +89,11 @@ Next, the lists are split, so we can parallelize the merge.  Each of the split l
 Then, this is repeated to merge all the resulting files into one.  The output is a single .pgen file, .psam file, and .pvar.zst file containing all the extracted data for the corresponding chromosome.
 
 ## Testing
+
+### Unit tests
+Unit tests for the ExtractCohortToPgen tool exist in the ExtractCohortToPgenTest file.  They are based closely on the tests in ExtractCohortToVcfTest, with a few extras to account for behaviors specific to PGEN extract.
+
+### Large scale testing
 All of my testing (with the exception of some very small scale stuff early on) has been done in the [GVS_AoU_PGEN_Extract_Development Terra workspace](https://app.terra.bio/#workspaces/allofus-drc-prod-auxiliary/GVS_AoU_PGEN_Extract_Development) and using data from the GVS Delta callset (aou-genomics-curation-prod.aou_wgs_fullref_v2).  My test process (for the majority of tests) has been as follows:
 
 1. Select a list of sample names from aou_wgs_fullref_v2.sample_info (excluding control samples and sample 3224672 because of the data issue mentioned [here](https://broadinstitute.slack.com/archives/CJRLP6ZSA/p1699026273329339)).
