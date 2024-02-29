@@ -233,6 +233,101 @@ task SplitIntervals {
   }
 }
 
+task SplitIntervalsTarred {
+  input {
+    File intervals
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    Int scatter_count
+    File? interval_weights_bed
+    String? intervals_file_extension
+    String? split_intervals_extra_args
+    Int? split_intervals_disk_size_override
+    Int? split_intervals_mem_override
+    String? output_gcs_dir
+    String gatk_docker
+    File? gatk_override
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  Int disk_size = select_first([split_intervals_disk_size_override, 10])
+  Int disk_memory = select_first([split_intervals_mem_override, 16])
+  Int java_memory = disk_memory - 4
+
+  String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  parameter_meta {
+    intervals: {
+                 localization_optional: true
+               }
+    ref_fasta: {
+                 localization_optional: true
+               }
+    ref_fai: {
+               localization_optional: true
+             }
+    ref_dict: {
+                localization_optional: true
+              }
+  }
+
+  command <<<
+    # Updating to use standard shell boilerplate
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+    set -e
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+    mkdir interval-files
+    gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
+    --dont-mix-contigs \
+    -R ~{ref_fasta} \
+    ~{"-L " + intervals} \
+    ~{"--weight-bed-file " + interval_weights_bed} \
+    -scatter ~{scatter_count} \
+    -O interval-files \
+    ~{"--extension " + intervals_file_extension} \
+    --interval-file-num-digits 10 \
+    ~{split_intervals_extra_args}
+
+    # Print all the interval filenames with their relative paths to a file
+    find interval-files -mindepth 1 -maxdepth 1 | sort > interval_list_list.txt
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+    gsutil -m cp -r "interval-files" $OUTPUT_GCS_DIR/
+    fi
+
+    # Tar up the interval file directory
+    tar -cf interval-files.tar interval-files
+  >>>
+
+  runtime {
+    docker: gatk_docker
+    bootDiskSizeGb: 15
+    memory: "~{disk_memory} GB"
+    disks: "local-disk ~{disk_size} HDD"
+    preemptible: 3
+    cpu: 1
+  }
+
+  output {
+    File interval_files_tar = "interval-files.tar"
+    Array[String] interval_filenames = read_lines("interval_list_list.txt")
+    File monitoring_log = "monitoring.log"
+  }
+}
+
+
 task GetBQTableLastModifiedDatetime {
   input {
     Boolean go = true
