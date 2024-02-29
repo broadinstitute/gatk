@@ -32,7 +32,9 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    Boolean process_vcf_headers = false
+    # At least one of these "load" inputs must be true
+    Boolean load_vet_and_ref_ranges = true
+    Boolean load_vcf_headers = false
     String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
@@ -65,6 +67,14 @@ workflow GvsImportGenomes {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  if (!load_vcf_headers && !load_vet_and_ref_ranges) {
+    call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
+      input:
+        message = "GvsImportGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+        basic_docker = effective_basic_docker,
+    }
+  }
 
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
@@ -101,6 +111,8 @@ workflow GvsImportGenomes {
       external_sample_names = external_sample_names,
       num_samples = num_samples,
       table_name = "sample_info",
+      load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+      load_vcf_headers = load_vcf_headers,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -140,27 +152,31 @@ workflow GvsImportGenomes {
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
-        process_vcf_headers = process_vcf_headers,
+        load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+        load_vcf_headers = load_vcf_headers,
         billing_project_id = billing_project_id,
         use_compressed_references = use_compressed_references,
     }
   }
- if (process_vcf_headers) {
-   call ProcessVCFHeaders {
-     input:
-       variants_docker = effective_variants_docker,
-       load_done = LoadData.done,
-       dataset_name = dataset_name,
-       project_id = project_id,
-   }
- }
 
-  call SetIsLoadedColumn {
-    input:
-      load_done = LoadData.done,
-      project_id = project_id,
-      dataset_name = dataset_name,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
+  if (load_vcf_headers) {
+    call ProcessVCFHeaders {
+      input:
+        variants_docker = effective_variants_docker,
+        load_done = LoadData.done,
+        dataset_name = dataset_name,
+        project_id = project_id,
+    }
+  }
+
+  if (load_vet_and_ref_ranges) {
+    call SetIsLoadedColumn {
+      input:
+        load_done = LoadData.done,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
   }
 
   output {
@@ -226,16 +242,14 @@ task LoadData {
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
-    Boolean process_vcf_headers
+    Boolean load_vet_and_ref_ranges
+    Boolean load_vcf_headers
 
     String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
   }
-
-  Boolean load_ref_ranges = true
-  Boolean load_vet = true
 
   meta {
     description: "Load data into BigQuery using the Write Api"
@@ -294,15 +308,29 @@ task LoadData {
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
-    # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
-      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
-            samples.sample_name = temp.sample_name WHERE
-            samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
-            samples.withdrawn is NULL' > sample_map.csv
+    # Get sample map of samples that haven't been loaded yet
+    # Break out individual queries into "status buckets" for all of the statuses we care about.
+    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
+    do
+      echo "
+        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+        samples.sample_name = temp.sample_name WHERE
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
+        samples.withdrawn is NULL" > query.txt
+
+      cat query.txt |
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
+        $status.status_bucket.csv
+    done
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
+
+    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    # Add a header manually:
+    echo "sample_id,sample_name" > sample_map.csv
+    # The real header sorts to the bottom of the file, delete that.
+    cat *.status_bucket.csv | sort -u | sed '$d' >> sample_map.csv
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
@@ -338,13 +366,13 @@ task LoadData {
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
         --output-type BQ \
-        --enable-reference-ranges ~{load_ref_ranges} \
-        --enable-vet ~{load_vet} \
+        --enable-reference-ranges ~{load_vet_and_ref_ranges} \
+        --enable-vet ~{load_vet_and_ref_ranges} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
-        --enable-vcf-header-processing ~{process_vcf_headers} \
+        --enable-vcf-headers ~{load_vcf_headers} \
         --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz
@@ -373,6 +401,9 @@ task ProcessVCFHeaders {
     String project_id
     Array[String] load_done
     String variants_docker
+  }
+  meta {
+    volatile: true
   }
 
   command <<<
@@ -427,11 +458,11 @@ task SetIsLoadedColumn {
     WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
     from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
     WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN
-    (SELECT sls1.sample_id FROM `~{dataset_name}.sample_load_status` AS sls1
-                     INNER JOIN `~{dataset_name}.sample_load_status` AS sls2
-                     ON sls1.sample_id = sls2.sample_id
-                     AND sls1.status = "STARTED"
-                     AND sls2.status = "FINISHED")'
+    (SELECT references_status.sample_id FROM `~{dataset_name}.sample_load_status` AS references_status
+                     INNER JOIN `~{dataset_name}.sample_load_status` AS variants_status
+                     ON references_status.sample_id = variants_status.sample_id
+                     AND references_status.status = "REFERENCES_LOADED"
+                     AND variants_status.status = "VARIANTS_LOADED")'
   >>>
   runtime {
     docker: cloud_sdk_docker
@@ -454,6 +485,9 @@ task GetUningestedSampleIds {
     Int num_samples
     String table_name
     String cloud_sdk_docker
+    # At least one of these "load" inputs must be true
+    Boolean load_vet_and_ref_ranges
+    Boolean load_vcf_headers
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -509,15 +543,29 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
-    # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
-
-      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
+    # Get sample map of samples that haven't been loaded yet
+    # Break out individual queries into "status buckets" for all of the statuses we care about.
+    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
+    do
+      echo "
+        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
         samples.sample_name = temp.sample_name WHERE
-          samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
-          samples.withdrawn is NULL
+        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
+        samples.withdrawn is NULL" > query.txt
 
-    ' > sample_map.csv
+      cat query.txt |
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
+        $status.status_bucket.csv
+    done
+
+    ## delete the table that was only needed for this ingest test
+    bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
+
+    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    # Add a header manually:
+    echo "sample_id,sample_name" > sample_map.csv
+    # The real header sorts to the bottom of the file, delete that.
+    cat *.status_bucket.csv | sort -u | sed '$d' >> sample_map.csv
 
     cut -d, -f1 sample_map.csv > gvs_ids.csv
 
@@ -536,6 +584,7 @@ task GetUningestedSampleIds {
     Int min_table_id = ceil(read_float("min_sample_id"))
     File sample_map = "sample_map.csv"
     File gvs_ids = "gvs_ids.csv"
+    Array[File] status_buckets = glob("*.status_bucket.csv")
   }
 }
 

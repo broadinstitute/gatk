@@ -135,7 +135,7 @@ workflow filter_vds_to_VCF_by_chr {
                 hail_version = hail_version,
                 worker_machine_type = worker_machine_type,
                 submission_script = submission_script,
-                variants_docker = GetToolVersions.variants_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
                 region = region,
         }
     }
@@ -166,7 +166,7 @@ task filter_vds_and_export_as_vcf {
         RuntimeAttr? runtime_attr_override
         String gcs_subnetwork_name
 
-        String variants_docker
+        String cloud_sdk_slim_docker
     }
 
     RuntimeAttr runtime_default = object {
@@ -190,7 +190,7 @@ task filter_vds_and_export_as_vcf {
 
         pip3 install --upgrade pip
         pip3 install hail~{'==' + hail_version}
-        pip3 install --upgrade google-cloud-dataproc
+        pip3 install --upgrade google-cloud-dataproc ijson
 
         if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
@@ -243,7 +243,7 @@ task filter_vds_and_export_as_vcf {
         cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
         preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
         maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-        docker: variants_docker
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
     }
 }

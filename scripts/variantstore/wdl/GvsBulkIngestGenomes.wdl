@@ -44,7 +44,8 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
-        Boolean process_vcf_headers = false
+        Boolean load_vet_and_ref_ranges = true
+        Boolean load_vcf_headers = false
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
@@ -77,6 +78,14 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
+    if (!load_vcf_headers && !load_vet_and_ref_ranges) {
+        call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
+            input:
+                message = "GvsBulkIngestGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     call GenerateImportFofnFromDataTable {
         input:
             variants_docker = effective_variants_docker,
@@ -103,7 +112,8 @@ workflow GvsBulkIngestGenomes {
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
-            process_vcf_headers = process_vcf_headers,
+            load_vcf_headers = load_vcf_headers,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references
     }
@@ -135,9 +145,20 @@ workflow GvsBulkIngestGenomes {
             drop_state = drop_state,
             billing_project_id = billing_project_id,
             use_compressed_references = use_compressed_references,
-            process_vcf_headers = process_vcf_headers,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            load_vcf_headers = load_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
             is_wgs = is_wgs,
+    }
+
+    if (!load_vet_and_ref_ranges && load_vcf_headers) {
+        # TODO Insert judgy header logic (aka VS-1215) here, then:
+        call Utils.TerminateWorkflow as HeadersLoaded {
+            input:
+                message = "Header data successfully loaded, exiting.",
+                go = ImportGenomes.done,
+                basic_docker = effective_basic_docker,
+        }
     }
 
     output {

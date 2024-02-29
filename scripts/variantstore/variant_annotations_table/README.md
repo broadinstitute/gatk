@@ -1,45 +1,28 @@
 # Creating the Variant Annotations Table
 
-### The VAT pipeline is a python script and a set of WDLs
-
-- [hail_create_vat_inputs.py](https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/hail_create_vat_inputs.py) is a script to be run in a notebook terminal to generate a sites-only VCF.
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates the variant annotations table from a sites only VCF and an ancestry file TSV.
-- [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
-
 The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
 
-### Generate a Sites-Only VCF
 
-Set up a notebook in a configuration suitable for working with a VDS of the size being used as the input to VAT creation. The steps followed during the
-Delta callset for [creating a Hail cluster in a notebook](../docs/aou/vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) should be helpful here, adjusting the number of workers and preemptibles as needed.
-Once the cluster is up and running, copy two python scripts for running locally in the notebook:
+### VAT WDLs
 
-* `create_vat_inputs.py` which you can get via the following command, replacing `your_branch_name` as appropriate: `curl -O https://raw.githubusercontent.com/broadinstitute/gatk/your_branch_name/scripts/variantstore/wdl/extract/create_vat_inputs.py`
-* The `hail_create_vat_inputs.py` output from the task `GenerateHailScripts` from the run of `GvsExtractAvroFilesForHail` workflow that was used to generate the VDS.
-
-Once you have copied them, run `python3 hail_create_vat_inputs.py` with the following input(s):
-
-* `--ancestry_input_path` Required, GCS path of the TSV file that maps `sample_name`s to subpopulations.
-* `--vds_input_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path of the top-level directory of the VDS.
-* `--sites_only_output_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow.
-* `--temp_path` Required, GCS path of a temp 'directory' that is used by Hail for storage of intermediate/temp files. Note that this script creates a time-stamped directory under this path in order to segregate temp data from different runs.
-
-When the script is done running it will print out the path to where it has written the sites-only VCF.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS and then uses that and an ancestry file TSV to build the variant annotations table.
+- [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
 ### Run GvsCreateVATfromVDS
 
-**Note:** in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
-configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run.
+- **Note:** in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
+configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run. If you forget and it fails, re-run it with call-caching on and all the same inputs, and it will resume at the right point.
+- The `ancestry_file` input is the GCS path of the TSV file that maps samples (by `sample_name`) to subpopulations.
+- You will want to run this workflow with the same `dataset_name`, `project_id`, and `filter_set_name` as `GvsCreateVds.wdl`.
+- For `hail_generate_sites_only_script_path` refer back to the run of `GvsExtractAvroFilesForHail`. The `hail_create_vat_inputs_script` output of the `GenerateHailScripts` task is GCS the path to use.
+- For `output_path` use a unique GCS path with a trailing slash (probably in the workspace bucket). This will be used to store the intermediate files for the pipeline.
+- The `vds_path` input is the same value that was set for `vds_destination_path` in `GvsCreateVds.wdl`.
+- This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
-Most of the inputs are specific to where the VAT will live or will be the same for the VDS creation, like the `project_id`, `dataset_name`, `filter_set_name`, and `output_path`. This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. For the specific data being put in the VAT, two inputs need to be copied into a GCP bucket that this pipeline will have access to and passed to the WDL:
-
-- `input_sites_only_vcf`: The GCS path to a sites-only VCF that we affectionately call it a Decorated Sites Only VCF because it also includes subpopulation level calculations for AC AN, AF and SC. This is the output of the `hail_create_vat_inputs.py` script.
-- `ancestry_file`: The same file that was passed via `--ancestry_file` to `hail_create_vat_inputs.py`.
-- `output_path`: The GCS path to store the intermediate files for the pipeline; should have a trailing slash.
-
-Other input of note:
+Optional inputs of note:
 
 - `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
+- If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
 
 There are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.  The VAT table is created by that query fresh each time so that there is no risk of duplicates.
 

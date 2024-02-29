@@ -182,6 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1187_headers_only_ingest
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -202,6 +203,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1229_DeDupTheVatUponCreation
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -306,6 +308,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1187_headers_only_ingest
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -359,7 +362,6 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
     # Destroy this later once testing is done

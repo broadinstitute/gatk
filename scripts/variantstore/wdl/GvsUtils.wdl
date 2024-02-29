@@ -72,8 +72,8 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2024-01-30-alpine-f228c2f81"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_01_17_c1ac3790f65266568937bf1fd29bbd71b2879a4f"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2024-02-14-alpine-40124cdc5"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_02_16_78c53a6"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
@@ -536,6 +536,7 @@ task BuildGATKJarAndCreateDataset {
 
 task TerminateWorkflow {
   input {
+    Boolean go = true
     String message
     String basic_docker
   }
@@ -875,6 +876,57 @@ task IsUsingCompressedReferences {
   }
 }
 
+task GetExtractVetTableVersion {
+  input {
+    String query_project
+    String data_project
+    String dataset_name
+    String table_name
+    String cloud_sdk_docker
+  }
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bq --apilog=false query --project_id=~{query_project} --format=csv --use_legacy_sql=false '
+      SELECT
+        count(1)
+      FROM
+        `~{data_project}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+      WHERE
+        table_name = "~{table_name}" AND column_name = "call_PS" ' | sed 1d > count.txt
+
+    count=$(cat count.txt)
+    echo COUNT ${count}
+    if [[ $count -eq 1 ]]
+    then
+      echo "Found a column named 'call_PS' in ~{table_name} - thus this is version V2"
+      echo "V2" > version_file.txt
+    elif [[ $count -eq 0 ]]
+    then
+      echo "Did NOT Find a column named 'call_PS' in ~{table_name} - thus this is version V1"
+      echo "V1" > version_file.txt
+    else
+      echo "Unexpected count ($count) for column name 'call_PS' in ~{table_name}"
+      exit 1;
+    fi
+  >>>
+
+  output {
+    String version = read_string("version_file.txt")
+    File count_file = "count.txt"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task IndexVcf {
     input {
         File input_vcf
@@ -947,6 +999,10 @@ task SelectVariants {
     String local_vcf = basename(input_vcf)
     String local_index = basename(input_vcf_index)
 
+    Boolean is_compressed = basename(local_vcf, "gz") != local_vcf
+    String output_vcf_name = output_basename + if is_compressed then ".vcf.gz" else ".vcf"
+    String output_vcf_index_name = output_basename + if is_compressed then ".vcf.gz.tbi" else ".vcf.idx"
+
     command <<<
       # Prepend date, time and pwd to xtrace log entries.
       PS4='\D{+%F %T} \w $ '
@@ -965,7 +1021,7 @@ task SelectVariants {
           ~{"-L " + interval_list} \
           ~{"--select-type-to-include " + type_to_include} \
           ~{true="--exclude-filtered true" false="" exclude_filtered} \
-          -O ~{output_basename}.vcf
+          -O ~{output_vcf_name}
     >>>
 
     runtime {
@@ -978,8 +1034,8 @@ task SelectVariants {
     }
 
     output {
-        File output_vcf = "~{output_basename}.vcf"
-        File output_vcf_index = "~{output_basename}.vcf.idx"
+        File output_vcf = output_vcf_name
+        File output_vcf_index = output_vcf_index_name
         File monitoring_log = "monitoring.log"
     }
 }

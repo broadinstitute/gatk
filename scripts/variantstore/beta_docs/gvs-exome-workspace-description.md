@@ -35,7 +35,7 @@ To see details about input requirements, see [Run Your Own Samples](https://gith
 
 While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are being used for beta testing.
 
-Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions.
+Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions. For information on how that interval list was generated, see `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list.README.md`.
 
 ### What does it return as output?
 

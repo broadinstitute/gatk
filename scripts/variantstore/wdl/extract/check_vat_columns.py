@@ -40,7 +40,7 @@ def check_for_null_columns(fq_vat_table, query_project, schema_file_input, pass_
     }
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
-    query_labels_map.update({'service': 'gvs', 'team': 'variants', 'managedby': 'prepare_ranges_callset'})
+    query_labels_map.update({'service': 'gvs', 'team': 'variants', 'managedby': 'gvs_extract_avro_files_for_hail'})
 
     # Default QueryJobConfig will be merged into job configs passed in
     # but if a specific default config is being updated (eg labels), new config must be added
