@@ -235,7 +235,7 @@ task SubsetBamToChrM {
   runtime {
     memory: mem + " GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.2.4.1"])
     preemptible: select_first([preemptible_tries, 5])
   }
   output {
@@ -396,7 +396,7 @@ task SplitMultiAllelicSites {
     File split_vcf_index = "~{output_vcf}"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.2.4.1"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
