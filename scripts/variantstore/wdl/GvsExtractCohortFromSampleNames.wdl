@@ -135,7 +135,7 @@ workflow GvsExtractCohortFromSampleNames {
       call_set_identifier = call_set_identifier,
       cohort_project_id = destination_project_id,
       cohort_dataset_name = destination_dataset_name,
-      extract_table_prefix = GvsPrepareCallset.full_extract_table_prefix,
+      extract_table_prefix = cohort_table_prefix,
 
       scatter_count = effective_scatter_count,
       filter_set_name = filter_set_name,
@@ -150,6 +150,7 @@ workflow GvsExtractCohortFromSampleNames {
       extract_memory_override_gib = extract_memory_override,
       disk_override = extract_disk_override,
       interval_list = working_interval_list,
+      control_samples = control_samples,
 
       cloud_sdk_docker = effective_cloud_sdk_docker,
       gatk_docker = effective_gatk_docker,

@@ -85,7 +85,6 @@ workflow GvsPrepareCallset {
 
   output {
     String fq_cohort_extract_table_prefix = PrepareRangesCallsetTask.fq_cohort_extract_table_prefix
-    String full_extract_table_prefix = full_extract_prefix
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
