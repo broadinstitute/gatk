@@ -19,7 +19,7 @@ workflow GvsExtractCohortFromSampleNames {
     String cohort_table_prefix = call_set_identifier
     String query_project = gvs_project
 
-    # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
+    # not using the defaults in GvsPrepareCallset because we might be using pre created datasets defined by the caller
     String destination_dataset_name = gvs_dataset
     String destination_project_id = gvs_project
     String? fq_gvs_extraction_temp_tables_dataset
@@ -103,7 +103,6 @@ workflow GvsExtractCohortFromSampleNames {
   File working_interval_list = select_first([interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
 
 
-  #   if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker)) {
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
       call_set_identifier = call_set_identifier,
