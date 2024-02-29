@@ -451,6 +451,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
             reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
                 (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
+            if (useReadCaching()) {
+                reads.enableReadCaching(readArguments.getReadsLookaheadWindowSize());
+            }
         }
         else {
             reads = null;
@@ -590,7 +593,16 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Does this tool require intervals? Traversals types and/or tools that do should override to return true.
+     * Should this tool use read caching to optimize forward-only queries on coordinate sorted read inputs ?
+     *
+     * @return true if read caching should be used, otherwise false
+     */
+    public boolean useReadCaching() {
+        return false;
+    }
+
+    /**
+     * Cache ? Traversals types and/or tools that do should override to return true.
      *
      * @return true if this tool requires intervals, otherwise false
      */
