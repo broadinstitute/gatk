@@ -78,7 +78,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
       cloud_sdk_docker = effective_cloud_sdk_docker,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
-      git_branch_or_tag = git_branch_or_tag,
+      git_branch_or_tag = GetToolVersions.git_hash,
       variants_docker = effective_variants_docker,
   }
 
