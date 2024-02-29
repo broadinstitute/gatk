@@ -353,6 +353,9 @@ dependencies {
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
+    // for writing out parquet format (EXPERIMENTAL)
+    implementation('org.apache.parquet:parquet-format:2.10.0')
+
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
