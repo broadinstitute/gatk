@@ -17,6 +17,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_vcf_indices
     Array[File] truth_beds
 
+    Int? extract_scatter_count_override
     File ref_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
     String? basic_docker
@@ -75,6 +76,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
       filter_set_name = filter_set_name,
       control_samples = true,
       interval_list = interval_list,
+      extract_scatter_count_override = extract_scatter_count_override,
       cloud_sdk_docker = effective_cloud_sdk_docker,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
