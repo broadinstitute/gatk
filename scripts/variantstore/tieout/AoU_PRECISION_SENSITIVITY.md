@@ -29,6 +29,8 @@
    [ "gs://broad-gotc-test-storage/gvs/truth/HG001.gvs.evaluation.bed", \
   "gs://broad-gotc-test-storage/gvs/truth/HG002.gvs.evaluation.bed"
    ```
+  - `extract_scatter_count_override` - set to 500. This is an optional input value but at least for the Echo scale test control extract prior to P+S, leaving this unset causes most of the 111 ExtractTask shards to OOM.
+
 
 ## Appendix A: View ROCs
 To view ROC curves for the data you will need to set up rtg-tools locally, using the following steps (typically you need do this only once):
