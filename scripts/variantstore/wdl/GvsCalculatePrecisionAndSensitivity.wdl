@@ -88,6 +88,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     input:
       input_vcfs = GenerateControlVCFs.output_vcfs,
       output_basename = output_basename,
+      total_vcfs_size_mb = GenerateControlVCFs.total_vcfs_size_mb,
       gatk_docker = effective_gatk_docker,
   }
 
@@ -175,11 +176,12 @@ task GatherVcfs {
   input {
     Array[File] input_vcfs
     String output_basename
+    Float total_vcfs_size_mb
 
     String gatk_docker
     Int cpu = 1
     Int memory_mb = 7500
-    Int disk_size_gb = ceil(3*size(input_vcfs, "GiB")) + 500
+    Int disk_size_gb = ceil(3072*total_vcfs_size_mb) + 500
   }
 
   Int command_mem = memory_mb - 1000
