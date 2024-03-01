@@ -182,7 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1187_headers_only_ingest
+             - rsa_vs_1245
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -280,6 +280,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1245
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -307,7 +308,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1187_headers_only_ingest
+             - rsa_vs_1245
          tags:
              - /.*/
    - name: GvsIngestTieout

@@ -252,23 +252,20 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  if (control_samples == false) {
+  call Utils.GetBQTableLastModifiedDatetime {
+    input:
+      project_id = query_project,
+      fq_table = fq_samples_to_extract_table,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
 
-    call Utils.GetBQTableLastModifiedDatetime {
-      input:
-        project_id = query_project,
-        fq_table = fq_samples_to_extract_table,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call GenerateSampleListFile {
-      input:
-        fq_samples_to_extract_table = fq_samples_to_extract_table,
-        samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-        output_gcs_dir = output_gcs_dir,
-        query_project = query_project,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+  call GenerateSampleListFile {
+    input:
+      fq_samples_to_extract_table = fq_samples_to_extract_table,
+      samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+      output_gcs_dir = output_gcs_dir,
+      query_project = query_project,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
@@ -277,7 +274,7 @@ workflow GvsExtractCallset {
     Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
-    File? sample_name_list = GenerateSampleListFile.sample_name_list
+    File sample_name_list = GenerateSampleListFile.sample_name_list
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
