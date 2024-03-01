@@ -181,7 +181,7 @@ task GatherVcfs {
     String gatk_docker
     Int cpu = 1
     Int memory_mb = 7500
-    Int disk_size_gb = ceil((3072*total_vcfs_size_mb)/1024) + 500
+    Int disk_size_gb = ceil((3*total_vcfs_size_mb)/1024) + 500
   }
 
   Int command_mem = memory_mb - 1000
