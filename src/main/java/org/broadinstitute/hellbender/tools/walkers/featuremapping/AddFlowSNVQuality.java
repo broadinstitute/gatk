@@ -103,11 +103,6 @@ public final class AddFlowSNVQuality extends ReadWalker {
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
-        // include dups?
-        if ( read.isDuplicate() && !aqArgs.includeDupReads ) {
-            return;
-        }
-
         // include supplementary alignments?
         if ( read.isSupplementaryAlignment() && !aqArgs.keepSupplementaryAlignments ) {
             return;

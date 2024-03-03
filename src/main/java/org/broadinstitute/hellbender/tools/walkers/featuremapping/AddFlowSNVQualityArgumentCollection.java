@@ -27,12 +27,6 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
     public double limitPhredScore = Double.NaN;
 
     /**
-     *  include duplicate read?
-     **/
-    @Argument(fullName = "include-dup-reads", doc = "include duplicate reads", optional = true)
-    public boolean includeDupReads = true;
-
-    /**
      *  keep supplementary alignments?
      **/
     @Argument(fullName = "keep-supplementary-alignments", doc = "keep supplementary alignments ?", optional = true)
