@@ -14,10 +14,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.groundtruth.SeriesStats;
-import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
-import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import org.broadinstitute.hellbender.utils.read.*;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -34,8 +31,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @ExperimentalFeature
 public final class AddFlowSNVQuality extends ReadWalker {
 
-    private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
-
     private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -47,7 +42,7 @@ public final class AddFlowSNVQuality extends ReadWalker {
 
     @Advanced
     @Argument(fullName=INCLUDE_QC_FAILED_READS_FULL_NAME, doc = "include reads with QC failed flag", optional = true)
-    public boolean includeQcFailedReads = false;
+    public boolean includeQcFailedReads = true;
 
     @ArgumentCollection
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
@@ -113,7 +108,7 @@ public final class AddFlowSNVQuality extends ReadWalker {
         }
 
         // include qc-failed reads?
-        if ( ((read.getFlags() & VENDOR_QUALITY_CHECK_FLAG) != 0) && !includeQcFailedReads ) {
+        if (  read.failsVendorQualityCheck() && !includeQcFailedReads ) {
             return;
         }
 
@@ -294,6 +289,10 @@ public final class AddFlowSNVQuality extends ReadWalker {
 
         final byte[] phred = new byte[errorProb.length];
         for ( int i = 0 ; i < errorProb.length ; i++ ) {
+
+            // normally an error probability can not be zero.
+            // still, this method is called to convert base quality as well as snvq, which is computed.
+            // the following check is a safety, in case snvq produces a zero.
             if ( errorProb[i] == 0 ) {
                 phred[i] = (byte)(maxQualityScore + floor);
             } else {

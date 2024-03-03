@@ -30,13 +30,13 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
      *  include duplicate read?
      **/
     @Argument(fullName = "include-dup-reads", doc = "include duplicate reads", optional = true)
-    public boolean includeDupReads = false;
+    public boolean includeDupReads = true;
 
     /**
      *  keep supplementary alignments?
      **/
     @Argument(fullName = "keep-supplementary-alignments", doc = "keep supplementary alignments ?", optional = true)
-    public boolean keepSupplementaryAlignments = false;
+    public boolean keepSupplementaryAlignments = true;
 
     /**
      *  debug read names?

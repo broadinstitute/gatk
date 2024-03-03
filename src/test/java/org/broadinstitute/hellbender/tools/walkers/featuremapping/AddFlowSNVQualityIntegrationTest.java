@@ -11,7 +11,6 @@ import java.io.*;
 public class AddFlowSNVQualityIntegrationTest extends CommandLineProgramTest {
 
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
-    private static final double DOUBLE_EPSILON = 0.001;
 
     private static String testDir = publicTestDir + FlowTestConstants.ADD_FLOW_SNVQ_DATA_DIR;
 
