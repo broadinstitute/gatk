@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
         <li> Geometric: some dependency between indel errors that generate mismatches </li>
 </ul>        
  "
-        oneLineSummary = "<add description>",
+        oneLineSummary = "Add SNV Quality to the flow-based CRAM",
         programGroup = FlowBasedProgramGroup.class
 )
 
