@@ -39,12 +39,6 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
     public boolean keepSupplementaryAlignments = false;
 
     /**
-     * snvq computation mode
-     */
-    @Argument(fullName = "snvq-mode", doc = "ksnvq computation mode", optional = true)
-    public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
-
-    /**
      *  debug read names?
      **/
     @Hidden
