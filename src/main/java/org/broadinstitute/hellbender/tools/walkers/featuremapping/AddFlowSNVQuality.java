@@ -22,7 +22,13 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 @CommandLineProgramProperties(
-        summary = "SNV Quality Tool (flow space processing)",
+        summary = "This program converts the flow qualities that Ultima Genomics CRAM reports to more conventional base qualities. Specifically, the reported BQ will report the probability that a specific base is a sequencing error mismatch, while auxilary tags qa, qt, qg, qc report specific probability that a specific base X is a A->X error. Since mismatch error in flow-based chemistries can only occur as a result of several indel errors, we implemented three strategies to estimate the probability of a mismatch:         
+<ul>
+        <li> Optimistic: mismatches occur as independent indel errors </li>
+        <li> Pessimistic: indel errors that generate a mismatch are fully dependent </li> 
+        <li> Geometric: some dependency between indel errors that generate mismatches </li>
+</ul>        
+ "
         oneLineSummary = "<add description>",
         programGroup = FlowBasedProgramGroup.class
 )
