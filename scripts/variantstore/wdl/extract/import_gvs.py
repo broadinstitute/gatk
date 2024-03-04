@@ -321,6 +321,7 @@ def import_gvs(refs: 'List[List[str]]',
         combiner = hl.vds.new_combiner(output_path=merge_tmp,
                                        vds_paths=vds_paths,
                                        target_records=target_records,
+                                       branch_factor=52,  # Echo has 104 intermediate VDSes so 2 equally sized groups
                                        temp_path=tmp_dir,
                                        use_genome_default_intervals=True)
         combiner.run()
