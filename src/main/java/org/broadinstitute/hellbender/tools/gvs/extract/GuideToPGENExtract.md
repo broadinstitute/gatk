@@ -108,4 +108,16 @@ ComparePgenAndVcfScatter is a workflow I wrote that converts a list of .pgen, .p
 
 It ignores basically everything except genotypes, because PGENs do not store all the other fields and annotations that the VCFs might have.  It will also skip over any sites in the VCFs with >254 alleles because those will not be present in the PGEN files.  Any differences are written to diff files, in the form of the differing lines in the VCFs being compared.
 
-The code for this comparison tool lives [here](https://github.com/KevinCLydon/pgen_vcf_comparator) in a repo I created under my GitHub account.  (I didn't create it under the Broad org because it's sort of half-baked and bad and not actually meant to be used by anyone other than me.)  The WDLs are copied over to the GATK repo in my working branch for now (in `scripts/variantstore/wdl/pgen_validation`), because that's an easier way to get them into Terra.  I don't know if y'all want to continue using this tool, but I'm happy to discuss it more if it would actually be useful to you.
+The code for this comparison tool lives [here](https://github.com/KevinCLydon/pgen_vcf_comparator) in a repo I created under my GitHub account.  (I didn't create it under the Broad org because it's sort of half-baked and bad and not actually meant to be used by anyone other than me.)  I don't know if y'all want to continue using this tool, but I'm happy to discuss it more if it would actually be useful to you.
+
+## To-dos / caveats
+
+### PGEN-JNI
+The version of PGEN-JNI I'm referencing in the current build.gradle file is a beta version that is hosted on artifactory.  Functionally, this is totally fine, but we want to get a 1.0 version of it hosted publicly.  Chris Norman, who developed the tool is currently very working on this and very close to done.  Once he's completed this, I want to run a sanity test or two against a small subset of the Delta callset just to make sure everything is functioning as intended.
+
+### Merging by chromosome arm
+Right now, the last step of the PGEN extract workflow merges the PGEN files by contig name, so the final result is one trio of files (.pgen, .psam, and .pvar.zst) per chromosome.  There was discussion about changing this to merge instead by chromosome arm.  I want to make this change, but it's not super simple, so I've prioritized getting this version of the code ready for merging before tackling that.
+
+### The PGEN format
+As I mentioned above, Plink 2.0 and the PGEN file format are still not in full release, so the format could be subject to change in the future, which will require updates to our PGEN writing code and could possibly introduce problems.
+

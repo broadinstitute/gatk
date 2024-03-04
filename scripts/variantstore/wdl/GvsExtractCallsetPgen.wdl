@@ -106,14 +106,14 @@ workflow GvsExtractCallset {
             interval_weights_bed = interval_weights_bed,
             x_bed_weight_scaling = x_bed_weight_scaling,
             y_bed_weight_scaling = y_bed_weight_scaling,
-	    variants_docker = effective_variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
         input:
             project_id = project_id,
             fq_table = fq_sample_table,
-	    cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call Utils.GetNumSamplesLoaded {
@@ -122,7 +122,7 @@ workflow GvsExtractCallset {
             project_id = project_id,
             control_samples = control_samples,
             sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-	    cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
@@ -168,7 +168,7 @@ workflow GvsExtractCallset {
         input:
             project_id = project_id,
             fq_table = "~{fq_filter_set_info_table}",
-	    cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     if ( !do_not_filter_override ) {
@@ -200,7 +200,7 @@ workflow GvsExtractCallset {
             data_project = project_id,
             dataset_name = dataset_name,
             table_patterns = tables_patterns_for_datetime_check,
-	    cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call Utils.GetExtractVetTableVersion {
@@ -223,7 +223,7 @@ workflow GvsExtractCallset {
                 max_alt_alleles                    = max_alt_alleles,
                 lenient_ploidy_validation          = lenient_ploidy_validation,
                 use_VQSR_lite                      = use_VQSR_lite,
-		gatk_docker                        = effective_gatk_docker,
+        gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
                 reference                          = reference,
                 reference_index                    = reference_index,
@@ -583,7 +583,7 @@ task GenerateSampleListFile {
         echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
         bq --apilog=false --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} \ 
-	   'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
+       'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
 
         if [ -n "$OUTPUT_GCS_DIR" ]; then
         gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
