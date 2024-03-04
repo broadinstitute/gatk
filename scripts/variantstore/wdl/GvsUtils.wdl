@@ -167,8 +167,8 @@ task SplitIntervals {
   }
 
   Int disk_size = select_first([split_intervals_disk_size_override, 50]) # Note: disk size is cheap and lack of it can increase probability of preemption
-  Int disk_memory = select_first([split_intervals_mem_override, 16])
-  Int java_memory = disk_memory - 4
+  Int memory_size = select_first([split_intervals_mem_override, 16])
+  Int java_memory = memory_size - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -221,7 +221,7 @@ task SplitIntervals {
   runtime {
     docker: gatk_docker
     bootDiskSizeGb: 15
-    memory: "~{disk_memory} GB"
+    memory: "~{memory_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: 3
     cpu: 1
@@ -254,8 +254,8 @@ task SplitIntervalsTarred {
   }
 
   Int disk_size = select_first([split_intervals_disk_size_override, 10])
-  Int disk_memory = select_first([split_intervals_mem_override, 16])
-  Int java_memory = disk_memory - 4
+  Int memory_size = select_first([split_intervals_mem_override, 16])
+  Int java_memory = memory_size - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -314,7 +314,7 @@ task SplitIntervalsTarred {
   runtime {
     docker: gatk_docker
     bootDiskSizeGb: 15
-    memory: "~{disk_memory} GB"
+    memory: "~{memory_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: 3
     cpu: 1

@@ -20,7 +20,7 @@ The code for the PGEN extract can be divided into 3 parts:
 ### Part 1: PGEN-JNI
 The PGEN-JNI library was written by Chris Norman of the GATK Engine Team and lives [here](https://github.com/broadinstitute/pgen-jni).  It is written primarily in C++ for performance purposes and also compatibility with the pgenlib library (part of the [plink repo](https://github.com/chrchang/plink-ng/tree/master)).  It builds on top of pgenlib to provide a writer for creating PGEN files and writing to them from HTSJDK VariantContext objects.
 
-PGEN-JNI is compatible with Linux and macOS.
+PGEN-JNI is compatible with Linux and macOS (only Intel x64 processors, not ARM).
 
 ### Part 2: ExtractCohortToPgen
 ExtractCohortToPgen is a GATK tool that inherits from ExtractCohort and is based very closely on ExtractCohortToVcf.  It produces 3-4 files:
