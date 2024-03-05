@@ -3,7 +3,7 @@
 buildscript {
     repositories {
         mavenCentral()
-     }
+    }
 }
 
 plugins {
@@ -110,7 +110,7 @@ def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessag
         } catch (IOException e) {
             throw new GradleException(
                     "An IOException occurred while attempting to execute the command $gitLFSExecCommand."
-                    + " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage", e)
+                            + " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage", e)
         }
     }
 
@@ -188,8 +188,8 @@ configurations.all {
 }
 
 tasks.withType(JavaCompile) {
-  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
-  options.encoding = 'UTF-8'
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+    options.encoding = 'UTF-8'
 }
 
 sourceSets {
@@ -307,6 +307,15 @@ dependencies {
     }
     implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
+    implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
+    implementation('org.bdgenomics.adam:adam-core-spark2_2.12:0.28.0') {
+        exclude group: 'org.slf4j'
+        exclude group: 'org.apache.hadoop'
+        exclude group: 'org.scala-lang'
+        exclude module: 'kryo'
+        exclude module: 'hadoop-bam'
+    }
+
     implementation 'org.jgrapht:jgrapht-core:1.1.0'
     implementation 'org.jgrapht:jgrapht-io:1.1.0'
 
@@ -418,20 +427,20 @@ final runtimeAddOpens = [
         'java.base/jdk.internal.module=ALL-UNNAMED',
         'java.base/java.lang.module=ALL-UNNAMED',
         'java.security.jgss/sun.security.krb5=ALL-UNNAMED'
-    ]
+]
 
 final testAddOpens = [
         'java.prefs/java.util.prefs=ALL-UNNAMED' // required for jacoco tasks
 ]
 
 run {
-        // transform the list of runtime configuration --add-opens args into command line argument format
-        final runtimeJVMArgs = runtimeAddOpens.stream()
-                .flatMap(openSpec -> ['--add-opens', openSpec].stream())
-                .toList()
-        // add in any other required args
-        runtimeJVMArgs.add('-Dio.netty.tryReflectionSetAccessible=true')
-        jvmArgs = runtimeJVMArgs
+    // transform the list of runtime configuration --add-opens args into command line argument format
+    final runtimeJVMArgs = runtimeAddOpens.stream()
+            .flatMap(openSpec -> ['--add-opens', openSpec].stream())
+            .toList()
+    // add in any other required args
+    runtimeJVMArgs.add('-Dio.netty.tryReflectionSetAccessible=true')
+    jvmArgs = runtimeJVMArgs
 }
 
 test {
