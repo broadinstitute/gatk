@@ -20,6 +20,8 @@ workflow GvsExtractCallset {
         Int max_alt_alleles = 254
         # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
         Boolean lenient_ploidy_validation = false
+        # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
+        Boolean preserve_phasing = false
 
         # The project id for the bigquery dataset containing the cohort we created using GvsPrepareRangesCallset
         String cohort_project_id = project_id
@@ -222,6 +224,7 @@ workflow GvsExtractCallset {
                 pgen_chromosome_code               = pgen_chromosome_code,
                 max_alt_alleles                    = max_alt_alleles,
                 lenient_ploidy_validation          = lenient_ploidy_validation,
+                preserve_phasing                   = preserve_phasing,
                 use_VQSR_lite                      = use_VQSR_lite,
                 gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
@@ -318,6 +321,8 @@ task ExtractTask {
         Int? max_alt_alleles
         # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
         Boolean? lenient_ploidy_validation
+        # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
+        Boolean preserve_phasing = false
 
         Boolean use_VQSR_lite
 
@@ -429,6 +434,7 @@ task ExtractTask {
         --pgen-chromosome-code ~{pgen_chromosome_code} \
         --max-alt-alleles ~{max_alt_alleles} \
         ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
+        ~{true='--preserve-phasing' false='' preserve_phasing} \
         --allow-empty-pgen
 
 

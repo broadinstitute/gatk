@@ -88,6 +88,13 @@ public class ExtractCohortToPgen extends ExtractCohort {
     )
     private boolean allowEmptyPgen = false;
 
+    @Argument(
+            fullName = "preserve-phasing",
+            doc = "Preserves phasing in the output PGEN file if phasing is present in the source genotypes.",
+            optional = true
+    )
+    private boolean preservePhasing = false;
+
     private PgenWriter pgenWriter = null;
 
     /**
@@ -152,11 +159,18 @@ public class ExtractCohortToPgen extends ExtractCohort {
     protected void onStartup() {
         super.onStartup();
 
+        // If the user specified preservePhasing, we need to pass that flag to the writer (along with the MULTI_ALLELIC
+        // flag because that's required for multi-allelic sites when we want to preserve phasing for some weird PLINK
+        // reason)
+        EnumSet<PgenWriter.PgenWriteFlag> writerFlags = preservePhasing ?
+                EnumSet.of(PgenWriter.PgenWriteFlag.PRESERVE_PHASING, PgenWriter.PgenWriteFlag.MULTI_ALLELIC) :
+                EnumSet.noneOf(PgenWriter.PgenWriteFlag.class);
+
         pgenWriter = new PgenWriter(
                 outputPgenPath,
                 header,
                 writeMode.getEquivalentMode(),
-                EnumSet.noneOf(PgenWriter.PgenWriteFlag.class),
+                writerFlags,
                 pgenChromosomeCode.getEquivalentCode(),
                 lenientPloidyValidation,
                 PgenWriter.VARIANT_COUNT_UNKNOWN,
