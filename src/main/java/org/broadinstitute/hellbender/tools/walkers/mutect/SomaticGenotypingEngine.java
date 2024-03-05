@@ -238,16 +238,30 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                 .collect(Collectors.toMap(hap -> hap, label -> new MutableInt(0)));
         logReadLikelihoods.bestAllelesBreakingTies()
                 .forEach(bestHaplotype -> haplotypeSupportCounts.get(bestHaplotype.allele).increment());
-        for (final VariantContext outputCall : outputCalls) {
-            // find haplotypes with the allele in their event map
-            // choose the one with most support counts
-            // count the events in that haplotype that are within some distance and are contained in somaticEventsInRegion
 
-            // be careful to use minimal representations
-            // use this for the EVENT_COUNT_IN_HAPLOTYPE attribute below
+        final Map<Event, List<Haplotype>> haplotypesByEvent= new HashMap<>();
+        somaticEventsInRegion.forEach(event -> haplotypesByEvent.put(event, new ArrayList<>()));
+        for (final Haplotype haplotype : logReadLikelihoods.alleles()) {
+            for (final Event event : haplotype.getEventMap().getEvents()) {
+                haplotypesByEvent.get(event).add(haplotype);
+            }
+        }
+        final Map<VariantContext, List<Integer>> eventCountAnnotations = new HashMap<>();
+        for (final VariantContext outputCall : outputCalls) {
+            final List<Integer> haplotypeEventCounts = new ArrayList<>();
+            for (final Allele allele : outputCall.getAlternateAlleles()) {
+                // note: this creates the minimal representation behind the scenes
+                final Event event = new Event(outputCall.getContig(), outputCall.getStart(), outputCall.getReference(), allele);
+                final Haplotype bestHaplotype = haplotypesByEvent.get(event).stream()
+                        .sorted(Comparator.comparingInt(h -> haplotypeSupportCounts.getOrDefault(h, new MutableInt(0)).intValue()).reversed())
+                        .findFirst().get();
+
+                haplotypeEventCounts.add(bestHaplotype.getEventMap().getNumberOfEvents());
+            }
+            eventCountAnnotations.put(outputCall, haplotypeEventCounts);
         }
         final List<VariantContext> outputCallsWithEventCountAnnotation = outputCalls.stream()
-                .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
+                .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCountAnnotations.get(vc)).make())
                 .collect(Collectors.toList());
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
     }
