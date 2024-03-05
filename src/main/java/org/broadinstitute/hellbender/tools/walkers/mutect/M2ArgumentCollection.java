@@ -81,10 +81,11 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MUTECT3_ALT_DOWNSAMPLE_LONG_NAME = "mutect3-alt-downsample";
     public static final String MUTECT3_DATASET_LONG_NAME = "mutect3-dataset";
     public static final String MUTECT3_TRAINING_TRUTH_LONG_NAME = "mutect3-training-truth";
+    public static final String MUTECT3_DATASET_MODE_LONG_NAME = "mutect3-dataset-mode";
 
     public static final int DEFAULT_MUTECT3_REF_DOWNSAMPLE = 10;
     public static final int DEFAULT_MUTECT3_ALT_DOWNSAMPLE = 20;
-    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 20;
+    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 1;
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 1; }
@@ -204,6 +205,25 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = MUTECT3_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
     public File mutect3Dataset;
+
+    @Advanced
+    @Argument(fullName = MUTECT3_DATASET_MODE_LONG_NAME, optional = true, doc="The type of Mutect3 dataset.  Depends on sequencing technology.")
+    public Mutect3DatasetMode mutect3DatasetMode = Mutect3DatasetMode.ILLUMINA;
+
+    public enum Mutect3DatasetMode {
+        ILLUMINA(11),
+        ULTIMA(11);
+
+        final private int numReadFeatures;
+
+        Mutect3DatasetMode(final int numReadFeatures) {
+            this.numReadFeatures = numReadFeatures;
+        }
+
+        public int getNumReadFeatures() {
+            return numReadFeatures;
+        }
+    }
 
     /**
      * VCF of known calls for a sample used for generating a Mutect3 training dataset.  Unfiltered variants (PASS or empty FILTER field)

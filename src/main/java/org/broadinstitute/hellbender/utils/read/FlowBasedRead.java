@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -41,7 +41,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     public static final int  MAX_CLASS = 12; //note - this is a historical value to support files with max class is not defined in the header, it is expected that mc tag exists in the CRAM
     public static final String     DEFAULT_FLOW_ORDER = "TGCA";
     private static final long serialVersionUID = 42L;
-    private final Logger logger = LogManager.getLogger(this.getClass());
+    private static final Logger logger = LogManager.getLogger(FlowBasedRead.class);
     private static final OneShotLogger vestigialOneShotLogger = new OneShotLogger(FlowBasedRead.class);
 
     // constants
@@ -117,7 +117,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * The validity status of the key. Certain operations may produce undefined/errornous results. This is signaled by
      * the read being marked with a validKey == false
      */
-    private boolean validKey;
+    private boolean validKey = true;
 
     /**
      * The direction of this read. After being red, the direction will also swing to be REFERENCE
@@ -248,7 +248,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
             logger.debug("       key: " + FlowBasedKeyCodec.keyAsString(key));
         }
 
-        validateSequence();
     }
 
     //since the last unclipped flow is uncertain (we give high probabilities to
@@ -428,16 +427,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         }
     }
 
-
-    private void validateSequence(){
-        for (final int b : key) {
-            if (b > maxHmer - 1) {
-                validKey = false;
-            }
-        }
-        validKey = true;
-    }
-
     public boolean isValid() {
         return validKey;
     }
@@ -584,6 +573,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         } else {
             applyClipping(clipLeft, leftHmerClip, clipRight, rightHmerClip, spread);
             baseClipped = true;
+            validKey = true;
             trimLeftBase = clipLeftBase;
             trimRightBase = clipRightBase;
         }
@@ -1109,7 +1099,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         final double [] kdProbs = phredToProb(kd);
         fillFlowMatrix( kh, kf, kdProbs);
         applyFilteringFlowMatrix();
-        validateSequence();
     }
 
 }

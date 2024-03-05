@@ -959,4 +959,21 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         // This is expected to fail because RawGtCount was not provided as a tool level annotation (-A).
         runCommandLine(args);
     }
+
+    // test case adapted from non-minimally represented site in dbsnp_138 at chr10:46544983
+    @Test
+    public void dbSNPError() {
+        final String input = getTestDataDir() + "/walkers/GnarlyGenotyper/emptyASAnnotations.g.vcf";
+        final String dbSnpInput = getToolTestDataDir() + "bad_dbsnp_site.vcf";
+        final File output = createTempFile("test", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(hg38Reference)
+                .addVCF(input)
+                .addOutput(output)
+                .add("D", dbSnpInput);
+
+        //make sure it doesn't throw an error
+        runCommandLine(args);
+    }
 }

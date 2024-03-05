@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
@@ -149,7 +150,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
         // if here, no flow order was found. may we use a default?
         if ( isActualFlowOrderRequired() ) {
             localContext.generateAnnotation = false;
-            flowMissingOneShotLogger.warn("this.getClass().getSimpleName() + \" annotation will not be calculated, no '\" + StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS + \"' argument provided\"");
+            flowMissingOneShotLogger.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no '" + StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS + "' argument provided");
         }
 
         return FlowBasedRead.DEFAULT_FLOW_ORDER;

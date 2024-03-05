@@ -176,7 +176,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
             if (hasNormal) {
                 callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY,
-                        Arrays.stream(normalArtifactLogOdds.asDoubleArray(tumorAltAlleles)).map(x->-MathUtils.logToLog10(x)).toArray());
+                        Arrays.stream(normalArtifactLogOdds.asDoubleArray(tumorAltAlleles)).map(x->MathUtils.logToLog10(x)).toArray());
                 callVcb.attribute(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY,
                         Arrays.stream(normalLogOdds.asDoubleArray(tumorAltAlleles)).map(MathUtils::logToLog10).toArray());
             }
@@ -214,7 +214,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             final Optional<List<VariantContext>> truthVCs = MTAC.mutect3TrainingTruth == null ? Optional.empty() :
                     Optional.of(featureContext.getValues(MTAC.mutect3TrainingTruth, mergedVC.getStart()));
             mutect3DatasetEngine.ifPresent(engine -> engine.addData(referenceContext, annotatedCall, truthVCs,
-                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods));
+                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.mutect3DatasetMode));
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );
