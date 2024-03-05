@@ -320,7 +320,9 @@ public final class GATKVariantContextUtils {
                     if (originalGT == null) {
                         throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
                     } else {
-                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+                        //This is old and caused the bad no-call behavior
+                        //gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+                        gb.alleles(noCallAlleles(ploidy));
                     }
                 } else {
                     gb.alleles(noCallAlleles(ploidy)).noGQ();
