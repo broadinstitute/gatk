@@ -56,7 +56,7 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) {
         // we record the maximum non-sequencing artifact that is not this filter itself
         final double artifactProbability = errorProbabilities.getProbabilitiesByFilter().entrySet().stream()
-                .filter(e -> e.getKey().errorType() != ErrorType.SEQUENCING)
+                .filter(e -> e.getKey().errorType() == ErrorType.ARTIFACT)
                 .filter(e -> !e.getKey().filterName().equals(filterName()))
                 .flatMap(e -> e.getValue().stream())  // the value is a list of double, we need the max of all the lists
                 .max(Double::compareTo).orElse(0.0);
