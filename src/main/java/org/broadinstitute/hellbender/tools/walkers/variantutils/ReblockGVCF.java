@@ -126,6 +126,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     /**
      * Output the band lower bound for each GQ block instead of the min GQ -- for better compression
+     * Note that this argument also drops PLS for more efficient storage
      */
     @Advanced
     @Argument(fullName=HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS, doc = "Output the band lower bound for each GQ block regardless of the data it represents", optional = true)

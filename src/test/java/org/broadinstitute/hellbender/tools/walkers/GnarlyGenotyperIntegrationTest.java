@@ -249,8 +249,9 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testNoReadsOutputAsNoCall() {
         //note these are b37 data
-        File no_reads = new File(toolsTestDir, "/walkers/GenotypeGVCFs/combine.single.sample.pipeline.1.vcf");
-        File fake_variant = new File(toolsTestDir, "/walkers/GenotypeGVCFs/fake_sample2.vcf");
+        File no_reads = new File(toolsTestDir, "/walkers/GnarlyGenotyper/testNoReads.rb.g.vcf");
+        //this is an artisanal, hand-crafted VCF with a QUAL approx that's been artificially enhanced
+        File fake_variant = new File(toolsTestDir, "/walkers/GnarlyGenotyper/fake_sample2.rb.g.vcf");
         final SimpleInterval interval =  new SimpleInterval("20", 10000000, 10000000);
         File tempGdb = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(no_reads, fake_variant), interval);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGdb);
@@ -274,9 +275,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(g.getGQ(), 0);
         Assert.assertTrue(g.hasDP());
         Assert.assertEquals(g.getDP(), 0);
-        Assert.assertTrue(g.hasAD());
-        Assert.assertEquals(g.getAD(), new int[2]);
-        Assert.assertTrue(g.hasPL());
-        Assert.assertEquals(g.getPL(), new int[3]);
+        Assert.assertFalse(g.hasAD());
+        Assert.assertFalse(g.hasPL());
     }
 }

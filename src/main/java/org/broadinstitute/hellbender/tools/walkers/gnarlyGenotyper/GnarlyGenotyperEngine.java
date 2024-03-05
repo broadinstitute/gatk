@@ -349,6 +349,8 @@ public final class GnarlyGenotyperEngine {
                 //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
                 // then we need to actually find the GT from PLs
                 makeGenotypeCall(g, genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
+            } else if (g.hasGQ() && g.getGQ() == 0) {
+                makeGenotypeCall(g, genotypeBuilder, null, targetAlleles);
             }
             final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());
             attrs.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
