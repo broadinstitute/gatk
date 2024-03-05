@@ -245,4 +245,38 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(g.getPL().length, 2);
         Assert.assertEquals(g.getPL(), new int[]{83,0});
     }
+
+    @Test
+    public void testNoReadsOutputAsNoCall() {
+        //note these are b37 data
+        File no_reads = new File(toolsTestDir, "/walkers/GenotypeGVCFs/combine.single.sample.pipeline.1.vcf");
+        File fake_variant = new File(toolsTestDir, "/walkers/GenotypeGVCFs/fake_sample2.vcf");
+        final SimpleInterval interval =  new SimpleInterval("20", 10000000, 10000000);
+        File tempGdb = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(no_reads, fake_variant), interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGdb);
+
+        final File output = createTempFile("checkNoCall", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(genomicsDBUri)
+                .addInterval(interval)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        Assert.assertEquals(vc.getGenotypes().size(), 2);
+        final Genotype g = vc.getGenotype("GTEX-RVPV-0003");
+        Assert.assertTrue(g.isNoCall()); //most importantly!
+        Assert.assertTrue(g.hasGQ());
+        Assert.assertEquals(g.getGQ(), 0);
+        Assert.assertTrue(g.hasDP());
+        Assert.assertEquals(g.getDP(), 0);
+        Assert.assertTrue(g.hasAD());
+        Assert.assertEquals(g.getAD(), new int[2]);
+        Assert.assertTrue(g.hasPL());
+        Assert.assertEquals(g.getPL(), new int[3]);
+    }
 }

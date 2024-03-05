@@ -306,7 +306,7 @@ public final class GATKVariantContextUtils {
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
-                                        final List<Allele> originalGT,
+                                        final Genotype originalGT,
                                         final GenotypePriorCalculator gpc) {
         if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
             throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
@@ -315,13 +315,13 @@ public final class GATKVariantContextUtils {
             gb.alleles(noCallAlleles(ploidy));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN ||
                     assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
-            if ( genotypeLikelihoods == null || !isInformative(genotypeLikelihoods) ) {
+            if (genotypeLikelihoods == null || !isInformative(genotypeLikelihoods)) {
                 if (assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
                     if (originalGT == null) {
                         throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
+                    } else if (originalGT.hasGQ() && originalGT.getGQ() > 0){
+                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
                     } else {
-                        //This is old and caused the bad no-call behavior
-                        //gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
                         gb.alleles(noCallAlleles(ploidy));
                     }
                 } else {
@@ -346,7 +346,7 @@ public final class GATKVariantContextUtils {
         } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
             gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
         } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
-            gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+            gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             if (gpc == null) {
                 throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
