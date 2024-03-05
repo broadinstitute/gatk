@@ -8,6 +8,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -113,12 +114,14 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         }
         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::createAndAvoidFailure);
 
+        final Set<Event> somaticEventsInRegion = new HashSet<>();
         for( final int loc : eventStarts ) {
             final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantsFromActiveHaplotypes(loc, haplotypes, false);
-            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
-            if( mergedVC == null ) {
+            VariantContext merged = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
+            if( merged == null ) {
                 continue;
             }
+            final VariantContext mergedVC = emitRefConf ? ReferenceConfidenceUtils.addNonRefSymbolicAllele(merged) : merged;
 
             // converting haplotype likelihoods to allele likelihoods
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, true);
@@ -127,7 +130,6 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             logLikelihoods.retainEvidence(variantCallingRelevantFragmentOverlap::overlaps);
 
             if (emitRefConf) {
-                mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
                 logLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
             final List<LikelihoodMatrix<Fragment, Allele>> tumorMatrices = IntStream.range(0, logLikelihoods.numberOfSamples())
@@ -152,13 +154,21 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
 
-            final long somaticAltCount = tumorAltAlleles.stream()
+            final List<Allele> allelesToGenotype = tumorAltAlleles.stream()
                     .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
-                    .count();
+                    .toList();
+
+            // record somatic alleles for later use in the Event Count annotation
+            // note that in tumor-only calling it does not attempt to detect germline events
+            mergedVC.getAlternateAlleles().stream()
+                    .filter(allele -> tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
+                    .filter(allele -> !hasNormal || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
+                    .map(allele -> new Event(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getReference(), allele))
+                    .forEach(somaticEventsInRegion::add);
 
             // if every alt allele is germline, skip this variant.  However, if some alt alleles are germline and others
             // are not we emit them all so that the filtering engine can see them
-            if (somaticAltCount == 0) {
+            if (allelesToGenotype.isEmpty()) {
                 continue;
             }
 
@@ -222,6 +232,20 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
         final List<VariantContext> outputCalls = AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes);
         final int eventCount = outputCalls.size();
+
+        // calculate the number of somatic events in the best haplotype of each called variant
+        final Map<Haplotype, MutableInt> haplotypeSupportCounts = logReadLikelihoods.alleles().stream()
+                .collect(Collectors.toMap(hap -> hap, label -> new MutableInt(0)));
+        logReadLikelihoods.bestAllelesBreakingTies()
+                .forEach(bestHaplotype -> haplotypeSupportCounts.get(bestHaplotype.allele).increment());
+        for (final VariantContext outputCall : outputCalls) {
+            // find haplotypes with the allele in their event map
+            // choose the one with most support counts
+            // count the events in that haplotype that are within some distance and are contained in somaticEventsInRegion
+
+            // be careful to use minimal representations
+            // use this for the EVENT_COUNT_IN_HAPLOTYPE attribute below
+        }
         final List<VariantContext> outputCallsWithEventCountAnnotation = outputCalls.stream()
                 .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
                 .collect(Collectors.toList());
