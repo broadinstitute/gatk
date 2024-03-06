@@ -528,7 +528,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 filteredVariants.get(10).stream().filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME)).count());
 
         final List<VariantContext> missedObviousVariantsAtTenPercent = filteredVariants.get(10).stream()
-                .filter(vc -> !vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                .filter(vc -> !vc.isFiltered())
                 .filter(VariantContext::isBiallelic)
                 .filter(vc -> {
                     final int[] AD = vc.getGenotype(0).getAD();
