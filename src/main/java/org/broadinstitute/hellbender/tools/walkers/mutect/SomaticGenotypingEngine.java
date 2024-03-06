@@ -250,12 +250,17 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             for (final Allele allele : outputCall.getAlternateAlleles()) {
                 // note: this creates the minimal representation behind the scenes
                 final Event event = new Event(outputCall.getContig(), outputCall.getStart(), outputCall.getReference(), allele);
-                final Haplotype bestHaplotype = haplotypesByEvent.get(event).stream()
-                        .sorted(Comparator.comparingInt(h -> haplotypeSupportCounts.getOrDefault(h, new MutableInt(0)).intValue()).reversed())
-                        .findFirst().get();
+                // haplotypesByEvent contains every *assembled* event, including events injected into the original assembly,
+                // but there are some modes where we genotype events that were never in an assembly graph, in which case
+                // this annotation is irrelevant
+                if (haplotypesByEvent.containsKey(event)) {
+                    final Haplotype bestHaplotype = haplotypesByEvent.get(event).stream()
+                            .sorted(Comparator.comparingInt(h -> haplotypeSupportCounts.getOrDefault(h, new MutableInt(0)).intValue()).reversed())
+                            .findFirst().get();
 
-                eventCountAnnotations.computeIfAbsent(outputCall, vc -> new ArrayList<>())
-                        .add(bestHaplotype.getEventMap().getNumberOfEvents());
+                    eventCountAnnotations.computeIfAbsent(outputCall, vc -> new ArrayList<>())
+                            .add(bestHaplotype.getEventMap().getNumberOfEvents());
+                }
             }
         }
         final List<VariantContext> outputCallsWithEventCountAnnotation = outputCalls.stream()
