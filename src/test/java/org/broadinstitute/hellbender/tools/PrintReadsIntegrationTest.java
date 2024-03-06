@@ -27,12 +27,6 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         doFileToFile(fileIn, extOut, reference, true);
     }
 
-
-    @Test
-    public void failToTestReporting(){
-        Assert.fail();
-    }
-    
     @Test
     public void testNoConflictPG() throws IOException {
         final File inFile = new File(TEST_DATA_DIR, "print_reads_withPG.sam");
