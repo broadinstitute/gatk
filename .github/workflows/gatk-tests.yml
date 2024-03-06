@@ -230,10 +230,6 @@ jobs:
             bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
           TEST_EXIT_VALUE=$?;
           $( exit ${TEST_EXIT_VALUE} );
-          sudo chmod -R a+w build/reports/;
-          mkdir build/reports/tests/test \
-           && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
-           && rm -r build/reports/tests/testOnPackagedReleaseJar;
 
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
