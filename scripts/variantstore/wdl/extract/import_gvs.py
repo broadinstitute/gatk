@@ -408,4 +408,4 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
         vd = vd.rename({'as_vqsr': 'as_vets'})
 
-        vd.write(os.path.join(final_path, 'variant_data'), overwrite=True))
+        vd.write(os.path.join(final_path, 'variant_data'), overwrite=True)
