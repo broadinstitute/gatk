@@ -407,7 +407,4 @@ def import_gvs(refs: 'List[List[str]]',
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
 
-        hl.vds.VariantDataset(
-            reference_data=rd,
-            variant_data=vd,
-        ).write(final_path, overwrite=True)
+        vd.write(os.path.join(final_path, 'variant_data'), overwrite=True))
