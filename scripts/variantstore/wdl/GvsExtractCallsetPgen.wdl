@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-workflow GvsExtractCallset {
+workflow GvsExtractCallsetPgen {
     input {
         Boolean go = true
         # The name of the bigquery dataset containing the GVS data we are extracting
@@ -216,7 +216,7 @@ workflow GvsExtractCallset {
     scatter(i in range(length(SplitIntervalsTarred.interval_filenames))) {
         String interval_filename = SplitIntervalsTarred.interval_filenames[i]
         String pgen_basename = if (zero_pad_output_pgen_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
-        call ExtractTask {
+        call PgenExtractTask {
             input:
                 go                                 = select_first([ValidateFilterSetName.done, true]),
                 dataset_name                       = dataset_name,
@@ -262,13 +262,13 @@ workflow GvsExtractCallset {
 
     call SumBytes {
         input:
-            file_sizes_bytes = flatten([ExtractTask.output_pgen_bytes, ExtractTask.output_pvar_bytes, ExtractTask.output_psam_bytes]),
+            file_sizes_bytes = flatten([PgenExtractTask.output_pgen_bytes, PgenExtractTask.output_pvar_bytes, PgenExtractTask.output_psam_bytes]),
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call CreateManifest {
         input:
-            manifest_lines = ExtractTask.manifest,
+            manifest_lines = PgenExtractTask.manifest,
             output_gcs_dir = output_gcs_dir,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
@@ -293,9 +293,9 @@ workflow GvsExtractCallset {
     }
 
     output {
-        Array[File] output_pgens = ExtractTask.output_pgen
-        Array[File] output_pvars = ExtractTask.output_pvar
-        Array[File] output_psams = ExtractTask.output_psam
+        Array[File] output_pgens = PgenExtractTask.output_pgen
+        Array[File] output_pvars = PgenExtractTask.output_pvar
+        Array[File] output_psams = PgenExtractTask.output_psam
         File output_pgen_interval_files = SplitIntervalsTarred.interval_files_tar
         Array[String] output_pgen_interval_filenames = SplitIntervalsTarred.interval_filenames
         Float total_pgens_size_mb = SumBytes.total_mb
@@ -306,7 +306,7 @@ workflow GvsExtractCallset {
     }
 }
 
-task ExtractTask {
+task PgenExtractTask {
     input {
         Boolean go
 
@@ -426,8 +426,8 @@ task ExtractTask {
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
-        --wdl-step GvsExtractCallset \
-        --wdl-call ExtractTask \
+        --wdl-step GvsExtractCallsetPgenPgen \
+        --wdl-call PgenExtractTask \
         --shard-identifier ~{interval_filename} \
         ~{cost_observability_line} \
         --writer-log-file writer.log \
@@ -576,7 +576,7 @@ task GenerateSampleListFile {
     }
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
-    String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset_pgen"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.

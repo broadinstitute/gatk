@@ -189,7 +189,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     pgenWriter.add(variantContext);
                 }
                 catch(IllegalStateException e) {
-                    logger.debug("Encountered an error.  Here's some debug info:\n" +
+                    logger.error("Encountered an error.  Here's some debug info:\n" +
                             "ID: " + variantContext.getID() + "\n" +
                             "NAlleles: " + variantContext.getNAlleles() + "\n" +
                             "Contig: " + variantContext.getContig() + "\n" +

@@ -3,7 +3,7 @@ version 1.0
 import "GvsExtractCallsetPgen.wdl" as Extract
 import "MergePgenHierarchical.wdl" as Merge
 
-workflow GvsExtractCallsetMerged {
+workflow GvsExtractCallsetPgenMerged {
 
     input {
         Boolean go = true
@@ -64,7 +64,7 @@ workflow GvsExtractCallsetMerged {
         String plink_docker
     }
 
-    call Extract.GvsExtractCallset {
+    call Extract.GvsExtractCallsetPgen {
         input:
             go = go,
             dataset_name = dataset_name,
@@ -108,16 +108,16 @@ workflow GvsExtractCallsetMerged {
 
     call SplitFilesByChromosome {
         input:
-            interval_lists_tar = GvsExtractCallset.output_pgen_interval_files,
-            interval_list_filenames = GvsExtractCallset.output_pgen_interval_filenames,
-            pgen_files = GvsExtractCallset.output_pgens,
-            pvar_files = GvsExtractCallset.output_pvars,
-            psam_files = GvsExtractCallset.output_psams,
+            interval_lists_tar = GvsExtractCallsetPgen.output_pgen_interval_files,
+            interval_list_filenames = GvsExtractCallsetPgen.output_pgen_interval_filenames,
+            pgen_files = GvsExtractCallsetPgen.output_pgens,
+            pvar_files = GvsExtractCallsetPgen.output_pvars,
+            psam_files = GvsExtractCallsetPgen.output_psams,
             split_intervals_disk_size_override = split_intervals_disk_size_override
     }
 
     scatter(i in range(length(SplitFilesByChromosome.pgen_lists))) {
-        Int split_count = ceil(length(GvsExtractCallset.output_pgens)/(length(SplitFilesByChromosome.pgen_lists)*10))
+        Int split_count = ceil(length(GvsExtractCallsetPgen.output_pgens)/(length(SplitFilesByChromosome.pgen_lists)*10))
         String contig = sub(basename(SplitFilesByChromosome.pgen_lists[i]), ".pgen_list", "")
         call Merge.MergePgenWorkflow {
             input:
@@ -136,13 +136,13 @@ workflow GvsExtractCallsetMerged {
         Array[File] merged_pgens = MergePgenWorkflow.pgen_file
         Array[File] merged_pvars = MergePgenWorkflow.pvar_file
         Array[File] merged_psams = MergePgenWorkflow.psam_file
-        Array[File] output_pgens = GvsExtractCallset.output_pgens
-        Array[File] output_pvars = GvsExtractCallset.output_pvars
-        Array[File] output_psams = GvsExtractCallset.output_psams
-        File output_pgen_interval_files = GvsExtractCallset.output_pgen_interval_files
-        Float total_pgens_size_mb = GvsExtractCallset.total_pgens_size_mb
-        File manifest = GvsExtractCallset.manifest
-        File? sample_name_list = GvsExtractCallset.sample_name_list
+        Array[File] output_pgens = GvsExtractCallsetPgen.output_pgens
+        Array[File] output_pvars = GvsExtractCallsetPgen.output_pvars
+        Array[File] output_psams = GvsExtractCallsetPgen.output_psams
+        File output_pgen_interval_files = GvsExtractCallsetPgen.output_pgen_interval_files
+        Float total_pgens_size_mb = GvsExtractCallsetPgen.total_pgens_size_mb
+        File manifest = GvsExtractCallsetPgen.manifest
+        File? sample_name_list = GvsExtractCallsetPgen.sample_name_list
     }
 
 }
