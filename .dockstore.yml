@@ -315,6 +315,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-VS-1282-and-only-write-variant-mt
          tags:
              - /.*/
    - name: GvsIngestTieout

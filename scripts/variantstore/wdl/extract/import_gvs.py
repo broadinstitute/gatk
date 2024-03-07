@@ -407,8 +407,6 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
+        vd = vd.rename({'as_vqsr': 'as_vets'})
 
-        hl.vds.VariantDataset(
-            reference_data=rd,
-            variant_data=vd,
-        ).write(final_path, overwrite=True)
+        vd.write(os.path.join(final_path, 'variant_data'), overwrite=True)
