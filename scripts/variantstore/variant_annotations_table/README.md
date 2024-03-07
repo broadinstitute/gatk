@@ -14,7 +14,6 @@ The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in
 configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run. If you forget and it fails, re-run it with call-caching on and all the same inputs, and it will resume at the right point.
 - The `ancestry_file` input is the GCS path of the TSV file that maps samples (by `sample_name`) to subpopulations.
 - You will want to run this workflow with the same `dataset_name`, `project_id`, and `filter_set_name` as `GvsCreateVds.wdl`.
-- For `hail_generate_sites_only_script_path` refer back to the run of `GvsExtractAvroFilesForHail`. The `hail_create_vat_inputs_script` output of the `GenerateHailScripts` task is GCS the path to use.
 - For `output_path` use a unique GCS path with a trailing slash (probably in the workspace bucket). This will be used to store the intermediate files for the pipeline.
 - The `vds_path` input is the same value that was set for `vds_destination_path` in `GvsCreateVds.wdl`.
 - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.

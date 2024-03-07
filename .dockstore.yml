@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -126,6 +127,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -135,6 +137,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -155,6 +158,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - EchoCallset
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -164,6 +168,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -173,6 +178,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -182,7 +188,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1187_headers_only_ingest
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -194,6 +200,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -203,6 +210,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1229_DeDupTheVatUponCreation
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -241,6 +249,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsJointVariantCalling
@@ -260,7 +269,6 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
-             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
@@ -279,6 +287,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -325,6 +334,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsExtractAvroFilesForHail
@@ -334,6 +344,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCallsetStatistics
@@ -343,6 +354,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsFindHailCruft

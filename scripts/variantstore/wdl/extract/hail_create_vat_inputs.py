@@ -173,9 +173,8 @@ def write_tie_out_vcf(vds, vcf_output_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
     parser.add_argument('--ancestry_input_path', type=str, help='Input ancestry file path', required=True)
-    parser.add_argument('--vds_input_path', type=str, help='Input VDS path', default="@VDS_INPUT_PATH@")
-    parser.add_argument('--sites_only_output_path', type=str, help='Output sites-only VCF path',
-                        default="@SITES_ONLY_VCF_OUTPUT_PATH@"),
+    parser.add_argument('--vds_input_path', type=str, help='Input VDS path')
+    parser.add_argument('--sites_only_output_path', type=str, help='Output sites-only VCF path'),
     parser.add_argument('--temp_path', type=str, help='Path to temporary directory', required=True)
 
     args = parser.parse_args()

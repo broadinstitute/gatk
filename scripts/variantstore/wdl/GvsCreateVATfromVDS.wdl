@@ -9,7 +9,6 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
         String dataset_name
         String filter_set_name
-        String hail_generate_sites_only_script_path
         String output_path
         String project_id
         File vds_path
@@ -46,9 +45,6 @@ workflow GvsCreateVATfromVDS {
         filter_set_name: {
             help: "name of the filter set used to generate the callset in GVS"
         }
-        hail_generate_sites_only_script_path: {
-            help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
-        }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
         }
@@ -82,6 +78,10 @@ workflow GvsCreateVATfromVDS {
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
     String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
 
+    # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
+    String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
+    String vat_table_name = filter_set_name + "_vat" + effective_vat_version
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
@@ -94,14 +94,12 @@ workflow GvsCreateVATfromVDS {
             use_classic_VQSR = use_classic_VQSR,
             workspace_project = effective_google_project,
             hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
             ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
             workspace_bucket = GetToolVersions.workspace_bucket,
             region = "us-central1",
             gcs_subnetwork_name = "subnetwork",
             leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.IndexVcf {
@@ -197,10 +195,19 @@ workflow GvsCreateVATfromVDS {
             project_id = project_id,
             dataset_name = dataset_name,
             output_path = output_path,
-            filter_set_name = filter_set_name,
-            vat_version = vat_version,
+            base_vat_table_name = vat_table_name,
             prep_vt_json_done = PrepVtAnnotationJson.done,
             prep_genes_json_done = PrepGenesAnnotationJson.done,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    call DeduplicateVatInBigQuery {
+        input:
+            input_vat_table_name = BigQueryLoadJson.vat_table,
+            output_vat_table_name = vat_table_name,
+            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+            project_id = project_id,
+            dataset_name = dataset_name,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -210,7 +217,7 @@ workflow GvsCreateVATfromVDS {
             git_branch_or_tag = git_branch_or_tag,
             git_hash = GetToolVersions.git_hash,
             dataset_name = dataset_name,
-            vat_table_name = BigQueryLoadJson.vat_table_name,
+            vat_table_name = DeduplicateVatInBigQuery.vat_table,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
             precondition_met = BigQueryLoadJson.done,
@@ -219,7 +226,7 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        String cluser_name = GenerateSitesOnlyVcf.cluster_name
+        String cluster_name = GenerateSitesOnlyVcf.cluster_name
         File dropped_sites_file = MergeTsvs.output_file
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
@@ -237,15 +244,12 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
-        File? hail_wheel
-        String hail_generate_sites_only_script_path
         String ancestry_file_path
-        String? hail_temp_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String cloud_sdk_slim_docker
+        String variants_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -257,12 +261,7 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        if [[ ! -z "~{hail_wheel}" ]]
-        then
-            pip3 install ~{hail_wheel}
-        else
-            pip3 install hail~{'==' + hail_version}
-        fi
+        pip3 install hail~{'==' + hail_version}
 
         pip3 install --upgrade google-cloud-dataproc ijson
 
@@ -275,12 +274,7 @@ task GenerateSitesOnlyVcf {
         sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
-        if [[ -z "~{hail_temp_path}" ]]
-        then
-            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
-        else
-            hail_temp_path="~{hail_temp_path}"
-        fi
+        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -292,13 +286,10 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
-        # Run the hail python script to make a VDS
-        gsutil cp ~{hail_generate_sites_only_script_path} /app/
-
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
-            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
+            --script-path /app/hail_create_vat_inputs.py \
             --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
@@ -317,7 +308,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: cloud_sdk_slim_docker
+        docker: variants_docker
         bootDiskSizeGb: 10
     }
 
@@ -737,8 +728,7 @@ task BigQueryLoadJson {
     }
 
     input {
-        String filter_set_name
-        String? vat_version
+        String base_vat_table_name
         File? nirvana_schema
         File? vt_schema
         File? genes_schema
@@ -750,13 +740,12 @@ task BigQueryLoadJson {
         String cloud_sdk_docker
     }
 
-    # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
-    String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
+    # This is the name of the vat table. Due to sharding (VS-1191) there may be some duplicated entries.
+    # So we create it here, and then deduplicate it in a later step
+    String vat_table_name = base_vat_table_name + "_w_dups"
 
-    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
-    String vat_table = filter_set_name + "_vat" + effective_vat_version
-    String variant_transcript_table = filter_set_name + "_vat_vt" + effective_vat_version
-    String genes_table = filter_set_name + "_vat_genes" + effective_vat_version
+    String variant_transcript_table = base_vat_table_name + "_variants"
+    String genes_table = base_vat_table_name + "_genes"
 
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
@@ -799,18 +788,18 @@ task BigQueryLoadJson {
         bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
         set +e
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Creating the vat table ~{dataset_name}.~{vat_table}"
-            bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+            echo "Creating the vat table ~{dataset_name}.~{vat_table_name}"
         else
-            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
-            bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+            echo "Dropping and recreating the vat table ~{dataset_name}.~{vat_table_name}"
+            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table_name}
         fi
-        echo "And putting data into it"
+        bq --apilog=false mk --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
+        echo "Loading data into it"
 
         # Now we run a giant query in BQ to get this all in the right table and join the genes properly
         # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
@@ -818,7 +807,7 @@ task BigQueryLoadJson {
         # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
         # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
 
-        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table_name} --replace --project_id=~{project_id} \
         'SELECT
             v.vid,
             v.transcript,
@@ -941,7 +930,75 @@ task BigQueryLoadJson {
     }
 
     output {
-        String vat_table_name = vat_table
+        String vat_table = vat_table_name
+        Boolean done = true
+    }
+}
+
+task DeduplicateVatInBigQuery {
+    meta {
+        # since the WDL will not see the updated data (it's getting put in a gcp bucket)
+        volatile: true
+    }
+
+    input {
+        String input_vat_table_name
+        String output_vat_table_name
+        File? nirvana_schema
+
+        String project_id
+        String dataset_name
+        String cloud_sdk_docker
+    }
+
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        DATE=86400 ## 24 hours in seconds
+
+        set +e
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Creating the final vat table ~{dataset_name}.~{output_vat_table_name}"
+        else
+            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name}
+        fi
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} ~{nirvana_schema}
+        echo "Loading data into it"
+
+        # Now we query the original VAT table and recreate it, but remove any rows that appear twice.
+
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{output_vat_table_name} --replace --project_id=~{project_id} \
+        ' SELECT * EXCEPT(row_number) FROM (
+            SELECT
+                *,
+                row_number()
+                    over (partition by vid, transcript)
+                    row_number
+            FROM
+                `~{dataset_name}.~{input_vat_table_name}`
+            )
+            where row_number = 1'
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String vat_table = output_vat_table_name
         Boolean done = true
     }
 }
