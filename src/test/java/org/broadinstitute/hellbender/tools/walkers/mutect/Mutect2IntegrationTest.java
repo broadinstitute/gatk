@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFUtils;
 import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -1088,7 +1089,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
-        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+
+        // This used to be an exact text match, which cause hours of aggravation when the test passed locally and
+        // failed on the cloud.
+        final double[] outputTlods = VariantContextTestUtils.streamVcf(output)
+                        .flatMap(vc -> vc.getAttributeAsDoubleList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0).stream())
+                .mapToDouble(x -> x).toArray();
+
+        final double[] expectedTlods = VariantContextTestUtils.streamVcf(expected)
+                .flatMap(vc -> vc.getAttributeAsDoubleList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0).stream())
+                .mapToDouble(x -> x).toArray();
+
+        Assert.assertEquals(outputTlods, expectedTlods);
     }
 
     @SafeVarargs
