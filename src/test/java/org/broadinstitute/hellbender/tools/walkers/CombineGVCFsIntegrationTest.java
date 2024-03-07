@@ -588,7 +588,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(g0.hasPL());
         Assert.assertFalse(g0.hasGQ());
         Assert.assertFalse(g0.hasExtendedAttribute(VCFConstants.DEPTH_KEY));
-        Assert.assertTrue(g1.isHomRef());
+        Assert.assertTrue(g1.isNoCall());
         Assert.assertFalse(g1.hasPL());
         Assert.assertEquals(g1.getGQ(), 0);
         Assert.assertEquals(g1.getAnyAttribute(VCFConstants.DEPTH_KEY), 34);

@@ -130,7 +130,7 @@ public final class AlleleSubsettingUtils {
             }
             gb.PL(newLikelihoods);
 
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), gpc);
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g, gpc);
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {

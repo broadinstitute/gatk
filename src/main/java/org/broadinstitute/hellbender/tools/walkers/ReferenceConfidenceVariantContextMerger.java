@@ -658,7 +658,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
-                    targetAlleles, originalGTAlleles, null);
+                    targetAlleles, new GenotypeBuilder(g.getSampleName(), originalGTAlleles).make(), null);
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

@@ -296,17 +296,20 @@ public final class GATKVariantContextUtils {
     /**
      * Add the genotype call (GT) field to GenotypeBuilder using the requested {@link GenotypeAssignmentMethod}
      *
+     * @param ploidy output ploidy for no-call GTs and likelihood array length
      * @param gb the builder where we should put our newly called alleles, cannot be null
      * @param assignmentMethod the method to use to do the assignment, cannot be null
      * @param genotypeLikelihoods a vector of likelihoods to use if the method requires PLs, should be log10 likelihoods, cannot be null
      * @param allelesToUse the alleles with respect to which the likelihoods are defined
+     * @param originalGT Genotype that includes GQ when available
+     * @param gpc utility class to help with likelihood calculations
      */
     public static void makeGenotypeCall(final int ploidy,
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
-                                        final List<Allele> originalGT,
+                                        final Genotype originalGT,
                                         final GenotypePriorCalculator gpc) {
         if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
             throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
@@ -315,12 +318,14 @@ public final class GATKVariantContextUtils {
             gb.alleles(noCallAlleles(ploidy));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN ||
                     assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
-            if ( genotypeLikelihoods == null || !isInformative(genotypeLikelihoods) ) {
+            if (genotypeLikelihoods == null || !isInformative(genotypeLikelihoods)) {
                 if (assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
                     if (originalGT == null) {
                         throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
+                    } else if (originalGT.hasGQ() && originalGT.getGQ() > 0){
+                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
                     } else {
-                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+                        gb.alleles(noCallAlleles(ploidy));
                     }
                 } else {
                     gb.alleles(noCallAlleles(ploidy)).noGQ();
@@ -344,7 +349,7 @@ public final class GATKVariantContextUtils {
         } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
             gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
         } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
-            gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+            gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             if (gpc == null) {
                 throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
