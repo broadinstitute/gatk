@@ -296,10 +296,13 @@ public final class GATKVariantContextUtils {
     /**
      * Add the genotype call (GT) field to GenotypeBuilder using the requested {@link GenotypeAssignmentMethod}
      *
+     * @param ploidy output ploidy for no-call GTs and likelihood array length
      * @param gb the builder where we should put our newly called alleles, cannot be null
      * @param assignmentMethod the method to use to do the assignment, cannot be null
      * @param genotypeLikelihoods a vector of likelihoods to use if the method requires PLs, should be log10 likelihoods, cannot be null
      * @param allelesToUse the alleles with respect to which the likelihoods are defined
+     * @param originalGT Genotype that includes GQ when available
+     * @param gpc utility class to help with likelihood calculations
      */
     public static void makeGenotypeCall(final int ploidy,
                                         final GenotypeBuilder gb,

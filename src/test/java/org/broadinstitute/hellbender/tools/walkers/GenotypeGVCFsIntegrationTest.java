@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
-    //GenotypeGVCFs should work on input derived from:
+    //GenotypeGVCFs test coverage should include:
     // * HaplotypeCaller GVCFs
     // * HaplotypeCaller GVCFs post-processed with ReblockGVCF
     // * DRAGEN GVCFs (versions 3.4 and 3.7.8)
