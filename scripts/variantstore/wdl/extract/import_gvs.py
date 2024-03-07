@@ -317,14 +317,21 @@ def import_gvs(refs: 'List[List[str]]',
     with hl._with_flags(no_whole_stage_codegen='1'):
 
         merge_tmp = os.path.join(tmp_dir, 'merge_tmp.vds')
-        info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
-        combiner = hl.vds.new_combiner(output_path=merge_tmp,
-                                       vds_paths=vds_paths,
-                                       target_records=target_records,
-                                       branch_factor=52,  # Echo has 104 intermediate VDSes so 2 equally sized groups
-                                       temp_path=tmp_dir,
-                                       use_genome_default_intervals=True)
-        combiner.run()
+        from hail.vds import VariantDataset
+        ref_success_path = os.path.join(VariantDataset._reference_path(merge_tmp), '_SUCCESS')
+        var_success_path = os.path.join(VariantDataset._variants_path(merge_tmp), '_SUCCESS')
+        if hl.hadoop_exists(ref_success_path) and hl.hadoop_exists(var_success_path):
+            info(f'import_gvs: Hail VDS combiner is done. Skipping it')
+        else:
+            info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
+            combiner = hl.vds.new_combiner(output_path=merge_tmp,
+                                           vds_paths=vds_paths,
+                                           target_records=target_records,
+                                           branch_factor=52,  # Echo has 104 intermediate VDSes so 2 equal sized groups
+                                           temp_path=tmp_dir,
+                                           use_genome_default_intervals=True)
+            combiner.run()
+
         combined = hl.vds.read_vds(merge_tmp, intervals=target_final_intervals)
 
         rd = combined.reference_data
