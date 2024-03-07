@@ -323,12 +323,12 @@ task CollectMetricsForChromosome {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-            SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = "~{chromosome}"' | sed 1d > existing_row_count.txt
+            SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = ~{chromosome}' | sed 1d > existing_row_count.txt
 
         existing_row_count=$(cat existing_row_count.txt)
 
         if [ $existing_row_count -gt 0 ]; then
-            echo "Found $existing_row_count rows in '~{project_id}.~{dataset_name}.~{metrics_table}' for chromosome '~{chromosome}', exiting."
+            echo "Found $existing_row_count rows in '~{project_id}.~{dataset_name}.~{metrics_table}' for chromosome ~{chromosome}, exiting."
             exit 1
         fi
 

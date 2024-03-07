@@ -345,6 +345,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1224
          tags:
              - /.*/
    - name: GvsFindHailCruft
