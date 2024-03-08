@@ -44,6 +44,11 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
         public boolean test( GATKRead read ) {
             return !delegate.test(read);
         }
+
+        @Override
+        public String getName() {
+            return "NOT " + delegate.getName();
+        }
     }
 
     protected abstract static class ReadFilterBinOp extends ReadFilter {
@@ -80,6 +85,11 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
 
         @Override
         public boolean test( GATKRead read ) { return lhs.test(read) && rhs.test(read); }
+
+        @Override
+        public String getName() {
+            return lhs.getName() + " AND " + rhs.getName();
+        }
     }
 
     private static class ReadFilterOr extends ReadFilterBinOp {
@@ -89,6 +99,11 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
 
         @Override
         public boolean test( GATKRead read ) { return lhs.test(read) || rhs.test(read);}
+
+        @Override
+        public String getName() {
+            return lhs.getName() + " OR " + rhs.getName();
+        }
     }
 
     // It turns out, this is necessary. Please don't remove it.
@@ -144,4 +159,11 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
 
     @Override
     public abstract boolean test( GATKRead read );
+
+    /**
+     * Retruns the display name for logs for this filter
+     */
+    String getName() {
+        return this.getClass().getSimpleName();
+    }
 }
