@@ -15,6 +15,10 @@ public class LocatableProgressMeter extends ProgressMeter<Locatable> {
         super( secondsBetweenUpdates );
     }
 
+    public LocatableProgressMeter(final double secondsBetweenUpdates, boolean disabled){
+        super(secondsBetweenUpdates, disabled);
+    }
+
     /**
      * @return genomic location of the most recent record formatted for output to the logger
      */

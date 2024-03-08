@@ -72,13 +72,12 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
     }
 
 
-    @Test
-    public void testMockedProgressMeter(){
-        ScheduledExecutorService mockScheduler = Mockito.mock(ScheduledExecutorService.class);
-        LocatableProgressMeter mockProgress = Mockito.mock(LocatableProgressMeter.class);
-        Mockito.when(mockProgress.getScheduler()).then()
-
-    }
+//    @Test
+//    public void testMockedProgressMeter(){
+//        ScheduledExecutorService mockScheduler = Mockito.mock(ScheduledExecutorService.class);
+//        LocatableProgressMeter mockProgress = Mockito.mock(LocatableProgressMeter.class);
+//        Mockito.when(mockProgress.getScheduler()).then()
+//    }
 
     @Test
     public void testStartedAndStopped() {
@@ -95,12 +94,12 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
 
     @Test
     public void testDisabledProgressMeter() {
-        final ProgressMeter disabledPM = new ProgressMeter(ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES, true);
+        final ProgressMeter<Locatable> disabledPM = new LocatableProgressMeter(ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES, true);
 
         disabledPM.start();
         Assert.assertFalse(disabledPM.started());
         disabledPM.update(new SimpleInterval("1", 1, 1));
-        Assert.assertEquals(disabledPM.numRecordsProcessed(), 0);
+        Assert.assertEquals(disabledPM.getNumRecordsProcessed(), 0);
         disabledPM.stop();
         Assert.assertFalse(disabledPM.stopped());
     }

@@ -9,13 +9,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
-
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -23,14 +16,22 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
 import org.broadinstitute.hellbender.engine.progressmeter.ProgressMeter;
-import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -48,6 +49,18 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that want to write a "GATK" tool but not use one of

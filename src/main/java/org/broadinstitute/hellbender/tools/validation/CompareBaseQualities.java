@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.argparser.PositionalArguments;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
