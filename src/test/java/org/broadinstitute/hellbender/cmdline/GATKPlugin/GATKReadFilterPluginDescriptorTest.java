@@ -538,6 +538,27 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 "--" + ReadFilterArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, "GoodCigarReadFilter"});
     }
 
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testEnableInvertConflict() {
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(null)),
+                Collections.emptySet());
+        clp.parseArguments(nullMessageStream, new String[] {
+                "--RF", "GoodCigarReadFilter",
+                "--" + ReadFilterArgumentDefinitions.INVERTED_READ_FILTER_LONG_NAME, "GoodCigarReadFilter"});
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testInvertToolDefaultConflict() {
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(List.of(new ReadFilterLibrary.GoodCigarReadFilter()))),
+                Collections.emptySet());
+        clp.parseArguments(nullMessageStream, new String[] {
+                "--" + ReadFilterArgumentDefinitions.INVERTED_READ_FILTER_LONG_NAME, "GoodCigarReadFilter"});
+    }
+
     @Test
     public void testPreserveCommandLineOrder() {
         List<ReadFilter> orderedDefaults = new ArrayList<>();
@@ -663,6 +684,32 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         read.setBases(new byte[15]);
         Assert.assertTrue(rf.test(read));
+    }
+
+    @Test
+    public void testInvertReadLengthFilter() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(null)),
+                Collections.emptySet());
+        String[] args = {
+                "--" + ReadFilterArgumentDefinitions.INVERTED_READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
+                "--" + ReadFilterArgumentDefinitions.MIN_READ_LENGTH_ARG_NAME, "10",
+                "--" + ReadFilterArgumentDefinitions.MAX_READ_LENGTH_ARG_NAME, "20"
+        };
+        clp.parseArguments(nullMessageStream, args);
+        ReadFilter rf = instantiateFilter(clp, header);
+
+        read.setBases(new byte[5]);
+        Assert.assertTrue(rf.test(read));
+        read.setBases(new byte[25]);
+        Assert.assertTrue(rf.test(read));
+
+        read.setBases(new byte[15]);
+        Assert.assertFalse(rf.test(read));
     }
 
     final private static String readgroupName = "ReadGroup1";
