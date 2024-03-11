@@ -758,6 +758,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final List<Event> givenAlleles = features.getValues(hcArgs.alleles).stream()
                 .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())
                 .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
+                .filter(event -> event.getStart() >= region.getSpan().getStart()) // filter out events that do not start within the region, as they cannot be emitted and genotyped byt this assembly region even if they may affect assembly/genotyping
                 .collect(Collectors.toList());
 
         if( givenAlleles.isEmpty() && region.size() == 0 ) {
