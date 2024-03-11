@@ -102,7 +102,6 @@ import java.util.stream.Collectors;
         oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
         programGroup = VariantManipulationProgramGroup.class
 )
-@BetaFeature
 public final class GatherVcfsCloud extends CommandLineProgram {
 
     public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignore-safety-checks";
