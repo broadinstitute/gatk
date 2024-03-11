@@ -41,7 +41,7 @@ public class DefaultGATKReadFilterArgumentCollection extends GATKReadFilterArgum
     public boolean disableToolDefaultReadFilters = false;
 
     private List<String> fullUserEnabledReadFilterNames = new ArrayList<>();
-    /** Returns the list with the union of inverted and non-inverted read filters provided by the user, preserving the order. */
+    /** Returns the list with the union of inverted and non-inverted read filters provided by the user. Includes user default filters followed by the user inverted filters.  */
     public List<String> getAllUserEnabledReadFilterNames() {
         if (fullUserEnabledReadFilterNames.isEmpty()) {
             fullUserEnabledReadFilterNames.addAll(userEnabledReadFilterNames);

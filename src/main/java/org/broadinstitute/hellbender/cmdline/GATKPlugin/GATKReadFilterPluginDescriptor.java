@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.filter.InvertFilter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -333,13 +332,12 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
                 logger.warn(String.format("Redundant enabled filter (%s) is enabled for this tool by default", s));
             });
 
-        // throw if a filter is both default and inverted by the user
-        // TODO this perhaps should be more graceful than a throw...
+        // throw if a filter is both default and inverted by the user as we do not want to inadvertently filter all reads from the input
         final Set<String> redundantInv = new HashSet<>(toolDefaultReadFilters.keySet());
         redundantInv.retainAll(userArgs.getUserEnabledInvertedReadFilterNames());
-        if (redundantInv.size() > 0) {
+        if (!userArgs.getDisableToolDefaultReadFilters() && redundantInv.size() > 0) {
             throw new CommandLineException(
-                    String.format("The read filter(s): %s exist as tool default filters and were inverted, disable tool default read fitlers in order to use this filter", redundantInv));
+                    String.format("The read filter(s): %s exist as tool default filters and were inverted, disable tool default read filters in order to use this filter", redundantInv));
         }
 
         // Throw if args were specified for a filter that was also disabled, or that was not enabled by the

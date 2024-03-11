@@ -20,6 +20,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.validation.constraints.AssertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -536,6 +537,23 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", "GoodCigarReadFilter",
                 "--" + ReadFilterArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, "GoodCigarReadFilter"});
+    }
+
+    @Test
+    public void testDisableToolDefaultFiltersWithInvertedFilter() {
+        GATKReadFilterPluginDescriptor rfDesc = new GATKReadFilterPluginDescriptor(
+                Collections.singletonList(new ReadLengthReadFilter(1, 10)));
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(rfDesc),
+                Collections.emptySet());
+        clp.parseArguments(nullMessageStream, new String[] {
+                "--" + ReadFilterArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
+                "--" + ReadFilterArgumentDefinitions.INVERTED_READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName()}
+        );
+        List<ReadFilter> allFilters = rfDesc.getResolvedInstances();
+        Assert.assertEquals(allFilters.size(), 1);
+        Assert.assertEquals(allFilters.get(0).getClass(), ReadFilter.ReadFilterNegate.class);
     }
 
     @Test(expectedExceptions = CommandLineException.class)

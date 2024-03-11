@@ -30,7 +30,8 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
 
     public void setHeader(SAMFileHeader samHeader) { this.samHeader = samHeader; }
 
-    private static class ReadFilterNegate extends ReadFilter {
+    @VisibleForTesting
+    public static class ReadFilterNegate extends ReadFilter {
         private static final long serialVersionUID = 1L;
 
         private final ReadFilter delegate;
