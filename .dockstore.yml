@@ -161,6 +161,16 @@ workflows:
          - EchoCallset
        tags:
          - /.*/
+   - name: GvsValidateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
