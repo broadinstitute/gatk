@@ -515,16 +515,27 @@ public final class AddFlowSNVQuality extends ReadWalker {
         for ( final SliceInfo si : slices ) {
             final double sliceP = sliceProb(si.slice, minIndex, key, errorProbBands, flow, si.sideFlow, p12);
             if ( allBaseProb != null ) {
-                final double p1 =  p12[0];
-                final double p2 = p12[1];
-                final double snvq = Math.sqrt((p1 * p2) * (1 - (1 - p1) * (1 - p2)));
-                allBaseProb.put(si.altByte, snvq);
+                allBaseProb.put(si.altByte, getSnvq(sliceP, p12[0], p12[1]));
             }
             sumP += sliceP;
         }
         final double ep = 1 - (keyP / sumP);
 
         return ep;
+    }
+
+    private double getSnvq(final double sliceP, final double p1, final double p2) {
+        if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Legacy ) {
+            return sliceP;
+        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Optimistic ) {
+            return (p1 * p2);
+        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Pessimistic ) {
+            return (1 - (1 - p1) * (1 - p2));
+        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Geometric ) {
+            return Math.sqrt((p1 * p2) * (1 - (1 - p1) * (1 - p2)));
+        } else {
+            throw new GATKException("unknown snvqMode: " +  aqArgs.snvMode);
+        }
     }
 
     // compute probability for a slice
