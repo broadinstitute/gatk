@@ -34,8 +34,10 @@ def check_densify_small_region(vds):
 	from time import time
 	t1 = time()
 
-	filt = hl.vds.filter_intervals(vds, [hl.parse_locus_interval('chr16:29.5M-29.7M', reference_genome='GRCh38')])
-	n=hl.vds.to_dense_mt(filt).select_entries('LGT')._force_count_rows()
+	## filt = hl.vds.filter_intervals(vds, [hl.parse_locus_interval('chr16:29.5M-29.7M', reference_genome='GRCh38')])
+	## n=hl.vds.to_dense_mt(filt).select_entries('LGT')._force_count_rows()
+	## swapping this out for the full (already subsetted) VDS for now
+	n=hl.vds.to_dense_mt(vds).select_entries('LGT')._force_count_rows()
 
 	print(f'took {time() - t1:.1f}s to densify {n} rows after interval query')
 
@@ -61,4 +63,7 @@ if __name__ == '__main__':
 
     vds = hl.vds.read_vds(args.vds_path)
 
-    main(vds)
+    ## filter/subset the VDS early for much quicker turnaround
+    filtered_vds = hl.vds.filter_intervals(vds, [hl.parse_locus_interval('chr16:29.5M-29.7M', reference_genome='GRCh38')])
+
+    main(filtered_vds)
