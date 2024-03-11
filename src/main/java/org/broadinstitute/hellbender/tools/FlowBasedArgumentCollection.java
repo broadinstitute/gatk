@@ -26,7 +26,7 @@ public class FlowBasedArgumentCollection implements Serializable {
 
 
 
-    public static final double DEFAULT_FILLING_VALUE = 0.0001;
+    public static final double DEFAULT_FILLING_VALUE = 0.001;
     private static final boolean DEFAULT_REMOVE_LONGER_INDELS = false;
     private static final boolean DEFAULT_REMOVE_ONE_TO_ZERO = false;
     private static final boolean DEFAULT_SYMMETRIC_INDELS = false;
