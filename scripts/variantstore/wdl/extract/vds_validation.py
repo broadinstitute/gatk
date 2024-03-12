@@ -1,6 +1,6 @@
 import argparse
 import hail as hl
-
+import itertools
 
 ###
 # VDS validation:
@@ -44,14 +44,14 @@ def check_densify_small_region(vds):
 
 
 def main(vds):
-    CHROM_MAP = {'chr1': '1', 'chr2': '2', 'chr3': '3', 'chr4': '4', 'chr5': '6', 'chr6': '6', 'chr7': '7', 'chr8': '8', 'chr9': '9', 'chr10': '10', 'chr11': '11', 'chr12': '12', 'chr13': '13', 'chr14': '14', 'chr15': '15', 'chr16': '16', 'chr17': '17', 'chr18': '18', 'chr19': '19', 'chr20': '20', 'chr21': '21', 'chr22': '22', 'chrX': '23', 'chrY': '24', 'chrM': '25'}
-    for key in CHROM_MAP:
-        chromosome_to_validate = key
+    chrs = [f'chr{c}' for c in itertools.chain(range(1, 23), ['X', 'Y', 'M'])]
+
+    for chromosome_to_validate in chrs:
         filtered_vd = vds.variant_data.filter_rows(vds.variant_data.locus.contig == chromosome_to_validate)
         filtered_rd = vds.reference_data.filter_rows(vds.reference_data.locus.contig == chromosome_to_validate)
         filtered_vds = hl.vds.VariantDataset(filtered_rd, filtered_vd)
         # check_samples_match(filtered_vds) # (already succeeded for Echo)
-        print(chromosome_to_validate)
+        print(f"Validating VDS chromosome {chromosome_to_validate}...")
         check_ref_blocks(filtered_vds)
 
     # check_densify_small_region(vds) # (already succeeded for Echo)
