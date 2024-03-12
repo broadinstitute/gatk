@@ -53,9 +53,10 @@ def main(vds):
         # check_samples_match(filtered_vds) # (already succeeded for Echo)
         print(f"Validating VDS chromosome {chromosome_to_validate}...")
         check_ref_blocks(filtered_vds)
+        vds.validate(); print(f"Hail VDS validation successful for chromosome {chromosome_to_validate}")
 
     # check_densify_small_region(vds) # (already succeeded for Echo)
-    vds.validate(); print('Hail VDS validation successful')
+    print('Full VDS validation successful')
 
 
 
