@@ -44,6 +44,7 @@ def check_densify_small_region(vds):
 
 
 def main(vds):
+    CHROM_MAP = {'chr1': '1', 'chr2': '2', 'chr3': '3', 'chr4': '4', 'chr5': '6', 'chr6': '6', 'chr7': '7', 'chr8': '8', 'chr9': '9', 'chr10': '10', 'chr11': '11', 'chr12': '12', 'chr13': '13', 'chr14': '14', 'chr15': '15', 'chr16': '16', 'chr17': '17', 'chr18': '18', 'chr19': '19', 'chr20': '20', 'chr21': '21', 'chr22': '22', 'chrX': '23', 'chrY': '24', 'chrM': '25'}
     for x in range(22): # what about chrX,Y and M?
         ## filter/subset the VDS early for much quicker turnaround
         chromosome_to_validate=f'chr{x}'
@@ -53,6 +54,11 @@ def main(vds):
 
     # check_densify_small_region(vds)
     vds.validate(); print('Hail VDS validation successful')
+
+    for key in CHROM_MAP: # what about chrX,Y and M?
+        chromosome_to_validate = key
+        print(chromosome_to_validate)
+
 
 
 
@@ -68,4 +74,4 @@ if __name__ == '__main__':
 
     vds = hl.vds.read_vds(args.vds_path)
 
-    main(filtered_vds)
+    main(vds)
