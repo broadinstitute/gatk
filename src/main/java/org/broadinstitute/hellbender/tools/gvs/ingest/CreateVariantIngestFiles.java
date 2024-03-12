@@ -7,8 +7,12 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.DeprecatedFeature;
@@ -24,8 +28,20 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.broadinstitute.hellbender.utils.gvs.parquet.GvsVariantParquetFileWriter;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -175,6 +191,60 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
+    // we'll ultimately want to do this by specifying it in protocol buffer format and parsing it, but for now we can
+    // just directly create the schema
+    public final MessageType VariantRowSchemaProgrammatic = new MessageType(
+            "VariantRow",
+            new PrimitiveType(REQUIRED, INT64, "sample_id"),
+            new PrimitiveType(REQUIRED, INT64, "location"),
+            new PrimitiveType(REQUIRED, BINARY, "ref"),
+            new PrimitiveType(REQUIRED, BINARY, "alt"),
+            new PrimitiveType(OPTIONAL, BINARY, "AS_RAW_MQ"),
+            new PrimitiveType(OPTIONAL, BINARY, "AS_RAW_MQRankSum"),
+            new PrimitiveType(OPTIONAL, BINARY, "AS_QUALapprox"),
+            new PrimitiveType(OPTIONAL, BINARY, "AS_RAW_ReadPosRankSum"),
+            new PrimitiveType(OPTIONAL, BINARY, "AS_SB_TABLE"),
+            new PrimitiveType(OPTIONAL, BINARY, "AS_VarDP"),
+            new PrimitiveType(REQUIRED, BINARY, "call_GT"),
+            new PrimitiveType(OPTIONAL, BINARY, "call_AD"),
+            new PrimitiveType(OPTIONAL, BINARY, "call_DP"),
+            new PrimitiveType(REQUIRED, INT64, "call_GQ"),
+            new PrimitiveType(OPTIONAL, BINARY, "call_PGT"),
+            new PrimitiveType(OPTIONAL, BINARY, "call_PID"),
+            new PrimitiveType(OPTIONAL, BINARY, "call_PS"),
+            new PrimitiveType(OPTIONAL, BINARY, "call_PL"));
+
+    public final MessageType variantRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message VariantRow {
+            	required int64 sample_id;
+            	required int64 location;
+            	required binary ref (UTF8);
+            	required binary alt (UTF8);
+            	optional binary AS_RAW_MQ (UTF8);
+            	optional binary AS_RAW_MQRankSum (UTF8);
+            	optional binary AS_QUALapprox (UTF8);
+            	optional binary AS_RAW_ReadPosRankSum (UTF8);
+            	optional binary AS_SB_TABLE (UTF8);
+            	optional binary AS_VarDP (UTF8);
+            	required binary call_GT (UTF8);
+            	optional binary call_AD (UTF8);
+            	optional binary call_DP (UTF8);
+            	required int64 call_GQ;
+            	optional binary call_PGT (UTF8);
+            	optional binary call_PID (UTF8);
+            	optional binary call_PS (UTF8);
+            	optional binary call_PL (UTF8);
+            }
+            """);
+
+
+    public final MessageType ReferenceRangesRowSchema = new MessageType(
+            "ReferenceRangeRow",
+            new PrimitiveType(REQUIRED, INT64, "sample_id"),
+            new PrimitiveType(REQUIRED, INT64, "location"),
+            new PrimitiveType(REQUIRED, INT64, "length"),
+            new PrimitiveType(REQUIRED, BINARY, "state"));
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
     public static boolean isNoCall(VariantContext variant) {
@@ -227,6 +297,148 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         boolean refRangesRowsExist = false;
         boolean vetRowsExist = false;
         boolean vcfHeaderRowsExist = false;
+
+//        List<ColumnDescriptor> cols = variantRowSchema.getColumns();
+//        for (int i = 0; i < cols.size(); ++i) {
+//            ColumnDescriptor col = cols.get(i);
+//            logger.info("col.getPath()");
+//            logger.info(col.getPath());
+//            logger.info("col.getPrimitiveType()");
+//            logger.info(col.getPrimitiveType());
+//            logger.info("col.getPrimitiveType().getName()");
+//            logger.info(col.getPrimitiveType().getName());
+//
+//        }
+
+
+        /* TEST CODE BELOW WORKS
+        java.nio.file.Path currentRelativePath = Paths.get("");
+        String s = currentRelativePath.toAbsolutePath().toString();
+        System.out.println("Current absolute path is: " + s);
+        File testParquetOutputFile = new File(s+ "/testFile.parquet");
+        System.out.println("Test file will be written to: " + testParquetOutputFile.getAbsolutePath());
+        try {
+            GvsVariantParquetFileWriter testWriter = new GvsVariantParquetFileWriter(new Path(testParquetOutputFile.toURI()), variantRowSchema, false, CompressionCodecName.SNAPPY);
+            // feed the file some test data
+            JSONArray testData = new JSONArray("""
+                    [{"AS_QUALapprox":"25","AS_RAW_MQ":"0|0","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"25","alt":"C","call_AD":null,"call_GQ":"3","call_GT":"1/1","call_PGT":"0|1","call_PID":"26885022_G_C","call_PL":"25,3,0,25,3,25","location":"17000026885022","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"45","AS_RAW_MQ":"0|0","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"45","alt":"T","call_AD":null,"call_GQ":"3","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"45,3,0,45,3,45","location":"15000101914931","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|43200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"C","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":"0|1","call_PID":"73839326_CAAA_C","call_PL":"1,0,0,1,0,1","location":"16000073839326","ref":"CAAA","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|6894","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"A","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":"0|1","call_PID":"66798833_ATGG_A","call_PL":"1,0,0,1,0,1","location":"17000066798833","ref":"ATGG","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"C","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"1,0,0,1,0,1","location":"16000080965202","ref":"CATATAT","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|43200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"C","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"1,0,0,1,0,1","location":"16000003489112","ref":"CTTTT","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|45450","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"G","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"1,0,0,1,0,1","location":"16000046773931","ref":"GC","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|28800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"C","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"1,0,0,1,0,1","location":"15000070796035","ref":"CAAAAA","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|36110","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"A","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":"0|1","call_PID":"72146971_AG_A","call_PL":"1,0,0,1,1,1","location":"17000072146974","ref":"AGGAGG","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|36110","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"A","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":"0|1","call_PID":"72146971_AG_A","call_PL":"1,0,0,1,1,1","location":"17000072146971","ref":"AG","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|54000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"CGTCTCTCTG","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":"0|1","call_PID":"87178619_CG_C","call_PL":"1,0,0,2,2,4","location":"16000087178644","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"0","AS_RAW_MQ":"0|55820","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"T","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":"0|1","call_PID":"13467380_TGGG_T","call_PL":"1,0,0,3,2,5","location":"17000013467408","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"1","AS_RAW_MQ":"0|7200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"1","alt":"T","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"1,1,0,1,1,1","location":"16000059226361","ref":"TATATATAATATAC","sample_id":"7"},
+                    {"AS_QUALapprox":"2","AS_RAW_MQ":"0|142210","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,3","AS_VarDP":"0|0","QUALapprox":"2","alt":"CAA","call_AD":"0,0","call_GQ":"0","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"2,0,0,1,1,1","location":"16000024911166","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"2","AS_RAW_MQ":"0|28289","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"2","alt":"T","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"2,1,0,1,1,1","location":"15000100466812","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"2","AS_RAW_MQ":"0|44336","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"2","alt":"T","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"2,1,0,2,1,1","location":"16000062126446","ref":"TG","sample_id":"7"},
+                    {"AS_QUALapprox":"2","AS_RAW_MQ":"0|43825","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"2","alt":"C","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"17066723_CTTTTTTT_C","call_PL":"2,1,0,2,1,2","location":"17000017066723","ref":"CTTTTTTT","sample_id":"7"},
+                    {"AS_QUALapprox":"2","AS_RAW_MQ":"0|47529","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"2","alt":"G","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"74109516_AAT_A","call_PL":"2,1,0,2,2,3","location":"16000074109606","ref":"T","sample_id":"7"},
+                    {"AS_QUALapprox":"2","AS_RAW_MQ":"0|54000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"2","alt":"C","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"87178619_CG_C","call_PL":"2,1,0,3,2,4","location":"16000087178640","ref":"CT","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|4988","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"A","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"3,1,0,3,1,3","location":"18000012870365","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|25929","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"AAC","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"74109516_AAT_A","call_PL":"3,1,0,3,1,3","location":"16000074109638","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|29529","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"A","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"74109516_AAT_A","call_PL":"3,1,0,3,1,3","location":"16000074109633","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|43929","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"TTA","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"74109516_AAT_A","call_PL":"3,1,0,3,2,4","location":"16000074109622","ref":"T","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|56334","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"A","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"3,1,0,4,3,5","location":"17000013467441","ref":"T","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|25929","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"AAT","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":"0|1","call_PID":"74109516_AAT_A","call_PL":"3,2,0,3,2,3","location":"16000074109643","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"3","AS_RAW_MQ":"0|57600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"3","alt":"GCC","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":"0|1","call_PID":"87178619_CG_C","call_PL":"3,2,0,4,2,4","location":"16000087178628","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"4","AS_RAW_MQ":"0|72000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"4","alt":"CTTTCTCCCTCCTT","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"4,2,0,5,2,5","location":"16000087178618","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"4","AS_RAW_MQ":"0|61200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"4","alt":"C","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":"0|1","call_PID":"87178619_CG_C","call_PL":"4,2,0,5,3,5","location":"16000087178619","ref":"CG","sample_id":"7"},
+                    {"AS_QUALapprox":"5","AS_RAW_MQ":"0|55521","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"5","alt":"T","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"5,2,0,5,2,5","location":"15000079059222","ref":"TCCTTC","sample_id":"7"},
+                    {"AS_QUALapprox":"6","AS_RAW_MQ":"0|55820","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"6","alt":"TTTCCC","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"6,3,0,5,2,4","location":"17000013467376","ref":"T","sample_id":"7"},
+                    {"AS_QUALapprox":"6","AS_RAW_MQ":"0|54000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"6","alt":"A","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"6,3,0,6,3,6","location":"17000009630990","ref":"AAAAGAAAG","sample_id":"7"},
+                    {"AS_QUALapprox":"6","AS_RAW_MQ":"0|56947","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"6","alt":"T","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":"0|1","call_PID":"71253570_TATATAC_T","call_PL":"6,3,0,6,4,7","location":"16000071253584","ref":"TATATAC","sample_id":"7"},
+                    {"AS_QUALapprox":"6","AS_RAW_MQ":"0|53347","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"6","alt":"T","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":"0|1","call_PID":"71253570_TATATAC_T","call_PL":"6,3,0,7,4,7","location":"16000071253570","ref":"TATATAC","sample_id":"7"},
+                    {"AS_QUALapprox":"9","AS_RAW_MQ":"0|25200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"9","alt":"TA","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"9,2,0,9,3,9","location":"17000067472332","ref":"T","sample_id":"7"},
+                    {"AS_QUALapprox":"16","AS_RAW_MQ":"0|33129","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"16","alt":"CTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"16,3,0,3,0,0","location":"17000030026961","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"17","AS_RAW_MQ":"0|32400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"17","alt":"CTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"17,3,0,3,0,0","location":"16000074081756","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"17","AS_RAW_MQ":"0|28800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"17","alt":"CT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"17,3,0,3,0,0","location":"16000077464450","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"17","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"17","alt":"CAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"17,3,0,3,0,0","location":"16000003276234","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"17","AS_RAW_MQ":"0|39600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"17","alt":"CTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"17,5,0,5,0,0","location":"16000030379640","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"18","AS_RAW_MQ":"0|35764","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"18","alt":"CA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"18,3,0,3,0,0","location":"17000027579878","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"20","AS_RAW_MQ":"0|32400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"20","alt":"C","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"20,3,0,3,0,0","location":"15000061980183","ref":"CAA","sample_id":"7"},
+                    {"AS_QUALapprox":"23","AS_RAW_MQ":"0|46800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"23","alt":"CTTTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"23,1,0,1,0,0","location":"16000024669941","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"26","AS_RAW_MQ":"0|103504","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,2","AS_VarDP":"0|0","QUALapprox":"26","alt":"CAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"26,4,0,4,0,0","location":"17000039382092","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"27","AS_RAW_MQ":"0|43200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"27","alt":"CTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"27,2,0,2,0,0","location":"16000017514797","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"31","AS_RAW_MQ":"0|36000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"31","alt":"T","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"31,2,0,3,1,1","location":"16000087178667","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"34","AS_RAW_MQ":"0|28800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"34","alt":"CA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"34,3,0,3,0,0","location":"17000028822802","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"36","AS_RAW_MQ":"0|32400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"36","alt":"CTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"36,3,0,3,0,0","location":"15000061236834","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"40","AS_RAW_MQ":"0|28800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,2","AS_VarDP":"0|0","QUALapprox":"40","alt":"GA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"40,6,0,6,0,0","location":"15000082302715","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"42","AS_RAW_MQ":"0|32400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"42","alt":"CTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"42,2,0,2,0,0","location":"16000030913975","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"44","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"44","alt":"CAAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"44,2,0,2,0,0","location":"17000013560289","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"44","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"44","alt":"CAAAAAAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"44,3,0,3,0,0","location":"17000041879647","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"44","AS_RAW_MQ":"0|43200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"44","alt":"CTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"44,3,0,3,0,0","location":"16000087731046","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"44","AS_RAW_MQ":"0|28800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"44","alt":"CTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"44,3,0,3,0,0","location":"16000057292424","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"45","AS_RAW_MQ":"0|4129","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"45","alt":"AATAT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"45,3,0,3,0,0","location":"17000011812026","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"51","AS_RAW_MQ":"0|39600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"51","alt":"GTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"51,5,0,7,0,1","location":"16000075799147","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"52","AS_RAW_MQ":"0|10800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"52","alt":"GTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"52,8,0,8,0,0","location":"17000076388639","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"54","AS_RAW_MQ":"0|21600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"54","alt":"CAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"54,5,0,5,0,0","location":"16000074958592","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"62","AS_RAW_MQ":"0|32400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"62","alt":"CAAAAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"62,5,0,5,0,0","location":"17000027903859","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"63","AS_RAW_MQ":"0|10800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"63","alt":"ATATATATTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"63,6,0,6,0,0","location":"17000035720573","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"71","AS_RAW_MQ":"0|54000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"71","alt":"CTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"71,5,0,5,0,0","location":"15000066658402","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"72","AS_RAW_MQ":"0|31609","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"72","alt":"CTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"72,5,0,5,0,0","location":"16000073507485","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"81","AS_RAW_MQ":"0|25929","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"81","alt":"CAAAAAAAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"81,4,0,4,0,0","location":"17000007233087","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"81","AS_RAW_MQ":"0|32400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"81","alt":"CTTTTTTTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"81,4,0,4,0,0","location":"16000072688811","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"85","AS_RAW_MQ":"0|36000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"85","alt":"GTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"85,7,0,7,0,0","location":"17000030138909","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"89","AS_RAW_MQ":"0|25200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"89","alt":"CAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"89,5,0,6,0,0","location":"16000074086867","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"128","AS_RAW_MQ":"0|14400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"128","alt":"CTTTTTTTTTTTTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"128,7,0,8,0,0","location":"16000077805865","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"133","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"133","alt":"CTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"133,8,0,8,0,0","location":"16000005651040","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"134","AS_RAW_MQ":"0|14400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"134","alt":"CTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"134,9,0,9,0,0","location":"16000082637428","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"18","AS_RAW_MQ":"0|21600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"18","alt":"GTTTTTTTTT","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"18,2,0,11,2,8","location":"17000030878718","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"10","AS_RAW_MQ":"0|68400","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"10","alt":"T","call_AD":"0,0","call_GQ":"5","call_GT":"1/1","call_PGT":"0|1","call_PID":"10782225_A_T","call_PL":"10,5,0,10,5,10","location":"18000010782336","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"11","AS_RAW_MQ":"0|40221","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"11","alt":"GTA","call_AD":"0,0","call_GQ":"5","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"11,5,0,11,5,11","location":"17000013467357","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"11","AS_RAW_MQ":"0|61200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"11","alt":"A","call_AD":"0,0","call_GQ":"5","call_GT":"1/1","call_PGT":"0|1","call_PID":"5308090_ATATATATACCTATACATATATG_A","call_PL":"11,5,0,11,5,11","location":"18000005308090","ref":"ATATATATACCTATACATATATG","sample_id":"7"},
+                    {"AS_QUALapprox":"13","AS_RAW_MQ":"0|60570","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"13","alt":"A","call_AD":"0,0","call_GQ":"6","call_GT":"1/1","call_PGT":"0|1","call_PID":"92047557_TAA_T","call_PL":"13,6,0,13,6,13","location":"15000092047583","ref":"AT","sample_id":"7"},
+                    {"AS_QUALapprox":"13","AS_RAW_MQ":"0|60570","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"13","alt":"T","call_AD":"0,0","call_GQ":"6","call_GT":"1/1","call_PGT":"0|1","call_PID":"92047557_TAA_T","call_PL":"13,6,0,13,6,13","location":"15000092047588","ref":"TATATA","sample_id":"7"},
+                    {"AS_QUALapprox":"16","AS_RAW_MQ":"0|54000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"16","alt":"CTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":"0|1","call_PID":"67984630_C_CTTTTTTTTTTTTTTT","call_PL":"16,1,0,17,3,19","location":"17000067984630","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"17","AS_RAW_MQ":"0|43929","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"17","alt":"C","call_AD":"0,0","call_GQ":"7","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"17,7,0,17,7,17","location":"16000013990612","ref":"CAT","sample_id":"7"},
+                    {"AS_QUALapprox":"170","AS_RAW_MQ":"0|55170","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"170","alt":"CCCTTCCCTAT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"170,9,0,10,0,0","location":"15000079059257","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"18","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"18","alt":"CAA","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"18,3,0,18,3,18","location":"16000000713318","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"27","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"27","alt":"ATTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"27,2,0,28,3,29","location":"16000062098154","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"27","AS_RAW_MQ":"0|22337","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"27","alt":"CAAA","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"27,3,0,27,3,27","location":"16000032126382","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"28","AS_RAW_MQ":"0|28800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"28","alt":"CAA","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"28,3,0,21,3,18","location":"17000006238053","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"36","AS_RAW_MQ":"0|54000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"36","alt":"CAAAAAA","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"36,2,0,37,3,38","location":"17000005494594","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"39","AS_RAW_MQ":"0|40129","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"39","alt":"CAAAAAAAA","call_AD":"0,0","call_GQ":"1","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"39,0,3,16,1,14","location":"17000020360227","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"41","AS_RAW_MQ":"0|21600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"41","alt":"CAAAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"1","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"41,1,0,17,3,16","location":"16000071736098","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"43","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"43","alt":"GTTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"43,2,0,44,3,45","location":"17000019526269","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"45","AS_RAW_MQ":"0|3600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"45","alt":"A","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":"0|1","call_PID":"89603914_GA_G","call_PL":"45,3,0,45,3,45","location":"16000089603975","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"77","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"77","alt":"CAAAAAAAAAAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"8","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"77,8,0,78,9,79","location":"17000012602773","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"8","AS_RAW_MQ":"0|63171","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"8","alt":"CGCTGAGCAGTGTGTGGGGTGGAGCGGTTGCTGACCGGGGCGCTGAGCAGTGTGTGGGGTGGAGCGGGTGTTGACTGGGGT","call_AD":"0,0","call_GQ":"3","call_GT":"1/1","call_PGT":"0|1","call_PID":"89898371_C_CGCTGAGCAGTGTGTGGGGTGGAGCGGTTGCTGACCGGGGCGCTGAGCAGTGTGTGGGGTGGAGCGGGTGTTGACTGGGGT","call_PL":"8,3,0,14,10,22","location":"16000089898371","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"81","AS_RAW_MQ":"0|45555","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"81","alt":"AATATAAAATAATTACATATTATATATTTATATATAAT","call_AD":"0,0","call_GQ":"4","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"81,4,0,84,7,87","location":"16000065128304","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"88","AS_RAW_MQ":"0|16401","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"88","alt":"GAAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"5","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"88,5,0,89,6,90","location":"17000043305380","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"88","AS_RAW_MQ":"0|36784","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"88","alt":"GTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"5","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"88,5,0,89,6,90","location":"16000083080871","ref":"G","sample_id":"7"},
+                    {"AS_QUALapprox":"98","AS_RAW_MQ":"0|56809","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"98","alt":"CAAAAAAAA","call_AD":"0,0","call_GQ":"2","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"98,8,0,32,2,24","location":"15000077053451","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"161","AS_RAW_MQ":"0|46800","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"161","alt":"CTTTTTTTTTTTTTTTTTT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"161,11,0,11,0,0","location":"17000056368276","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"179","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"179","alt":"TC","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"179,15,0,15,0,0","location":"16000023902800","ref":"T","sample_id":"7"},
+                    {"AS_QUALapprox":"199","AS_RAW_MQ":"0|43200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"199","alt":"CAAAAAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"199,13,0,14,0,1","location":"17000028353520","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"223","AS_RAW_MQ":"0|39600","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"223","alt":"CATATATAT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"223,14,0,14,0,0","location":"17000074365044","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"24","AS_RAW_MQ":"0|18000","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"24","alt":"CAAAAAAAAAAAAA","call_AD":"0,0","call_GQ":"1","call_GT":"0/1","call_PGT":null,"call_PID":null,"call_PL":"24,0,40,24,1,25","location":"18000005328386","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"250","AS_RAW_MQ":"0|34301","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"250","alt":"CCAAA","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"250,27,0,27,0,0","location":"16000012606864","ref":"C","sample_id":"7"},
+                    {"AS_QUALapprox":"266","AS_RAW_MQ":"0|43200","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"266","alt":"G","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"266,29,0,30,0,1","location":"15000061980212","ref":"A","sample_id":"7"},
+                    {"AS_QUALapprox":"276","AS_RAW_MQ":"0|33625","AS_RAW_MQRankSum":null,"AS_RAW_ReadPosRankSum":null,"AS_SB_TABLE":"0,0|0,0","AS_VarDP":"0|0","QUALapprox":"276","alt":"GT","call_AD":"0,0","call_GQ":"0","call_GT":"1/1","call_PGT":null,"call_PID":null,"call_PL":"276,24,0,25,0,1","location":"15000062888285","ref":"G","sample_id":"7"}
+                    ]
+                    """);
+            for (int i = 0; i < testData.length(); i++)
+            {
+                JSONObject jsonObj = testData.getJSONObject(i);
+                testWriter.write(jsonObj);
+            }
+            testWriter.close();
+        } catch (IOException exception) {
+            exception.printStackTrace();
+            System.exit(1);
+        }
+
+
+
+        logger.info("Exiting early, trying to set up Parquet writing");
+        System.exit(0);
+         */
 
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
@@ -295,7 +507,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         if (enableVet && !vetRowsExist) {
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
         }
         if (enableVCFHeaders && !vcfHeaderRowsExist) {
             buildAllVcfLineHeaders();

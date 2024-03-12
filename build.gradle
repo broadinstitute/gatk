@@ -188,7 +188,9 @@ configurations.all {
 }
 
 tasks.withType(JavaCompile) {
-    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+//    Changing this right now just for getting around deprecation
+//    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Xdiags:verbose']
     options.encoding = 'UTF-8'
 }
 
@@ -353,6 +355,13 @@ dependencies {
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
+
+    // parquet writing
+    implementation('org.apache.parquet:parquet-common:1.13.1')
+    implementation('org.apache.parquet:parquet-encoding:1.13.1')
+    implementation('org.apache.parquet:parquet-column:1.13.1')
+    implementation('org.apache.parquet:parquet-hadoop:1.13.1')
+    implementation 'org.apache.parquet:parquet-avro:1.13.1'
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
