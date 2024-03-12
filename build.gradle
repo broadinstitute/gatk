@@ -389,6 +389,13 @@ dependencies {
     // pgen jni
     implementation('org.broadinstitute:pgenjni:1.0.1')
 
+    // parquet writing
+    implementation('org.apache.parquet:parquet-common:1.13.1')
+    implementation('org.apache.parquet:parquet-encoding:1.13.1')
+    implementation('org.apache.parquet:parquet-column:1.13.1')
+    implementation('org.apache.parquet:parquet-hadoop:1.13.1')
+    implementation 'org.apache.parquet:parquet-avro:1.13.1'
+
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion

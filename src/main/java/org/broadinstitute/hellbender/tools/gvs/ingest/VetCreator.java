@@ -3,12 +3,16 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
+import org.broadinstitute.hellbender.utils.gvs.parquet.GvsVariantParquetFileWriter;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import org.json.JSONObject;
 
@@ -26,6 +30,7 @@ public class VetCreator {
     private SimpleXSVWriter vetWriter = null;
     private final Long sampleId;
     private PendingBQWriter vetBQJsonWriter = null;
+    private GvsVariantParquetFileWriter vetParquetFileWriter = null;
     private final boolean forceLoadingFromNonAlleleSpecific;
     private final boolean skipLoadingVqsrFields;
 
@@ -36,7 +41,7 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields) {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
@@ -57,6 +62,11 @@ public class VetCreator {
                     final File vetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + IngestConstants.FILETYPE);
                     vetWriter = new SimpleXSVWriter(vetOutputFile.toPath(), IngestConstants.SEPARATOR);
                     vetWriter.setHeaderLine(getHeaders());
+                    break;
+                case PARQUET:
+                    final File parquetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + ".parquet");
+                    vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, false, CompressionCodecName.SNAPPY);
+                    break;
             }
         } catch (final IOException ioex) {
             throw new UserException("Could not create vet outputs", ioex);
@@ -83,6 +93,9 @@ public class VetCreator {
                         String.valueOf(sampleId)
                 );
                 vetWriter.getNewLineBuilder().setRow(row).write();
+                break;
+            case PARQUET:
+                vetParquetFileWriter.write(createJson(location, variant, sampleId));
                 break;
 
         }
@@ -128,7 +141,16 @@ public class VetCreator {
         if (outputType == CommonCode.OutputType.BQ && vetBQJsonWriter != null) {
             vetBQJsonWriter.flushBuffer();
             vetBQJsonWriter.commitWriteStreams();
+        } else if (outputType == CommonCode.OutputType.PARQUET && vetParquetFileWriter != null) {
+            try {
+                vetParquetFileWriter.close();
+            } catch (IOException exception) {
+                System.out.println("ERROR CLOSING PARQUET FILE: ");
+                exception.printStackTrace();
+            }
         }
+
+
     }
 
     public void closeTool() {
