@@ -7,11 +7,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -35,13 +32,9 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsVariantParquetFileWriter;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -191,29 +184,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
-    // we'll ultimately want to do this by specifying it in protocol buffer format and parsing it, but for now we can
-    // just directly create the schema
-    public final MessageType VariantRowSchemaProgrammatic = new MessageType(
-            "VariantRow",
-            new PrimitiveType(REQUIRED, INT64, "sample_id"),
-            new PrimitiveType(REQUIRED, INT64, "location"),
-            new PrimitiveType(REQUIRED, BINARY, "ref"),
-            new PrimitiveType(REQUIRED, BINARY, "alt"),
-            new PrimitiveType(OPTIONAL, BINARY, "AS_RAW_MQ"),
-            new PrimitiveType(OPTIONAL, BINARY, "AS_RAW_MQRankSum"),
-            new PrimitiveType(OPTIONAL, BINARY, "AS_QUALapprox"),
-            new PrimitiveType(OPTIONAL, BINARY, "AS_RAW_ReadPosRankSum"),
-            new PrimitiveType(OPTIONAL, BINARY, "AS_SB_TABLE"),
-            new PrimitiveType(OPTIONAL, BINARY, "AS_VarDP"),
-            new PrimitiveType(REQUIRED, BINARY, "call_GT"),
-            new PrimitiveType(OPTIONAL, BINARY, "call_AD"),
-            new PrimitiveType(OPTIONAL, BINARY, "call_DP"),
-            new PrimitiveType(REQUIRED, INT64, "call_GQ"),
-            new PrimitiveType(OPTIONAL, BINARY, "call_PGT"),
-            new PrimitiveType(OPTIONAL, BINARY, "call_PID"),
-            new PrimitiveType(OPTIONAL, BINARY, "call_PS"),
-            new PrimitiveType(OPTIONAL, BINARY, "call_PL"));
-
     public final MessageType variantRowSchema = MessageTypeParser
             .parseMessageType("""
             message VariantRow {
@@ -238,13 +208,18 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             """);
 
+    /* Not yet outputting ref_ranges rows */
+    public final MessageType refRangesRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message VariantRow {
+            	required int64 sample_id;
+            	required int64 location;
+            	required int64 length;
+            	required binary state (UTF8);
+            }
+            """);
 
-    public final MessageType ReferenceRangesRowSchema = new MessageType(
-            "ReferenceRangeRow",
-            new PrimitiveType(REQUIRED, INT64, "sample_id"),
-            new PrimitiveType(REQUIRED, INT64, "location"),
-            new PrimitiveType(REQUIRED, INT64, "length"),
-            new PrimitiveType(REQUIRED, BINARY, "state"));
+
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
     public static boolean isNoCall(VariantContext variant) {
