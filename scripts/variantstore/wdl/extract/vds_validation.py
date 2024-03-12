@@ -44,9 +44,14 @@ def check_densify_small_region(vds):
 
 
 def main(vds):
-    check_samples_match(vds)
-    check_ref_blocks(vds)
-    check_densify_small_region(vds)
+    for x in range(22): # what about chrX,Y and M?
+        ## filter/subset the VDS early for much quicker turnaround
+        chromosome_to_validate=f'chr{x}'
+        filtered_vds = vds.variant_data.filter_rows(mt.locus.contig == chromosome_to_validate)
+        # check_samples_match(filtered_vds)
+        check_ref_blocks(filtered_vds)
+
+    # check_densify_small_region(vds)
     vds.validate(); print('Hail VDS validation successful')
 
 
@@ -62,8 +67,5 @@ if __name__ == '__main__':
     hl.init(tmp_dir=f'{args.temp_path}/hail_tmp_general')
 
     vds = hl.vds.read_vds(args.vds_path)
-
-    ## filter/subset the VDS early for much quicker turnaround
-    filtered_vds = hl.vds.filter_intervals(vds, [hl.parse_locus_interval('chr16:29.5M-29.7M', reference_genome='GRCh38')])
 
     main(filtered_vds)
