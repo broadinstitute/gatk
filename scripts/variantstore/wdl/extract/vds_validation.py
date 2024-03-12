@@ -1,6 +1,6 @@
 import argparse
 import hail as hl
-
+import itertools
 
 ###
 # VDS validation:
@@ -44,10 +44,20 @@ def check_densify_small_region(vds):
 
 
 def main(vds):
-    check_samples_match(vds)
-    check_ref_blocks(vds)
-    check_densify_small_region(vds)
-    vds.validate(); print('Hail VDS validation successful')
+    chrs = [f'chr{c}' for c in itertools.chain(range(1, 23), ['X', 'Y', 'M'])]
+
+    for chromosome_to_validate in chrs:
+        filtered_vd = vds.variant_data.filter_rows(vds.variant_data.locus.contig == chromosome_to_validate)
+        filtered_rd = vds.reference_data.filter_rows(vds.reference_data.locus.contig == chromosome_to_validate)
+        filtered_vds = hl.vds.VariantDataset(filtered_rd, filtered_vd)
+        # check_samples_match(filtered_vds) # (already succeeded for Echo)
+        print(f"Validating VDS chromosome {chromosome_to_validate}...")
+        check_ref_blocks(filtered_vds)
+        filtered_vds.validate(); print(f"Hail VDS validation successful for chromosome {chromosome_to_validate}")
+
+    # check_densify_small_region(vds) # (already succeeded for Echo)
+    print('Full VDS validation successful')
+
 
 
 
@@ -63,7 +73,4 @@ if __name__ == '__main__':
 
     vds = hl.vds.read_vds(args.vds_path)
 
-    ## filter/subset the VDS early for much quicker turnaround
-    filtered_vds = hl.vds.filter_intervals(vds, [hl.parse_locus_interval('chr16:29.5M-29.7M', reference_genome='GRCh38')])
-
-    main(filtered_vds)
+    main(vds)

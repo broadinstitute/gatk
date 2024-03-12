@@ -169,7 +169,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - rc-vs-1282-subset-vds-in-echo
+             - rc-vs-1282-loop-thru-validation
          tags:
              - /.*/
    - name: GvsExtractCallset
