@@ -758,6 +758,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final List<Event> givenAlleles = features.getValues(hcArgs.alleles).stream()
                 .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())
                 .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
+                .filter(event -> event.getStart() >= region.getSpan().getStart()) // filter out events that do not start within the region. This approach works because events that begin upstream of the calling window cannot be called by this region calling code in the frist place. 
                 .collect(Collectors.toList());
 
         if( givenAlleles.isEmpty() && region.size() == 0 ) {
