@@ -620,8 +620,6 @@ public class ExtractCohortEngine {
         mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedScoreMap.get(key)).ifPresent(value -> relevantScoreMap.put(key, value)));
         final Map<Allele, Double> relevantVQScoreMap = new LinkedHashMap<>();
         mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedVQScoreMap.get(key)).ifPresent(value -> relevantVQScoreMap.put(key, value)));
-        final Map<Allele, String> relevantYngMap = new LinkedHashMap<>();
-        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedYngMap.get(key)).ifPresent(value -> relevantYngMap.put(key, value)));
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
@@ -629,7 +627,6 @@ public class ExtractCohortEngine {
             builder.attribute(getScoreKey(), relevantScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         }
         builder.attribute(getAlleleSpecificVQSScoreKey(), relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
-        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
         if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.SITES)) { // Note that these filters are not used with Genotype VQSLOD/Sensitivity Filtering
             int refLength = mergedVC.getReference().length();
