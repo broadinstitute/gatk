@@ -420,6 +420,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1254_test_out_pgen
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -427,6 +428,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1254_test_out_pgen
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -434,3 +436,4 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1254_test_out_pgen
