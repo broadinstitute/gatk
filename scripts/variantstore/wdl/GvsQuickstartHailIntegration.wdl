@@ -109,8 +109,8 @@ workflow GvsQuickstartHailIntegration {
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
             use_classic_VQSR = !use_VQSR_lite,
-            avro_path = GvsExtractAvroFilesForHail.avro_prefix,
-            vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+            avro_path = GvsExtractAvroFilesForHail.avro_path,
+            vds_destination_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
             cluster_prefix = "vds-cluster",
             gcs_subnetwork_name = "subnetwork",
             region = "us-central1",
@@ -125,7 +125,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
-            vds_path = GvsExtractAvroFilesForHail.vds_output_path,
+            vds_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -137,7 +137,7 @@ workflow GvsQuickstartHailIntegration {
         Array[File] output_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes
         Float total_vcfs_size_mb = GvsQuickstartVcfIntegration.total_vcfs_size_mb
         File manifest = GvsQuickstartVcfIntegration.manifest
-        String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
+        String vds_output_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds"
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = GvsQuickstartVcfIntegration.used_tighter_gcp_quotas
