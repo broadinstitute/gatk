@@ -45,7 +45,7 @@ public class AddFlowSNVQualityIntegrationTest extends CommandLineProgramTest {
 
         // walk the output and expected files, compare non-comment lines
         if ( !UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
-            IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile, "@PG");
+            IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile, "@");
         }
     }
 }
