@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -31,8 +32,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @ExperimentalFeature
 public final class AddFlowSNVQuality extends ReadWalker {
 
-    private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
-
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "File to which reads should be written")
@@ -40,20 +39,11 @@ public final class AddFlowSNVQuality extends ReadWalker {
     public GATKPath output = null;
     private SAMFileGATKReadWriter outputWriter;
 
-    @Advanced
-    @Argument(fullName=INCLUDE_QC_FAILED_READS_FULL_NAME, doc = "include reads with QC failed flag", optional = true)
-    public boolean includeQcFailedReads = true;
-
     @ArgumentCollection
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
 
     @ArgumentCollection
     public AddFlowSNVQualityArgumentCollection aqArgs = new AddFlowSNVQualityArgumentCollection();
-
-    @Advanced
-    @Hidden
-    @Argument(fullName="debug-collect-stats-into", doc = "", optional = true)
-    public String debugCollectStatsInto = null;
 
     public static final String BASE_QUALITY_ATTRIBUTE_NAME = "BQ";
     public static final char PHRED_ASCII_BASE = '!';
@@ -87,8 +77,8 @@ public final class AddFlowSNVQuality extends ReadWalker {
         }
 
         try {
-            if ( debugCollectStatsInto != null )
-                printStats(debugCollectStatsInto);
+            if ( aqArgs.debugCollectStatsInto != null )
+                printStats(aqArgs.debugCollectStatsInto);
         } catch (IOException e) {
             throw new GATKException("", e);
         }
@@ -103,19 +93,20 @@ public final class AddFlowSNVQuality extends ReadWalker {
         }
 
         // include qc-failed reads?
-        if (  read.failsVendorQualityCheck() && !includeQcFailedReads ) {
+        if (  read.failsVendorQualityCheck() && !aqArgs.includeQcFailedReads ) {
             return;
         }
 
         // collect input stats
-        if ( debugCollectStatsInto != null )
+        if ( aqArgs.debugCollectStatsInto != null ) {
             collectInputStats(read);
+        }
 
         // add SNVQ attributes
         addBaseQuality(read, getHeaderForReads(), aqArgs.limitPhredScore, fbargs);
 
         // collect output stats
-        if ( debugCollectStatsInto != null ) {
+        if ( aqArgs.debugCollectStatsInto != null ) {
             collectOutputStats(read);
             if ( aqArgs.debugReadName.size() != 0 && aqArgs.debugReadName.contains(read.getName()) ) {
                 dumpOutputRead(read);
@@ -133,9 +124,9 @@ public final class AddFlowSNVQuality extends ReadWalker {
     }
 
     private void collectOutputStats(GATKRead read) {
-        if ( read.hasAttribute("BQ") ) {
-            for ( byte q : read.getAttributeAsString("BQ").getBytes() ) {
-                outputBQStats.add(q - 33);
+        if ( read.hasAttribute(BASE_QUALITY_ATTRIBUTE_NAME) ) {
+            for ( byte q : read.getAttributeAsString(BASE_QUALITY_ATTRIBUTE_NAME).getBytes() ) {
+                outputBQStats.add(SAMUtils.fastqToPhred((char)q));
             }
         }
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), read);
@@ -147,11 +138,11 @@ public final class AddFlowSNVQuality extends ReadWalker {
             int ofs = 0;
             for ( byte q : attrValue.getBytes() ) {
                 if ( bases[ofs] != altBase ) {
-                    outputQAltStats.add(q - 33);
+                    outputQAltStats.add(SAMUtils.fastqToPhred((char)q));
                 } else {
-                    outputQCalledStats.add(q - 33);
+                    outputQCalledStats.add(SAMUtils.fastqToPhred((char)q));
                 }
-                sumP[ofs] += Math.pow(10.0, (q - 33) / -10.0);
+                sumP[ofs] += Math.pow(10.0, SAMUtils.fastqToPhred((char)q) / -10.0);
                 ofs++;
 
             }
@@ -166,7 +157,7 @@ public final class AddFlowSNVQuality extends ReadWalker {
 
         try {
             // open file
-            final String fname = debugCollectStatsInto + "." + read.getName() + ".csv";
+            final String fname = aqArgs.debugCollectStatsInto + "." + read.getName() + ".csv";
             logger.info("dumping read into: " + fname);
             final PrintWriter pw = new PrintWriter(fname);
 
@@ -184,9 +175,9 @@ public final class AddFlowSNVQuality extends ReadWalker {
             // access data
             final byte[] bases = read.getBasesNoCopy();
             final byte[] quals = read.getBaseQualitiesNoCopy();
-            final byte[] tp = read.getAttributeAsByteArray("tp");
-            final byte[] t0 = read.getAttributeAsByteArray("t0");
-            final byte[] bq = read.getAttributeAsString("BQ").getBytes();
+            final byte[] tp = read.getAttributeAsByteArray(FlowBasedRead.FLOW_MATRIX_TAG_NAME);
+            final byte[] t0 = read.getAttributeAsByteArray(FlowBasedRead.FLOW_MATRIX_T0_TAG_NAME);
+            final byte[] bq = read.getAttributeAsString(BASE_QUALITY_ATTRIBUTE_NAME).getBytes();
             final byte[][] qX = new byte[4][];
             for (int i = 0; i < 4; i++) {
                 qX[i] = read.getAttributeAsString(attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i))).getBytes();
@@ -206,13 +197,13 @@ public final class AddFlowSNVQuality extends ReadWalker {
 
                 // tp,t0,bq
                 line.add(Integer.toString(tp[pos]));
-                line.add(Integer.toString(t0[pos] - 33));
-                line.add(Integer.toString(bq[pos] - 33));
+                line.add(Integer.toString(SAMUtils.fastqToPhred((char)t0[pos])));
+                line.add(Integer.toString(SAMUtils.fastqToPhred((char)bq[pos])));
 
                 // qX
                 int calledIndex = -1;
                 for (int i = 0; i < 4; i++) {
-                    line.add(Integer.toString(qX[i][pos] - 33));
+                    line.add(Integer.toString(SAMUtils.fastqToPhred((char)qX[i][pos])));
                     if ( bases[pos] == rgInfo.flowOrder.charAt(i) ) {
                         calledIndex = i;
                     }
@@ -220,7 +211,7 @@ public final class AddFlowSNVQuality extends ReadWalker {
 
                 // qCalled
                 if ( calledIndex >= 0 ) {
-                    line.add(Integer.toString(qX[calledIndex][pos] - 33));
+                    line.add(Integer.toString(SAMUtils.fastqToPhred((char)qX[calledIndex][pos])));
                 } else {
                     line.add("-1");
                 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 
@@ -11,6 +12,12 @@ import java.util.List;
  */
 public class AddFlowSNVQualityArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
+    public static final String LIMIT_PHRED_SCORE_FULL_NAME = "limit-phred-score";
+    public static final String KEEP_SUPPLEMENTARY_ALIGNMENTS_FULL_NAME = "keep-supplementary-alignments";
+    public static final String INCLUDE_QC_FAILED_READ_FULL_NAME = "include-qc-failed-read";
+    public static final String SNVQ_MODE_FULL_NAME = "snvq-mode";
+    public static final String DEBUG_READ_NAME_FULL_NAME = "debug-read-name";
+    public static final String DEBUG_COLLECT_STATS_INTO_FULL_NAME = "debug-collect-stats-into";
 
     public enum SnvqModeEnum {
         Legacy,
@@ -23,25 +30,34 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
      *  maximum value for
      *  delta in score
      **/
-    @Argument(fullName = "limit-phred-score", doc = "Limit value for phred scores", optional = true)
+    @Argument(fullName = LIMIT_PHRED_SCORE_FULL_NAME, doc = "Limit value for phred scores", optional = true)
     public double limitPhredScore = Double.NaN;
 
     /**
      *  keep supplementary alignments?
      **/
-    @Argument(fullName = "keep-supplementary-alignments", doc = "keep supplementary alignments ?", optional = true)
+    @Argument(fullName = KEEP_SUPPLEMENTARY_ALIGNMENTS_FULL_NAME, doc = "keep supplementary alignments ?", optional = true)
     public boolean keepSupplementaryAlignments = true;
+
+    @Advanced
+    @Argument(fullName= INCLUDE_QC_FAILED_READ_FULL_NAME, doc = "include reads with QC failed flag", optional = true)
+    public boolean includeQcFailedReads = true;
 
     /**
      * snvq computation mode
      */
-    @Argument(fullName = "snvq-mode", doc = "ksnvq computation mode", optional = true)
+    @Argument(fullName = SNVQ_MODE_FULL_NAME, doc = "ksnvq computation mode", optional = true)
     public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
 
     /**
      *  debug read names?
      **/
     @Hidden
-    @Argument(fullName = "debug-read-name", doc = "debug specific reads?", optional = true)
+    @Argument(fullName = DEBUG_READ_NAME_FULL_NAME, doc = "debug specific reads?", optional = true)
     public List<String> debugReadName = null;
+
+    @Advanced
+    @Hidden
+    @Argument(fullName= DEBUG_COLLECT_STATS_INTO_FULL_NAME, doc = "", optional = true)
+    public String debugCollectStatsInto = null;
 }
