@@ -290,7 +290,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-623_ExcludeAsYNGFromVcfAhVarStore
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -300,7 +299,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-623_ExcludeAsYNGFromVcfAhVarStore
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -311,7 +309,6 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1245
-             - gg_VS-623_ExcludeAsYNGFromVcfAhVarStore
          tags:
              - /.*/
    - name: GvsIngestTieout
