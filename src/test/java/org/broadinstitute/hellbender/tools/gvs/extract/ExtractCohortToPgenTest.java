@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
+import com.github.luben.zstd.ZstdInputStream;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -10,6 +11,8 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -20,6 +23,28 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   private final String quickstart10mbRefRangesAvroFile = prefix + "quickstart_10mb_ref_ranges.avro";
   private final String quickstart10mbVetAvroFile = prefix + "quickstart_10mb_vet.avro";
   private final String quickstartSampleListFile = prefix + "quickstart.sample.list";
+
+
+  private File decompressPvar(File pvarFile) {
+    try {
+      // Open an input stream for reading from the compressed pvar
+      ZstdInputStream pvarZstdStream = new ZstdInputStream(new FileInputStream(pvarFile));
+      // Open an output stream to write the decompressed pvar to
+      File decompressedPvar = createTempFile(pvarFile.getName(), ".pvar");
+      FileOutputStream decompressedPvarStream = new FileOutputStream(decompressedPvar);
+
+      // Read from the Zstd stream and write to the stream for the decompressed Pvar
+      byte[] buffer = new byte[1024];
+      int bytesRead;
+      while ((bytesRead = pvarZstdStream.read(buffer)) != -1) {
+        decompressedPvarStream.write(buffer, 0, bytesRead);
+      }
+      return decompressedPvar;
+    }
+    catch(IOException e) {
+      throw new RuntimeException("Failed to decompress pvar.zst file: ", e);
+    }
+  }
 
   @AfterTest
   public void afterTest() {
@@ -50,7 +75,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_vqsr_lite.pgen");
     final File expectedPsam = getTestFile("ranges_extract.expected_vqsr_lite.psam");
-    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr_lite.pvar.zst");
+    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr_lite.pvar");
 
     // Create a temp dif for the output
     final File outputDir = createTempDir("extract_output");
@@ -75,7 +100,9 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
     Assert.assertEquals(Files.mismatch(outputPgen.toPath(), expectedPgen.toPath()), -1L);
     IntegrationTestSpec.assertEqualTextFiles(outputPsam, expectedPsam);
-    Assert.assertEquals(Files.mismatch(outputPvar.toPath(), expectedPvar.toPath()), -1L);
+    // Decompress the pvar for validation
+    final File decompressedPvar = decompressPvar(outputPvar);
+    IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
   @Test
@@ -95,7 +122,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_low_AC.pgen");
     final File expectedPsam = getTestFile("ranges_extract.expected_low_AC.psam");
-    final File expectedPvar = getTestFile("ranges_extract.expected_low_AC.pvar.zst");
+    final File expectedPvar = getTestFile("ranges_extract.expected_low_AC.pvar");
 
     // Create a temp dif for the output
     final File outputDir = createTempDir("extract_output");
@@ -121,7 +148,9 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
     Assert.assertEquals(Files.mismatch(outputPgen.toPath(), expectedPgen.toPath()), -1L);
     IntegrationTestSpec.assertEqualTextFiles(outputPsam, expectedPsam);
-    Assert.assertEquals(Files.mismatch(outputPvar.toPath(), expectedPvar.toPath()), -1L);
+    // Decompress the pvar for validation
+    final File decompressedPvar = decompressPvar(outputPvar);
+    IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
   @Test
@@ -142,7 +171,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     final File expectedPgen = getTestFile("ranges_extract.expected_separate_index.pgen");
     final File expectedPgi = getTestFile("ranges_extract.expected_separate_index.pgen.pgi");
     final File expectedPsam = getTestFile("ranges_extract.expected_separate_index.psam");
-    final File expectedPvar = getTestFile("ranges_extract.expected_separate_index.pvar.zst");
+    final File expectedPvar = getTestFile("ranges_extract.expected_separate_index.pvar");
 
     // Create a temp dif for the output
     final File outputDir = createTempDir("extract_output");
@@ -170,7 +199,9 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     Assert.assertEquals(Files.mismatch(outputPgen.toPath(), expectedPgen.toPath()), -1L);
     Assert.assertEquals(Files.mismatch(outputPgi.toPath(), expectedPgi.toPath()), -1L);
     IntegrationTestSpec.assertEqualTextFiles(outputPsam, expectedPsam);
-    Assert.assertEquals(Files.mismatch(outputPvar.toPath(), expectedPvar.toPath()), -1L);
+    // Decompress the pvar for validation
+    final File decompressedPvar = decompressPvar(outputPvar);
+    IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
   @Test
@@ -236,7 +267,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_vqsr_classic.pgen");
     final File expectedPsam = getTestFile("ranges_extract.expected_vqsr_classic.psam");
-    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr_classic.pvar.zst");
+    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr_classic.pvar");
 
     // create a temporary directory for the output
     final File outputDir = createTempDir("extract_output");
@@ -261,7 +292,9 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
     Assert.assertEquals(Files.mismatch(outputPgen.toPath(), expectedPgen.toPath()), -1L);
     IntegrationTestSpec.assertEqualTextFiles(outputPsam, expectedPsam);
-    Assert.assertEquals(Files.mismatch(outputPvar.toPath(), expectedPvar.toPath()), -1L);
+    // Decompress the pvar for validation
+    final File decompressedPvar = decompressPvar(outputPvar);
+    IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
   @Test(expectedExceptions = PgenEmptyPgenException.class)
