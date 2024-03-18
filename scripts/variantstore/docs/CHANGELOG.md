@@ -1,5 +1,11 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.4 - 2024-03-18
+
+### Changed
+
+VCF files generated using the Extract workflow (`GvsExtractCallset`) no longer contain the INFO field `AS_YNG`. AS_YNG contained the allele-specific YNG field (Yay/Nay/Gray). Yay meant that allele is known good (in the VQSR/VETS training set), Nay is known bad and Gray means it's not in the training set, so use the VQSR/VETS score to determine whether to filter the genotype. Although `AS_YNG` is no longer included in the VCF explicitly, it is implicitly used to filter genotypes.
+
 ## 0.5.3 - 2024-02-20
 
 ### Changed
