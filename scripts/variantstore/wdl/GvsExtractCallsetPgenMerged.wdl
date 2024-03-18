@@ -117,7 +117,7 @@ workflow GvsExtractCallsetPgenMerged {
     }
 
     scatter(i in range(length(SplitFilesByChromosome.pgen_lists))) {
-        Int split_count = ceil(length(GvsExtractCallsetPgen.output_pgens)/(length(SplitFilesByChromosome.pgen_lists)*10))
+        Int split_count = ceil(length(GvsExtractCallsetPgen.output_pgens)/(length(SplitFilesByChromosome.pgen_lists)*10.0))
         String contig = sub(basename(SplitFilesByChromosome.pgen_lists[i]), ".pgen_list", "")
         call Merge.MergePgenWorkflow {
             input:
