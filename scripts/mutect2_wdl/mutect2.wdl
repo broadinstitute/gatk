@@ -95,6 +95,7 @@ workflow Mutect2 {
         # additional modes and outputs
         File? realignment_index_bundle
         String? realignment_extra_args
+        File? dragstr_model
         Boolean run_orientation_bias_mixture_model_filter = false
         Boolean make_bamout = false
         Boolean compress_vcfs = false
@@ -178,6 +179,7 @@ workflow Mutect2 {
                 getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
+                dragstr_model = dragstr_model,
                 make_bamout = make_bamout,
                 run_ob_filter = run_orientation_bias_mixture_model_filter,
                 compress_vcfs = compress_vcfs,
@@ -380,6 +382,7 @@ task M2 {
         File? gga_vcf_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
+        File? dragstr_model
 
         File? gatk_override
 
@@ -459,6 +462,7 @@ task M2 {
             ~{"-pon " + pon} \
             ~{"-L " + intervals} \
             ~{"--alleles " + gga_vcf} \
+            ~{"--dragstr-params-path " + dragstr_model} \
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
