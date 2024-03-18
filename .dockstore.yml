@@ -203,7 +203,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1229_DeDupTheVatUponCreation
+             - gg_VS-1190_TestNewNirvanaReferenceDisk
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery

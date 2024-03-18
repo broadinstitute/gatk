@@ -527,7 +527,7 @@ task AnnotateVCF {
         # Mentioning this path in the inputs section of the task combined with checking the 'Use reference disks' option
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
         File summon_reference_disk =
-            "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
+            "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
 
         String variants_nirvana_docker
 
