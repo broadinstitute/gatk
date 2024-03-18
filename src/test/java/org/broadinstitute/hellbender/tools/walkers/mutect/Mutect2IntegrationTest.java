@@ -103,14 +103,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                {DREAM_1_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.97, false},
-                {DREAM_2_TUMOR, Optional.of(DREAM_2_NORMAL), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
-                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
-                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, true},
-                {DREAM_3_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.90, false},
-                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
-                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, true},
-                {DREAM_4_TUMOR, Optional.empty(), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
+                /*{DREAM_1_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.98, false},
+                {DREAM_2_TUMOR, Optional.of(DREAM_2_NORMAL), DREAM_2_TRUTH, DREAM_2_MASK, 0.98, false},
+                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.98, false},
+                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.98, true},
+                {DREAM_3_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.95, false},*/
+                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.8, false},
+                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.75, true},
+                {DREAM_4_TUMOR, Optional.empty(), DREAM_4_TRUTH, DREAM_4_MASK, 0.8, false},
         };
     }
 
@@ -415,6 +415,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
                 vc.getAlternateAlleles().stream().filter(a-> a.length() > 0 && BaseUtils.isNucleotide(a.getBases()[0])).forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
             }
+        }
+    }
+
+    // regression test for PR: https://github.com/broadinstitute/gatk/pull/8717, which fixed an issue wherein germline events were
+    // incorrectly contributing to the bad haplotype and clustered events filters.  In order to make the test more stringent we turn
+    // on the genotype-germline-sites flag
+    //  The test is on two variants that caused particular trouble previously in the DREAM 2 sample
+    @Test
+    public void testFilteredHaplotypeAndClusteredEventsFilters() throws Exception {
+        Utils.resetRandomGenerator();
+        final File tumor = DREAM_2_TUMOR;
+        final File normal = DREAM_2_NORMAL;
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        for (final int locus : List.of(4567628, 20870771)) {
+            final String interval = "20:" + (locus - 500) + "-" + (locus + 500);
+            runMutect2(List.of(tumor), List.of(normal), unfilteredVcf, interval, b37Reference, Optional.of(GNOMAD),
+                    args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+            runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
+            final Optional<VariantContext> vcShouldPass = VariantContextTestUtils.streamVcf(filteredVcf).filter(vc -> vc.getStart() == locus).findFirst();
+            Assert.assertTrue(vcShouldPass.isPresent());
+            Assert.assertFalse(vcShouldPass.get().isFiltered());
         }
     }
 

@@ -114,7 +114,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         }
         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::createAndAvoidFailure);
 
-        final Set<Event> somaticEventsInRegion = new HashSet<>();
+        final Set<Event> potentialSomaticEventsInRegion = new HashSet<>();
         for( final int loc : eventStarts ) {
             final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantsFromActiveHaplotypes(loc, haplotypes, false);
             VariantContext merged = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
@@ -164,7 +164,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                     .filter(allele -> tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .filter(allele -> !hasNormal || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
                     .map(allele -> new Event(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getReference(), allele))
-                    .forEach(somaticEventsInRegion::add);
+                    .forEach(potentialSomaticEventsInRegion::add);
 
             // if every alt allele is germline, skip this variant.  However, if some alt alleles are germline and others
             // are not we emit them all so that the filtering engine can see them
@@ -259,7 +259,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                             .findFirst().get();
 
                     eventCountAnnotations.computeIfAbsent(outputCall, vc -> new ArrayList<>())
-                            .add(bestHaplotype.getEventMap().getNumberOfEvents());
+                            .add((int) bestHaplotype.getEventMap().getEvents().stream().filter(potentialSomaticEventsInRegion::contains).count());
                 }
             }
         }
