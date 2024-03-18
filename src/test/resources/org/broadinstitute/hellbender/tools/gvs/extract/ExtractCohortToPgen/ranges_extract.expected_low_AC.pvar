@@ -12,7 +12,6 @@
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
 ##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
-##INFO=<ID=AS_YNG,Number=A,Type=String,Description="For each alt allele, the yay/nay/grey status (yay are known good alleles, nay are known false positives, grey are unknown)">
 ##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
 ##contig=<ID=chr1,length=248956422,assembly=38>
 ##contig=<ID=chr2,length=242193529,assembly=38>
