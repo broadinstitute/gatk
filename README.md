@@ -142,7 +142,7 @@ We also include an installation of R (3.6.2) with the following popular packages
 * dplyr
 * ggplot2
 
-For more details on system packages, see the GATK [Base Dockerfile](scripts/docker/gatkbase/Dockerfile) and for more details on the Python3/R packages, see the [Conda environment setup file](scripts/gatkcondaenv.yml.template).
+For more details on system packages, see the GATK [Base Dockerfile](scripts/docker/gatkbase/Dockerfile) and for more details on the Python3/R packages, see the [Conda environment setup file](scripts/gatkcondaenv.yml.template). Versions for the Python3/R packages can be found there.
 
 ## <a name="building">Building GATK4</a>
 
