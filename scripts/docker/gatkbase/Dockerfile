@@ -1,6 +1,6 @@
 # Using OpenJDK 17
 # This Dockerfile does not require any files that are in the GATK4 repo.
-# NOTE: If you updated the ubuntu version make sure to update the samtools/bcftools/bedtools versions in the README
+# NOTE: If you update the ubuntu version make sure to update the samtools/bcftools/bedtools versions in the README
 FROM ubuntu:22.04
 
 # Avoid interactive prompts during apt installs/upgrades
