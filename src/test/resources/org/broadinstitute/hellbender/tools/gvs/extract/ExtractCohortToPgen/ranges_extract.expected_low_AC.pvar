@@ -3379,7 +3379,6 @@
 ##contig=<ID=HLA-DRB1*15:03:01:01,length=11567,assembly=38>
 ##contig=<ID=HLA-DRB1*15:03:01:02,length=11569,assembly=38>
 ##contig=<ID=HLA-DRB1*16:02:01,length=11005,assembly=38>
-##source="Broad Institute PGEN/PVAR writer version=1.0.1"
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 chr20	10000775	.	A	G	.	.	AC=4;AF=0.200;AN=20;AS_QUALapprox=0|1895;QUALapprox=555
 chr20	10000930	.	C	A,CA	.	.	AC=1,2;AF=0.167,0.333;AN=6;AS_QUALapprox=0|69|207;QUALapprox=69

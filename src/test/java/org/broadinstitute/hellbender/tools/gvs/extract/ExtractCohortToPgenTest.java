@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import com.github.luben.zstd.ZstdInputStream;
+import htsjdk.samtools.util.BufferedLineReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -10,10 +11,7 @@ import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -25,20 +23,29 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   private final String quickstartSampleListFile = prefix + "quickstart.sample.list";
 
 
-  private File decompressPvar(File pvarFile) {
+  private File decompressPvar(final File pvarFile) {
     try {
       // Open an input stream for reading from the compressed pvar
-      ZstdInputStream pvarZstdStream = new ZstdInputStream(new FileInputStream(pvarFile));
+      final ZstdInputStream pvarZstdStream = new ZstdInputStream(new FileInputStream(pvarFile));
+      final BufferedLineReader pvarZstdReader = new BufferedLineReader(pvarZstdStream);
       // Open an output stream to write the decompressed pvar to
-      File decompressedPvar = createTempFile(pvarFile.getName(), ".pvar");
-      FileOutputStream decompressedPvarStream = new FileOutputStream(decompressedPvar);
+      final File decompressedPvar = createTempFile(pvarFile.getName(), ".pvar");
+      final BufferedWriter decompressedPvarWriter = new BufferedWriter(new FileWriter(decompressedPvar));
 
-      // Read from the Zstd stream and write to the stream for the decompressed Pvar
-      byte[] buffer = new byte[1024];
-      int bytesRead;
-      while ((bytesRead = pvarZstdStream.read(buffer)) != -1) {
-        decompressedPvarStream.write(buffer, 0, bytesRead);
+      // Read from the Zstd reader and write to the decompressed Pvar
+      while (pvarZstdReader.ready()) {
+        final String nextLine = pvarZstdReader.readLine();
+        // Skip the source header line because some weirdness in the way the gatk build works makes that not match
+        if(nextLine.startsWith("##source"))
+          continue;
+
+        decompressedPvarWriter.write(nextLine);
+        decompressedPvarWriter.newLine();
       }
+
+      pvarZstdReader.close();
+      decompressedPvarWriter.close();
+
       return decompressedPvar;
     }
     catch(IOException e) {
