@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -92,9 +94,9 @@ public class FeaturizedReadSets {
         result.add(read.isReverseStrand() ? 1 : 0);
 
         // distances from ends of read
-        final int readPosition = ReadPosition.getPosition(read, vc).orElse(0);
-        result.add(readPosition);
-        result.add(read.getLength() - readPosition);
+        final int readPositionOfVariantStart = ReadPosition.getPosition(read, vc).orElse(0);
+        result.add(readPositionOfVariantStart);
+        result.add(read.getLength() - readPositionOfVariantStart);
 
 
         result.add(Math.abs(read.getFragmentLength()));
@@ -123,15 +125,74 @@ public class FeaturizedReadSets {
                     vc.getContig(), vc.getStart()));
             result.add(3);
             result.add(2);
+
+            for (int n = 0; n < 20; n++) {
+                result.add(0);
+            }
         } else {
-            final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotype.getBases(), read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+            byte[] haplotypeBases = haplotype.getBases();
+            final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotypeBases, read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
             final GATKRead copy = read.copy();
             copy.setCigar(readToHaplotypeAlignment.getCigar());
-            final int mismatchCount = AlignmentUtils.getMismatchCount(copy, haplotype.getBases(), readToHaplotypeAlignment.getAlignmentOffset()).numMismatches;
+            final int mismatchCount = AlignmentUtils.getMismatchCount(copy, haplotypeBases, readToHaplotypeAlignment.getAlignmentOffset()).numMismatches;
             result.add(mismatchCount);
 
             final long indelsVsBestHaplotype = readToHaplotypeAlignment.getCigar().getCigarElements().stream().filter(el -> el.getOperator().isIndel()).count();
             result.add((int) indelsVsBestHaplotype);
+
+            final int readStartInHaplotype = readToHaplotypeAlignment.getAlignmentOffset();
+            final AlignmentStateMachine asm = new AlignmentStateMachine(copy);
+            asm.stepForwardOnGenome();
+            final int[] featuresWithin5Bases = new int[5];
+            final int[] featuresWithin10Bases = new int[5];
+            final int[] featuresWithin25Bases = new int[5];
+            final int[] featuresWithin50Bases = new int[5];
+            while (!asm.isRightEdge()) {
+                final PileupElement pe = asm.makePileupElement();
+                final int distanceFromVariant = Math.abs(asm.getReadOffset() - readPositionOfVariantStart);
+
+                int[] featuresToAddTo;
+                if (distanceFromVariant <= 5) {
+                    featuresToAddTo = featuresWithin5Bases;
+                } else if (distanceFromVariant <= 10) {
+                    featuresToAddTo = featuresWithin10Bases;
+                } else if (distanceFromVariant <= 25) {
+                    featuresToAddTo = featuresWithin25Bases;
+                } else if (distanceFromVariant <= 50) {
+                    featuresToAddTo = featuresWithin50Bases;
+                } else {
+                    asm.stepForwardOnGenome();
+                    continue;
+                }
+
+                if (pe.isAfterInsertion()) {
+                    featuresToAddTo[0]++;
+                }
+
+                if (pe.isDeletion()) {
+                    featuresToAddTo[1]++;
+                } else {
+                    final byte base = pe.getBase();
+                    final byte qual = pe.getQual();
+                    final byte haplotypeBase = haplotypeBases[asm.getGenomeOffset() + readStartInHaplotype];
+
+                    if (base != haplotypeBase) {
+                        featuresToAddTo[2]++;
+                    }
+
+                    if (qual < 10) {
+                        featuresToAddTo[3]++;
+                    } else if (qual < 20) {
+                        featuresToAddTo[4]++;
+                    }
+                }
+                asm.stepForwardOnGenome();
+            }
+            for (final int[] featuresToAdd : List.of(featuresWithin5Bases, featuresWithin10Bases, featuresWithin25Bases, featuresWithin50Bases)) {
+                for (final int val : featuresToAdd) {
+                    result.add(val);
+                }
+            }
         }
         Utils.validate(result.size() == mutect3DatasetMode.getNumReadFeatures(), "Wrong number of features");
 
