@@ -10,6 +10,8 @@
 # used by the testGATKPythonEnvironmentPackagePresent test in PythonEnvironmentIntegrationTest needs to be updated
 # to reflect the changes.
 #
+# NOTE: If you update any of the packages below, please make sure the main README is up to date with the latest package install information.
+#
 name: $condaEnvName
 channels:
 # if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
