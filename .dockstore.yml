@@ -357,6 +357,16 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsTestReference
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTestReference.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - gg_VS-1190_TestNewNirvanaReferenceDisk
+       tags:
+         - /.*/             -
    - name: HailFromWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
