@@ -102,6 +102,9 @@ task TestReference {
 
     echo "Looking in ${DATA_SOURCES_FOLDER}"
     ls -l ${DATA_SOURCES_FOLDER}
+    echo "Find in it"
+    find ${DATA_SOURCES_FOLDER} -name '*' -exec ls -l {} \;
+    echo "That's it"
 
     # =======================================
     echo "Creating custom annotations"
