@@ -119,10 +119,10 @@ You can download and run pre-built versions of GATK4 from the following places:
 ### <a name="dockerSoftware">Tools Included in Docker Image</a>
 
 Our docker image contains the following bioinformatics tools, which can be run by invoking the tool name from the command line:
-* bedtools
-* samtools
-* bcftools
-* tabix
+* bedtools (v2.30.0)
+* samtools (1.13)
+* bcftools (1.13)
+* tabix (1.13+ds)
 
 We also include an installation of Python3 (3.6.10) with the following popular packages included:
 * numpy
