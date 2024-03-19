@@ -51,6 +51,9 @@ workflow GvsBulkIngestGenomes {
         Boolean is_wgs = true
         # End GvsImportGenomes
 
+        # Dump these parquet files to a bucket already
+        String output_gcs_dir
+
         Boolean use_compressed_references = false
     }
 

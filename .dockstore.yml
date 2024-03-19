@@ -183,6 +183,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1245
+             - hatcher_testing_parquet
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset

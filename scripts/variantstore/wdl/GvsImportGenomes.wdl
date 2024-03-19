@@ -41,6 +41,10 @@ workflow GvsImportGenomes {
     String? gatk_docker
     File? load_data_gatk_override
     String? billing_project_id
+
+    # Dump these parquet files to a bucket
+    String output_gcs_dir
+
     Boolean is_wgs = true
   }
 
@@ -156,6 +160,7 @@ workflow GvsImportGenomes {
         load_vcf_headers = load_vcf_headers,
         billing_project_id = billing_project_id,
         use_compressed_references = use_compressed_references,
+        output_gcs_dir = output_gcs_dir,
     }
   }
 
@@ -244,6 +249,8 @@ task LoadData {
     Boolean use_compressed_references = false
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
+
+    String output_gcs_dir
 
     String gatk_docker
     File? gatk_override
@@ -365,18 +372,24 @@ task LoadData {
         --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
-        --output-type BQ \
-        --enable-reference-ranges ~{load_vet_and_ref_ranges} \
-        --enable-vet ~{load_vet_and_ref_ranges} \
+        --output-type PARQUET \
+        --enable-reference-ranges false \
+        --enable-vet true \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
-        --enable-vcf-headers ~{load_vcf_headers} \
+        --enable-vcf-headers false \
         --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz
       rm input_vcf_$i.vcf.gz.tbi
+
+      OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+      # the file name is a little wonky, so let's just grab the file using such a star statement
+      gsutil cp *.parquet ${OUTPUT_GCS_DIR}/
+
+      rm *.parquet
 
     done
   >>>
