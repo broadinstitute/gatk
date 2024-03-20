@@ -360,9 +360,10 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
-      updated_input_vcf=input_vcf_$i.vcf.gz
+      updated_input_vcf=input_vcf_$i_$sample_name.vcf.gz
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
+#      updated_input_vcf=input_vcf_$i_$sample_name.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
@@ -382,8 +383,8 @@ task LoadData {
         --enable-vcf-headers false \
         --use-compressed-refs ~{use_compressed_references}
 
-      rm input_vcf_$i.vcf.gz
-      rm input_vcf_$i.vcf.gz.tbi
+      rm $updated_input_vcf
+      rm ${updated_input_vcf}.tbi
 
       OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
       # the file name is a little wonky, so let's just grab the file using such a star statement
