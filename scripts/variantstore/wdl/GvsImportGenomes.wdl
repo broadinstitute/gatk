@@ -360,7 +360,7 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      updated_input_vcf=input_vcf_$i_$sample_name.vcf.gz
+      updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
       gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
       gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
 #      updated_input_vcf=input_vcf_$i_$sample_name.vcf.gz
