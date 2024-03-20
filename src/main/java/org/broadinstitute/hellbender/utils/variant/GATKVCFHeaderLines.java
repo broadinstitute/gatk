@@ -224,6 +224,7 @@ public class GATKVCFHeaderLines {
 
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of somatic events in best supporting haplotype for each alt allele"));
+        addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_REGION_KEY, 1, VCFHeaderLineType.Integer, "Number of potential somatic events in the assembly region"));
         addInfoLine(new VCFInfoHeaderLine(NORMAL_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Normal log 10 likelihood ratio of diploid het or hom alt genotypes"));
         addInfoLine(new VCFInfoHeaderLine(TUMOR_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log 10 likelihood ratio score of variant existing versus not existing"));
         addFormatLine(new VCFFormatHeaderLine(TUMOR_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log 10 likelihood ratio score of variant existing versus not existing"));

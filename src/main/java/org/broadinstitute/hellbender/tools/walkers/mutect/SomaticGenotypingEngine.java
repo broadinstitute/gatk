@@ -264,7 +264,9 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             }
         }
         final List<VariantContext> outputCallsWithEventCountAnnotation = outputCalls.stream()
-                .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCountAnnotations.get(vc)).make())
+                .map(vc -> new VariantContextBuilder(vc)
+                        .attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCountAnnotations.get(vc))
+                        .attribute(GATKVCFConstants.EVENT_COUNT_IN_REGION_KEY, potentialSomaticEventsInRegion.size()).make())
                 .collect(Collectors.toList());
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
     }
