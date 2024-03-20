@@ -25,6 +25,8 @@ coverage:
         branches: null
         informational: true
 
+ignore:
+  - "src/test"
 
 comment:
   layout: "header, diff, changes, sunburst, uncovered, tree"
