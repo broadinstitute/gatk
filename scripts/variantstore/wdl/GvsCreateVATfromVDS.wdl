@@ -3,8 +3,6 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# Why isn't this updating?
-
 workflow GvsCreateVATfromVDS {
     input {
         File sites_only_vcf
@@ -14,7 +12,7 @@ workflow GvsCreateVATfromVDS {
         String hail_generate_sites_only_script_path
         String output_path
         String project_id
-        File vds_path
+#        File vds_path
 
         String? basic_docker
         String? git_branch_or_tag
@@ -57,9 +55,9 @@ workflow GvsCreateVATfromVDS {
         project_id: {
             help: "Google project ID for the GVS BigQuery dataset"
         }
-        vds_path: {
-            help: "the top-level directory of the GVS VDS to be used to create the VAT"
-        }
+#        vds_path: {
+#            help: "the top-level directory of the GVS VDS to be used to create the VAT"
+#        }
     }
 
 
