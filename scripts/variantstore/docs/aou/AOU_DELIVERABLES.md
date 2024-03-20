@@ -16,6 +16,7 @@
   - [GvsCreateFilterSet](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateFilterSet) workflow
   - [GvsExtractAvroFilesForHail](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractAvroFilesForHail) workflow
   - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow
+  - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow
   - [GvsExtractCallsetPgenMerged](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallsetPgenMerged) workflow
   - [GvsCallsetStatistics](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetStatistics) workflow
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
@@ -72,8 +73,9 @@
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
 1. `GvsCallsetStatistics` workflow
-    - You will need to run `GvsPrepareRangesCallset` workflow first, if it has not been run already. Note that running this workflow is also a prerequisite for running the `GvsExtractCallsetPgenMerged` workflow discussed below.
-       - This workflow transforms the data in the vet, ref_ranges, and sample_info tables into a schema optimized for callset stats creation and for calculating sensitivity and precision, as well as for PGEN extract.
+    - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
+       - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
+       - The `only_output_vet_tables` input should be set to `true` (the default value is `false`).
        - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
        - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
        - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
@@ -81,13 +83,15 @@
     - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
     - This workflow needs to be run with the `filter_set_name` input from `GvsCreateFilterSet` step.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-1. `GvsExtractCallsetPgenMerged` workflow
-    - Run the `GvsPrepareRangesCallset` workflow first following the steps described above for the `GvsCallsetStatistics` workflow.
+1. `GvsExtractCallset` / `GvsExtractCallsetPgenMerged` workflow
+    - Note that these instructions will need to be repeated for each "[Region](https://support.researchallofus.org/hc/en-us/articles/14929793660948-Smaller-Callsets-for-Analyzing-Short-Read-WGS-SNP-Indel-Data-with-Hail-MT-VCF-and-PLINK)" (interval list) for which a PGEN or VCF deliverable is required for the callset.
+        - This workflow transforms the data in the vet tables into a schema optimized for extract.
+        - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
+        - `extract_table_prefix` should be set to a name that is unique to the given Region / interval list. See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use.
+        - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, and `extract_table_prefix` that were used in the `GvsPrepareRangesCallset` run documented above.
-    - Specify the `interval_list` and `interval_weights_bed` appropriate for the PGEN extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart. The expectation is that there will be multiple PGEN extraction runs for a variety of interval lists:
-      - [Exome-only](https://broadworkbench.atlassian.net/browse/VS-1279)
-      - [ACAF threshold](https://broadworkbench.atlassian.net/browse/VS-1109)
-      - others?
+    - Specify the `interval_list` and `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart. The expectation is that there will be multiple PGEN extraction runs for a variety of interval lists:
+    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCalculatePrecisionAndSensitivity` workflow
     - Please see the detailed instructions for running the Precision and Sensitivity workflow [here](../../tieout/AoU_PRECISION_SENSITIVITY.md).
 1. `GvsCallsetCost` workflow
