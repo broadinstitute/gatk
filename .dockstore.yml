@@ -420,7 +420,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1254_test_out_pgen
          - EchoCallset
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
@@ -429,7 +428,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1254_test_out_pgen
          - EchoCallset
    - name: MergePgenHierarchicalWdl
      subclass: WDL
@@ -438,5 +436,4 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1254_test_out_pgen
          - EchoCallset
