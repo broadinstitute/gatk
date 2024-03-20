@@ -7,6 +7,7 @@ import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCr
 
 workflow GvsCreateVATfromVDS {
     input {
+        File sites_only_vcf
         File ancestry_file
         String dataset_name
         String filter_set_name
@@ -93,25 +94,25 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    call GenerateSitesOnlyVcf {
-        input:
-            vds_path = vds_path,
-            use_classic_VQSR = use_classic_VQSR,
-            workspace_project = effective_google_project,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
-            ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
-            workspace_bucket = GetToolVersions.workspace_bucket,
-            region = "us-central1",
-            gcs_subnetwork_name = "subnetwork",
-            leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            variants_docker = effective_variants_docker,
-    }
+#    call GenerateSitesOnlyVcf {
+#        input:
+#            vds_path = vds_path,
+#            use_classic_VQSR = use_classic_VQSR,
+#            workspace_project = effective_google_project,
+#            hail_version = effective_hail_version,
+#            hail_wheel = hail_wheel,
+#            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
+#            ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
+#            workspace_bucket = GetToolVersions.workspace_bucket,
+#            region = "us-central1",
+#            gcs_subnetwork_name = "subnetwork",
+#            leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
+#            variants_docker = effective_variants_docker,
+#    }
 
     call Utils.IndexVcf {
         input:
-            input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
+            input_vcf = sites_only_vcf,
             gatk_docker = effective_gatk_docker,
     }
 
@@ -128,7 +129,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(GenerateSitesOnlyVcf.sites_only_vcf, ".sites-only.vcf")
+    String sites_only_vcf_basename = basename(sites_only_vcf, ".sites-only.vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -136,7 +137,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
+                input_vcf = sites_only_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
@@ -233,7 +234,7 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        String cluster_name = GenerateSitesOnlyVcf.cluster_name
+#        String cluster_name = GenerateSitesOnlyVcf.cluster_name
         File dropped_sites_file = MergeTsvs.output_file
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
@@ -533,6 +534,7 @@ task AnnotateVCF {
         String variants_nirvana_docker
 
         File omim_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga"
+        # TODO - these may be big? Do you really want to localize them?
         File cosmic_gene_fusion_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/COSMIC_GeneFusions_94.gfj"
         File primate_ai_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/PrimateAI_0.2.nsa"
         File primate_ai_annotations_idx = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/PrimateAI_0.2.nsa.idx"
