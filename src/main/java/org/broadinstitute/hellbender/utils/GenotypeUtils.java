@@ -192,6 +192,6 @@ public final class GenotypeUtils {
     }
 
     public static boolean shouldBeCalled(final Genotype g) {
-        return !g.isNonInformative() || g.hasGQ();
+        return !g.isNonInformative() || (g.hasGQ() && g.getGQ() > 0);
     }
 }
