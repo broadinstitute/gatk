@@ -85,12 +85,13 @@
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsExtractCallset` / `GvsExtractCallsetPgenMerged` workflow
     - You will need to run the `GvsPrepareRangesCallset` workflow for each "[Region](https://support.researchallofus.org/hc/en-us/articles/14929793660948-Smaller-Callsets-for-Analyzing-Short-Read-WGS-SNP-Indel-Data-with-Hail-MT-VCF-and-PLINK)" (interval list) for which a PGEN or VCF deliverable is required for the callset.
-        - This workflow transforms the data in the vet tables into a schema optimized for extract.
+        - This workflow transforms the data in the vet, ref_ranges, and samples tables into a schema optimized for extract.
         - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
-        - `extract_table_prefix` should be set to a name that is unique to the given Region / interval list. See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use.
+        - `extract_table_prefix` should be set to a name that is unique to the given Region / interval list. See the [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use.
+        - Specify the `interval_list` appropriate for the PGEN / VCF extraction run you are performing.
         - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-    - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, and `extract_table_prefix` that were used in the `GvsPrepareRangesCallset` run documented above.
-    - Specify the `interval_list` and `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart. The expectation is that there will be multiple PGEN extraction runs for a variety of interval lists:
+    - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, and `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
+    - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - These workflows do not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCalculatePrecisionAndSensitivity` workflow
     - Please see the detailed instructions for running the Precision and Sensitivity workflow [here](../../tieout/AoU_PRECISION_SENSITIVITY.md).
