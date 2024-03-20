@@ -387,9 +387,10 @@ task LoadData {
 
       OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
       # the file name is a little wonky, so let's just grab the file using such a star statement
-      gcloud storage ~{"--billing-project " + billing_project_id} cp *.parquet ${OUTPUT_GCS_DIR}/
-      # gsutil cp *.parquet ${OUTPUT_GCS_DIR}/
+      parquet_file=`ls *.parquet`
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $parquet_file ${OUTPUT_GCS_DIR}/$parquet_file
 
+      # cleanup after ourselves
       rm *.parquet
 
     done
