@@ -67,7 +67,7 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
         final boolean ignoreNormalArtifact = germlineProbability > GERMLINE_PROBABILITY_TO_IGNORE_NORMAL_ARTIFACT;
 
         final double artifactProbability = probabilitiesByFilter.entrySet().stream()
-                .filter(e -> e.getKey().errorType() == ErrorType.ARTIFACT)
+                .filter(e -> e.getKey().errorType() != ErrorType.NON_SOMATIC)
                 .filter(e -> !(ignoreNormalArtifact && e.getKey().filterName() == GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME))
                 .filter(e -> !e.getKey().filterName().equals(filterName())) // exclude the haplotype filter itself, which would be circular
                 .flatMap(e -> e.getValue().stream())  // the value is a list of double, we need the max of all the lists
