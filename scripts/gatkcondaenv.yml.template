@@ -66,3 +66,4 @@ dependencies:
 # pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
 - pip:
   - gatkPythonPackageArchive.zip
+  - xgboost==1.5.2
