@@ -17,24 +17,28 @@ public enum VariantType {
      * following our definitions.
      */
     public static boolean checkVariantType(final VariantContext vc,
-                                           final VariantContext resourceVC) {
+                                           final VariantContext resourceVC,
+                                           final VariantType mnpType) {
         switch (resourceVC.getType()) {
             case SNP:
             case MNP:
-                return getVariantType(vc) == SNP;
+                return getVariantType(vc, mnpType) == mnpType;
             case INDEL:
             case MIXED:
             case SYMBOLIC:
-                return getVariantType(vc) == INDEL;
+                return getVariantType(vc, mnpType) == INDEL;
             default:
                 return false;
         }
     }
 
-    public static VariantType getVariantType(final VariantContext vc) {
-        if (vc.isSNP() || vc.isMNP()) {
+    public static VariantType getVariantType(final VariantContext vc,
+                                             final VariantType mnpType) {
+        if (vc.isSNP()) {
             return SNP;
-        } else if (vc.isStructuralIndel() || vc.isIndel() || vc.isMixed() || vc.isSymbolic()) {
+        } else if (vc.isMNP()) {
+            return mnpType;
+        } if (vc.isStructuralIndel() || vc.isIndel() || vc.isMixed() || vc.isSymbolic()) {
             return INDEL;
         } else {
             throw new IllegalStateException("Encountered unknown variant type: " + vc.getType());
@@ -48,10 +52,14 @@ public enum VariantType {
      * from which this method originated.
      */
     public static VariantType getAlleleSpecificVariantType(final VariantContext vc,
-                                                           final Allele allele) {
+                                                           final Allele allele,
+                                                           final VariantType mnpType) {
         if (vc.getReference().length() == allele.length()) {
+            if (vc.getReference().length() == 1) {
+                return SNP;
+            }
             // note that spanning deletions would be considered SNPs by this logic
-            return SNP;
+            return mnpType;
         }
         return INDEL;
     }

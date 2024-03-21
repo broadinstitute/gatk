@@ -95,6 +95,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     public static final String RESOURCE_MATCHING_STRATEGY_LONG_NAME = "resource-matching-strategy";
     public static final String OMIT_ALLELES_IN_HDF5_LONG_NAME = "omit-alleles-in-hdf5";
     public static final String DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME = "do-not-gzip-vcf-output";
+    public static final String MNP_TYPE_LONG_NAME = "mnp-type";
 
     public static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
 
@@ -177,6 +178,13 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             optional = true
     )
     boolean doNotGZIPVCFOutput = false;
+
+    @Argument(
+            fullName = MNP_TYPE_LONG_NAME,
+            doc = "MNPs with equal reference and alternate allele lengths will be classifed as this variant type.",
+            optional = true
+    )
+    VariantType mnpType = VariantType.SNP;
 
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     Set<VariantType> variantTypesToExtract;
@@ -339,7 +347,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         if (!useASAnnotations) {
             // in non-allele-specific mode, get a singleton list of the triple
             // (list of alt alleles passing variant-type and resource-match checks, variant type, set of labels)
-            final VariantType variantType = VariantType.getVariantType(vc);
+            final VariantType variantType = VariantType.getVariantType(vc, mnpType);
             if (variantTypesToExtract.contains(variantType)) {
                 final TreeSet<String> matchingResourceLabels = findMatchingResourceLabels(vc, null, featureContext);
                 if (isExtractUnlabeled || !matchingResourceLabels.isEmpty()) {
@@ -352,8 +360,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             // corresponding to alt alleles that pass variant-type and resource-match checks
             return vc.getAlternateAlleles().stream()
                     .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
-                    .filter(a -> variantTypesToExtract.contains(VariantType.getAlleleSpecificVariantType(vc, a)))
-                    .map(a -> Triple.of(Collections.singletonList(a), VariantType.getAlleleSpecificVariantType(vc, a),
+                    .filter(a -> variantTypesToExtract.contains(VariantType.getAlleleSpecificVariantType(vc, a, mnpType)))
+                    .map(a -> Triple.of(Collections.singletonList(a), VariantType.getAlleleSpecificVariantType(vc, a, mnpType),
                             findMatchingResourceLabels(vc, a, featureContext)))
                     .filter(t -> isExtractUnlabeled || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
@@ -373,7 +381,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             final List<VariantContext> resourceVCs = featureContext.getValues(resource, featureContext.getInterval().getStart());
             for (final VariantContext resourceVC : resourceVCs) {
                 // we should have set resourceMatchingStrategy = ResourceMatchingStrategy.START_POSITION_AND_MINIMAL_REPRESENTATION if useASAnnotations is true
-                if (isMatchingVariant(vc, resourceVC, altAllele, !doNotTrustAllPolymorphic, resourceMatchingStrategy)) {
+                if (isMatchingVariant(vc, resourceVC, altAllele, !doNotTrustAllPolymorphic, resourceMatchingStrategy, mnpType)) {
                     resource.getTagAttributes().entrySet().stream()
                             .filter(e -> e.getValue().equals("true"))
                             .map(Map.Entry::getKey)
@@ -391,8 +399,9 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                                              final VariantContext resourceVC,
                                              final Allele altAllele,
                                              final boolean trustAllPolymorphic,
-                                             final ResourceMatchingStrategy resourceMatchingStrategy) {
-        if (resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantType.checkVariantType(vc, resourceVC) &&
+                                             final ResourceMatchingStrategy resourceMatchingStrategy,
+                                             final VariantType mnpType) {
+        if (resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantType.checkVariantType(vc, resourceVC, mnpType) &&
                 (trustAllPolymorphic || !resourceVC.hasGenotypes() || resourceVC.isPolymorphicInSamples())) { // this is the check originally performed by VQSR
             switch (resourceMatchingStrategy) {
                 case START_POSITION:
