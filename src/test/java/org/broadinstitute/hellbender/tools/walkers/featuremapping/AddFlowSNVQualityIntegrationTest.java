@@ -32,7 +32,7 @@ public class AddFlowSNVQualityIntegrationTest extends CommandLineProgramTest {
                 "-O", outputFile.getAbsolutePath(),
                 "-I", publicTestDir + FlowTestConstants.ADD_FLOW_SNVQ_DATA_DIR + "/add_flow_snvq_input.bam",
                 "-L", "chr1:1-15000",
-                "--limit-phred-score", "50",
+                "--max-phred-score", "50",
                 "--debug-read-name", "30020185_2-UGAv3-182-1989782468",
                 "--verbosity", "INFO"
         };

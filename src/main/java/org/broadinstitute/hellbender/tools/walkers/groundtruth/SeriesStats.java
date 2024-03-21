@@ -67,21 +67,6 @@ public class SeriesStats {
         }
     }
 
-    public void aux(int v, int auxValue) {
-        aux((double)v, auxValue);
-    }
-
-    public void aux(double v, int auxValue) {
-
-        if ( auxBins.containsKey(v) ) {
-            auxBins.get(v).add(auxValue);
-        } else {
-            SeriesStats ss = new SeriesStats();
-            ss.add(auxValue);
-            auxBins.put(v, ss);
-        }
-    }
-
     public double getLast() {
         return last;
     }

@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class AddFlowSNVQualityArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
-    public static final String LIMIT_PHRED_SCORE_FULL_NAME = "limit-phred-score";
+    public static final String MAX_PHRED_SCORE_FULL_NAME = "max-phred-score";
     public static final String KEEP_SUPPLEMENTARY_ALIGNMENTS_FULL_NAME = "keep-supplementary-alignments";
     public static final String INCLUDE_QC_FAILED_READ_FULL_NAME = "include-qc-failed-read";
     public static final String SNVQ_MODE_FULL_NAME = "snvq-mode";
@@ -30,8 +30,8 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
      *  maximum value for
      *  delta in score
      **/
-    @Argument(fullName = LIMIT_PHRED_SCORE_FULL_NAME, doc = "Limit value for phred scores", optional = true)
-    public double limitPhredScore = Double.NaN;
+    @Argument(fullName = MAX_PHRED_SCORE_FULL_NAME, doc = "Limit value for phred scores", optional = true)
+    public double maxPhredScore = Double.NaN;
 
     /**
      *  keep supplementary alignments?
@@ -46,7 +46,7 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
     /**
      * snvq computation mode
      */
-    @Argument(fullName = SNVQ_MODE_FULL_NAME, doc = "ksnvq computation mode", optional = true)
+    @Argument(fullName = SNVQ_MODE_FULL_NAME, doc = "snvq computation mode", optional = true)
     public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
 
     /**

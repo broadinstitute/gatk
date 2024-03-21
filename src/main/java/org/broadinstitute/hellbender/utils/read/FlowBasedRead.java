@@ -254,33 +254,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
 
     }
 
-    public FlowBasedRead(final FlowBasedRead other, final boolean deepCopy) {
-        super(other.samRecord);
-        if ( deepCopy ) {
-            forwardSequence = other.forwardSequence.clone();
-            key = other.key.clone();
-            flow2base = other.flow2base.clone();
-            flowOrder = other.flowOrder.clone();
-            flowMatrix = other.flowMatrix.clone();
-        } else {
-            forwardSequence = other.forwardSequence;
-            key = other.key;
-            flow2base = other.flow2base;
-            flowOrder = other.flowOrder;
-            flowMatrix = other.flowMatrix;
-        }
-        maxHmer = other.maxHmer;
-        validKey = other.validKey;
-        direction = other.direction;
-        baseClipped = other.baseClipped;
-        trimLeftBase = other.trimLeftBase;
-        trimRightBase = other.trimRightBase;
-        fbargs = other.fbargs;
-        readInsQuals = other.readInsQuals;
-        readDelQuals = other.readDelQuals;
-        overallGCP = other.overallGCP;
-    }
-
     //since the last unclipped flow is uncertain (we give high probabilities to
     //also hmers higher than the called hmer)
     private void spreadFlowLengthProbsAcrossCountsAtFlow(final int flowToSpread) {
@@ -332,8 +305,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         // access qual, convert to flow representation
         final byte[]      quals = samRecord.getBaseQualities();
         final byte[]      tp = samRecord.getSignedByteArrayAttribute(FLOW_MATRIX_TAG_NAME);
-        // initialize matrix
-
 
         boolean specialTreatmentForZeroCalls = false;
         final byte[]      t0 = SAMUtils.fastqToPhred(samRecord.getStringAttribute(FLOW_MATRIX_T0_TAG_NAME));

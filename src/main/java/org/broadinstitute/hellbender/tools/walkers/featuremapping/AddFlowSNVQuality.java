@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.utils.read.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 @CommandLineProgramProperties(
         summary = "This program converts the flow qualities that Ultima Genomics CRAM reports to more conventional base qualities. Specifically, the reported BQ will report the probability that a specific base is a sequencing error mismatch, while auxilary tags qa, qt, qg, qc report specific probability that a specific base X is a A->X error. Since mismatch error in flow-based chemistries can only occur as a result of several indel errors, we implemented three strategies to estimate the probability of a mismatch:",
@@ -63,6 +62,12 @@ public final class AddFlowSNVQuality extends ReadWalker {
     private SeriesStats                         outputQCalledStats = new SeriesStats();
     private SeriesStats                         outputSumPStats = new SeriesStats();
 
+    // private class to hold the base probabilities and SNVQ probabilties for a read
+    class ReadProbs {
+        double[] baseProbs;
+        double[][] snvqProbs; // length of first dimension is flow order length
+    }
+
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
@@ -103,7 +108,7 @@ public final class AddFlowSNVQuality extends ReadWalker {
         }
 
         // add SNVQ attributes
-        addBaseQuality(read, getHeaderForReads(), aqArgs.limitPhredScore, fbargs);
+        addBaseQuality(read, getHeaderForReads(), aqArgs.maxPhredScore, fbargs);
 
         // collect output stats
         if ( aqArgs.debugCollectStatsInto != null ) {
@@ -244,58 +249,59 @@ public final class AddFlowSNVQuality extends ReadWalker {
         return "q" + Character.toLowerCase(nonCalledBase);
     }
 
-    public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double limitPhoreScore, FlowBasedArgumentCollection fbargs) {
+    public void addBaseQuality(final GATKRead read, final SAMFileHeader hdr, double maxPhredScore, FlowBasedArgumentCollection fbargs) {
 
         // take in phred score limit
-        if ( !Double.isNaN(limitPhoreScore) ) {
-            maxQualityScore = (int)limitPhoreScore;
-            minLikelihoodProbRate = Math.pow(10, -limitPhoreScore / 10.0);
+        if ( !Double.isNaN(maxPhredScore) ) {
+            maxQualityScore = (int)maxPhredScore;
+            minLikelihoodProbRate = Math.pow(10, -maxPhredScore / 10.0);
         }
 
         // convert to a flow base read
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(hdr, read);
         final FlowBasedRead fbRead = new FlowBasedRead(read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-        final int flowOrderLength = calcFlowOrderLength(rgInfo.flowOrder);
+        final int flowOrderLength = FlowBasedReadUtils.calcFlowOrderLength(rgInfo.flowOrder);
 
-        // generate base quality
-        final AtomicReference<double[][]> snvResultRef = new AtomicReference<>();
-        final double[]      baseErrorProb = generateBaseErrorProbability(fbRead, flowOrderLength, rgInfo.flowOrder.getBytes(), snvResultRef);
+        // generate base and snvq probabilities for the read
+        final ReadProbs readProbs = generateFlowReadBaseAndSNVQErrorProbabilities(fbRead, flowOrderLength, rgInfo.flowOrder.getBytes());
 
         // install in read
-        read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, new String(convertErrorProbToPhred(baseErrorProb, true)));
+        read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, new String(convertErrorProbToFastq(readProbs.baseProbs)));
         for ( int i = 0 ; i < flowOrderLength ; i++ ) {
             final String name = AddFlowSNVQuality.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
-            read.setAttribute(name, new String(convertErrorProbToPhred(snvResultRef.get()[i], true)));
+            read.setAttribute(name, new String(convertErrorProbToFastq(readProbs.snvqProbs[i])));
         }
     }
 
-    private byte[] convertErrorProbToPhred(double[] errorProb, boolean asciiBase) {
+    // Not using SamUtils function since normally an error probability can not be zero.
+    // still, this method is called to convert base quality as well as snvq, which is computed.
+    // the following check is a safety, in case snvq produces a zero.
+    private char[] convertErrorProbToFastq(double[] errorProb) {
 
-        final byte floor = asciiBase ? (byte)PHRED_ASCII_BASE : 0;
-
-        final byte[] phred = new byte[errorProb.length];
+        final char[] fastq = new char[errorProb.length];
         for ( int i = 0 ; i < errorProb.length ; i++ ) {
 
-            // normally an error probability can not be zero.
-            // still, this method is called to convert base quality as well as snvq, which is computed.
-            // the following check is a safety, in case snvq produces a zero.
             if ( errorProb[i] == 0 ) {
-                phred[i] = (byte)(maxQualityScore + floor);
+                fastq[i] = (char)(maxQualityScore + PHRED_ASCII_BASE);
             } else {
-                phred[i] = (byte)(Math.min(maxQualityScore, Math.round(-10 * Math.log10(errorProb[i]))) + floor);
+                final double p = errorProb[i];
+                final int phred =  (int)Math.round(-10 * Math.log10(p));
+                fastq[i] = SAMUtils.phredToFastq(phred);
             }
         }
-        return phred;
+        return fastq;
     }
 
-    private int calcFlowOrderLength(String flowOrder) {
-
-        final int i = flowOrder.indexOf(flowOrder.charAt(0), 1);
-
-        return (i < 0) ? flowOrder.length() : i;
-    }
-
-    private double[] generateBaseErrorProbability(final FlowBasedRead fbRead, final int flowOrderLength, byte[] flowOrder, AtomicReference<double[][]> snvResultRef) {
+    /**
+     * generate base and snvq probabilties for a read.
+     *
+     * @param fbRead a flow based read
+     * @param flowOrderLength number of bases in flow order (essentially number of valid base values)
+     * @param flowOrder the flow order itself (which can be the size of flowOrderLength or a repeat of it
+     *
+     * @return an instance of a private class containing the base probabilities as well as the snvq probabilities
+     */
+    private ReadProbs generateFlowReadBaseAndSNVQErrorProbabilities(final FlowBasedRead fbRead, final int flowOrderLength, byte[] flowOrder) {
 
         /**
          * access key and error probabilities
@@ -303,13 +309,13 @@ public final class AddFlowSNVQuality extends ReadWalker {
          */
         final int[]       key = fbRead.getKey();
         final double[][]  errorProbBands = extractErrorProbBands(fbRead, minLikelihoodProbRate);
-        final double[]    result = new double[fbRead.getBasesNoCopy().length];
 
-        final double[][]  snvResult = new double[flowOrderLength][];
-        for ( int i = 0 ; i < snvResult.length ; i++ ) {
-            snvResult[i] = new double[result.length];
+        // allocate returned prob arrays
+        final double[]    baseProbs = new double[fbRead.getBasesNoCopy().length];
+        final double[][]  snvqProbs = new double[flowOrderLength][];
+        for ( int i = 0 ; i < snvqProbs.length ; i++ ) {
+            snvqProbs[i] = new double[baseProbs.length];
         }
-        snvResultRef.set(snvResult);
 
         // loop over hmers via flow key
         int               base = 0;
@@ -329,12 +335,12 @@ public final class AddFlowSNVQuality extends ReadWalker {
                 final double[]    hmerBaseErrorProbs = generateHmerBaseErrorProbabilities(key, errorProbBands, flow, flowOrderLength, flowOrder, allBaseProb0, allBaseProb1);
 
                 // install value in first byte of the hmer
-                result[base++] = hmerBaseErrorProbs[0];  // first base, or only base in case of a single base hmer
+                baseProbs[base++] = hmerBaseErrorProbs[0];  // first base, or only base in case of a single base hmer
                 for ( int i = 0 ; i < flowOrderLength ; i++ ) {
                     if ( allBaseProb0.containsKey(flowOrder[i]) ) {
-                        snvResult[i][base - 1] = allBaseProb0.get(flowOrder[i]);
+                        snvqProbs[i][base - 1] = allBaseProb0.get(flowOrder[i]);
                     } else if ( i != flow_i ) {
-                        snvResult[i][base - 1] = minLikelihoodProbRate;
+                        snvqProbs[i][base - 1] = minLikelihoodProbRate;
                     }
                 }
 
@@ -345,25 +351,25 @@ public final class AddFlowSNVQuality extends ReadWalker {
                     base += (hmerLength - 2);
 
                     // fill last base from computed error probability
-                    result[base++] = hmerBaseErrorProbs[1]; // last base, if hmer is longer than 1
+                    baseProbs[base++] = hmerBaseErrorProbs[1]; // last base, if hmer is longer than 1
 
                     for ( int i = 0 ; i < flowOrderLength ; i++ ) {
                         if ( allBaseProb1.containsKey(flowOrder[i]) ) {
                             final double p = allBaseProb1.get(flowOrder[i]);
                             for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
-                                snvResult[i][base - 1 - j] = (j == 0) ? p : minLikelihoodProbRate; // all but last get the min prob
+                                snvqProbs[i][base - 1 - j] = (j == 0) ? p : minLikelihoodProbRate; // all but last get the min prob
                             }
                         } else if ( i != flow_i ) {
                             for ( int j = 0 ; j < hmerLength - 1 ; j++ ) {
-                                snvResult[i][base - 1 - j] = minLikelihoodProbRate;
+                                snvqProbs[i][base - 1 - j] = minLikelihoodProbRate;
                             }
                         }
                     }
                 }
 
                 // override result for the last base with the original hmer error probability
-                if ( base == result.length ) {
-                    result[base - 1] = errorProbBands[ERROR_PROB_BAND_KEY][flow];
+                if ( base == baseProbs.length ) {
+                    baseProbs[base - 1] = errorProbBands[ERROR_PROB_BAND_KEY][flow];
                 }
             }
         }
@@ -378,8 +384,8 @@ public final class AddFlowSNVQuality extends ReadWalker {
             int calledIndex = -1;
             for (int i = 0; i < flowOrderLength; i++) {
                 if ( calledBase != flowOrder[i] ) {
-                    snvResult[i][ofs] = Math.max(minLikelihoodProbRate, snvResult[i][ofs]);
-                    altP += snvResult[i][ofs];
+                    snvqProbs[i][ofs] = Math.max(minLikelihoodProbRate, snvqProbs[i][ofs]);
+                    altP += snvqProbs[i][ofs];
                 } else {
                     calledIndex = i;
                 }
@@ -389,13 +395,17 @@ public final class AddFlowSNVQuality extends ReadWalker {
             }
 
             // install probability in called base slot
-            snvResult[calledIndex][ofs] = Math.max(0, 1 - altP);
+            snvqProbs[calledIndex][ofs] = Math.max(0, 1 - altP);
 
             // at this point, bq becomes trivial (?)
-            result[ofs] = 1 - snvResult[calledIndex][ofs];
+            baseProbs[ofs] = 1 - snvqProbs[calledIndex][ofs];
         }
 
-        return result;
+        // build return value
+        ReadProbs readProbs = new ReadProbs();
+        readProbs.baseProbs = baseProbs;
+        readProbs.snvqProbs = snvqProbs;
+        return readProbs;
     }
 
     // extract error probability bands. middle (1) band is the key prob.
@@ -459,7 +469,6 @@ public final class AddFlowSNVQuality extends ReadWalker {
         final int maxIndex = Math.min(flow + (flowOrderLength - 1), key.length - 1);
         final int[] slice = Arrays.copyOfRange(key, minIndex, maxIndex + 1);
         final int hmerLength = key[flow];
-        final double[] p12 = new double[2];
 
         // walk the flows towards the side until (and including) the first non-zero key
         // on hmers of length 1 we walk both sides
@@ -484,7 +493,7 @@ public final class AddFlowSNVQuality extends ReadWalker {
                 final int[] altSlice = Arrays.copyOf(slice, slice.length);
                 altSlice[sideFlow - minIndex] += 1;
                 altSlice[flow - minIndex] -= 1;
-                if ( sliceIsValid(altSlice, flowOrderLength) ) {
+                if ( sliceIsValidForConsideration(altSlice, flowOrderLength) ) {
                     SliceInfo si = new SliceInfo();
                     si.slice = altSlice;
                     si.altByte = flowOrder[sideFlow % flowOrderLength];
@@ -501,39 +510,41 @@ public final class AddFlowSNVQuality extends ReadWalker {
 
         // at this point, we have a list of valid slices. figure out the error probability for each of them
         // and compute the base quality
-        final double keyP = sliceProb(slice, minIndex, key, errorProbBands, flow, flow, null);
+        final double keyP = sliceProbs(slice, minIndex, key, errorProbBands, flow, flow)[0];
         double sumP = keyP;
         for ( final SliceInfo si : slices ) {
-            final double sliceP = sliceProb(si.slice, minIndex, key, errorProbBands, flow, si.sideFlow, p12);
+            final double[] sliceP = sliceProbs(si.slice, minIndex, key, errorProbBands, flow, si.sideFlow);
             if ( allBaseProb != null ) {
-                allBaseProb.put(si.altByte, getSnvq(sliceP, p12[0], p12[1]));
+                allBaseProb.put(si.altByte, getSnvq(sliceP[0], sliceP[1], sliceP[2], aqArgs.snvMode));
             }
-            sumP += sliceP;
+            sumP += sliceP[0];
         }
         final double ep = 1 - (keyP / sumP);
 
         return ep;
     }
 
-    private double getSnvq(final double sliceP, final double p1, final double p2) {
-        if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Legacy ) {
+    static double getSnvq(final double sliceP, final double p1, final double p2, AddFlowSNVQualityArgumentCollection.SnvqModeEnum snvMode) {
+        if ( snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Legacy ) {
             return sliceP;
-        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Optimistic ) {
+        } else if ( snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Optimistic ) {
             return (p1 * p2);
-        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Pessimistic ) {
+        } else if ( snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Pessimistic ) {
             return (1 - (1 - p1) * (1 - p2));
-        } else if ( aqArgs.snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Geometric ) {
+        } else if ( snvMode == AddFlowSNVQualityArgumentCollection.SnvqModeEnum.Geometric ) {
             return Math.sqrt((p1 * p2) * (1 - (1 - p1) * (1 - p2)));
         } else {
-            throw new GATKException("unknown snvqMode: " +  aqArgs.snvMode);
+            throw new GATKException("unknown snvqMode: " +  snvMode);
         }
     }
 
     // compute probability for a slice
-    private static double sliceProb(final int[] slice, final int minIndex, final int[] key, final double[][] errorProbBands,
-                                    final int flow, final int sideFlow, double[] p12) {
+    private static double[] sliceProbs(final int[] slice, final int minIndex, final int[] key, final double[][] errorProbBands,
+                                     final int flow, final int sideFlow) {
 
         double accumulatedP = 1.0;
+        double p1 = 0.0;
+        double p2 = 0.0;
         int key_i = minIndex;
         for ( int i = 0 ; i < slice.length ; i++, key_i++ ) {
             final int hmer = key[key_i];
@@ -551,20 +562,18 @@ public final class AddFlowSNVQuality extends ReadWalker {
             accumulatedP *= p;
 
             // collect p1/p2 (flow and sideFlow probs)
-            if ( p12 != null ) {
-                if ( key_i == flow ) {
-                    p12[0] = p;
-                }
-                if ( key_i == sideFlow ) {
-                    p12[1] = p;
-                }
+            if ( key_i == flow ) {
+                p1 = p;
+            }
+            if ( key_i == sideFlow ) {
+                p2 = p;
             }
         }
 
-        return accumulatedP;
+        return new double[] {accumulatedP, p1, p2};
     }
 
-    private static boolean sliceIsValid(final int[] slice, final int flowOrderLength) {
+    static boolean sliceIsValidForConsideration(final int[] slice, final int flowOrderLength) {
 
         // look for strings of consecutive zeros in length of flowOrderLength - 1
         int     consecutiveZeros = 0;
