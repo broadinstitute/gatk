@@ -79,7 +79,7 @@ public class M2FiltersArgumentCollection {
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
     private static final double DEFAULT_MIN_AF = 0;
 
-    @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Maximum number of non-germline events in a single assembly region.  Filter all variants if exceeded.")
+    @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Maximum number of non-germline events in a single assembly region. Filter all variants if exceeded.")
     public int maxEventsInRegion = DEFAULT_MAX_EVENTS_IN_REGION;
 
     @Argument(fullName = MAX_EVENTS_IN_HAPLOTYPE_LONG_NAME, optional = true, doc = "Maximum number of non-germline events in a variant allele's best haplotype.")
