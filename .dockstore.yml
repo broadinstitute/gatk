@@ -433,3 +433,24 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallsetPgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: MergePgenHierarchicalWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
