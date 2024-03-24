@@ -24,13 +24,18 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String SAMPLE_PLOIDY_LONG_NAME = "sample-ploidy";
     public static final String GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME = "genotype-assignment-method";
     public static final String USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME = "use-posteriors-to-calculate-qual";
-
+    public static final String KEEP_MEDIAN_DP_IN_HOMREF_BLOCKS_FULL_NAME = "keep-median-dp-in-homref-blocks";
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
     public static final int DEFAULT_MAX_GENOTYPE_COUNT = 1024;
 
     @Argument(fullName= USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, shortName="gp-qual", optional = true, doc = "if available, use the genotype posterior probabilities to calculate the site QUAL")
     public boolean usePosteriorProbabilitiesToCalculateQual = false;
+
+    @Argument(fullName = KEEP_MEDIAN_DP_IN_HOMREF_BLOCKS_FULL_NAME,
+              optional = true,
+              doc = "Override the default behavior where the minimum DP (MIN_DP) is used for the DP format annotation")
+    public boolean keepMedianDPInHomRefBlocks = false;
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
