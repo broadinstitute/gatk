@@ -1217,7 +1217,10 @@ public final class GATKVariantContextUtils {
 
         final String ID = rsIDs.isEmpty() ? VCFConstants.EMPTY_ID_FIELD : Utils.join(",", rsIDs);
 
-        final VariantContextBuilder builder = new VariantContextBuilder().source(name).id(ID);
+        // This preserves the GATK3-like behavior of reporting all sources, delimited with hyphen:
+        final String allSources = variantSources.isEmpty() ? name : variantSources.stream().sorted().collect(Collectors.joining("-"));
+
+        final VariantContextBuilder builder = new VariantContextBuilder().source(allSources).id(ID);
         builder.loc(longestVC.getContig(), longestVC.getStart(), longestVC.getEnd());
         builder.alleles(alleles);
         builder.genotypes(genotypes);
