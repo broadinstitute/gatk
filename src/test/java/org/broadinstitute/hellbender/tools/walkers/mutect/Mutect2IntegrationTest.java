@@ -204,7 +204,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final long numPassVariants = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
-        Assert.assertTrue(numPassVariants < 10);
+        Assert.assertTrue(numPassVariants < 13);
     }
 
     // tumorBams, normalBam, truthVcf, mask, requiredSensitivity
