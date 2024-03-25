@@ -40,7 +40,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     private static final Logger logger = LogManager.getLogger(AlleleLikelihoods.class);
 
     private boolean isNaturalLog = false;
-    private SimpleInterval subsettedGenomicLoc;
     private int filteredHaplotypeCount = 0;
 
     public boolean isNaturalLog() {
@@ -1205,17 +1204,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             }
         }
         return result;
-    }
-
-    public void setVariantCallingSubsetUsed(final SimpleInterval loc) {
-        this.subsettedGenomicLoc = loc;
-    }
-
-    /**
-     * Returns the location used for subsetting. May be null.
-     */
-    public SimpleInterval getVariantCallingSubsetApplied() {
-        return subsettedGenomicLoc;
     }
 
     /**

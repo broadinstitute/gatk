@@ -39,12 +39,23 @@ public final class GenotypePriorCalculator {
 
     // A snp can go to 3 different bases (standard-nucs - 1), so we normalize SNP lks accordingly. Here is the
     // log10 constant used for that:
-    private static final double LOG10_SNP_NORMALIZATION_CONSTANT =
+    public static final double LOG10_SNP_NORMALIZATION_CONSTANT =
             Math.log10(Nucleotide.STANDARD_BASES.size() - 1);
 
     private final double[] hetValues;
     private final double[] homValues;
     private final double[] diffValues;
+
+    // constructor for flat prior
+    private GenotypePriorCalculator() {
+        hetValues = new double[NUMBER_OF_ALLELE_TYPES];
+        homValues = new double[NUMBER_OF_ALLELE_TYPES];
+        diffValues = new double[NUMBER_OF_ALLELE_TYPES];
+    }
+
+    public static GenotypePriorCalculator flatPrior() {
+        return new GenotypePriorCalculator();
+    }
 
     private GenotypePriorCalculator(final double snpHet, final double snpHom,
                                           final double indelHet, final double indelHom,
@@ -149,6 +160,7 @@ public final class GenotypePriorCalculator {
 
         for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, alleles.size())) {
             // implied = result[0] = 0.0;
+            // TODO: shouldn't this be "count == ploidy ? homValues. . ." ?
             if (gac.index() > 0) {
                 result[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == 2 ? homValues[alleleTypes[allele]]
                         : hetValues[alleleTypes[allele]] + diffValues[alleleTypes[allele]] * (count - 1));

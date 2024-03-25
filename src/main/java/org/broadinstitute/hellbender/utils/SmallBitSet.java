@@ -6,6 +6,9 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -70,6 +73,10 @@ public class SmallBitSet {
         return result;
     }
 
+    public static SmallBitSet emptySet() {
+        return new SmallBitSet();
+    }
+
     // convert to the next bitset in the canonical ordering, which conveniently is just adding 1 to the underlying int.
     // Useful for iterating over all possible subsets in order from empty to full.
     // Calling code is responsible for starting iteration at 0 (empty bitset) and stopping iteration at 2^n - 1 for a full bitset of n elements.
@@ -102,6 +109,12 @@ public class SmallBitSet {
         return result;
     }
 
+    // convert this Bitset of integer indices into a set of objects by indexing into some list
+    public <T> Set<T> asSet(final List<T> elements) {
+        Utils.validateArg(!hasElementGreaterThan(elements.size()-1), "this bitset contains indices too big for the given list");
+        return stream(elements.size()).mapToObj(elements::get).collect(Collectors.toSet());
+    }
+
     public boolean contains(final SmallBitSet other) {
         return (this.bits & other.bits) == other.bits;
     }
@@ -114,8 +127,9 @@ public class SmallBitSet {
         bits &= ~(elementIndex(element));
     }
 
-    public void flip(final int element) {
+    public SmallBitSet flip(final int element) {
         bits ^= elementIndex(element);
+        return this;
     }
 
     public boolean get(final int element) {
@@ -129,7 +143,7 @@ public class SmallBitSet {
 
     public boolean isEmpty() { return bits == 0; }
 
-    public boolean hasElementGreaterThan(final int element) { return bits >= 1 << element; }
+    public boolean hasElementGreaterThan(final int element) { return bits >= 1 << (element + 1); }
 
     private static int elementIndex(final int element) {
         return 1 << element;

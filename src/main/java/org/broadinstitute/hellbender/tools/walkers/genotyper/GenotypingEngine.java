@@ -187,6 +187,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
+        //TODO: however, this can't be done naively because the subsetting alleles method also applies priors to get posteriors!
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
                 AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod);
 
