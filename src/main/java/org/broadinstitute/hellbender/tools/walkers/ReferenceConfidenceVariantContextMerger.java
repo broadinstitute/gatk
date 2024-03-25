@@ -439,7 +439,8 @@ public final class ReferenceConfidenceVariantContextMerger {
         attributes.remove(GATKVCFConstants.MLE_ALLELE_COUNT_KEY);
         attributes.remove(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY);
         attributes.remove(VCFConstants.END_KEY);
-        attributes.remove(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY); //median doesn't make sense here so drop it; used for ClusteredEventFilter, which doesn't apply to MT
+        attributes.remove(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY);
+        attributes.remove(GATKVCFConstants.EVENT_COUNT_IN_REGION_KEY); //median doesn't make sense here so drop it; used for ClusteredEventFilter, which doesn't apply to MT
     }
 
     /**
