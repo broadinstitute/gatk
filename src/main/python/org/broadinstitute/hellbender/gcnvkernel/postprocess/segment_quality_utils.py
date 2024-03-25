@@ -2,10 +2,10 @@ import logging
 from typing import Dict, List
 
 import numpy as np
-import pymc3 as pm
-import theano as th
-import theano.tensor as tt
-from scipy.misc import logsumexp
+import pytensor
+import pytensor.tensor as pt
+from ..models import commons
+from scipy.special import logsumexp
 
 from ..utils.math import logsumexp_double_complement, logp_to_phred
 
@@ -67,9 +67,9 @@ class HMMSegmentationQualityCalculator:
             for left_out_state in range(self.num_states)}
 
     @staticmethod
-    @th.configparser.change_flags(compute_test_value="ignore")
-    def _get_compiled_constrained_path_logp_theano_func() -> th.compile.function_module.Function:
-        """Returns a theano function that calculates the log posterior probability of hidden state paths composed
+    @pytensor.config.change_flags(compute_test_value="ignore")
+    def _get_compiled_constrained_path_logp_pytensor_func() -> pytensor.compile.Function:
+        """Returns a pytensor function that calculates the log posterior probability of hidden state paths composed
         from a subset X of all hidden states S.
 
         More explicitly, this function calculates the logp of all paths constrained to the hidden-state set
@@ -79,7 +79,7 @@ class HMMSegmentationQualityCalculator:
              t < t_0 |    t_0    t_1    ...    t_N   |  t > t_N
              c in S  |  c in X  c in X       c in X  |  c in S
 
-        The inputs for the returned theano function are as follows:
+        The inputs for the returned pytensor function are as follows:
 
             alpha_first_c: forward log likelihood (alpha) for t = t_0 and c in X
             beta_last_c: backward log likelihood (beta) for t = t_N and c in X
@@ -101,32 +101,32 @@ class HMMSegmentationQualityCalculator:
                 are strictly forbidden by the prior and/or the transition matrix)
 
         Returns:
-            a theano function
+            a pytensor function
         """
-        alpha_first_c = tt.vector('alpha_first_c')
-        beta_last_c = tt.vector('beta_last_c')
-        log_emission_tc = tt.matrix('log_emission_tc')
-        log_trans_tcc = tt.tensor3('log_trans_tcc')
-        log_data_likelihood = tt.scalar('log_data_likelihood')
+        alpha_first_c = pt.vector('alpha_first_c')
+        beta_last_c = pt.vector('beta_last_c')
+        log_emission_tc = pt.matrix('log_emission_tc')
+        log_trans_tcc = pt.tensor3('log_trans_tcc')
+        log_data_likelihood = pt.scalar('log_data_likelihood')
 
-        def update_alpha(c_log_emission_c: tt.vector,
-                         c_log_trans_cc: tt.matrix,
-                         p_alpha_c: tt.vector):
-            return c_log_emission_c + pm.math.logsumexp(
-                p_alpha_c.dimshuffle(0, 'x') + c_log_trans_cc, axis=0).dimshuffle(1)
+        def update_alpha(c_log_emission_c: pt.vector,
+                         c_log_trans_cc: pt.matrix,
+                         p_alpha_c: pt.vector):
+            return c_log_emission_c + commons.logsumexp(
+                p_alpha_c.dimshuffle(0, 'x') + c_log_trans_cc, axis=0).dimshuffle(1) # TODO check this
 
-        alpha_seg_iters, _ = th.scan(
+        alpha_seg_iters, _ = pytensor.scan(
             fn=update_alpha,
             sequences=[log_emission_tc, log_trans_tcc],
             outputs_info=[alpha_first_c])
         alpha_seg_end_c = alpha_seg_iters[-1, :]
 
         inputs = [alpha_first_c, beta_last_c, log_emission_tc, log_trans_tcc, log_data_likelihood]
-        output = pm.math.logsumexp(alpha_seg_end_c + beta_last_c) - log_data_likelihood
-        return th.function(inputs=inputs, outputs=output)
+        output = commons.logsumexp(alpha_seg_end_c + beta_last_c) - log_data_likelihood
+        return pytensor.function(inputs=inputs, outputs=output)
 
     # make a private static instance
-    _constrained_path_logp_theano_func = _get_compiled_constrained_path_logp_theano_func.__func__()
+    _constrained_path_logp_pytensor_func = _get_compiled_constrained_path_logp_pytensor_func.__func__()
 
     def get_log_constrained_posterior_prob(self,
                                            start_index: int, end_index: int,
@@ -162,11 +162,11 @@ class HMMSegmentationQualityCalculator:
                 self.log_emission_tc[(start_index + 1):(end_index + 1), allowed_states]
             constrained_log_trans_tcc = \
                 self.log_trans_tcc[start_index:end_index, allowed_states, :][:, :, allowed_states]
-            logp = self._constrained_path_logp_theano_func(
+            logp = self._constrained_path_logp_pytensor_func(
                 constrained_alpha_first_c, constrained_beta_last_c,
                 constrained_log_emission_tc, constrained_log_trans_tcc, self.log_data_likelihood)
 
-        return np.asscalar(logp)
+        return logp.item()
 
     def get_segment_quality_some_called(self, start_index: int, end_index: int, call_state: int) -> float:
         """Calculates the phred-scaled posterior probability that one or more ("some") sites in a segment have
@@ -224,7 +224,7 @@ class HMMSegmentationQualityCalculator:
 
         if start_index == end_index:
             log_compl_prob = logsumexp(
-                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])
+                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])[0]
             return logp_to_phred(log_compl_prob, complement=False)
         else:
             # calculate the uncorrelated log complementary probability

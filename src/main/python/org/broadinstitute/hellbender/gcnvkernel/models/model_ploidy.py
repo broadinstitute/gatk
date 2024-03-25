@@ -4,10 +4,10 @@ import logging
 from typing import List, Dict, Set, Tuple
 
 import numpy as np
-import pymc3 as pm
-import theano as th
-import theano.tensor as tt
-from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential
+import pymc as pm
+import pytensor
+import pytensor.tensor as pt
+from pymc import Normal, Deterministic, Potential, Exponential, TruncatedNormal, Mixture, NegativeBinomial
 
 from . import commons
 from .fancy_model import GeneralizedContinuousModel
@@ -147,56 +147,55 @@ class PloidyWorkspace:
         assert sample_metadata_collection.all_samples_have_coverage_metadata(sample_names), \
             "Some samples do not have coverage metadata"
 
-        # number of intervals per contig as a shared theano tensor
-        self.t_j: types.TensorSharedVariable = th.shared(
+        # number of intervals per contig as a shared pytensor tensor
+        self.t_j: types.TensorSharedVariable = pytensor.shared(
             interval_list_metadata.t_j.astype(types.floatX), name='t_j', borrow=config.borrow_numpy)
 
-        # count per contig and total count as shared theano tensors
+        # count per contig and total count as shared pytensor tensors
         n_sj = np.zeros((self.num_samples, self.num_contigs), dtype=types.floatX)
         n_s = np.zeros((self.num_samples,), dtype=types.floatX)
         for si, sample_name in enumerate(self.sample_names):
             sample_metadata = sample_metadata_collection.get_sample_coverage_metadata(sample_name)
             n_sj[si, :] = sample_metadata.n_j[:]
             n_s[si] = sample_metadata.n_total
-        self.n_sj: types.TensorSharedVariable = th.shared(n_sj, name='n_sj', borrow=config.borrow_numpy)
-        self.n_s: types.TensorSharedVariable = th.shared(n_s, name='n_s', borrow=config.borrow_numpy)
+        self.n_sj: types.TensorSharedVariable = pytensor.shared(n_sj, name='n_sj', borrow=config.borrow_numpy)
+        self.n_s: types.TensorSharedVariable = pytensor.shared(n_s, name='n_s', borrow=config.borrow_numpy)
 
         # integer ploidy values
         int_ploidy_values_k = np.arange(0, ploidy_config.num_ploidy_states, dtype=types.small_uint)
-        self.int_ploidy_values_k = th.shared(int_ploidy_values_k, name='int_ploidy_values_k',
+        self.int_ploidy_values_k = pytensor.shared(int_ploidy_values_k, name='int_ploidy_values_k',
                                              borrow=config.borrow_numpy)
 
         # ploidy priors
         p_ploidy_jk = np.zeros((self.num_contigs, self.ploidy_config.num_ploidy_states), dtype=types.floatX)
         for j, contig in enumerate(interval_list_metadata.ordered_contig_list):
             p_ploidy_jk[j, :] = ploidy_config.contig_ploidy_prior_map[contig][:]
-        log_p_ploidy_jk = np.log(p_ploidy_jk)
-        self.log_p_ploidy_jk: types.TensorSharedVariable = th.shared(log_p_ploidy_jk, name='log_p_ploidy_jk',
+        log_p_ploidy_jk = np.log(np.maximum(p_ploidy_jk, _eps))
+        self.log_p_ploidy_jk: types.TensorSharedVariable = pytensor.shared(log_p_ploidy_jk, name='log_p_ploidy_jk',
                                                                      borrow=config.borrow_numpy)
 
         # ploidy log posteriors (initial value is immaterial)
         log_q_ploidy_sjk = np.tile(log_p_ploidy_jk, (self.num_samples, 1, 1))
-        self.log_q_ploidy_sjk: types.TensorSharedVariable = th.shared(
+        self.log_q_ploidy_sjk: types.TensorSharedVariable = pytensor.shared(
             log_q_ploidy_sjk, name='log_q_ploidy_sjk', borrow=config.borrow_numpy)
 
         # ploidy log emission (initial value is immaterial)
         log_ploidy_emission_sjk = np.zeros(
             (self.num_samples, self.num_contigs, ploidy_config.num_ploidy_states), dtype=types.floatX)
-        self.log_ploidy_emission_sjk: types.TensorSharedVariable = th.shared(
+        self.log_ploidy_emission_sjk: types.TensorSharedVariable = pytensor.shared(
             log_ploidy_emission_sjk, name="log_ploidy_emission_sjk", borrow=config.borrow_numpy)
 
         # exclusion mask; mask(j, k) = 1 - delta(j, k)
         contig_exclusion_mask_jj = (np.ones((self.num_contigs, self.num_contigs), dtype=types.small_uint)
                                     - np.eye(self.num_contigs, dtype=types.small_uint))
-        self.contig_exclusion_mask_jj = th.shared(contig_exclusion_mask_jj, name='contig_exclusion_mask_jj')
+        self.contig_exclusion_mask_jj = pytensor.shared(contig_exclusion_mask_jj, name='contig_exclusion_mask_jj')
 
 
 class PloidyModel(GeneralizedContinuousModel):
     """Declaration of the germline contig ploidy model (continuous variables only; posterior of discrete
     variables are assumed to be known)."""
 
-    PositiveNormal = Bound(Normal, lower=0)  # how cool is this?
-
+    @pytensor.config.change_flags(compute_test_value="off")
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
                  ploidy_workspace: PloidyWorkspace):
@@ -208,17 +207,19 @@ class PloidyModel(GeneralizedContinuousModel):
         n_s = ploidy_workspace.n_s
         n_sj = ploidy_workspace.n_sj
         ploidy_k = ploidy_workspace.int_ploidy_values_k
-        q_ploidy_sjk = tt.exp(ploidy_workspace.log_q_ploidy_sjk)
+        q_ploidy_sjk = pt.exp(ploidy_workspace.log_q_ploidy_sjk)
         eps_mapping = ploidy_config.mapping_error_rate
 
         register_as_global = self.register_as_global
         register_as_sample_specific = self.register_as_sample_specific
 
+        # TODO check Bound -> TruncatedNormal
         # mean per-contig bias
-        mean_bias_j = self.PositiveNormal('mean_bias_j',
-                                          mu=1.0,
-                                          sd=ploidy_config.mean_bias_sd,
-                                          shape=(ploidy_workspace.num_contigs,))
+        mean_bias_j = TruncatedNormal(name='mean_bias_j',
+                                      mu=1.0,
+                                      sigma=ploidy_config.mean_bias_sd,
+                                      lower=0.0,
+                                      shape=(ploidy_workspace.num_contigs,))
         register_as_global(mean_bias_j)
 
         # contig coverage unexplained variance
@@ -234,27 +235,27 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_sample_specific(psi_s, sample_axis=0)
 
         # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_sj = tt.maximum(tt.inv((tt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0)),
+        alpha_sj = pt.maximum(pt.reciprocal((pt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0)), # TODO inv to reciprocal
                               _eps)
 
         # mean ploidy per contig per sample
-        mean_ploidy_sj = tt.sum(tt.exp(ploidy_workspace.log_q_ploidy_sjk)
+        mean_ploidy_sj = pt.sum(pt.exp(ploidy_workspace.log_q_ploidy_sjk)
                                 * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0), axis=2)
 
         # mean-field amplification coefficient per contig
         gamma_sj = mean_ploidy_sj * t_j.dimshuffle('x', 0) * mean_bias_j.dimshuffle('x', 0)
 
         # gamma_rest_sj \equiv sum_{j' \neq j} gamma_sj
-        gamma_rest_sj = tt.dot(gamma_sj, contig_exclusion_mask_jj)
+        gamma_rest_sj = pt.dot(gamma_sj, contig_exclusion_mask_jj)
 
         # NB per-contig counts
         mu_num_sjk = (t_j.dimshuffle('x', 0, 'x') * mean_bias_j.dimshuffle('x', 0, 'x')
                       * ploidy_k.dimshuffle('x', 'x', 0))
         mu_den_sjk = gamma_rest_sj.dimshuffle(0, 1, 'x') + mu_num_sjk
-        eps_mapping_j = eps_mapping * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
+        eps_mapping_j = eps_mapping * t_j / pt.sum(t_j)  # average number of reads erroneously mapped to contig j
 
         # the switch is required for a single contig edge case
-        mu_ratio_sjk = tt.switch(tt.eq(mu_den_sjk, 0.0), 0.0, mu_num_sjk / mu_den_sjk)
+        mu_ratio_sjk = pt.switch(pt.eq(mu_den_sjk, 0.0), 0.0, mu_num_sjk / mu_den_sjk)
         mu_sjk = ((1.0 - eps_mapping) * mu_ratio_sjk
                   + eps_mapping_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
 
@@ -265,9 +266,16 @@ class PloidyModel(GeneralizedContinuousModel):
                 _n_sj.dimshuffle(0, 1, 'x'))  # contig counts
             return _logp_sjk
 
-        DensityDist(name='n_sj_obs',
-                    logp=lambda _n_sj: tt.sum(q_ploidy_sjk * _get_logp_sjk(_n_sj)),
-                    observed=n_sj)
+
+        # TODO originally DensityDist, but this raised an error about random
+        # Mixture(name='n_sj_obs',
+        #         w=q_ploidy_sjk,
+        #         comp_dists=NegativeBinomial.dist(
+        #             mu=mu_sjk,
+        #             alpha=alpha_sj.dimshuffle(0, 1, 'x')),
+        #         observed=n_sj)
+        Potential(name='n_sj_obs',
+                  var=pt.sum(q_ploidy_sjk * _get_logp_sjk(n_sj)))
 
         # for log ploidy emission sampling
         Deterministic(name='logp_sjk', var=_get_logp_sjk(n_sj))
@@ -284,7 +292,7 @@ class PloidyEmissionBasicSampler:
     def update_approximation(self, approx: pm.approximations.MeanField):
         """Generates a new compiled sampler based on a given approximation.
         Args:
-            approx: an instance of PyMC3 mean-field approximation
+            approx: an instance of PyMC mean-field approximation
 
         Returns:
             None
@@ -298,13 +306,17 @@ class PloidyEmissionBasicSampler:
     def draw(self) -> np.ndarray:
         return self._simultaneous_log_ploidy_emission_sampler()
 
-    @th.configparser.change_flags(compute_test_value="off")
+    @pytensor.config.change_flags(compute_test_value="off")
     def _get_compiled_simultaneous_log_ploidy_emission_sampler(self, approx: pm.approximations.MeanField):
-        """For a given variational approximation, returns a compiled theano function that draws posterior samples
+        """For a given variational approximation, returns a compiled pytensor function that draws posterior samples
         from the log ploidy emission."""
-        log_ploidy_emission_sjk = commons.stochastic_node_mean_symbolic(
-            approx, self.ploidy_model['logp_sjk'], size=self.samples_per_round)
-        return th.function(inputs=[], outputs=log_ploidy_emission_sjk)
+        log_ploidy_emission_sjk = approx.sample_node(
+            node=self.ploidy_model['logp_sjk'],
+            size=self.samples_per_round).mean(axis=0)
+        # must use compile_pymc to pass random_seed for reproducible sampling
+        return pm.pytensorf.compile_pymc(inputs=[],
+                                         outputs=log_ploidy_emission_sjk,
+                                         random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
 
 class PloidyBasicCaller:
@@ -314,21 +326,21 @@ class PloidyBasicCaller:
                  ploidy_workspace: PloidyWorkspace):
         self.ploidy_workspace = ploidy_workspace
         self.inference_params = inference_params
-        self._update_log_q_ploidy_sjk_theano_func = self._get_update_log_q_ploidy_sjk_theano_func()
+        self._update_log_q_ploidy_sjk_pytensor_func = self._get_update_log_q_ploidy_sjk_pytensor_func()
 
-    @th.configparser.change_flags(compute_test_value="off")
-    def _get_update_log_q_ploidy_sjk_theano_func(self) -> th.compile.function_module.Function:
+    @pytensor.config.change_flags(compute_test_value="off")
+    def _get_update_log_q_ploidy_sjk_pytensor_func(self) -> pytensor.compile.Function:
         new_log_q_ploidy_sjk = (self.ploidy_workspace.log_p_ploidy_jk.dimshuffle('x', 0, 1)
                                 + self.ploidy_workspace.log_ploidy_emission_sjk)
-        new_log_q_ploidy_sjk -= pm.logsumexp(new_log_q_ploidy_sjk, axis=2)
+        new_log_q_ploidy_sjk -= commons.logsumexp(new_log_q_ploidy_sjk, axis=2)
         old_log_q_ploidy_sjk = self.ploidy_workspace.log_q_ploidy_sjk
         admixed_new_log_q_ploidy_sjk = commons.safe_logaddexp(
             new_log_q_ploidy_sjk + np.log(self.inference_params.caller_external_admixing_rate),
             old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_external_admixing_rate))
         update_norm_sj = commons.get_hellinger_distance(admixed_new_log_q_ploidy_sjk, old_log_q_ploidy_sjk)
-        return th.function(inputs=[],
+        return pytensor.function(inputs=[],
                            outputs=[update_norm_sj],
                            updates=[(self.ploidy_workspace.log_q_ploidy_sjk, admixed_new_log_q_ploidy_sjk)])
 
     def call(self) -> np.ndarray:
-        return self._update_log_q_ploidy_sjk_theano_func()
+        return self._update_log_q_ploidy_sjk_pytensor_func()

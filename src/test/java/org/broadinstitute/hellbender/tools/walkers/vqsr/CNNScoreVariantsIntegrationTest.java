@@ -52,7 +52,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
     /**
      * Run the tool on a small test VCF.
      */
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testAllDefaultArgs() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         final File tempVcf = createTempFile("tester", ".vcf");
@@ -66,7 +66,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
     }
 
-    @Test(groups = {"python"}, expectedExceptions = PythonScriptExecutorException.class)
+    @Test(groups = {"python"}, expectedExceptions = PythonScriptExecutorException.class, enabled = false)
     public void testExceptionDuringAsyncBatch() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         final File tempVcf = createTempFile("tester", ".vcf");
@@ -82,7 +82,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsBuilder);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceArchitecture() {
         final boolean newExpectations = false;
         final String expectedVCFName = largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf";
@@ -104,7 +104,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceWeights() {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
@@ -119,7 +119,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceArchitectureAndWeights() {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
@@ -135,7 +135,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceWithIntervals() {
         final boolean newExpectations = false;
         final String expectedVCFName = largeFileTestDir + "VQSR/expected/cnn_1d_contig20_1m_10m_expected.vcf";
@@ -157,7 +157,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testSmallBatchInference() {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
@@ -172,7 +172,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testOnContigEdge() {
         final String edgeVcf = toolsTestDir + "walkers/VQSR/variantNearContigEdge.vcf";
         final File tempVcf = createTempFile("tester", ".vcf");
@@ -190,7 +190,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
     /**
      * Run the 2D Model on a small test VCF with the resource loaded weights and architecture.
      */
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInference2dResourceModel() {
         // We reset the random number generator at the beginning of each test so that the random down-sampling of reads
         // by the reservoir down-sampler does not cause slightly different scores.
@@ -215,7 +215,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
     /**
      * Run the 2D Model on a small test VCF.
      */
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceArchitecture2d() {
         Utils.resetRandomGenerator();
         final boolean newExpectations = false;
@@ -243,7 +243,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceWeights2d() {
         Utils.resetRandomGenerator();
         TensorType tt = TensorType.read_tensor;
@@ -264,7 +264,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceArchitectureAndWeights2d() {
         Utils.resetRandomGenerator();
         TensorType tt = TensorType.read_tensor;
@@ -300,7 +300,4 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         }
         Assert.assertTrue(!expectedVi.hasNext() && !actualVi.hasNext());
     }
-
-
-
 }

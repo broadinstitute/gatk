@@ -1,16 +1,16 @@
 from typing import Optional, List, Tuple, Union
 
 import numpy as np
-import pymc3 as pm
-import theano as th
-import theano.tensor as tt
+import pytensor
+import pytensor.tensor as pt
 
-from . import commons
+from ..models import commons
+from ..models.commons import logsumexp
 from .. import types
 
 
-class TheanoForwardBackward:
-    """Implementation of the forward-backward algorithm in theano."""
+class PytensorForwardBackward:
+    """Implementation of the forward-backward algorithm in pytensor."""
     def __init__(self,
                  log_posterior_probs_output_tc: Optional[types.TensorSharedVariable] = None,
                  resolve_nans: bool = False,
@@ -18,7 +18,7 @@ class TheanoForwardBackward:
                  do_admixing: bool = False,
                  include_update_size_output: bool = False,
                  include_alpha_beta_output: bool = False):
-        """Initializes the forward-backward algorithm by compiling a theano function according to the
+        """Initializes the forward-backward algorithm by compiling a pytensor function according to the
         boolean flags.
 
         Args:
@@ -36,7 +36,7 @@ class TheanoForwardBackward:
         self.do_admixing = do_admixing
         self.include_update_size_output = include_update_size_output
         self.include_alpha_beta_output = include_alpha_beta_output
-        self._forward_backward_theano_func = self._get_compiled_forward_backward_theano_func()
+        self._forward_backward_pytensor_func = self._get_compiled_forward_backward_pytensor_func()
 
     def perform_forward_backward(self,
                                  log_prior_c: np.ndarray,
@@ -48,7 +48,7 @@ class TheanoForwardBackward:
         """Runs the forward-backward algorithm.
 
         Notes:
-            The inputs args must be compatible with the compiled theano function according to the
+            The inputs args must be compatible with the compiled pytensor function according to the
             class initializer flags.
 
         Args:
@@ -82,12 +82,12 @@ class TheanoForwardBackward:
             assert prev_log_posterior_tc is not None,\
                 "Update size output is enabled but `prev_log_posterior_tc` is not specified."
 
-        return self._decompose_theano_forward_backward_outputs(
-            self._forward_backward_theano_func(*self._compose_theano_forward_backward_inputs(
+        return self._decompose_pytensor_forward_backward_outputs(
+            self._forward_backward_pytensor_func(*self._compose_pytensor_forward_backward_inputs(
                 log_prior_c, log_trans_tcc, log_emission_tc,
                 prev_log_posterior_tc, admixing_rate, temperature)))
 
-    def _compose_theano_forward_backward_inputs(self,
+    def _compose_pytensor_forward_backward_inputs(self,
                                                 log_prior_c: np.ndarray,
                                                 log_trans_tcc: np.ndarray,
                                                 log_emission_tc: np.ndarray,
@@ -103,7 +103,7 @@ class TheanoForwardBackward:
             inputs += (temperature,)
         return inputs
 
-    def _decompose_theano_forward_backward_outputs(self, outputs: List[Union[np.ndarray, float]])\
+    def _decompose_pytensor_forward_backward_outputs(self, outputs: List[Union[np.ndarray, float]])\
             -> 'ForwardBackwardResult':
         result = ForwardBackwardResult()
         arg_idx = 0
@@ -122,13 +122,13 @@ class TheanoForwardBackward:
             arg_idx += 1
         return result
 
-    @th.configparser.change_flags(compute_test_value="ignore")
-    def _get_compiled_forward_backward_theano_func(self) -> th.compile.function_module.Function:
-        """Returns a compiled theano function that computes the posterior probabilities of hidden states using
+    @pytensor.config.change_flags(compute_test_value="ignore")
+    def _get_compiled_forward_backward_pytensor_func(self) -> pytensor.compile.Function:
+        """Returns a compiled pytensor function that computes the posterior probabilities of hidden states using
         the forward-backward algorithm.
 
         Note:
-            The input arguments and the output of the compiled theano function is determined by the initializer flags
+            The input arguments and the output of the compiled pytensor function is determined by the initializer flags
             as follows:
 
             There are 3 basic input arguments:
@@ -162,17 +162,17 @@ class TheanoForwardBackward:
                   and `beta_tc` (float vector).
 
         Returns:
-            A compiled theano function
+            A compiled pytensor function
         """
         # basic inputs
-        log_prior_c = tt.vector('log_prior_c')
-        log_trans_tcc = tt.tensor3('log_trans_tcc')
-        log_emission_tc = tt.matrix('log_emission_tc')
+        log_prior_c = pt.vector('log_prior_c')
+        log_trans_tcc = pt.tensor3('log_trans_tcc')
+        log_emission_tc = pt.matrix('log_emission_tc')
 
         # optional inputs
-        prev_log_posterior_tc = tt.matrix('prev_log_posterior_tc')
-        admixing_rate = tt.scalar('admixing_rate')
-        temperature = tt.scalar('temperature')
+        prev_log_posterior_tc = pt.matrix('prev_log_posterior_tc')
+        admixing_rate = pt.scalar('admixing_rate')
+        temperature = pt.scalar('temperature')
 
         if self.do_thermalization:
             processed_log_prior_c, processed_log_trans_tcc, processed_log_emission_tc =\
@@ -187,8 +187,8 @@ class TheanoForwardBackward:
 
         if self.do_admixing:
             processed_log_posterior_tc = commons.safe_logaddexp(
-                new_log_posterior_tc + tt.log(admixing_rate),
-                prev_log_posterior_tc + tt.log(1.0 - admixing_rate))
+                new_log_posterior_tc + pt.log(admixing_rate),
+                prev_log_posterior_tc + pt.log(1.0 - admixing_rate))
         else:
             processed_log_posterior_tc = new_log_posterior_tc
 
@@ -223,12 +223,12 @@ class TheanoForwardBackward:
         if self.include_alpha_beta_output:
             outputs += [alpha_tc, beta_tc]
 
-        return th.function(inputs=inputs, outputs=outputs, updates=updates)
+        return pytensor.function(inputs=inputs, outputs=outputs, updates=updates)
 
     @staticmethod
-    def get_symbolic_log_posterior(log_prior_c: types.TheanoVector,
-                                   log_trans_tcc: types.TheanoTensor3,
-                                   log_emission_tc: types.TheanoMatrix,
+    def get_symbolic_log_posterior(log_prior_c: types.PytensorVector,
+                                   log_trans_tcc: types.PytensorTensor3,
+                                   log_emission_tc: types.PytensorMatrix,
                                    resolve_nans: bool):
         """Generates symbolic tensors representing hidden-state log posterior, log data likelihood,
         forward table (alpha), and backward table (beta).
@@ -238,9 +238,9 @@ class TheanoForwardBackward:
         """
         num_states = log_prior_c.shape[0]
 
-        def calculate_next_alpha(c_log_trans_ab: types.TheanoMatrix,
-                                 c_log_emission_b: types.TheanoVector,
-                                 p_alpha_a: types.TheanoVector):
+        def calculate_next_alpha(c_log_trans_ab: types.PytensorMatrix,
+                                 c_log_emission_b: types.PytensorVector,
+                                 p_alpha_a: types.PytensorVector):
             """Calculates the next entry on the forward table, alpha_{t}, from alpha_{t-1}.
 
             Args:
@@ -252,16 +252,16 @@ class TheanoForwardBackward:
             Returns:
                 symbolic 1d tensor of alpha_{t}
             """
-            mu_ba = tt.tile(p_alpha_a, (num_states, 1)) + c_log_trans_ab.T
-            n_alpha_b = c_log_emission_b + pm.math.logsumexp(mu_ba, axis=1).dimshuffle(0)
+            mu_ba = pt.tile(p_alpha_a, (num_states, 1)) + c_log_trans_ab.T
+            n_alpha_b = c_log_emission_b + logsumexp(mu_ba, axis=1).dimshuffle(0)
             if resolve_nans:
-                return tt.switch(tt.isnan(n_alpha_b), -np.inf, n_alpha_b)
+                return pt.switch(pt.isnan(n_alpha_b), -np.inf, n_alpha_b)
             else:
                 return n_alpha_b
 
-        def calculate_prev_beta(n_log_trans_ab: types.TheanoMatrix,
-                                n_log_emission_b: types.TheanoVector,
-                                n_beta_b: types.TheanoVector):
+        def calculate_prev_beta(n_log_trans_ab: types.PytensorMatrix,
+                                n_log_emission_b: types.PytensorVector,
+                                n_beta_b: types.PytensorVector):
             """Calculates the previous entry on the backward table, beta_{t-1}, from beta_{t}.
 
             Args:
@@ -273,10 +273,10 @@ class TheanoForwardBackward:
             Returns:
                 symbolic 1d tensor of beta_{t-1}
             """
-            nu_ab = tt.tile(n_beta_b + n_log_emission_b, (num_states, 1)) + n_log_trans_ab
-            p_beta_a = pm.math.logsumexp(nu_ab, axis=1).dimshuffle(0)
+            nu_ab = pt.tile(n_beta_b + n_log_emission_b, (num_states, 1)) + n_log_trans_ab
+            p_beta_a = logsumexp(nu_ab, axis=1).dimshuffle(0)
             if resolve_nans:
-                return tt.switch(tt.isnan(p_beta_a), -np.inf, p_beta_a)
+                return pt.switch(pt.isnan(p_beta_a), -np.inf, p_beta_a)
             else:
                 return p_beta_a
 
@@ -284,45 +284,45 @@ class TheanoForwardBackward:
         first_alpha_c = log_prior_c + log_emission_tc[0, :]
 
         # the rest of the forward table
-        rest_alpha_tc, alpha_updates = th.scan(
+        rest_alpha_tc, alpha_updates = pytensor.scan(
             fn=calculate_next_alpha,
             sequences=[log_trans_tcc, log_emission_tc[1:, :]],
             outputs_info=[first_alpha_c])
 
         # concatenate with the first alpha
-        alpha_tc = tt.concatenate((first_alpha_c.dimshuffle('x', 0), rest_alpha_tc))
+        alpha_tc = pt.concatenate((first_alpha_c.dimshuffle('x', 0), rest_alpha_tc))
 
         # last entry of the backward table (zero for all states)
-        last_beta_c = tt.zeros_like(log_prior_c)
+        last_beta_c = pt.zeros_like(log_prior_c)
 
         # the rest of the backward table
-        rest_beta_tc, beta_updates = th.scan(
+        rest_beta_tc, beta_updates = pytensor.scan(
             fn=calculate_prev_beta,
             sequences=[log_trans_tcc, log_emission_tc[1:, :]],
             go_backwards=True,
             outputs_info=[last_beta_c])
 
         # concatenate with the last beta and reverse
-        beta_tc = tt.concatenate((last_beta_c.dimshuffle('x', 0), rest_beta_tc))[::-1, :]
+        beta_tc = pt.concatenate((last_beta_c.dimshuffle('x', 0), rest_beta_tc))[::-1, :]
 
         # calculate normalized log posterior
         log_unnormalized_posterior_tc = alpha_tc + beta_tc
-        log_data_likelihood_t = pm.math.logsumexp(log_unnormalized_posterior_tc, axis=1)
+        log_data_likelihood_t = logsumexp(log_unnormalized_posterior_tc, axis=1)
         log_posterior_probs_tc = log_unnormalized_posterior_tc - log_data_likelihood_t
 
         return log_posterior_probs_tc, log_data_likelihood_t.dimshuffle(0), alpha_tc, beta_tc
 
     @staticmethod
-    def get_symbolic_thermal_hmm_params(log_prior_c: types.TheanoVector,
-                                        log_trans_tcc: types.TheanoTensor3,
-                                        log_emission_tc: types.TheanoMatrix,
-                                        temperature: tt.scalar):
-        inv_temperature = tt.inv(temperature)
+    def get_symbolic_thermal_hmm_params(log_prior_c: types.PytensorVector,
+                                        log_trans_tcc: types.PytensorTensor3,
+                                        log_emission_tc: types.PytensorMatrix,
+                                        temperature: pt.scalar):
+        inv_temperature = pt.reciprocal(temperature) # TODO inv to reciprocal
 
         thermal_log_prior_c = inv_temperature * log_prior_c
-        thermal_log_prior_c -= pm.math.logsumexp(thermal_log_prior_c)
+        thermal_log_prior_c -= logsumexp(thermal_log_prior_c)
         thermal_log_trans_tcc = inv_temperature * log_trans_tcc
-        thermal_log_trans_tcc -= pm.math.logsumexp(thermal_log_trans_tcc, axis=-1)
+        thermal_log_trans_tcc -= logsumexp(thermal_log_trans_tcc, axis=-1) # TODO check this
         thermal_log_emission_tc = inv_temperature * log_emission_tc
 
         return thermal_log_prior_c, thermal_log_trans_tcc, thermal_log_emission_tc
@@ -343,31 +343,31 @@ class ForwardBackwardResult:
         self.update_norm_t = update_norm_t
 
 
-class TheanoViterbi:
-    """Implementation of the Viterbi algorithm in theano."""
+class PytensorViterbi:
+    """Implementation of the Viterbi algorithm in pytensor."""
     def __init__(self):
-        self._viterbi_theano_func = self._get_compiled_viterbi_theano_func()
+        self._viterbi_pytensor_func = self._get_compiled_viterbi_pytensor_func()
 
     def get_viterbi_path(self,
                          log_prior_c: np.ndarray,
                          log_trans_tcc: np.ndarray,
                          log_emission_tc: np.ndarray) -> List[int]:
-        return self._viterbi_theano_func(log_prior_c, log_trans_tcc, log_emission_tc).tolist()
+        return self._viterbi_pytensor_func(log_prior_c, log_trans_tcc, log_emission_tc).tolist()
 
-    @th.configparser.change_flags(compute_test_value="ignore")
-    def _get_compiled_viterbi_theano_func(self) -> th.compile.function_module.Function:
-        """Returns a theano function that calculates the Viterbi path."""
-        log_prior_c = tt.vector('log_prior_c')
-        log_trans_tcc = tt.tensor3('log_trans_tcc')
-        log_emission_tc = tt.matrix('log_emission_tc')
+    @pytensor.config.change_flags(compute_test_value="ignore")
+    def _get_compiled_viterbi_pytensor_func(self) -> pytensor.compile.Function:
+        """Returns a pytensor function that calculates the Viterbi path."""
+        log_prior_c = pt.vector('log_prior_c')
+        log_trans_tcc = pt.tensor3('log_trans_tcc')
+        log_emission_tc = pt.matrix('log_emission_tc')
 
-        return th.function(inputs=[log_prior_c, log_trans_tcc, log_emission_tc],
+        return pytensor.function(inputs=[log_prior_c, log_trans_tcc, log_emission_tc],
                            outputs=self._get_symbolic_viterbi_path(log_prior_c, log_trans_tcc, log_emission_tc))
 
     @staticmethod
-    def _get_symbolic_viterbi_path(log_prior_c: types.TheanoVector,
-                                   log_trans_tcc: types.TheanoTensor3,
-                                   log_emission_tc: types.TheanoMatrix):
+    def _get_symbolic_viterbi_path(log_prior_c: types.PytensorVector,
+                                   log_trans_tcc: types.PytensorTensor3,
+                                   log_emission_tc: types.PytensorMatrix):
         """Generates a symbolic 1d integer tensor representing the most-likely chain of hidden states
         (Viterbi algorithm).
 
@@ -395,7 +395,7 @@ class TheanoViterbi:
                 next omega, next psi
             """
             tau_ab = p_log_trans_ab + p_omega_a.dimshuffle(0, 'x')
-            max_tau_b, psi_b = tt.max_and_argmax(tau_ab, axis=0)
+            max_tau_b, psi_b = pt.max_and_argmax(tau_ab, axis=0)
             n_omega_b = c_log_emission_b + max_tau_b
             return n_omega_b, psi_b
 
@@ -416,7 +416,7 @@ class TheanoViterbi:
 
         # calculate the log data likelihood of the partial max sum-product paths (omega)
         # and the backtracking table (psi)
-        omega_psi_list, _ = th.scan(
+        omega_psi_list, _ = pytensor.scan(
             fn=calculate_next_omega_psi,
             sequences=[log_trans_tcc, log_emission_tc[1:, :]],
             outputs_info=[omega_first_a, None])
@@ -424,16 +424,16 @@ class TheanoViterbi:
         psi_tc = omega_psi_list[1]
 
         # the best terminal state
-        last_best_state = tt.argmax(omega_tc[-1, :])
+        last_best_state = pt.argmax(omega_tc[-1, :])
 
         # backtrack to obtain the previous states of the max sum-product path
-        rest_best_states_t, _ = th.scan(
+        rest_best_states_t, _ = pytensor.scan(
             fn=calculate_previous_best_state,
             sequences=[psi_tc],
             outputs_info=[last_best_state],
             go_backwards=True)
 
         # concatenate with the terminal state
-        viterbi_path_t = tt.concatenate([tt.stack(last_best_state), rest_best_states_t])[::-1]
+        viterbi_path_t = pt.concatenate([last_best_state.dimshuffle('x'), rest_best_states_t])[::-1]
 
         return viterbi_path_t

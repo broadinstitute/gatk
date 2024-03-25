@@ -1,9 +1,8 @@
 import numpy as np
 import logging
-import theano.tensor as tt
-import pymc3 as pm
-import theano as th
-import pymc3.distributions.dist_math as pm_dist_math
+import pytensor.tensor as pt
+import pymc as pm
+import pymc.distributions.dist_math as pm_dist_math
 from typing import Tuple, Generator
 
 _logger = logging.getLogger(__name__)
@@ -51,7 +50,7 @@ def negative_binomial_logp(mu, alpha, value):
     Returns:
         symbolic negative binomial logp
     """
-    return pm_dist_math.bound(pm_dist_math.binomln(value + alpha - 1, value)
+    return pm_dist_math.check_parameters(pm_dist_math.binomln(value + alpha - 1, value)
                               + pm_dist_math.logpow(mu / (mu + alpha), value)
                               + pm_dist_math.logpow(alpha / (mu + alpha), alpha),
                               mu > 0, value >= 0, alpha > 0)
@@ -72,7 +71,7 @@ def negative_binomial_gaussian_approx_logp(mu, alpha, value):
         symbolic approximate negative binomial logp
     """
     tau = alpha / (mu * (alpha + mu))  # precision
-    return pm_dist_math.bound(0.5 * (tt.log(tau) - _log_2_pi - tau * tt.square(value - mu)),
+    return pm_dist_math.check_parameters(0.5 * (pt.log(tau) - _log_2_pi - tau * pt.square(value - mu)),
                               mu > 0, value >= 0, alpha > 0)
 
 
@@ -107,8 +106,8 @@ def centered_heavy_tail_logp(mu, value):
     Returns:
         symbolic logp
     """
-    return pm_dist_math.bound(tt.log(1.0 + 2.0 * mu) + 2.0 * mu * tt.log(value)
-                              - 2.0 * (1.0 + mu) * tt.log(1.0 + value),
+    return pm_dist_math.check_parameters(pt.log(1.0 + 2.0 * mu) + 2.0 * mu * pt.log(value)
+                              - 2.0 * (1.0 + mu) * pt.log(1.0 + value),
                               mu >= 0, value > 0)
 
 
@@ -120,10 +119,10 @@ def safe_logaddexp(a, b):
         symbolic log(exp(a) + exp(b))
     """
     diff = b - a
-    safe_diff = tt.switch(tt.isnan(diff), 0, diff)
-    return tt.switch(safe_diff >= 0,
-                     b + tt.log1p(tt.exp(-safe_diff)),
-                     a + tt.log1p(tt.exp(safe_diff)))
+    safe_diff = pt.switch(pt.isnan(diff), 0, diff)
+    return pt.switch(safe_diff >= 0,
+                     b + pt.log1p(pt.exp(-safe_diff)),
+                     a + pt.log1p(pt.exp(safe_diff)))
 
 
 def get_jensen_shannon_divergence(log_p_1, log_p_2):
@@ -136,12 +135,12 @@ def get_jensen_shannon_divergence(log_p_1, log_p_2):
     Returns:
         Symbolic Jensen-Shannon distance
     """
-    p_1 = tt.exp(log_p_1)
-    p_2 = tt.exp(log_p_2)
+    p_1 = pt.exp(log_p_1)
+    p_2 = pt.exp(log_p_2)
     diff_12 = p_1 - p_2
     log_diff_12 = log_p_1 - log_p_2
-    safe_log_diff_12 = tt.switch(tt.isnan(log_diff_12), 0, log_diff_12)
-    return 0.5 * tt.sum(diff_12 * safe_log_diff_12, axis=-1)
+    safe_log_diff_12 = pt.switch(pt.isnan(log_diff_12), 0, log_diff_12)
+    return 0.5 * pt.sum(diff_12 * safe_log_diff_12, axis=-1)
 
 
 def get_hellinger_distance(log_p_1, log_p_2):
@@ -154,9 +153,9 @@ def get_hellinger_distance(log_p_1, log_p_2):
     Returns:
         Symbolic Hellinger distance
     """
-    p_1 = tt.exp(log_p_1)
-    p_2 = tt.exp(log_p_2)
-    return tt.sqrt(tt.sum(tt.square(tt.sqrt(p_1) - tt.sqrt(p_2)), axis=-1)) / tt.sqrt(2)
+    p_1 = pt.exp(log_p_1)
+    p_2 = pt.exp(log_p_2)
+    return pt.sqrt(pt.sum(pt.square(pt.sqrt(p_1) - pt.sqrt(p_2)), axis=-1)) / pt.sqrt(2)
 
 
 def perform_genotyping(log_p: np.ndarray) -> Tuple[int, float]:
@@ -179,67 +178,8 @@ def perform_genotyping(log_p: np.ndarray) -> Tuple[int, float]:
     phred_genotype_quality = _10_inv_log_10 * (sorted_log_p[0][1] - sorted_log_p[1][1])
     return max_likely_genotype_idx, phred_genotype_quality
 
-
-def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
-                                  more_replacements=None, shape=None, dtype=None):
-    """Symbolic mean of a given PyMC3 stochastic node with respect to a given variational
-    posterior approximation.
-
-    Args:
-        approx: an instance of PyMC3 approximation
-        node: stochastic node
-        size: the number of samples to use for calculating the mean
-        more_replacements: (optional) an ordered dictionary of node replacements to be
-            applied to the computational graph before sampling
-        shape: (optional) shape of the node
-        dtype: (optional) dtype of the node
-
-    Raises:
-        ValueError: If `node.tag.test_value` is not present and `shape` and `dtype` are
-            not provided
-
-    Returns:
-        Symbolic approximate mean of the stochastic node
-    """
-
-    assert size > 0
-
-    if shape is not None and dtype is not None:
-        cum_sum = tt.zeros(shape, dtype)
-    elif hasattr(node.tag, 'test_value') and node.tag.test_value is not None:
-        cum_sum = tt.zeros(node.tag.test_value.shape, node.tag.test_value.dtype)
-    else:
-        raise ValueError("Can not determine the shape of the node to be sampled")
-
-    if more_replacements is not None:
-        node = th.clone(node, more_replacements, strict=False)
-    posterior_samples = approx.random(size)
-    node = approx.to_flat_input(node)
-
-    def add_sample_to_cum_sum(posterior_sample, _cum_sum):
-        new_sample = th.clone(node, {approx.input: posterior_sample}, strict=False)
-        return _cum_sum + tt.patternbroadcast(new_sample, _cum_sum.broadcastable)
-
-    outputs, _ = th.scan(add_sample_to_cum_sum,
-                         sequences=[posterior_samples],
-                         outputs_info=[cum_sum],
-                         n_steps=size)
-
-    return outputs[-1] / size
-
-
-def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, node,
-                                                   num_samples: int = 20) -> Generator:
-    """Get a generator that returns samples of a precomputed model approximation for a specific variable in that model
-
-    Args:
-        model_approx: an instance of PyMC3 mean-field approximation
-        node: a stochastic node in the model
-        num_samples: number of samples to draw
-
-    Returns:
-        A generator that will yield `num_samples` samples from an approximation to a posterior
-    """
-
-    sample = model_approx.sample_node(node, size=1)[0]
-    return (sample.eval() for _ in range(num_samples))
+# PyMC/pytensor logsumexp doesn't include the stability trick, so we port the PyMC3/theano version here for consistency
+def logsumexp(x, axis=None):
+    # Adapted from https://github.com/Theano/Theano/issues/1563
+    x_max = pt.max(x, axis=axis, keepdims=True)
+    return pt.log(pt.sum(pt.exp(x - x_max), axis=axis, keepdims=True)) + x_max

@@ -2,7 +2,7 @@ import logging
 from typing import Callable
 
 import numpy as np
-import theano as th
+import pytensor
 
 from .inference_task_base import Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
 from .. import types
@@ -104,7 +104,7 @@ class CaseDenoisingCallingTask(HybridInferenceTask):
         else:
             _logger.info("Instantiating the copy number caller...")
             initial_temperature = hybrid_inference_params.initial_temperature
-            self.temperature: types.TensorSharedVariable = th.shared(
+            self.temperature: types.TensorSharedVariable = pytensor.shared(
                 np.asarray([initial_temperature], dtype=types.floatX))
             copy_number_caller = HMMCopyNumberCaller(
                 calling_config, hybrid_inference_params, shared_workspace, self.temperature)

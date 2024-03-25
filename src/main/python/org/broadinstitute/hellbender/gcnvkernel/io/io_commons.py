@@ -6,15 +6,20 @@ import re
 import pandas as pd
 from ast import literal_eval as make_tuple
 from typing import List, Optional, Tuple, Set, Dict
+import collections
 
 import numpy as np
-import pymc3 as pm
+import pymc as pm
 
 from . import io_consts
 from .._version import __version__ as gcnvkernel_version
 from ..models.fancy_model import GeneralizedContinuousModel
 
 _logger = logging.getLogger(__name__)
+
+
+# originally in pymc3.blocking in PyMC3 3.5
+VarMap = collections.namedtuple('VarMap', 'var, slc, shp, dtyp')
 
 
 def read_csv(input_file: str,
@@ -268,30 +273,37 @@ def read_ndarray_from_tsv(input_file: str,
     return df.values.reshape(shape)
 
 
-def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[pm.blocking.VarMap]:
-    """Extracts the variable-to-linear-array of a PyMC3 mean-field approximation.
+def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[VarMap]:
+    """Extracts the variable-to-linear-array of a PyMC mean-field approximation.
 
     Args:
-        approx: an instance of PyMC3 mean-field approximation
+        approx: an instance of PyMC mean-field approximation
 
     Returns:
-        A list of `pymc3.blocking.VarMap`
+        A list of VarMap
     """
-    if pm.__version__ == "3.1":
-        return approx.gbij.ordering.vmap
-    elif pm.__version__ == "3.2":
-        return approx.bij.ordering.vmap
-    else:
-        raise Exception("Unsupported PyMC3 version")
+    # Originally, with PyMC3 3.5, this simply returned a List[pymc3.blocking.VarMap]:
+    #     return approx.bij.ordering.vmap
+    # However, changes were made to the API and the VarMap class was obviated by the use of Xarray, see:
+    #  https://discourse.pymc.io/t/how-to-get-named-means-and-sds-from-advi-fit/11073
+    # Unfortunately, this new functionality appears to be somewhat brittle and yields an error in our use case.
+    # We instead bring the old VarMap class into this module and recreate the old functionality to
+    # preserve our preexisting interfaces.
+    # TODO
+    var_map_list = []
+    for var, slc, shp, dtyp in approx.ordering.values():
+        var_map_list.append(VarMap(var, slc, shp, dtyp))
+    return var_map_list
+
 
 
 def extract_mean_field_posterior_parameters(approx: pm.MeanField) \
         -> Tuple[Set[str], Dict[str, np.ndarray], Dict[str, np.ndarray]]:
     """Extracts mean-field posterior parameters in the right shape and dtype from an instance
-    of PyMC3 mean-field approximation.
+    of PyMC mean-field approximation.
 
     Args:
-        approx: an instance of PyMC3 mean-field approximation
+        approx: an instance of PyMC mean-field approximation
 
     Returns:
         A tuple (set of variable names,
@@ -373,7 +385,7 @@ def write_mean_field_sample_specific_params(sample_index: int,
                                             approx_std_map: Dict[str, np.ndarray],
                                             model: GeneralizedContinuousModel,
                                             extra_comment_lines: Optional[List[str]] = None):
-    """Writes sample-specific parameters contained in an instance of PyMC3 mean-field approximation
+    """Writes sample-specific parameters contained in an instance of PyMC mean-field approximation
     to disk.
 
     Args:
@@ -405,11 +417,11 @@ def write_mean_field_sample_specific_params(sample_index: int,
 def write_mean_field_global_params(output_path: str,
                                    approx: pm.MeanField,
                                    model: GeneralizedContinuousModel):
-    """Writes global parameters contained in an instance of PyMC3 mean-field approximation to disk.
+    """Writes global parameters contained in an instance of PyMC mean-field approximation to disk.
 
     Args:
         output_path: output path (must be writable)
-        approx: an instance of PyMC3 mean-field approximation
+        approx: an instance of PyMC mean-field approximation
         model: the generalized model corresponding to the provided mean-field approximation
     """
     # parse mean-field posterior parameters
@@ -437,7 +449,7 @@ def read_mean_field_global_params(input_model_path: str,
 
     Args:
         input_model_path: input model path
-        approx: an instance of PyMC3 mean-field approximation to be updated
+        approx: an instance of PyMC mean-field approximation to be updated
         model: the generalized model corresponding to the provided mean-field approximation and the saved
             instance
     """
@@ -460,7 +472,7 @@ def read_mean_field_global_params(input_model_path: str,
         var_mu = read_ndarray_from_tsv(var_mu_input_file)
         var_std = read_ndarray_from_tsv(var_std_input_file)
 
-        # convert std to rho, see pymc3.dist_math.sd2rho
+        # convert std to rho, see pymc.dist_math.sd2rho
         var_rho = np.log(np.exp(var_std) - 1)
         del var_std
 
@@ -491,7 +503,7 @@ def read_mean_field_sample_specific_params(input_sample_calls_path: str,
         sample_index: index of the sample in the current instance of model/approximation
         sample_name: name of the sample in the current instance of model/approximation
             (used to check whether `input_sample_calls_path` actually corresponds to the sample)
-        approx: an instance of PyMC3 mean-field approximation corresponding to the provided model
+        approx: an instance of PyMC mean-field approximation corresponding to the provided model
         model: the generalized model corresponding to the provided mean-field approximation
 
     Returns:
@@ -548,7 +560,7 @@ def read_mean_field_sample_specific_params(input_sample_calls_path: str,
         var_mu = read_ndarray_from_tsv(var_mu_input_file)
         var_std = read_ndarray_from_tsv(var_std_input_file)
 
-        # convert std to rho, see pymc3.dist_math.sd2rho
+        # convert std to rho, see pymc.dist_math.sd2rho
         var_rho = np.log(np.exp(var_std) - 1)
         del var_std
 
