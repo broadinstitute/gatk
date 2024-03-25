@@ -186,7 +186,7 @@ public class GenotypeGVCFsEngine
             //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
             vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
             VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
-            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false, keepSB)).make();
+            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(annotated, false, keepSB)).make();
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true, false)).make();
