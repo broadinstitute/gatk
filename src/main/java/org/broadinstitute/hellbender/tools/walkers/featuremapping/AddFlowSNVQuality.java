@@ -22,7 +22,17 @@ import java.io.PrintWriter;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "This program converts the flow qualities that Ultima Genomics CRAM reports to more conventional base qualities. Specifically, the reported BQ will report the probability that a specific base is a sequencing error mismatch, while auxilary tags qa, qt, qg, qc report specific probability that a specific base X is a A->X error. Since mismatch error in flow-based chemistries can only occur as a result of several indel errors, we implemented three strategies to estimate the probability of a mismatch:",
+        summary = "This program converts the flow qualities that Ultima Genomics CRAM reports to more conventional base qualities. " +
+                "Specifically, the reported BQ will report the probability that a specific base is a sequencing error mismatch, " +
+                "while auxilary tags qa, qt, qg, qc report specific probability that a specific base X is a A->X error. " +
+                "Since mismatch error in flow-based chemistries can only occur as a result of several indel errors, " +
+                "we implemented several strategies to estimate the probability of a mismatch which can be specified" +
+                "using the svnq-mode parameter: " +
+                "Legacy - the quality value from flow matrix is used. " +
+                "Optimistic - assuming that the probability of the indel errors are p1 and p2, then snvq=p1*p2 - assuming they always coincide. " +
+                "Pessimistic - snvq=(1-p1)*(1-p2) - assuming they never coincide. " +
+                "Geometric - snvq=sqrt(Optimistic*Pessimistic) - i.e. the geometric mean of the optimistic and Pessimistic modes. " +
+                "The Geometric is set as the default mode",
         oneLineSummary = "Add SNV Quality to the flow-based CRAM",
         programGroup = FlowBasedProgramGroup.class
 )

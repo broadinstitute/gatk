@@ -46,18 +46,18 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
     /**
      * snvq computation mode
      */
-    @Argument(fullName = SNVQ_MODE_FULL_NAME, doc = "snvq computation mode", optional = true)
+    @Argument(fullName = SNVQ_MODE_FULL_NAME, doc = "snvq calculation mode.", optional = true)
     public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
 
     /**
      *  debug read names?
      **/
     @Hidden
-    @Argument(fullName = DEBUG_READ_NAME_FULL_NAME, doc = "debug specific reads?", optional = true)
+    @Argument(fullName = DEBUG_READ_NAME_FULL_NAME, doc = "Read names of reads to output details of as part of debugging. ", optional = true)
     public List<String> debugReadName = null;
 
     @Advanced
     @Hidden
-    @Argument(fullName= DEBUG_COLLECT_STATS_INTO_FULL_NAME, doc = "", optional = true)
+    @Argument(fullName= DEBUG_COLLECT_STATS_INTO_FULL_NAME, doc = "Statistics about the reads will be output to given filename.", optional = true)
     public String debugCollectStatsInto = null;
 }
