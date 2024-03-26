@@ -157,6 +157,7 @@ public class GroundTruthScorer extends ReadWalker {
     private static final int BASE_VALUE_MAX = FlowBasedRead.DEFAULT_FLOW_ORDER.length() - 1;
 
     private static final double NORMALIZED_SCORE_THRESHOLD_DEFAULT = -0.1;
+    private static final double DEFAULT_RATIO_THRESHOLD = 0.003;
 
     /*
      Private accumulator class for counting false/true observations (hence Boolean).
@@ -502,7 +503,7 @@ public class GroundTruthScorer extends ReadWalker {
         // write reports
         if ( reportFilePath != null ) {
             final GATKReport report = new GATKReport(
-                    BooleanAccumulator.newReportTable(qualReport, "qual", fbargs.probabilityRatioThreshold, omitZerosFromReport),
+                    BooleanAccumulator.newReportTable(qualReport, "qual", DEFAULT_RATIO_THRESHOLD, omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", omitZerosFromReport),
                     BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base", omitZerosFromReport),
                     PercentileReport.newReportTable(percentileReports, qualityPercentiles)

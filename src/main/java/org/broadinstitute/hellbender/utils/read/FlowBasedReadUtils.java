@@ -480,4 +480,10 @@ public class FlowBasedReadUtils {
         return status;
     }
 
+    public static int calcFlowOrderLength(String flowOrder) {
+
+        final int i = flowOrder.indexOf(flowOrder.charAt(0), 1);
+
+        return (i < 0) ? flowOrder.length() : i;
+    }
 }
