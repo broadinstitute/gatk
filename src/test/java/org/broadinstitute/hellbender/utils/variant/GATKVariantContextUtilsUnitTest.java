@@ -659,6 +659,20 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(merged.getSampleNames(), new LinkedHashSet<>(Arrays.asList("s1.1", "s1.2")));
     }
 
+    @Test
+    public void testMergeSourceIDs() {
+        final VariantContext vc1 = makeVC("1", Arrays.asList(Aref, T), makeG("s1", Aref, T, -1));
+        final VariantContext vc1WithSource= new VariantContextBuilder(vc1).source("source1").make();
+        final VariantContext vc2 = makeVC("2", Arrays.asList(Aref, T), makeG("s1", Aref, T, -2));
+        final VariantContext vc2WithSource = new VariantContextBuilder(vc2).source("source2").make();
+        final VariantContext merged = GATKVariantContextUtils.simpleMerge(
+                Arrays.asList(vc1WithSource, vc2WithSource), null, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false);
+
+        // test sources are merged
+        Assert.assertEquals(merged.getSource(), "source1-source2");
+    }
+
 // TODO: remove after testing
 //    @Test(expectedExceptions = IllegalStateException.class)
 //    public void testMergeGenotypesRequireUnique() {
