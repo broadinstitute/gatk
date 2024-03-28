@@ -835,12 +835,15 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     }
 
     /**
-     * clip probability values to fbargs.probabilityRatioThreshold
+     * clip probability values in a way that probability between perHmerMinErrorProb and 3*perHmerMinErrorProb
+     * is automatically clipped to perHmerMinErrorProb. This is done to avoid issues with rounding of
+     * small error probabilities in the basecalling
      */
     private void clipProbs() {
+        double probabilityThreshold = perHmerMinErrorProb*3;
         for ( int i = 0 ; i < getMaxHmer(); i++ ) {
             for ( int j =0; j < getNFlows(); j++) {
-                if ((flowMatrix[i][j] <= perHmerMinErrorProb*3) &&
+                if ((flowMatrix[i][j] <= probabilityThreshold) &&
                         (key[j]!=i)) {
                     flowMatrix[i][j] = perHmerMinErrorProb;
                 }
