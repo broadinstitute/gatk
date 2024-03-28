@@ -1080,28 +1080,41 @@ public final class GATKVariantContextUtils {
         return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled);
     }
 
-    /**
-     * Merges VariantContexts into a single hybrid.  Takes genotypes for common samples in priority order, if provided.
-     * If uniquifySamples is true, the priority order is ignored and names are created by concatenating the VC name with
-     * the sample name.
-     * simpleMerge does not verify any more unique sample names EVEN if genotypeMergeOptions == GenotypeMergeType.REQUIRE_UNIQUE. One should use
-     * SampleUtils.verifyUniqueSamplesNames to check that before using simpleMerge.
-     *
-     * For more information on this method see: http://www.thedistractionnetwork.com/programmer-problem/
-     *
-     * @param unsortedVCs               collection of unsorted VCs
-     * @param priorityListOfVCs         priority list detailing the order in which we should grab the VCs
-     * @param filteredRecordMergeType   merge type for filtered records
-     * @param genotypeMergeOptions      merge option for genotypes
-     * @param filteredAreUncalled       are filtered records uncalled?
-     * @return new VariantContext       representing the merge of unsortedVCs
-     */
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
                                              final List<String> priorityListOfVCs,
                                              final int originalNumOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
                                              final boolean filteredAreUncalled) {
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled, false, -1);
+    }
+
+    /**
+         * Merges VariantContexts into a single hybrid.  Takes genotypes for common samples in priority order, if provided.
+         * If uniquifySamples is true, the priority order is ignored and names are created by concatenating the VC name with
+         * the sample name.
+         * simpleMerge does not verify any more unique sample names EVEN if genotypeMergeOptions == GenotypeMergeType.REQUIRE_UNIQUE. One should use
+         * SampleUtils.verifyUniqueSamplesNames to check that before using simpleMerge.
+         *
+         * For more information on this method see: http://www.thedistractionnetwork.com/programmer-problem/
+         *
+         * @param unsortedVCs               collection of unsorted VCs
+         * @param priorityListOfVCs         priority list detailing the order in which we should grab the VCs
+         * @param filteredRecordMergeType   merge type for filtered records
+         * @param genotypeMergeOptions      merge option for genotypes
+         * @param filteredAreUncalled       are filtered records uncalled?
+         * @param storeAllVcfSources        if true, the sources of all VCs where isVariable()=true will be concatenated in the output VC's source field. If false, the source of the first VC will be used. This mirror's GATK3's behavior
+         * @param maxSourceFieldLength      if storeAllVcfSources=true, this value sets the max length of the resulting source field. set to -1 for unlimited
+         * @return new VariantContext       representing the merge of unsortedVCs
+         */
+    public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
+                                             final List<String> priorityListOfVCs,
+                                             final int originalNumOfVCs,
+                                             final FilteredRecordMergeType filteredRecordMergeType,
+                                             final GenotypeMergeType genotypeMergeOptions,
+                                             final boolean filteredAreUncalled,
+                                             final boolean storeAllVcfSources,
+                                             final int maxSourceFieldLength) {
         if ( unsortedVCs == null || unsortedVCs.isEmpty() )
             return null;
 
@@ -1146,7 +1159,7 @@ public final class GATKVariantContextUtils {
                 longestVC = vc; // get the longest location
 
             nFiltered += vc.isFiltered() ? 1 : 0;
-            if ( vc.isVariant() ) variantSources.add(vc.getSource());
+            if ( storeAllVcfSources && vc.isVariant() ) variantSources.add(vc.getSource());
 
             AlleleMapper alleleMapping = resolveIncompatibleAlleles(refAllele, vc);
 
@@ -1218,7 +1231,10 @@ public final class GATKVariantContextUtils {
         final String ID = rsIDs.isEmpty() ? VCFConstants.EMPTY_ID_FIELD : Utils.join(",", rsIDs);
 
         // This preserves the GATK3-like behavior of reporting all sources, delimited with hyphen:
-        final String allSources = variantSources.isEmpty() ? name : variantSources.stream().sorted().collect(Collectors.joining("-"));
+        String allSources = variantSources.isEmpty() ? name : variantSources.stream().sorted().collect(Collectors.joining("-"));
+        if (maxSourceFieldLength != -1 && allSources.length() > maxSourceFieldLength) {
+            allSources = allSources.substring(0, maxSourceFieldLength);
+        }
 
         final VariantContextBuilder builder = new VariantContextBuilder().source(allSources).id(ID);
         builder.loc(longestVC.getContig(), longestVC.getStart(), longestVC.getEnd());
