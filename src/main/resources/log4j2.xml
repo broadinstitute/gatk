@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN">
+<Configuration status="WARN" packages="org.broadinstitute.hellbender.utils.logging">
   <Appenders>
     <Console name="Console" target="SYSTEM_ERR">
-      <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %logger{1} - %msg%n"/>
-    </Console>
+      <PatternLayout pattern="%frenchRevDate %-5level %logger{1} - %msg%n"/>
+    </Console>s
   </Appenders>
   <Loggers>
     <Root level="INFO">

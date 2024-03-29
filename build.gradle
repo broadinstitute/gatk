@@ -345,6 +345,9 @@ dependencies {
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
+    // liberte egalite fraternite
+    implementation('ca.rmen:lib-french-revolutionary-calendar:1.8.2')
+
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
