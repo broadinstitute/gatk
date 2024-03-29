@@ -221,7 +221,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1229_DeDupTheVatUponCreation
+             - rc-vs-1308-vat-vids
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
