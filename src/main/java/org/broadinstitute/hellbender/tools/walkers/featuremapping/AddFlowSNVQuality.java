@@ -23,7 +23,7 @@ import java.util.*;
 
 @CommandLineProgramProperties(
         summary = "This program converts the flow qualities that Ultima Genomics CRAM reports to more conventional base qualities. " +
-                "Specifically, the reported BQ will report the probability that a specific base is a sequencing error mismatch, " +
+                "Specifically, the generated quality will report the probability that a specific base is a sequencing error mismatch, " +
                 "while auxilary tags qa, qt, qg, qc report specific probability that a specific base X is a A->X error. " +
                 "Since mismatch error in flow-based chemistries can only occur as a result of several indel errors, " +
                 "we implemented several strategies to estimate the probability of a mismatch which can be specified" +
@@ -54,7 +54,6 @@ public final class AddFlowSNVQuality extends ReadWalker {
     @ArgumentCollection
     public AddFlowSNVQualityArgumentCollection aqArgs = new AddFlowSNVQualityArgumentCollection();
 
-    public static final String BASE_QUALITY_ATTRIBUTE_NAME = "BQ";
     public static final char PHRED_ASCII_BASE = '!';
 
     public static final int ERROR_PROB_BAND_1LESS = 0;
@@ -139,9 +138,15 @@ public final class AddFlowSNVQuality extends ReadWalker {
     }
 
     private void collectOutputStats(GATKRead read) {
-        if ( read.hasAttribute(BASE_QUALITY_ATTRIBUTE_NAME) ) {
-            for ( byte q : read.getAttributeAsString(BASE_QUALITY_ATTRIBUTE_NAME).getBytes() ) {
-                outputBQStats.add(SAMUtils.fastqToPhred((char)q));
+        if ( aqArgs.outputQualityAttribute != null ) {
+            if (read.hasAttribute(aqArgs.outputQualityAttribute)) {
+                for (byte q : read.getAttributeAsString(aqArgs.outputQualityAttribute).getBytes()) {
+                    outputBQStats.add(SAMUtils.fastqToPhred((char) q));
+                }
+            }
+        } else {
+            for (byte q : read.getBaseQualitiesNoCopy()) {
+                outputBQStats.add(q);
             }
         }
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), read);
@@ -192,7 +197,9 @@ public final class AddFlowSNVQuality extends ReadWalker {
             final byte[] quals = read.getBaseQualitiesNoCopy();
             final byte[] tp = read.getAttributeAsByteArray(FlowBasedRead.FLOW_MATRIX_TAG_NAME);
             final byte[] t0 = read.getAttributeAsByteArray(FlowBasedRead.FLOW_MATRIX_T0_TAG_NAME);
-            final byte[] bq = read.getAttributeAsString(BASE_QUALITY_ATTRIBUTE_NAME).getBytes();
+            final byte[] bq = (aqArgs.outputQualityAttribute != null)
+                    ? read.getAttributeAsString(aqArgs.outputQualityAttribute).getBytes()
+                    : null;
             final byte[][] qX = new byte[4][];
             for (int i = 0; i < 4; i++) {
                 qX[i] = read.getAttributeAsString(attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i))).getBytes();
@@ -213,7 +220,9 @@ public final class AddFlowSNVQuality extends ReadWalker {
                 // tp,t0,bq
                 line.add(Integer.toString(tp[pos]));
                 line.add(Integer.toString(SAMUtils.fastqToPhred((char)t0[pos])));
-                line.add(Integer.toString(SAMUtils.fastqToPhred((char)bq[pos])));
+                if ( bq != null ) {
+                    line.add(Integer.toString(SAMUtils.fastqToPhred((char) bq[pos])));
+                }
 
                 // qX
                 int calledIndex = -1;
@@ -276,7 +285,11 @@ public final class AddFlowSNVQuality extends ReadWalker {
         final ReadProbs readProbs = generateFlowReadBaseAndSNVQErrorProbabilities(fbRead, flowOrderLength, rgInfo.flowOrder.getBytes());
 
         // install in read
-        read.setAttribute(BASE_QUALITY_ATTRIBUTE_NAME, new String(convertErrorProbToFastq(readProbs.baseProbs)));
+        if ( aqArgs.outputQualityAttribute != null ) {
+            read.setAttribute(aqArgs.outputQualityAttribute, new String(convertErrorProbToFastq(readProbs.baseProbs)));
+        } else {
+            read.setBaseQualities(convertErrorProbToPhred(readProbs.baseProbs));
+        }
         for ( int i = 0 ; i < flowOrderLength ; i++ ) {
             final String name = AddFlowSNVQuality.attrNameForNonCalledBase(rgInfo.flowOrder.charAt(i));
             read.setAttribute(name, new String(convertErrorProbToFastq(readProbs.snvqProbs[i])));
@@ -288,18 +301,26 @@ public final class AddFlowSNVQuality extends ReadWalker {
     // the following check is a safety, in case snvq produces a zero.
     private char[] convertErrorProbToFastq(double[] errorProb) {
 
-        final char[] fastq = new char[errorProb.length];
+        byte[] phred = convertErrorProbToPhred(errorProb);
+        return SAMUtils.phredToFastq(phred).toCharArray();
+    }
+
+    // Not using SamUtils function since normally an error probability can not be zero.
+    // still, this method is called to convert base quality as well as snvq, which is computed.
+    // the following check is a safety, in case snvq produces a zero.
+    private byte[] convertErrorProbToPhred(double[] errorProb) {
+
+        final byte[] phred = new byte[errorProb.length];
         for ( int i = 0 ; i < errorProb.length ; i++ ) {
 
             if ( errorProb[i] == 0 ) {
-                fastq[i] = (char)(maxQualityScore + PHRED_ASCII_BASE);
+                phred[i] = (byte)maxQualityScore;
             } else {
                 final double p = errorProb[i];
-                final int phred =  (int)Math.round(-10 * Math.log10(p));
-                fastq[i] = SAMUtils.phredToFastq(phred);
+                phred[i] =  (byte)Math.round(-10 * Math.log10(p));
             }
         }
-        return fastq;
+        return phred;
     }
 
     /**

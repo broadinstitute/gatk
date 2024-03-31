@@ -16,6 +16,7 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
     public static final String KEEP_SUPPLEMENTARY_ALIGNMENTS_FULL_NAME = "keep-supplementary-alignments";
     public static final String INCLUDE_QC_FAILED_READ_FULL_NAME = "include-qc-failed-read";
     public static final String SNVQ_MODE_FULL_NAME = "snvq-mode";
+    public static final String OUTPUT_QUALITY_ATTRIBUTE_FULL_NAME = "output-quality-attribute";
     public static final String DEBUG_READ_NAME_FULL_NAME = "debug-read-name";
     public static final String DEBUG_COLLECT_STATS_INTO_FULL_NAME = "debug-collect-stats-into";
 
@@ -48,6 +49,12 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
      */
     @Argument(fullName = SNVQ_MODE_FULL_NAME, doc = "snvq calculation mode.", optional = true)
     public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
+
+    /**
+     * alternate quality attribute to set instead of the usual quality string
+     */
+    @Argument(fullName = OUTPUT_QUALITY_ATTRIBUTE_FULL_NAME, doc = "alternate quality attribute to set instead of the usual quality string.", optional = true)
+    public String outputQualityAttribute = null;
 
     /**
      *  debug read names?
