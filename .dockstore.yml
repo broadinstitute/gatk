@@ -327,6 +327,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - rc-integration-test-w-Echo-changes
          tags:
              - /.*/
    - name: GvsIngestTieout
