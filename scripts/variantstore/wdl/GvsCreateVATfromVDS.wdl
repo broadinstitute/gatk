@@ -261,7 +261,7 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-            pip3 install hail~{'==' + hail_version}
+        pip3 install hail~{'==' + hail_version}
 
         pip3 install --upgrade google-cloud-dataproc ijson
 
@@ -274,7 +274,7 @@ task GenerateSitesOnlyVcf {
         sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
-            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
