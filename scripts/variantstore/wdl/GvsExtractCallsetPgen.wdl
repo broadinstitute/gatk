@@ -407,7 +407,18 @@ task PgenExtractTask {
         # Extract the intervals file from the intervals tarball
         tar -xf ~{interval_files_tar} ~{interval_filename}
 
-        gatk --java-options "-Xmx~{memory_gib - 3}g" \
+        # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
+        # the input `memory_gib`, so use the memory-related environment variables rather than the `memory_gib` input.
+        # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
+        if [[ ${MEM_UNIT} == "GB" ]]
+        then
+            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+        else
+            echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
+            exit 1
+        fi
+
+        gatk --java-options "-Xmx${memory_mb}m" \
         ExtractCohortToPgen \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \

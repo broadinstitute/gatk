@@ -421,6 +421,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1314_pgen_at_scale
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -429,6 +430,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1314_pgen_at_scale
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -437,3 +439,10 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1314_pgen_at_scale
+   - name: RetryWithMoreMemory
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/RetryWithMoreMemory.wdl
+     filters:
+       branches:
+         - vs_1314_pgen_at_scale
