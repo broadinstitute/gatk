@@ -127,10 +127,10 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     # create a filtered sites only VCF
     hl.export_vcf(ht, sites_only_vcf_path)
 
-+def add_variant_tracking_info(mt):
-    mt.rows() # only need the table of row fields
-       .select(var_origin_id=hl.format('%s-%s-%s-%s', mt.locus.contig, mt.locus.position, mt.alleles[0], mt.alleles[1])) # leaves this as the only field
-       .export('var_ids.tsv.bgz', parallel='header_per_shard')
+def add_variant_tracking_info(mt):
+    # only need the table of row fields and leaves this as the only field
+    t = mt.rows()
+    t.select(var_origin_id=hl.format('%s-%s-%s-%s', t.locus.contig, t.locus.position, t.alleles[0], t.alleles[1])).export('var_ids.tsv.bgz', parallel='header_per_shard')
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     transforms = [
