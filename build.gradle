@@ -353,6 +353,9 @@ dependencies {
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
+    // pgen jni
+    implementation('org.broadinstitute:pgenjni:1.0.1')
+
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
@@ -361,6 +364,8 @@ dependencies {
 
     testImplementation "org.mockito:mockito-core:2.28.2"
     testImplementation "com.google.jimfs:jimfs:1.1"
+
+    testImplementation "com.github.luben:zstd-jni:1.5.5-11"
 }
 
 // This list needs to be kept in sync with the corresponding list in scripts/dockertest.gradle.
