@@ -528,7 +528,7 @@ public final class FuncotatorEngine implements AutoCloseable {
         }
 
         // Record whether we need to revert the contigs back to B37 after annotation:
-        if (FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants) && mustConvertInputContigsToHg19) {
+        if (mustConvertInputContigsToHg19 && FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants)) {
             this.mustRevertVariantContigsFromHg19ToB37 = true;
         }
 
