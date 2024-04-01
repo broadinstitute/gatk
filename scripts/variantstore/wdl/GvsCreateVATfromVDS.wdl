@@ -261,7 +261,7 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
+            pip3 install hail~{'==' + hail_version}
 
         pip3 install --upgrade google-cloud-dataproc ijson
 
@@ -274,7 +274,7 @@ task GenerateSitesOnlyVcf {
         sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
-        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -505,11 +505,16 @@ task AnnotateVCF {
         # Mentioning this path in the inputs section of the task combined with checking the 'Use reference disks' option
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
         File summon_reference_disk =
-            "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
+            "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
 
         String variants_nirvana_docker
 
-        File omim_annotations = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga"
+        File omim_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/OMIM_20220516.nga"
+        File cosmic_gene_fusion_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/COSMIC_GeneFusions_94.gfj"
+        File primate_ai_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/PrimateAI_0.2.nsa"
+        File primate_ai_annotations_idx = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/PrimateAI_0.2.nsa.idx"
+        File splice_ai_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/SpliceAi_1.3.nsa"
+        File splice_ai_annotations_idx = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/SpliceAi_1.3.nsa.idx"
         Boolean use_reference_disk
     }
 
@@ -569,6 +574,13 @@ task AnnotateVCF {
             # Nirvana downloader. As this annotation set is currently central for our VAT logic, special-case link in
             # the OMIM .nsa bundle we downloaded back when we made the Delta reference disk:
             ln ~{omim_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+            # Similarly, the following annotations were removed from the latest Nirvana annotations (3.18.1), but we
+            # re-add them as desired by Lee
+            ln ~{cosmic_gene_fusion_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+            ln ~{primate_ai_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+            ln ~{primate_ai_annotations_idx} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+            ln ~{splice_ai_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+            ln ~{splice_ai_annotations_idx} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
         fi
 
         # =======================================
