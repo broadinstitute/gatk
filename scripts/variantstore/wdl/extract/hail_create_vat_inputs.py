@@ -127,7 +127,11 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     # create a filtered sites only VCF
     hl.export_vcf(ht, sites_only_vcf_path)
 
-
+def add_variant_tracking_info(mt, sites_only_vcf_path):
+    # only need the table of row fields and leaves this as the only field
+    var_ids_path = sites_only_vcf_path.replace(r".sites-only.vcf", ".var_ids.tsv.bgz")
+    t = mt.rows()
+    t.select(var_origin_id=hl.format('%s-%s-%s-%s', t.locus.contig, t.locus.position, t.alleles[0], t.alleles[1])).export(var_ids_path, parallel='header_per_shard')
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     transforms = [
@@ -145,6 +149,9 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
     # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
+
+    # for debugging information
+    add_variant_tracking_info(mt, sites_only_vcf_path)
 
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
     write_sites_only_vcf(mt, sites_only_vcf_path)

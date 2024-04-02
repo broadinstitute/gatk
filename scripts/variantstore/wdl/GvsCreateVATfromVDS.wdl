@@ -810,8 +810,11 @@ task BigQueryLoadJson {
             echo "Dropping and recreating the vat table ~{dataset_name}.~{vat_table_name}"
             bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table_name}
         fi
-        bq --apilog=false mk --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
+
+        CLUSTERING_STRING="--clustering_fields=contig"
+        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
         echo "Loading data into it"
+
 
         # Now we run a giant query in BQ to get this all in the right table and join the genes properly
         # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
