@@ -221,6 +221,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
              - rc-vs-1308-vat-vids
          tags:
              - /.*/
