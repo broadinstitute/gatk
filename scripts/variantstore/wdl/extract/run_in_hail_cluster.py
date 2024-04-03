@@ -130,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument('--account', type=str, help='GCP account name')
     parser.add_argument('--worker-machine-type', type=str, required=False, default="n1-standard-8",
                         help='Dataproc cluster worker machine type')
-    parser.add_argument('--master-machine-type', type=str, required=False, default="n1-highmem-16",
+    parser.add_argument('--master-machine-type', type=str, required=False, default="n1-highmem-32",
                         help='Dataproc cluster master machine type')
     parser.add_argument('--master-memory-fraction', type=float, default=0.8, help='Dataproc master memory fraction')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
