@@ -910,12 +910,11 @@ class CopyNumberEmissionBasicSampler:
     def _get_compiled_simultaneous_log_copy_number_emission_sampler(self, approx: pm.approximations.MeanField):
         """For a given variational approximation, returns a compiled pytensor function that draws posterior samples
         from log copy number emission probabilities."""
-        log_copy_number_emission_stc = approx.sample_node(
-            node=self.denoising_model['log_copy_number_emission_stc'],
-            size=self.inference_params.log_emission_samples_per_round).mean(axis=0)
+        log_copy_number_emission_stc = commons.stochastic_node_mean_symbolic(
+            approx, self.denoising_model['log_copy_number_emission_stc'],
+            size=self.inference_params.log_emission_samples_per_round)
         # must use compile_pymc to pass random_seed for reproducible sampling
-        return pm.pytensorf.compile_pymc(inputs=[],
-                                         outputs=log_copy_number_emission_stc,
+        return pm.pytensorf.compile_pymc(inputs=[], outputs=log_copy_number_emission_stc,
                                          random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
 

@@ -9,8 +9,10 @@ from . import io_commons
 from . import io_consts
 from . import io_intervals_and_counts
 from .. import config
+from ..models import commons
 from ..models.model_denoising_calling import CopyNumberCallingConfig, DenoisingModelConfig
 from ..models.model_denoising_calling import DenoisingCallingWorkspace, DenoisingModel
+from ..utils import math
 
 _logger = logging.getLogger(__name__)
 
@@ -152,21 +154,12 @@ class SampleDenoisingAndCallingPosteriorsWriter:
 
         # compute approximate denoised copy ratios
         _logger.info("Sampling and approximating posteriors for denoised copy ratios...")
-        denoising_copy_ratios_st_symbolic_samples = self.denoising_model_approx.sample_node(
-            node=self.denoising_model['denoised_copy_ratio_st'],
-            size=self.denoising_config.num_samples_copy_ratio_approx)
-        # must use compile_pymc to pass random_seed for reproducible sampling
-        denoising_copy_ratios_st_mean_samples_func = pm.pytensorf.compile_pymc(
-            inputs=[],
-            outputs=denoising_copy_ratios_st_symbolic_samples.mean(axis=0),
-            random_seed=self.denoising_model_approx.rng.randint(2**30, dtype=np.int64))
-        denoising_copy_ratios_st_std_samples_func = pm.pytensorf.compile_pymc(
-            inputs=[],
-            outputs=denoising_copy_ratios_st_symbolic_samples.std(axis=0),
-            random_seed=self.denoising_model_approx.rng.randint(2**30, dtype=np.int64))
-
-        mu_denoised_copy_ratio_st = denoising_copy_ratios_st_mean_samples_func()
-        std_denoised_copy_ratio_st = denoising_copy_ratios_st_std_samples_func()
+        denoising_copy_ratios_st_approx_generator = commons.get_sampling_generator_for_model_approximation(
+            approx=self.denoising_model_approx, node=self.denoising_model['denoised_copy_ratio_st'],
+            num_samples=self.denoising_config.num_samples_copy_ratio_approx)
+        mu_denoised_copy_ratio_st, var_denoised_copy_ratio_st = \
+            math.calculate_mean_and_variance_online(denoising_copy_ratios_st_approx_generator)
+        std_denoised_copy_ratio_st = np.sqrt(var_denoised_copy_ratio_st)
 
         for si, sample_name in enumerate(self.denoising_calling_workspace.sample_names):
             sample_name_comment_line = [io_consts.sample_name_sam_header_prefix + sample_name]
