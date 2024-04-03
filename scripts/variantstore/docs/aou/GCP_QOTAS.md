@@ -3,7 +3,7 @@
 ## General Requirements
 
 - an active `@firecloud.org` account
-- the name of the workspace Google project where the workflow that you are monitoring is running (e.g. `terra-abcdefgh`)
+- the name of the workspace Google project where the workflow that you are monitoring is running (e.g. `terra-abcdefgh`); it can be found in the "Cloud Information" card on the "Dashboard" tab of the workspace
 - the "Service Usage Viewer" Role in the workspace Google project (you can add this to your `@firecloud.org` account using your `@firecloud.org` account at https://console.cloud.google.com/iam-admin/iam?project=[workspace-project-id])
 
 ## Monitoring
@@ -29,7 +29,7 @@
      - Compute Engine API: Persistent Disk Standard (GB)
      - Compute Engine API: VM instances
      - Compute Engine API: CPUs
-  1. will need human intervention, which means that, after you make the request, (or even beforehand, if possible) contact our Google Support Account people and ask them to follow up, examples:
+  1. will need human intervention, which means that, after you make the request, (or even beforehand, if possible) contact our Google Support Account people (via gChat, email, or in our regular meetings) and ask them to follow up, examples:
      - Compute Engine API: In-use IP addresses
      - BigQuery: Create WriteStreamRequests quota for US regions per minute
 - a `@firecloud.org` will not be able to look at the quotas for resources that are in VUMC-managed Google projects (e.g. `aou-genomics-curation-prod`), only Terra-related projects
