@@ -160,7 +160,8 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
                 .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
                         CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputDir)
-                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
+                .add(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");
         runCommandLine(argsBuilder);
 
         // Test that values of outputs are approximately numerically equivalent
@@ -182,7 +183,7 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
             } catch (final IOException ex) {
                 throw new GATKException("Could not remove GermlineCNVCaller tracking files.");
             }
-            IntStream.range(1, 20).forEach(
+            IntStream.range(1, TEST_COUNT_FILES.length).forEach(
                     s -> {
                         try {
                             FileUtils.deleteDirectory(new File(Paths.get(GCNV_TEST_OUTPUT_DIR, outputPrefix + "-calls", "SAMPLE_" + s).toString()));

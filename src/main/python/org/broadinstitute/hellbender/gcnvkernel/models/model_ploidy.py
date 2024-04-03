@@ -310,12 +310,9 @@ class PloidyEmissionBasicSampler:
     def _get_compiled_simultaneous_log_ploidy_emission_sampler(self, approx: pm.approximations.MeanField):
         """For a given variational approximation, returns a compiled pytensor function that draws posterior samples
         from the log ploidy emission."""
-        log_ploidy_emission_sjk = approx.sample_node(
-            node=self.ploidy_model['logp_sjk'],
-            size=self.samples_per_round).mean(axis=0)
-        # must use compile_pymc to pass random_seed for reproducible sampling
-        return pm.pytensorf.compile_pymc(inputs=[],
-                                         outputs=log_ploidy_emission_sjk,
+        log_ploidy_emission_sjk = commons.stochastic_node_mean_symbolic(
+            approx, self.ploidy_model['logp_sjk'], size=self.samples_per_round)
+        return pm.pytensorf.compile_pymc(inputs=[], outputs=log_ploidy_emission_sjk,
                                          random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
 
