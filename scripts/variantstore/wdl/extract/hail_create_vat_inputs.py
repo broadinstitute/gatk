@@ -125,7 +125,7 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     ht = ac_an_af_rows.rows()
     ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
     # create a filtered sites only VCF
-    hl.export_vcf(ht, sites_only_vcf_path)
+    hl.export_vcf(ht, sites_only_vcf_path, parallel='header_per_shard')
 
 def add_variant_tracking_info(mt, sites_only_vcf_path):
     # only need the table of row fields and leaves this as the only field
@@ -150,8 +150,8 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
 
     # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
 
-    # for debugging information
-    add_variant_tracking_info(mt, sites_only_vcf_path)
+    # for debugging information -- remove for now to et us through Echo
+    # add_variant_tracking_info(mt, sites_only_vcf_path)
 
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
     write_sites_only_vcf(mt, sites_only_vcf_path)
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     time_stamp = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
 
-    vds = hl.vds.read_vds(args.vds_input_path)
+    vds = hl.vds.read_vds(args.vds_input_path, n_partitions=100000)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
     main(vds, local_ancestry_file, args.sites_only_output_path)
