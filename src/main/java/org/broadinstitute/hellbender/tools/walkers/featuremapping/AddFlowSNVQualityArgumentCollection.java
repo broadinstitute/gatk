@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Set of arguments for the {@link FlowFeatureMapper}
+ * Set of arguments for the {@link  AddFlowSNVQuality}
  */
 public class AddFlowSNVQualityArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
@@ -51,9 +51,9 @@ public class AddFlowSNVQualityArgumentCollection implements Serializable{
     public SnvqModeEnum snvMode = SnvqModeEnum.Geometric;
 
     /**
-     * alternate quality attribute to set instead of the usual quality string
+     * By default this tool overwrites the QUAL field with the new qualities. Setting this argument saves the original qualities in the specified SAM tag.
      */
-    @Argument(fullName = OUTPUT_QUALITY_ATTRIBUTE_FULL_NAME, doc = "alternate quality attribute to set instead of the usual quality string.", optional = true)
+    @Argument(fullName = OUTPUT_QUALITY_ATTRIBUTE_FULL_NAME, doc = "alternate SAM tag to put original quality scores instead of overwriting the QUAL field. If not used, QUAL will be overwritten.", optional = true)
     public String outputQualityAttribute = null;
 
     /**
