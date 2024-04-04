@@ -145,6 +145,7 @@ task MergePgen {
         disks: "local-disk ${disk_in_gb} HDD"
         bootDiskSizeGb: 15
         cpu: "${cpu}"
+        noAddress: true
     }
 }
 
@@ -201,6 +202,7 @@ task MakeFileLists {
         docker: "ubuntu:22.04"
         memory: "1GB"
         bootDiskSizeGb: 15
+        noAddress: true
     }
 }
 
@@ -281,6 +283,7 @@ task SortFileLists {
         docker: "ubuntu:22.04"
         memory: "1GB"
         bootDiskSizeGb: 15
+        noAddress: true
     }
 }
 
@@ -314,5 +317,6 @@ task SplitFileLists {
         docker: "ubuntu:22.04"
         memory: "1GB"
         bootDiskSizeGb: 15
+        noAddress: true
     }
 }

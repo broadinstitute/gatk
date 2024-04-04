@@ -1126,6 +1126,7 @@ task SelectVariants {
         disks: "local-disk ${disk_size_gb} HDD"
         bootDiskSizeGb: 15
         preemptible: 3
+        noAddress: true
     }
 
     output {
