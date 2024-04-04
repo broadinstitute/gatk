@@ -1,13 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.groundtruth;
 
-import org.apache.commons.collections.map.LazySortedMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeriesStats {
+
+    private static final Logger logger = LogManager.getLogger(SeriesStats.class);
 
     // local state
     private double last = Double.NaN;
@@ -16,8 +22,30 @@ public class SeriesStats {
     private double min = Double.NaN;
     private double max = Double.NaN;
     private SortedMap<Double, AtomicInteger> bins = new TreeMap<>();
+    private int intCount = 0;
+    private Map<Double, SeriesStats> auxBins = new LinkedHashMap<>();
 
-    void add(double v) {
+    public void csvWrite(final String path) throws IOException {
+        logger.info("Writing SeriesStats " + toDigest() + " into " + path);
+        PrintWriter pw = new PrintWriter(path);
+        pw.println("value,count");
+        boolean intKeys = isIntKeys();
+        for (Map.Entry<Double, AtomicInteger> entry : bins.entrySet() ) {
+            if ( intKeys ) {
+                pw.println(String.format("%d,%d", entry.getKey().intValue(), entry.getValue().get()));
+            } else {
+                pw.println(String.format("%f,%d", entry.getKey(), entry.getValue().get()));
+            }
+        }
+        pw.close();
+    }
+
+    public void add(int v) {
+        add((double)v);
+        intCount++;
+    }
+
+    public void add(double v) {
 
         // save in simple values
         last = v;
@@ -31,10 +59,11 @@ public class SeriesStats {
         count++;
 
         // save in bins
-        if ( bins.containsKey(v) ) {
-            bins.get(v).incrementAndGet();
+        final Double key = v;
+        if ( bins.containsKey(key) ) {
+            bins.get(key).incrementAndGet();
         } else {
-            bins.put(v, new AtomicInteger(1));
+            bins.put(key, new AtomicInteger(1));
         }
     }
 
@@ -109,4 +138,23 @@ public class SeriesStats {
         return Math.sqrt(variance);
     }
 
+    public Map<Double, AtomicInteger> getBins() {
+        return this.bins;
+    }
+
+    public Map<Double, SeriesStats> getAuxBins() {
+        return this.auxBins;
+    }
+
+    public String toDigest() {
+        if ( isIntKeys() ) {
+            return String.format("count=%d, min=%d, max=%d, median=%d, bin.count=%d", getCount(), (int)getMin(), (int)getMax(), (int)getMedian(), getBins().size());
+        } else {
+            return String.format("count=%d, min=%f, max=%f, median=%f, bin.count=%d", getCount(), getMin(), getMax(), getMedian(), getBins().size());
+        }
+    }
+
+    private boolean isIntKeys() {
+        return (count == intCount);
+    }
 }

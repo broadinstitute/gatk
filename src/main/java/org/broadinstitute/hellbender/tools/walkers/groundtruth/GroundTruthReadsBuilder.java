@@ -858,9 +858,9 @@ public final class GroundTruthReadsBuilder extends PartialReadWalker {
         cols.put("ReadName", read.getName());
 
         // haplotypes and reference scores
-        cols.put("PaternalHaplotypeScore", paternal.score);
-        cols.put("MaternalHaplotypeScore", maternal.score);
-        cols.put("RefHaplotypeScore", refScore);
+        cols.put("PaternalHaplotypeScore", String.format("%.6f", paternal.score));
+        cols.put("MaternalHaplotypeScore", String.format("%.6f", maternal.score));
+        cols.put("RefHaplotypeScore", String.format("%.6f", refScore));
 
         // build haplotype keys
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), read);
