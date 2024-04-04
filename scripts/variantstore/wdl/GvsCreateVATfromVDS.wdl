@@ -121,7 +121,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(GenerateSitesOnlyVcf.sites_only_vcf, ".sites-only.vcf")
+    String sites_only_vcf_basename = basename(GenerateSitesOnlyVcf.sites_only_vcf, ".sites-only.vcf.bgz")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
