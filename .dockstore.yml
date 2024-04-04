@@ -164,6 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1323_no_address
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -428,6 +429,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1323_no_address
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
