@@ -486,6 +486,10 @@ task PgenExtractTask {
         preemptible: select_first([extract_preemptible_override, "2"])
         maxRetries: select_first([extract_maxretries_override, "3"])
         cpu: 2
+        # This task should not need public IPs which is good because it's going to get scattered very widely
+        # such that we could easily hit our Google quotas here:
+        # https://support.terra.bio/hc/en-us/community/posts/360060020871-noAddress-true-results-in-stalling-jobs
+        noAddress: true
     }
 
     # files sizes are floats instead of ints because they can be larger
