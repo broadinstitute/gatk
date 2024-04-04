@@ -450,6 +450,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - mlc_noaddress_expt
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -458,4 +459,3 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - mlc_noaddress_expt
