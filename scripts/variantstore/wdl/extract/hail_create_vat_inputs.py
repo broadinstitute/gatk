@@ -194,7 +194,8 @@ if __name__ == '__main__':
     time_stamp = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
 
-    vds = hl.vds.read_vds(args.vds_input_path, n_partitions=100000)
+    # vds = hl.vds.read_vds(args.vds_input_path, n_partitions=100000)
+    vds = hl.vds.read_vds(args.vds_input_path)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
     main(vds, local_ancestry_file, args.sites_only_output_path)
