@@ -149,7 +149,7 @@ task MergePgen {
         disks: "local-disk ${disk_in_gb} HDD"
         bootDiskSizeGb: 15
         cpu: "${cpu}"
-        # The PGEN Docker needs to be in GAR or GCR to be able to use noAddress
+        # The PGEN Docker needs to be in GAR or GCR to be able to use noAddress.
         # noAddress: true
     }
 }
