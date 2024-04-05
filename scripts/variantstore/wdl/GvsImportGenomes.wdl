@@ -388,6 +388,7 @@ task LoadData {
     disks: "local-disk 50 HDD"
     preemptible: load_data_preemptible
     cpu: 1
+    noAddress: true
   }
   output {
     Boolean done = true

@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsExtractCallsetPgen.wdl" as Extract
 import "MergePgenHierarchical.wdl" as Merge
+import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallsetPgenMerged {
 
@@ -64,6 +65,18 @@ workflow GvsExtractCallsetPgenMerged {
         String plink_docker
     }
 
+    if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
     call Extract.GvsExtractCallsetPgen {
         input:
             go = go,
@@ -88,11 +101,11 @@ workflow GvsExtractCallsetPgenMerged {
             drop_state = drop_state,
             interval_list = interval_list,
             interval_weights_bed = interval_weights_bed,
-            variants_docker = variants_docker,
-            cloud_sdk_docker = cloud_sdk_docker,
-            gatk_docker = gatk_docker,
+            variants_docker = effective_variants_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            gatk_docker = effective_gatk_docker,
             git_branch_or_tag = git_branch_or_tag,
-            git_hash = git_hash,
+            git_hash = effective_git_hash,
             gatk_override = gatk_override,
             output_file_base_name = output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
@@ -128,7 +141,8 @@ workflow GvsExtractCallsetPgenMerged {
                 output_file_base_name = "~{output_file_base_name}.${contig}",
                 merge_disk_size = 1024,
                 split_count = split_count,
-                zero_padded_prefix = zero_pad_output_pgen_filenames
+                zero_padded_prefix = zero_pad_output_pgen_filenames,
+                variants_docker = effective_variants_docker,
         }
     }
 

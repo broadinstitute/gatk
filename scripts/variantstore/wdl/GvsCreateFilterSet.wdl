@@ -344,6 +344,7 @@ task ExtractFilterTask {
     preemptible: 3
     maxRetries: 3
     cpu: 2
+    noAddress: true
   }
 
   output {

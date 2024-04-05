@@ -555,6 +555,7 @@ task SNPsVariantRecalibrator {
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 0
     docker: gatk_docker
+    noAddress: true
   }
 
   output {
