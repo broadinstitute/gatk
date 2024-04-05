@@ -97,7 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1328
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -183,6 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1328
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
