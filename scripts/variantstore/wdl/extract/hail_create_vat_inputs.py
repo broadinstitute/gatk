@@ -124,42 +124,52 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 
     ht = ac_an_af_rows.rows()
     ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
-    mt = mt.checkpoint("gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/checkpoint")
+    ht = ht.checkpoint("gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/checkpoint")
     # create a filtered sites only VCF
-    hl.export_vcf(ht, sites_only_vcf_path, parallel='header_per_shard')
+    hl.export_vcf(ht, sites_only_vcf_path, parallel='separate_header')
 
 def add_variant_tracking_info(mt, sites_only_vcf_path):
     # only need the table of row fields and leaves this as the only field
     var_ids_path = sites_only_vcf_path.replace(r".sites-only.vcf", ".var_ids.tsv.bgz")
     t = mt.rows()
-    t.select(var_origin_id=hl.format('%s-%s-%s-%s', t.locus.contig, t.locus.position, t.alleles[0], t.alleles[1])).export(var_ids_path, parallel='header_per_shard')
+    t.select(var_origin_id=hl.format('%s-%s-%s-%s', t.locus.contig, t.locus.position, t.alleles[0], t.alleles[1])).export(var_ids_path, parallel='separate_header')
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
-    transforms = [
-        hard_filter_non_passing_sites,
-        failing_gts_to_no_call,
-        remove_too_many_alt_allele_sites
-    ]
-    transformed_vds=vds
-    for transform in transforms:
-        transformed_vds = transform(transformed_vds)
-    transformed_vds = hl.vds.VariantDataset(
-        transformed_vds.reference_data._filter_partitions(range(1)),
-        transformed_vds.variant_data._filter_partitions(range(1))
-    )
+    n_parts = vds.variant_data.n_partitions()
+    n_rounds = 5
+    parts_per_round = n_parts // n_rounds
+    for i in range(n_rounds):
+        part_range = range(i*parts_per_round, min((i+1)*parts_per_round, n_parts))
+        vds = hl.vds.VariantDataset(
+            vds.reference_data._filter_partitions(part_range),
+            vds.variant_data._filter_partitions(part_range),
+        )
 
-    mt = hl.vds.to_dense_mt(transformed_vds)
+        transforms = [
+            hard_filter_non_passing_sites,
+            failing_gts_to_no_call,
+            remove_too_many_alt_allele_sites
+        ]
+        transformed_vds=vds
+        for transform in transforms:
+            transformed_vds = transform(transformed_vds)
+        transformed_vds = hl.vds.VariantDataset(
+            transformed_vds.reference_data._filter_partitions(range(1)),
+            transformed_vds.variant_data._filter_partitions(range(1))
+        )
 
-    with open(ancestry_file_location, 'r') as ancestry_file:
-        mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
+        mt = hl.vds.to_dense_mt(transformed_vds)
 
-    # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
+        with open(ancestry_file_location, 'r') as ancestry_file:
+            mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
-    # for debugging information -- remove for now to get us through Echo
-    # add_variant_tracking_info(mt, sites_only_vcf_path)
+        # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
 
-    # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    write_sites_only_vcf(mt, sites_only_vcf_path)
+        # for debugging information -- remove for now to get us through Echo
+        # add_variant_tracking_info(mt, sites_only_vcf_path)
+
+        # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
+        write_sites_only_vcf(mt, sites_only_vcf_path)
 
 
 def annotate_entry_filter_flag(mt):
@@ -195,7 +205,6 @@ if __name__ == '__main__':
     time_stamp = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
 
-    # vds = hl.vds.read_vds(args.vds_input_path, n_partitions=100000)
     vds = hl.vds.read_vds(args.vds_input_path)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
