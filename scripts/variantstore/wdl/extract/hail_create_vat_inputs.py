@@ -154,7 +154,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
 
     # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
 
-    # for debugging information -- remove for now to et us through Echo
+    # for debugging information -- remove for now to get us through Echo
     # add_variant_tracking_info(mt, sites_only_vcf_path)
 
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
