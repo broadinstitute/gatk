@@ -124,6 +124,7 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 
     ht = ac_an_af_rows.rows()
     ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
+    mt = mt.checkpoint("gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/checkpoint")
     # create a filtered sites only VCF
     hl.export_vcf(ht, sites_only_vcf_path, parallel='header_per_shard')
 
