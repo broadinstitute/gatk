@@ -286,6 +286,7 @@ task PopulateAltAlleleTable {
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
+    noAddress: true
   }
 
   output {

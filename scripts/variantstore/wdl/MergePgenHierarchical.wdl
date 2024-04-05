@@ -11,6 +11,7 @@ workflow MergePgenWorkflow {
         Int merge_disk_size
         Int split_count
         Boolean zero_padded_prefix
+        String variants_docker
     }
 
     call SortFileLists {
@@ -18,7 +19,8 @@ workflow MergePgenWorkflow {
             pgen_list = pgen_file_list,
             psam_list = psam_file_list,
             pvar_list = pvar_file_list,
-            zero_padded_prefix = zero_padded_prefix
+            zero_padded_prefix = zero_padded_prefix,
+            variants_docker = variants_docker,
     }
 
     call SplitFileLists {
@@ -26,7 +28,8 @@ workflow MergePgenWorkflow {
             pgen_list = SortFileLists.sorted_pgen_list,
             psam_list = SortFileLists.sorted_psam_list,
             pvar_list = SortFileLists.sorted_pvar_list,
-            split_count = split_count
+            split_count = split_count,
+            variants_docker = variants_docker,
     }
 
     scatter(i in range(length(SplitFileLists.pgen_lists))) {
@@ -46,7 +49,8 @@ workflow MergePgenWorkflow {
         input:
             pgen_files = ScatterMerge.pgen_file,
             psam_files = ScatterMerge.psam_file,
-            pvar_files = ScatterMerge.pvar_file
+            pvar_files = ScatterMerge.pvar_file,
+            variants_docker = variants_docker,
     }
 
     call MergePgen as FinalMerge {
@@ -153,6 +157,7 @@ task MakeFileLists {
         Array[File] pgen_files
         Array[File] pvar_files
         Array[File] psam_files
+        String variants_docker
     }
 
     parameter_meta {
@@ -198,9 +203,10 @@ task MakeFileLists {
     }
 
     runtime {
-        docker: "ubuntu:22.04"
+        docker: variants_docker
         memory: "1GB"
         bootDiskSizeGb: 15
+        noAddress: true
     }
 }
 
@@ -211,6 +217,7 @@ task SortFileLists {
         File pvar_list
 
         Boolean zero_padded_prefix = true
+        String variants_docker
     }
 
     command <<<
@@ -278,9 +285,10 @@ task SortFileLists {
     }
 
     runtime {
-        docker: "ubuntu:22.04"
+        docker: variants_docker
         memory: "1GB"
         bootDiskSizeGb: 15
+        noAddress: true
     }
 }
 
@@ -291,6 +299,7 @@ task SplitFileLists {
         File pvar_list
 
         Int split_count
+        String variants_docker
     }
 
     command <<<
@@ -311,8 +320,9 @@ task SplitFileLists {
     }
 
     runtime {
-        docker: "ubuntu:22.04"
+        docker: variants_docker
         memory: "1GB"
         bootDiskSizeGb: 15
+        noAddress: true
     }
 }

@@ -373,6 +373,7 @@ task ExtractFromSuperpartitionedTables {
     runtime {
         docker: variants_docker
         disks: "local-disk 500 HDD"
+        noAddress: true
     }
 }
 
