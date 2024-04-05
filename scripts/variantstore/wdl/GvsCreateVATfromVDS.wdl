@@ -271,7 +271,7 @@ task GenerateSitesOnlyVcf {
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
-        sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
+        sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf.bgz"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
         hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
