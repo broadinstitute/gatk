@@ -110,7 +110,7 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
         pop_info_fields[f'Hom_{pop}'] = ac_an_af_split.call_stats_by_pop.get(pop).homozygote_count[ac_an_af_split.row.a_index]
 
 
-    ac_an_af_rows = ac_an_af_split.annotate_rows(
+    ac_an_af_rows = ac_an_af_split.annotate(
         info = hl.struct(
             AC=ac_an_af_split.row.ac_an_af.AC[ac_an_af_split.row.a_index],
             AN=ac_an_af_split.row.ac_an_af.AN,
@@ -163,6 +163,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
             mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
         ht = mt.rows()
+        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af')
         ht.write(ht_paths[i])
 
         # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
