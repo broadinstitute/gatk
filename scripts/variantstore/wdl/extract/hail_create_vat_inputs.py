@@ -122,11 +122,9 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 
     # note that SC = AC - homozygote_count
 
-    ht = ac_an_af_rows.rows()
     ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
-    ht = ht.checkpoint("gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/checkpoint")
     # create a filtered sites only VCF
-    hl.export_vcf(ht, sites_only_vcf_path, parallel='separate_header')
+    hl.export_vcf(ht, sites_only_vcf_path)
 
 def add_variant_tracking_info(mt, sites_only_vcf_path):
     # only need the table of row fields and leaves this as the only field
@@ -138,9 +136,10 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
     n_parts = vds.variant_data.n_partitions()
     n_rounds = 5
     parts_per_round = n_parts // n_rounds
+    ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
     for i in range(n_rounds):
         part_range = range(i*parts_per_round, min((i+1)*parts_per_round, n_parts))
-        vds = hl.vds.VariantDataset(
+        vds_part = hl.vds.VariantDataset(
             vds.reference_data._filter_partitions(part_range),
             vds.variant_data._filter_partitions(part_range),
         )
@@ -150,7 +149,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
             failing_gts_to_no_call,
             remove_too_many_alt_allele_sites
         ]
-        transformed_vds=vds
+        transformed_vds=vds_part
         for transform in transforms:
             transformed_vds = transform(transformed_vds)
         transformed_vds = hl.vds.VariantDataset(
@@ -163,13 +162,18 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         with open(ancestry_file_location, 'r') as ancestry_file:
             mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
+        ht = mt.rows()
+        ht.write(ht_paths[i])
+
         # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
 
         # for debugging information -- remove for now to get us through Echo
         # add_variant_tracking_info(mt, sites_only_vcf_path)
 
-        # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-        write_sites_only_vcf(mt, sites_only_vcf_path)
+    # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
+    ht_list = [hl.read_table(ht_path) for ht_path in ht_paths]
+    ht_all = ht_list[0].union(*ht_list[1:])
+    write_sites_only_vcf(ht_all, sites_only_vcf_path)
 
 
 def annotate_entry_filter_flag(mt):
