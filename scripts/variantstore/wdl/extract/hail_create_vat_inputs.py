@@ -122,7 +122,7 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 
     # note that SC = AC - homozygote_count
 
-    ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
+    ht = ac_an_af_split.filter(ac_an_af_split.alleles[1] != "*") # remove spanning deletions
     # create a filtered sites only VCF
     hl.export_vcf(ht, sites_only_vcf_path)
 
