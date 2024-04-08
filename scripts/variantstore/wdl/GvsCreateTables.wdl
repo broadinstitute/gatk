@@ -80,7 +80,8 @@ task CreateTables {
     String clustering_field = "location"
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # set to volatile because if the table already exists, this will not remake it
+    volatile: true
   }
 
   command <<<

@@ -182,7 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1245
+             - rsa_vs_1328
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -279,7 +279,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1245
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -307,6 +306,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1328
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -343,7 +343,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1224
          tags:
              - /.*/
    - name: GvsFindHailCruft
