@@ -163,7 +163,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
             mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
         ht = mt.rows()
-        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'info')
+        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af')
         ht.write(ht_paths[i])
 
         # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
