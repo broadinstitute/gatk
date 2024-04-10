@@ -152,10 +152,6 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         transformed_vds=vds_part
         for transform in transforms:
             transformed_vds = transform(transformed_vds)
-        transformed_vds = hl.vds.VariantDataset(
-            transformed_vds.reference_data._filter_partitions(range(1)),
-            transformed_vds.variant_data._filter_partitions(range(1))
-        )
 
         mt = hl.vds.to_dense_mt(transformed_vds)
 
