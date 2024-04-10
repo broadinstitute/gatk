@@ -69,7 +69,7 @@ task Tieout {
         echo -n '#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT' >> vcf_header.txt
 
         # The sample names in the correct order
-        for sample in $(cat ../samples.txt
+        for sample in $(cat ../samples.txt)
         do
             echo -n "\t${sample}" >> vcf_header.txt
         done
