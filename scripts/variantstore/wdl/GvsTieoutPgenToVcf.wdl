@@ -43,8 +43,8 @@ task Tieout {
         # Localize all the sharded VCFs and their indexes.
         mkdir vcf
         cd vcf
-        gcloud storage cp -R '~{extract_task_call_root}/**/-quickit.vcf.gz' .
-        gcloud storage cp -R '~{extract_task_call_root}/**/-quickit.vcf.gz.tbi' .
+        gcloud storage cp -R '~{extract_task_call_root}/**/*-quickit.vcf.gz' .
+        gcloud storage cp -R '~{extract_task_call_root}/**/*-quickit.vcf.gz.tbi' .
 
         # Get the names of the samples, sort them, and stash this in a file in the "tieout" directory.
         # PGEN appears to order samples lexicographically, while VCF extract orders them randomly.
@@ -91,7 +91,7 @@ task Tieout {
             bcftools query -S ../samples.txt -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' $vcf >> vcf_body_${chr}.vcf
         done < vcf_to_chr.csv
 
-        # Assembly everything into a VCF
+        # Assemble everything into a VCF
         # bgzip
         for chr in $(seq 1 22) X Y
         do
