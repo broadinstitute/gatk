@@ -222,7 +222,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - rc-vs-903-more-juice
+             - rc-vs-903-hail-updates
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
