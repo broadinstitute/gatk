@@ -8,7 +8,15 @@ workflow GvsTieoutPgenToVcf {
         String merge_pgen_workflow_root
     }
 
-    call Utils.GetToolVersions
+    # WDL 1.0 trick to set a variable ('none') to be undefined.
+    if (false) {
+        File? none = ""
+    }
+
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = none,
+    }
 
     call Tieout {
         input:
