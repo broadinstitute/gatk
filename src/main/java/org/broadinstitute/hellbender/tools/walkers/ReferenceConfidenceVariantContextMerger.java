@@ -580,6 +580,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             final int ploidy = g.getPloidy();
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             if (!doSomaticMerge) {
+                //do attribute subsetting
                 if (g.hasPL() || g.hasAD()) {
                     int[] perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
                     if (g.hasPL()) {
@@ -591,8 +592,10 @@ public final class ReferenceConfidenceVariantContextMerger {
                     if (g.hasAD()) {
                         genotypeBuilder.AD(AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles));
                     }
+
+               }
                 //clean up low confidence hom refs for better annotations later
-                } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
+                if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
                     genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
             }
@@ -659,7 +662,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
-                    targetAlleles, new GenotypeBuilder(g.getSampleName(), originalGTAlleles).make(), null);
+                    targetAlleles, new GenotypeBuilder(g).alleles(originalGTAlleles).make(), null);
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

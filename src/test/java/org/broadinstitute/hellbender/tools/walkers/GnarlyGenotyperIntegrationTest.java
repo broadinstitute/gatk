@@ -271,10 +271,8 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(vc.getGenotypes().size(), 2);
         final Genotype g = vc.getGenotype("GTEX-RVPV-0003");
         Assert.assertTrue(g.isNoCall()); //most importantly!
-        Assert.assertTrue(g.hasGQ());
-        Assert.assertEquals(g.getGQ(), 0);
-        Assert.assertTrue(g.hasDP());
-        Assert.assertEquals(g.getDP(), 0);
+        Assert.assertFalse(g.hasGQ());
+        Assert.assertFalse(g.hasDP());
         Assert.assertFalse(g.hasAD());
         Assert.assertFalse(g.hasPL());
     }

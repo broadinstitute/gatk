@@ -819,7 +819,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             final GenotypeBuilder builderToCallAlleles = new GenotypeBuilder(noCallGT);
             //TODO: update to support DRAGEN posteriors
             GATKVariantContextUtils.makeGenotypeCall(noCallGT.getPloidy(), builderToCallAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
-                    noCallGT.getLikelihoods().getAsVector(), variant.getAlleles(), null);
+                    noCallGT.getLikelihoods().getAsVector(), variant.getAlleles(), noCallGT, null);
             return builderToCallAlleles.make();
         } else {
             return variant.getGenotype(0);

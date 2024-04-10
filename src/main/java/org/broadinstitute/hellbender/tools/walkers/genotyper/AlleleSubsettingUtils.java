@@ -139,7 +139,7 @@ public final class AlleleSubsettingUtils {
             }
 
             // restrict AD to the new allele subset
-            if(g.hasAD()) {
+            if(g.hasAD() && gb.makeWithShallowCopy().hasAD()) {
                 final int[] newAD = getNewAlleleBasedReadCountAnnotation(allelesToKeep, allelePermutation, g.getAD());
                 gb.AD(newAD);
                 // if we have recalculated AD and the original genotype had AF but was then removed, then recalculate AF based on AD counts
