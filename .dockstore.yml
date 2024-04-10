@@ -243,6 +243,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
