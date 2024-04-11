@@ -1,6 +1,5 @@
 version 1.0
 
-import "GvsUtils.wdl" as Utils
 
 workflow GvsTieoutPgenToVcf {
     input {
@@ -8,19 +7,8 @@ workflow GvsTieoutPgenToVcf {
         String merge_pgen_workflow_root
     }
 
-    # WDL 1.0 trick to set a variable ('none') to be undefined.
-    if (false) {
-        File? none = ""
-    }
-
-    call Utils.GetToolVersions {
-        input:
-            git_branch_or_tag = none,
-    }
-
     call Tieout {
         input:
-            gatk_docker = GetToolVersions.gatk_docker,
             extract_task_call_root = extract_task_call_root,
             merge_pgen_workflow_root = merge_pgen_workflow_root,
     }
@@ -28,7 +16,6 @@ workflow GvsTieoutPgenToVcf {
 
 task Tieout {
     input {
-        String gatk_docker
         String extract_task_call_root
         String merge_pgen_workflow_root
     }
@@ -108,6 +95,6 @@ task Tieout {
         File out = "tieout.tgz"
     }
     runtime {
-        docker: gatk_docker
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:4.5.0.0"
     }
 }
