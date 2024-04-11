@@ -18,6 +18,7 @@ task Tieout {
     input {
         String extract_task_call_root
         String merge_pgen_workflow_root
+        String plink_download_url = "https://s3.amazonaws.com/plink2-assets/plink2_linux_x86_64_20240318.zip"
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -28,6 +29,7 @@ task Tieout {
         cd tieout
 
         # Localize all the sharded VCFs and their indexes.
+        # Note everything here is specific to 'quickit' but probably shouldn't be.
         mkdir vcf
         cd vcf
         gcloud storage cp -R '~{extract_task_call_root}/**/*-quickit.vcf.gz' .
@@ -58,7 +60,8 @@ task Tieout {
         # The sample names in the correct order
         for sample in $(cat ../samples.txt)
         do
-            echo -n "\t${sample}" >> vcf_header.txt
+            # literal tab below as \t is not working in WDL though it does work locally
+            echo -n "   ${sample}" >> vcf_header.txt
         done
 
         # Finally a newline
@@ -89,6 +92,36 @@ task Tieout {
             cat vcf_header.txt > $out
             cat vcf_body_chr${chr}.vcf >> $out
             bgzip $out
+        done
+
+        mkdir pgen
+        cd pgen
+        for kind in pgen psam pvar.zst
+        do
+            # Note the 'kind' var is intentionally outside the single quotes because we do not want the globs expanded
+            # but we do want the 'kind' var expanded.
+            gcloud storage cp -R '~{merge_pgen_workflow_root}/**/call-FinalMerge/quickit.chr*.'${kind} .
+        done
+
+        # Download and "install" plink2. Building this on an Apple Silicon Mac was completely straightforward, but
+        # the GATK Docker image was another story...
+        curl -O --location '~{plink_download_url}'
+        unzip $(basename '~{plink_download_url}')
+        mv plink2 /usr/bin
+
+        for chr in $(seq 1 22) X Y
+        do
+            plink2 export --pfile quickit.chr${chr} --export vcf-4.2 --out pgen_compare_chr${chr}
+        done
+
+        cd ..
+
+        # compare
+        mkdir compare
+        cd compare
+        for chr in $(seq 1 22) X Y
+        do
+            bcftools isec vcf/vcf_compare_chr${chr}.vcf pgen/pgen_compare_chr${chr}.vcf -p chr${chr}
         done
 
         cd ../..
