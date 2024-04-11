@@ -136,7 +136,7 @@ def matrix_table_ac_an_af(mt, ancestry_file):
         call_stats_by_pop_adj=hl.agg.filter(mt.adj, hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles))),
         call_stats_by_pop_sex_adj=hl.agg.filter(mt.adj, hl.agg.group_by(hl.struct(pop=mt.pop, sex=mt.sex), hl.agg.call_stats(mt.GT, mt.alleles)))
     )
-    #
+    
     return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row. This will also remove all spanning delstions for us
 
 
