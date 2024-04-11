@@ -65,11 +65,14 @@ task Tieout {
         echo >> vcf_header.txt
 
         # Group by chromosome
+        # Expecting some SIGPIPEs with the `zgrep` trying to push data to a `head -1` that stopped listening, so turn off pipefail for now.
+        set +o pipefail
         for vcf in 0000000*quickit.vcf.gz
         do
             echo -n "$vcf,"
             zgrep -E -v '^#' $vcf | head -1 | awk '{print $1}'
         done > vcf_to_chr.csv
+        set -o pipefail
 
         while IFS=, read -r vcf chr
         do
