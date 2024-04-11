@@ -54,18 +54,12 @@ task Tieout {
         # Now just the contigs we care about
         zgrep -E '^##' 0000000000-quickit.vcf.gz | grep -E '^##contig=<ID=chr[12]?[0-9],|^##contig=<ID=chr[XY],' >> vcf_header.txt
 
-        # The TSV header minus the sample names
-        echo -n '#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT' >> vcf_header.txt
-
-        # The sample names in the correct order
-        for sample in $(cat ../samples.txt)
+        acc=""
+        for item in '#CHROM' POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
         do
-            # literal tab below as \t is not working in WDL though it does work locally
-            echo -n "   ${sample}" >> vcf_header.txt
+            acc="$acc $item"
         done
-
-        # Finally a newline
-        echo >> vcf_header.txt
+        echo $acc | cut -c 2- | sed 's/ /\t/g' >> vcf_header.txt
 
         # Group by chromosome
         # Expecting some SIGPIPEs with the `zgrep` trying to push data to a `head -1` that stopped listening, so turn off pipefail for now.
