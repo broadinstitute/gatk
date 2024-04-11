@@ -94,6 +94,7 @@ task Tieout {
             bgzip $out
         done
 
+        cd ..
         mkdir pgen
         cd pgen
         for kind in pgen psam pvar.zst
@@ -121,7 +122,7 @@ task Tieout {
         cd compare
         for chr in $(seq 1 22) X Y
         do
-            bcftools isec vcf/vcf_compare_chr${chr}.vcf pgen/pgen_compare_chr${chr}.vcf -p chr${chr}
+            bcftools isec ../vcf/vcf_compare_chr${chr}.vcf ../pgen/pgen_compare_chr${chr}.vcf -p chr${chr}
         done
 
         cd ../..
