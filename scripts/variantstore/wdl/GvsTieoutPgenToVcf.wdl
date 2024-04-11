@@ -111,7 +111,7 @@ task Tieout {
 
         for chr in $(seq 1 22) X Y
         do
-            plink2 --pfile quickit.chr${chr} --export vcf-4.2 --out pgen_compare_chr${chr}
+            plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out pgen_compare_chr${chr}
         done
 
         cd ..
