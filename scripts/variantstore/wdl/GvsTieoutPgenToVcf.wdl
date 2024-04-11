@@ -114,7 +114,7 @@ task Tieout {
         do
             out=pgen_compare_chr${chr}
             plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out $out
-            bgzip $out
+            bgzip ${out}.vcf
         done
 
         cd ..
