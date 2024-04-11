@@ -652,6 +652,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .add("V", input)
                 .addFlag("do-qual-approx")
                 .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false")
+                .add("A", "AssemblyComplexity")
                 .addFlag("floor-blocks")
                 .add("GQB", 20)
                 .add("GQB", 30)

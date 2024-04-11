@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.util.*;
 
 public final class AnnotationUtils {
+
+    public static final String ALLELE_SPECIFIC_ANNOTATION_KEY_PREFIX = "AS_";
     public static final String ALLELE_SPECIFIC_RAW_DELIM = "|";
     public static final String ALLELE_SPECIFIC_REDUCED_DELIM = ",";
     public static final String ALLELE_SPECIFIC_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
@@ -83,7 +85,9 @@ public final class AnnotationUtils {
 
     public static boolean isAlleleSpecificGatkKey(final String annotationKey) {
         final VCFInfoHeaderLine header = GATKVCFHeaderLines.getInfoLine(annotationKey);
-        return header.getCountType().equals(VCFHeaderLineCount.A) || header.getCountType().equals(VCFHeaderLineCount.R);
+        return header.getCountType().equals(VCFHeaderLineCount.A) ||
+                header.getCountType().equals(VCFHeaderLineCount.R) ||
+                annotationKey.startsWith(ALLELE_SPECIFIC_ANNOTATION_KEY_PREFIX);
     }
 
     /**

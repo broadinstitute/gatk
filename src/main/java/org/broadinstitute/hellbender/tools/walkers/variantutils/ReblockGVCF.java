@@ -222,11 +222,6 @@ public final class ReblockGVCF extends MultiVariantWalker {
     }
 
     @Override
-    public List<Annotation> getDefaultVariantAnnotations() {
-        return Collections.singletonList(new AssemblyComplexity());
-    }
-
-    @Override
     public boolean requiresReference() {return true;}
 
     @Override
