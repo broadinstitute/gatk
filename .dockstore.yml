@@ -222,7 +222,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - rc-vs-903-hail-updates
+             - rc-vs-903-better-hail-comments
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -243,6 +243,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
