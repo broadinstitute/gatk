@@ -112,7 +112,9 @@ task Tieout {
 
         for chr in $(seq 1 22) X Y
         do
-            plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out pgen_compare_chr${chr}
+            out=pgen_compare_chr${chr}
+            plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out $out
+            bgzip $out
         done
 
         cd ..
@@ -122,7 +124,7 @@ task Tieout {
         cd compare
         for chr in $(seq 1 22) X Y
         do
-            bcftools isec ../vcf/vcf_compare_chr${chr}.vcf ../pgen/pgen_compare_chr${chr}.vcf -p chr${chr}
+            bcftools isec ../vcf/vcf_compare_chr${chr}.vcf.gz ../pgen/pgen_compare_chr${chr}.vcf.gz -p chr${chr}
         done
 
         cd ../..
