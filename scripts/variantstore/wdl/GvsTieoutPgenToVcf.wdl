@@ -92,6 +92,7 @@ task Tieout {
             cat vcf_header.txt > $out
             cat vcf_body_chr${chr}.vcf >> $out
             bgzip $out
+            bcftools index ${out}.gz
         done
 
         cd ..
@@ -115,6 +116,7 @@ task Tieout {
             out=pgen_compare_chr${chr}
             plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out $out
             bgzip ${out}.vcf
+            bcftools index ${out}.vcf.gz
         done
 
         cd ..
