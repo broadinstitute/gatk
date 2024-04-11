@@ -121,6 +121,7 @@ task Tieout {
 
         cd ..
 
+        set +o errexit
         # compare
         mkdir compare
         cd compare
