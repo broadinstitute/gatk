@@ -55,7 +55,7 @@ task Tieout {
         zgrep -E '^##' 0000000000-quickit.vcf.gz | grep -E '^##contig=<ID=chr[12]?[0-9],|^##contig=<ID=chr[XY],' >> vcf_header.txt
 
         acc=""
-        for item in '#CHROM' POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
+        for item in \\#CHROM POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
         do
             acc="$acc $item"
         done
