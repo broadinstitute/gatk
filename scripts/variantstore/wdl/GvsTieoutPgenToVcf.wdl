@@ -95,6 +95,6 @@ task Tieout {
         File out = "tieout.tgz"
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:4.5.0.0"
+        docker: "broadinstitute/gatk:4.5.0.0"
     }
 }
