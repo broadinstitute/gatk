@@ -152,7 +152,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("sample-file", quickstartSampleListFile)
             .add("emit-pls", false)
             .add("filter-set-info-table", "foo")
-            .add("vqsr-score-filter-by-site", true);
+            .add("vq-score-filter-by-site", true);
     runCommandLine(args);
   }
   @Test(expectedExceptions = UserException.class)
@@ -169,7 +169,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-info-table", "foo")
-        .add("vqsr-score-filter-by-site", true);
+        .add("vq-score-filter-by-site", true);
     runCommandLine(args);
   }
 
@@ -187,7 +187,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("sample-file", quickstartSampleListFile)
             .add("emit-pls", false)
             .add("filter-set-name", "foo")
-            .add("vqsr-score-filter-by-site", true);
+            .add("vq-score-filter-by-site", true);
     runCommandLine(args);
   }
 
@@ -206,7 +206,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-name", "foo")
-        .add("vqsr-score-filter-by-site", true);
+        .add("vq-score-filter-by-site", true);
     runCommandLine(args);
   }
 }

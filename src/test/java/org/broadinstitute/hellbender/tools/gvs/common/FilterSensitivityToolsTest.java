@@ -211,7 +211,7 @@ public class FilterSensitivityToolsTest {
         VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
                 "Site failed SNP model sensitivity cutoff (90.0), corresponding with VQSLOD cutoff of 0.0");
 
-        assertEquals(getTruthSensitivityHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.SNP), expectedHeader);
+        assertEquals(getTruthSensitivityFilterHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.SNP), expectedHeader);
     }
 
     @Test
@@ -222,7 +222,7 @@ public class FilterSensitivityToolsTest {
         VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
                 "Site failed INDEL model sensitivity cutoff (90.0), corresponding with VQSLOD cutoff of 0.0");
 
-        assertEquals(getTruthSensitivityHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.INDEL), expectedHeader);
+        assertEquals(getTruthSensitivityFilterHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.INDEL), expectedHeader);
     }
 
 }

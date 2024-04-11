@@ -129,8 +129,8 @@ public abstract class ExtractCohort extends ExtractTool {
     private boolean isVQSRClassic = false;
 
     @Argument(
-            fullName = "vqsr-score-filter-by-site",
-            doc = "If VQSR Score filtering is applied, it should be at a site level. Default is false",
+            fullName = "vq-score-filter-by-site",
+            doc = "If Variant Quality Score filtering (either VETS or VQSR) is applied, it should be at a site level. Default is false",
             optional = true
     )
     private boolean performSiteSpecificVQScoreFiltering = false;
@@ -318,8 +318,15 @@ public abstract class ExtractCohort extends ExtractTool {
                     vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
                     vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
                     // set headers
-                    extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                    extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+
+                    if (vqScoreFilteringType.equals(VQScoreFilteringType.SITES)) {
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFilterHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFilterHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                    }
+                    else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFormatHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFormatHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                    }
                 }
             } else {
                 extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SCORE_KEY));
@@ -336,10 +343,20 @@ public abstract class ExtractCohort extends ExtractTool {
                 truthSensitivityINDELThreshold /= 100.0;
                 logger.info("Passing all INDEL variants with " + GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY + " < " + truthSensitivityINDELThreshold);
 
-                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
-                        "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
-                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
-                        "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                if (vqScoreFilteringType.equals(VQScoreFilteringType.SITES)) {
+                    extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
+                            "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                    extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
+                            "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                }
+                else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
+                    extraHeaderLines.add(new VCFFormatHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP, 1,
+                            VCFHeaderLineType.String,
+                            "Genotyped Allele failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                    extraHeaderLines.add(new VCFFormatHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL, 1,
+                            VCFHeaderLineType.String,
+                            "Genotyped Allele  failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                }
             }
         }
 
