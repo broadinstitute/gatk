@@ -303,9 +303,11 @@ public abstract class AlleleFiltering {
         //we then add alleles with high SOR. Note that amongh all allleles with the SOR higher than the SOR_THRESHOLD
         //we will first filter the one with the lowest QUAL.
         logger.debug(() -> String.format("SHA:: Have %d candidates with low QUAL", rplCount));
-        for (int i = sorIndices.length-1 ; (i >= 0) && (collectedSORs.get(sorIndices[i])>SOR_THRESHOLD) ; i--) {
-            if (!result.contains(alleles.get(sorIndices[i]))) {
-                result.add(alleles.get(sorIndices[i]));
+        for (int i = sorIndices.length-1 ; (i >= 0) ; i--) {
+             if (collectedSORs.get(sorIndices[i])>SOR_THRESHOLD){
+                if (!result.contains(alleles.get(sorIndices[i]))) {
+                    result.add(alleles.get(sorIndices[i]));
+                }
             }
         }
         logger.debug(() -> String.format("SHA:: Have %d candidates with high SOR", result.size() - rplCount));
