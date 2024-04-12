@@ -80,7 +80,7 @@ def annotate_adj(
 ) -> hl.MatrixTable:
     """
     Annotate genotypes with adj criteria (assumes diploid).
-    Defaults correspond to gnomAD values.
+    Defaults similar to gnomAD values, but GQ >= 20 changed to GQ >= 30 to make up for lack of DP filter.
     """
     if "GT" not in mt.entry and "LGT" in mt.entry:
         print("No GT field found, using LGT instead.")
@@ -106,7 +106,7 @@ def get_adj_expr(
 ) -> hl.expr.BooleanExpression:
     """
     Get adj genotype annotation.
-    Defaults correspond to gnomAD values.
+    Defaults similar to gnomAD values, but GQ >= 20 changed to GQ >= 30 to make up for lack of DP filter.
     """
     return (
         (gq_expr >= adj_gq)
