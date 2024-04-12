@@ -124,11 +124,8 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 
     ht = ac_an_af_rows.filter(ac_an_af_rows.alleles[1] != "*") # remove spanning deletions
     # create a filtered sites only VCF
-    try:
-      hl.export_vcf(ht, sites_only_vcf_path)
-    except Exception:
-      hl.copy_log(sites_only_vcf_path.replace(r".sites-only.vcf", ".log"))
-      raise
+    hl.export_vcf(ht, sites_only_vcf_path)
+
 
 def add_variant_tracking_info(mt, sites_only_vcf_path):
     # only need the table of row fields and leaves this as the only field
