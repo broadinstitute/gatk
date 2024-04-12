@@ -107,20 +107,21 @@ task Tieout {
 
         for chr in $(seq 1 22) X Y
         do
-            # ick, grep out the header
-            header=header_chr${chr}.vcf
-            grep -E '^#' > $header
-
             # PGEN -> VCF
             temp=temp_chr${chr}
             plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out $temp
 
+            # ick, grep out the header
+            header=header_${temp}.vcf
+            grep -E '^#' ${temp}.vcf > $header
+
+            body=body_${chr}.vcf
             # Add in a leading "chr" as the PGEN -> VCF extract and regular VCF extracts represent chromosome differently.
-            bcftools query -S ../samples.txt -f '%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' ${temp}.vcf | sed 's/^/chr/' > body_${chr}.vcf
+            bcftools query -S ../samples.txt -f '%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' ${temp}.vcf | sed 's/^/chr/' > $body
 
             # Put the pieces together
             out=pgen_compare_${chr}.vcf
-            cat header_${chr}.vcf body_${chr}.vcf > $out
+            cat $header $body > $out
 
             # Zip and index
             bgzip $out
