@@ -130,7 +130,6 @@ task Tieout {
 
         cd ..
 
-        set +o errexit
         # compare
         mkdir compare
         cd compare
@@ -139,11 +138,19 @@ task Tieout {
             bcftools isec ../vcf/vcf_compare_chr${chr}.vcf.gz ../pgen/pgen_compare_chr${chr}.vcf.gz -p chr${chr}
         done
 
-        cd ../..
-        tar cfz tieout.tgz tieout
+        # The grep below will hopefully find no meaningful discrepancies and will return non-zero, so turn off errexit.
+        set +o errexit
+        rc=$(find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' | xargs grep '^#' | wc -l)
+        if [[ rc == "0" ]]
+        then
+            echo "Found unexpected VCF / PGEN mismatches: "
+            find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' | xargs grep '^#'
+            cd ../..
+            tar cfz tieout.tgz tieout
+        fi
     >>>
     output {
-        File out = "tieout.tgz"
+        File? tarball = "tieout.tgz"
     }
     runtime {
         docker: "broadinstitute/gatk:4.5.0.0"
