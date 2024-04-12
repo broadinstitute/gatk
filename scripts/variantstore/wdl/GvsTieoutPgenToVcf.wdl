@@ -115,12 +115,12 @@ task Tieout {
             header=header_${temp}.vcf
             grep -E '^#' ${temp}.vcf > $header
 
-            body=body_${chr}.vcf
+            body=body_chr${chr}.vcf
             # Add in a leading "chr" as the PGEN -> VCF extract and regular VCF extracts represent chromosome differently.
             grep -E -v '^#' ${temp}.vcf | sed 's/^/chr/' > $body
 
             # Put the pieces together
-            out=pgen_compare_${chr}.vcf
+            out=pgen_compare_chr${chr}.vcf
             cat $header $body > $out
 
             # Zip and index
