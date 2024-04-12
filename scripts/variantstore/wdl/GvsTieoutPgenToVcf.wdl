@@ -55,7 +55,7 @@ task Tieout {
         zgrep -E '^##' 0000000000-quickit.vcf.gz | grep -E '^##contig=<ID=chr[12]?[0-9],|^##contig=<ID=chr[XY],' >> vcf_header.txt
 
         acc=""
-        for item in \\#CHROM POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
+        for item in \\#POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
         do
             acc="$acc $item"
         done
@@ -75,7 +75,10 @@ task Tieout {
         do
             echo "vcf: $vcf / chr: $chr"
             # Include only the data we want to use in our PGEN comparison
-            bcftools query -S ../samples.txt -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' $vcf >> vcf_body_${chr}.vcf
+            # n.b. we are dropping CHR here since VCF and PGEN -> VCF extracts are inconsistent in the representation of
+            # chromosomes: VCF says "chr1" where PGEN -> VCF says "1". We are already putting the chromosome into the
+            # filenames so we know the chromosomes are equivalent even if they are not represented identically.
+            bcftools query -S ../samples.txt -f '%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' $vcf >> vcf_body_${chr}.vcf
         done < vcf_to_chr.csv
 
         # Assemble everything into a VCF
@@ -94,8 +97,8 @@ task Tieout {
         cd pgen
         for kind in pgen psam pvar.zst
         do
-            # Note the 'kind' var is intentionally outside the single quotes because we do not want the globs expanded
-            # but we do want the 'kind' var expanded.
+            # Note the 'kind' var is intentionally outside the single quotes because we do not want the GCS path globs
+            # expanded but we do want the 'kind' var expanded.
             gcloud storage cp -R '~{merge_pgen_workflow_root}/**/call-FinalMerge/quickit.chr*.'${kind} .
         done
 
@@ -107,10 +110,24 @@ task Tieout {
 
         for chr in $(seq 1 22) X Y
         do
-            out=pgen_compare_chr${chr}
-            plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out $out
-            bgzip ${out}.vcf
-            bcftools index ${out}.vcf.gz
+            # ick, grep out the header
+            header=header_chr${chr}.vcf
+            grep -E '^#" > $header
+
+            # PGEN -> VCF
+            temp=temp_chr${chr}
+            plink2 --pfile quickit.chr${chr} vzs --export vcf-4.2 --out $temp
+
+            # Drop the chr column as the PGEN -> VCF expression is not exactly the same as VCF.
+            bcftools query -S ../samples.txt -f '%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' ${temp}.vcf > body_${chr}.vcf
+
+            # Put the pieces together
+            out=pgen_compare_${chr}.vcf
+            cat header_${chr}.vcf body_${chr}.vcf > $out
+
+            # Zip and index
+            bgzip $out
+            bcftools index ${out}.gz
         done
 
         cd ..
