@@ -127,7 +127,7 @@ def matrix_table_ac_an_af(mt, ancestry_file):
     """
     sample_id_to_sub_population = create_vat_inputs.parse_ancestry_file(ancestry_file)
     mt = mt.annotate_cols(pop=hl.literal(sample_id_to_sub_population)[mt.s])
-    adj = annotate_adj(mt)
+    mt = annotate_adj(mt)
     ac_an_af_mt = mt.select_rows(
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
         call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
