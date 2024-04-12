@@ -112,7 +112,7 @@ task Tieout {
         do
             # ick, grep out the header
             header=header_chr${chr}.vcf
-            grep -E '^#" > $header
+            grep -E '^#' > $header
 
             # PGEN -> VCF
             temp=temp_chr${chr}
