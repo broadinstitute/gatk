@@ -117,7 +117,7 @@ task Tieout {
 
             body=body_${chr}.vcf
             # Add in a leading "chr" as the PGEN -> VCF extract and regular VCF extracts represent chromosome differently.
-            bcftools query -S ../samples.txt -f '%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' ${temp}.vcf | sed 's/^/chr/' > $body
+            grep -E -v '^#' ${temp}.vcf | sed 's/^/chr/' > $body
 
             # Put the pieces together
             out=pgen_compare_${chr}.vcf
