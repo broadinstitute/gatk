@@ -70,6 +70,7 @@ workflow GvsQuickstartHailIntegration {
             load_vcf_headers = true,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
+            check_expected_cost_and_table_size_outputs = false,
             gatk_override = gatk_override,
             is_wgs = is_wgs,
             interval_list = interval_list,

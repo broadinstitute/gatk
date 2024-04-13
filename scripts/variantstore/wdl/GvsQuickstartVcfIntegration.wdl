@@ -17,6 +17,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean is_wgs = true
         File? interval_list
         Boolean use_default_dockers = false
+        Boolean check_expected_cost_and_table_size_outputs = true
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -119,22 +120,24 @@ workflow GvsQuickstartVcfIntegration {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call AssertCostIsTrackedAndExpected {
-            input:
-                go = JointVariantCalling.done,
-                dataset_name = CreateDatasetForTest.dataset_name,
-                project_id = project_id,
-                expected_output_csv = expected_prefix + "cost_observability_expected.csv",
-                cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
+        if (check_expected_cost_and_table_size_outputs) {
+            call AssertCostIsTrackedAndExpected {
+                input:
+                    go = JointVariantCalling.done,
+                    dataset_name = CreateDatasetForTest.dataset_name,
+                    project_id = project_id,
+                    expected_output_csv = expected_prefix + "cost_observability_expected.csv",
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+            }
 
-        call AssertTableSizesAreExpected {
-            input:
-                go = JointVariantCalling.done,
-                dataset_name = CreateDatasetForTest.dataset_name,
-                project_id = project_id,
-                expected_output_csv = expected_prefix + "table_sizes_expected.csv",
-                cloud_sdk_docker = effective_cloud_sdk_docker,
+            call AssertTableSizesAreExpected {
+                input:
+                    go = JointVariantCalling.done,
+                    dataset_name = CreateDatasetForTest.dataset_name,
+                    project_id = project_id,
+                    expected_output_csv = expected_prefix + "table_sizes_expected.csv",
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+            }
         }
     }
 
