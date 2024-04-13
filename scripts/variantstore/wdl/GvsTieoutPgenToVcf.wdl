@@ -141,7 +141,7 @@ task Tieout {
         # The grep below will hopefully find no meaningful discrepancies and will return non-zero, so turn off errexit.
         set +o errexit
         count=$(find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' | xargs grep -v '^#' | wc -l)
-        if ! [[ count == 0 ]]
+        if ! [[ $count == 0 ]]
         then
             echo "Found unexpected VCF / PGEN mismatches: "
             find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' | xargs grep -v '^#'
