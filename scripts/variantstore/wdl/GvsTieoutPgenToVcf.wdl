@@ -147,6 +147,7 @@ task Tieout {
             find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' | xargs grep -v '^#'
             cd ../..
             tar cfz tieout.tgz tieout
+            exit 1
         fi
     >>>
     output {
