@@ -298,7 +298,7 @@ public class AlleleFilteringUnitTest {
 
     }
 
-    @Test
+    @Test //check that we filter strong allele with high SOR 
     public void testFilterDistantHindelSor() {
 
         // create haplotypes
