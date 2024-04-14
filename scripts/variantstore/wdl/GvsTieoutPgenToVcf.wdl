@@ -139,9 +139,12 @@ task Tieout {
             bcftools isec ../vcf/vcf_compare_chr${chr}.vcf.gz ../pgen/pgen_compare_chr${chr}.vcf.gz -p chr${chr}
         done
 
+        # Identify the 'isec' output files that represent entries which are "private" to either VCF file being compared.
+        find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' > private_files.txt
+
         # The grep below will hopefully find no meaningful discrepancies and will return non-zero, so turn off errexit.
         set +o errexit
-        count=$(find . -name README.txt | xargs grep --no-filename private | awk '{print $1}' | xargs grep -v '^#' | wc -l)
+        count=$(cat private_files.txt | xargs grep -v '^#' | wc -l)
         if ! [[ $count == 0 ]]
         then
             echo "Found unexpected VCF / PGEN mismatches: "
