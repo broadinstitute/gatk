@@ -100,7 +100,8 @@ task Tieout {
         done
 
         # Download and "install" plink2. Building this on an Apple Silicon Mac was completely straightforward, but
-        # the GATK Docker image was another story...
+        # the GATK Docker image was another story. The Variants Docker image is Alpine-based and probably even more
+        # of a challenge.
         curl -O --location '~{plink_download_url}'
         unzip $(basename '~{plink_download_url}')
         mv plink2 /usr/bin
