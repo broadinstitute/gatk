@@ -63,10 +63,9 @@ def failing_gts_to_no_call(vds):
 
 def remove_too_many_alt_allele_sites(vds):
     """
-     Remove sites with more than 50 alternate alleles (and print how many)
+     Remove sites with more than 50 alternate alleles
     """
     vd = vds.variant_data
-    print(vd.aggregate_rows(hl.agg.count_where(hl.len(vd.alleles) > 50)))
     vd_50_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 50)
 
     return hl.vds.VariantDataset(vds.reference_data, vd_50_aa_cutoff)
