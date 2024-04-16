@@ -147,9 +147,9 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         )
 
         transforms = [
+            remove_too_many_alt_allele_sites,
             hard_filter_non_passing_sites,
             failing_gts_to_no_call,
-            remove_too_many_alt_allele_sites
         ]
         transformed_vds=vds_part
         for transform in transforms:
