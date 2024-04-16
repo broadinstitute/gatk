@@ -63,10 +63,9 @@ def failing_gts_to_no_call(vds):
 
 def remove_too_many_alt_allele_sites(vds):
     """
-     Remove sites with more than 50 alternate alleles (and print how many)
+     Remove sites with more than 50 alternate alleles
     """
     vd = vds.variant_data
-    print(vd.aggregate_rows(hl.agg.count_where(hl.len(vd.alleles) > 50)))
     vd_50_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 50)
 
     return hl.vds.VariantDataset(vds.reference_data, vd_50_aa_cutoff)
@@ -147,9 +146,9 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         )
 
         transforms = [
+            remove_too_many_alt_allele_sites,
             hard_filter_non_passing_sites,
             failing_gts_to_no_call,
-            remove_too_many_alt_allele_sites
         ]
         transformed_vds=vds_part
         for transform in transforms:
