@@ -32,7 +32,8 @@ workflow GvsQuickstartIntegration {
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-03-13/"
+    String expected_subdir = if (chr20_X_Y_only) then "/all_chrs/"  else ""
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-03-13/" + expected_subdir
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {

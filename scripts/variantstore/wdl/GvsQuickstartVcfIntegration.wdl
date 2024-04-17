@@ -126,7 +126,7 @@ workflow GvsQuickstartVcfIntegration {
                     go = JointVariantCalling.done,
                     dataset_name = CreateDatasetForTest.dataset_name,
                     project_id = project_id,
-                    expected_output_csv = expected_prefix + "cost_observability_expected.csv",
+                    expected_output_csv = expected_prefix + "cost_observability.csv",
                     cloud_sdk_docker = effective_cloud_sdk_docker,
             }
 
@@ -135,7 +135,7 @@ workflow GvsQuickstartVcfIntegration {
                     go = JointVariantCalling.done,
                     dataset_name = CreateDatasetForTest.dataset_name,
                     project_id = project_id,
-                    expected_output_csv = expected_prefix + "table_sizes_expected.csv",
+                    expected_output_csv = expected_prefix + "table_sizes.csv",
                     cloud_sdk_docker = effective_cloud_sdk_docker,
             }
         }
@@ -282,17 +282,19 @@ task AssertCostIsTrackedAndExpected {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        mkdir output
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             'SELECT call, step, event_key, sum(event_bytes)
               FROM `~{dataset_name}.cost_observability`
               GROUP BY call, step, event_key
-              ORDER BY call, step, event_key' > cost_observability_output.csv
+              ORDER BY call, step, event_key' > output/cost_observability.csv
 
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
 
-        paste cost_observability_output.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected; do
+        paste output/cost_observability.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected; do
         IFS=, read -ra OBS <<< "$observed"
         IFS=, read -ra EXP <<< "$expected"
         if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
@@ -358,7 +360,7 @@ task AssertCostIsTrackedAndExpected {
     }
 
     output {
-        File cost_observability_output_csv = "cost_observability_output.csv"
+        File cost_observability_output_csv = "output/cost_observability.csv"
     }
 }
 
@@ -381,6 +383,8 @@ task AssertTableSizesAreExpected {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        mkdir output
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
@@ -388,10 +392,10 @@ task AssertTableSizesAreExpected {
             UNION ALL \
             SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
             FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_sizes_output.csv
+            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > output/table_sizes.csv
 
         set +o errexit
-        diff -w table_sizes_output.csv ~{expected_output_csv} > differences.txt
+        diff -w output/table_sizes.csv ~{expected_output_csv} > differences.txt
         set -o errexit
 
         if [[ -s differences.txt ]]; then
@@ -407,7 +411,7 @@ task AssertTableSizesAreExpected {
     }
 
     output {
-        File table_sizes_output_csv = "table_sizes_output.csv"
+        File table_sizes_output_csv = "output/table_sizes.csv"
         File differences = "differences.txt"
     }
 }
