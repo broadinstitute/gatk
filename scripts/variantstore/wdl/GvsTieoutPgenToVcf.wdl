@@ -5,12 +5,15 @@ workflow GvsTieoutPgenToVcf {
     input {
         String vcf_extract_extract_task_call_root
         String pgen_extract_merge_pgen_workflow_root
+        # Stable link to a snapshot of the plink2 binary from the pgen-jni project.
+        String plink_download_url = "https://github.com/broadinstitute/pgen-jni/raw/de500ad710ce70a8171fd3d0806857a1f36d8a2e/plink2_assets/plink2_linux_x86_64_20240318.zip"
     }
 
     call Tieout {
         input:
             vcf_extract_extract_task_call_root = vcf_extract_extract_task_call_root,
             pgen_extract_merge_pgen_workflow_root = pgen_extract_merge_pgen_workflow_root,
+            plink_download_url = plink_download_url,
     }
 }
 
@@ -18,7 +21,7 @@ task Tieout {
     input {
         String vcf_extract_extract_task_call_root
         String pgen_extract_merge_pgen_workflow_root
-        String plink_download_url = "https://s3.amazonaws.com/plink2-assets/plink2_linux_x86_64_20240318.zip"
+        String plink_download_url
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
