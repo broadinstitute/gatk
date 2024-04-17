@@ -434,3 +434,9 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+   - name: GvsTieoutPgenToVcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
+     filters:
+       branches:
+         - vs_1311_proto_tieout
