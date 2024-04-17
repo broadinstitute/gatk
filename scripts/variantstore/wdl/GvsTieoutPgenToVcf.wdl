@@ -3,21 +3,21 @@ version 1.0
 
 workflow GvsTieoutPgenToVcf {
     input {
-        String extract_task_call_root
-        String merge_pgen_workflow_root
+        String vcf_extract_extract_task_call_root
+        String pgen_extract_merge_pgen_workflow_root
     }
 
     call Tieout {
         input:
-            extract_task_call_root = extract_task_call_root,
-            merge_pgen_workflow_root = merge_pgen_workflow_root,
+            vcf_extract_extract_task_call_root = vcf_extract_extract_task_call_root,
+            pgen_extract_merge_pgen_workflow_root = pgen_extract_merge_pgen_workflow_root,
     }
 }
 
 task Tieout {
     input {
-        String extract_task_call_root
-        String merge_pgen_workflow_root
+        String vcf_extract_extract_task_call_root
+        String pgen_extract_merge_pgen_workflow_root
         String plink_download_url = "https://s3.amazonaws.com/plink2-assets/plink2_linux_x86_64_20240318.zip"
     }
     command <<<
@@ -28,24 +28,22 @@ task Tieout {
         mkdir tieout
         cd tieout
 
-        # Localize all the sharded VCFs and their indexes.
-        # Note everything here is specific to 'quickit' but probably shouldn't be.
+        # Localize all the VCF-extract sharded VCFs and their indexes.
         mkdir vcf
         cd vcf
-        gcloud storage cp -R '~{extract_task_call_root}/**/*-quickit.vcf.gz' .
-        gcloud storage cp -R '~{extract_task_call_root}/**/*-quickit.vcf.gz.tbi' .
+        gcloud storage cp -R '~{vcf_extract_extract_task_call_root}/**/*-quickit.vcf.gz' .
+        gcloud storage cp -R '~{vcf_extract_extract_task_call_root}/**/*-quickit.vcf.gz.tbi' .
 
         # Get the names of the samples, sort them, and stash this in a file in the "tieout" directory.
-        # PGEN appears to order samples lexicographically, while VCF extract orders them randomly.
-        # We will need to explicitly order the PGEN and VCF data similarly for our comparisons.
+        # PGEN -> VCF extract appears to order samples lexicographically, while VCF extract orders them randomly.
+        # We will want to explicitly order PGEN and VCF data the same way for comparison.
         bcftools query --list-samples 0000000000-quickit.vcf.gz | sort > ../samples.txt
 
         # Process the VCFs:
         # - Write an appropriate header
-        # - Group by chromosome
-        # - Include only the data we want to use in our PGEN comparison
-        # - Assemble everything into a VCF
-        # - bgzip
+        # - Group sharded extract files by chromosome
+        # - Include only the columns we want to use in our PGEN comparison
+        # - Assemble everything back into a comparison-friendly VCF, bgzip and index
 
         # Write an appropriate header
         # Take all the ## header lines that aren't contigs
@@ -54,6 +52,7 @@ task Tieout {
         # Now just the contigs we care about
         zgrep -E '^##' 0000000000-quickit.vcf.gz | grep -E '^##contig=<ID=chr[12]?[0-9],|^##contig=<ID=chr[XY],' >> vcf_header.txt
 
+        # Tab-separated comparision-friendly columns
         acc=""
         for item in \\#CHROM POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
         do
@@ -61,8 +60,8 @@ task Tieout {
         done
         echo $acc | cut -c 2- | sed 's/ /\t/g' >> vcf_header.txt
 
-        # Group by chromosome
-        # Expecting some SIGPIPEs with the `zgrep` trying to push data to a `head -1` that stopped listening, so turn off pipefail for now.
+        # Group sharded VCF extract files by chromosome
+        # Expecting some SIGPIPEs with the `zgrep` trying to push data to a `head -1` that stops listening, so turn off pipefail for now.
         set +o pipefail
         for vcf in 0000000*quickit.vcf.gz
         do
@@ -71,6 +70,7 @@ task Tieout {
         done > vcf_to_chr.csv
         set -o pipefail
 
+        # Iterate over the vcf / chr mapping, appending data appropriate to the chromosome in comparison-friendly format.
         while IFS=, read -r vcf chr
         do
             echo "vcf: $vcf / chr: $chr"
@@ -78,8 +78,7 @@ task Tieout {
             bcftools query -S ../samples.txt -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%QUAL\t%FILTER\t%INFO\tGT[\t%GT]\n' $vcf >> vcf_body_${chr}.vcf
         done < vcf_to_chr.csv
 
-        # Assemble everything into a VCF
-        # bgzip
+        # Assemble everything into a VCF, bgzip and index
         for chr in $(seq 1 22) X Y
         do
             out=vcf_compare_chr${chr}.vcf
@@ -89,6 +88,7 @@ task Tieout {
             bcftools index ${out}.gz
         done
 
+        # PGEN extract -> VCF
         cd ..
         mkdir pgen
         cd pgen
@@ -96,7 +96,7 @@ task Tieout {
         do
             # Note the 'kind' var is intentionally outside the single quotes because we do not want the GCS path globs
             # expanded but we do want the 'kind' var expanded.
-            gcloud storage cp -R '~{merge_pgen_workflow_root}/**/call-FinalMerge/quickit.chr*.'${kind} .
+            gcloud storage cp -R '~{pgen_extract_merge_pgen_workflow_root}/**/call-FinalMerge/quickit.chr*.'${kind} .
         done
 
         # Download and "install" plink2. Building this on an Apple Silicon Mac was completely straightforward, but
