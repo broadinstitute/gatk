@@ -104,7 +104,7 @@ import java.util.List;
  * <p>
  * Finally for those using mappers other than bwa mem or dragen-os, {@code --minimum-mapping-quality} threshold is
  * set to 50, which limits the usable reads that tool considers for generating pileups. Certain mappers are known to
- * assign scores less that this threshold even for the unique mappers. If you observe all empty results in your
+ * assign scores less that this threshold even for the unique mappings. If you observe all empty results in your
  * summary file please adjust the {@code --minimum-mapping-quality} parameter according to your input files.
  * </p>
  *
