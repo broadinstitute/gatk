@@ -82,9 +82,16 @@ def annotate_adj(
     Annotate genotypes with adj criteria (assumes diploid).
     Defaults similar to gnomAD values, but GQ >= 20 changed to GQ >= 30 to make up for lack of DP filter.
     """
+    if "LGT" in mt.entry and "LAD" in mt.entry:
+        gt_expr = mt.LGT
+        ad_expr = mt.LAD
+    else:
+        assert "GT" in mt.entry and "AD" in mt.entry
+        gt_expr = mt.GT
+        ad_expr = mt.AD
     return mt.annotate_entries(
         adj=get_adj_expr(
-            mt.GT, mt.GQ, mt.AD, adj_gq, adj_ab
+            gt_expr, mt.GQ, ad_expr, adj_gq, adj_ab
         )
     )
 def get_adj_expr(
