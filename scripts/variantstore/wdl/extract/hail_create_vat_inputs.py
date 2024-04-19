@@ -95,7 +95,7 @@ def annotate_adj(
     )
 def get_adj_expr(
     gt_expr: hl.expr.CallExpression,
-    gq_expr: Union[hl.expr.Int32Expression, hl.expr.Int64Expression],
+    gq_expr: union[hl.expr.Int32Expression, hl.expr.Int64Expression],
     ad_expr: hl.expr.ArrayNumericExpression,
     adj_gq: int = 30,
     adj_ab: float = 0.2,
