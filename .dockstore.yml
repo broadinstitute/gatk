@@ -418,6 +418,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1315_plink_docker
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -426,6 +427,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1315_plink_docker
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -433,10 +435,22 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
+         - vs_1315_plink_docker
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
-         - vs_1311_proto_tieout
+         - ah_var_store
+         - EchoCallset
+         - vs_1315_plink_docker
+   - name: MLCGvsQuickstartIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1315_plink_docker
+       tags:
+         - /.*/
