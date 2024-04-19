@@ -222,7 +222,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - rc-vs-903-only-one-partition
+             - rc-vs-903-Konrads-changes
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery

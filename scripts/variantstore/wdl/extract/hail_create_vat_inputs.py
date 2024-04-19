@@ -1,5 +1,6 @@
 import argparse
 import hail as hl
+from typing import Union
 from datetime import datetime
 
 import create_vat_inputs
@@ -128,10 +129,8 @@ def matrix_table_ac_an_af(mt, ancestry_file):
     ac_an_af_mt = mt.select_rows(
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
         call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
-        call_stats_by_pop_sex=hl.agg.group_by(hl.struct(pop=mt.pop, sex=mt.sex), hl.agg.call_stats(mt.GT, mt.alleles)),
         ac_an_af_adj=hl.agg.filter(mt.adj, hl.agg.call_stats(mt.GT, mt.alleles)),
         call_stats_by_pop_adj=hl.agg.filter(mt.adj, hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles))),
-        call_stats_by_pop_sex_adj=hl.agg.filter(mt.adj, hl.agg.group_by(hl.struct(pop=mt.pop, sex=mt.sex), hl.agg.call_stats(mt.GT, mt.alleles)))
     )
     
     return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row. This will also remove all spanning delstions for us
@@ -215,7 +214,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
             mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
         ht = mt.rows()
-        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'call_stats_by_pop_sex', 'ac_an_af_adj', 'call_stats_by_pop_adj', 'call_stats_by_pop_sex_adj')
+        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
         ht.write(ht_paths[i])
 
         # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
@@ -266,7 +265,7 @@ if __name__ == '__main__':
         vds = hl.vds.read_vds(args.vds_input_path)
         local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
-        main(vds, local_ancestry_file, args.sites_only_output_path, dry_run_n_parts=100)
+        main(vds, local_ancestry_file, args.sites_only_output_path)
     except Exception:
       hl.copy_log(args.sites_only_output_path.replace(r".sites-only.vcf", ".log"))
       raise
