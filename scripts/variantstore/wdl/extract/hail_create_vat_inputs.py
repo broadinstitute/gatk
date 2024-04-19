@@ -108,15 +108,16 @@ def get_adj_expr(
     Get adj genotype annotation.
     Defaults similar to gnomAD values, but GQ >= 20 changed to GQ >= 30 to make up for lack of DP filter.
     """
+    total_ad = hl.sum(ad_expr)
     return (
         (gq_expr >= adj_gq)
         & (
             hl.case()
             .when(~gt_expr.is_het(), True)
-            .when(gt_expr.is_het_ref(), ad_expr[gt_expr[1]] / hl.sum(ad_expr) >= adj_ab)
+            .when(gt_expr.is_het_ref(), ad_expr[gt_expr[1]] / total_ad >= adj_ab)
             .default(
-                (ad_expr[gt_expr[0]] / hl.sum(ad_expr) >= adj_ab)
-                & (ad_expr[gt_expr[1]] / hl.sum(ad_expr) >= adj_ab)
+                (ad_expr[gt_expr[0]] / total_ad >= adj_ab)
+                & (ad_expr[gt_expr[1]] / total_ad >= adj_ab)
             )
         )
     )
