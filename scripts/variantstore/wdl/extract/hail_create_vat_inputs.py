@@ -266,7 +266,7 @@ if __name__ == '__main__':
         vds = hl.vds.read_vds(args.vds_input_path)
         local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
-        main(vds, local_ancestry_file, args.sites_only_output_path, dry_run_n_parts=100)
+        main(vds, local_ancestry_file, args.sites_only_output_path)
     except Exception:
       hl.copy_log(args.sites_only_output_path.replace(r".sites-only.vcf", ".log"))
       raise
