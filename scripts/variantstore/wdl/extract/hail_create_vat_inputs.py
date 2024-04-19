@@ -72,19 +72,68 @@ def remove_too_many_alt_allele_sites(vds):
 
 
 
+def annotate_adj(
+        mt: hl.MatrixTable,
+        adj_gq: int = 30,
+        adj_ab: float = 0.2,
+) -> hl.MatrixTable:
+    """
+    Annotate genotypes with adj criteria (assumes diploid).
+    Defaults similar to gnomAD values, but GQ >= 20 changed to GQ >= 30 to make up for lack of DP filter.
+    """
+    if "LGT" in mt.entry and "LAD" in mt.entry:
+        gt_expr = mt.LGT
+        ad_expr = mt.LAD
+    else:
+        assert "GT" in mt.entry and "AD" in mt.entry
+        gt_expr = mt.GT
+        ad_expr = mt.AD
+    return mt.annotate_entries(
+        adj=get_adj_expr(
+            gt_expr, mt.GQ, ad_expr, adj_gq, adj_ab
+        )
+    )
+def get_adj_expr(
+    gt_expr: hl.expr.CallExpression,
+    gq_expr: Union[hl.expr.Int32Expression, hl.expr.Int64Expression],
+    ad_expr: hl.expr.ArrayNumericExpression,
+    adj_gq: int = 30,
+    adj_ab: float = 0.2,
+) -> hl.expr.BooleanExpression:
+    """
+    Get adj genotype annotation.
+    Defaults similar to gnomAD values, but GQ >= 20 changed to GQ >= 30 to make up for lack of DP filter.
+    """
+    total_ad = hl.sum(ad_expr)
+    return (
+        (gq_expr >= adj_gq)
+        & (
+            hl.case()
+            .when(~gt_expr.is_het(), True)
+            .when(gt_expr.is_het_ref(), ad_expr[gt_expr[1]] / total_ad >= adj_ab)
+            .default(
+                (ad_expr[gt_expr[0]] / total_ad >= adj_ab)
+                & (ad_expr[gt_expr[1]] / total_ad >= adj_ab)
+            )
+        )
+    )
 def matrix_table_ac_an_af(mt, ancestry_file):
     """
     Create a DENSE MATRIX TABLE to calculate AC, AN, AF and Sample Count
     TODO: test sample_count
     """
-
     sample_id_to_sub_population = create_vat_inputs.parse_ancestry_file(ancestry_file)
-
     mt = mt.annotate_cols(pop=hl.literal(sample_id_to_sub_population)[mt.s])
+    mt = annotate_adj(mt)
     ac_an_af_mt = mt.select_rows(
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
         call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
+        call_stats_by_pop_sex=hl.agg.group_by(hl.struct(pop=mt.pop, sex=mt.sex), hl.agg.call_stats(mt.GT, mt.alleles)),
+        ac_an_af_adj=hl.agg.filter(mt.adj, hl.agg.call_stats(mt.GT, mt.alleles)),
+        call_stats_by_pop_adj=hl.agg.filter(mt.adj, hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles))),
+        call_stats_by_pop_sex_adj=hl.agg.filter(mt.adj, hl.agg.group_by(hl.struct(pop=mt.pop, sex=mt.sex), hl.agg.call_stats(mt.GT, mt.alleles)))
     )
+    
     return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row. This will also remove all spanning delstions for us
 
 
@@ -166,7 +215,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
             mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
         ht = mt.rows()
-        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af')
+        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'call_stats_by_pop_sex', 'ac_an_af_adj', 'call_stats_by_pop_adj', 'call_stats_by_pop_sex_adj')
         ht.write(ht_paths[i])
 
         # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
