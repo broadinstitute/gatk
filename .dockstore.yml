@@ -328,7 +328,8 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-VS-1282-and-only-write-variant-mt
+             - EchoCallset
+             - rc-integration-test-w-Echo-changes
          tags:
              - /.*/
    - name: GvsIngestTieout
