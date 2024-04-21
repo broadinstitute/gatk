@@ -190,7 +190,9 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
         sites_only_vcf_path = sites_only_vcf_path.replace(r".vcf.bgz", f'_dryrun.vcf.bgz')
     else:
         n_rounds = 5
-        parts_per_round = n_parts // n_rounds
+        # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
+        # n_parts % n_rounds partitions.
+        parts_per_round = (n_parts + n_rounds - 1) // n_rounds
         ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
     for i in range(n_rounds):
         part_range = range(i*parts_per_round, min((i+1)*parts_per_round, n_parts))
