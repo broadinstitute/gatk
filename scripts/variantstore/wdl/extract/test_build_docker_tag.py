@@ -11,6 +11,6 @@ class TestBuildDockerTag(unittest.TestCase):
     def test_tag(self):
         tag_re = re.compile(r"^20\d{2}-\d{2}-\d{2}-alpine-f00ba4ba5$")
 
-        args = self.argument_parser.parse_args(['--image-id', 'f00ba4ba5', '--image-type', 'slim'])
+        args = self.argument_parser.parse_args(['--image-id', 'f00ba4ba5', '--image-type', 'alpine'])
         tag = build_tag(args)
         self.assertTrue(tag_re.match(tag))

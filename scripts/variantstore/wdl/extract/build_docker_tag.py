@@ -8,7 +8,7 @@ def build_tag(args):
     current_date = datetime.now()
     date_string = current_date.strftime('%Y-%m-%d')
 
-    return f"{date_string}-alpine-{args.image_id}"
+    return f"{date_string}-{args.image_type}-{args.image_id}"
 
 
 def build_argument_parser():
