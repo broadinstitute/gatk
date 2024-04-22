@@ -306,7 +306,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1328
+             - vs_1342_revert_gar_bits_for_now
          tags:
              - /.*/
    - name: GvsIngestTieout
