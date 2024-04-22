@@ -5,10 +5,10 @@ usage() {
 
 USAGE: ./build_docker.sh
 
-Generate a tag suitable for publication of a Variants Docker image.
+Build a Variants Docker image with an appropriate tag and push to GAR.
 Tags will be of the form <ISO 8601 Date>-alpine-<Docker image ID>.
 
-e.g. 2024-04-19-alpine-f000ba44
+e.g. 2024-04-22-alpine-f000ba44
 "
     exit 1
 }
@@ -18,13 +18,15 @@ then
     usage
 fi
 
-docker build .
+docker build . --iidfile idfile.txt
 
-TAG=$(python3 ./build_docker_tag.py)
-# Take everything after the last dash to recover the Docker image ID from the tag.
-IMAGE_ID=${TAG##*-}
-BASE_REPO="broad-dsde-methods/variantstore"
-REPO_WITH_TAG="${BASE_REPO}/variantstore:${TAG}"
+FULL_IMAGE_ID=$(cat idfile.txt)
+IMAGE_ID=${FULL_IMAGE_ID:7:12}
+IMAGE_TYPE="alpine"
+TAG=$(python3 ./build_docker_tag.py --image-id "${IMAGE_ID}" --image-type "${IMAGE_TYPE}")
+
+BASE_REPO="broad-dsde-methods/gvs"
+REPO_WITH_TAG="${BASE_REPO}/variants:${TAG}"
 docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 
 # Run unit tests before pushing.
@@ -54,3 +56,5 @@ docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
 docker push "${GAR_TAG}"
 
 echo "Docker image pushed to \"${GAR_TAG}\""
+
+rm idfile.txt
