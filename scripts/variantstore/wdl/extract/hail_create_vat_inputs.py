@@ -210,6 +210,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
         for transform in transforms:
             transformed_vds = transform(transformed_vds)
 
+        print(f"densifying dense matrix table index {i}")
         mt = hl.vds.to_dense_mt(transformed_vds)
 
         with open(ancestry_file_location, 'r') as ancestry_file:
