@@ -5,7 +5,7 @@ usage() {
 
 USAGE: ./build_docker.sh
 
-Generate a tag suitable for publication of a Variants Docker image.
+Build a Variants Docker image with an appropriate tag and push to GCR.
 Tags will be of the form <ISO 8601 Date>-alpine-<Docker image ID>.
 
 e.g. 2024-04-19-alpine-f000ba44
@@ -24,7 +24,7 @@ TAG=$(python3 ./build_docker_tag.py)
 # Take everything after the last dash to recover the Docker image ID from the tag.
 IMAGE_ID=${TAG##*-}
 BASE_REPO="broad-dsde-methods/variantstore"
-REPO_WITH_TAG="${BASE_REPO}/variantstore:${TAG}"
+REPO_WITH_TAG="${BASE_REPO}:${TAG}"
 docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 
 # Run unit tests before pushing.
@@ -46,11 +46,8 @@ fi
 
 set -o errexit
 
-GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
-docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
+GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
+docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
+docker push "${GCR_TAG}"
 
-# Docker must be configured for GAR before pushes will work:
-# gcloud auth configure-docker us-central1-docker.pkg.dev
-docker push "${GAR_TAG}"
-
-echo "Docker image pushed to \"${GAR_TAG}\""
+echo "Docker image pushed to \"${GCR_TAG}\""
