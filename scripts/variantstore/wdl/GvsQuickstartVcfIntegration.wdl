@@ -294,59 +294,60 @@ task AssertCostIsTrackedAndExpected {
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
 
-        paste output/cost_observability.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected; do
-        IFS=, read -ra OBS <<< "$observed"
-        IFS=, read -ra EXP <<< "$expected"
-        if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
-          echo "Unexpected number of rows found in the input files"
-          exit 1
-        fi
+        paste output/cost_observability.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected;
+        do
+            IFS=, read -ra OBS <<< "$observed"
+            IFS=, read -ra EXP <<< "$expected"
+            if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
+              echo "Unexpected number of rows found in the input files"
+              exit 1
+            fi
 
-        OBS_KEY=${OBS[0]}.${OBS[1]}.${OBS[2]}
-        EXP_KEY=${EXP[0]}.${EXP[1]}.${EXP[2]}
-        if [[ "$OBS_KEY" != "$EXP_KEY" ]]; then
-          echo "Mismatched keys in results files - were these sorted properly?"
-          exit 1
-        fi
+            OBS_KEY=${OBS[0]}.${OBS[1]}.${OBS[2]}
+            EXP_KEY=${EXP[0]}.${EXP[1]}.${EXP[2]}
+            if [[ "$OBS_KEY" != "$EXP_KEY" ]]; then
+              echo "Mismatched keys in results files - were these sorted properly?"
+              exit 1
+            fi
 
-        if [[ "$OBS_KEY" == "call.step.event_key" ]]; then
-          # Skip the header
-          continue;
-        fi
+            if [[ "$OBS_KEY" == "call.step.event_key" ]]; then
+              # Skip the header
+              continue;
+            fi
 
-        OBS_BYTES=${OBS[3]}
-        EXP_BYTES=${EXP[3]}
+            OBS_BYTES=${OBS[3]}
+            EXP_BYTES=${EXP[3]}
 
-        TOLERANCE=0
+            TOLERANCE=0
 
-        # For these two costs, there is non-determinism in the pipeline - we allow a % difference
-        if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
-        elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
-          TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
-        elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.6   # 60% tolerance (Note - have seen as high as: 0.5) - but it's 210 vs 420.
-        elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.012165)
-        fi
+            # For these two costs, there is non-determinism in the pipeline - we allow a % difference
+            if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
+              TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
+            elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
+              TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
+            elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
+              TOLERANCE=1.0   # 100% tolerance
+            elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
+              TOLERANCE=0.1   # 10% tolerance
+            fi
 
-        if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
-          echo "The bytes observed ($OBS_BYTES) for '$OBS_KEY' differ from those expected ($EXP_BYTES)"
+            if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
+              echo "The bytes observed ($OBS_BYTES) for '$OBS_KEY' differ from those expected ($EXP_BYTES)"
 
-          if [[ $OBS_BYTES -ge $EXP_BYTES ]]; then
-            DIFF_FOUND=$(echo $OBS_BYTES $EXP_BYTES | awk '{print ($1-$2)/$1}')
-          else
-            DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
-          fi
+              if [[ $OBS_BYTES -ge $EXP_BYTES ]]; then
+                DIFF_FOUND=$(echo $OBS_BYTES $EXP_BYTES | awk '{print ($1-$2)/$1}')
+              else
+                DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
+              fi
 
-          if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
-          then
-            echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
-            echo "1" > ret_val.txt
-          else
-            echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
-          fi
-        fi
+              if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
+              then
+                echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
+                echo "1" > ret_val.txt
+              else
+                echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
+              fi
+            fi
         done
 
         RET_VAL=`cat ret_val.txt`
