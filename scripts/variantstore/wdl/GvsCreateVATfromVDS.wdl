@@ -266,9 +266,10 @@ task GenerateSitesOnlyVcf {
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        # hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
-        cluster_name="~{prefix}-${hex}"
+        # HACK hard code the cluster name so sites-only Hail table pieces have matching names between runs.
+        cluster_name="997d8faf-6cf5"
         echo ${cluster_name} > cluster_name.txt
 
         sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf.bgz"
