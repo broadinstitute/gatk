@@ -439,7 +439,7 @@ public class ExtractCohortEngine {
 
         // TODO: optimize in the case where noVQScoreFilteringRequested == true, no need to populate this
 
-        // If there's no yng/score(vqslod/sensitivity) for this site, then we'll treat these as NAYs because VQSR-Lite dropped them (they have no alt reads).
+        // If there's no yng/score(vqslod/sensitivity) for this site, then we'll treat these as NAYs because VETS dropped them (they have no alt reads).
         if (fullVQScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
             scoreMap = new HashMap<>();
             scoreMap.put(refAllele, new HashMap<>());

@@ -21,11 +21,11 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public class ExtractCohortLiteEngine extends ExtractCohortEngine {
+public class ExtractCohortVETSEngine extends ExtractCohortEngine {
     final Logger logger;
 
     List<String> getFilterSetInfoTableFields() {
-        return SchemaUtils.VQSLITE_YNG_FIELDS;
+        return SchemaUtils.VETS_YNG_FIELDS;
     }
 
     String getScoreFieldName() { return SchemaUtils.SCORE; }
@@ -50,7 +50,7 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL;
     }
 
-    public ExtractCohortLiteEngine(final String projectID,
+    public ExtractCohortVETSEngine(final String projectID,
                                    final VCFHeader vcfHeader,
                                    final VariantAnnotatorEngine annotationEngine,
                                    final ReferenceDataSource refSource,
@@ -106,7 +106,7 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
                 inferredReferenceState,
                 presortedAvroFiles,
                 variantContextConsumer);
-        logger = LogManager.getLogger(ExtractCohortLiteEngine.class);
+        logger = LogManager.getLogger(ExtractCohortVETSEngine.class);
     }
 
     @Override
