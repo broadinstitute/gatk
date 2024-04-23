@@ -289,12 +289,12 @@ task AssertCostIsTrackedAndExpected {
             'SELECT call, step, event_key, sum(event_bytes) FROM
                 (SELECT distinct step, call, event_key, event_bytes, shard_identifier FROM `~{dataset_name}.cost_observability`)
               GROUP BY call, step, event_key
-              ORDER BY call, step, event_key' > output/event_bytes.csv
+              ORDER BY call, step, event_key' > output/cost_observability.csv
 
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
 
-        paste output/event_bytes.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected;
+        paste output/cost_observability.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected;
         do
             IFS=, read -ra OBS <<< "$observed"
             IFS=, read -ra EXP <<< "$expected"
@@ -361,7 +361,7 @@ task AssertCostIsTrackedAndExpected {
     }
 
     output {
-        File cost_observability_output_csv = "output/event_bytes.csv"
+        File cost_observability_output_csv = "output/cost_observability.csv"
     }
 }
 
