@@ -435,6 +435,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - EchoCallset
          - vs_1315_plink_docker
    - name: GvsTieoutPgenToVcf
      subclass: WDL
@@ -444,13 +445,3 @@ workflows:
          - ah_var_store
          - EchoCallset
          - vs_1315_plink_docker
-   - name: MLCGvsQuickstartIntegration
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1315_plink_docker
-       tags:
-         - /.*/
