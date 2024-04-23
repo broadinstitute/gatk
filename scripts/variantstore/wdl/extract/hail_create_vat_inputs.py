@@ -226,7 +226,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
         # add_variant_tracking_info(mt, sites_only_vcf_path)
 
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    ht_list = [hl.read_table(ht_path).naive_coelesce(5000) for ht_path in ht_paths] # repartition each table to 5k partitions before we union them
+    ht_list = [hl.read_table(ht_path).naive_coalesce(5000) for ht_path in ht_paths] # repartition each table to 5k partitions before we union them
     ht_all = ht_list[0].union(*ht_list[1:])
     write_sites_only_vcf(ht_all, sites_only_vcf_path)
 
