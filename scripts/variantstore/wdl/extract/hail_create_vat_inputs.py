@@ -193,7 +193,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
         parts_per_round = n_parts // n_rounds
         ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
     # HACK for cluster stalled on the final group: redo only the final group, the preceding groups have completed.
-    for i in [4]:
+    for i in []:
         # HACK for parts_per_round bug on line 193: use n_parts as the top end of the range.
         part_range = range(i*parts_per_round, n_parts)
         vds_part = hl.vds.VariantDataset(
@@ -226,7 +226,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
         # add_variant_tracking_info(mt, sites_only_vcf_path)
 
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    ht_list = [hl.read_table(ht_path) for ht_path in ht_paths]
+    ht_list = [hl.read_table(ht_path).naive_coalesce(5000) for ht_path in ht_paths] # repartition each table to 5k partitions before we union them
     ht_all = ht_list[0].union(*ht_list[1:])
     write_sites_only_vcf(ht_all, sites_only_vcf_path)
 
