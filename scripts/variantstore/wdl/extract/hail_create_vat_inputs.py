@@ -188,12 +188,12 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
         parts_per_round = dry_run_n_parts
         ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_dryrun.ht')]
         sites_only_vcf_path = sites_only_vcf_path.replace(r".vcf.bgz", f'_dryrun.vcf.bgz')
-    elif false:
+    else:
         n_rounds = 5
         parts_per_round = n_parts // n_rounds
         ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
     # HACK for cluster stalled on the final group: redo only the final group, the preceding groups have completed.
-    for i in [4]:
+    for i in []:
         # HACK for parts_per_round bug on line 193: use n_parts as the top end of the range.
         part_range = range(i*parts_per_round, n_parts)
         vds_part = hl.vds.VariantDataset(
