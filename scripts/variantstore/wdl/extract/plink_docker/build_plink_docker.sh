@@ -6,6 +6,7 @@ usage() {
 USAGE: ./build_plink_docker.sh
 
 Build a PLINK 2 (https://www.cog-genomics.org/plink/2.0/) Docker image with an appropriate tag and push to GAR.
+The repo name will be 'us-central1-docker.pkg.dev/broad-dsde-methods/gvs' and the image name will be 'plink2'.
 Tags will be of the form <ISO 8601 Date>-slim-<Docker image ID>.
 
 e.g. 2024-04-22-slim-f000ba44
