@@ -71,9 +71,9 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-04-22-alpine-32804b134a75"
     String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2024-04-23-alpine-92a8b296e"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_04_30_74189ec2b"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_03_19_dfd45f6"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
