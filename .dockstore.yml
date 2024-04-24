@@ -449,6 +449,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1315_plink_docker
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -462,4 +463,6 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
-         - vs_1311_proto_tieout
+         - ah_var_store
+         - EchoCallset
+         - vs_1315_plink_docker
