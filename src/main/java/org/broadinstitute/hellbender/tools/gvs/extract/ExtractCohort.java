@@ -357,9 +357,7 @@ public abstract class ExtractCohort extends ExtractTool {
             }
         }
 
-        if ((vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE))
-//                && (!convertFilteredGenotypesToNoCalls) - TODO - add me back when ready
-        ) {
+        if ((vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) && (!convertFilteredGenotypesToNoCalls)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -441,6 +439,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
+                        convertFilteredGenotypesToNoCalls,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply)
@@ -470,6 +469,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
+                        convertFilteredGenotypesToNoCalls,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply);

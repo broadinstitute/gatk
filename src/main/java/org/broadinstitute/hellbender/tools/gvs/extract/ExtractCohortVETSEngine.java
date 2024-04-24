@@ -74,6 +74,7 @@ public class ExtractCohortVETSEngine extends ExtractCohortEngine {
                                    final boolean emitPLs,
                                    final boolean emitADs,
                                    final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
+                                   final boolean convertFilteredGenotypesToNoCalls,
                                    final GQStateEnum inferredReferenceState,
                                    final boolean presortedAvroFiles,
                                    final Consumer<VariantContext> variantContextConsumer
@@ -103,6 +104,7 @@ public class ExtractCohortVETSEngine extends ExtractCohortEngine {
                 emitPLs,
                 emitADs,
                 vqScoreFilteringType,
+                convertFilteredGenotypesToNoCalls,
                 inferredReferenceState,
                 presortedAvroFiles,
                 variantContextConsumer);
