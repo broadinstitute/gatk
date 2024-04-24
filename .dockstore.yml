@@ -288,6 +288,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1310_FilteredGTsToNoCalls
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -297,6 +298,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1310_FilteredGTsToNoCalls
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -307,6 +309,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1342_maybe_stick_with_gar
+             - gg_VS-1310_FilteredGTsToNoCalls
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -418,6 +421,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - gg_VS-1310_FilteredGTsToNoCalls
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -427,6 +431,7 @@ workflows:
          - ah_var_store
          - EchoCallset
          - vs_1315_plink_docker
+         - gg_VS-1310_FilteredGTsToNoCalls
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -435,6 +440,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - gg_VS-1310_FilteredGTsToNoCalls
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
@@ -443,3 +449,4 @@ workflows:
          - ah_var_store
          - EchoCallset
          - vs_1315_plink_docker
+         - gg_VS-1310_FilteredGTsToNoCalls
