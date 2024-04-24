@@ -625,10 +625,10 @@ task AnnotateVCF {
 
     runtime {
         docker: variants_nirvana_docker
-        memory: "64 GB"
+        memory: "128 GB"
         cpu: "4"
-        preemptible: 3
-        maxRetries: 2
+        preemptible: 1
+        maxRetries: 1
         disks: "local-disk 2000 HDD"
     }
 
