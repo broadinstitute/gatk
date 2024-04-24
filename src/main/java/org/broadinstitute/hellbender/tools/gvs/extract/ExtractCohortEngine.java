@@ -807,9 +807,8 @@ public class ExtractCohortEngine {
 
                 // if there are any "N"s, the genotype is filtered
                 if (anyNays) {
-                    if (!convertFilteredGenotypesToNoCalls) {
-                        genotypeBuilder.filter(GATKVCFConstants.NAY_FROM_YNG);
-                    } else {
+                    genotypeBuilder.filter(GATKVCFConstants.NAY_FROM_YNG);
+                    if (convertFilteredGenotypesToNoCalls) {
                         noCallTheGenotype = true;
                     }
                 } else //noinspection StatementWithEmptyBody
@@ -818,17 +817,15 @@ public class ExtractCohortEngine {
                     } else {
                         if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()),
                                 remappedVQScoreMap, vqScoreSNPThreshold)) {
-                            if (!convertFilteredGenotypesToNoCalls) {
-                                genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
-                            } else {
+                            genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
+                            if (convertFilteredGenotypesToNoCalls) {
                                 noCallTheGenotype = true;
                             }
                         }
                         if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()),
                                 remappedVQScoreMap, vqScoreINDELThreshold)) {
-                            if (!convertFilteredGenotypesToNoCalls) {
-                                genotypeBuilder.filter(getVqScoreINDELFailureFilterName());
-                            } else {
+                            genotypeBuilder.filter(getVqScoreINDELFailureFilterName());
+                            if (convertFilteredGenotypesToNoCalls) {
                                 noCallTheGenotype = true;
                             }
                         }

@@ -419,34 +419,35 @@ task PgenExtractTask {
         fi
 
         gatk --java-options "-Xmx${memory_mb}m" \
-        ExtractCohortToPgen \
-        --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
-        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
-        --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-        --ref-version 38 \
-        -R ~{reference} \
-        -O ~{output_pgen_basename}.pgen \
-        --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
-        --sample-table ~{fq_samples_to_extract_table} \
-        ~{"--inferred-reference-state " + inferred_reference_state} \
-        -L ~{interval_filename} \
-        --project-id ~{read_project_id} \
-        ~{true='--emit-pls' false='' emit_pls} \
-        ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='' false='--use-vqsr-classic-scoring' use_VQSR_lite} \
-        ${FILTERING_ARGS} \
-        --dataset-id ~{dataset_name} \
-        --call-set-identifier ~{call_set_identifier} \
-        --wdl-step GvsExtractCallsetPgenPgen \
-        --wdl-call PgenExtractTask \
-        --shard-identifier ~{interval_filename} \
-        ~{cost_observability_line} \
-        --writer-log-file writer.log \
-        --pgen-chromosome-code ~{pgen_chromosome_code} \
-        --max-alt-alleles ~{max_alt_alleles} \
-        ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
-        ~{true='--preserve-phasing' false='' preserve_phasing} \
-        --allow-empty-pgen
+            ExtractCohortToPgen \
+                --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+                ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
+                --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
+                --ref-version 38 \
+                -R ~{reference} \
+                -O ~{output_pgen_basename}.pgen \
+                --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
+                --sample-table ~{fq_samples_to_extract_table} \
+                ~{"--inferred-reference-state " + inferred_reference_state} \
+                -L ~{interval_filename} \
+                --project-id ~{read_project_id} \
+                ~{true='--emit-pls' false='' emit_pls} \
+                ~{true='--emit-ads' false='' emit_ads} \
+                ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+                --convert-filtered-genotypes-to-no-calls
+                ${FILTERING_ARGS} \
+                --dataset-id ~{dataset_name} \
+                --call-set-identifier ~{call_set_identifier} \
+                --wdl-step GvsExtractCallsetPgenPgen \
+                --wdl-call PgenExtractTask \
+                --shard-identifier ~{interval_filename} \
+                ~{cost_observability_line} \
+                --writer-log-file writer.log \
+                --pgen-chromosome-code ~{pgen_chromosome_code} \
+                --max-alt-alleles ~{max_alt_alleles} \
+                ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
+                ~{true='--preserve-phasing' false='' preserve_phasing} \
+                --allow-empty-pgen
 
 
         # Drop trailing slash if one exists

@@ -302,7 +302,7 @@ public abstract class ExtractCohort extends ExtractTool {
         }
 
         if (convertFilteredGenotypesToNoCalls && vqScoreFilteringType != VQScoreFilteringType.GENOTYPE) {
-            throw new UserException("The option '--convert-filtered-genotypes-to-no-calls' can ONLY be used if you filtering at the " +
+            throw new UserException("The option '--convert-filtered-genotypes-to-no-calls' can ONLY be used if you are filtering at the " +
                     "Genotype level (you have set '--filter-set-info-table' and NOT set '--vqs-score-filter-by-site')");
         }
 
@@ -357,7 +357,7 @@ public abstract class ExtractCohort extends ExtractTool {
             }
         }
 
-        if ((vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) && (!convertFilteredGenotypesToNoCalls)) {
+        if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
