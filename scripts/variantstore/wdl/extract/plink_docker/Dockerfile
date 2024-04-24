@@ -1,6 +1,7 @@
-FROM google/cloud-sdk:448.0.0
+FROM google/cloud-sdk:472.0.0-slim
 
-ADD https://s3.amazonaws.com/plink2-assets/alpha4/plink2_linux_avx2_20230922.zip plink2.zip
+# Use the stable URL to plink2 from the pgen-jni project.
+ADD https://github.com/broadinstitute/pgen-jni/raw/de500ad710ce70a8171fd3d0806857a1f36d8a2e/plink2_assets/plink2_linux_x86_64_20240318.zip plink2.zip
 
 RUN apt-get update && \
     apt-get upgrade -y && \

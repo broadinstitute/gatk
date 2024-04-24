@@ -288,7 +288,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1324_IntegrationTestFailures
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -298,7 +297,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1324_IntegrationTestFailures
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -308,8 +306,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1328
-             - gg_VS-1324_IntegrationTestFailures
+             - vs_1342_maybe_stick_with_gar
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -429,6 +426,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - vs_1315_plink_docker
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -442,4 +440,6 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
-         - vs_1311_proto_tieout
+         - ah_var_store
+         - EchoCallset
+         - vs_1315_plink_docker
