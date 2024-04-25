@@ -434,7 +434,7 @@ task PgenExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ~{true='--emit-ads' false='' emit_ads} \
                 ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
-                --convert-filtered-genotypes-to-no-calls
+                --convert-filtered-genotypes-to-no-calls \
                 ${FILTERING_ARGS} \
                 --dataset-id ~{dataset_name} \
                 --call-set-identifier ~{call_set_identifier} \
