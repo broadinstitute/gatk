@@ -164,6 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1310_FilteredGTsToNoCalls
          tags:
              - /.*/
    - name: GvsImportGenomes

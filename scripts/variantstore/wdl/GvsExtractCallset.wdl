@@ -311,6 +311,7 @@ task ExtractTask {
 
     Boolean emit_pls
     Boolean emit_ads
+    Boolean convert_filtered_genotypes_to_nocalls = false
 
     Boolean do_not_filter_override
     String fq_filter_set_info_table
@@ -381,6 +382,7 @@ task ExtractTask {
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
         ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+        ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
