@@ -841,7 +841,6 @@ public class ExtractCohortEngine {
             genotypeBuilder.alleles(genotypeAlleles);
         }
 
-        // TODO - Should I not be setting these??
         final String callGQ = sampleRecord.getCallGQ();
         if (callGQ != null) {
             genotypeBuilder.GQ(Integer.parseInt(callGQ));

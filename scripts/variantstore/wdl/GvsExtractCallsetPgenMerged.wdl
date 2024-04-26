@@ -4,8 +4,6 @@ import "GvsExtractCallsetPgen.wdl" as Extract
 import "MergePgenHierarchical.wdl" as Merge
 import "GvsUtils.wdl" as Utils
 
-# A lonely comment.
-
 workflow GvsExtractCallsetPgenMerged {
 
     input {
