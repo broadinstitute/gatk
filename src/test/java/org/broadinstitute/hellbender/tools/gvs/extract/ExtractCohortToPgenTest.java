@@ -66,7 +66,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRLitePgenfromRangesAvro() throws Exception {
+  public void testFinalVETSPgenfromRangesAvro() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -80,9 +80,9 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
     // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
     //
-    final File expectedPgen = getTestFile("ranges_extract.expected_vqsr_lite.pgen");
-    final File expectedPsam = getTestFile("ranges_extract.expected_vqsr_lite.psam");
-    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr_lite.pvar");
+    final File expectedPgen = getTestFile("ranges_extract.expected_vets.pgen");
+    final File expectedPsam = getTestFile("ranges_extract.expected_vets.psam");
+    final File expectedPvar = getTestFile("ranges_extract.expected_vets.pvar");
 
     // Create a temp dif for the output
     final File outputDir = createTempDir("extract_output");
@@ -113,7 +113,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRLitePgenfromRangesAvroLowAlleleCountMax() throws Exception {
+  public void testFinalVETSPgenfromRangesAvroLowAlleleCountMax() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -161,7 +161,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRLitePgenfromRangesAvroSeparateIndex() throws Exception {
+  public void testFinalVETSPgenfromRangesAvroSeparateIndex() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -212,7 +212,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRLitePgenfromRangesAvroEmptyPgenAllow() throws Exception {
+  public void testFinalVETSPgenfromRangesAvroEmptyPgenAllow() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -258,7 +258,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRClassicPgenfromRangesAvro() throws Exception {
+  public void testFinalVQSRPgenfromRangesAvro() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -272,9 +272,9 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
     // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
     //
-    final File expectedPgen = getTestFile("ranges_extract.expected_vqsr_classic.pgen");
-    final File expectedPsam = getTestFile("ranges_extract.expected_vqsr_classic.psam");
-    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr_classic.pvar");
+    final File expectedPgen = getTestFile("ranges_extract.expected_vqsr.pgen");
+    final File expectedPsam = getTestFile("ranges_extract.expected_vqsr.psam");
+    final File expectedPvar = getTestFile("ranges_extract.expected_vqsr.pvar");
 
     // create a temporary directory for the output
     final File outputDir = createTempDir("extract_output");
@@ -285,7 +285,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", outputPgen)
@@ -305,7 +305,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test(expectedExceptions = PgenEmptyPgenException.class)
-  public void testEmptyPgenExceptionVQSRLite() throws Exception {
+  public void testEmptyPgenExceptionVETS() throws Exception {
     final File outputDir = createTempDir("extract_output");
     final String outputBasePath = outputDir.getAbsolutePath() + "/extract_output";
     final File outputPgen = new File(outputBasePath + ".pgen");
@@ -327,7 +327,28 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testThrowFilterErrorVQSRLite() throws Exception {
+  public void testThrowErrorIfNoCallingFilteredGtsAndFilteringBySite() {
+    // Verifies that an exception is thrown if you try to --convert-filtered-genotypes-to-no-calls, but are using site filtering
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+            .add("ref-version", 38)
+            .add("R", hg38Reference)
+            .add("O", "anything")
+            .add("local-sort-max-records-in-ram", 10000000)
+            .add("ref-ranges-avro-file-name", quickstart10mbRefRangesAvroFile)
+            .add("vet-avro-file-name", quickstart10mbVetAvroFile)
+            .add("sample-file", quickstartSampleListFile)
+            .add("filter-set-info-table", "something")
+            .add("filter-set-site-table", "something")
+            .add("filter-set-name", "something")
+            .add("vqs-score-filter-by-site", true)
+            .add("convert-filtered-genotypes-to-no-calls", true)
+            .add("pgen-chromosome-code", "chrM");
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = UserException.class)
+  public void testThrowFilterErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
             .add("ref-version", 38)
@@ -344,10 +365,10 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
   @Test(expectedExceptions = UserException.class)
-  public void testThrowFilterErrorVQSRClassic() throws Exception {
+  public void testThrowFilterErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -363,7 +384,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testNoFilteringThresholdsErrorVQSRLite() throws Exception {
+  public void testNoFilteringThresholdsErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
             .add("ref-version", 38)
@@ -375,15 +396,15 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
             .add("sample-file", quickstartSampleListFile)
             .add("emit-pls", false)
             .add("filter-set-info-table", "foo")
-            .add("vqsr-score-filter-by-site", true)
+            .add("vqs-score-filter-by-site", true)
             .add("pgen-chromosome-code", "chrM");
     runCommandLine(args);
   }
   @Test(expectedExceptions = UserException.class)
-  public void testNoFilteringThresholdsErrorVQSRClassic() throws Exception {
+  public void testNoFilteringThresholdsErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -393,13 +414,13 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-info-table", "foo")
-        .add("vqsr-score-filter-by-site", true)
+        .add("vqs-score-filter-by-site", true)
         .add("pgen-chromosome-code", "chrM");
     runCommandLine(args);
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testFakeFilteringErrorVQSRLite() throws Exception {
+  public void testFakeFilteringErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
     args
@@ -412,17 +433,17 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
             .add("sample-file", quickstartSampleListFile)
             .add("emit-pls", false)
             .add("filter-set-name", "foo")
-            .add("vqsr-score-filter-by-site", true)
+            .add("vqs-score-filter-by-site", true)
             .add("pgen-chromosome-code", "chrM");
     runCommandLine(args);
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testFakeFilteringErrorVQSRClassic() throws Exception {
+  public void testFakeFilteringErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -432,7 +453,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-name", "foo")
-        .add("vqsr-score-filter-by-site", true)
+        .add("vqs-score-filter-by-site", true)
         .add("pgen-chromosome-code", "chrM");
     runCommandLine(args);
   }
