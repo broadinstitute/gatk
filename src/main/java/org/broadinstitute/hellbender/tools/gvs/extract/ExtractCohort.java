@@ -133,6 +133,7 @@ public abstract class ExtractCohort extends ExtractTool {
             doc = "If Variant Quality Score filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
+    // historical note that this parameter was previously named 'vqsr-score-filter-by-site', changed as it's not VQSR-specific
     private boolean performSiteSpecificVQScoreFiltering = false;
     private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
 
