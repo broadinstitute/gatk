@@ -45,6 +45,7 @@ public class ExtractCohortEngine {
     private final Double vqScoreSNPThreshold;
     private final Double vqScoreINDELThreshold;
     private final ExtractCohort.VQScoreFilteringType vqScoreFilteringType;
+    private final boolean convertFilteredGenotypesToNoCalls;
 
     private final String projectID;
     private final boolean emitPLs;
@@ -134,6 +135,7 @@ public class ExtractCohortEngine {
                                final boolean emitPLs,
                                final boolean emitADs,
                                final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
+                               final boolean convertFilteredGenotypesToNoCalls,
                                final GQStateEnum inferredReferenceState,
                                final boolean presortedAvroFiles,
                                final Consumer<VariantContext> variantContextConsumer
@@ -187,6 +189,7 @@ public class ExtractCohortEngine {
         this.vqScoreSNPThreshold = vqScoreSNPThreshold;
         this.vqScoreINDELThreshold = vqScoreINDELThreshold;
         this.vqScoreFilteringType = vqScoreFilteringType;
+        this.convertFilteredGenotypesToNoCalls = convertFilteredGenotypesToNoCalls;
 
         this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
         this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
@@ -439,7 +442,7 @@ public class ExtractCohortEngine {
 
         // TODO: optimize in the case where noVQScoreFilteringRequested == true, no need to populate this
 
-        // If there's no yng/score(vqslod/sensitivity) for this site, then we'll treat these as NAYs because VQSR-Lite dropped them (they have no alt reads).
+        // If there's no yng/score(vqslod/sensitivity) for this site, then we'll treat these as NAYs because VETS dropped them (they have no alt reads).
         if (fullVQScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
             scoreMap = new HashMap<>();
             scoreMap.put(refAllele, new HashMap<>());
@@ -777,11 +780,12 @@ public class ExtractCohortEngine {
                     .map(alleleIndex -> Allele.NO_CALL)
                     .collect(Collectors.toList()));
         } else {
-            final List<Allele> genotypeAlleles =
+            List<Allele> genotypeAlleles =
                     Arrays.stream(splitGT)
                             .map(Integer::parseInt)
                             .map(alleles::get)
                             .collect(Collectors.toList());
+            boolean noCallTheGenotype = false;
 
             if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.GENOTYPE)) {
                 final List<Allele> nonRefAlleles =
@@ -804,6 +808,9 @@ public class ExtractCohortEngine {
                 // if there are any "N"s, the genotype is filtered
                 if (anyNays) {
                     genotypeBuilder.filter(GATKVCFConstants.NAY_FROM_YNG);
+                    if (convertFilteredGenotypesToNoCalls) {
+                        noCallTheGenotype = true;
+                    }
                 } else //noinspection StatementWithEmptyBody
                     if (anyYays) {
                         // the genotype is passed, nothing to do here as non-filtered is the default
@@ -811,13 +818,25 @@ public class ExtractCohortEngine {
                         if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()),
                                 remappedVQScoreMap, vqScoreSNPThreshold)) {
                             genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
+                            if (convertFilteredGenotypesToNoCalls) {
+                                noCallTheGenotype = true;
+                            }
                         }
-
                         if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()),
                                 remappedVQScoreMap, vqScoreINDELThreshold)) {
                             genotypeBuilder.filter(getVqScoreINDELFailureFilterName());
+                            if (convertFilteredGenotypesToNoCalls) {
+                                noCallTheGenotype = true;
+                            }
                         }
                     }
+            }
+            if (noCallTheGenotype) {
+                // The genotype is to be no-called - that is, it would be FILTERED, but the option to no-call FT'd genotypes is enabled
+                genotypeAlleles = Arrays.stream(splitGT)
+                        .map(alleleIndex -> Allele.NO_CALL)
+                        .collect(Collectors.toList());
+
             }
             genotypeBuilder.alleles(genotypeAlleles);
         }
