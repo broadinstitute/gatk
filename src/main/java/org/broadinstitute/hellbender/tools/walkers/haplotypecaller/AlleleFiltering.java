@@ -29,6 +29,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * Filtering haplotypes that contribute weak alleles to the genotyping.
  *
@@ -278,7 +280,8 @@ public abstract class AlleleFiltering {
      * @param sorThreshold only variants with SOR above threshold will be considered
      * @return list of alleles that can be removed
      */
-    private List<Event> identifyBadAlleles(final List<Integer> collectedRPLs, final List<Double> collectedSORs,
+    @VisibleForTesting
+    List<Event> identifyBadAlleles(final List<Integer> collectedRPLs, final List<Double> collectedSORs,
                                                       final List<Event> alleles,
                                                       final double qualThreshold,
                                                       final double sorThreshold) {
