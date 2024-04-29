@@ -1076,6 +1076,7 @@ task IndexVcf {
 task SelectVariants {
     input {
         File input_vcf
+        File input_vcf_index
         File? interval_list
         String? type_to_include
         Boolean exclude_filtered = false
@@ -1088,6 +1089,9 @@ task SelectVariants {
 
     parameter_meta {
         input_vcf: {
+            localization_optional: true
+        }
+        input_vcf_index: {
             localization_optional: true
         }
     }
