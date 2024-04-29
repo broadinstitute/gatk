@@ -1096,7 +1096,8 @@ task SelectVariants {
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
-    Boolean is_compressed = basename(input_vcf, "gz") != input_vcf
+    String vcf_name = basename(input_vcf)
+    Boolean is_compressed = basename(vcf_name, "gz") != vcf_name
     String output_vcf_name = output_basename + if is_compressed then ".vcf.gz" else ".vcf"
     String output_vcf_index_name = output_basename + if is_compressed then ".vcf.gz.tbi" else ".vcf.idx"
 
