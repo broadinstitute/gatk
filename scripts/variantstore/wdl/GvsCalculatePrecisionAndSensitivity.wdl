@@ -404,7 +404,6 @@ task EvaluateVcf {
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
-      --bed-regions ~{bed_file} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
