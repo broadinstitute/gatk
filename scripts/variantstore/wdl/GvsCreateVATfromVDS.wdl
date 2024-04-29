@@ -149,7 +149,6 @@ workflow GvsCreateVATfromVDS {
         call Utils.SelectVariants {
             input:
                 input_vcf = sites_only_vcf_def,
-                input_vcf_index = sites_only_vcf_index_def,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
                 gatk_docker = effective_gatk_docker,
