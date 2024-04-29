@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;

@@ -1,17 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.longreads;
 
 import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.cmdline.programgroups.LongReadProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -20,7 +17,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
-import java.io.IOException;
 
 /**
  * Shards long read BAMs, keeping reads from the same ZMW in the same file if ZMW information is present",

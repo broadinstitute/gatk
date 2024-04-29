@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.longreads;
 
-import com.google.common.base.Joiner;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -114,24 +113,24 @@ public final class QuicklyCountMismatches extends LocusWalker {
     public void closeTool() {
             try (final PrintStream out = new PrintStream(outPathName)) {
 
-                for ( int np : numMismatchesMap.keySet() ) {
-                    out.println(Joiner.on(" ").join(np, numMismatchesMap.get(np), numInsertionsMap.get(np), numDeletionsMap.get(np), numBasesMap.get(np)));
+                for ( final int np : numMismatchesMap.keySet() ) {
+                    out.println(String.join(" ", numMismatchesMap.get(np).toString(), numInsertionsMap.get(np).toString(), numDeletionsMap.get(np).toString(), numBasesMap.get(np).toString()));
                 }
             } catch (final FileNotFoundException e) {
                 throw new UserException("Cannot open given outfile: " + outPathName, e);
             }
 
             try (PrintStream outIns = new PrintStream(insPathName)) {
-                for ( int len : insHist.keySet() ) {
-                    outIns.println(Joiner.on(" ").join(len, insHist.get(len)));
+                for ( final int len : insHist.keySet() ) {
+                    outIns.println(String.join(" ", Integer.valueOf(len).toString(), insHist.get(len).toString()));
                 }
             } catch (final FileNotFoundException e) {
                 throw new UserException("Cannot open given outfile: " + insPathName, e);
             }
 
             try (final PrintStream outDel = new PrintStream(delPathName)) {
-                for ( int len : delHist.keySet() ) {
-                    outDel.println(Joiner.on(" ").join(len, delHist.get(len)));
+                for ( final int len : delHist.keySet() ) {
+                    outDel.println(String.join(" ", Integer.valueOf(len).toString(), delHist.get(len).toString()));
                 }
             } catch (final FileNotFoundException e) {
                 throw new UserException("Cannot open given outfile: " + delPathName, e);

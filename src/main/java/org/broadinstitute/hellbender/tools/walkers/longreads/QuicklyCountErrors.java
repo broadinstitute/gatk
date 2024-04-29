@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.longreads;
 
-import com.google.common.base.Joiner;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -84,8 +83,8 @@ public final class QuicklyCountErrors extends ReadWalker {
     @Override
     public void closeTool() {
         try ( final PrintStream out = new PrintStream(outPathName) ) {
-            out.println(Joiner.on(" ").join("numMismatches", "numDeletions", "numInsertions", "numBases"));
-            out.println(Joiner.on(" ").join(numMismatches, numDeletions, numInsertions, numBases));
+            out.println(String.join(" ", "numMismatches", "numDeletions", "numInsertions", "numBases"));
+            out.println(String.join(" ", Long.valueOf(numMismatches).toString(), Long.valueOf(numDeletions).toString(), Long.valueOf(numInsertions).toString(), Long.valueOf(numBases).toString()));
         } catch (final FileNotFoundException e) {
             throw new UserException("Cannot open given outfile: " + outPathName, e);
         }

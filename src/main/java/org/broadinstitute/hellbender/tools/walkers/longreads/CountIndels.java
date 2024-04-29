@@ -1,11 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.longreads;
 
 import com.google.common.base.Joiner;
+
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.Interval;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -16,11 +14,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.LongReadProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import javax.xml.crypto.Data;
 import java.io.*;
 import java.util.*;
 
@@ -65,13 +60,13 @@ public final class CountIndels extends IntervalWalker {
             doc="Path to which per-interval information should be written")
     public String perIntervalPathName;
 
-    private class DataEntry {
-        private String readName;
-        private boolean isNegativeStrand;
-        private CigarOperator type;
-        private int refPos;
-        private int alleleLength;
-        private String allele;
+    private static class DataEntry {
+        private final String  readName;
+        private final boolean isNegativeStrand;
+        private final CigarOperator type;
+        private final int           refPos;
+        private final int           alleleLength;
+        private final String allele;
 
         public DataEntry(String readName, boolean isNegativeStrand, CigarOperator type, int refPos, int alleleLength, String allele) {
             this.readName = readName;
