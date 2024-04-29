@@ -1075,7 +1075,7 @@ task IndexVcf {
 task SelectVariants {
     input {
         File input_vcf
-        File input_vcf_index
+#        File input_vcf_index
         File? interval_list
         String? type_to_include
         Boolean exclude_filtered = false
@@ -1086,15 +1086,21 @@ task SelectVariants {
         String gatk_docker
     }
 
+    parameter_meta {
+      input_vcf: {
+        localization_optional: true
+      }
+    }
+
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
     String local_vcf = basename(input_vcf)
-    String local_index = basename(input_vcf_index)
+#    String local_index = basename(input_vcf_index)
 
-    Boolean is_compressed = basename(local_vcf, "gz") != local_vcf
+    Boolean is_compressed = basename(input_vcf, "gz") != local_vcf
     String output_vcf_name = output_basename + if is_compressed then ".vcf.gz" else ".vcf"
     String output_vcf_index_name = output_basename + if is_compressed then ".vcf.gz.tbi" else ".vcf.idx"
 
@@ -1105,14 +1111,9 @@ task SelectVariants {
 
       bash ~{monitoring_script} > monitoring.log &
 
-      # Localize the passed input_vcf and input_vcf_index to the working directory so the
-      # index and the VCF are side by side in the same directory.
-      ln -s ~{input_vcf} ~{local_vcf}
-      ln -s ~{input_vcf_index} ~{local_index}
-
       gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-          -V ~{local_vcf} \
+          -V ~{input_vcf} \
           ~{"-L " + interval_list} \
           ~{"--select-type-to-include " + type_to_include} \
           ~{true="--exclude-filtered true" false="" exclude_filtered} \
