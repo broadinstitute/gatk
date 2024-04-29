@@ -305,7 +305,7 @@ task SplitIntervalsTarred {
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-    gsutil -m cp -r "interval-files" $OUTPUT_GCS_DIR/
+      gsutil -m cp -r "interval-files" $OUTPUT_GCS_DIR/
     fi
 
     # Tar up the interval file directory
@@ -1298,5 +1298,46 @@ task PopulateFilterSetInfo {
 
   output {
     File monitoring_log = "monitoring.log"
+  }
+}
+
+# TODO - should put in a do not overwrite that file logic
+task CopyFile {
+  input {
+    File input_file
+    String output_gcs_dir
+    String cloud_sdk_docker
+  }
+  parameter_meta {
+    input_file: {
+      localization_optional: true
+    }
+  }
+
+  String base_filename = basename(input_file)
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
+    fi
+    echo "$OUTPUT_GCS_DIR~{base_filename}" > output_file_path.txt
+  >>>
+  output {
+    String output_file_path = read_string("output_file_path.txt")
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }

@@ -115,17 +115,27 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-    File sites_only_vcf_def = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf])
+    call Utils.CopyFile as CopySitesOnlyVcf {
+        input:
+            input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+            output_gcs_dir = output_path + "sites_only_vcf",
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
 
     if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
         call Utils.IndexVcf {
             input:
-                input_vcf = sites_only_vcf_def,
+                input_vcf = CopySitesOnlyVcf.output_file_path,
                 gatk_docker = effective_gatk_docker,
         }
     }
 
-    File sites_only_vcf_index_def = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index])
+    call Utils.CopyFile as CopySitesOnlyVcfIndex {
+        input:
+            input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
+            output_gcs_dir = output_path + "sites_only_vcf",
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
 
     call Utils.SplitIntervals {
         input:
@@ -140,7 +150,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(sites_only_vcf_def, ".sites-only.vcf")
+    String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -148,8 +158,8 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = sites_only_vcf_def,
-                input_vcf_index = sites_only_vcf_index_def,
+                input_vcf = CopySitesOnlyVcf.output_file_path,
+                input_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
                 gatk_docker = effective_gatk_docker,
