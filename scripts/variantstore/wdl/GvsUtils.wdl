@@ -1055,7 +1055,8 @@ task IndexVcf {
 
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
             IndexFeatureFile \
-            -I ~{local_file}
+            -I ~{input_vcf} \
+            -O "~{local_file}~{index_extension}"
     >>>
 
     runtime {
