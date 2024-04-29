@@ -1331,7 +1331,7 @@ task CopyFile {
     echo "Hello"
     echo ~{base_filename}
     echo "There"
-    echo ${OUTPUT_GCS_DIR}~{base_filename} > output_file_path.txt
+    echo ${OUTPUT_GCS_DIR}/~{base_filename} > output_file_path.txt
   >>>
   output {
     String output_file_path = read_string("output_file_path.txt")
