@@ -46,6 +46,7 @@ workflow GvsExtractCallset {
     Float y_bed_weight_scaling = 4
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
+    Boolean write_cost_to_db = true
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -71,7 +72,6 @@ workflow GvsExtractCallset {
 
   Boolean emit_pls = false
   Boolean emit_ads = true
-  Boolean write_cost_to_db = true
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
 

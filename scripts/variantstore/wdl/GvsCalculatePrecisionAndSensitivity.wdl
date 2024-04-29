@@ -10,6 +10,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String dataset_name
     String filter_set_name
     File interval_list
+    File bed_file
     String project_id
     Array[String] sample_names
 
@@ -132,7 +133,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        interval_list = interval_list,
+        bed_file = bed_file,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta,
@@ -146,7 +147,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        interval_list = interval_list,
+        bed_file = bed_file,
         all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
@@ -379,7 +380,7 @@ task EvaluateVcf {
     File truth_bed
 
     Boolean all_records = false
-    File interval_list
+    File bed_file
 
     File ref_fasta
 
@@ -403,7 +404,7 @@ task EvaluateVcf {
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
-      --bed-regions ~{interval_list} \
+      --bed-regions ~{bed_file} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
