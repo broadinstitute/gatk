@@ -1031,6 +1031,11 @@ task IndexVcf {
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
         String gatk_docker
     }
+    parameter_meta {
+      input_vcf: {
+        localization_optional: true
+      }
+  }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -1048,14 +1053,9 @@ task IndexVcf {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # Localize the passed input_vcf to the working directory so the
-        # to-be-created index file is also created there, alongside it.
-        ln -s ~{input_vcf} ~{local_file}
-
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
             IndexFeatureFile \
             -I ~{local_file}
-
     >>>
 
     runtime {
