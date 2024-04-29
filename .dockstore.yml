@@ -203,6 +203,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-903_BetterIzeCreateVATFromVDS
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery

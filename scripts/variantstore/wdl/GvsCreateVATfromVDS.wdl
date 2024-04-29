@@ -6,13 +6,15 @@ import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCr
 
 workflow GvsCreateVATfromVDS {
     input {
-        File ancestry_file
-        String dataset_name
-        String filter_set_name
-        String hail_generate_sites_only_script_path
-        String output_path
         String project_id
-        File vds_path
+        String dataset_name
+        File ancestry_file
+        String filter_set_name
+        File? sites_only_vcf
+        File? sites_only_vcf_index
+        String? hail_generate_sites_only_script_path
+        File? vds_path
+        String output_path
 
         String? basic_docker
         String? git_branch_or_tag
@@ -37,23 +39,26 @@ workflow GvsCreateVATfromVDS {
     }
 
     parameter_meta {
-        ancestry_file: {
-            help: "TSV file in GCS where the first column is the research ID and the last is the derived ancestry"
+        project_id: {
+            help: "Google project ID for the GVS BigQuery dataset"
         }
         dataset_name: {
             help: "BigQuery dataset name for GVS"
         }
+        ancestry_file: {
+            help: "TSV file in GCS where the first column is the research ID and the last is the derived ancestry"
+        }
         filter_set_name: {
             help: "name of the filter set used to generate the callset in GVS"
+        }
+        sites_only_vcf: {
+            help: "Optional sites-only-vcf file. If used, will skip generating it from VDS"
         }
         hail_generate_sites_only_script_path: {
             help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
         }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
-        }
-        project_id: {
-            help: "Google project ID for the GVS BigQuery dataset"
         }
         vds_path: {
             help: "the top-level directory of the GVS VDS to be used to create the VAT"
@@ -92,27 +97,35 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    call GenerateSitesOnlyVcf {
-        input:
-            vds_path = vds_path,
-            use_classic_VQSR = use_classic_VQSR,
-            workspace_project = effective_google_project,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            hail_generate_sites_only_script_path = hail_generate_sites_only_script_path,
-            ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
-            workspace_bucket = GetToolVersions.workspace_bucket,
-            region = "us-central1",
-            gcs_subnetwork_name = "subnetwork",
-            leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-            variants_docker = effective_variants_docker,
+    if (!defined(sites_only_vcf)) {
+        call GenerateSitesOnlyVcf {
+            input:
+                vds_path = vds_path,
+                use_classic_VQSR = use_classic_VQSR,
+                workspace_project = effective_google_project,
+                hail_version = effective_hail_version,
+                hail_wheel = hail_wheel,
+                hail_generate_sites_only_script_path = select_first([hail_generate_sites_only_script_path]),
+                ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
+                workspace_bucket = GetToolVersions.workspace_bucket,
+                region = "us-central1",
+                gcs_subnetwork_name = "subnetwork",
+                leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
+                variants_docker = effective_variants_docker,
+        }
     }
 
-    call Utils.IndexVcf {
-        input:
-            input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
-            gatk_docker = effective_gatk_docker,
+    File sites_only_vcf_def = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf])
+
+    if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
+        call Utils.IndexVcf {
+            input:
+                input_vcf = sites_only_vcf_def,
+                gatk_docker = effective_gatk_docker,
+        }
     }
+
+    File sites_only_vcf_index_def = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index])
 
     call Utils.SplitIntervals {
         input:
@@ -127,7 +140,7 @@ workflow GvsCreateVATfromVDS {
             gatk_docker = effective_gatk_docker,
     }
 
-    String sites_only_vcf_basename = basename(GenerateSitesOnlyVcf.sites_only_vcf, ".sites-only.vcf")
+    String sites_only_vcf_basename = basename(sites_only_vcf_def, ".sites-only.vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -135,8 +148,8 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = GenerateSitesOnlyVcf.sites_only_vcf,
-                input_vcf_index = IndexVcf.output_vcf_index,
+                input_vcf = sites_only_vcf_def,
+                input_vcf_index = sites_only_vcf_index_def,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
                 gatk_docker = effective_gatk_docker,
@@ -232,7 +245,7 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        String cluster_name = GenerateSitesOnlyVcf.cluster_name
+        String cluster_name = select_first([GenerateSitesOnlyVcf.cluster_name, "None"])
         File dropped_sites_file = MergeTsvs.output_file
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
