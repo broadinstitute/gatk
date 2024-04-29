@@ -37,7 +37,6 @@ import java.util.Arrays;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Quickly replace read quals with fixed value (@).",
         oneLineSummary = "Quickly replace read quals with fixed value (@).",

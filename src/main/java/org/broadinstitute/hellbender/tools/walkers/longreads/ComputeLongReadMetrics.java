@@ -41,7 +41,6 @@ import java.util.*;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Compute simple metrics on long read data",
         oneLineSummary = "Compute simple metrics on long read data",

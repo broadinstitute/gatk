@@ -43,7 +43,6 @@ import java.util.List;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq",
         oneLineSummary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq",

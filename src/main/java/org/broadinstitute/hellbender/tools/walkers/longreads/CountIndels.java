@@ -43,7 +43,6 @@ import java.util.*;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Count indels",
         oneLineSummary = "Count indels",

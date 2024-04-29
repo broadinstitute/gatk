@@ -42,7 +42,6 @@ import java.io.File;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
     summary = "Shards long read BAMs and keep subreads from the same ZMW in the same file if ZMW information is present",
     oneLineSummary = "Shards long read BAMs and keep subreads from the same ZMW in the same file if ZMW information is present",

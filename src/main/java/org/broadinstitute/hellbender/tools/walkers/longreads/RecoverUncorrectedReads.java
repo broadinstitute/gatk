@@ -46,7 +46,6 @@ import java.util.Set;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Recover uncorrected reads",
         oneLineSummary = "Recover uncorrected reads",

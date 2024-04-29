@@ -38,7 +38,6 @@ import java.util.*;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Quickly count errors",
         oneLineSummary = "Quickly count errors",

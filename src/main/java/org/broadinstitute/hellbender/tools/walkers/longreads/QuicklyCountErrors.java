@@ -41,7 +41,6 @@ import java.io.PrintStream;
  */
 @DocumentedFeature
 @ExperimentalFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Quickly count errors",
         oneLineSummary = "Quickly count errors",
