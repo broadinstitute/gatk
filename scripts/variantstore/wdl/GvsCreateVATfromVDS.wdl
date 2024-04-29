@@ -100,7 +100,7 @@ workflow GvsCreateVATfromVDS {
     if (!defined(sites_only_vcf)) {
         call GenerateSitesOnlyVcf {
             input:
-                vds_path = vds_path,
+                vds_path = select_first([vds_path]),
                 use_classic_VQSR = use_classic_VQSR,
                 workspace_project = effective_google_project,
                 hail_version = effective_hail_version,
