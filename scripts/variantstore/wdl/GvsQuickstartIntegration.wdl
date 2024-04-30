@@ -28,6 +28,8 @@ workflow GvsQuickstartIntegration {
         String? gatk_docker
         String? hail_version
         Boolean chr20_X_Y_only = true
+        Int? maximum_alternate_alleles
+        Boolean print_debug_information = false
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -100,6 +102,8 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+                print_debug_information = print_debug_information,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -126,6 +130,8 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+                print_debug_information = print_debug_information,
         }
 
         if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
@@ -171,6 +177,8 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+                print_debug_information = print_debug_information,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -197,6 +205,8 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+                print_debug_information = print_debug_information,
         }
 
         if (QuickstartVcfVQSRClassicIntegration.used_tighter_gcp_quotas) {
@@ -242,6 +252,8 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+                print_debug_information = print_debug_information,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
@@ -280,6 +292,8 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+                print_debug_information = print_debug_information,
                 git_branch_or_tag = git_branch_or_tag,
         }
 

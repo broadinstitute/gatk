@@ -169,6 +169,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - vs_1334_vcf_max_alt_alleles_echo_callset
          tags:
              - /.*/
    - name: GvsExtractCallset
@@ -179,7 +180,6 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - vs_1351_retry_with_more_memory_vcf_extract
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -377,6 +377,16 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsTieoutVcfMaxAltAlleles
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutVcfMaxAltAlleles.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - master
+         - vs_1334_vcf_max_alt_alleles
+       tags:
+         - /.*/
    - name: HailFromWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
