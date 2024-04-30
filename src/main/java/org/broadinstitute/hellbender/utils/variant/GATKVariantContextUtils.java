@@ -327,13 +327,11 @@ public final class GATKVariantContextUtils {
             gb.alleles(noCallAlleles(ploidy));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN ||
                     assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
-            if (genotypeLikelihoods == null || !isInformative(genotypeLikelihoods)) {
-                if (assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
-                    if (originalGT == null) {
-                        throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
-                    } else {
-                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
-                    }
+            if ((genotypeLikelihoods == null || !isInformative(genotypeLikelihoods)) && assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
+                if (originalGT == null) {
+                    throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
+                } else {
+                    gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
                 }
             } else {
                 final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
