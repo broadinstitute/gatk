@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.1.0
+ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.2.0
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
@@ -80,13 +80,6 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
     echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -Dfile.encoding=UTF-8 -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
-# TODO: Determine whether we actually need this.  For now it seems to be required because the version of libstdc++ on
-# TODO: the gatk base docker is out of date (maybe?)
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
-    apt-get update && \
-    apt-get -y upgrade libstdc++6 && \
-    apt-get -y dist-upgrade
-
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
@@ -100,8 +93,6 @@ RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -afy && \
-    find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
-    find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
