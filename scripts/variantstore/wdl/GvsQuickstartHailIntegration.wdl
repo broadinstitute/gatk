@@ -34,6 +34,9 @@ workflow GvsQuickstartHailIntegration {
         String? workspace_bucket
         String? workspace_id
         String? submission_id
+
+        Int? maximum_alternate_alleles
+        Boolean print_debug_information = false
     }
 
     String project_id = "gvs-internal"
@@ -87,6 +90,8 @@ workflow GvsQuickstartHailIntegration {
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             submission_id = effective_submission_id,
+            maximum_alternate_alleles = maximum_alternate_alleles,
+            print_debug_information = print_debug_information,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {

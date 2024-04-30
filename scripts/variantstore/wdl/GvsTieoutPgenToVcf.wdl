@@ -55,7 +55,7 @@ task Tieout {
         # Now just the contigs we care about
         zgrep -E '^##' 0000000000-quickit.vcf.gz | grep -E '^##contig=<ID=chr[12]?[0-9],|^##contig=<ID=chr[XY],' >> vcf_header.txt
 
-        # Tab-separated comparision-friendly columns
+        # Tab-separated comparison-friendly columns
         acc=""
         for item in \\#CHROM POS ID REF ALT QUAL FILTER INFO FORMAT $(cat ../samples.txt)
         do
