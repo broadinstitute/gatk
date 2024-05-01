@@ -465,4 +465,3 @@ workflows:
        branches:
          - ah_var_store
          - EchoCallset
-         - vs_1315_plink_docker
