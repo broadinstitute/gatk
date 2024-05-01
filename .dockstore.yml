@@ -327,6 +327,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1279_docker_untangling
          tags:
              - /.*/
    - name: GvsIngestTieout
