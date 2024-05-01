@@ -40,9 +40,10 @@ runs:
         name: test-results-${{ inputs.is-docker == 'true' && 'docker-' ||  '' }}${{ matrix.Java }}-${{ matrix.testType }}
         path: build/reports/tests
 
-    - name: Upload to codecov
-      run: bash <(curl -s https://raw.githubusercontent.com/broadinstitute/codecov-bash-uploader/main/codecov-verified.bash)
-      shell: bash
+          # Disabling codecov because it is timing out and failing builds that otherwise succeed.
+          ##    - name: Upload to codecov
+          ##      run: bash <(curl -s https://raw.githubusercontent.com/broadinstitute/codecov-bash-uploader/main/codecov-verified.bash)
+          ##      shell: bash
 
     - name: Upload Reports
       if: ${{ inputs.only-artifact != 'true' }}

@@ -668,4 +668,37 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 true
         );
     }
+    @Test
+    public void testSpanDelRegression() throws IOException {
+
+        final File input = getTestFile("reblock_cleanup_bug_variant.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addReference(new File(pf_reference))
+                .add("V", input)
+                .addFlag("do-qual-approx")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false")
+                .add("A", "AssemblyComplexity")
+                .addFlag("floor-blocks")
+                .add("GQB", 20)
+                .add("GQB", 30)
+                .add("GQB", 40)
+                .addOutput(output);
+
+        runCommandLine(args);
+
+        Pair<VCFHeader, List<VariantContext>> actual = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        List<VariantContext> variants = actual.getRight();
+        Assert.assertEquals(variants.size(), 4);
+        VariantContext v0 = variants.get(0);
+        //crappy deletions are all collapsed into GQ0 ref block
+        Assert.assertEquals(v0.getStart(), 646914);
+        Assert.assertEquals(v0.getAttributeAsInt(VCFConstants.END_KEY, 0), 646953);
+        Assert.assertTrue(v0.getGenotype(0).isHomRef());
+        Assert.assertEquals(v0.getGenotype(0).getGQ(), 0);
+        //no more star alleles because deletions are all gone
+        Assert.assertFalse(variants.stream().anyMatch(v -> v.getAlternateAlleles().contains(Allele.SPAN_DEL)));
+    }
 }
