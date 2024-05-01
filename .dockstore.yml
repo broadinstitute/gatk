@@ -310,6 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_ApplyLatestTestChangesToEchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -319,6 +320,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_ApplyLatestTestChangesToEchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -329,6 +331,7 @@ workflows:
              - master
              - ah_var_store
              - rc-VS-1282-and-only-write-variant-mt
+             - gg_ApplyLatestTestChangesToEchoCallset
          tags:
              - /.*/
    - name: GvsIngestTieout
