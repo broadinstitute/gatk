@@ -277,40 +277,37 @@ public class SNVMapper implements FeatureMapper {
                 readOfs += delta;
                 refOfs += delta;
 
-                if ( bases[readOfs] == ref[refOfs] ) {
+                final boolean noFeature = bases[readOfs] == ref[refOfs];
 
-                    // check that this is really a SNV (must be surrounded by identical ref)
-                    boolean     surrounded = true;
-                    for ( int i = 0 ; i < surroundBefore && surrounded ; i++ ) {
-                        final int bIndex = readOfs-1-i;
-                        final int rIndex = refOfs-1-i;
-                        if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
-                            surrounded = false;
-                            continue;
-                        }
-                        if ( bases[bIndex] != ref[rIndex] ) {
-                            surrounded = false;
-                        }
-                    }
-                    for (int i = 0; i < surroundAfter && surrounded ; i++ ) {
-                        final int bIndex = readOfs+1+i;
-                        final int rIndex = refOfs+1+i;
-                        if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
-                            surrounded = false;
-                            continue;
-                        }
-                        if ( bases[bIndex] != ref[rIndex] ) {
-                            surrounded = false;
-                        }
-                    }
-                    if ( !surrounded ) {
+                // check that this is really a SNV (must be surrounded by identical ref)
+                boolean     surrounded = true;
+                for ( int i = 0 ; i < surroundBefore && surrounded ; i++ ) {
+                    final int bIndex = readOfs-1-i;
+                    final int rIndex = refOfs-1-i;
+                    if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
+                        surrounded = false;
                         continue;
                     }
+                    if ( bases[bIndex] != ref[rIndex] ) {
+                        surrounded = false;
+                    }
+                }
+                for (int i = 0; i < surroundAfter && surrounded ; i++ ) {
+                    final int bIndex = readOfs+1+i;
+                    final int rIndex = refOfs+1+i;
+                    if ( bIndex < 0 || bIndex >= bases.length || rIndex < 0 || rIndex >= ref.length ) {
+                        surrounded = false;
+                        continue;
+                    }
+                    if ( bases[bIndex] != ref[rIndex] ) {
+                        surrounded = false;
+                    }
+                }
+                if ( !surrounded ) {
+                    continue;
+                }
 
-                    // this is it! no feature but filtered in
-                    return FilterStatus.NoFeatureAndFiltered;
-                } else
-                    return FilterStatus.Filtered;
+                return noFeature ? FilterStatus.NoFeatureAndFiltered : FilterStatus.Filtered;
 
             } else {
 
