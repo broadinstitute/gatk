@@ -285,11 +285,17 @@ task AssertCostIsTrackedAndExpected {
         mkdir output
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        # Note that in this query we are using the ROW_NUMBER() functionality to ignore extra entries caused
+        # by preemption (for instance there might be two rows for shard_identifier '*033')
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            'SELECT call, step, event_key, sum(event_bytes) FROM
-                (SELECT distinct step, call, event_key, event_bytes, shard_identifier FROM `~{dataset_name}.cost_observability`)
-              GROUP BY call, step, event_key
-              ORDER BY call, step, event_key' > output/cost_observability.csv
+            'SELECT call, step, event_key, sum(event_bytes) FROM (
+                SELECT *, ROW_NUMBER()
+                OVER (PARTITION BY call, step, event_key, shard_identifier) row_number
+                FROM `~{dataset_name}.cost_observability`
+            )
+            WHERE row_number = 1
+            GROUP BY call, step, event_key
+            ORDER BY call, step, event_key' > output/cost_observability.csv
 
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
