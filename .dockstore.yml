@@ -222,7 +222,6 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - rc-vs-903-Konrads-changes
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -328,7 +327,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-VS-1282-and-only-write-variant-mt
+             - vs_1279_docker_untangling
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -457,5 +456,12 @@ workflows:
      filters:
        branches:
          - master
+         - ah_var_store
+         - EchoCallset
+   - name: GvsTieoutPgenToVcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
+     filters:
+       branches:
          - ah_var_store
          - EchoCallset

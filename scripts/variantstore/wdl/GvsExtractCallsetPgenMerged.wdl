@@ -39,7 +39,7 @@ workflow GvsExtractCallsetPgenMerged {
         # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
         String drop_state = "NONE"
 
-        File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+        File interval_list
         File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
         String? variants_docker
@@ -62,10 +62,10 @@ workflow GvsExtractCallsetPgenMerged {
         Boolean write_cost_to_db = true
 
         # Merge
-        String plink_docker
+        String? plink_docker
     }
 
-    if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker) || !defined(gatk_docker)) {
+    if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker) || !defined(gatk_docker) || !defined(plink_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -76,6 +76,7 @@ workflow GvsExtractCallsetPgenMerged {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+    String effective_plink_docker = select_first([plink_docker, GetToolVersions.plink_docker])
 
     call Extract.GvsExtractCallsetPgen {
         input:
@@ -137,7 +138,7 @@ workflow GvsExtractCallsetPgenMerged {
                 pgen_file_list = SplitFilesByChromosome.pgen_lists[i],
                 pvar_file_list = SplitFilesByChromosome.pvar_lists[i],
                 psam_file_list = SplitFilesByChromosome.psam_lists[i],
-                plink_docker = plink_docker,
+                plink_docker = effective_plink_docker,
                 output_file_base_name = "~{output_file_base_name}.${contig}",
                 merge_disk_size = 1024,
                 split_count = split_count,
