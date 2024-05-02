@@ -13,6 +13,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
         String drop_state = "FORTY"
+        Boolean bgzip_output_vcfs = false
         String dataset_suffix
         Boolean is_wgs = true
         File? interval_list
@@ -92,6 +93,7 @@ workflow GvsQuickstartVcfIntegration {
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             interval_list = interval_list,
             sample_id_column_name = sample_id_column_name,

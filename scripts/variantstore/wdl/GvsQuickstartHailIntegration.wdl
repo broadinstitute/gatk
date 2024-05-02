@@ -16,6 +16,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
+        Boolean bgzip_output_vcfs = false
 
         String? basic_docker
         String? cloud_sdk_docker
@@ -72,6 +73,7 @@ workflow GvsQuickstartHailIntegration {
             use_default_dockers = use_default_dockers,
             check_expected_cost_and_table_size_outputs = false,
             gatk_override = gatk_override,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,

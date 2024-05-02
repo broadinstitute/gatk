@@ -164,6 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1335_BgzipOnExtractAhVarStoreEdition
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -288,6 +289,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1335_BgzipOnExtractAhVarStoreEdition
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -297,6 +299,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1335_BgzipOnExtractAhVarStoreEdition
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -307,6 +310,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1342_maybe_stick_with_gar
+             - gg_VS-1335_BgzipOnExtractAhVarStoreEdition
          tags:
              - /.*/
    - name: GvsIngestTieout
