@@ -159,6 +159,8 @@ task Tieout {
     >>>
     output {
         File? tarball = "tieout.tgz"
+        Array[File] vcfs = glob("tieout/vcf/vcf_compare_chr*")
+        Array[File] pgen_vcfs = glob("tieout/pgen/pgen_compare_chr*")
     }
     runtime {
         docker: "broadinstitute/gatk:4.5.0.0"
