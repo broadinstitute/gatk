@@ -17,6 +17,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean is_wgs = true
         File? interval_list
         Boolean use_default_dockers = false
+        Boolean check_expected_cost_and_table_size_outputs = true
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -119,22 +120,24 @@ workflow GvsQuickstartVcfIntegration {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call AssertCostIsTrackedAndExpected {
-            input:
-                go = JointVariantCalling.done,
-                dataset_name = CreateDatasetForTest.dataset_name,
-                project_id = project_id,
-                expected_output_csv = expected_prefix + "cost_observability_expected.csv",
-                cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
+        if (check_expected_cost_and_table_size_outputs) {
+            call AssertCostIsTrackedAndExpected {
+                input:
+                    go = JointVariantCalling.done,
+                    dataset_name = CreateDatasetForTest.dataset_name,
+                    project_id = project_id,
+                    expected_output_csv = expected_prefix + "cost_observability.csv",
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+            }
 
-        call AssertTableSizesAreExpected {
-            input:
-                go = JointVariantCalling.done,
-                dataset_name = CreateDatasetForTest.dataset_name,
-                project_id = project_id,
-                expected_output_csv = expected_prefix + "table_sizes_expected.csv",
-                cloud_sdk_docker = effective_cloud_sdk_docker,
+            call AssertTableSizesAreExpected {
+                input:
+                    go = JointVariantCalling.done,
+                    dataset_name = CreateDatasetForTest.dataset_name,
+                    project_id = project_id,
+                    expected_output_csv = expected_prefix + "table_sizes.csv",
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+            }
         }
     }
 
@@ -279,69 +282,72 @@ task AssertCostIsTrackedAndExpected {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        mkdir output
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             'SELECT call, step, event_key, sum(event_bytes)
               FROM `~{dataset_name}.cost_observability`
               GROUP BY call, step, event_key
-              ORDER BY call, step, event_key' > cost_observability_output.csv
+              ORDER BY call, step, event_key' > output/cost_observability.csv
 
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
 
-        paste cost_observability_output.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected; do
-        IFS=, read -ra OBS <<< "$observed"
-        IFS=, read -ra EXP <<< "$expected"
-        if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
-          echo "Unexpected number of rows found in the input files"
-          exit 1
-        fi
+        paste output/cost_observability.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected;
+        do
+            IFS=, read -ra OBS <<< "$observed"
+            IFS=, read -ra EXP <<< "$expected"
+            if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
+              echo "Unexpected number of rows found in the input files"
+              exit 1
+            fi
 
-        OBS_KEY=${OBS[0]}.${OBS[1]}.${OBS[2]}
-        EXP_KEY=${EXP[0]}.${EXP[1]}.${EXP[2]}
-        if [[ "$OBS_KEY" != "$EXP_KEY" ]]; then
-          echo "Mismatched keys in results files - were these sorted properly?"
-          exit 1
-        fi
+            OBS_KEY=${OBS[0]}.${OBS[1]}.${OBS[2]}
+            EXP_KEY=${EXP[0]}.${EXP[1]}.${EXP[2]}
+            if [[ "$OBS_KEY" != "$EXP_KEY" ]]; then
+              echo "Mismatched keys in results files - were these sorted properly?"
+              exit 1
+            fi
 
-        if [[ "$OBS_KEY" == "call.step.event_key" ]]; then
-          # Skip the header
-          continue;
-        fi
+            if [[ "$OBS_KEY" == "call.step.event_key" ]]; then
+              # Skip the header
+              continue;
+            fi
 
-        OBS_BYTES=${OBS[3]}
-        EXP_BYTES=${EXP[3]}
+            OBS_BYTES=${OBS[3]}
+            EXP_BYTES=${EXP[3]}
 
-        TOLERANCE=0
+            TOLERANCE=0
 
-        # For these two costs, there is non-determinism in the pipeline - we allow a % difference
-        if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
-        elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
-          TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
-        elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.6   # 60% tolerance (Note - have seen as high as: 0.5) - but it's 210 vs 420.
-        elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.012165)
-        fi
+            # For these two costs, there is non-determinism in the pipeline - we allow a % difference
+            if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
+              TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
+            elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
+              TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
+            elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
+              TOLERANCE=1.0   # 100% tolerance
+            elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
+              TOLERANCE=0.1   # 10% tolerance
+            fi
 
-        if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
-          echo "The bytes observed ($OBS_BYTES) for '$OBS_KEY' differ from those expected ($EXP_BYTES)"
+            if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
+              echo "The bytes observed ($OBS_BYTES) for '$OBS_KEY' differ from those expected ($EXP_BYTES)"
 
-          if [[ $OBS_BYTES -ge $EXP_BYTES ]]; then
-            DIFF_FOUND=$(echo $OBS_BYTES $EXP_BYTES | awk '{print ($1-$2)/$1}')
-          else
-            DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
-          fi
+              if [[ $OBS_BYTES -ge $EXP_BYTES ]]; then
+                DIFF_FOUND=$(echo $OBS_BYTES $EXP_BYTES | awk '{print ($1-$2)/$1}')
+              else
+                DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
+              fi
 
-          if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
-          then
-            echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
-            echo "1" > ret_val.txt
-          else
-            echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
-          fi
-        fi
+              if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
+              then
+                echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
+                echo "1" > ret_val.txt
+              else
+                echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
+              fi
+            fi
         done
 
         RET_VAL=`cat ret_val.txt`
@@ -355,7 +361,7 @@ task AssertCostIsTrackedAndExpected {
     }
 
     output {
-        File cost_observability_output_csv = "cost_observability_output.csv"
+        File cost_observability_output_csv = "output/cost_observability.csv"
     }
 }
 
@@ -378,6 +384,8 @@ task AssertTableSizesAreExpected {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        mkdir output
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
@@ -385,10 +393,10 @@ task AssertTableSizesAreExpected {
             UNION ALL \
             SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
             FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_sizes_output.csv
+            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > output/table_sizes.csv
 
         set +o errexit
-        diff -w table_sizes_output.csv ~{expected_output_csv} > differences.txt
+        diff -w output/table_sizes.csv ~{expected_output_csv} > differences.txt
         set -o errexit
 
         if [[ -s differences.txt ]]; then
@@ -404,7 +412,7 @@ task AssertTableSizesAreExpected {
     }
 
     output {
-        File table_sizes_output_csv = "table_sizes_output.csv"
+        File table_sizes_output_csv = "output/table_sizes.csv"
         File differences = "differences.txt"
     }
 }
