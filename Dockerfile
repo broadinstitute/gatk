@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=terrapublic.azurecr.io/gatkbase:3.2.0-squashed
+ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.2.0
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
