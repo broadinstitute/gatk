@@ -31,7 +31,7 @@ workflow GvsExtractCohortFromSampleNames {
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
-    Boolean bgzip_output_vcfs = true
+    Boolean bgzip_output_vcfs = false
 
     File? interval_list
     Int? extract_preemptible_override

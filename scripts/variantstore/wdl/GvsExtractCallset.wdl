@@ -20,7 +20,7 @@ workflow GvsExtractCallset {
     Int? scatter_count
     Int? extract_memory_override_gib
     Int? disk_override
-    Boolean bgzip_output_vcfs = true
+    Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
