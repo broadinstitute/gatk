@@ -69,7 +69,25 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
                         // ins hmer indel
                         "TATCT C ATTGACCAA", "CA",
                         "ins", "1", "2", "A", "ATCTC", "TTGAC", "0.3", "NA", "h-indel"
+                },
+                {
+                        // ins hmer indel
+                        "ATCT C ATTGACCAA", "CA",
+                        "ins", "1", "2", "A", null, "TTGAC", "0.3", "NA", "h-indel"
+                },
+                {
+                        // ins hmer indel
+                        "TATCT C ATT", "CA",
+                        "ins", "1", "2", "A", "ATCTC", null, null, "NA", "h-indel"
+                },
+                {
+                        // ins hmer indel
+                        "TATCT C ", "CA",
+                        "ins", "1", null, null, "ATCTC", null, null, "NA", "non-h-indel"
                 }
+
+
+
         };
 
         return testData;
