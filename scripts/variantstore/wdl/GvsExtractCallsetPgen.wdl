@@ -16,8 +16,10 @@ workflow GvsExtractCallsetPgen {
         # reference (see plink chromosome codes here: https://www.cog-genomics.org/plink/2.0/data#irreg_output)
         # ExtractCohortToPgen currently only supports codes "chrM" and "MT"
         String pgen_chromosome_code = "chrM"
-        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written (max 254)
-        Int max_alt_alleles = 254
+        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written (max 254).
+        # PGEN extract is currently only used for AoU "small callsets" which always want 100 max alt alleles, so default
+        # to that value.
+        Int max_alt_alleles = 100
         # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
         Boolean lenient_ploidy_validation = false
         # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
@@ -318,7 +320,7 @@ task PgenExtractTask {
         # ExtractCohortToPgen currently only supports codes "chrM" and "MT"
         String pgen_chromosome_code
         # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written (max 254)
-        Int? max_alt_alleles
+        Int max_alt_alleles
         # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
         Boolean? lenient_ploidy_validation
         # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
