@@ -164,7 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1334_vcf_max_alt_alleles
+             - vs_1351_retry_with_more_memory_vcf_extract
          tags:
              - /.*/
    - name: GvsImportGenomes
