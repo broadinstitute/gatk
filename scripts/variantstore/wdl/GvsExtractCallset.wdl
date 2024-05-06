@@ -382,6 +382,10 @@ task ExtractTask {
         exit 1
     fi
 
+    echo "MEM_SIZE: ${MEM_SIZE}, MEM_UNIT: ${MEM_UNIT}, memory_mb: ${memory_mb}, memory_gib: ~{memory_gib}"
+    echo "OutOfMemory" 1>&2
+    exit 1
+
     gatk --java-options "-Xmx${memory_mb}m" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
