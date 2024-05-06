@@ -337,7 +337,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         headerInfo.add(new VCFInfoHeaderLine(VCF_MAPQ, 1, VCFHeaderLineType.Integer, "Read mapqe"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_CIGAR, 1, VCFHeaderLineType.String, "Read CIGAR"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_READ_COUNT, 1, VCFHeaderLineType.Integer, "Number of reads containing this location"));
-        headerInfo.add(new VCFInfoHeaderLine(VCF_FILTERED_COUNT, 1, VCFHeaderLineType.Integer, "Number of reads containing this location that agree with reference according and pass the adjacent base filter"));
+        headerInfo.add(new VCFInfoHeaderLine(VCF_FILTERED_COUNT, 1, VCFHeaderLineType.Integer, "Number of reads containing this location that agree with reference and pass the adjacent base filter"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_FC1, 1, VCFHeaderLineType.Integer, "Number of M bases different on read from references"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_FC2, 1, VCFHeaderLineType.Integer, "Number of features before score threshold filter"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_LENGTH, 1, VCFHeaderLineType.Integer, "Read length"));
