@@ -118,6 +118,7 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
+                expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
                 actual_vcfs = JointVariantCalling.output_vcfs,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -160,6 +161,7 @@ workflow GvsQuickstartVcfIntegration {
 task AssertIdenticalOutputs {
     input {
         String expected_output_prefix
+        String expected_output_suffix
         Array[File] actual_vcfs
         String cloud_sdk_docker
     }
@@ -183,8 +185,8 @@ task AssertIdenticalOutputs {
         # Download all the expected data
         mkdir expected
         cd expected
-        gcloud storage cp -r "${expected_prefix}"'/*.vcf.gz' .
-        gzip -d *.gz
+        gcloud storage cp -r "${expected_prefix}"'/*.vcf~{expected_output_suffix}' .
+        gzip -d *~{expected_output_suffix}
         cd ..
 
         mkdir actual
@@ -200,7 +202,7 @@ task AssertIdenticalOutputs {
 
         cat actual_manifest.txt | gcloud storage cp -I .
         # Unzip actual result data.
-        ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
+        ls -1 | grep -E '\.vcf\.~{expected_output_suffix}$' | xargs gzip -d
         cd ..
 
         echo "Header Check"
