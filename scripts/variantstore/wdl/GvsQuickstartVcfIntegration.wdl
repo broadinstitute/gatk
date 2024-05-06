@@ -202,7 +202,7 @@ task AssertIdenticalOutputs {
 
         cat actual_manifest.txt | gcloud storage cp -I .
         # Unzip actual result data.
-        ls -1 | grep -E '\.vcf\.~{expected_output_suffix}$' | xargs gzip -d
+        ls -1 | grep -E '\.vcf\~{expected_output_suffix}$' | xargs gzip -d
         cd ..
 
         echo "Header Check"

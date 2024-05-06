@@ -5,7 +5,7 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsJointVariantCalling.wdl" as JointVariantCalling
 import "GvsUtils.wdl" as Utils
 
-# This is a comment!
+# This steadfastly remains a comment!
 
 workflow GvsQuickstartIntegration {
     input {
