@@ -10,7 +10,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String dataset_name
     String filter_set_name
     File interval_list
-    File bed_file
+    Array[String] chromosomes = ["chr20"]
     String project_id
     Array[String] sample_names
 
@@ -133,7 +133,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        bed_file = bed_file,
+        chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta,
@@ -147,7 +147,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        bed_file = bed_file,
+        chromosomes = chromosomes,
         all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
@@ -378,9 +378,9 @@ task EvaluateVcf {
     File truth_vcf
     File truth_vcf_index
     File truth_bed
+    Array[String] chromosomes
 
     Boolean all_records = false
-    File bed_file
 
     File ref_fasta
 
@@ -397,6 +397,14 @@ task EvaluateVcf {
   String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
 
   command <<<
+    chromosomes=( ~{sep=' ' chromosomes} )
+
+    echo "Creating .bed file to control which chromosomes should be evaluated."
+    for i in "${chromosomes[@]}"
+    do
+    echo "$i	0	300000000" >> chromosomes.to.eval.txt
+    done
+
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -404,6 +412,7 @@ task EvaluateVcf {
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
+      --bed-regions chromosomes.to.eval.txt \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
