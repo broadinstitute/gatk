@@ -169,7 +169,6 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
-             - rc-vs-1282-loop-thru-validation
          tags:
              - /.*/
    - name: GvsExtractCallset
@@ -180,6 +179,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - vs_1351_retry_with_more_memory_vcf_extract
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -327,8 +327,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1279_docker_untangling
-             - gg_VS-1341_ImproveTestCostCalcEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsIngestTieout
