@@ -51,12 +51,12 @@ workflow GvsAssignIds {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
-      input_validation_done = ValidateSamples.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -64,12 +64,12 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       datatype = "sample_load_status",
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
-      input_validation_done = ValidateSamples.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -78,12 +78,12 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "vcf_header_lines_scratch",
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
-        input_validation_done = ValidateSamples.done,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -91,12 +91,12 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "vcf_header_lines",
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
-        input_validation_done = ValidateSamples.done,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -104,12 +104,12 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "sample_vcf_header",
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
-        input_validation_done = ValidateSamples.done,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
@@ -118,7 +118,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      input_validation_done = ValidateSamples.done,
+      go = ValidateSamples.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -161,7 +161,7 @@ task AssignIds {
     String sample_info_table
     File sample_names
     Boolean samples_are_controls
-    String table_creation_done
+    Boolean table_creation_done
     String cloud_sdk_docker
   }
   meta {
@@ -249,7 +249,7 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
-    String input_validation_done
+    Boolean go
     String cloud_sdk_docker
   }
 
