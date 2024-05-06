@@ -46,7 +46,6 @@ workflow GvsExtractCallset {
     Float y_bed_weight_scaling = 4
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
-    Boolean print_debug_information = false
     Int? maximum_alternate_alleles
   }
 
@@ -240,7 +239,6 @@ workflow GvsExtractCallset {
         emit_ads                              = emit_ads,
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
-        print_debug_information               = print_debug_information,
         maximum_alternate_alleles             = maximum_alternate_alleles,
     }
   }
@@ -335,7 +333,6 @@ task ExtractTask {
     Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
-    Boolean print_debug_information = false
     Int? maximum_alternate_alleles
 
     # for call-caching -- check if DB tables haven't been updated since the last run
@@ -398,8 +395,7 @@ task ExtractTask {
         --wdl-step GvsExtractCallset \
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
-        ~{cost_observability_line} \
-        ~{true='--print-debug-information' false='' print_debug_information}
+        ~{cost_observability_line}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
