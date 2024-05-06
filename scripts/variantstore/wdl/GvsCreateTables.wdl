@@ -41,6 +41,7 @@ workflow CreateBQTables {
       schema_json = vet_schema_json,
       superpartitioned = "true",
       partitioned = "true",
+      input_validation_done = true,
       cloud_sdk_docker = effective_cloud_sdk_docker,
       clustering_field = "location",
   }
@@ -54,6 +55,7 @@ workflow CreateBQTables {
       schema_json = ref_ranges_schema_used,
       superpartitioned = "true",
       partitioned = "true",
+      input_validation_done = true,
       cloud_sdk_docker = effective_cloud_sdk_docker,
       clustering_field = ref_ranges_clustering_field,
   }
@@ -76,6 +78,7 @@ task CreateTables {
     String schema_json
     String superpartitioned
     String partitioned
+    String input_validation_done
     String cloud_sdk_docker
     String clustering_field = "location"
   }

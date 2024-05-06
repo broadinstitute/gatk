@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1327_EnsureSampleIdsAreUnique
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -183,6 +184,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1328
+             - gg_VS-1327_EnsureSampleIdsAreUnique
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -288,6 +290,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1327_EnsureSampleIdsAreUnique
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -297,6 +300,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1327_EnsureSampleIdsAreUnique
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -307,6 +311,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1342_maybe_stick_with_gar
+             - gg_VS-1327_EnsureSampleIdsAreUnique
          tags:
              - /.*/
    - name: GvsIngestTieout
