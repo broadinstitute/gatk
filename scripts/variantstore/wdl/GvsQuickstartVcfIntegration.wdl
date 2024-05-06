@@ -34,7 +34,6 @@ workflow GvsQuickstartVcfIntegration {
         String? submission_id
 
         Int? maximum_alternate_alleles
-        Boolean print_debug_information = false
     }
     String project_id = "gvs-internal"
 
@@ -112,7 +111,6 @@ workflow GvsQuickstartVcfIntegration {
             git_hash = effective_git_hash,
             tighter_gcp_quotas = false,
             maximum_alternate_alleles = maximum_alternate_alleles,
-            print_debug_information = print_debug_information,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
