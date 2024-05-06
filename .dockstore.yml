@@ -164,6 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1334_vcf_max_alt_alleles
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -182,7 +183,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1328
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -260,7 +260,6 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
-             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
@@ -306,7 +305,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1342_maybe_stick_with_gar
+             - vs_1334_vcf_max_alt_alleles
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -354,6 +353,16 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsTieoutVcfMaxAltAlleles
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutVcfMaxAltAlleles.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - master
+         - vs_1334_vcf_max_alt_alleles
+       tags:
+         - /.*/
    - name: HailFromWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
@@ -426,7 +435,6 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - vs_1315_plink_docker
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -442,4 +450,3 @@ workflows:
        branches:
          - ah_var_store
          - EchoCallset
-         - vs_1315_plink_docker

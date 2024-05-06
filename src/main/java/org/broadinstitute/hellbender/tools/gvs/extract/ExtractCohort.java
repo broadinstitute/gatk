@@ -146,6 +146,13 @@ public abstract class ExtractCohort extends ExtractTool {
     private boolean convertFilteredGenotypesToNoCalls = false;
 
     @Argument(
+            fullName = "maximum-alternate-alleles",
+            doc = "The maximum number of alternate alleles a site can have before it is hard-filtered from the output",
+            optional = true
+    )
+    private Long maximumAlternateAlleles = 0L;
+
+    @Argument(
             fullName = "snps-truth-sensitivity-filter-level",
             mutex = {"snps-lod-score-cutoff"},
             doc = "The truth sensitivity level at which to start filtering SNPs (0-100)",
@@ -414,6 +421,10 @@ public abstract class ExtractCohort extends ExtractTool {
                     "if no sample file (--sample-file) is provided.");
         }
 
+        OptionalLong optionalMaximumAlternateAlleles =
+                maximumAlternateAlleles != null && maximumAlternateAlleles > 0L ?
+                        OptionalLong.of(maximumAlternateAlleles) : OptionalLong.empty();
+
         engine = !isVQSR ?
                 new ExtractCohortVETSEngine(
                         projectID,
@@ -441,6 +452,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitADs,
                         vqScoreFilteringType,
                         convertFilteredGenotypesToNoCalls,
+                        optionalMaximumAlternateAlleles,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply)
@@ -471,6 +483,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitADs,
                         vqScoreFilteringType,
                         convertFilteredGenotypesToNoCalls,
+                        optionalMaximumAlternateAlleles,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply);
