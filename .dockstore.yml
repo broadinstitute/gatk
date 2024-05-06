@@ -328,6 +328,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1279_docker_untangling
+             - gg_VS-1341_ImproveTestCostCalcEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsIngestTieout
