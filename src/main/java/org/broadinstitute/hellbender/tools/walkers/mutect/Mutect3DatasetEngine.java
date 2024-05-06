@@ -153,7 +153,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             final int diff = altAlleleString.length() - refAllele.length();
             final VariantType type = diff == 0 ? VariantType.SNV : ( diff > 0 ? VariantType.INSERTION : VariantType.DELETION);
 
-            if (trainingMode) {
+            if (trainingMode) { // training mode -- collecting tensors to train the Permutect artifact model
                 final ArrayBlockingQueue<Integer> unmatchedQueue = unmatchedArtifactAltCounts.get(type);
                 final boolean likelySeqError = tumorLods[n] < TLOD_THRESHOLD;
 
@@ -182,8 +182,13 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                 } else {
                     labels.add(Label.IGNORE);
                 }
-            } else {
-                labels.add(Label.UNLABELED);
+            } else {    // not training mode -- we are generating tensors in order to apply the Permutect artifact model to a callset
+                if (truthVCs.isPresent()) {
+                    // here, for the purposes of test data, both sequencing errors and technical artifacts get the "ARTIFACT" label
+                    labels.add(truthAlleles.contains(remappedAltAlelle) ? Label.VARIANT : Label.ARTIFACT);
+                } else {
+                    labels.add(Label.UNLABELED);
+                }
             }
         }
 

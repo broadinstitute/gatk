@@ -229,6 +229,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * VCF of known calls for a sample used for generating a Mutect3 training dataset.  Unfiltered variants (PASS or empty FILTER field)
      * contained in this VCF are considered good; other variants (i.e. filtered in this VCF or absent from it) are considered errors.
      * If this VCF is not given the dataset is generated with an weak-labelling strategy based on allele fractions.
+     *
+     * Although the normal use of this input is in generating training data, it can also be used when generating test data
+     * for making Permutect calls.  In this case, the test data is labeled with truth from the VCF, Permutect makes filtered calls as
+     * usual, and Permutect uses the labels to analyze the quality of its results.
      */
     @Argument(fullName= MUTECT3_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Mutect3 training data", optional = true)
     public FeatureInput<VariantContext> mutect3TrainingTruth;
