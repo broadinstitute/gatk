@@ -61,25 +61,4 @@ RUN apt update && \
     conda config --set solver libmamba && \
     rm -rf /root/.cache/pip
 
-# Set environment variables.
-# ENV HOME /root
-
-# ENV JAVA_LIBRARY_PATH /usr/lib/jni
-
-# Install miniconda
-# ENV DOWNLOAD_DIR /downloads
-# ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.10.0-1-Linux-x86_64.sh
-# ENV CONDA_SHA256 "c7a34df472feb69805b64df6e8db58363c5ccab41cd3b40b07e3e6dfb924359a"
-# ENV CONDA_PATH /opt/miniconda
-# ENV PATH $CONDA_PATH/bin:$PATH
-# RUN mkdir $DOWNLOAD_DIR && \
-#     wget -nv -O $DOWNLOAD_DIR/miniconda.sh $CONDA_URL && \
-#     test "$(sha256sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS=' ' -v ORS='' '{print $1}')" = "$CONDA_SHA256" && \
-#     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
-#     rm $DOWNLOAD_DIR/miniconda.sh && \
-#     conda clean -afy && \
-#     conda config --set auto_update_conda false && \
-#     conda config --set solver libmamba && \
-#     rm -rf /root/.cache/pip
-# Define default command.
 CMD ["bash"]
