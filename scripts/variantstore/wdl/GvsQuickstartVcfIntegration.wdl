@@ -120,7 +120,7 @@ workflow GvsQuickstartVcfIntegration {
                 expected_output_prefix = expected_prefix,
                 expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
                 actual_vcfs = JointVariantCalling.output_vcfs,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
+                gatk_docker = effective_gatk_docker
         }
 
         if (check_expected_cost_and_table_size_outputs) {
@@ -163,7 +163,7 @@ task AssertIdenticalOutputs {
         String expected_output_prefix
         String expected_output_suffix
         Array[File] actual_vcfs
-        String cloud_sdk_docker
+        String gatk_docker
     }
     parameter_meta {
         actual_vcfs: {
@@ -258,7 +258,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: cloud_sdk_docker
+        docker: gatk_docker
         disks: "local-disk 500 HDD"
     }
 
