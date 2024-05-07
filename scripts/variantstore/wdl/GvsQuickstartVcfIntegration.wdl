@@ -32,6 +32,8 @@ workflow GvsQuickstartVcfIntegration {
         String? workspace_bucket
         String? workspace_id
         String? submission_id
+
+        Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
 
@@ -108,6 +110,7 @@ workflow GvsQuickstartVcfIntegration {
             git_branch_or_tag = git_branch_or_tag,
             git_hash = effective_git_hash,
             tighter_gcp_quotas = false,
+            maximum_alternate_alleles = maximum_alternate_alleles,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
@@ -285,11 +288,17 @@ task AssertCostIsTrackedAndExpected {
         mkdir output
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        # Note that in this query we are using the ROW_NUMBER() functionality to ignore extra entries caused
+        # by preemption (for instance there might be two rows for shard_identifier '*033')
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            'SELECT call, step, event_key, sum(event_bytes)
-              FROM `~{dataset_name}.cost_observability`
-              GROUP BY call, step, event_key
-              ORDER BY call, step, event_key' > output/cost_observability.csv
+            'SELECT call, step, event_key, sum(event_bytes) FROM (
+                SELECT *, ROW_NUMBER()
+                OVER (PARTITION BY call, step, event_key, shard_identifier) row_number
+                FROM `~{dataset_name}.cost_observability`
+            )
+            WHERE row_number = 1
+            GROUP BY call, step, event_key
+            ORDER BY call, step, event_key' > output/cost_observability.csv
 
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
@@ -320,15 +329,15 @@ task AssertCostIsTrackedAndExpected {
 
             TOLERANCE=0
 
-            # For these two costs, there is non-determinism in the pipeline - we allow a % difference
+            # For these costs, there is non-determinism in the pipeline - we allow a % difference
             if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-              TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
+              TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0239439)
             elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
-              TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
+              TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: n/a)
             elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
-              TOLERANCE=1.0   # 100% tolerance
+              TOLERANCE=0.05   # 5% tolerance (Note - have seen as high as: n/a)
             elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-              TOLERANCE=0.1   # 10% tolerance
+              TOLERANCE=0.05   # 5% tolerance (Note - have seen as high as: 0.00181463
             fi
 
             if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
