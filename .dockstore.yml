@@ -309,6 +309,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1334_vcf_max_alt_alleles
+             - gg_VS-1327_EnsureSampleIdsAreUnique
          tags:
              - /.*/
    - name: GvsIngestTieout
