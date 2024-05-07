@@ -46,6 +46,7 @@ workflow GvsExtractCallset {
     Float y_bed_weight_scaling = 4
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
+    Int? maximum_alternate_alleles
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -238,6 +239,7 @@ workflow GvsExtractCallset {
         emit_ads                              = emit_ads,
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
+        maximum_alternate_alleles             = maximum_alternate_alleles,
     }
   }
 
@@ -334,6 +336,7 @@ task ExtractTask {
     Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
+    Int? maximum_alternate_alleles
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
@@ -399,6 +402,7 @@ task ExtractTask {
         ~{true='--emit-ads' false='' emit_ads} \
         ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
+        ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
