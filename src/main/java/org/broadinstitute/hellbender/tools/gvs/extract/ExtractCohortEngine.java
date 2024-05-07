@@ -46,6 +46,7 @@ public class ExtractCohortEngine {
     private final Double vqScoreINDELThreshold;
     private final ExtractCohort.VQScoreFilteringType vqScoreFilteringType;
     private final boolean convertFilteredGenotypesToNoCalls;
+    private final OptionalLong maxAlternateAlleleCount;
 
     private final String projectID;
     private final boolean emitPLs;
@@ -136,6 +137,7 @@ public class ExtractCohortEngine {
                                final boolean emitADs,
                                final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
                                final boolean convertFilteredGenotypesToNoCalls,
+                               final OptionalLong maxAlternateAlleleCount,
                                final GQStateEnum inferredReferenceState,
                                final boolean presortedAvroFiles,
                                final Consumer<VariantContext> variantContextConsumer
@@ -190,6 +192,7 @@ public class ExtractCohortEngine {
         this.vqScoreINDELThreshold = vqScoreINDELThreshold;
         this.vqScoreFilteringType = vqScoreFilteringType;
         this.convertFilteredGenotypesToNoCalls = convertFilteredGenotypesToNoCalls;
+        this.maxAlternateAlleleCount = maxAlternateAlleleCount;
 
         this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
         this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
@@ -582,6 +585,15 @@ public class ExtractCohortEngine {
 
         vcWithRef.genotypes(genotypes);
         mergedVC = vcWithRef.make();
+
+        if (maxAlternateAlleleCount.isPresent()) {
+            if (mergedVC.getAlternateAlleles().size() > maxAlternateAlleleCount.getAsLong()) {
+                    logger.warn("Dropping site on contig {} pos [{}, {}] with {} alt alleles versus maximum {}",
+                            mergedVC.getContig(), mergedVC.getStart(), mergedVC.getEnd(),
+                            mergedVC.getAlternateAlleles().size(), maxAlternateAlleleCount.getAsLong());
+                return null;
+            }
+        }
 
         ReferenceContext referenceContext = new ReferenceContext(refSource, new SimpleInterval(mergedVC));
 
