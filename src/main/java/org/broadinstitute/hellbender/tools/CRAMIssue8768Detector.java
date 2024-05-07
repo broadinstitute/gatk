@@ -35,17 +35,25 @@ public class CRAMIssue8768Detector extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "Input path to analyze",
+            doc = "Input path of file to analyze",
             common = true)
     @WorkflowInput
     public GATKPath inputPath;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output diagnostics file",
+            doc = "Output diagnostics text file",
             common = true)
     @WorkflowOutput
-    public GATKPath outputPath;
+    public GATKPath textOutputPath;
+
+    public static final String OUTPUT_TSV__ARG_NAME = "output-tsv";
+    @Argument(fullName = OUTPUT_TSV__ARG_NAME,
+            shortName = OUTPUT_TSV__ARG_NAME,
+            doc = "Output diagnostics tsv file",
+            optional = true)
+    @WorkflowOutput
+    public GATKPath tsvOutputPath;
 
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,
             shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
@@ -68,13 +76,27 @@ public class CRAMIssue8768Detector extends CommandLineProgram {
             optional=true)
     public boolean verbose = false;
 
+    public static final String ECHO_ARG_NAME = "echo-to-stdout";
+    @Argument(fullName = ECHO_ARG_NAME,
+            shortName= ECHO_ARG_NAME,
+            doc="Echo text output to stdout",
+            optional=true)
+    public boolean echoToStdout = false;
+
     private CRAMIssue8768Analyzer cramAnalyzer;
 
     @Override
     protected Object doWork() {
-        cramAnalyzer = new CRAMIssue8768Analyzer(inputPath, outputPath, referencePath, mismatchRateThreshold, verbose);
+        cramAnalyzer = new CRAMIssue8768Analyzer(
+                inputPath,
+                textOutputPath,
+                tsvOutputPath,
+                referencePath,
+                mismatchRateThreshold,
+                verbose,
+                echoToStdout);
         cramAnalyzer.doAnalysis();
-        return 0;
+        return cramAnalyzer.getRetCode();
     }
 
     @Override

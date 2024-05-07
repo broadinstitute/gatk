@@ -14,6 +14,9 @@ import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.Tuple;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +32,10 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
     private final OutputStream outputStream;
     private final CompressorCache compressorCache = new CompressorCache();
     private final boolean verbose;
+    private final boolean echoToConsole;
     private final double mismatchRateThreshold;
+    private final GATKPath tsvOutputPath;
+    private int retCode = 0;
 
     private SAMFileHeader samHeader = null;
 
@@ -42,19 +48,24 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
     // everything we need to record for a (good or bad) container
     private record ContainerStats(
             int containerOrdinal, // container ordinal # within the contig
-            AlignmentContext alignmentContext,
+            boolean isBad,        // true if this container is bad
+            AlignmentContext alignmentContext,  // reference ID, alignment start, alignment span
             long misMatchCount,   // count of mismatched bases
             double misMatchRate   // rate of mismatched bases (mismatches/total bases)
     ) { }
 
     public CRAMIssue8768Analyzer(
-            final GATKPath inputPathName,
-            final GATKPath outputPath,
+            final GATKPath inputPath,
+            final GATKPath textOutputPath,
+            final GATKPath tsvOutputPath,
             final GATKPath referencePath,
             final double mismatchRateThreshold,
-            final boolean verbose) {
-        super(inputPathName, outputPath);
+            final boolean verbose,
+            final boolean echoToConsole) {
+        super(inputPath, textOutputPath);
         this.verbose = verbose;
+        this.echoToConsole = echoToConsole;
+        this.tsvOutputPath = tsvOutputPath;
         this.mismatchRateThreshold = mismatchRateThreshold;
 
         referenceSource = new ReferenceSource(referencePath.toPath());
@@ -72,6 +83,9 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
         }
     }
 
+    public int getRetCode() {
+        return retCode;
+    }
     protected void emitln(final String s) {
         try {
             outputStream.write(s.getBytes());
@@ -108,7 +122,6 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
      */
     public void doAnalysis() {
         final Map<String, BadContig> badContigs = new LinkedHashMap<>(); // contig name, BadContig
-        List<ContainerStats> badContainersForContig = new ArrayList<>();
         final List<ContainerStats> goodContainers = new ArrayList<>(); // good containers, for all contigs
         int containerOrdinalForContig = 0;
         final int NUMBER_OF_GOOD_CONTAINERS_PER_CONTIG_TO_REPORT = 4;
@@ -118,6 +131,7 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
         AlignmentContext previousAlignmentContext = null;
 
         try (final SeekablePathStream seekableStream = new SeekablePathStream(this.inputPath.toPath())) {
+            List<ContainerStats> badContainersForContig = new ArrayList<>();
             final CramHeader cramHeader = analyzeCRAMHeader(seekableStream);
             samHeader = Container.readSAMFileHeaderContainer(
                     cramHeader.getCRAMVersion(),
@@ -139,7 +153,7 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
 
                 if (previousAlignmentContext == null) {
                     // first container in the whole file can't be bad
-                    recordContainerStats(goodContainers, container, containerOrdinalForContig);
+                    recordContainerStats(goodContainers, false, container, containerOrdinalForContig);
                     nGoodContainersReportedForContig++;
                 } else if (!previousAlignmentContext.getReferenceContext().equals(
                         container.getAlignmentContext().getReferenceContext())) {
@@ -151,7 +165,7 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
                     }
                     containerOrdinalForContig = 1;
                     // the first container for a reference context is never bad, so always add it to the good list
-                    recordContainerStats(goodContainers, container, containerOrdinalForContig);
+                    recordContainerStats(goodContainers, false, container, containerOrdinalForContig);
                     nGoodContainersReportedForContig = 1;
                 } else if (previousAlignmentContext.getReferenceContext().isMappedSingleRef() &&
                         (previousAlignmentContext.getAlignmentStart() == 1)) {
@@ -159,13 +173,13 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
                     // was mapped to position 1, so if this container is mapped, it's a candidate for bad, whether
                     // it starts at position 1 (the rare case where there is more than one bad container) or not
                     // (the common case where this is the one bad container for this contig)
-                    recordContainerStats(badContainersForContig, container, containerOrdinalForContig);
+                    recordContainerStats(badContainersForContig, true, container, containerOrdinalForContig);
                 } else {
                     // we're on the same reference context as the previous container, and the previous container
                     // was NOT mapped to position 1, so this container is not bad - add it to the list of good
                     // containers
                     if (verbose || nGoodContainersReportedForContig < NUMBER_OF_GOOD_CONTAINERS_PER_CONTIG_TO_REPORT) {
-                        recordContainerStats(goodContainers, container, containerOrdinalForContig);
+                        recordContainerStats(goodContainers, false,container, containerOrdinalForContig);
                         nGoodContainersReportedForContig++;
                     }
                 }
@@ -181,7 +195,10 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
             throw new RuntimeIOException(e);
         }
 
-        printResults(badContigs, goodContainers);
+        retCode = printTextResults(badContigs, goodContainers);
+        if (tsvOutputPath != null) {
+            printTSVResults(badContigs, goodContainers, tsvOutputPath);
+        }
     }
 
     /**
@@ -221,6 +238,7 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
 
     private void recordContainerStats(
             final List<ContainerStats> targetList,
+            final boolean isBad,
             final Container container,
             final int containerOrdinal) {
         // don't even try to compute stats for unmapped-unplaced containers or multi-ref containers
@@ -228,6 +246,7 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
             final Tuple<Long, Double> containerStats = analyzeContainerBaseMismatches(container);
             targetList.add(new ContainerStats(
                     containerOrdinal,
+                    isBad,
                     container.getAlignmentContext(),
                     containerStats.a,   // mismatches
                     containerStats.b)); // mismatchPercent
@@ -276,46 +295,67 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
         return new Tuple<>(totalBases, misMatches/(double) totalBases);
     }
 
-    private void printResults(final Map<String, BadContig> badContigs, final List<ContainerStats> goodContainers) {
+    private int printTextResults(final Map<String, BadContig> badContigs, final List<ContainerStats> goodContainers) {
+        int retCode;
         if (badContigs.isEmpty()) {
             final String NO_CORRUPT_CONTAINERS = "\n**********************NO CORRUPT CONTAINERS DETECTED**********************";
             emitln(NO_CORRUPT_CONTAINERS);
+            // always emit the results summary to console
             System.out.println(NO_CORRUPT_CONTAINERS);
+            retCode = 0;
         } else {
             final String POSSIBLE_CORRUPT_CONTAINERS = "\n**********************!!!!!Possible CORRUPT CONTAINERS DETECTED!!!!!**********************:\n";
             emitln(POSSIBLE_CORRUPT_CONTAINERS);
+            // always emit the results summary to console
             System.out.println(POSSIBLE_CORRUPT_CONTAINERS);
+            retCode = 1;
         }
 
         // before we print out the containers, print out the stats for both the good and the bad containers
         final int totalGoodContainers = goodContainers.size();
         final double sumOfGoodMismatchRates = goodContainers.stream().mapToDouble(c -> c.misMatchRate).sum();
         final double averageGoodMismatchRate = sumOfGoodMismatchRates / totalGoodContainers;
-        emitln(String.format("Average mismatch rate for presumed good containers: %f", averageGoodMismatchRate));
+        final String avgGoodMismatchStr = String.format("Average mismatch rate for presumed good containers: %f", averageGoodMismatchRate);
+        emitln(avgGoodMismatchStr);
+        if (echoToConsole) {
+            System.out.println(avgGoodMismatchStr);
+        }
 
         if (!badContigs.isEmpty()) {
             final int totalBadContainers = badContigs.values().stream().mapToInt(bc -> bc.badContainers().size()).sum();
             final double sumOfBadMismatchRates = badContigs.values().stream().mapToDouble(
                     bc -> bc.badContainers().stream().mapToDouble(c -> c.misMatchRate).sum()).sum();
             final double averageBadMismatchRate = sumOfBadMismatchRates / totalBadContainers;
-            emitln(String.format("Average mismatch rate for suspected bad containers: %f", averageBadMismatchRate));
+            final String avgBadMismatchStr = String.format("Average mismatch rate for suspected bad containers: %f", averageBadMismatchRate);
+            emitln(avgBadMismatchStr);
+            if (echoToConsole) {
+                System.out.println(avgBadMismatchStr);
+            }
 
             if (averageBadMismatchRate > mismatchRateThreshold) {
-                emitln(String.format(
-                        "\nThe average base mismatch rate of %f for suspected bad containers exceeds the threshold rate of %1.2f, and indicates this file may be corrupt.",
+                final String exceedThresholdStr = String.format(
+                        "The average base mismatch rate of %f for suspected bad containers exceeds the threshold rate of %1.2f, and indicates this file may be corrupt.",
                         averageBadMismatchRate,
-                        mismatchRateThreshold));
+                        mismatchRateThreshold);
+                emitln(exceedThresholdStr);
+                if (echoToConsole) {
+                    System.out.println(exceedThresholdStr);
+                }
             }
 
             // now emit the list of corrupt containers for each bad contig
             emitln("\nSuspected CORRUPT Containers:");
             for (final Map.Entry<String, BadContig> entry : badContigs.entrySet()) {
                 for (final ContainerStats badContainer : entry.getValue().badContainers()) {
-                    emitln(String.format("  Ordinal: %d (%s) Mismatch Rate/Count: %f/%d",
+                    final String badStatStr = String.format("  Ordinal: %d (%s) Mismatch Rate/Count: %f/%d",
                             badContainer.containerOrdinal,
                             badContainer.alignmentContext.toString(),
                             badContainer.misMatchRate,
-                            badContainer.misMatchCount));
+                            badContainer.misMatchCount);
+                    emitln(badStatStr);
+                    if (echoToConsole) {
+                        System.out.println(badStatStr);
+                    }
                 }
             }
         }
@@ -326,13 +366,70 @@ public class CRAMIssue8768Analyzer extends HTSAnalyzer {
             if (lastContig != ReferenceContext.UNINITIALIZED_REFERENCE_ID &&
                     lastContig != goodContainer.alignmentContext.getReferenceContext().getReferenceContextID()) {
                 emitln("");
+                if (echoToConsole) {
+                    System.out.println("");
+                }
             }
             lastContig = goodContainer.alignmentContext.getReferenceContext().getReferenceContextID();
-            emitln(String.format("  Ordinal: %d (%s) Mismatch Rate/Count: %f/%d",
+            final String goodDetailStr = String.format("  Ordinal: %d (%s) Mismatch Rate/Count: %f/%d",
                     goodContainer.containerOrdinal,
                     goodContainer.alignmentContext.toString(),
                     goodContainer.misMatchRate,
-                    goodContainer.misMatchCount));
+                    goodContainer.misMatchCount);
+            emitln(goodDetailStr);
+            if (echoToConsole) {
+                System.out.println(goodDetailStr);
+            }
+        }
+        return retCode;
+    }
+
+    // write the results out to a machine-readable tsv file
+    private void printTSVResults(
+            final Map<String, BadContig> badContigs,
+            final List<ContainerStats> goodContainers,
+            final GATKPath tsvOutputPath) {
+        // File name, contig name, container ordinal, good or bad, mismatch rate
+        final TableColumnCollection columnNames = new TableColumnCollection(
+                "file_name",    // file name
+                "contig_name",          // contig name
+                "container_ordinal",    // container ordinal
+                "container_is_bad",     // good or bad, 1 or 0
+                "mismatch_rate",        // mismatch rate (double)
+                "alignment_start",      // alignment start (int)
+                "alignment_span"        // alignment span (int)
+        );
+
+        try (final TableWriter<ContainerStats> tsvWriter = new TableWriter<>(tsvOutputPath.toPath(), columnNames) {
+            @Override
+            protected void composeLine(final ContainerStats containerStats, final DataLine dataLine) {
+                dataLine.set("file_name", inputPath.toPath().getFileName().toString())
+                        .set("contig_name", samHeader.getSequenceDictionary().getSequence(containerStats.alignmentContext.getReferenceContext().getReferenceContextID()).getSequenceName())
+                        .set("container_ordinal", containerStats.containerOrdinal)
+                        .set("container_is_bad", containerStats.isBad ? 1 : 0)
+                        .set("mismatch_rate", containerStats.misMatchRate)
+                        .set("alignment_start", containerStats.alignmentContext.getAlignmentStart())
+                        .set("alignment_span", containerStats.alignmentContext.getAlignmentSpan());
+                }
+            })
+        {
+            tsvWriter.writeHeaderIfApplies();
+            if (badContigs.isEmpty()) {
+                tsvWriter.writeComment("No bad containers detected");
+            } else {
+                tsvWriter.writeComment("Bad containers:");
+                for (final Map.Entry<String, BadContig> entry : badContigs.entrySet()) {
+                    tsvWriter.writeAllRecords(entry.getValue().badContainers());
+                }
+            }
+            if (goodContainers.isEmpty()) {
+                tsvWriter.writeComment("No good mapped containers detected");
+            } else {
+                tsvWriter.writeComment("Good containers:");
+                tsvWriter.writeAllRecords(goodContainers);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
