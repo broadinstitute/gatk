@@ -92,7 +92,7 @@
         - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
-    - For `GvsExtractCallset` only, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
+    - For `GvsExtractCallset` only, if you want to output VCFs that are compressed using bgzip, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
     - For `GvsExtractCallsetPgenMerged` only, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
     - These workflows do not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCalculatePrecisionAndSensitivity` workflow

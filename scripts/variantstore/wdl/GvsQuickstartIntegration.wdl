@@ -5,8 +5,6 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsJointVariantCalling.wdl" as JointVariantCalling
 import "GvsUtils.wdl" as Utils
 
-# This steadfastly remains a comment!!! !!
-
 workflow GvsQuickstartIntegration {
     input {
         String git_branch_or_tag
@@ -77,7 +75,7 @@ workflow GvsQuickstartIntegration {
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
     # though in practice likely they are the same.
     if (run_hail_integration) {
-        # This workflow will be the *closest* to AoU test.
+        # This test workflow is probably best representative of the AoU workflow. Parameters used here should be those used for AoU callsets
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
