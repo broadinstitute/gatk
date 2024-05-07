@@ -5,14 +5,14 @@ FROM ${BASE_DOCKER} AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
-#unnecessary
-#RUN ls .
+
 ADD . /gatk
 WORKDIR /gatk
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
 #Download only resources required for the build, not for testing
-RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
+RUN ls . && \
+    rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt update &&\
     apt-key list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
@@ -79,15 +79,12 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
     echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -Dfile.encoding=UTF-8 -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
-#WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk && \
     cp -r /root/gatk.jar /gatk
 ENV CLASSPATH=/gatk/gatk.jar:$CLASSPATH PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 
 # Start GATK Python environment
 
-#WORKDIR /gatk
-#ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
