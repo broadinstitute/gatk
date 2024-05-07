@@ -33,6 +33,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   parameter_meta {
     call_set_identifier: "The name of the callset for which we are calculating precision and sensitivity."
+    chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
     interval_list: "The intervals over which to calculate precision and sensitivity."
