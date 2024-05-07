@@ -10,6 +10,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String dataset_name
     String filter_set_name
     File interval_list
+    File? vcf_eval_bed_file
     Array[String] chromosomes = ["chr20"]
     String project_id
     Array[String] sample_names
@@ -43,6 +44,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
     ref_fasta: "The cloud path for the reference fasta sequence."
+    vcf_eval_bed_file: "Optional bed file for EvaluateVcf; if passed, will be used instead of chromosomes."
   }
 
   String output_basename = call_set_identifier + "_PS"
@@ -134,6 +136,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
+        vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
@@ -148,6 +151,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
+        vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         all_records = true,
         output_basename = sample_name + "-bq_all",
@@ -379,6 +383,7 @@ task EvaluateVcf {
     File truth_vcf
     File truth_vcf_index
     File truth_bed
+    File? vcf_eval_bed_file
     Array[String] chromosomes
 
     Boolean all_records = false
@@ -413,7 +418,7 @@ task EvaluateVcf {
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
-      --bed-regions chromosomes.to.eval.txt \
+      --bed-regions ~{if defined(vcf_eval_bed_file) then vcf_eval_bed_file else "chromosomes.to.eval.txt"} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
