@@ -3,8 +3,6 @@ version 1.0
 import "GvsCreateTables.wdl" as GvsCreateTables
 import "GvsUtils.wdl" as Utils
 
-# A comment is here.
-
 workflow GvsAssignIds {
 
   input {
