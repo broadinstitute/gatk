@@ -64,16 +64,17 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 The table below describes the GVS workflow input variables:
 
-| Input variable name    | Description                                                                                                                                                                | Type    |
-|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| dataset_name           | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String  |
-| project_id             | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String  |
+| Input variable name    | Description                                                                                                                                                              | Type    |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| dataset_name           | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                             | String  |
+| project_id             | Name of the Google project that contains the BigQuery dataset.                                                                                                           | String  |
 | call_set_identifier    | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”. | String  |
-| sample_id_column_name | The column in the workspace Data tab that contains a unique identifier for each sample (the workflow will fail if there are any duplicates).                               | String  |
-| vcf_files_column_name | The column in the workspace Data tab that contains the path to the sample VCF file for each sample.                                                                        | String  |
-| vcf_index_files_column_name | The column in the workspace Data tab that contains the path to the sample VCF index file for each sample.                                                                  | String  |
-| use_classic_VQSR       | Optional; defaults to false since September 1, 2023.                                                                                                                       | Boolean |
-| billing_project_id     | Optional; Google project ID to charge for the egress of the GVCFs  and index files, useful if the bucket the GVCFs are in has "requester pays" enabled                     | String  |
+ | extract_output_gcs_dir | The GCS path where the callset VCFs, VCF indexes and interval lists will be copied. |
+| sample_id_column_name | The column in the workspace Data tab that contains a unique identifier for each sample (the workflow will fail if there are any duplicates).                             | String  |
+| vcf_files_column_name | The column in the workspace Data tab that contains the path to the VCF file for each sample.                                                                       | String  |
+| vcf_index_files_column_name | The column in the workspace Data tab that contains the path to the VCF index file for each sample.                                                                 | String  |
+| use_classic_VQSR       | Optional; defaults to false since September 1, 2023.                                                                                                                     | Boolean |
+| billing_project_id     | Optional; Google project ID to charge for the egress of the GVCFs  and index files, useful if the bucket the GVCFs are in has "requester pays" enabled                   | String  |
 
 ## Tasks and tools
 
