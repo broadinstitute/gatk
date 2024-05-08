@@ -63,6 +63,8 @@ workflow GvsJointVariantCalling {
 
         File? training_python_script
         File? scoring_python_script
+
+        Int? maximum_alternate_alleles
     }
 
     # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use
@@ -225,6 +227,7 @@ workflow GvsJointVariantCalling {
             drop_state = drop_state,
             bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
+            maximum_alternate_alleles = maximum_alternate_alleles,
     }
 
     output {

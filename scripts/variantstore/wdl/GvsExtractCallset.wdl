@@ -47,6 +47,8 @@ workflow GvsExtractCallset {
     Float y_bed_weight_scaling = 4
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
+    Boolean write_cost_to_db = true
+    Int? maximum_alternate_alleles
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -72,7 +74,6 @@ workflow GvsExtractCallset {
 
   Boolean emit_pls = false
   Boolean emit_ads = true
-  Boolean write_cost_to_db = true
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
   String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
@@ -240,6 +241,7 @@ workflow GvsExtractCallset {
         emit_ads                              = emit_ads,
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
+        maximum_alternate_alleles             = maximum_alternate_alleles,
     }
   }
 
@@ -333,6 +335,7 @@ task ExtractTask {
     Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
+    Int? maximum_alternate_alleles
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
@@ -370,7 +373,18 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
     fi
 
-    gatk --java-options "-Xmx~{memory_gib - 3}g" \
+    # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
+    # the input `memory_gib`, so use the memory-related environment variables rather than the `memory_gib` input.
+    # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
+    if [[ ${MEM_UNIT} == "GB" ]]
+    then
+        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+    else
+        echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
+        exit 1
+    fi
+
+    gatk --java-options "-Xmx${memory_mb}m" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
@@ -387,6 +401,7 @@ task ExtractTask {
         ~{true='--emit-ads' false='' emit_ads} \
         ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
+        ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \

@@ -83,17 +83,19 @@
     - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
     - This workflow needs to be run with the `filter_set_name` input from `GvsCreateFilterSet` step.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-1. `GvsExtractCallset` / `GvsExtractCallsetPgenMerged` workflow
+1. `GvsExtractCallset` / `GvsExtractCallsetPgenMerged` workflows ("small callset" Exome, Clinvar, and ACAF threshold extracts in VCF and PGEN formats respectively)
     - You will need to run the `GvsPrepareRangesCallset` workflow for each "[Region](https://support.researchallofus.org/hc/en-us/articles/14929793660948-Smaller-Callsets-for-Analyzing-Short-Read-WGS-SNP-Indel-Data-with-Hail-MT-VCF-and-PLINK)" (interval list) for which a PGEN or VCF deliverable is required for the callset.
         - This workflow transforms the data in the vet, ref_ranges, and samples tables into a schema optimized for extract.
         - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
         - `extract_table_prefix` should be set to a name that is unique to the given Region / interval list. See the [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use.
         - Specify the `interval_list` appropriate for the PGEN / VCF extraction run you are performing.
+        - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
         - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
-    - For `GvsExtractCallset` only, if you want to output VCFs that are compressed using bgzip, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
-    - For `GvsExtractCallsetPgenMerged` only, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
+    - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
+    - For `GvsExtractCallset`, make sure to specify the appropriate `maximum_alternate_alleles` value (currently 100).
+    - For `GvsExtractCallset`, if you want to output VCFs that are compressed using bgzip, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
     - These workflows do not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCalculatePrecisionAndSensitivity` workflow
     - Please see the detailed instructions for running the Precision and Sensitivity workflow [here](../../tieout/AoU_PRECISION_SENSITIVITY.md).
