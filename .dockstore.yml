@@ -309,7 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1335_BgzipOnExtractEchoCallsetVersion
+             - gg_VS-1327_EnsureSampleIdsAreUniqueEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -319,7 +319,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1335_BgzipOnExtractEchoCallsetVersion
+             - gg_VS-1327_EnsureSampleIdsAreUniqueEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -330,7 +330,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1334_vcf_max_alt_alleles_echo_callset
-             - gg_VS-1335_BgzipOnExtractEchoCallsetVersion
+             - gg_VS-1327_EnsureSampleIdsAreUniqueEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsIngestTieout
