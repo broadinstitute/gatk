@@ -279,6 +279,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1168_bge
+             - ms_sens_prec
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
