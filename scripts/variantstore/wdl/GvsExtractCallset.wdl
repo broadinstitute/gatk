@@ -20,6 +20,7 @@ workflow GvsExtractCallset {
     Int? scatter_count
     Int? extract_memory_override_gib
     Int? disk_override
+    Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
@@ -44,8 +45,10 @@ workflow GvsExtractCallset {
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
-    Boolean write_cost_to_db = true
     Boolean is_wgs = true
+    Boolean convert_filtered_genotypes_to_nocalls = false
+    Boolean write_cost_to_db = true
+    Int? maximum_alternate_alleles
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -72,7 +75,8 @@ workflow GvsExtractCallset {
   Boolean emit_pls = false
   Boolean emit_ads = true
 
-  String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
+  String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
+  String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
 
   if (!defined(git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
@@ -199,43 +203,45 @@ workflow GvsExtractCallset {
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
     String interval_filename = basename(SplitIntervals.interval_files[i])
-    String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}.vcf.gz"
+    String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
 
     call ExtractTask {
       input:
-        go                                 = select_first([ValidateFilterSetName.done, true]),
-        dataset_name                       = dataset_name,
-        call_set_identifier                = call_set_identifier,
-        use_VQSR_lite                      = use_VQSR_lite,
-        gatk_docker                        = effective_gatk_docker,
-        gatk_override                      = gatk_override,
-        reference                          = reference,
-        reference_index                    = reference_index,
-        reference_dict                     = reference_dict,
-        fq_samples_to_extract_table        = fq_samples_to_extract_table,
-        interval_index                     = i,
-        intervals                          = SplitIntervals.interval_files[i],
-        fq_cohort_extract_table            = fq_cohort_extract_table,
-        fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
-        fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
-        vet_extract_table_version          = GetExtractVetTableVersion.version,
-        read_project_id                    = query_project,
-        do_not_filter_override             = do_not_filter_override,
-        fq_filter_set_info_table           = fq_filter_set_info_table,
-        fq_filter_set_site_table           = fq_filter_set_site_table,
-        fq_filter_set_tranches_table       = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
-        filter_set_name                    = filter_set_name,
-        drop_state                         = drop_state,
-        output_file                        = vcf_filename,
-        output_gcs_dir                     = output_gcs_dir,
-        max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
-        extract_preemptible_override       = extract_preemptible_override,
-        extract_maxretries_override        = extract_maxretries_override,
-        disk_override                      = disk_override,
-        memory_gib                         = effective_extract_memory_gib,
-        emit_pls                           = emit_pls,
-        emit_ads                           = emit_ads,
-        write_cost_to_db                   = write_cost_to_db,
+        go                                    = select_first([ValidateFilterSetName.done, true]),
+        dataset_name                          = dataset_name,
+        call_set_identifier                   = call_set_identifier,
+        use_VQSR_lite                         = use_VQSR_lite,
+        gatk_docker                           = effective_gatk_docker,
+        gatk_override                         = gatk_override,
+        reference                             = reference,
+        reference_index                       = reference_index,
+        reference_dict                        = reference_dict,
+        fq_samples_to_extract_table           = fq_samples_to_extract_table,
+        interval_index                        = i,
+        intervals                             = SplitIntervals.interval_files[i],
+        fq_cohort_extract_table               = fq_cohort_extract_table,
+        fq_ranges_cohort_ref_extract_table    = fq_ranges_cohort_ref_extract_table,
+        fq_ranges_cohort_vet_extract_table    = fq_ranges_cohort_vet_extract_table,
+        vet_extract_table_version             = GetExtractVetTableVersion.version,
+        read_project_id                       = query_project,
+        do_not_filter_override                = do_not_filter_override,
+        fq_filter_set_info_table              = fq_filter_set_info_table,
+        fq_filter_set_site_table              = fq_filter_set_site_table,
+        fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
+        filter_set_name                       = filter_set_name,
+        drop_state                            = drop_state,
+        output_file                           = vcf_filename + vcf_extension,
+        output_gcs_dir                        = output_gcs_dir,
+        max_last_modified_timestamp           = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
+        extract_preemptible_override          = extract_preemptible_override,
+        extract_maxretries_override           = extract_maxretries_override,
+        disk_override                         = disk_override,
+        memory_gib                            = effective_extract_memory_gib,
+        emit_pls                              = emit_pls,
+        emit_ads                              = emit_ads,
+        convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
+        write_cost_to_db                      = write_cost_to_db,
+        maximum_alternate_alleles             = maximum_alternate_alleles,
     }
   }
 
@@ -311,6 +317,7 @@ task ExtractTask {
 
     Boolean emit_pls
     Boolean emit_ads
+    Boolean convert_filtered_genotypes_to_nocalls = false
 
     Boolean do_not_filter_override
     String fq_filter_set_info_table
@@ -328,6 +335,7 @@ task ExtractTask {
     Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
+    Int? maximum_alternate_alleles
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
@@ -365,7 +373,18 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
     fi
 
-    gatk --java-options "-Xmx~{memory_gib - 3}g" \
+    # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
+    # the input `memory_gib`, so use the memory-related environment variables rather than the `memory_gib` input.
+    # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
+    if [[ ${MEM_UNIT} == "GB" ]]
+    then
+        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+    else
+        echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
+        exit 1
+    fi
+
+    gatk --java-options "-Xmx${memory_mb}m" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
@@ -380,7 +399,9 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='' false='--use-vqsr-classic-scoring' use_VQSR_lite} \
+        ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+        ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
+        ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \

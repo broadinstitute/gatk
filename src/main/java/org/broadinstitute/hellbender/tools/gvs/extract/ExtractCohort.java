@@ -122,19 +122,35 @@ public abstract class ExtractCohort extends ExtractTool {
     private boolean emitADs = false;
 
     @Argument(
-            fullName = "use-vqsr-classic-scoring",
-            doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity)",
+            fullName = "use-vqsr-scoring",
+            doc = "If true, use VQSR scoring (vqs Lod score). Otherwise use VETS scoring (calibration_sensitivity)",
             optional = true
     )
-    private boolean isVQSRClassic = false;
+    private boolean isVQSR = false;
 
     @Argument(
-            fullName = "vq-score-filter-by-site",
+            fullName = "vqs-score-filter-by-site",
             doc = "If Variant Quality Score filtering (either VETS or VQSR) is applied, it should be at a site level. Default is false",
             optional = true
     )
+    // historical note that this parameter was previously named 'vqsr-score-filter-by-site', changed as it's not VQSR-specific
     private boolean performSiteSpecificVQScoreFiltering = false;
     private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
+
+    @Argument(
+            fullName = "convert-filtered-genotypes-to-no-calls",
+            doc = "Set filtered genotypes to no-calls. This option can only be used if Variant Quality Score filtering " +
+                    "is applied at the genotype level",
+            optional = true
+    )
+    private boolean convertFilteredGenotypesToNoCalls = false;
+
+    @Argument(
+            fullName = "maximum-alternate-alleles",
+            doc = "The maximum number of alternate alleles a site can have before it is hard-filtered from the output",
+            optional = true
+    )
+    private Long maximumAlternateAlleles = 0L;
 
     @Argument(
             fullName = "snps-truth-sensitivity-filter-level",
@@ -269,12 +285,12 @@ public abstract class ExtractCohort extends ExtractTool {
                 errors.add("Parameter 'indels-truth-sensitivity-filter-level' must be between > 0.0 and < 100.0");
             }
         }
-        if (!isVQSRClassic) {
+        if (!isVQSR) {
             if (tranchesTableName != null) {
-                errors.add("Parameter 'tranches-table' is not allowed for VQSR Lite");
+                errors.add("Parameter 'tranches-table' is not allowed for VETS");
             }
             if ((vqsLodSNPThreshold != null) || (vqsLodINDELThreshold != null)) {
-                errors.add("Parameters 'snps-lod-score-cutoff' and 'indels-lod-score-cutoff' cannot be used in VQSR Lite mode");
+                errors.add("Parameters 'snps-lod-score-cutoff' and 'indels-lod-score-cutoff' cannot be used in VETS mode");
             }
         }
         if (!errors.isEmpty()) {
@@ -293,6 +309,11 @@ public abstract class ExtractCohort extends ExtractTool {
             vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
 
+        if (convertFilteredGenotypesToNoCalls && vqScoreFilteringType != VQScoreFilteringType.GENOTYPE) {
+            throw new UserException("The option '--convert-filtered-genotypes-to-no-calls' can ONLY be used if you are filtering at the " +
+                    "Genotype level (you have set '--filter-set-info-table' and NOT set '--vqs-score-filter-by-site')");
+        }
+
         // filter at a site level (but not necessarily use vqslod)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
             throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
@@ -300,13 +321,14 @@ public abstract class ExtractCohort extends ExtractTool {
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
             //noinspection ConstantValue
             if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-                throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any VQSR filtering operations");
+                throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any Variant Quality" +
+                        " filtering operations");
             }
         }
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
-            if (isVQSRClassic) {
+            if (isVQSR) {
                 extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
                 FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
                 Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
@@ -416,8 +438,12 @@ public abstract class ExtractCohort extends ExtractTool {
                     "if no sample file (--sample-file) is provided.");
         }
 
-        engine = !isVQSRClassic ?
-                new ExtractCohortLiteEngine(
+        OptionalLong optionalMaximumAlternateAlleles =
+                maximumAlternateAlleles != null && maximumAlternateAlleles > 0L ?
+                        OptionalLong.of(maximumAlternateAlleles) : OptionalLong.empty();
+
+        engine = !isVQSR ?
+                new ExtractCohortVETSEngine(
                         projectID,
                         header,
                         annotationEngine,
@@ -442,6 +468,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
+                        convertFilteredGenotypesToNoCalls,
+                        optionalMaximumAlternateAlleles,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply)
@@ -471,6 +499,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
+                        convertFilteredGenotypesToNoCalls,
+                        optionalMaximumAlternateAlleles,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply);

@@ -28,11 +28,13 @@ workflow GvsQuickstartIntegration {
         String? gatk_docker
         String? hail_version
         Boolean chr20_X_Y_only = true
+        Int? maximum_alternate_alleles
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-03-13/"
+    String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-03-13/" + expected_subdir
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -74,6 +76,7 @@ workflow GvsQuickstartIntegration {
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
     # though in practice likely they are the same.
     if (run_hail_integration) {
+        # This test workflow is probably best representative of the AoU workflow. Parameters used here should be those used for AoU callsets
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -90,6 +93,7 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
+                bgzip_output_vcfs = true,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -99,6 +103,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                maximum_alternate_alleles = maximum_alternate_alleles,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -125,6 +130,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 hail_version = effective_hail_version,
+                maximum_alternate_alleles = maximum_alternate_alleles,
         }
 
         if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
@@ -170,6 +176,7 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -196,6 +203,7 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
         }
 
         if (QuickstartVcfVQSRClassicIntegration.used_tighter_gcp_quotas) {
@@ -241,6 +249,7 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
@@ -279,6 +288,7 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
                 git_branch_or_tag = git_branch_or_tag,
         }
 

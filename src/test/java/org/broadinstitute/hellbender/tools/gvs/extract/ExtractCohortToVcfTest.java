@@ -33,7 +33,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRLiteVCFfromRangesAvro() throws Exception {
+  public void testFinalVETSVCFfromRangesAvro() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -47,7 +47,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
     // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
     //
-    final File expectedVCF = getTestFile("ranges_extract.expected_vqsr_lite.vcf");
+    final File expectedVCF = getTestFile("ranges_extract.expected_vets.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
     final File outputVCF = createTempFile("extract_output", "vcf");
@@ -69,7 +69,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   }
 
   @Test
-  public void testFinalVQSRClassicVCFfromRangesAvro() throws Exception {
+  public void testFinalVQSRVCFfromRangesAvro() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
@@ -83,14 +83,14 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
     // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
     //
-    final File expectedVCF = getTestFile("ranges_extract.expected_vqsr_classic.vcf");
+    final File expectedVCF = getTestFile("ranges_extract.expected_vqsr.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
     final File outputVCF = createTempFile("extract_output", "vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", outputVCF.getAbsolutePath())
@@ -106,7 +106,27 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testThrowFilterErrorVQSRLite() throws Exception {
+  public void testThrowErrorIfNoCallingFilteredGtsAndFilteringBySite() {
+    // Verifies that an exception is thrown if you try to --convert-filtered-genotypes-to-no-calls, but are using site filtering
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+            .add("ref-version", 38)
+            .add("R", hg38Reference)
+            .add("O", "anything")
+            .add("local-sort-max-records-in-ram", 10000000)
+            .add("ref-ranges-avro-file-name", quickstart10mbRefRangesAvroFile)
+            .add("vet-avro-file-name", quickstart10mbVetAvroFile)
+            .add("sample-file", quickstartSampleListFile)
+            .add("filter-set-info-table", "something")
+            .add("filter-set-site-table", "something")
+            .add("filter-set-name", "something")
+            .add("vqs-score-filter-by-site", true)
+            .add("convert-filtered-genotypes-to-no-calls", true);
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = UserException.class)
+  public void testThrowFilterErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
             .add("ref-version", 38)
@@ -121,11 +141,12 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("emit-pls", false);
     runCommandLine(args);
   }
+
   @Test(expectedExceptions = UserException.class)
-  public void testThrowFilterErrorVQSRClassic() throws Exception {
+  public void testThrowFilterErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -140,7 +161,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testNoFilteringThresholdsErrorVQSRLite() throws Exception {
+  public void testNoFilteringThresholdsErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
             .add("ref-version", 38)
@@ -152,14 +173,14 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("sample-file", quickstartSampleListFile)
             .add("emit-pls", false)
             .add("filter-set-info-table", "foo")
-            .add("vq-score-filter-by-site", true);
+            .add("vqs-score-filter-by-site", true);
     runCommandLine(args);
   }
   @Test(expectedExceptions = UserException.class)
-  public void testNoFilteringThresholdsErrorVQSRClassic() throws Exception {
+  public void testNoFilteringThresholdsErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -169,12 +190,12 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-info-table", "foo")
-        .add("vq-score-filter-by-site", true);
+        .add("vqs-score-filter-by-site", true);
     runCommandLine(args);
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testFakeFilteringErrorVQSRLite() throws Exception {
+  public void testFakeFilteringErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
     args
@@ -187,16 +208,16 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("sample-file", quickstartSampleListFile)
             .add("emit-pls", false)
             .add("filter-set-name", "foo")
-            .add("vq-score-filter-by-site", true);
+            .add("vqs-score-filter-by-site", true);
     runCommandLine(args);
   }
 
   @Test(expectedExceptions = UserException.class)
-  public void testFakeFilteringErrorVQSRClassic() throws Exception {
+  public void testFakeFilteringErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
     args
-        .add("use-vqsr-classic-scoring", true)
+        .add("use-vqsr-scoring", true)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -206,7 +227,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-name", "foo")
-        .add("vq-score-filter-by-site", true);
+        .add("vqs-score-filter-by-site", true);
     runCommandLine(args);
   }
 }

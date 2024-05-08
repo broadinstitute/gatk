@@ -16,8 +16,10 @@ workflow GvsExtractCallsetPgen {
         # reference (see plink chromosome codes here: https://www.cog-genomics.org/plink/2.0/data#irreg_output)
         # ExtractCohortToPgen currently only supports codes "chrM" and "MT"
         String pgen_chromosome_code = "chrM"
-        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written (max 254)
-        Int max_alt_alleles = 254
+        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written (max 254).
+        # PGEN extract is currently only used for AoU "small callsets" which always want 100 max alt alleles, so default
+        # to that value.
+        Int max_alt_alleles = 100
         # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
         Boolean lenient_ploidy_validation = false
         # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
@@ -318,7 +320,7 @@ task PgenExtractTask {
         # ExtractCohortToPgen currently only supports codes "chrM" and "MT"
         String pgen_chromosome_code
         # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written (max 254)
-        Int? max_alt_alleles
+        Int max_alt_alleles
         # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
         Boolean? lenient_ploidy_validation
         # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
@@ -419,34 +421,35 @@ task PgenExtractTask {
         fi
 
         gatk --java-options "-Xmx${memory_mb}m" \
-        ExtractCohortToPgen \
-        --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
-        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
-        --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-        --ref-version 38 \
-        -R ~{reference} \
-        -O ~{output_pgen_basename}.pgen \
-        --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
-        --sample-table ~{fq_samples_to_extract_table} \
-        ~{"--inferred-reference-state " + inferred_reference_state} \
-        -L ~{interval_filename} \
-        --project-id ~{read_project_id} \
-        ~{true='--emit-pls' false='' emit_pls} \
-        ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='' false='--use-vqsr-classic-scoring' use_VQSR_lite} \
-        ${FILTERING_ARGS} \
-        --dataset-id ~{dataset_name} \
-        --call-set-identifier ~{call_set_identifier} \
-        --wdl-step GvsExtractCallsetPgenPgen \
-        --wdl-call PgenExtractTask \
-        --shard-identifier ~{interval_filename} \
-        ~{cost_observability_line} \
-        --writer-log-file writer.log \
-        --pgen-chromosome-code ~{pgen_chromosome_code} \
-        --max-alt-alleles ~{max_alt_alleles} \
-        ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
-        ~{true='--preserve-phasing' false='' preserve_phasing} \
-        --allow-empty-pgen
+            ExtractCohortToPgen \
+                --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+                ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
+                --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
+                --ref-version 38 \
+                -R ~{reference} \
+                -O ~{output_pgen_basename}.pgen \
+                --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
+                --sample-table ~{fq_samples_to_extract_table} \
+                ~{"--inferred-reference-state " + inferred_reference_state} \
+                -L ~{interval_filename} \
+                --project-id ~{read_project_id} \
+                ~{true='--emit-pls' false='' emit_pls} \
+                ~{true='--emit-ads' false='' emit_ads} \
+                ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+                --convert-filtered-genotypes-to-no-calls \
+                ${FILTERING_ARGS} \
+                --dataset-id ~{dataset_name} \
+                --call-set-identifier ~{call_set_identifier} \
+                --wdl-step GvsExtractCallsetPgenPgen \
+                --wdl-call PgenExtractTask \
+                --shard-identifier ~{interval_filename} \
+                ~{cost_observability_line} \
+                --writer-log-file writer.log \
+                --pgen-chromosome-code ~{pgen_chromosome_code} \
+                --max-alt-alleles ~{max_alt_alleles} \
+                ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
+                ~{true='--preserve-phasing' false='' preserve_phasing} \
+                --allow-empty-pgen
 
 
         # Drop trailing slash if one exists
