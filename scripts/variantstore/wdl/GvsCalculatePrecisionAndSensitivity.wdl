@@ -7,6 +7,7 @@ import "GvsExtractCohortFromSampleNames.wdl" as GvsExtractSubCohortVCFs
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
     String call_set_identifier
+    Array[File] input_vcfs
     String dataset_name
     String filter_set_name
     File interval_list
@@ -71,28 +72,11 @@ workflow GvsCalculatePrecisionAndSensitivity {
     }
   }
 
-  call GvsExtractSubCohortVCFs.GvsExtractCohortFromSampleNames as GenerateControlVCFs {
-    input:
-      cohort_sample_names_array = sample_names,
-      gvs_project = project_id,
-      gvs_dataset = dataset_name,
-      call_set_identifier = call_set_identifier,
-      filter_set_name = filter_set_name,
-      control_samples = true,
-      interval_list = interval_list,
-      extract_scatter_count_override = extract_scatter_count_override,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      gatk_docker = effective_gatk_docker,
-      gatk_override = gatk_override,
-      git_branch_or_tag = GetToolVersions.git_hash,
-      variants_docker = effective_variants_docker,
-  }
-
   call GatherVcfs {
     input:
-      input_vcfs = GenerateControlVCFs.output_vcfs,
+      input_vcfs = input_vcfs,
       output_basename = output_basename,
-      total_vcfs_size_mb = GenerateControlVCFs.total_vcfs_size_mb,
+      total_vcfs_size_mb = 10000,
       gatk_docker = effective_gatk_docker,
   }
 
@@ -520,4 +504,32 @@ task CountInputVcfs {
   runtime {
     docker: basic_docker
   }
+}
+
+task ExtractSamplesFromCallset {
+    input {
+        File callset
+        Array[String] sample
+        String basename
+        String bcftoolsDocker
+    }
+    Int disk_size = ceil(size(callset, "GB") + 30)
+    File sampleNamesToExtract = write_lines(sample)
+    command <<<
+        set -xe
+        mkdir out_dir
+        bcftools +split ~{callset} -Oz -o out_dir -S ~{sampleNamesToExtract} -i'GT="alt"'
+        mv out_dir/~{sample}.vcf.gz ~{basename}.vcf.gz
+        bcftools index -t ~{basename}.vcf.gz
+    >>>
+    output {
+        File output_vcf = "~{basename}.vcf.gz"
+        File output_vcf_index = "~{basename}.vcf.gz.tbi"
+    }
+    runtime{
+        disks: "local-disk " + disk_size + " LOCAL"
+        cpu: 1
+        memory: 5 + " GB"
+        docker: bcftoolsDocker
+    }
 }
