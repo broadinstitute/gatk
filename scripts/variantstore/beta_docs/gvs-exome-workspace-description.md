@@ -28,8 +28,8 @@ Starting September 1 2023, variants in GVS are filtered using the GATK Variant E
 
 ### What data does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`)
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files
+- GVCF index files
 
 To see details about input requirements, see [Run Your Own Samples](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md). Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
 
