@@ -25,6 +25,7 @@ workflow GvsCreateVATfromVDS {
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
+        Int? split_intervals_scatter_count
         Boolean use_classic_VQSR = false
         Boolean use_reference_disk = true
 
@@ -100,10 +101,10 @@ workflow GvsCreateVATfromVDS {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    Int effective_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
-                                    if(GetNumSamplesLoaded.num_samples < 250000) then 500 else
-                                      if(GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
-
+    Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
+                                     if(GetNumSamplesLoaded.num_samples < 250000) then 500 else
+                                       if(GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
+    Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
