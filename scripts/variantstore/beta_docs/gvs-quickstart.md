@@ -108,7 +108,7 @@ The workflow is configured to call this input from the data table. To run:
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
     1. Ensure that the (optional) `is_wgs` parameter is set to false.
     1. Check the workspace Data tab, and fill out the below inputs according to the data column names that contain the values you want to use:
-        - `sample_id_column_name`: a unique identifier for each sample
+        - `sample_id_column_name`: a unique identifier for each sample (the workflow will fail if there are any duplicates)
         - `vcf_files_column_name`: the path to the sample VCF file
         - `vcf_index_files_column_name`: the path to the sample VCF index file
 1. **Save** the workflow configuration.
