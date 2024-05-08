@@ -21,7 +21,6 @@ workflow GvsCreateVATfromVDS {
         String? vat_version
         String? workspace_gcs_project
 
-        Int effective_scatter_count = 10
         Boolean leave_hail_cluster_running_at_end = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
@@ -85,6 +84,26 @@ workflow GvsCreateVATfromVDS {
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
     String vat_table_name = filter_set_name + "_vat" + effective_vat_version
+
+    call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+        input:
+        project_id = project_id,
+        fq_table = "~{project_id}.~{dataset_name}.sample_info",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    call Utils.GetNumSamplesLoaded {
+        input:
+            fq_sample_table ="~{project_id}.~{dataset_name}.sample_info",
+            project_id = project_id,
+            sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    Int effective_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
+                                    if(GetNumSamplesLoaded.num_samples < 250000) then 500 else
+                                      if(GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
+
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
