@@ -13,6 +13,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
         String drop_state = "FORTY"
+        Boolean bgzip_output_vcfs = false
         String dataset_suffix
         Boolean is_wgs = true
         File? interval_list
@@ -94,6 +95,7 @@ workflow GvsQuickstartVcfIntegration {
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             interval_list = interval_list,
             sample_id_column_name = sample_id_column_name,
@@ -119,8 +121,9 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
+                expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
                 actual_vcfs = JointVariantCalling.output_vcfs,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
+                gatk_docker = effective_gatk_docker
         }
 
         if (check_expected_cost_and_table_size_outputs) {
@@ -161,8 +164,9 @@ workflow GvsQuickstartVcfIntegration {
 task AssertIdenticalOutputs {
     input {
         String expected_output_prefix
+        String expected_output_suffix
         Array[File] actual_vcfs
-        String cloud_sdk_docker
+        String gatk_docker
     }
     parameter_meta {
         actual_vcfs: {
@@ -184,8 +188,8 @@ task AssertIdenticalOutputs {
         # Download all the expected data
         mkdir expected
         cd expected
-        gcloud storage cp -r "${expected_prefix}"'/*.vcf.gz' .
-        gzip -d *.gz
+        gcloud storage cp -r "${expected_prefix}"'/*.vcf~{expected_output_suffix}' .
+        gzip -S ~{expected_output_suffix} -d *~{expected_output_suffix}
         cd ..
 
         mkdir actual
@@ -201,7 +205,7 @@ task AssertIdenticalOutputs {
 
         cat actual_manifest.txt | gcloud storage cp -I .
         # Unzip actual result data.
-        ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
+        ls -1 | grep -E '\.vcf\~{expected_output_suffix}$' | xargs gzip -S ~{expected_output_suffix} -d
         cd ..
 
         echo "Header Check"
@@ -257,7 +261,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: cloud_sdk_docker
+        docker: gatk_docker
         disks: "local-disk 500 HDD"
     }
 
@@ -349,7 +353,7 @@ task AssertCostIsTrackedAndExpected {
                 DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
               fi
 
-              if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
+              if ! awk "BEGIN{ exit ($DIFF_FOUND -gt $TOLERANCE) }"
               then
                 echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
                 echo "1" > ret_val.txt
