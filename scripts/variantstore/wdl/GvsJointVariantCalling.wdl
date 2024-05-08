@@ -13,11 +13,11 @@ workflow GvsJointVariantCalling {
         String dataset_name
         String extract_output_gcs_dir
         String project_id
-
         String sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String vcf_files_column_name
         String vcf_index_files_column_name
 
+        Boolean bgzip_output_vcfs = false
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
         Boolean use_compressed_references = false
@@ -226,6 +226,7 @@ workflow GvsJointVariantCalling {
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             maximum_alternate_alleles = maximum_alternate_alleles,
     }
