@@ -39,7 +39,7 @@ Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interva
 
 ### What does it return as output?
 
-The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` input.
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in megabytes

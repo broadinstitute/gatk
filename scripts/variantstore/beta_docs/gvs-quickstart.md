@@ -16,8 +16,8 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What data does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`)
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files
+- GVCF index files
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) are hosted in a public Google bucket and links are provided in the sample data table.
 
@@ -25,7 +25,7 @@ While the GVS has been tested with 250,000 single sample whole genome GVCF files
 
 ### What does it return as output?
 
-The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` input.
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
