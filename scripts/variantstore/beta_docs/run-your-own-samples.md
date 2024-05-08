@@ -42,7 +42,7 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 ### What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files, or the location specified by the `output_gcs_dir` workflow output.
+The following files are stored in the path you specified for the `extract_output_gcs_dir` workflow output.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
@@ -117,8 +117,14 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
 1. **Select the workflow** from the Workflows tab.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
+    1. Enter a GCS path for `extract_output_gcs_dir`, which is where the callset VCFs, VCF indexes, interval lists, and manifest will be copied.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    1. Ensure that the (optional) `is_wgs` parameter is set to false.
+    1. Check the workspace Data tab, and fill out the below inputs according to the data column names that contain the values you want to use:
+        - `sample_id_column_name`: a unique identifier for each sample
+        - `vcf_files_column_name`: the path to the sample VCF file
+        - `vcf_index_files_column_name`: the path to the sample VCF index file
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 

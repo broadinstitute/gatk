@@ -9,16 +9,15 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
-        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
-        # tag as specified in `GvsUtils.GetToolVersions`.
-        String? git_branch_or_tag
-        # Potentially specified by a calling integration WDL.
-        String? git_hash
-
-        String dataset_name
-        String project_id
         String call_set_identifier
-        String? extract_output_gcs_dir
+        String dataset_name
+        String extract_output_gcs_dir
+        String project_id
+
+        String sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String vcf_files_column_name
+        String vcf_index_files_column_name
+
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
         Boolean use_compressed_references = false
@@ -26,11 +25,14 @@ workflow GvsJointVariantCalling {
         Boolean load_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
+
+        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
+        # tag as specified in `GvsUtils.GetToolVersions`.
+        String? git_branch_or_tag
+        # Potentially specified by a calling integration WDL.
+        String? git_hash
 
         String? basic_docker
         String? cloud_sdk_docker

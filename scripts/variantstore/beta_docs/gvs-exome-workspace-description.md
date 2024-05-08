@@ -70,18 +70,19 @@ The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sam
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
+    1. Enter a GCS path for `extract_output_gcs_dir`, which is where the callset VCFs, VCF indexes and interval lists will be copied.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
     1. Ensure that the (optional) `is_wgs` parameter is set to false.
+    1. Check the workspace Data tab, and fill out the below inputs according to the data column names that contain the values you want to use:
+       - `sample_id_column_name`: a unique identifier for each sample
+       - `vcf_files_column_name`: the path to the sample VCF file
+       - `vcf_index_files_column_name`: the path to the sample VCF index file
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
-
-### Important configuration notes
-
-By default, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. The actual output location will be specified by the workflow output `output_gcs_path`.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow. Generally the cost is around a half a cent per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
@@ -140,5 +141,6 @@ The workflow script is released under the Apache License, Version 2.0 (full lice
 |------------|-----------------------------------------|--------------|
 | 09/08/2023 | First release of the exomes workspace.  | George Grant |
 | 01/09/2024 | Second release of the exomes workspace. | Bec Asch     |
+| 05/08/2024 | Third release of the exomes workspace.  | Bec Asch     |
 
 
