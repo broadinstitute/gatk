@@ -76,6 +76,7 @@ workflow GvsQuickstartIntegration {
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
     # though in practice likely they are the same.
     if (run_hail_integration) {
+        # This test workflow is probably best representative of the AoU workflow. Parameters used here should be those used for AoU callsets
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -92,6 +93,7 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
+                bgzip_output_vcfs = true,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,

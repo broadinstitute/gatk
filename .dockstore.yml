@@ -279,6 +279,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1168_bge
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
