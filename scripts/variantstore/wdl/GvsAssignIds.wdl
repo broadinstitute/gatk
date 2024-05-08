@@ -39,10 +39,17 @@ workflow GvsAssignIds {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
+  call ValidateSamples {
+    input:
+      sample_names_file = external_sample_names,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
       max_table_id = 1,
@@ -55,6 +62,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       datatype = "sample_load_status",
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
@@ -68,6 +76,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "vcf_header_lines_scratch",
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
@@ -80,6 +89,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "vcf_header_lines",
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
@@ -92,6 +102,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "sample_vcf_header",
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
@@ -105,6 +116,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -147,7 +159,7 @@ task AssignIds {
     String sample_info_table
     File sample_names
     Boolean samples_are_controls
-    String table_creation_done
+    Boolean table_creation_done
     String cloud_sdk_docker
   }
   meta {
@@ -235,6 +247,7 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
+    Boolean go
     String cloud_sdk_docker
   }
 
@@ -280,3 +293,43 @@ task CreateCostObservabilityTable {
   }
 }
 
+task ValidateSamples {
+  input {
+    File sample_names_file
+    String cloud_sdk_docker
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    if [[ ! -s ~{sample_names_file} ]]
+    then
+      echo "ERROR: The input file ~{sample_names_file} is empty"
+      exit 1;
+    fi
+
+    sort ~{sample_names_file} | uniq -d > output.txt
+    if [[ -s output.txt ]]
+    then
+      echo "ERROR: The input file ~{sample_names_file} contains the following duplicate entries:"
+      cat output.txt
+      exit 1;
+    fi
+
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    cpu: "1"
+    preemptible: 1
+    maxRetries: 0
+    disks: "local-disk 100 HDD"
+  }
+
+  output {
+    Boolean done = true
+  }
+}
