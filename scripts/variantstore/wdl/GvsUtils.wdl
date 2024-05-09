@@ -309,7 +309,7 @@ task SplitIntervalsTarred {
     fi
 
     # Tar up the interval file directory
-    tar -cf interval-files.tar interval-files
+    tar -czf interval-files.tar interval-files
   >>>
 
   runtime {
