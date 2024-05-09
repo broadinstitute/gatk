@@ -102,11 +102,12 @@ workflow GvsCreateVATfromVDS {
         }
 
         Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
-                                         if (GetNumSamplesLoaded.num_samples < 250000) then 500 else
-                                           if (GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
+                                           if (GetNumSamplesLoaded.num_samples < 250000) then 500 else
+                                               if (GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
     }
 
     Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
