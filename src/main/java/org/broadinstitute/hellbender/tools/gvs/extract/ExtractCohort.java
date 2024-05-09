@@ -346,8 +346,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFilterHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
                     }
                     else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
-                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFormatHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFormatHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
                     }
                 }
             } else {
@@ -372,18 +372,16 @@ public abstract class ExtractCohort extends ExtractTool {
                             "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
                 }
                 else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
-                    extraHeaderLines.add(new VCFFormatHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP, 1,
-                            VCFHeaderLineType.String,
-                            "Genotyped Allele failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
-                    extraHeaderLines.add(new VCFFormatHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL, 1,
-                            VCFHeaderLineType.String,
-                            "Genotyped Allele  failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                    extraHeaderLines.add(new VCFHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
+                            "Sample Genotype FT filter value indicating that the Genotyped Allele failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                    extraHeaderLines.add(new VCFHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
+                            "Sample Genotype FT filter value indicating that the Genotyped Allele failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
                 }
             }
         }
 
         if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
-            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
+            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Sample Genotype Filter Field"));
         }
 
         if (emitPLs) {
