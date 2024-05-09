@@ -60,7 +60,6 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
@@ -93,6 +92,7 @@ workflow GvsCreateVATfromVDS {
                 fq_table = "~{project_id}.~{dataset_name}.sample_info",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
+
         call Utils.GetNumSamplesLoaded {
             input:
                 fq_sample_table ="~{project_id}.~{dataset_name}.sample_info",
@@ -100,6 +100,7 @@ workflow GvsCreateVATfromVDS {
                 sample_table_timestamp = SampleDateTime.last_modified_timestamp,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
+
         Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
                                          if (GetNumSamplesLoaded.num_samples < 250000) then 500 else
                                            if (GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
