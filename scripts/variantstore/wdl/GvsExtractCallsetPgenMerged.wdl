@@ -174,7 +174,7 @@ task SplitFilesByChromosome {
         Int? split_intervals_disk_size_override
     }
 
-    Int disk_size = select_first([split_intervals_disk_size_override, 10])
+    Int disk_size = select_first([split_intervals_disk_size_override, 500])
 
     command <<<
         set -euxo pipefail
