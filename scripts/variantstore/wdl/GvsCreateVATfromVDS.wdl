@@ -86,26 +86,26 @@ workflow GvsCreateVATfromVDS {
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
     String vat_table_name = filter_set_name + "_vat" + effective_vat_version
 
-    call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
-        input:
-        project_id = project_id,
-        fq_table = "~{project_id}.~{dataset_name}.sample_info",
-        cloud_sdk_docker = effective_cloud_sdk_docker,
+    if (!defined(split_intervals_scatter_count)) {
+        call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+            input:
+                project_id = project_id,
+                fq_table = "~{project_id}.~{dataset_name}.sample_info",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+        call Utils.GetNumSamplesLoaded {
+            input:
+                fq_sample_table ="~{project_id}.~{dataset_name}.sample_info",
+                project_id = project_id,
+                sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+        Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
+                                         if (GetNumSamplesLoaded.num_samples < 250000) then 500 else
+                                           if (GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
     }
 
-    call Utils.GetNumSamplesLoaded {
-        input:
-            fq_sample_table ="~{project_id}.~{dataset_name}.sample_info",
-            project_id = project_id,
-            sample_table_timestamp = SampleDateTime.last_modified_timestamp,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
-                                     if(GetNumSamplesLoaded.num_samples < 250000) then 500 else
-                                       if(GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
     Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
-
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
