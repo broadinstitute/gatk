@@ -286,17 +286,25 @@ task SplitIntervalsTarred {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    mkdir interval-files
+    mkdir orig-interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
     --dont-mix-contigs \
     -R ~{ref_fasta} \
     ~{"-L " + intervals} \
     ~{"--weight-bed-file " + interval_weights_bed} \
     -scatter ~{scatter_count} \
-    -O interval-files \
+    -O orig-interval-files \
     ~{"--extension " + intervals_file_extension} \
     --interval-file-num-digits 10 \
     ~{split_intervals_extra_args}
+
+    mkdir interval-files
+
+    # Take the original interval_list files and remove from their headers all of the unused hg38 contigs
+    for filename in orig-interval-files/*.interval_list; do
+      f1=$(basename "$filename")
+      cat $filename | grep -v 'SN\:chr.*\_alt' | grep -v 'SN\:chr.*\_random' | grep -v 'SN\:chrUn_' | grep -v 'SN\:HLA-' | grep -v 'SN\:chrEBV' > "interval-files/$f1.interval_list"
+    done
 
     # Print all the interval filenames with their relative paths to a file
     find interval-files -mindepth 1 -maxdepth 1 | sort > interval_list_list.txt
@@ -305,7 +313,7 @@ task SplitIntervalsTarred {
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-    gsutil -m cp -r "interval-files" $OUTPUT_GCS_DIR/
+      gsutil -m cp -r "interval-files" $OUTPUT_GCS_DIR/
     fi
 
     # Tar up the interval file directory
