@@ -309,7 +309,7 @@ task SplitIntervalsTarred {
     fi
 
     # Tar up the interval file directory
-    tar -cf interval-files.tar interval-files
+    tar -czf interval-files.tar.gz interval-files
   >>>
 
   runtime {
@@ -322,7 +322,7 @@ task SplitIntervalsTarred {
   }
 
   output {
-    File interval_files_tar = "interval-files.tar"
+    File interval_files_tar = "interval-files.tar.gz"
     Array[String] interval_filenames = read_lines("interval_list_list.txt")
     File monitoring_log = "monitoring.log"
   }
