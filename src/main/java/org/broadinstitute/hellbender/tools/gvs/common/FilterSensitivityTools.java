@@ -136,7 +136,7 @@ public class FilterSensitivityTools {
             truthSensitivityThreshold = GATKVCFConstants.SNP.contains(model) ? DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS : DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
         }
         return new VCFHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
-                "Sample Genotype FT filter value indicating that the Genotyped Allele failed " + model + " model sensitivity cutoff (" + truthSensitivityThreshold + "), corresponding with VQSLOD cutoff of " + vqsLodThreshold.toString());
+                "Sample Genotype FT filter value indicating that the genotyped allele failed " + model + " model sensitivity cutoff (" + truthSensitivityThreshold + "), corresponding with VQSLOD cutoff of " + vqsLodThreshold.toString());
     }
 
 }

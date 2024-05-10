@@ -373,9 +373,9 @@ public abstract class ExtractCohort extends ExtractTool {
                 }
                 else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
                     extraHeaderLines.add(new VCFHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
-                            "Sample Genotype FT filter value indicating that the Genotyped Allele failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                            "Sample Genotype FT filter value indicating that the genotyped allele failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
                     extraHeaderLines.add(new VCFHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
-                            "Sample Genotype FT filter value indicating that the Genotyped Allele failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                            "Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
                 }
             }
         }
