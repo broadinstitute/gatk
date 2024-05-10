@@ -436,7 +436,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - gg_VS-1371_CompressTheTarballEchoCallsetVersion
+         - gg_VS-1371_CompressTheTarballAhVarStoreVersion
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
