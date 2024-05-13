@@ -164,7 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1351_retry_with_more_memory_vcf_extract
+             - vs_516_not_so_wide
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -310,7 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1374_fix_integration_tests
+             - vs_516_not_so_wide
          tags:
              - /.*/
    - name: GvsIngestTieout
