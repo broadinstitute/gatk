@@ -28,6 +28,7 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
                         "src/test/resources/filediagnostics/mitoCorrupt.bug8768.fa",
                         List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
                         "src/test/resources/filediagnostics/thisFileIsCorruptMito.false.bug8768.txt",
+                        "src/test/resources/filediagnostics/thisFileIsCorruptMito.false.bug8768.tsv",
                 },
                 {
                         // test file created by rewriting the htsjdk test file
@@ -39,6 +40,7 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
                         "src/test/resources/filediagnostics/mitoCorrupt.bug8768.fa",
                         List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "true")),
                         "src/test/resources/filediagnostics/thisFileIsCorruptMito.true.bug8768.txt",
+                        "src/test/resources/filediagnostics/thisFileIsCorruptMito.true.bug8768.tsv",
                 },
                 {
                         // 0 bad containers
@@ -46,6 +48,7 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
                         b37_reference_20_21,
                         List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
                         "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.false.bug8768.txt",
+                        "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.false.bug8768.tsv",
                 },
                 {
                         // 0 bad containers
@@ -53,6 +56,7 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
                         b37_reference_20_21,
                         List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "true")),
                         "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.true.bug8768.txt",
+                        "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.true.bug8768.tsv",
                 },
                 {
                         // test file created by rewriting the htsjdk test file
@@ -65,6 +69,7 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
                         "src/test/resources/filediagnostics/mitoCorrupt.bug8768.fa",
                         List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
                         "src/test/resources/filediagnostics/thisFileIsCorruptMito.2BadContainers.false.bug8768.txt",
+                        "src/test/resources/filediagnostics/thisFileIsCorruptMito.2BadContainers.false.bug8768.tsv",
                 },
                 {
                         // test file created by rewriting the htsjdk test file
@@ -72,41 +77,50 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
                         // of GATK that has bug https://github.com/broadinstitute/gatk/issues/8768, along with code
                         // to force the file to have 2 bad containers by forcing numerous reads to be aligned to
                         // position 1.
-                        //   // 3 bad containers
-                    "src/test/resources/filediagnostics/thisFileIsCorruptMito.3BadContainers.bug8768.cram",
-                    "src/test/resources/filediagnostics/mitoCorrupt.bug8768.fa",
-                    List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
-                    "src/test/resources/filediagnostics/thisFileIsCorruptMito.3BadContainers.false.bug8768.txt",
+                        // 3 bad containers
+                        "src/test/resources/filediagnostics/thisFileIsCorruptMito.3BadContainers.bug8768.cram",
+                        "src/test/resources/filediagnostics/mitoCorrupt.bug8768.fa",
+                        List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
+                        "src/test/resources/filediagnostics/thisFileIsCorruptMito.3BadContainers.false.bug8768.txt",
+                        "src/test/resources/filediagnostics/thisFileIsCorruptMito.3BadContainers.false.bug8768.tsv",
                 },
-
                 // cloud file test
                 {
-                    // 0 bad containers
-                    "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram",
-                    "gs://hellbender/test/resources/large/human_g1k_v37.20.21.fasta",
-                    List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
-                    "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.false.bug8768.cloud.txt",
-                }
+                        // 0 bad containers
+                        "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram",
+                        "gs://hellbender/test/resources/large/human_g1k_v37.20.21.fasta",
+                        List.of(Pair.of(CRAMIssue8768Detector.VERBOSE_ARG_NAME, "false")),
+                        "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.false.bug8768.cloud.txt",
+                        "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.false.bug8768.cloud.tsv",
+                },
         };
     }
 
-    @Test(dataProvider = "cramAnalysisTestCases")
+    @Test(dataProvider = "cramAnalysisTestCases", groups={"cloud"})
     public void testCramAnalysis(
             final String inputPath,
             final String referencePath, // unused for now
             final List<Pair<String, String>> extraArgs,
-            final String expectedOutputPath) throws IOException {
-        final File outFile = createTempFile("testFileDiagnostics", ".txt");
+            final String expectedTextOutputPath,
+            final String expectedTSVOutputPath) throws IOException {
+        final File outTextFile = createTempFile("testFileDiagnostics", ".txt");
+        final File outTSVFile = expectedTSVOutputPath == null ? null : createTempFile("testFileDiagnostics", ".tsv");
         ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addInput(inputPath);
-        argBuilder.addOutput(outFile);
+        argBuilder.addOutput(outTextFile);
         argBuilder.addReference(Paths.get(referencePath));
+        if (outTSVFile != null) {
+            argBuilder.add(CRAMIssue8768Detector.OUTPUT_TSV__ARG_NAME, outTSVFile.getAbsolutePath());
+        }
         if (extraArgs != null) {
             extraArgs.forEach(argPair -> argBuilder.add(argPair.getKey(), argPair.getValue()));
         }
         runCommandLine(argBuilder.getArgsList());
 
-        IntegrationTestSpec.assertEqualTextFiles(outFile, new File(expectedOutputPath));
+        IntegrationTestSpec.assertEqualTextFiles(outTextFile, new File(expectedTextOutputPath));
+        if (outTSVFile != null) {
+            IntegrationTestSpec.assertEqualTextFiles(outTSVFile, new File(expectedTSVOutputPath));
+        }
     }
 
 }
