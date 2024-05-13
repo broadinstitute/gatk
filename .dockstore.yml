@@ -203,6 +203,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1355
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -250,6 +251,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1300
          tags:
              - /.*/
    - name: GvsBeta

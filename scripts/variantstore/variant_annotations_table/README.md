@@ -21,6 +21,7 @@ configuration. If this option is not selected the `AnnotateVCF` tasks will refus
 
 Optional inputs of note:
 
+- `split_intervals_scatter_count`: If you want to override the step function that decides this based on the number of samples (for Delta we used a scatter of 500, and for Echo a scatter of 1000).
 - `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
 - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
 
