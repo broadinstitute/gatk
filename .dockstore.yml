@@ -438,7 +438,6 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - gg_VS-1368_TarballIsTooBig
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
