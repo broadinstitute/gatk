@@ -303,7 +303,7 @@ task SplitIntervalsTarred {
     # Take the original interval_list files and remove from their headers all of the unused hg38 contigs
     for filename in orig-interval-files/*.interval_list; do
       f1=$(basename "$filename")
-      cat $filename | grep -v 'SN\:chr.*\_alt' | grep -v 'SN\:chr.*\_random' | grep -v 'SN\:chrUn_' | grep -v 'SN\:HLA-' | grep -v 'SN\:chrEBV' > "interval-files/$f1.interval_list"
+      cat $filename | grep -E -v 'SN\:(chr.*_alt|chr.*_random|chrUn_|HLA-|chrEBV)' > "interval-files/$f1.interval_list"
     done
 
     # Print all the interval filenames with their relative paths to a file
