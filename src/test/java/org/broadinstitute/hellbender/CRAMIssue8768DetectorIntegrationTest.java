@@ -108,7 +108,7 @@ public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest
         ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addInput(inputPath);
         argBuilder.addOutput(outTextFile);
-        argBuilder.addReference(Paths.get(referencePath));
+        argBuilder.addReference(referencePath);
         if (outTSVFile != null) {
             argBuilder.add(CRAMIssue8768Detector.OUTPUT_TSV__ARG_NAME, outTSVFile.getAbsolutePath());
         }
