@@ -116,10 +116,16 @@ workflow GvsExtractCallset {
 
   # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
-                                else if GetNumSamplesLoaded.num_samples < 5000 then 1
+                                else if is_wgs then
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
                                      else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 10000
-                                               else if is_wgs then 20000 else 7500
+                                               else 20000
+                                     else
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 1000
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 2500
+                                               else 7500
 
   Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
                                                                   if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
