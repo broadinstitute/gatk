@@ -16,7 +16,7 @@ public class PrintFileDiagnosticsIntegrationTest extends CommandLineProgramTest 
     public Object[][] getFileDiagnosticsTestCases() {
         return new Object[][]{
                 {
-                        "src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v.3.0.samtools.cram",
+                        "src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram",
                         List.of(Pair.of("count-limit", "10")),
                         "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.txt"
                 },
