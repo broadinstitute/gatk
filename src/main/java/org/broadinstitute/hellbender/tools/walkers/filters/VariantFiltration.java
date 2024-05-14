@@ -241,7 +241,8 @@ public final class VariantFiltration extends VariantWalker {
 
     /**
      * If a mask interval list is provided, then set the description of the filter in the VCF header to this String.
-     * Note that if spaces are needed, then the entire description should be enclosed in quotes.
+     * Note that if spaces are needed, then the entire description should be enclosed in quotes. Also note that if
+     * --filter-not-in-mask is used, the description should be adapted to reflect the reverse logic.
      */
     @Argument(fullName=MASK_DESCRIPTION_LONG_NAME, optional=true, doc="Description to add to the FILTER field in VCF header for the mask filter.")
     public String maskDescription;
