@@ -13,14 +13,14 @@ workflow GvsQuickstartIntegration {
         Boolean run_hail_integration = true
         Boolean run_exome_integration = true
         Boolean run_beta_integration = true
-        String? wgs_sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? wgs_vcf_files_column_name
-        String? wgs_vcf_index_files_column_name
-        String? wgs_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
-        String? exome_sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? exome_vcf_files_column_name
-        String? exome_vcf_index_files_column_name
-        String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String wgs_sample_id_column_name = "sample_id"
+        String wgs_vcf_files_column_name = "hg38_reblocked_gvcf"
+        String wgs_vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
+        String wgs_sample_set_name = "wgs_integration_sample_set"
+        String exome_sample_id_column_name = "sample_id"
+        String exome_vcf_files_column_name = "hg38_reblocked_gvcf"
+        String exome_vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
+        String exome_sample_set_name = "exome_integration_sample_set"
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -92,7 +92,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
+                sample_set_name = wgs_sample_set_name,
                 bgzip_output_vcfs = true,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -120,7 +120,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
+                sample_set_name = wgs_sample_set_name,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -166,7 +166,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
+                sample_set_name = wgs_sample_set_name,
                 drop_state = "FORTY",
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -193,7 +193,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
+                sample_set_name = wgs_sample_set_name,
                 drop_state = "FORTY",
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -239,7 +239,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = exome_sample_id_column_name,
                 vcf_files_column_name = exome_vcf_files_column_name,
                 vcf_index_files_column_name = exome_vcf_index_files_column_name,
-                sample_set_name = select_first([exome_sample_set_name, "exome_integration_sample_set"]),
+                sample_set_name = exome_sample_set_name,
                 drop_state = "FORTY",
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -264,6 +264,10 @@ workflow GvsQuickstartIntegration {
     if (run_beta_integration) {
         String project_id = "gvs-internal"
 
+        String workspace_bucket = GetToolVersions.workspace_bucket
+        String submission_id = GetToolVersions.submission_id
+        String extract_output_gcs_dir = "~{workspace_bucket}/output_vcfs/by_submission_id/~{submission_id}/beta"
+
         call Utils.CreateDatasetForTest {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -274,6 +278,7 @@ workflow GvsQuickstartIntegration {
 
         call JointVariantCalling.GvsJointVariantCalling as QuickstartBeta {
             input:
+                go = CreateDatasetForTest.done,
                 call_set_identifier = git_branch_or_tag,
                 dataset_name = CreateDatasetForTest.dataset_name,
                 project_id = project_id,
@@ -290,6 +295,10 @@ workflow GvsQuickstartIntegration {
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 git_branch_or_tag = git_branch_or_tag,
+                sample_id_column_name = wgs_sample_id_column_name,
+                vcf_files_column_name = wgs_vcf_files_column_name,
+                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                extract_output_gcs_dir = extract_output_gcs_dir,
         }
 
         if (!QuickstartBeta.used_tighter_gcp_quotas) {
