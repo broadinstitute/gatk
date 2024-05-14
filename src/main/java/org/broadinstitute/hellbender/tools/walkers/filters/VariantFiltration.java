@@ -342,6 +342,9 @@ public final class VariantFiltration extends VariantWalker {
         if (filterRecordsNotInMask && mask == null) {
             throw new CommandLineException.BadArgumentValue(FILTER_NOT_IN_MASK_LONG_NAME, "argument not allowed if mask argument is not provided");
         }
+        if (maskDescription != null && mask == null) {
+            throw new CommandLineException.BadArgumentValue(MASK_DESCRIPTION_LONG_NAME, "argument not allowed if mask argument is not provided");
+        }
         filterExps = VariantContextUtils.initializeMatchExps(filterNames, filterExpressions);
         genotypeFilterExps = VariantContextUtils.initializeMatchExps(genotypeFilterNames, genotypeFilterExpressions);
         howToTreatMissingValues = failMissingValues ? JexlMissingValueTreatment.TREAT_AS_MATCH : JexlMissingValueTreatment.TREAT_AS_MISMATCH;
