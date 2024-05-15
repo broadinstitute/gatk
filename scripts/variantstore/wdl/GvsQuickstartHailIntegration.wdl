@@ -27,9 +27,9 @@ workflow GvsQuickstartHailIntegration {
         File? gatk_override
         String? hail_version
         String expected_output_prefix
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket

@@ -9,12 +9,13 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
+        Boolean go = true
         String call_set_identifier
         String dataset_name
         String extract_output_gcs_dir
         String project_id
 
-        String sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String sample_id_column_name
         String vcf_files_column_name
         String vcf_index_files_column_name
 
@@ -115,7 +116,6 @@ workflow GvsJointVariantCalling {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
@@ -200,8 +200,6 @@ workflow GvsJointVariantCalling {
             enable_extract_table_ttl = true,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
-
     call ExtractCallset.GvsExtractCallset {
         input:
             go = GvsPrepareCallset.done,
@@ -222,7 +220,7 @@ workflow GvsJointVariantCalling {
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
-            output_gcs_dir = effective_output_gcs_dir,
+            output_gcs_dir = extract_output_gcs_dir,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
@@ -233,7 +231,7 @@ workflow GvsJointVariantCalling {
     }
 
     output {
-        String output_gcs_path = effective_output_gcs_dir
+        String output_gcs_path = extract_output_gcs_dir
         Array[File] output_vcfs = GvsExtractCallset.output_vcfs
         Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
         Array[File] output_vcf_interval_files = GvsExtractCallset.output_vcf_interval_files

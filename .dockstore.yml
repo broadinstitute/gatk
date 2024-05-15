@@ -310,8 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1336_ItsNotASiteFilter
-             - vs_1334_vcf_max_alt_alleles
+             - vs_1374_fix_integration_tests
          tags:
              - /.*/
    - name: GvsIngestTieout

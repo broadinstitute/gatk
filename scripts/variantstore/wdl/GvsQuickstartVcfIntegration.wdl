@@ -25,9 +25,9 @@ workflow GvsQuickstartVcfIntegration {
         String? variants_docker
         String? gatk_docker
         File? gatk_override
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket
@@ -43,13 +43,9 @@ workflow GvsQuickstartVcfIntegration {
       File? none = ""
     }
 
-    if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
-        !defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
-        !defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker)) {
-        call Utils.GetToolVersions {
-            input:
-                git_branch_or_tag = git_branch_or_tag,
-        }
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -61,6 +57,8 @@ workflow GvsQuickstartVcfIntegration {
 
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     if (!use_default_dockers && !defined(gatk_override)) {
@@ -79,8 +77,11 @@ workflow GvsQuickstartVcfIntegration {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    String extract_output_gcs_dir = "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}/~{dataset_suffix}"
+
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
+            go = CreateDatasetForTest.done,
             call_set_identifier = git_branch_or_tag,
             dataset_name = CreateDatasetForTest.dataset_name,
             project_id = project_id,
@@ -113,6 +114,7 @@ workflow GvsQuickstartVcfIntegration {
             git_hash = effective_git_hash,
             tighter_gcp_quotas = false,
             maximum_alternate_alleles = maximum_alternate_alleles,
+            extract_output_gcs_dir = extract_output_gcs_dir,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
