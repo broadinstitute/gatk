@@ -114,7 +114,7 @@ public final class VariantFiltration extends VariantWalker {
     public static final String CLUSTER_WINDOW_SIZE_LONG_NAME = "cluster-window-size";
     public static final String MASK_EXTENSION_LONG_NAME = "mask-extension";
     public static final String MASK_NAME_LONG_NAME = "mask-name";
-    public static final String MASK_DESCRIPTION_LONG_NAME = "mask-desc";
+    public static final String MASK_DESCRIPTION_LONG_NAME = "mask-description";
     public static final String FILTER_NOT_IN_MASK_LONG_NAME = "filter-not-in-mask";
     public static final String MISSING_VAL_LONG_NAME = "missing-values-evaluate-as-failing";
     public static final String INVERT_LONG_NAME = "invert-filter-expression";

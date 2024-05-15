@@ -100,7 +100,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("V", getTestFile("vcfexample2.vcf"))
                 .add("mask-name", "foo")
-                .add("mask-desc", "description")
+                .add("mask-description", "description")
                 .add("mask:BED", getToolTestDataDir() + "goodMask.bed");
         args.addOutput(output);
 
