@@ -15,12 +15,12 @@ import static org.testng.Assert.*;
 public class FilterSensitivityToolsTest {
 
     // for testing inputs
-    private Double definedDoubleInput = 0.0;
-    private Double undefinedDoubleInput = null;
-    private String definedStringInput = "I'm defined!";
-    private String undefinedStringInput = null;
+    private final Double definedDoubleInput = 0.0;
+    private final Double undefinedDoubleInput = null;
+    private final String definedStringInput = "I'm defined!";
+    private final String undefinedStringInput = null;
 
-    private Map<Double, Double> testTrancheMap = new TreeMap<>();
+    private final Map<Double, Double> testTrancheMap = new TreeMap<>();
 
     @BeforeMethod
     public void setUp() {
@@ -211,7 +211,7 @@ public class FilterSensitivityToolsTest {
         VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
                 "Site failed SNP model sensitivity cutoff (90.0), corresponding with VQSLOD cutoff of 0.0");
 
-        assertEquals(getTruthSensitivityHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.SNP), expectedHeader);
+        assertEquals(getTruthSensitivityFilterHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.SNP), expectedHeader);
     }
 
     @Test
@@ -222,7 +222,7 @@ public class FilterSensitivityToolsTest {
         VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
                 "Site failed INDEL model sensitivity cutoff (90.0), corresponding with VQSLOD cutoff of 0.0");
 
-        assertEquals(getTruthSensitivityHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.INDEL), expectedHeader);
+        assertEquals(getTruthSensitivityFilterHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.INDEL), expectedHeader);
     }
 
 }

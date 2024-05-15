@@ -290,6 +290,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1336_ItsNotASiteFilter
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -299,6 +300,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1336_ItsNotASiteFilter
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -308,6 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1336_ItsNotASiteFilter
              - vs_1334_vcf_max_alt_alleles
          tags:
              - /.*/
