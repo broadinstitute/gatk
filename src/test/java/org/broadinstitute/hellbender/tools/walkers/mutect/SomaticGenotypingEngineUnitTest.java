@@ -53,7 +53,7 @@ public class SomaticGenotypingEngineUnitTest {
         final int stop = start + length - 1;
         final VariantContext vc1 = new VariantContextBuilder("SOURCE", "1", start, stop, germlineAlleles)
                 .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, germlineAltAFs).make();
-        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, Optional.of(vc1), DEFAULT_AF);
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, List.of(vc1), DEFAULT_AF);
         Assert.assertEquals(result, expected, 1.0e-10);
     }
 
@@ -69,7 +69,7 @@ public class SomaticGenotypingEngineUnitTest {
 
     @Test(dataProvider = "missingAFData")
     public void testGetGermlineAltAlleleFrequenciesWithMissingAF(final VariantContext vc) {
-        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(vc.getAlleles(), Optional.of(vc), DEFAULT_AF);
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(vc.getAlleles(), List.of(vc), DEFAULT_AF);
         Assert.assertEquals(result, new double[] {DEFAULT_AF}, 1.0e-10);
     }
 }
