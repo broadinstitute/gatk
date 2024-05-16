@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentC
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * For each sample and for each allele a list feature vectors of supporting reads
@@ -35,6 +36,11 @@ public class FeaturizedReadSets {
     public static final int DEFAULT_BASE_QUALITY = 25;
 
     private static final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA);
+    private static final int FEATURES_PER_RANGE = 5;
+    private static final List<Integer> RANGES = List.of(5, 10, 25, 50);
+    public static final int NUM_RANGED_FEATURES = FEATURES_PER_RANGE * RANGES.size();
+    private static final int VERY_BAD_QUAL_THRESHOLD = 10;
+    private static final int BAD_QUAL_THRESHOLD = 20;
 
     private FeaturizedReadSets() { }
 
@@ -126,7 +132,7 @@ public class FeaturizedReadSets {
             result.add(3);
             result.add(2);
 
-            for (int n = 0; n < 20; n++) {
+            for (int n = 0; n < NUM_RANGED_FEATURES; n++) {
                 result.add(0);
             }
         } else {
@@ -143,52 +149,42 @@ public class FeaturizedReadSets {
             final int readStartInHaplotype = readToHaplotypeAlignment.getAlignmentOffset();
             final AlignmentStateMachine asm = new AlignmentStateMachine(copy);
             asm.stepForwardOnGenome();
-            final int[] featuresWithin5Bases = new int[5];
-            final int[] featuresWithin10Bases = new int[5];
-            final int[] featuresWithin25Bases = new int[5];
-            final int[] featuresWithin50Bases = new int[5];
+            final List<int[]> rangedFeatures = RANGES.stream().map(range -> new int[FEATURES_PER_RANGE]).toList();
+
             while (!asm.isRightEdge()) {
                 final PileupElement pe = asm.makePileupElement();
                 final int distanceFromVariant = Math.abs(asm.getReadOffset() - readPositionOfVariantStart);
 
-                int[] featuresToAddTo;
-                if (distanceFromVariant <= 5) {
-                    featuresToAddTo = featuresWithin5Bases;
-                } else if (distanceFromVariant <= 10) {
-                    featuresToAddTo = featuresWithin10Bases;
-                } else if (distanceFromVariant <= 25) {
-                    featuresToAddTo = featuresWithin25Bases;
-                } else if (distanceFromVariant <= 50) {
-                    featuresToAddTo = featuresWithin50Bases;
-                } else {
-                    asm.stepForwardOnGenome();
-                    continue;
-                }
-
-                if (pe.isAfterInsertion()) {
-                    featuresToAddTo[0]++;
-                }
-
-                if (pe.isDeletion()) {
-                    featuresToAddTo[1]++;
-                } else {
-                    final byte base = pe.getBase();
-                    final byte qual = pe.getQual();
-                    final byte haplotypeBase = haplotypeBases[asm.getGenomeOffset() + readStartInHaplotype];
-
-                    if (base != haplotypeBase) {
-                        featuresToAddTo[2]++;
+                // pick which array's features we are accounting.  If the ranges are 5, 10, 25, 50 and the distance is, say 8, then the '<= 10' range is relevant
+                final OptionalInt relevantRange = IntStream.range(0, RANGES.size()).filter(n -> distanceFromVariant <= RANGES.get(n)).findFirst();
+                if (relevantRange.isPresent()) {
+                    final int[] featuresToAddTo = rangedFeatures.get(relevantRange.getAsInt());
+                    if (pe.isAfterInsertion()) {
+                        featuresToAddTo[0]++;
                     }
 
-                    if (qual < 10) {
-                        featuresToAddTo[3]++;
-                    } else if (qual < 20) {
-                        featuresToAddTo[4]++;
+                    if (pe.isDeletion()) {
+                        featuresToAddTo[1]++;
+                    } else {
+                        final byte base = pe.getBase();
+                        final byte qual = pe.getQual();
+                        final byte haplotypeBase = haplotypeBases[asm.getGenomeOffset() + readStartInHaplotype];
+
+                        if (base != haplotypeBase) {
+                            featuresToAddTo[2]++;
+                        }
+
+                        if (qual < VERY_BAD_QUAL_THRESHOLD) {
+                            featuresToAddTo[3]++;
+                        } else if (qual < BAD_QUAL_THRESHOLD) {
+                            featuresToAddTo[4]++;
+                        }
                     }
                 }
                 asm.stepForwardOnGenome();
             }
-            for (final int[] featuresToAdd : List.of(featuresWithin5Bases, featuresWithin10Bases, featuresWithin25Bases, featuresWithin50Bases)) {
+
+            for (final int[] featuresToAdd : rangedFeatures) {
                 for (final int val : featuresToAdd) {
                     result.add(val);
                 }
