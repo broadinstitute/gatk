@@ -433,7 +433,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             List<OptionalInt> germlineIndices = GATKVariantContextUtils.alleleIndices(allAlleles, germlineVC.getAlleles());
             final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC, VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
 
-            for (int alleleIndex = 0; alleleIndex < allAlleles.size(); alleleIndex++) {
+            for (int alleleIndex = 1; alleleIndex < allAlleles.size(); alleleIndex++) { // start at 1 to skip the reference, which doesn't have an AF annotation
                 final Allele allele = allAlleles.get(alleleIndex);
                 // note the -1 since germlineAltAFs do not include ref
                 germlineIndices.get(alleleIndex).ifPresent(germlineIndex -> alleleFrequencies.put(allele, germlineAltAFs.get(germlineIndex - 1)));
