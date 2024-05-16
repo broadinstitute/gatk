@@ -13,6 +13,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
         String drop_state = "FORTY"
+        Boolean bgzip_output_vcfs = false
         String dataset_suffix
         Boolean is_wgs = true
         File? interval_list
@@ -24,14 +25,16 @@ workflow GvsQuickstartVcfIntegration {
         String? variants_docker
         String? gatk_docker
         File? gatk_override
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket
         String? workspace_id
         String? submission_id
+
+        Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
 
@@ -40,13 +43,9 @@ workflow GvsQuickstartVcfIntegration {
       File? none = ""
     }
 
-    if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
-        !defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
-        !defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker)) {
-        call Utils.GetToolVersions {
-            input:
-                git_branch_or_tag = git_branch_or_tag,
-        }
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -58,6 +57,8 @@ workflow GvsQuickstartVcfIntegration {
 
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     if (!use_default_dockers && !defined(gatk_override)) {
@@ -76,8 +77,11 @@ workflow GvsQuickstartVcfIntegration {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    String extract_output_gcs_dir = "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}/~{dataset_suffix}"
+
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
+            go = CreateDatasetForTest.done,
             call_set_identifier = git_branch_or_tag,
             dataset_name = CreateDatasetForTest.dataset_name,
             project_id = project_id,
@@ -92,6 +96,7 @@ workflow GvsQuickstartVcfIntegration {
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             interval_list = interval_list,
             sample_id_column_name = sample_id_column_name,
@@ -108,6 +113,8 @@ workflow GvsQuickstartVcfIntegration {
             git_branch_or_tag = git_branch_or_tag,
             git_hash = effective_git_hash,
             tighter_gcp_quotas = false,
+            maximum_alternate_alleles = maximum_alternate_alleles,
+            extract_output_gcs_dir = extract_output_gcs_dir,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
@@ -116,8 +123,9 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
+                expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
                 actual_vcfs = JointVariantCalling.output_vcfs,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
+                gatk_docker = effective_gatk_docker
         }
 
         if (check_expected_cost_and_table_size_outputs) {
@@ -158,8 +166,9 @@ workflow GvsQuickstartVcfIntegration {
 task AssertIdenticalOutputs {
     input {
         String expected_output_prefix
+        String expected_output_suffix
         Array[File] actual_vcfs
-        String cloud_sdk_docker
+        String gatk_docker
     }
     parameter_meta {
         actual_vcfs: {
@@ -181,8 +190,8 @@ task AssertIdenticalOutputs {
         # Download all the expected data
         mkdir expected
         cd expected
-        gcloud storage cp -r "${expected_prefix}"'/*.vcf.gz' .
-        gzip -d *.gz
+        gcloud storage cp -r "${expected_prefix}"'/*.vcf~{expected_output_suffix}' .
+        gzip -S ~{expected_output_suffix} -d *~{expected_output_suffix}
         cd ..
 
         mkdir actual
@@ -198,7 +207,7 @@ task AssertIdenticalOutputs {
 
         cat actual_manifest.txt | gcloud storage cp -I .
         # Unzip actual result data.
-        ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
+        ls -1 | grep -E '\.vcf\~{expected_output_suffix}$' | xargs gzip -S ~{expected_output_suffix} -d
         cd ..
 
         echo "Header Check"
@@ -254,7 +263,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: cloud_sdk_docker
+        docker: gatk_docker
         disks: "local-disk 500 HDD"
     }
 
@@ -285,11 +294,17 @@ task AssertCostIsTrackedAndExpected {
         mkdir output
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        # Note that in this query we are using the ROW_NUMBER() functionality to ignore extra entries caused
+        # by preemption (for instance there might be two rows for shard_identifier '*033')
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            'SELECT call, step, event_key, sum(event_bytes)
-              FROM `~{dataset_name}.cost_observability`
-              GROUP BY call, step, event_key
-              ORDER BY call, step, event_key' > output/cost_observability.csv
+            'SELECT call, step, event_key, sum(event_bytes) FROM (
+                SELECT *, ROW_NUMBER()
+                OVER (PARTITION BY call, step, event_key, shard_identifier) row_number
+                FROM `~{dataset_name}.cost_observability`
+            )
+            WHERE row_number = 1
+            GROUP BY call, step, event_key
+            ORDER BY call, step, event_key' > output/cost_observability.csv
 
         # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
         echo "0" > ret_val.txt
@@ -320,15 +335,15 @@ task AssertCostIsTrackedAndExpected {
 
             TOLERANCE=0
 
-            # For these two costs, there is non-determinism in the pipeline - we allow a % difference
+            # For these costs, there is non-determinism in the pipeline - we allow a % difference
             if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-              TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
+              TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0239439)
             elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
-              TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
+              TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: n/a)
             elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
-              TOLERANCE=1.0   # 100% tolerance
+              TOLERANCE=0.05   # 5% tolerance (Note - have seen as high as: n/a)
             elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-              TOLERANCE=0.1   # 10% tolerance
+              TOLERANCE=0.05   # 5% tolerance (Note - have seen as high as: 0.00181463
             fi
 
             if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
@@ -340,7 +355,7 @@ task AssertCostIsTrackedAndExpected {
                 DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
               fi
 
-              if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
+              if ! awk "BEGIN{ exit ($DIFF_FOUND -gt $TOLERANCE) }"
               then
                 echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
                 echo "1" > ret_val.txt

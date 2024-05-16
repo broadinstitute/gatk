@@ -10,6 +10,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String dataset_name
     String filter_set_name
     File interval_list
+    File? vcf_eval_bed_file
+    Array[String] chromosomes = ["chr20"]
     String project_id
     Array[String] sample_names
 
@@ -32,6 +34,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   parameter_meta {
     call_set_identifier: "The name of the callset for which we are calculating precision and sensitivity."
+    chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
     interval_list: "The intervals over which to calculate precision and sensitivity."
@@ -41,6 +44,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
     ref_fasta: "The cloud path for the reference fasta sequence."
+    vcf_eval_bed_file: "Optional bed file for EvaluateVcf; if passed, will be used instead of chromosomes."
   }
 
   String output_basename = call_set_identifier + "_PS"
@@ -132,7 +136,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        interval_list = interval_list,
+        vcf_eval_bed_file = vcf_eval_bed_file,
+        chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta,
@@ -146,7 +151,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        interval_list = interval_list,
+        vcf_eval_bed_file = vcf_eval_bed_file,
+        chromosomes = chromosomes,
         all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
@@ -377,9 +383,10 @@ task EvaluateVcf {
     File truth_vcf
     File truth_vcf_index
     File truth_bed
+    File? vcf_eval_bed_file
+    Array[String] chromosomes
 
     Boolean all_records = false
-    File interval_list
 
     File ref_fasta
 
@@ -396,6 +403,14 @@ task EvaluateVcf {
   String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
 
   command <<<
+    chromosomes=( ~{sep=' ' chromosomes} )
+
+    echo "Creating .bed file to control which chromosomes should be evaluated."
+    for i in "${chromosomes[@]}"
+    do
+    echo "$i	0	300000000" >> chromosomes.to.eval.txt
+    done
+
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -403,7 +418,7 @@ task EvaluateVcf {
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
-      --bed-regions ~{interval_list} \
+      --bed-regions ~{if defined(vcf_eval_bed_file) then vcf_eval_bed_file else "chromosomes.to.eval.txt"} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \

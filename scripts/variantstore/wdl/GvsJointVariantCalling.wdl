@@ -9,16 +9,17 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
-        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
-        # tag as specified in `GvsUtils.GetToolVersions`.
-        String? git_branch_or_tag
-        # Potentially specified by a calling integration WDL.
-        String? git_hash
-
-        String dataset_name
-        String project_id
+        Boolean go = true
         String call_set_identifier
-        String? extract_output_gcs_dir
+        String dataset_name
+        String extract_output_gcs_dir
+        String project_id
+
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
+
+        Boolean bgzip_output_vcfs = false
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
         Boolean use_compressed_references = false
@@ -26,11 +27,14 @@ workflow GvsJointVariantCalling {
         Boolean load_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
+
+        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
+        # tag as specified in `GvsUtils.GetToolVersions`.
+        String? git_branch_or_tag
+        # Potentially specified by a calling integration WDL.
+        String? git_hash
 
         String? basic_docker
         String? cloud_sdk_docker
@@ -62,6 +66,8 @@ workflow GvsJointVariantCalling {
 
         File? training_python_script
         File? scoring_python_script
+
+        Int? maximum_alternate_alleles
     }
 
     # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use
@@ -110,7 +116,6 @@ workflow GvsJointVariantCalling {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
@@ -195,8 +200,6 @@ workflow GvsJointVariantCalling {
             enable_extract_table_ttl = true,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
-
     call ExtractCallset.GvsExtractCallset {
         input:
             go = GvsPrepareCallset.done,
@@ -217,16 +220,18 @@ workflow GvsJointVariantCalling {
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
-            output_gcs_dir = effective_output_gcs_dir,
+            output_gcs_dir = extract_output_gcs_dir,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
+            maximum_alternate_alleles = maximum_alternate_alleles,
     }
 
     output {
-        String output_gcs_path = effective_output_gcs_dir
+        String output_gcs_path = extract_output_gcs_dir
         Array[File] output_vcfs = GvsExtractCallset.output_vcfs
         Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
         Array[File] output_vcf_interval_files = GvsExtractCallset.output_vcf_interval_files

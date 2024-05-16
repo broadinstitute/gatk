@@ -73,8 +73,8 @@ task GetToolVersions {
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-04-22-alpine-32804b134a75"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2024_04_24_61922a303"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024_05_10-gatkbase-9bd39afc04ae"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -286,17 +286,25 @@ task SplitIntervalsTarred {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    mkdir interval-files
+    mkdir orig-interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
     --dont-mix-contigs \
     -R ~{ref_fasta} \
     ~{"-L " + intervals} \
     ~{"--weight-bed-file " + interval_weights_bed} \
     -scatter ~{scatter_count} \
-    -O interval-files \
+    -O orig-interval-files \
     ~{"--extension " + intervals_file_extension} \
     --interval-file-num-digits 10 \
     ~{split_intervals_extra_args}
+
+    mkdir interval-files
+
+    # Take the original interval_list files and remove from their headers all of the unused hg38 contigs
+    for filename in orig-interval-files/*.interval_list; do
+      f1=$(basename "$filename")
+      cat $filename | grep -E -v 'SN\:(chr.*_alt|chr.*_random|chrUn_|HLA-|chrEBV)' > "interval-files/$f1.interval_list"
+    done
 
     # Print all the interval filenames with their relative paths to a file
     find interval-files -mindepth 1 -maxdepth 1 | sort > interval_list_list.txt
@@ -309,7 +317,7 @@ task SplitIntervalsTarred {
     fi
 
     # Tar up the interval file directory
-    tar -cf interval-files.tar interval-files
+    tar -czf interval-files.tar.gz interval-files
   >>>
 
   runtime {
@@ -322,7 +330,7 @@ task SplitIntervalsTarred {
   }
 
   output {
-    File interval_files_tar = "interval-files.tar"
+    File interval_files_tar = "interval-files.tar.gz"
     Array[String] interval_filenames = read_lines("interval_list_list.txt")
     File monitoring_log = "monitoring.log"
   }

@@ -16,6 +16,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
+        Boolean bgzip_output_vcfs = false
 
         String? basic_docker
         String? cloud_sdk_docker
@@ -26,14 +27,16 @@ workflow GvsQuickstartHailIntegration {
         File? gatk_override
         String? hail_version
         String expected_output_prefix
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket
         String? workspace_id
         String? submission_id
+
+        Int? maximum_alternate_alleles
     }
 
     String project_id = "gvs-internal"
@@ -72,6 +75,7 @@ workflow GvsQuickstartHailIntegration {
             use_default_dockers = use_default_dockers,
             check_expected_cost_and_table_size_outputs = false,
             gatk_override = gatk_override,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,
@@ -87,6 +91,7 @@ workflow GvsQuickstartHailIntegration {
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             submission_id = effective_submission_id,
+            maximum_alternate_alleles = maximum_alternate_alleles,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
@@ -129,6 +134,7 @@ workflow GvsQuickstartHailIntegration {
             vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
+            tieout_vcf_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             hail_version = effective_hail_version,
     }
@@ -153,6 +159,7 @@ task TieOutVds {
         String vds_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
+        String tieout_vcf_suffix
         String cloud_sdk_slim_docker
         String hail_version
     }
@@ -221,7 +228,7 @@ task TieOutVds {
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 
-        python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
+        python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf~{tieout_vcf_suffix}
 
         pip install pytest
         ln -s ${WORK}/joined.mt .
