@@ -388,7 +388,6 @@ workflows:
        branches:
          - ah_var_store
          - master
-         - vs_1334_vcf_max_alt_alleles
        tags:
          - /.*/
    - name: HailFromWdl
