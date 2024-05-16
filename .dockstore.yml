@@ -164,7 +164,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1351_retry_with_more_memory_vcf_extract
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -310,7 +309,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1374_fix_integration_tests
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -365,7 +363,6 @@ workflows:
        branches:
          - ah_var_store
          - master
-         - vs_1334_vcf_max_alt_alleles
        tags:
          - /.*/
    - name: HailFromWdl
