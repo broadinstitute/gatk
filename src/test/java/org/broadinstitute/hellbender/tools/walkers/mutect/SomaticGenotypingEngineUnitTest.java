@@ -11,6 +11,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +56,21 @@ public class SomaticGenotypingEngineUnitTest {
                 .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, germlineAltAFs).make();
         final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, List.of(vc1), DEFAULT_AF);
         Assert.assertEquals(result, expected, 1.0e-10);
+
+        // multiallelic -- test splitting into multiple VCs
+        if (germlineAlleles.size() > 2) {
+            final Allele ref = germlineAlleles.get(0);
+            final List<VariantContext> germlineVCs = new ArrayList<>();
+            for (int n = 1; n < germlineAlleles.size(); n++) {
+                final Allele alt = germlineAlleles.get(n);
+                final VariantContext splitVC = new VariantContextBuilder("SOURCE", "1", start, stop, List.of(ref, alt))
+                        .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, new double[]{germlineAltAFs[n-1]}).make();
+                germlineVCs.add(splitVC);
+            }
+
+            final double[] splitResult = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, germlineVCs, DEFAULT_AF);
+            Assert.assertEquals(splitResult, expected, 1.0e-10);
+        }
     }
 
     @DataProvider(name = "missingAFData")
