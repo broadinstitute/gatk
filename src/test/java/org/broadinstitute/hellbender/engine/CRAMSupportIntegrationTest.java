@@ -42,9 +42,10 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
                 // we need to use lenient equality for this test because this bam has ~14k reads that fail full
                 // read equality; at least some of which are because they are unmapped/unplaced, but have cigar
                 // strings that both samtools and htsjdk drop when roundtripping
-                {NA12878_20_21_WGS_bam, b37_reference_20_21, true, true},
+                {NA12878_20_21_WGS_bam, b37_reference_20_21, true, false},
                 // this cram is the result of converting the above bam to cram using samtools; once the file is
-                // converted, we can use full read equality so we don't need to be lenient
+                // converted, we can use full read equality when roundtripping through cram, so we don't need to
+                // be lenient
                 {NA12878_20_21_WGS_cram, b37_reference_20_21, false, false}
         };
     }
