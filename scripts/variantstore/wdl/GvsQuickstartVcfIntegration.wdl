@@ -470,6 +470,9 @@ task ValidateVcf {
         input_vcf_index: {
             localization_optional: true
         }
+        ref_fasta: {
+            localization_optional: true
+        }
     }
 
     command <<<
