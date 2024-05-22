@@ -150,7 +150,8 @@ task GetVetTableNames {
     fi
 
     # use the number calculated from the above math to get the vet_* table names to grab data from
-    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+    # Note currently setting max number of rows to 1000, this will silently fail with > 4 million samples!
+    bq --apilog=false query --max_rows 1000 --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
       'SELECT
           table_name
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
