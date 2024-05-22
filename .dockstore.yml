@@ -309,6 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1372-excess-alt-alleles-3-test
          tags:
              - /.*/
    - name: GvsIngestTieout
