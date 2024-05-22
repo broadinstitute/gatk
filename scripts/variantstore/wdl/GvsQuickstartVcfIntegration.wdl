@@ -37,6 +37,9 @@ workflow GvsQuickstartVcfIntegration {
         Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
+    File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+    File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -146,6 +149,18 @@ workflow GvsQuickstartVcfIntegration {
                     expected_output_csv = expected_prefix + "table_sizes.csv",
                     cloud_sdk_docker = effective_cloud_sdk_docker,
             }
+        }
+    }
+
+    scatter(i in range(length(JointVariantCalling.output_vcfs))) {
+        call ValidateVcf {
+            input:
+                input_vcf = JointVariantCalling.output_vcfs[i],
+                input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
+                ref_fasta = reference_fasta,
+#                ref_fai = reference_index,
+#                ref_dict = reference_dict,
+                gatk_docker = effective_gatk_docker,
         }
     }
 
@@ -429,5 +444,57 @@ task AssertTableSizesAreExpected {
     output {
         File table_sizes_output_csv = "output/table_sizes.csv"
         File differences = "differences.txt"
+    }
+}
+
+task ValidateVcf {
+    input {
+        File input_vcf
+        File input_vcf_index
+        File ref_fasta
+#        File ref_fai
+#        File ref_dict
+
+        Int? preemptible_tries
+        String gatk_docker
+    }
+
+
+    Int disk_size_gb = ceil(2 * (size(input_vcf, "GiB") + size(input_vcf_index, "GiB"))) + 100
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    parameter_meta {
+        input_vcf: {
+            localization_optional: true
+        }
+        input_vcf_index: {
+            localization_optional: true
+        }
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        gatk --java-options -Xmx3g ValidateVariants \
+          -V ~{input_vcf} \
+          -R ~{ref_fasta}
+
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        preemptible: select_first([preemptible_tries, 3])
+        memory: "3 GiB"
+        disks: "local-disk ~{disk_size} HDD"
+    }
+
+    output {
+        File output_vcf = "~{output_vcf_name}"
+        File output_vcf_index = "~{output_vcf_name}.tbi"
+        File monitoring_log = "monitoring.log"
     }
 }

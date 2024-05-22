@@ -289,7 +289,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1336_ItsNotASiteFilter
+             - gg_AddValidateVcfToTests
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -299,7 +299,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1336_ItsNotASiteFilter
+             - gg_AddValidateVcfToTests
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -309,6 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_AddValidateVcfToTests
          tags:
              - /.*/
    - name: GvsIngestTieout
