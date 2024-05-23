@@ -61,8 +61,6 @@ workflow GvsQuickstartVcfIntegration {
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
-    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
@@ -459,7 +457,6 @@ task ValidateVcf {
         String gatk_docker
     }
 
-
     Int disk_size_gb = ceil(2 * (size(input_vcf, "GiB") + size(input_vcf_index, "GiB"))) + 100
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -492,12 +489,10 @@ task ValidateVcf {
         docker: gatk_docker
         preemptible: select_first([preemptible_tries, 3])
         memory: "3 GiB"
-        disks: "local-disk ~{disk_size} HDD"
+        disks: "local-disk ~{disk_size_gb} HDD"
     }
 
     output {
-        File output_vcf = "~{output_vcf_name}"
-        File output_vcf_index = "~{output_vcf_name}.tbi"
         File monitoring_log = "monitoring.log"
     }
 }
