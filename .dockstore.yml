@@ -290,6 +290,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-903_BetterIzeCreateVATFromVDS
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -299,6 +300,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-903_BetterIzeCreateVATFromVDS
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -308,6 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-903_BetterIzeCreateVATFromVDS
          tags:
              - /.*/
    - name: GvsIngestTieout
