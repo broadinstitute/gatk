@@ -315,6 +315,7 @@ task EnsureVatTableHasVariants {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check ok one row
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
@@ -369,6 +370,7 @@ task SpotCheckForExpectedTranscripts {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
@@ -438,6 +440,7 @@ task SchemaNoNullRequiredFields {
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             contig,
@@ -517,6 +520,7 @@ task SchemaOnlyOneRowPerNullTranscript {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid,
             COUNT(vid) AS num_rows
@@ -577,6 +581,7 @@ task SchemaPrimaryKey {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             vid,
@@ -636,6 +641,7 @@ task SchemaEnsemblTranscripts {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
@@ -696,6 +702,7 @@ task SchemaNonzeroAcAn {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
@@ -758,6 +765,7 @@ task SchemaNullTranscriptsExist {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
@@ -815,6 +823,7 @@ task SubpopulationMax {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
@@ -877,6 +886,7 @@ task SubpopulationAlleleCount {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
@@ -933,6 +943,7 @@ task SubpopulationAlleleNumber {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         vid
         FROM
@@ -988,6 +999,7 @@ task DuplicateAnnotations {
 
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
         SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count
         FROM `~{fq_vat_table}`
@@ -995,6 +1007,7 @@ task DuplicateAnnotations {
         HAVING an_count > 1
         ' > bq_an_output.csv
 
+        # check may produce > 100 rows but anything > 0 is an error; may need to update error message
         bq --apilog=false query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
         SELECT contig, position, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count
         FROM `~{fq_vat_table}`
@@ -1073,6 +1086,7 @@ task ClinvarSignificance {
         #                                 "other",
         #                                 "not provided"]
 
+        # check we currently expect this to be 13 so anything more than that would be an error
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
@@ -1147,6 +1161,7 @@ task SchemaAAChangeAndExonNumberConsistent {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check not sure what all this is doing but looks like it could be a problem
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) AS count FROM
         (
@@ -1247,6 +1262,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # check not sure what all this is doing but looks like it could be a problem
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) FROM
         (

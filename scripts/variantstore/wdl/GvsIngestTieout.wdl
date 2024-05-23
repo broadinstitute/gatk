@@ -88,6 +88,7 @@ task IngestTieout {
         check_table() {
             local table_name=$1
 
+            # check, prob should delete this whole file
             bq --apilog=false query --project_id=~{project} --format=csv --use_legacy_sql=false \
                 '(SELECT
                         sample_id, count(*) AS count

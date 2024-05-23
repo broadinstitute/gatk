@@ -98,6 +98,7 @@ task GetMaxSampleId {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    # check ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
     'SELECT IFNULL(MAX(sample_id), 0) AS max_sample_id FROM `~{dataset_name}.alt_allele`' > num_rows.csv
 
@@ -151,6 +152,7 @@ task GetVetTableNames {
 
     # use the number calculated from the above math to get the vet_* table names to grab data from
     # Note currently setting max number of rows to 1000, this will silently fail with > 4 million samples!
+    # check could make this a kajillion like the statistics query, or use max_sample_id
     bq --apilog=false query --max_rows 1000 --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
       'SELECT
           table_name
@@ -205,6 +207,7 @@ task CreateAltAlleleTable {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    # check ok create table
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'CREATE TABLE IF NOT EXISTS `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,

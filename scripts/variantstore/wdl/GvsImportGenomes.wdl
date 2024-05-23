@@ -304,6 +304,7 @@ task LoadData {
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
+    # check ok one row
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
@@ -318,6 +319,7 @@ task LoadData {
         samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
         samples.withdrawn is NULL" > query.txt
 
+      # check ok sets max rows explicitly
       cat query.txt |
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
         $status.status_bucket.csv
@@ -454,6 +456,7 @@ task SetIsLoadedColumn {
     # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
     # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
 
+    # check ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
     'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true
     WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
@@ -524,6 +527,7 @@ task GetUningestedSampleIds {
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} ~{external_sample_names} "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
+    # check ok one row
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
@@ -554,6 +558,7 @@ task GetUningestedSampleIds {
         samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
         samples.withdrawn is NULL" > query.txt
 
+      # check ok sets max rows explicitly
       cat query.txt |
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
         $status.status_bucket.csv

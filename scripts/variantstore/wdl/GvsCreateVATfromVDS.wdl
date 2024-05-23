@@ -863,6 +863,7 @@ task BigQueryLoadJson {
         # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
         # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
 
+        # ok selecting into a table
         bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table_name} --replace --project_id=~{project_id} \
         'SELECT
             v.vid,
@@ -1032,6 +1033,7 @@ task DeduplicateVatInBigQuery {
 
         # Now we query the original VAT table and recreate it, but remove any rows that appear twice.
 
+        # ok selecting into a table
         bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{output_vat_table_name} --replace --project_id=~{project_id} \
         ' SELECT * EXCEPT(row_number) FROM (
             SELECT

@@ -603,6 +603,7 @@ task GenerateSampleListFile {
 
         echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
+        # check looks wrong
         bq --apilog=false --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} \
         'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
 
