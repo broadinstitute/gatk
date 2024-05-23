@@ -105,7 +105,7 @@ task IngestTieout {
 
             if [[ -s differences.txt ]]; then
                 fail=1
-                echo "${table_name} row counts are mismatched for the following samples:"
+                echo "${table_name} row counts are mismatched for the following samples (100 samples max in output):"
                 cat differences.txt
             fi
         }

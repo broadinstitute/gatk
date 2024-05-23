@@ -604,7 +604,7 @@ task ExportToCSV {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # check lol but are we sure that's enough?
+        # check max rows set to at least the number of samples
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
           SELECT * FROM `~{project_id}.~{dataset_name}.~{statistics_table}` ORDER BY SAMPLE_NAME

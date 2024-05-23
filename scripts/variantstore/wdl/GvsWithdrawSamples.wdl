@@ -98,8 +98,8 @@ task WithdrawSamples {
 
     # Now, determine if there are any samples in the uploaded list that are NOT in sample_info and report this
     echo "Determining if there are any new samples that should be uploaded"
-    # check isn't right, but the real test seems to be if there are > 0 samples returned here?
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    # check max rows for at least as many samples as we have
+    bq --apilog=false --project_id=~{project_id} query --max_rows 100000000 --format=csv --use_legacy_sql=false \
       'SELECT callset.sample_name
         FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
         LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
