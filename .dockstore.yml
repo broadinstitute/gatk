@@ -202,7 +202,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-903_BetterIzeCreateVATFromVDS
+             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCF
              - rsa_vs_1355
          tags:
              - /.*/
@@ -290,7 +290,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-903_BetterIzeCreateVATFromVDS
+             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCF
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -300,7 +300,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-903_BetterIzeCreateVATFromVDS
+             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCF
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -310,7 +310,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-903_BetterIzeCreateVATFromVDS
+             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCF
          tags:
              - /.*/
    - name: GvsIngestTieout
