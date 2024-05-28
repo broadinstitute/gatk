@@ -88,7 +88,7 @@ task IngestTieout {
         check_table() {
             local table_name=$1
 
-            # bq query check: ok, anything > 0 is an error, error message explicit with 100 row limit.
+            # bq query --max_rows check: ok, anything > 0 is an error, error message explicit about 100 row limit.
             bq --apilog=false query --project_id=~{project} --format=csv --use_legacy_sql=false \
                 '(SELECT
                         sample_id, count(*) AS count

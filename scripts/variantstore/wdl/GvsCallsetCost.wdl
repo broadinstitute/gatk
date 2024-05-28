@@ -117,7 +117,7 @@ task CoreStorageModelSizes {
             local table_pattern="$1"
             local output_file_name="$2"
 
-            # bq query check: explicitly set massive max rows as we expect there to be as many rows as there are superpartitions
+            # bq query --max_rows check: explicitly set massive max rows as we expect there to be as many rows as there are superpartitions
             bq --apilog=false query --max_rows 10000000 --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
                 'SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2)
                     FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
@@ -155,7 +155,7 @@ task ReadCostObservabilityTable {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # bq query check: explicitly set massive max rows as we expect there to be as many rows as there are superpartitions
+        # bq query --max_rows check: explicitly set massive max rows as we expect there to be as many rows as there are superpartitions
         bq --apilog=false query --max_rows 10000000 --project_id=~{project_id} --format=prettyjson --use_legacy_sql=false \
             'SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes
                 FROM `~{project_id}.~{dataset_name}.cost_observability`

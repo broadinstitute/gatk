@@ -98,7 +98,7 @@ task GetMaxSampleId {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
     'SELECT IFNULL(MAX(sample_id), 0) AS max_sample_id FROM `~{dataset_name}.alt_allele`' > num_rows.csv
 
@@ -206,7 +206,7 @@ task CreateAltAlleleTable {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    # bq query check: ok create table
+    # bq query --max_rows check: ok create table
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'CREATE TABLE IF NOT EXISTS `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,

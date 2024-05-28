@@ -322,7 +322,7 @@ task CollectMetricsForChromosome {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        # bq query check: ok one row
+        # bq query --max_rows check: ok one row
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = ~{chromosome}' | sed 1d > existing_row_count.txt
 
@@ -333,7 +333,7 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        # bq query check: ok insert (elaborate one)
+        # bq query --max_rows check: ok insert (elaborate one)
         bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
         CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
         RETURNS STRING
@@ -455,7 +455,7 @@ task AggregateMetricsAcrossChromosomes {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # bq query check: ok one row
+        # bq query --max_rows check: ok one row
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
         ' | sed 1d > existing_row_count.txt
@@ -467,7 +467,7 @@ task AggregateMetricsAcrossChromosomes {
             exit 1
         fi
 
-        # bq query check: ok insert
+        # bq query --max_rows check: ok insert
         bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
@@ -532,7 +532,7 @@ task CollectStatistics {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # bq query check: ok one row
+        # bq query --max_rows check: ok one row
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{statistics_table}`
         ' | sed 1d > existing_row_count.txt
@@ -544,7 +544,7 @@ task CollectStatistics {
             exit 1
         fi
 
-        # bq query check: ok insert
+        # bq query --max_rows check: ok insert
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{statistics_table}` (
             sample_id,
@@ -604,7 +604,7 @@ task ExportToCSV {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # bq query check: max rows set to at least the number of samples
+        # bq query --max_rows check: max rows set to at least the number of samples
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
           SELECT * FROM `~{project_id}.~{dataset_name}.~{statistics_table}` ORDER BY SAMPLE_NAME

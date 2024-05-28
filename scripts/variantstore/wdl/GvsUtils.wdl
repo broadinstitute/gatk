@@ -414,7 +414,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
     'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like "~{sep=" OR table_name like " table_patterns}"' > results.txt
 
@@ -742,7 +742,7 @@ task GetNumSamplesLoaded {
     bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
       SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
@@ -787,7 +787,7 @@ task CountSuperpartitions {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # bq query check: ok one row
+        # bq query --max_rows check: ok one row
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
@@ -831,7 +831,7 @@ task ValidateFilterSetName {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        # bq query check: enlarged max rows in case we get a lot of filter names
+        # bq query --max_rows check: enlarged max rows in case we get a lot of filter names
         OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --max_rows 1000000 --use_legacy_sql=false ~{bq_labels} 'SELECT filter_set_name as available_filter_set_names FROM `~{fq_filter_set_info_table}` GROUP BY filter_set_name')
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
@@ -880,7 +880,7 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'BEGIN
       SELECT COUNT(1) AS counted FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
@@ -891,7 +891,7 @@ task IsVQSRLite {
     LITE_COUNT=`cat lite_count_file.txt`
 
 
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
       'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
       AND vqslod IS NOT NULL' | tail -1 > classic_count_file.txt
@@ -939,7 +939,7 @@ task IsUsingCompressedReferences {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
       SELECT
         column_name
@@ -1000,7 +1000,7 @@ task GetExtractVetTableVersion {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # bq query check: ok one row
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{query_project} --format=csv --use_legacy_sql=false '
       SELECT
         count(1)
