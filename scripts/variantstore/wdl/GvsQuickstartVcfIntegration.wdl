@@ -37,6 +37,7 @@ workflow GvsQuickstartVcfIntegration {
         Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
+    File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -144,6 +145,16 @@ workflow GvsQuickstartVcfIntegration {
                     expected_output_csv = expected_prefix + "table_sizes.csv",
                     cloud_sdk_docker = effective_cloud_sdk_docker,
             }
+        }
+    }
+
+    scatter(i in range(length(JointVariantCalling.output_vcfs))) {
+        call ValidateVcf {
+            input:
+                input_vcf = JointVariantCalling.output_vcfs[i],
+                input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
+                ref_fasta = reference_fasta,
+                gatk_docker = effective_gatk_docker,
         }
     }
 
@@ -427,5 +438,54 @@ task AssertTableSizesAreExpected {
     output {
         File table_sizes_output_csv = "output/table_sizes.csv"
         File differences = "differences.txt"
+    }
+}
+
+task ValidateVcf {
+    input {
+        File input_vcf
+        File input_vcf_index
+        File ref_fasta
+
+        Int? preemptible_tries
+        String gatk_docker
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    parameter_meta {
+        input_vcf: {
+            localization_optional: true
+        }
+        input_vcf_index: {
+            localization_optional: true
+        }
+        ref_fasta: {
+            localization_optional: true
+        }
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        gatk --java-options -Xmx3g ValidateVariants \
+          -V ~{input_vcf} \
+          -R ~{ref_fasta}
+
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        preemptible: select_first([preemptible_tries, 3])
+        memory: "3 GiB"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        File monitoring_log = "monitoring.log"
     }
 }
