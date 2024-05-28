@@ -82,7 +82,7 @@ task BigQueryExportVat {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # note: tab delimiter and compression creates tsv.gz files
-        # check ok export
+        # bq query check: ok export
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
         uri="~{export_path}",

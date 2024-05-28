@@ -203,23 +203,23 @@ task AssignIds {
     bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock ~{sample_names} "sample_name:STRING"
 
     # add sample_name to sample_info_table
-    # check ok insert
+    # bq query check: ok insert
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
       'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name, is_control) select sample_name, ~{samples_are_controls} from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`)'
 
     # get the current maximum id, or 0 if there are none
-    # check ok single row
+    # bq query check: ok single row
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} 'SELECT IFNULL(MAX(sample_id),0) FROM `~{dataset_name}.~{sample_info_table}`' > maxid
     offset=$(tail -1 maxid)
 
     # perform actual id assignment
-    # check ok update
+    # bq query check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} --parameter=offset:INTEGER:$offset \
       'UPDATE `~{dataset_name}.~{sample_info_table}` m SET m.sample_id = id_assign.id FROM (SELECT sample_name, @offset + ROW_NUMBER() OVER(order by sample_name) as id FROM `~{dataset_name}.~{sample_info_table}` WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;'
 
     # retrieve the list of assigned ids and samples to update the datamodel
     echo "entity:sample_id,gvs_id" > update.tsv
-    # check ok num samples explicit
+    # bq query check: ok num samples explicit
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples --parameter=offset:INTEGER:$offset \
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
