@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
  * are accumulated as well.
  */
 public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
-    private final static Logger logger = LogManager.getLogger(FlowAnnotatorBase.class);
     protected final OneShotLogger flowMissingOneShotLogger = new OneShotLogger(FlowAnnotatorBase.class);
 
 
@@ -251,7 +250,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
             final byte        before = getReferenceNucleotide(localContext, vc.getStart() - 1);
             final byte[]      after = getReferenceHmerPlus(localContext, vc.getEnd() + 1, MOTIF_SIZE);
             if (after.length==0){
-                logger.warn("Failed to get hmer from reference, isHmerIndel and RightMotif annotations will not be calculated. " +
+                flowMissingOneShotLogger.warn("Failed to get hmer from reference, isHmerIndel and RightMotif annotations will not be calculated. " +
                         "Start index: " + vc.getEnd() + 1 + " Reference length: " + localContext.ref.getBases().length);
                 return;
             }
@@ -343,7 +342,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
 
             String  motif = getRefMotif(localContext, vc.getStart() - MOTIF_SIZE, MOTIF_SIZE);
             if (motif.length() != MOTIF_SIZE){
-                logger.warn("Failed to get motif from reference, getLeftMotif annotation will not be calculated. " +
+                flowMissingOneShotLogger.warn("Failed to get motif from reference, getLeftMotif annotation will not be calculated. " +
                         "Start index: " + vc.getStart() + " Reference length: " + localContext.ref.getBases().length);
                 return;
             }
@@ -361,7 +360,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
         final int         refLength = vc.getReference().length();
         String      motif = getRefMotif(localContext, vc.getStart() + refLength, MOTIF_SIZE);
         if (motif.length() != MOTIF_SIZE){
-            logger.warn("Failed to get motif from reference, getRightMotif annotation will not be calculated. " +
+            flowMissingOneShotLogger.warn("Failed to get motif from reference, getRightMotif annotation will not be calculated. " +
                     "Start index: " + vc.getStart() + refLength + " Reference length: " + localContext.ref.getBases().length);
             return;
         }
@@ -380,7 +379,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
         final int         begin = vc.getStart() - (GC_CONTENT_SIZE / 2);
         final String      seq = getRefMotif(localContext, begin + 1, GC_CONTENT_SIZE);
         if ( seq.length() != GC_CONTENT_SIZE ) {
-            logger.warn("gcContent will not be calculated at position " + vc.getContig() + ":" + vc.getStart() +
+            flowMissingOneShotLogger.warn("gcContent will not be calculated at position " + vc.getContig() + ":" + vc.getStart() +
                     " too close to the edge of the reference");
             return;
         }
@@ -457,7 +456,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
         try {
             Utils.validIndex(index, bases.length);
         } catch (IllegalArgumentException e) {
-            logger.warn("Failed to get hmer from reference. Start index: " + index + " Reference length: " + bases.length);
+            flowMissingOneShotLogger.warn("Failed to get hmer from reference. Start index: " + index + " Reference length: " + bases.length);
             return new byte[0];
         }
 
