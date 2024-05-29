@@ -41,6 +41,7 @@ public class ExtractCohortEngine {
     private final Long maxLocation;
     private final TableReference filterSetInfoTableRef;
     private final TableReference filterSetSiteTableRef;
+    private final TableReference samplePloidyTableRef;
     private final ReferenceDataSource refSource;
     private final Double vqScoreSNPThreshold;
     private final Double vqScoreINDELThreshold;
@@ -128,6 +129,7 @@ public class ExtractCohortEngine {
                                final Long maxLocation,
                                final String filterSetInfoTableName,
                                final String filterSetSiteTableName,
+                               final String samplePloidyTableName,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
                                final Double vqScoreSNPThreshold,
@@ -196,6 +198,7 @@ public class ExtractCohortEngine {
 
         this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
         this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
+        this.samplePloidyTableRef = (samplePloidyTableName != null? new TableReference(samplePloidyTableName, SchemaUtils.SAMPLE_PLOIDY_FIELDS) : null);
 
         this.filterSetName = filterSetName;
 
@@ -236,10 +239,14 @@ public class ExtractCohortEngine {
         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap = new HashMap<>();
         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap = new HashMap<>();
         final Map<Long, List<String>> siteFilterMap = new HashMap<>();
+        final Map<String, Integer> samplePloidyMap = new HashMap<>();
 
         String rowRestriction = null;
+        String ploidyTableRestriction = null;
         if (minLocation != null && maxLocation != null) {
             rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
+            // This block of code already requires minLocation and maxLocation to be on the same chromosome, so we can just hold to that here
+            ploidyTableRestriction = "chromosome = " + ((minLocation/SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment);
         }
         final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
@@ -288,6 +295,21 @@ public class ExtractCohortEngine {
             }
         }
 
+        if (samplePloidyTableRef != null) {
+            try (StorageAPIAvroReader reader = new StorageAPIAvroReader(samplePloidyTableRef, ploidyTableRestriction, projectID)) {
+                for (final GenericRecord queryRow : reader) {
+                    // the key will be a basic joining of chromosome (represented as a location) with sample name
+                    String chromosome = queryRow.get(SchemaUtils.CHROMOSOME).toString();
+                    String sampleId = queryRow.get(SchemaUtils.SAMPLE_ID).toString();
+                    Integer ploidy = Integer.parseInt(queryRow.get(SchemaUtils.PLOIDY).toString());
+                    // If not for this, we'd need a map to another data structure just to look up the ploidy. Best to flatten the compound key
+                    String key = chromosome+"-"+sampleId;
+                    samplePloidyMap.put(chromosome+"-"+sampleId, ploidy);
+                }
+                processBytesScanned(reader);
+            }
+        }
+
         if (printDebugInformation) {
             logger.debug("using storage api with local sort");
         }
@@ -300,13 +322,13 @@ public class ExtractCohortEngine {
         SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
         if (fqRangesExtractVetTable != null) {
             createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable,
-                    sampleIdsToExtract, minLocation, maxLocation, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+                    sampleIdsToExtract, minLocation, maxLocation, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
         } else if (vetRangesFQDataSet != null) {
             createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation,
-                    fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+                    fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
         } else {
             createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation,
-                    maxLocation,  fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
+                    maxLocation,  fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
         }
 
         logger.debug("Finished Initializing Reader");
@@ -423,6 +445,7 @@ public class ExtractCohortEngine {
                                                              final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
                                                              final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                                              final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
+                                                             final Map<String, Integer> samplePloidyMap,
                                                              final boolean noVQScoreFilteringRequested,
                                                              final Map<Long, List<String>> siteFilterMap,
                                                              final ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
@@ -520,7 +543,7 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, scoreMap, vqScoreMap, yngMap, noVQScoreFilteringRequested, siteFilterMap);
+        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, scoreMap, vqScoreMap, yngMap, samplePloidyMap, noVQScoreFilteringRequested, siteFilterMap);
     }
 
     VariantContext finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
@@ -534,6 +557,7 @@ public class ExtractCohortEngine {
                                           final Map<Allele, Map<Allele, Double>> scoreMap,
                                           final Map<Allele, Map<Allele, Double>> vqScoreMap,
                                           final Map<Allele, Map<Allele, String>> yngMap,
+                                          final Map<String, Integer> samplePloidyMap,
                                           final boolean noVQScoreFilteringRequested,
                                           final Map<Long, List<String>> siteFilterMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
@@ -554,6 +578,7 @@ public class ExtractCohortEngine {
 
         // create alleles (same for all genotypes)
         List<Allele> gtAlleles = Arrays.asList(mergedVC.getReference(), mergedVC.getReference());
+        List<Allele> gtHaploidAlleles = Arrays.asList(mergedVC.getReference());
 
         final GenotypesContext genotypes = GenotypesContext.copy(vcWithRef.getGenotypes());
         GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
@@ -562,6 +587,8 @@ public class ExtractCohortEngine {
         for (final ReferenceGenotypeInfo info : referenceCalls) {
             genotypeBuilder.reset(false);
             genotypeBuilder.name(info.getSampleName());
+            // TODO: This is where we expand out "this is ref" to a "0/0" call.  Reference ploidy data here
+            String key = "asdf";
             genotypeBuilder.alleles(gtAlleles);
             genotypeBuilder.GQ(info.getGQ());
             genotypes.add(genotypeBuilder.make());
@@ -994,6 +1021,7 @@ public class ExtractCohortEngine {
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
             final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
+            final Map<String, Integer> samplePloidyMap,
             final Map<Long, List<String>> siteFilterMap,
             final boolean noVQScoreFilteringRequested) {
 
@@ -1021,7 +1049,7 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     //
@@ -1036,6 +1064,7 @@ public class ExtractCohortEngine {
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
             final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
+            final Map<String, Integer> samplePloidyMap,
             final Map<Long, List<String>> siteFilterMap,
             final boolean noVQScoreFilteringRequested) {
 
@@ -1061,7 +1090,7 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
@@ -1129,6 +1158,7 @@ public class ExtractCohortEngine {
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
             final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
+            final Map<String, Integer> samplePloidyMap,
             final Map<Long, List<String>> siteFilterMap,
             final boolean noVQScoreFilteringRequested,
             final boolean presortedAvroFiles) {
@@ -1155,7 +1185,7 @@ public class ExtractCohortEngine {
             sortedReferenceRange = localSortedReferenceRange;
         }
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
 
     }
 
@@ -1165,6 +1195,7 @@ public class ExtractCohortEngine {
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
+                                        final Map<String, Integer> samplePloidyMap,
                                         final Map<Long, List<String>> siteFilterMap,
                                         final boolean noVQScoreFilteringRequested
     ) {
@@ -1211,7 +1242,7 @@ public class ExtractCohortEngine {
                 }
 
                 ++totalNumberOfSites;
-                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullScoreMap, fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
+                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
                 variantContextConsumer.accept(vc);
                 currentPositionRecords.clear();
 
@@ -1242,7 +1273,7 @@ public class ExtractCohortEngine {
 
         if (!currentPositionRecords.isEmpty()) {
             ++totalNumberOfSites;
-            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullScoreMap, fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
+            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
             variantContextConsumer.accept(vc);
         }
     }

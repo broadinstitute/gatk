@@ -52,6 +52,13 @@ public abstract class ExtractCohort extends ExtractTool {
     private String tranchesTableName = null;
 
     @Argument(
+            fullName = "sample-ploidy-table",
+            doc = "Fully qualified name of the sample ploidy table to use for cohort extraction.  It stores ploidy data for every sample and chromosome",
+            optional = true
+    )
+    private String samplePloidyTableName = null;
+
+    @Argument(
             fullName = "vet-ranges-fq-dataset",
             doc = "Fully qualified name for the dataset (<project>.<dataset>) that contains the VET and REF_RANGES data for extract",
             optional = true
@@ -326,6 +333,10 @@ public abstract class ExtractCohort extends ExtractTool {
             }
         }
 
+        if (samplePloidyTableName == null) {
+            logger.warn("No linked table with ploidy information.  Assuming fully diploid genome");
+        }
+
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
             if (isVQSR) {
@@ -458,6 +469,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         maxLocation,
                         filterSetInfoTableName,
                         filterSetSiteTableName,
+                        samplePloidyTableName,
                         localSortMaxRecordsInRam,
                         printDebugInformation,
                         truthSensitivitySNPThreshold,
@@ -489,6 +501,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         maxLocation,
                         filterSetInfoTableName,
                         filterSetSiteTableName,
+                        samplePloidyTableName,
                         localSortMaxRecordsInRam,
                         printDebugInformation,
                         vqsLodSNPThreshold,
