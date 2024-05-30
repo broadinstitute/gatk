@@ -3,7 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# Bec didn't find this comment!!
+# Getting old.
 
 workflow GvsCreateVATfromVDS {
     input {
