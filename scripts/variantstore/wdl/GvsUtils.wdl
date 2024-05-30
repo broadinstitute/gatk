@@ -1310,11 +1310,11 @@ task PopulateFilterSetInfo {
   }
 }
 
-# TODO - should put in a do not overwrite that file logic
 task CopyFile {
   input {
     File input_file
     String output_gcs_dir
+    Boolean allow_overwrite = false
     String cloud_sdk_docker
   }
   parameter_meta {
@@ -1333,10 +1333,16 @@ task CopyFile {
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
+    OUTPUT_PATH=${OUTPUT_GCS_DIR}/~{base_filename}
+    if [[ ~{allow_overwrite} = 'false' && -f $OUTPUT_PATH ]; then
+      echo "Output file $OUTPUT_PATH already exists and `allow_overwrite' flag is not set"
+      exit 1
     fi
-    echo ${OUTPUT_GCS_DIR}/~{base_filename} > output_file_path.txt
+    echo "La"
+
+    gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
+    echo "di"
+    echo ${OUTPUT_PATH} > output_file_path.txt
   >>>
   output {
     String output_file_path = read_string("output_file_path.txt")
