@@ -98,7 +98,8 @@ task WithdrawSamples {
 
     # Now, determine if there are any samples in the uploaded list that are NOT in sample_info and report this
     echo "Determining if there are any new samples that should be uploaded"
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    # bq query --max_rows check: max rows for at least as many samples as we have
+    bq --apilog=false --project_id=~{project_id} query --max_rows 100000000 --format=csv --use_legacy_sql=false \
       'SELECT callset.sample_name
         FROM `~{project_id}.'"${TEMP_TABLE_NAME}"'` callset
         LEFT JOIN `~{dataset_name}.sample_info` sample_info ON sample_info.sample_name = callset.sample_name
@@ -119,6 +120,7 @@ task WithdrawSamples {
 
     # Update sample_info.withdrawn by joining on the temp table to figure out which samples should be marked as withdrawn
     echo "Updating samples that should be withdrawn"
+    # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       'UPDATE `~{dataset_name}.sample_info` AS samples SET withdrawn = "~{withdrawn_timestamp}"
         WHERE NOT EXISTS

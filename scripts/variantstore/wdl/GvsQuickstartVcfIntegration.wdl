@@ -305,7 +305,8 @@ task AssertCostIsTrackedAndExpected {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         # Note that in this query we are using the ROW_NUMBER() functionality to ignore extra entries caused
         # by preemption (for instance there might be two rows for shard_identifier '*033')
-        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+        # bq query --max_rows check: max_rows explicitly set to massive number
+        bq --apilog=false query --max_rows 100000000 --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             'SELECT call, step, event_key, sum(event_bytes) FROM (
                 SELECT *, ROW_NUMBER()
                 OVER (PARTITION BY call, step, event_key, shard_identifier) row_number
@@ -411,6 +412,7 @@ task AssertTableSizesAreExpected {
         mkdir output
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        # bq query --max_rows check: aggregating and unioning should produce two rows
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
             \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` WHERE table_name LIKE 'vet_%' \
