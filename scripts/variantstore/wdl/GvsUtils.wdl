@@ -1314,7 +1314,7 @@ task CopyFile {
   input {
     File input_file
     String output_gcs_dir
-    Boolean allow_overwrite = false
+    Boolean allow_overwrite = true
     String cloud_sdk_docker
   }
   parameter_meta {
