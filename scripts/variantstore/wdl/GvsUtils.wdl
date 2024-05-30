@@ -1335,7 +1335,7 @@ task CopyFile {
 
     OUTPUT_PATH=${OUTPUT_GCS_DIR}/~{base_filename}
     if [[ ~{allow_overwrite} = 'false' && -f $OUTPUT_PATH ]]; then
-      echo "Output file $OUTPUT_PATH already exists and `allow_overwrite' flag is not set"
+      echo "Output file $OUTPUT_PATH already exists and 'allow_overwrite' flag is not set"
       exit 1
     fi
     echo "La"
