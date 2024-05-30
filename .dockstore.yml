@@ -307,6 +307,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1396_bq_query_audit
          tags:
              - /.*/
    - name: GvsIngestTieout
