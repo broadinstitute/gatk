@@ -340,8 +340,8 @@ def import_gvs(refs: 'List[List[str]]',
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt', 'yng_status')))))
-        # vd = vd.annotate_rows(as_vqsr_dup = hl.dict(vqsr.index(vd.locus, all_matches=True)
-        #                                             .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
+        vd = vd.annotate_rows(as_vqsr_dup = hl.dict(vqsr.index(vd.locus, all_matches=True)
+                                                    .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
         if use_classic_vqsr:
             vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
@@ -392,8 +392,8 @@ def import_gvs(refs: 'List[List[str]]',
                 # as_vqsr_with_yng_status=vd.alleles[1:].map(
                 #     lambda allele: vd.as_vqsr_with_yng_status.get(allele).drop('yng_status'))
             )
-        # vd = vd.alleles[1:].map(
-        #     lambda allele: vd.as_vqsr_dup.get(allele).drop('yng_status'))
+        vd = vd.alleles[1:].map(
+            lambda allele: vd.as_vqsr_dup.get(allele).drop('yng_status'))
 
         lgt = vd.LGT
         la = vd.LA
