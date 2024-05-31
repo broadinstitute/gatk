@@ -1314,7 +1314,7 @@ task CopyFile {
   input {
     File input_file
     String output_gcs_dir
-    Boolean allow_overwrite = true
+    Boolean allow_overwrite = false
     String cloud_sdk_docker
   }
   parameter_meta {
@@ -1340,14 +1340,10 @@ task CopyFile {
       if [[ $? -eq 0 ]]; then
         echo "Output file $OUTPUT_PATH already exists and 'allow_overwrite' flag is set to false"
         exit 1
-      else
-        echo "Didn't find it."
       fi
     fi
-    echo "La"
 
     gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
-    echo "di"
     echo ${OUTPUT_PATH} > output_file_path.txt
   >>>
   output {
