@@ -9,7 +9,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String call_set_identifier
     String dataset_name
     String filter_set_name
-    File interval_list
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File? vcf_eval_bed_file
     Array[String] chromosomes = ["chr20"]
     String project_id
@@ -37,7 +37,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
-    interval_list: "The intervals over which to calculate precision and sensitivity."
+    interval_list: "The intervals over which to extract VCFs."
     project_id: "The Google Project ID where the GVS lives."
     sample_names: "A list of the sample names that are controls and that will be used for the analysis. For every element on the list of sample names there must be a corresponding element on the list of `truth_vcfs`, `truth_vcf_indices`, and `truth_beds`."
     truth_vcfs: "A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`."
