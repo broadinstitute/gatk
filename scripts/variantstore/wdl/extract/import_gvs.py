@@ -340,8 +340,8 @@ def import_gvs(refs: 'List[List[str]]',
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt', 'yng_status')))))
-        vd = vd.annotate_rows(as_vqsr_dup = hl.dict(vqsr.index(vd.locus, all_matches=True)
-                                                    .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
+        # vd = vd.annotate_rows(as_vqsr_dup = hl.dict(vqsr.index(vd.locus, all_matches=True)
+        #                                             .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
         if use_classic_vqsr:
             vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
@@ -371,8 +371,8 @@ def import_gvs(refs: 'List[List[str]]',
                                        hl.coalesce(vd.as_vqsr_with_yng_status.get(alt).vqslod >=
                                                    hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
                                                    True)),
-                as_vqsr_with_yng_status=vd.alleles[1:].map(
-                    lambda allele: vd.as_vqsr_with_yng_status.get(allele).drop('yng_status'))
+                # as_vqsr_with_yng_status=vd.alleles[1:].map(
+                #     lambda allele: vd.as_vqsr_with_yng_status.get(allele).drop('yng_status'))
             )
         else:
             vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
@@ -389,11 +389,11 @@ def import_gvs(refs: 'List[List[str]]',
                                        hl.coalesce(vd.as_vqsr_with_yng_status.get(alt).calibration_sensitivity <=
                                                    hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
                                                    True)),
-                as_vqsr_with_yng_status=vd.alleles[1:].map(
-                    lambda allele: vd.as_vqsr_with_yng_status.get(allele).drop('yng_status'))
+                # as_vqsr_with_yng_status=vd.alleles[1:].map(
+                #     lambda allele: vd.as_vqsr_with_yng_status.get(allele).drop('yng_status'))
             )
-        vd = vd.alleles[1:].map(
-            lambda allele: vd.as_vqsr_dup.get(allele).drop('yng_status'))
+        # vd = vd.alleles[1:].map(
+        #     lambda allele: vd.as_vqsr_dup.get(allele).drop('yng_status'))
 
         lgt = vd.LGT
         la = vd.LA
