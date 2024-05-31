@@ -202,7 +202,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCF
              - rsa_vs_1355
          tags:
              - /.*/
