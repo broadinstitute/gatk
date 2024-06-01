@@ -329,7 +329,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         Set<Integer> suspiciousLocations = new HashSet<>();
         if (MTAC.filterAlleles) {
             logger.debug("Filtering alleles");
-            AlleleFilteringMutect alleleFilter = new AlleleFilteringMutect(MTAC, null, genotypingEngine);
+            AlleleFilteringMutect alleleFilter = new AlleleFilteringMutect(MTAC, null, genotypingEngine, normalSamples);
             EventMap.buildEventMapsForHaplotypes(uncollapsedReadLikelihoods.alleles(),
                     assemblyResult.getFullReferenceWithPadding(),
                     assemblyResult.getPaddedReferenceLoc(),
