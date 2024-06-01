@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.OutputStreamWriter;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,11 +26,14 @@ import java.util.stream.IntStream;
 
 public class AlleleFilteringMutect extends AlleleFiltering {
     private SomaticGenotypingEngine genotypingEngine;
+    private Set<String> normalSamples;
     public AlleleFilteringMutect(M2ArgumentCollection _m2args,
                                  OutputStreamWriter assemblyDebugStream,
-                                 SomaticGenotypingEngine _genotypingEngine){
+                                 SomaticGenotypingEngine _genotypingEngine,
+                                 Set<String> _normalSamples){
         super(_m2args, assemblyDebugStream);
         genotypingEngine = _genotypingEngine;
+        normalSamples = _normalSamples;
     }
 
     /**
@@ -48,6 +52,7 @@ public class AlleleFilteringMutect extends AlleleFiltering {
     int getAlleleLikelihoodVsInverse(final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods, Allele allele) {
 
         final List<LikelihoodMatrix<GATKRead, Allele>> allMatrices = IntStream.range(0, alleleLikelihoods.numberOfSamples())
+                .filter(i -> !normalSamples.contains(alleleLikelihoods.getSample(i)))
                 .mapToObj(alleleLikelihoods::sampleMatrix)
                 .collect(Collectors.toList());
         final AlleleList<Allele> alleleList = allMatrices.get(0);
