@@ -42,6 +42,7 @@ public class AlleleFilteringMutect extends AlleleFiltering {
      * This is very similar to what is done in the callMutations function in MutectEngine, but here the haplotypes that do
      * not support the allele are all haplotypes that do not contain the allele rather than only the haplotypes that support reference
      * etc.
+     * The log odds is calculated separately for the tumor and the normal samples and the smalles (the strongest) is returned
      *
      * @param alleleLikelihoods
      * @param allele
@@ -57,9 +58,23 @@ public class AlleleFilteringMutect extends AlleleFiltering {
                 .collect(Collectors.toList());
         final AlleleList<Allele> alleleList = allMatrices.get(0);
         final LikelihoodMatrix<GATKRead, Allele> logAllMatrix = SomaticGenotypingEngine.combinedLikelihoodMatrix(allMatrices, alleleList);
-        double alleleLogOdds = somaticAltLogOdds(logAllMatrix);
-        logger.debug(() -> String.format("GAL:: %s: %f", allele.toString(), alleleLogOdds));
+        final double alleleLogOddsTumor = somaticAltLogOdds(logAllMatrix);
+        logger.debug(() -> String.format("GAL:: Tumor %s: %f", allele.toString(), alleleLogOddsTumor));
+        double alleleLogOdds = alleleLogOddsTumor;
+        if (!normalSamples.isEmpty()) {
+            final List<LikelihoodMatrix<GATKRead, Allele>> allMatricesNormal = IntStream.range(0, alleleLikelihoods.numberOfSamples())
+                    .filter(i -> normalSamples.contains(alleleLikelihoods.getSample(i)))
+                    .mapToObj(alleleLikelihoods::sampleMatrix)
+                    .collect(Collectors.toList());
+            final LikelihoodMatrix<GATKRead, Allele> logAllMatrixNormal = SomaticGenotypingEngine.combinedLikelihoodMatrix(allMatricesNormal, alleleList);
+            double alleleLogOddsNormal = somaticAltLogOdds(logAllMatrixNormal);
+            logger.debug(() -> String.format("GAL:: Normal %s: %f", allele.toString(), alleleLogOddsNormal));
+            if (alleleLogOddsNormal < alleleLogOddsTumor) {
+                alleleLogOdds = alleleLogOddsNormal;
+            }
+        }
         return (int)(10*alleleLogOdds);
+
     }
 
 
