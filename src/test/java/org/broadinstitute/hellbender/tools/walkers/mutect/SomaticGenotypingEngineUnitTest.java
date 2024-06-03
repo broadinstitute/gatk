@@ -10,6 +10,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.ws.rs.core.Variant;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,5 +88,19 @@ public class SomaticGenotypingEngineUnitTest {
     public void testGetGermlineAltAlleleFrequenciesWithMissingAF(final VariantContext vc) {
         final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(vc.getAlleles(), List.of(vc), DEFAULT_AF);
         Assert.assertEquals(result, new double[] {DEFAULT_AF}, 1.0e-10);
+    }
+
+    // test getting alt allele frequencies when each alt has its own VCF line and its own VariantContext
+    @Test
+    public void testGetGermlineAltAlleleFrequenciesFromSplitAllelesFormat() {
+        final double af1 = 0.1;
+        final double af2 = 0.2;
+        final VariantContext vc1 = new VariantContextBuilder("SOURCE", "1", 1, 1, Arrays.asList(Allele.REF_A, Allele.ALT_C))
+                .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, af1).make();
+        final VariantContext vc2 = new VariantContextBuilder("SOURCE", "1", 1, 1, Arrays.asList(Allele.REF_A, Allele.ALT_T))
+                .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, af2).make();
+        final List<Allele> alleles = List.of(Allele.REF_A, Allele.ALT_C, Allele.ALT_T);
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(alleles, List.of(vc1, vc2), DEFAULT_AF);
+        Assert.assertEquals(result, new double[] {af1, af2}, 1.0e-10);
     }
 }
