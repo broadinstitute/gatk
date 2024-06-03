@@ -310,6 +310,7 @@ workflows:
              - master
              - ah_var_store
              - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCF
+             - vs_1396_bq_query_audit
          tags:
              - /.*/
    - name: GvsIngestTieout

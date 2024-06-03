@@ -88,6 +88,7 @@ task IngestTieout {
         check_table() {
             local table_name=$1
 
+            # bq query --max_rows check: ok, anything > 0 is an error, error message explicit about 100 row limit.
             bq --apilog=false query --project_id=~{project} --format=csv --use_legacy_sql=false \
                 '(SELECT
                         sample_id, count(*) AS count
@@ -104,7 +105,7 @@ task IngestTieout {
 
             if [[ -s differences.txt ]]; then
                 fail=1
-                echo "${table_name} row counts are mismatched for the following samples:"
+                echo "${table_name} row counts are mismatched for the following samples (100 samples max in output):"
                 cat differences.txt
             fi
         }

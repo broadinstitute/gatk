@@ -170,6 +170,7 @@ FIN
 set +o nounset
 if [[ -z "${DRY_RUN}" ]]
 then
+  # bq query --max_rows check: ok export
   bq query --nouse_legacy_sql --project_id "${BIGQUERY_PROJECT_ID}" < "${BIGQUERY_EXTRACT_SCRIPT}"
   echo "Files exported to '${BIGQUERY_EXPORT_SHARDS_PATH}'." 1>&2
 else
