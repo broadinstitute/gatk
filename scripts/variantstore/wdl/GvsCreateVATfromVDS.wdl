@@ -3,7 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# Mas Testing.
+# Mas Testing..
 
 workflow GvsCreateVATfromVDS {
     input {
@@ -139,7 +139,7 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    if (!defined(sites_only_vcf)) {
+    if ((!defined(sites_only_vcf) && defined(vds_path) && defined(hail_generate_sites_only_script_path))) {
         call GenerateSitesOnlyVcf {
             input:
                 vds_path = select_first([vds_path]),
