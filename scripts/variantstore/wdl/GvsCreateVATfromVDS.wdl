@@ -3,7 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# Mas Testing...
+# Mas Testing!
 
 workflow GvsCreateVATfromVDS {
     input {
@@ -300,8 +300,8 @@ workflow GvsCreateVATfromVDS {
 
     output {
         String? cluster_name = GenerateSitesOnlyVcf.cluster_name
-        File dropped_sites_file = select_first([MergeTsvs.output_file])
-        File final_tsv_file = select_first([GvsCreateVATFilesFromBigQuery.final_tsv_file])
+        File? dropped_sites_file = MergeTsvs.output_file
+        File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }
