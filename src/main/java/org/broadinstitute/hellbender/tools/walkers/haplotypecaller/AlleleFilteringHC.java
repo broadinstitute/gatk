@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculationResult;
@@ -29,8 +30,9 @@ public class AlleleFilteringHC extends AlleleFiltering {
     private HaplotypeCallerGenotypingEngine genotypingEngine;
     private AlleleFrequencyCalculator afCalc;
 
-    public AlleleFilteringHC(HaplotypeCallerArgumentCollection _hcargs, OutputStreamWriter assemblyDebugStream, HaplotypeCallerGenotypingEngine _genotypingEngine){
-        super(_hcargs, assemblyDebugStream);
+    public AlleleFilteringHC(HaplotypeCallerArgumentCollection _hcargs, OutputStreamWriter assemblyDebugStream,
+                             HaplotypeCallerGenotypingEngine _genotypingEngine, final SAMFileHeader header){
+        super(_hcargs, assemblyDebugStream, header);
         genotypingEngine = _genotypingEngine;
         GenotypeCalculationArgumentCollection config = genotypingEngine.getConfiguration().genotypeArgs;
          afCalc = AlleleFrequencyCalculator.makeCalculator(config);
