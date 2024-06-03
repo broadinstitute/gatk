@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -79,7 +81,9 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     private final EnumMap<VariantType, ArrayBlockingQueue<Integer>> unmatchedArtifactAltCounts;
 
 
-    public Mutect3DatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount, final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples) {
+    public Mutect3DatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount,
+                                final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples,
+                                final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
         try {
             printWriter = new PrintWriter(new FileWriter(Utils.nonNull(datasetFile)));
         } catch (IOException ex) {
@@ -91,6 +95,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         this.nonArtifactPerArtifact = nonArtifactPerArtifact;
         this.maxRefCount = maxRefCount;
         this.maxAltCount = maxAltCount;
+
 
         unmatchedArtifactAltCounts = new EnumMap<>(VariantType.class);
         for (final VariantType type : VariantType.values()) {

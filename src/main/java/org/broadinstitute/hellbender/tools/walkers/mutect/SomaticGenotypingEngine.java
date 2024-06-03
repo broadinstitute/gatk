@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Doubles;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
@@ -52,7 +53,9 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     private final double refPseudocount = 1;
     private final double altPseudocount;
 
-    public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples, final VariantAnnotatorEngine annotationEngine) {
+    public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples,
+                                   final VariantAnnotatorEngine annotationEngine,
+                                   final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
         this.MTAC = MTAC;
         altPseudocount = MTAC.minAF == 0.0 ? 1 : 1 - Math.log(2)/Math.log(MTAC.minAF);
 
@@ -62,7 +65,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
         mutect3DatasetEngine = MTAC.mutect3Dataset == null ? Optional.empty() :
                 Optional.of(new Mutect3DatasetEngine(MTAC.mutect3Dataset, MTAC.mutect3TrainingDataMode, MTAC.maxRefCountForMutect3,
-                        MTAC.maxAltCountForMutect3, MTAC.mutect3NonArtifactRatio, normalSamples));
+                        MTAC.maxAltCountForMutect3, MTAC.mutect3NonArtifactRatio, normalSamples, header, sequenceDictionary));
         Utils.validateArg(!(MTAC.mutect3Dataset == null && MTAC.mutect3TrainingDataMode), "No dataset file specified for Mutect3 training data mode.");
     }
 
