@@ -6,6 +6,8 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.LongRange;
+import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -33,6 +35,12 @@ import java.util.stream.Stream;
 
 public class ExtractCohortEngine {
     private final Logger logger;
+
+    private final List<LongRange> PARRegions = List.of(
+            new LongRange(23000000010001L, 23000002781479L),    // PAR1, X
+            new LongRange(24000000010001L, 24000002781479L),    // PAR1, Y
+            new LongRange(23000155701383L, 23000156030895L),    // PAR2, X
+            new LongRange(24000056887903L, 24000057217415L));   // PAR2, Y
 
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
@@ -303,7 +311,6 @@ public class ExtractCohortEngine {
                     String sampleId = queryRow.get(SchemaUtils.SAMPLE_ID).toString();
                     Integer ploidy = Integer.parseInt(queryRow.get(SchemaUtils.PLOIDY).toString());
                     // If not for this, we'd need a map to another data structure just to look up the ploidy. Best to flatten the compound key
-                    String key = chromosome+"-"+sampleId;
                     samplePloidyMap.put(chromosome+"-"+sampleId, ploidy);
                 }
                 processBytesScanned(reader);
@@ -511,22 +518,22 @@ public class ExtractCohortEngine {
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
                 case "1":  // Non-Variant Block with 10 <=  GQ < 20
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 10));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 10, sampleRecord.getSampleId().intValue()));
                     break;
                 case "2":  // Non-Variant Block with 20 <= GQ < 30
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 20));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 20, sampleRecord.getSampleId().intValue()));
                     break;
                 case "3":  // Non-Variant Block with 30 <= GQ < 40
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 30));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 30, sampleRecord.getSampleId().intValue()));
                     break;
                 case "4":  // Non-Variant Block with 40 <= GQ < 50
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 40));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 40, sampleRecord.getSampleId().intValue()));
                     break;
                 case "5":  // Non-Variant Block with 50 <= GQ < 60
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 50));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 50, sampleRecord.getSampleId().intValue()));
                     break;
                 case "6":  // Non-Variant Block with 60 <= GQ (usually omitted from tables)
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 60));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 60, sampleRecord.getSampleId().intValue()));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
                     break;
@@ -587,9 +594,23 @@ public class ExtractCohortEngine {
         for (final ReferenceGenotypeInfo info : referenceCalls) {
             genotypeBuilder.reset(false);
             genotypeBuilder.name(info.getSampleName());
-            // TODO: This is where we expand out "this is ref" to a "0/0" call.  Reference ploidy data here
-            String key = "asdf";
-            genotypeBuilder.alleles(gtAlleles);
+
+            long chromAsPosition = location - SchemaUtils.decodePosition(location);
+            String key = chromAsPosition+"-"+info.getSampleId();
+
+            // Logic for determining the correct ploidy for reference data
+            // If we have no info in the table, the ploidy is explicitly 2, OR we are in a PAR, use diploid reference.
+            // If we have looked up the ploidy in our table and it says 1, use a haploid reference
+            // Otherwise, if we have a ploidy that is neither 1 nor 2, throw a user exception because we haven't coded for this case
+            int ploidy = (samplePloidyMap.containsKey(key) ? samplePloidyMap.get(key) : 2);
+            if (ploidy == 2 || isInPAR(location)) {
+                genotypeBuilder.alleles(gtAlleles);
+            } else if (ploidy == 1) {
+                genotypeBuilder.alleles(gtHaploidAlleles);
+            } else {
+                throw new UserException("GVS cannot currently handle extracting with a ploidy of "+ploidy+" as seen at "+SchemaUtils.decodeContig(location)+": "+SchemaUtils.decodePosition(location)+".");
+            }
+
             genotypeBuilder.GQ(info.getGQ());
             genotypes.add(genotypeBuilder.make());
         }
@@ -648,6 +669,16 @@ public class ExtractCohortEngine {
         // clean up extra annotations
         return removeAnnotations(filteredVC);
     }
+
+    boolean isInPAR(final long location) {
+        for (LongRange region : PARRegions) {
+            if (region.containsLong(location)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     private VariantContext filterSiteByAlleleSpecificVQScore(VariantContext mergedVC,
                                                              Map<Allele, Map<Allele, Double>> scoreMap,
