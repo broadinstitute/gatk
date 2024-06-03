@@ -1,17 +1,21 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.InverseAllele;
 import org.broadinstitute.hellbender.tools.walkers.mutect.*;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.OutputStreamWriter;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -27,13 +31,38 @@ import java.util.stream.IntStream;
 public class AlleleFilteringMutect extends AlleleFiltering {
     private SomaticGenotypingEngine genotypingEngine;
     private Set<String> normalSamples;
+
     public AlleleFilteringMutect(M2ArgumentCollection _m2args,
                                  OutputStreamWriter assemblyDebugStream,
                                  SomaticGenotypingEngine _genotypingEngine,
-                                 Set<String> _normalSamples){
-        super(_m2args, assemblyDebugStream);
+                                 Set<String> _normalSamples,
+                                 final SAMFileHeader header){
+        super(_m2args, assemblyDebugStream, header);
         genotypingEngine = _genotypingEngine;
         normalSamples = _normalSamples;
+    }
+
+    private AlleleLikelihoods<GATKRead, Allele> getAlleleLikelihoodMatrix(final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
+                                                                          final Event allele,
+                                                                          final Map<Haplotype, Collection<Event>> haplotypeAlleleMap,
+                                                                          final Set<Haplotype> enabledHaplotypes
+    ){
+
+        final Map<Allele,List<Haplotype>> alleleHaplotypeMap = new CollectionUtil.DefaultingMap<>((k) -> new ArrayList<>(), true);
+
+
+        final Allele notAllele= InverseAllele.of(allele.altAllele(), true);
+        readLikelihoods.alleles().stream().filter(enabledHaplotypes::contains)
+                .filter(h->haplotypeAlleleMap.get(h).contains(allele))
+                .forEach(alleleHaplotypeMap.get(allele.altAllele())::add);
+        readLikelihoods.alleles().stream().filter(enabledHaplotypes::contains)
+                .filter(h -> !haplotypeAlleleMap.get(h).contains(allele))
+                .forEach(alleleHaplotypeMap.get(notAllele)::add);
+
+        final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods = readLikelihoods.marginalize(alleleHaplotypeMap);
+
+        logger.debug(() -> String.format("GALM: %s %d %d", allele, alleleHaplotypeMap.get(allele.altAllele()).size(), alleleHaplotypeMap.get(notAllele).size()));
+        return alleleLikelihoods;
     }
 
     /**
@@ -89,6 +118,7 @@ public class AlleleFilteringMutect extends AlleleFiltering {
     private double somaticAltLogOdds(final LikelihoodMatrix<GATKRead, Allele> matrix) {
 
         final LikelihoodMatrix<GATKRead, Allele> initialMatrix = matrix;
+
         if (matrix.getAllele(1-matrix.indexOfReference()) instanceof InverseAllele){
             throw new GATKException.ShouldNeverReachHereException("Inverse allele removed in filtering");
         }
