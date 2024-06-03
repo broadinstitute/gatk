@@ -1343,11 +1343,10 @@ task CopyFile {
 
     OUTPUT_PATH=${OUTPUT_GCS_DIR}/~{base_filename}
     if [[ ~{allow_overwrite} = 'false' ]]; then
-      # Test if file exists
-
-      # gsutil ls will return non-zero if the file does not exist - we don't want to fail the task for that
+    # gsutil ls will return non-zero if the file does not exist - we don't want to fail the task for that
       set +o errexit
 
+      # Test if file exists
       gsutil ls $OUTPUT_PATH > the_output.txt
       rc=$?
       if [[ $rc -eq 0 ]]; then

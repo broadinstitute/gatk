@@ -3,6 +3,8 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
+# Mas Testing.
+
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -51,7 +53,7 @@ workflow GvsCreateVATfromVDS {
             help: "name of the filter set used to generate the callset in GVS"
         }
         sites_only_vcf: {
-            help: "Optional sites-only-vcf file. If used, will skip generating it from VDS"
+            help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped"
         }
         hail_generate_sites_only_script_path: {
             help: "hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL"
@@ -68,6 +70,8 @@ workflow GvsCreateVATfromVDS {
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+    String region = "us-central1"
+    String gcs_subnetwork_name = "subnetwork"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -88,6 +92,23 @@ workflow GvsCreateVATfromVDS {
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
     String vat_table_name = filter_set_name + "_vat" + effective_vat_version
+
+    String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
+    if (output_path == output_path_without_a_trailing_slash) {
+        call Utils.TerminateWorkflow as OutputPathMustEndWithASlash {
+            input:
+                message = "Error: 'output_path' MUST end with a trailing '/'",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    if (!defined(sites_only_vcf) && ((!defined(vds_path) || !defined(hail_generate_sites_only_script_path)))) {
+        call Utils.TerminateWorkflow as MustSetSitesOnlyVcfOrParametersToCreate {
+            input:
+                message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path' and 'hail_generate_sites_only_script_path'",
+                basic_docker = effective_basic_docker,
+        }
+    }
 
     if (!defined(split_intervals_scatter_count)) {
         call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
@@ -129,8 +150,8 @@ workflow GvsCreateVATfromVDS {
                 hail_generate_sites_only_script_path = select_first([hail_generate_sites_only_script_path]),
                 ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
                 workspace_bucket = GetToolVersions.workspace_bucket,
-                region = "us-central1",
-                gcs_subnetwork_name = "subnetwork",
+                region = region,
+                gcs_subnetwork_name = gcs_subnetwork_name,
                 leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
                 variants_docker = effective_variants_docker,
         }
@@ -276,7 +297,7 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        String cluster_name = select_first([GenerateSitesOnlyVcf.cluster_name, "None"])
+        String? cluster_name = GenerateSitesOnlyVcf.cluster_name
         File dropped_sites_file = MergeTsvs.output_file
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
