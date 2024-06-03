@@ -3,7 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# Mas Testing..
+# Mas Testing...
 
 workflow GvsCreateVATfromVDS {
     input {
@@ -110,196 +110,198 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-    if (!defined(split_intervals_scatter_count)) {
-        call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+    if (defined(sites_only_vcf) || (defined(vds_path) && defined(hail_generate_sites_only_script_path))) {
+        if (!defined(split_intervals_scatter_count)) {
+            call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+                input:
+                    project_id = project_id,
+                    fq_table = "~{project_id}.~{dataset_name}.sample_info",
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+            }
+
+            call Utils.GetNumSamplesLoaded {
+                input:
+                    fq_sample_table ="~{project_id}.~{dataset_name}.sample_info",
+                    project_id = project_id,
+                    sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+            }
+
+            Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
+                                               if (GetNumSamplesLoaded.num_samples < 250000) then 500 else
+                                                   if (GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
+        }
+
+        Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
+
+        call MakeSubpopulationFilesAndReadSchemaFiles {
             input:
-                project_id = project_id,
-                fq_table = "~{project_id}.~{dataset_name}.sample_info",
+                input_ancestry_file = ancestry_file,
+                variants_docker = effective_variants_docker,
+        }
+
+        if (!defined(sites_only_vcf)) {
+            call GenerateSitesOnlyVcf {
+                input:
+                    vds_path = select_first([vds_path]),
+                    use_classic_VQSR = use_classic_VQSR,
+                    workspace_project = effective_google_project,
+                    hail_version = effective_hail_version,
+                    hail_wheel = hail_wheel,
+                    hail_generate_sites_only_script_path = select_first([hail_generate_sites_only_script_path]),
+                    ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
+                    workspace_bucket = GetToolVersions.workspace_bucket,
+                    region = region,
+                    gcs_subnetwork_name = gcs_subnetwork_name,
+                    leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
+                    variants_docker = effective_variants_docker,
+            }
+        }
+
+        call Utils.CopyFile as CopySitesOnlyVcf {
+            input:
+                input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                output_gcs_dir = output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call Utils.GetNumSamplesLoaded {
+        if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
+            call Utils.IndexVcf {
+                input:
+                    input_vcf = CopySitesOnlyVcf.output_file_path,
+                    gatk_docker = effective_gatk_docker,
+            }
+        }
+
+        call Utils.CopyFile as CopySitesOnlyVcfIndex {
             input:
-                fq_sample_table ="~{project_id}.~{dataset_name}.sample_info",
-                project_id = project_id,
-                sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+                input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
+                output_gcs_dir = output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        Int calculated_scatter_count = if (GetNumSamplesLoaded.num_samples < 11) then 10 else
-                                           if (GetNumSamplesLoaded.num_samples < 250000) then 500 else
-                                               if (GetNumSamplesLoaded.num_samples < 450000) then 1000 else 2000
-    }
-
-    Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
-
-    call MakeSubpopulationFilesAndReadSchemaFiles {
-        input:
-            input_ancestry_file = ancestry_file,
-            variants_docker = effective_variants_docker,
-    }
-
-    if ((!defined(sites_only_vcf) && defined(vds_path) && defined(hail_generate_sites_only_script_path))) {
-        call GenerateSitesOnlyVcf {
+        call Utils.SplitIntervals {
             input:
-                vds_path = select_first([vds_path]),
-                use_classic_VQSR = use_classic_VQSR,
-                workspace_project = effective_google_project,
-                hail_version = effective_hail_version,
-                hail_wheel = hail_wheel,
-                hail_generate_sites_only_script_path = select_first([hail_generate_sites_only_script_path]),
-                ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                region = region,
-                gcs_subnetwork_name = gcs_subnetwork_name,
-                leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-                variants_docker = effective_variants_docker,
-        }
-    }
-
-    call Utils.CopyFile as CopySitesOnlyVcf {
-        input:
-            input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
-            output_gcs_dir = output_path + "sites_only_vcf",
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
-        call Utils.IndexVcf {
-            input:
-                input_vcf = CopySitesOnlyVcf.output_file_path,
-                gatk_docker = effective_gatk_docker,
-        }
-    }
-
-    call Utils.CopyFile as CopySitesOnlyVcfIndex {
-        input:
-            input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
-            output_gcs_dir = output_path + "sites_only_vcf",
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call Utils.SplitIntervals {
-        input:
-            intervals = interval_list,
-            ref_fasta = reference,
-            ref_fai = reference_index,
-            ref_dict = reference_dict,
-            scatter_count = effective_scatter_count,
-            output_gcs_dir = output_path + "intervals",
-            split_intervals_disk_size_override = split_intervals_disk_size_override,
-            split_intervals_mem_override = split_intervals_mem_override,
-            gatk_docker = effective_gatk_docker,
-    }
-
-    String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
-
-    scatter(i in range(length(SplitIntervals.interval_files))) {
-        String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
-        String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
-
-        call Utils.SelectVariants {
-            input:
-                input_vcf = CopySitesOnlyVcf.output_file_path,
-                input_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
-                interval_list = SplitIntervals.interval_files[i],
-                output_basename = vcf_filename,
+                intervals = interval_list,
+                ref_fasta = reference,
+                ref_fai = reference_index,
+                ref_dict = reference_dict,
+                scatter_count = effective_scatter_count,
+                output_gcs_dir = output_path + "intervals",
+                split_intervals_disk_size_override = split_intervals_disk_size_override,
+                split_intervals_mem_override = split_intervals_mem_override,
                 gatk_docker = effective_gatk_docker,
         }
 
-        call RemoveDuplicatesFromSitesOnlyVCF {
-            input:
-                sites_only_vcf = SelectVariants.output_vcf,
-                ref = reference,
-                variants_docker = effective_variants_docker,
+        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
+
+        scatter(i in range(length(SplitIntervals.interval_files))) {
+            String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
+            String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
+
+            call Utils.SelectVariants {
+                input:
+                    input_vcf = CopySitesOnlyVcf.output_file_path,
+                    input_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
+                    interval_list = SplitIntervals.interval_files[i],
+                    output_basename = vcf_filename,
+                    gatk_docker = effective_gatk_docker,
+            }
+
+            call RemoveDuplicatesFromSitesOnlyVCF {
+                input:
+                    sites_only_vcf = SelectVariants.output_vcf,
+                    ref = reference,
+                    variants_docker = effective_variants_docker,
+            }
+
+            call StripCustomAnnotationsFromSitesOnlyVCF {
+                input:
+                    input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+                    custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+                    output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
+                    output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv",
+                    variants_docker = effective_variants_docker,
+            }
+
+            ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+            call AnnotateVCF {
+                input:
+                    input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+                    output_annotated_file_name = "${vcf_filename}_annotated",
+                    custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+                    variants_nirvana_docker = effective_variants_nirvana_docker,
+                    use_reference_disk = use_reference_disk,
+            }
+
+            call PrepVtAnnotationJson {
+                input:
+                    positions_annotation_json = AnnotateVCF.positions_annotation_json,
+                    output_file_suffix = "${vcf_filename}.json.gz",
+                    output_path = output_path,
+                    variants_docker = effective_variants_docker,
+            }
+
+            call PrepGenesAnnotationJson {
+                input:
+                    genes_annotation_json = AnnotateVCF.genes_annotation_json,
+                    output_file_suffix = "${vcf_filename}.json.gz",
+                    output_path = output_path,
+                    variants_docker = effective_variants_docker,
+            }
+
         }
 
-        call StripCustomAnnotationsFromSitesOnlyVCF {
+        call Utils.MergeTsvs {
             input:
-                input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
-                custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-                output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
-                output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv",
-                variants_docker = effective_variants_docker,
+                input_files = RemoveDuplicatesFromSitesOnlyVCF.track_dropped,
+                output_file_name = "${sites_only_vcf_basename}.dropped.tsv",
+                basic_docker = effective_basic_docker,
         }
 
-        ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-        call AnnotateVCF {
+        call BigQueryLoadJson {
             input:
-                input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
-                output_annotated_file_name = "${vcf_filename}_annotated",
-                custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
-                variants_nirvana_docker = effective_variants_nirvana_docker,
-                use_reference_disk = use_reference_disk,
-        }
-
-        call PrepVtAnnotationJson {
-            input:
-                positions_annotation_json = AnnotateVCF.positions_annotation_json,
-                output_file_suffix = "${vcf_filename}.json.gz",
+                nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+                vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
+                genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
+                project_id = project_id,
+                dataset_name = dataset_name,
                 output_path = output_path,
-                variants_docker = effective_variants_docker,
+                base_vat_table_name = vat_table_name,
+                prep_vt_json_done = PrepVtAnnotationJson.done,
+                prep_genes_json_done = PrepGenesAnnotationJson.done,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call PrepGenesAnnotationJson {
+        call DeduplicateVatInBigQuery {
             input:
-                genes_annotation_json = AnnotateVCF.genes_annotation_json,
-                output_file_suffix = "${vcf_filename}.json.gz",
-                output_path = output_path,
-                variants_docker = effective_variants_docker,
+                input_vat_table_name = BigQueryLoadJson.vat_table,
+                output_vat_table_name = vat_table_name,
+                nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+                project_id = project_id,
+                dataset_name = dataset_name,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
+        call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
+            input:
+                project_id = project_id,
+                git_branch_or_tag = git_branch_or_tag,
+                git_hash = GetToolVersions.git_hash,
+                dataset_name = dataset_name,
+                vat_table_name = DeduplicateVatInBigQuery.vat_table,
+                output_path = output_path,
+                merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
+                precondition_met = BigQueryLoadJson.done,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+       }
     }
-
-    call Utils.MergeTsvs {
-        input:
-            input_files = RemoveDuplicatesFromSitesOnlyVCF.track_dropped,
-            output_file_name = "${sites_only_vcf_basename}.dropped.tsv",
-            basic_docker = effective_basic_docker,
-    }
-
-    call BigQueryLoadJson {
-        input:
-            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
-            vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
-            genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
-            project_id = project_id,
-            dataset_name = dataset_name,
-            output_path = output_path,
-            base_vat_table_name = vat_table_name,
-            prep_vt_json_done = PrepVtAnnotationJson.done,
-            prep_genes_json_done = PrepGenesAnnotationJson.done,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call DeduplicateVatInBigQuery {
-        input:
-            input_vat_table_name = BigQueryLoadJson.vat_table,
-            output_vat_table_name = vat_table_name,
-            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
-            project_id = project_id,
-            dataset_name = dataset_name,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
-        input:
-            project_id = project_id,
-            git_branch_or_tag = git_branch_or_tag,
-            git_hash = GetToolVersions.git_hash,
-            dataset_name = dataset_name,
-            vat_table_name = DeduplicateVatInBigQuery.vat_table,
-            output_path = output_path,
-            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            precondition_met = BigQueryLoadJson.done,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-   }
 
     output {
         String? cluster_name = GenerateSitesOnlyVcf.cluster_name
-        File dropped_sites_file = MergeTsvs.output_file
-        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
+        File dropped_sites_file = select_first([MergeTsvs.output_file])
+        File final_tsv_file = select_first([GvsCreateVATFilesFromBigQuery.final_tsv_file])
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }
