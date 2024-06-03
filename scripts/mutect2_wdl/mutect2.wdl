@@ -442,22 +442,20 @@ task M2 {
         touch bamout.bam
         touch f1r2.tar.gz
         touch dataset.txt
-        echo "" > normal_name.txt
-
-        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_reads} -O tumor_name.txt -encode \
-        ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-        tumor_command_line="-I ~{tumor_reads} -tumor `cat tumor_name.txt`"
 
         if [[ ! -z "~{normal_reads}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_name.txt -encode \
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-            normal_command_line="-I ~{normal_reads} -normal `cat normal_name.txt`"
+            # add "-normal " to the start of each line and " " to the end, then remove newlines
+            # to get -normal sample1 -normal sample2 etc
+            normal_sample_line=`sed 's/^/-normal /' normal_names.txt | sed 's/$/ /' | tr -d "\n"`
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
             -R ~{ref_fasta} \
-            $tumor_command_line \
-            $normal_command_line \
+            -I ~{tumor_reads} \
+            ~{"-I " + normal_reads} \
+            $normal_sample_line \
             ~{"--germline-resource " + gnomad} \
             ~{"-pon " + pon} \
             ~{"-L " + intervals} \
@@ -513,8 +511,6 @@ task M2 {
         File unfiltered_vcf = "~{output_vcf}"
         File unfiltered_vcf_idx = "~{output_vcf_idx}"
         File output_bamOut = "bamout.bam"
-        String tumor_sample = read_string("tumor_name.txt")
-        String normal_sample = read_string("normal_name.txt")
         File stats = "~{output_stats}"
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
