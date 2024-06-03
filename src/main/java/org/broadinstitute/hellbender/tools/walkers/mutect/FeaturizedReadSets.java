@@ -50,8 +50,9 @@ public class FeaturizedReadSets {
                                                            final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods,
                                                            final int refDownsample,
                                                            final int altDownsample,
-                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
-        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), mutect3DatasetMode);
+                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode,
+                                                           final Map<String, Integer> readGroupIndices) {
+        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), mutect3DatasetMode, readGroupIndices);
     }
 
     // returns Lists (in allele order) of lists of read vectors supporting each allele
@@ -62,7 +63,8 @@ public class FeaturizedReadSets {
                                                            final int refDownsample,
                                                            final int altDownsample,
                                                            final Map<Allele, Integer> altDownsampleMap,
-                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
+                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode,
+                                                           final Map<String, Integer> readGroupIndices) {
         final Map<Allele, List<GATKRead>> readsByAllele = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new ArrayList<>()));
 
@@ -85,15 +87,17 @@ public class FeaturizedReadSets {
                 .forEach(ba -> ba.evidence.getReads().forEach(read -> bestHaplotypes.put(read, ba.allele)));
 
         return vc.getAlleles().stream()
-                .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, mutect3DatasetMode)).collect(Collectors.toList()))
+                .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, mutect3DatasetMode, readGroupIndices)).collect(Collectors.toList()))
                 .collect(Collectors.toList());
     }
 
 
     private static List<Integer> featurize(final GATKRead read, final VariantContext vc,
                                            final Map<GATKRead, Haplotype> bestHaplotypes,
-                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
+                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode,
+                                           final Map<String, Integer> readGroupIndices) {
         final List<Integer> result = new ArrayList<>();
+        result.add(readGroupIndices.get(read.getReadGroup()));  // this is read group metadata rather than part of the tensor
         result.add(read.getMappingQuality());
         result.add(BaseQuality.getBaseQuality(read, vc).orElse(DEFAULT_BASE_QUALITY));
         result.add(read.isFirstOfPair() ? 1 : 0);
@@ -190,7 +194,8 @@ public class FeaturizedReadSets {
                 }
             }
         }
-        Utils.validate(result.size() == mutect3DatasetMode.getNumReadFeatures(), "Wrong number of features");
+        // the +1 is for the read group index that comes before the features
+        Utils.validate(result.size() == mutect3DatasetMode.getNumReadFeatures() + 1, "Wrong number of features");
 
         return result;
     }

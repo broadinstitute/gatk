@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -45,6 +47,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         ARTIFACT, VARIANT, UNLABELED, IGNORE
     }
 
+    private final SAMSequenceDictionary sequenceDictionary;
+
+    private final Map<String, Integer> readGroupIndices = new HashMap<>();
+
     // number of additional variant features for assembly complexity, reference context
     private static final int NUM_EXTRA_FEATURES = 9;
 
@@ -67,6 +73,8 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     private static final int MIN_REF = 5;
 
     private final PrintWriter printWriter;
+    private final PrintWriter contigPrintWriter;
+    private final PrintWriter readGroupPrintWriter;
 
     // number of nonartifact data to keep for each artifact datum
     private final int nonArtifactPerArtifact;
@@ -86,6 +94,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                                 final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
         try {
             printWriter = new PrintWriter(new FileWriter(Utils.nonNull(datasetFile)));
+            final File contigTableFile = datasetFile.toPath().resolveSibling("contigs.table").toFile();
+            final File readGroupTableFile = datasetFile.toPath().resolveSibling("read-groups.table").toFile();
+            contigPrintWriter = new PrintWriter(new FileWriter(contigTableFile));
+            readGroupPrintWriter = new PrintWriter(new FileWriter(readGroupTableFile));
         } catch (IOException ex) {
             throw new UserException.BadInput("Could not create dataset file writer");
         }
@@ -96,6 +108,11 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         this.maxRefCount = maxRefCount;
         this.maxAltCount = maxAltCount;
 
+        this.sequenceDictionary = sequenceDictionary;
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        for (int n = 0; n < readGroups.size(); n++) {
+            readGroupIndices.put(readGroups.get(n).getReadGroupId(), n);
+        }
 
         unmatchedArtifactAltCounts = new EnumMap<>(VariantType.class);
         for (final VariantType type : VariantType.values()) {
@@ -111,7 +128,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                         final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
         final String refBases = ReferenceBases.annotate(ref, vc);
         final String refAllele = vc.getReference().getBaseString();
-        final String contig = vc.getContig();
+        final int contigIndex = sequenceDictionary.getSequenceIndex(vc.getContig());
         final int position = vc.getStart();
         final Set<String> tumorSamples = likelihoods.samples().stream().filter(sample -> !normalSamples.contains(sample)).collect(Collectors.toSet());
         final int numAlt = vc.getNAlleles() - 1;
@@ -209,9 +226,9 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         // TODO: for now we don't really need normal reads
         // note that the following use the VC's allele order, not necessarily the likelihoods' allele order
         final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, mutect3DatasetMode);
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, mutect3DatasetMode, readGroupIndices);
         final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, mutect3DatasetMode);
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, mutect3DatasetMode, readGroupIndices);
 
         // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);
@@ -232,7 +249,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             final List<List<Integer>> normalAltReads = normalReadVectorsByAllele.get(n+1);
 
             printWriter.println(labels.get(n).toString());
-            printWriter.printf("%s:%d,%s->%s%n", contig, position, refAllele, altAllele);
+            printWriter.printf("%d:%d,%s->%s%n", contigIndex, position, refAllele, altAllele);
             printWriter.println(refBases);
             printWriter.println(numberString(variantFeatureVector, "%.2f", " "));
             //printWriter.printf("%d %d %d %d%n", tumorRefReads.size(), tumorAltReads.size(), normalRefReads.size(), normalAltReads.size());
@@ -332,5 +349,16 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     @Override
     public void close() {
         printWriter.close();
+
+        for (final SAMSequenceRecord contigRecord : sequenceDictionary.getSequences()) {
+            contigPrintWriter.println(String.format("%s\t%d", contigRecord.getContig(), contigRecord.getSequenceIndex()));
+        }
+
+        for (final Map.Entry<String, Integer> entry : readGroupIndices.entrySet()) {
+            readGroupPrintWriter.println(String.format("%s\t%d", entry.getKey(), entry.getValue()));
+        }
+
+        contigPrintWriter.close();
+        readGroupPrintWriter.close();
     }
 }
