@@ -448,7 +448,7 @@ task M2 {
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             # add "-normal " to the start of each line and " " to the end, then remove newlines
             # to get -normal sample1 -normal sample2 etc
-            normal_sample_line=`sed 's/^/-normal /' normal_names.txt | sed 's/$/ /' | tr -d "\n"`
+            normal_sample_line=`awk '{ print "-normal", $0 }' normal_names.txt | tr '\n' ' '`
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
