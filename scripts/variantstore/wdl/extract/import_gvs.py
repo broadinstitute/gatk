@@ -336,11 +336,7 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_rows(filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr)))
 
         # vqsr ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
-        # For Method 1 - *THIS* is the version ('as_vqsr') that ultimately will be kept - does NOT contain 'yng_status'
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
-                                                .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt', 'yng_status')))))
-        # Method 2: Add an 'as_vqsr_dup' from which we will do the calculation of GT filtering ahead, that ultimately will be dropped
-        vd = vd.annotate_rows(as_vqsr_dup = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
         if use_classic_vqsr:
@@ -362,17 +358,17 @@ def import_gvs(refs: 'List[List[str]]',
             is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
             vd = vd.annotate_rows(
                 allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr_dup.get(allele).yng_status == 'N', False)),
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
                 allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr_dup.get(allele).yng_status == 'Y', True)),
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
                 allele_is_snp=is_snp,
                 allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
                                        f=lambda is_snp, alt:
-                                       hl.coalesce(vd.as_vqsr_dup.get(alt).vqslod >=
+                                       hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
                                                    hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
                                                    True)),
-                as_vqsr_dup=vd.alleles[1:].map(
-                    lambda allele: vd.as_vqsr_dup.get(allele).drop('yng_status'))
+                as_vqsr=vd.alleles[1:].map(
+                    lambda allele: vd.as_vqsr.get(allele).drop('yng_status'))
             )
         else:
             vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
@@ -380,17 +376,17 @@ def import_gvs(refs: 'List[List[str]]',
             is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
             vd = vd.annotate_rows(
                 allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr_dup.get(allele).yng_status == 'N', False)),
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
                 allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr_dup.get(allele).yng_status == 'Y', True)),
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
                 allele_is_snp=is_snp,
                 allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
                                        f=lambda is_snp, alt:
-                                       hl.coalesce(vd.as_vqsr_dup.get(alt).calibration_sensitivity <=
+                                       hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
                                                    hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
                                                    True)),
-                as_vqsr_dup=vd.alleles[1:].map(
-                    lambda allele: vd.as_vqsr_dup.get(allele).drop('yng_status'))
+                as_vqsr=vd.alleles[1:].map(
+                    lambda allele: vd.as_vqsr.get(allele).drop('yng_status'))
             )
 
         lgt = vd.LGT
