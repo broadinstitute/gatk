@@ -364,7 +364,7 @@ def import_gvs(refs: 'List[List[str]]',
                 allele_NO=vd.alleles[1:].map(
                     lambda allele: hl.coalesce(vd.as_vqsr_dup.get(allele).yng_status == 'N', False)),
                 allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.aas_vqsr_dup.get(allele).yng_status == 'Y', True)),
+                    lambda allele: hl.coalesce(vd.as_vqsr_dup.get(allele).yng_status == 'Y', True)),
                 allele_is_snp=is_snp,
                 allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
                                        f=lambda is_snp, alt:
