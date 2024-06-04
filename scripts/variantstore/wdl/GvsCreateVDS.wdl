@@ -3,6 +3,8 @@ version 1.0
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 
+# Another comment is here.
+
 workflow GvsCreateVDS {
     input {
         String avro_path
