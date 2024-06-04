@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetada
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.TranscriptUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -779,6 +780,30 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         );
 
         return transcriptFastaReferenceDataSource.queryAndPrefetch( transcriptInterval ).getBaseString() + transcriptTailPaddingBaseString;
+    }
+
+    /**
+     * Get the coding sequence from the given {@link ReferenceContext} for a given {@link GencodeGtfTranscriptFeature}.
+     * NOTE: The transcript coding sequence strings consist of all UTR and CDS sequences.
+     * @param referenceContext The {@link ReferenceContext} from which to get the coding sequence.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} for which to get the coding sequence.
+     * @param tailPaddingBases Bases to add to the end of the transcript base string to enable processing variants that overrrun the end of the transcript.
+     * @return The coding sequence for the given {@code transcript} as represented in the given {@code referenceContext}.
+     */
+    private static String getCodingSequenceFromReferenceContext(final ReferenceContext referenceContext, final GencodeGtfTranscriptFeature transcript, final String tailPaddingBases) {
+
+        // The transcript strings consist of CDS and stop_codon sequences:
+        final List<Locatable> transcriptFeatureList = transcript.getAllFeatures().stream()
+                .filter((feature) -> feature.getFeatureType() == GencodeGtfFeature.FeatureType.CDS || feature.getFeatureType() == GencodeGtfFeature.FeatureType.STOP_CODON)
+                .collect(Collectors.toList());
+
+        // If we're on the reverse strand, we need to reverse complement the sequence:
+        if ( transcript.getGenomicStrand() == Strand.NEGATIVE ) {
+            return new String(BaseUtils.simpleReverseComplement(TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList).getBytes())) + tailPaddingBases;
+        }
+        else {
+            return TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList) + tailPaddingBases;
+        }
     }
 
     /**
@@ -2047,12 +2072,19 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 final String transcriptTailPaddingBaseString = getTranscriptEndPaddingBases(variant, altAllele, exonPositionList, reference);
 
                 // NOTE: This can't be null because of the Funcotator input args.
-                final String rawCodingSequence = getCodingSequenceFromTranscriptFasta(
-                        transcript.getTranscriptId(),
-                        transcriptIdMap,
-                        transcriptFastaReferenceDataSource,
+                final String rawCodingSequence = getCodingSequenceFromReferenceContext(
+                        reference,
+                        transcript,
                         transcriptTailPaddingBaseString
                 );
+
+
+//                final String rawCodingSequenceOld = getCodingSequenceFromTranscriptFasta(
+//                        transcript.getTranscriptId(),
+//                        transcriptIdMap,
+//                        transcriptFastaReferenceDataSource,
+//                        transcriptTailPaddingBaseString
+//                );
 
                 // Now that we have our transcript sequence, we must make sure that our reference allele is in it
                 // correctly.

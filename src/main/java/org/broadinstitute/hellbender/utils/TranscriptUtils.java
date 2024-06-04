@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.util.Locatable;
 import javassist.Loader;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
@@ -24,7 +25,7 @@ public class TranscriptUtils {
      * @param exons the exons of the transcript.  Must not be {@code null}.
      * @return the transcript sequence as coded in the given reference context.
      */
-    public static final String extractTrascriptFromReference(final ReferenceContext refContext, final List<SimpleInterval> exons) {
+    public static final String extractTrascriptFromReference(final ReferenceContext refContext, final List<Locatable> exons) {
 
         Utils.nonNull(refContext);
         Utils.nonNull(exons);
@@ -32,8 +33,8 @@ public class TranscriptUtils {
         final StringBuilder transcript = new StringBuilder();
 
         // We should iterate through the list of exons in sorted order so we can simply append them together.
-        for (final SimpleInterval exon : exons.stream().sorted(Comparator.comparingInt(SimpleInterval::getStart).thenComparing(SimpleInterval::getEnd)).toList() ) {
-            transcript.append(new String(refContext.getBases(exon)));
+        for (final Locatable exon : exons.stream().sorted(Comparator.comparingInt(Locatable::getStart).thenComparing(Locatable::getEnd)).toList() ) {
+            transcript.append(new String(refContext.getBases(new SimpleInterval(exon))));
         }
         return transcript.toString();
     }

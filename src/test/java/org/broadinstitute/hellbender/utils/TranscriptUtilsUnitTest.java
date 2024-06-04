@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -142,7 +143,7 @@ public class TranscriptUtilsUnitTest extends GATKBaseTest {
     // Tests:
 
     @Test(dataProvider = "provideForTestExtractTrascriptFromReference")
-    public void TestExtractTrascriptFromReference(final ReferenceContext refContext, final List<SimpleInterval> exons, final String expectedTranscript) {
+    public void TestExtractTrascriptFromReference(final ReferenceContext refContext, final List<Locatable> exons, final String expectedTranscript) {
         final String transcript = TranscriptUtils.extractTrascriptFromReference(refContext, exons);
 
         if ( !transcript.equals(expectedTranscript) ) {

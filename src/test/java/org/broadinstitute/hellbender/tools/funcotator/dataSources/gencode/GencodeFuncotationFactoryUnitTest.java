@@ -2745,4 +2745,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+//    @Test
+//    public void testGetCodingSequenceFromTranscriptFasta() {
+//
+//
+//        getCodingSequenceFromReferenceContext();
+//
+//        final String transcriptFastaFile    = FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE;
+//        final String transcriptId           = "ENST00000263967.1";
+//        final String expectedCodingSequence = "ATGAGTGGGAGCTGCT";
+//    }
 }
