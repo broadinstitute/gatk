@@ -16,7 +16,10 @@ public class PrintFileDiagnosticsIntegrationTest extends CommandLineProgramTest 
     public Object[][] getFileDiagnosticsTestCases() {
         return new Object[][]{
                 {
-                        NA12878_20_21_WGS_cram,
+                        //this pathname is embedded in the diagnostics output file, so we use a relative pathname
+                        // instead of the named constant NA12878_20_21_WGS_cram in order to avoid test failures
+                        // caused by the full pathname varying in different environments
+                        "src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram",
                         List.of(Pair.of("count-limit", "10")),
                         "src/test/resources/filediagnostics/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.txt"
                 },
