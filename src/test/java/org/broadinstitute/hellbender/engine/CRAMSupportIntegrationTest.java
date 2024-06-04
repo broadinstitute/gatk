@@ -37,7 +37,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
     }
 
     @DataProvider(name="roundTripCRAMTests")
-    public Object[][] getHaplotypCallerTestInputs() {
+    public Object[][] getRoundTripCRAMTests() {
         return new Object[][] {
                 // we need to use lenient equality for this test because this bam has ~14k reads that fail full
                 // read equality; at least some of which are because they are unmapped/unplaced, but have cigar
@@ -46,7 +46,10 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
                 // this cram is the result of converting the above bam to cram using samtools; once the file is
                 // converted, we can use full read equality when roundtripping through cram, so we don't need to
                 // be lenient
-                {NA12878_20_21_WGS_cram, b37_reference_20_21, false, false}
+                {NA12878_20_21_WGS_cram, b37_reference_20_21, false, false},
+                // roundtrip a v2.1 file
+                { largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram",
+                        b37_reference_20_21, false, false },
         };
     }
 
@@ -89,6 +92,8 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
                     Assert.assertEquals(targetRec.getReadName(), sourceRec.getReadName());
                     Assert.assertEquals(targetRec.getReadBases(), sourceRec.getReadBases());
                     Assert.assertEquals(targetRec.getBaseQualities(), sourceRec.getBaseQualities());
+                    Assert.assertEquals(targetRec.getAlignmentStart(), sourceRec.getAlignmentStart());
+                    Assert.assertEquals(targetRec.getAlignmentEnd(), sourceRec.getAlignmentEnd());
                 } else if (emitDetail) {
                     final SAMRecord sourceRec = sourceIterator.next();
                     final SAMRecord targetRec = targetIterator.next();
