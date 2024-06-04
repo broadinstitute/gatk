@@ -299,7 +299,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-430_RemoveYNGStatus_From_VDS
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -310,6 +309,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1396_bq_query_audit
+             - gg_VS-430_RemoveYNGStatus_From_VDS
          tags:
              - /.*/
    - name: GvsIngestTieout
