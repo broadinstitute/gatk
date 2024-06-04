@@ -314,6 +314,8 @@ workflow Mutect2 {
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? m3_dataset = Concatenate.concatenated
+        File permutect_contigs_table = select_first(M2.permutect_contigs_table)
+        File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
     }
 }
 
@@ -442,6 +444,8 @@ task M2 {
         touch bamout.bam
         touch f1r2.tar.gz
         touch dataset.txt
+        touch contigs.table
+        touch read-groups.table
 
         if [[ ! -z "~{normal_reads}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
@@ -476,7 +480,7 @@ task M2 {
 
         # If the variants for contamination and the intervals for this scatter don't intersect, GetPileupSummaries
         # throws an error.  However, there is nothing wrong with an empty intersection for our purposes; it simply doesn't
-        # contribute to the merged pileup summaries that we create downstream.  We implement this by with array outputs.
+        # contribute to the merged pileup summaries that we create downstream.  We implement this via array outputs.
         # If the tool errors, no table is created and the glob yields an empty array.
         set +e
 
@@ -516,6 +520,8 @@ task M2 {
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
         File m3_dataset = "dataset.txt"
+        File permutect_contigs_table = "contigs.table"
+        File permutect_read_groups_table = "read-groups.table"
     }
 }
 

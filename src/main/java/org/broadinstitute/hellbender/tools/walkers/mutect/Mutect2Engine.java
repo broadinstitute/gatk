@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -94,6 +95,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     final private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
+    private SAMSequenceDictionary sequenceDictionary;
     private final int minCallableDepth;
     public static final String CALLABLE_SITES_NAME = "callable";
 
@@ -136,9 +138,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
      * @param referenceSpec reference specifier for the reference
      * @param annotatorEngine annotator engine built with desired annotations
      */
-    public Mutect2Engine(final M2ArgumentCollection MTAC, AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final GATKPath referenceSpec, final VariantAnnotatorEngine annotatorEngine) {
+    public Mutect2Engine(final M2ArgumentCollection MTAC, AssemblyRegionArgumentCollection assemblyRegionArgs,
+                         final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header,
+                         final SAMSequenceDictionary sequenceDictionary, final GATKPath referenceSpec, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
+        this.sequenceDictionary = sequenceDictionary;
         minCallableDepth = MTAC.callableDepth;
         referenceReader = ReferenceUtils.createReferenceReader(Utils.nonNull(referenceSpec));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
@@ -162,7 +167,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs, MTAC.fbargs, true, MTAC.likelihoodArgs.likelihoodEngineImplementation);
-        genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
+        genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine, header, sequenceDictionary);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, header.getSequenceDictionary());
 
