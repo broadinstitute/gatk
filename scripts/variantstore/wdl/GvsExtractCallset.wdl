@@ -71,7 +71,7 @@ workflow GvsExtractCallset {
   String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
 
   # make the fully qualified version of the ploidy table if present, otherwise leave it undefined
-  String? fq_ploidy_mapping_table = if (defined(ploidy_table_name)) then "~{fq_gvs_dataset}.ploidy_table_name" else ploidy_table_name
+  String? fq_ploidy_mapping_table = if (defined(ploidy_table_name)) then "~{fq_gvs_dataset}.~{ploidy_table_name}" else ploidy_table_name
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
