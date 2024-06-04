@@ -414,7 +414,7 @@ task ExtractTask {
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
-        ~{"----sample-ploidy-table " + fq_ploidy_mapping_table} \
+        ~{"--sample-ploidy-table " + fq_ploidy_mapping_table} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsExtractCallset \
