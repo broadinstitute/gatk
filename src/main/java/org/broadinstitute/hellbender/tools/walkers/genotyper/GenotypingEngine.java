@@ -395,7 +395,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     protected final boolean cannotBeGenotyped(final VariantContext vc) {
         if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
-            && vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods)) {  //likelihoods may be missing when reading from GenomicsDB if there are more alts that GDB args allow
+                //likelihoods may be missing when reading from GenomicsDB if there are more alts that GDB args allow
+                //ensure all genotypes (outside of 0/0 and ./.) have likelihoods
+            && vc.getGenotypes().stream().filter( g -> !(g.isNoCall() || g.isHomRef()) ).allMatch(Genotype::hasLikelihoods)) {
             return false;
         }
         // protect against too many alternate alleles that we can't even run AF on:
@@ -403,8 +405,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             logger.warn("Attempting to genotype more than " + GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED +
                     " alleles. Site will be skipped at location " + vc.getContig() + ":" + vc.getStart());
             return true;
-        }else {
-            logger.warn("No genotype contained sufficient data to recalculate site and allele qualities. Site will be skipped at location "
+        } else {
+            logger.warn("Not all genotypes contained sufficient data to recalculate site and allele qualities. Site will be skipped at location "
                     + vc.getContig() + ":" + vc.getStart());
             return true;
         }

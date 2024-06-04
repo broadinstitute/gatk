@@ -1096,4 +1096,20 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(g.hasAD());
         Assert.assertFalse(g.hasPL());
     }
+
+    @Test
+    public void testMixHaploidDiploidHighAltSite() {
+        final File output = createTempFile("MixHaploidDiploidHighAltSite", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(hg38Reference)
+                .addVCF("gendb://" + toolsTestDir + "/walkers/GenotypeGVCFs/mixHaploidDiploidHighAlt")
+                .add("L", "chrX:66780645")
+                .addOutput(output);
+        //Make sure we don't hit an exception
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        //Make sure the site was successfully removed and therefore the VCF is empty
+        Assert.assertEquals(outputData.getRight().size(), 0);
+    }
 }

@@ -1,0 +1,374 @@
+{
+  "fields": [{
+    "name": "ID",
+    "type": ["char"],
+    "length": [{
+      "variable_length_descriptor": "var"
+    }]
+  }, {
+    "name": "PASS",
+    "type": ["Integer"],
+    "vcf_field_class": ["FILTER"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "AD",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "R"
+    }]
+  }, {
+    "name": "AF",
+    "type": ["Float"],
+    "vcf_field_class": ["FORMAT", "INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "DP",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT", "INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "F1R2",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "R"
+    }]
+  }, {
+    "name": "F2R1",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "R"
+    }]
+  }, {
+    "name": "GP",
+    "type": ["Float"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "G"
+    }]
+  }, {
+    "name": "GQ",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "GT",
+    "type": ["int"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "PP"
+    }]
+  }, {
+    "name": "ICNT",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "2"
+    }]
+  }, {
+    "name": "MB",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "4"
+    }]
+  }, {
+    "name": "MIN_DP",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "PL",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "G"
+    }]
+  }, {
+    "name": "PRI",
+    "type": ["Float"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "G"
+    }]
+  }, {
+    "name": "PS",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "SB",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "4"
+    }]
+  }, {
+    "name": "SPL",
+    "type": ["Integer"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "VAR"
+    }]
+  }, {
+    "name": "SQ",
+    "type": ["Float"],
+    "vcf_field_class": ["FORMAT"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "AC",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AN",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "AS_BaseQRankSum",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_FS",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_InbreedingCoeff",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_MQ",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_MQRankSum",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_QD",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_QUALapprox",
+    "type": ["int"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "R"
+    }, {
+      "variable_length_descriptor": "var"
+    }],
+    "vcf_delimiter": ["|", ","],
+    "VCF_field_combine_operation": "element_wise_sum"
+  }, {
+    "name": "AS_ReadPosRankSum",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_SOR",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "A"
+    }]
+  }, {
+    "name": "AS_VarDP",
+    "type": ["int"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "R"
+    }, {
+      "variable_length_descriptor": "var"
+    }],
+    "vcf_delimiter": ["|", ","],
+    "VCF_field_combine_operation": "element_wise_sum"
+  }, {
+    "name": "BaseQRankSum",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "DB",
+    "type": ["Flag"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "END",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "ExcessHet",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "FS",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "FractionInformativeReads",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "InbreedingCoeff",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "LOD",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "MQ",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "MQRankSum",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "MQ_DP",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }],
+    "VCF_field_combine_operation": "sum"
+  }, {
+    "name": "QD",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "QUALapprox",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }],
+    "VCF_field_combine_operation": "sum"
+  }, {
+    "name": "R2_5P_bias",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "RAW_GT_COUNT",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "3"
+    }],
+    "VCF_field_combine_operation": "element_wise_sum"
+  }, {
+    "name": "RAW_MQandDP",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "2"
+    }],
+    "VCF_field_combine_operation": "element_wise_sum"
+  }, {
+    "name": "ReadPosRankSum",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "SOR",
+    "type": ["Float"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }]
+  }, {
+    "name": "VarDP",
+    "type": ["Integer"],
+    "vcf_field_class": ["INFO"],
+    "length": [{
+      "variable_length_descriptor": "1"
+    }],
+    "VCF_field_combine_operation": "sum"
+  }],
+  "contigs": [{
+    "name": "chr1",
+    "length": "248956422",
+    "tiledb_column_offset": "0"
+  }, {
+    "name": "chrX",
+    "length": "156040895",
+    "tiledb_column_offset": "248956422"
+  }]
+}
