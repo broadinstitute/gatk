@@ -395,9 +395,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     protected final boolean cannotBeGenotyped(final VariantContext vc) {
         if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
-                //likelihoods may be missing when reading from GenomicsDB if there are more alts that GDB args allow
-                //so ensure all genotypes (outside of 0/0 and ./.) have likelihoods
-            && vc.getGenotypes().stream().filter( g -> !(g.isNoCall() || g.isHomRef()) ).allMatch(Genotype::hasLikelihoods)) {
+                // likelihoods may be missing when reading from GenomicsDB if there are more alts that GDB args allow
+                // so ensure all genotypes (outside of 0/0 and ./.) have likelihoods
+            && vc.getGenotypes().stream().filter( g -> !(g.isNoCall() || g.isHomRef()) ).allMatch(Genotype::hasLikelihoods)
+                // if all sites are no calls or hom refs then keep a site where any samples have likelihoods
+            && vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods)) {
             return false;
         }
         // protect against too many alternate alleles that we can't even run AF on:
