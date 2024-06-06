@@ -328,6 +328,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1334_vcf_max_alt_alleles_echo_callset
+             - gg_VS-430_RemoveYNGStatus_From_VDS_EchoCallsetVersion
          tags:
              - /.*/
    - name: GvsIngestTieout
