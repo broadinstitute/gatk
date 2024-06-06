@@ -42,28 +42,7 @@ public class AlleleFilteringMutect extends AlleleFiltering {
         normalSamples = _normalSamples;
     }
 
-    private AlleleLikelihoods<GATKRead, Allele> getAlleleLikelihoodMatrix(final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
-                                                                          final Event allele,
-                                                                          final Map<Haplotype, Collection<Event>> haplotypeAlleleMap,
-                                                                          final Set<Haplotype> enabledHaplotypes
-    ){
-
-        final Map<Allele,List<Haplotype>> alleleHaplotypeMap = new CollectionUtil.DefaultingMap<>((k) -> new ArrayList<>(), true);
-
-
-        final Allele notAllele= InverseAllele.of(allele.altAllele(), true);
-        readLikelihoods.alleles().stream().filter(enabledHaplotypes::contains)
-                .filter(h->haplotypeAlleleMap.get(h).contains(allele))
-                .forEach(alleleHaplotypeMap.get(allele.altAllele())::add);
-        readLikelihoods.alleles().stream().filter(enabledHaplotypes::contains)
-                .filter(h -> !haplotypeAlleleMap.get(h).contains(allele))
-                .forEach(alleleHaplotypeMap.get(notAllele)::add);
-
-        final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods = readLikelihoods.marginalize(alleleHaplotypeMap);
-
-        logger.debug(() -> String.format("GALM: %s %d %d", allele, alleleHaplotypeMap.get(allele.altAllele()).size(), alleleHaplotypeMap.get(notAllele).size()));
-        return alleleLikelihoods;
-    }
+    protected double getStringentQuality() { return -50; }
 
     /**
      * Calculate calculate genotype likelihood of requirement of an allele. Specifically, calculates the likelihood

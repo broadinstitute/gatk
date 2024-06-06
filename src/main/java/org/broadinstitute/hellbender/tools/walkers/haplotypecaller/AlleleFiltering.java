@@ -43,11 +43,11 @@ import com.google.common.annotations.VisibleForTesting;
  */
 
 public abstract class AlleleFiltering {
-
     final protected static Logger logger = LogManager.getLogger(AlleleFiltering.class);
     final protected AssemblyBasedCallerArgumentCollection assemblyArgs;
     final private OutputStreamWriter assemblyDebugOutStream;
     final private SAMSequenceDictionary sequenceDictionary;
+
     AlleleFiltering(final AssemblyBasedCallerArgumentCollection assemblyArgs,
                     final OutputStreamWriter assemblyDebugOutStream,
                     final SAMFileHeader header){
@@ -55,6 +55,7 @@ public abstract class AlleleFiltering {
         this.assemblyDebugOutStream = assemblyDebugOutStream;
         this.sequenceDictionary = header.getSequenceDictionary();
     }
+    protected abstract double getStringentQuality();
 
     /**
      * Finds alleles that are likely not contributing much to explaining the data and remove the haplotypes
@@ -204,8 +205,7 @@ public abstract class AlleleFiltering {
                 // the very weak quality is hardcoded
                 final List<Event> filteringCandidatesStringent = identifyBadAlleles(collectedRPLs,
                         collectedSORs,
-                        activeAlleles,
-                        1,
+                        activeAlleles, getStringentQuality(),
                         Integer.MAX_VALUE);
 
 

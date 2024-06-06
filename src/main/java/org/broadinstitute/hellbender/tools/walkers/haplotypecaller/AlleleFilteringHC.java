@@ -38,6 +38,7 @@ public class AlleleFilteringHC extends AlleleFiltering {
          afCalc = AlleleFrequencyCalculator.makeCalculator(config);
     }
 
+    protected double getStringentQuality() { return 1; }
     /**
      * Calculate genotype likelihood of requirement of an allele. Specifically, calculates the likelihood
      * of the data given that allele versus the likelihood of the data when all haplotypes containing the allele are removed
