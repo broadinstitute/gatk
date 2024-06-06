@@ -3,7 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# comment to check dockstore.
+# comment to check dockstore!
 
 workflow GvsCreateVATfromVDS {
     input {
@@ -110,7 +110,7 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-    if (!defined(sites_only_vcf) && ((!defined(vds_path) && !defined(hail_generate_sites_only_script_path)))) {
+    if (!defined(sites_only_vcf) && ((!defined(vds_path) || !defined(hail_generate_sites_only_script_path)))) {
         call Utils.TerminateWorkflow as MustSetSitesOnlyVcfOrParametersToCreate {
             input:
                 message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path' and 'hail_generate_sites_only_script_path'",
