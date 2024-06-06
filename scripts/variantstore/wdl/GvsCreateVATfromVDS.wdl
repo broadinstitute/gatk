@@ -3,6 +3,8 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "../variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
+# comment to check dockstore
+
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -100,7 +102,15 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-    if (!defined(sites_only_vcf) && ((!defined(vds_path) || !defined(hail_generate_sites_only_script_path)))) {
+    if ((defined(sites_only_vcf)) && (defined(vds_path) || defined(hail_generate_sites_only_script_path))) {
+        call Utils.TerminateWorkflow as IfSitesOnlyVcfSetDontSetCreateParameters {
+            input:
+                message = "Error: If 'sites_only_vcf' is set as an input, you may not set 'vds_path' and 'hail_generate_sites_only_script_path'",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    if (!defined(sites_only_vcf) && ((!defined(vds_path) && !defined(hail_generate_sites_only_script_path)))) {
         call Utils.TerminateWorkflow as MustSetSitesOnlyVcfOrParametersToCreate {
             input:
                 message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path' and 'hail_generate_sites_only_script_path'",
@@ -108,7 +118,7 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-    if (defined(sites_only_vcf) || (defined(vds_path) && defined(hail_generate_sites_only_script_path))) {
+#    if (defined(sites_only_vcf) || (defined(vds_path) && defined(hail_generate_sites_only_script_path))) {
         if (!defined(split_intervals_scatter_count)) {
             call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
                 input:
@@ -294,12 +304,12 @@ workflow GvsCreateVATfromVDS {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
        }
-    }
+#    }
 
     output {
         String? cluster_name = GenerateSitesOnlyVcf.cluster_name
-        File? dropped_sites_file = MergeTsvs.output_file
-        File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
+        File dropped_sites_file = MergeTsvs.output_file
+        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
     }
 }
