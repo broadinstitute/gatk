@@ -384,6 +384,7 @@ def import_gvs(refs: 'List[List[str]]',
                                                    hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
                                                    True))
             )
+        vd = vd.annotate_rows(as_vqsr=vd.as_vqsr.map_values(lambda value: value.drop('yng_status')))
 
         lgt = vd.LGT
         la = vd.LA
