@@ -315,6 +315,7 @@ task EnsureVatTableHasVariants {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok one row
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
@@ -369,6 +370,7 @@ task SpotCheckForExpectedTranscripts {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok may produce > 100 rows but anything > 0 is an error, error message explicit about row limit
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
@@ -385,7 +387,7 @@ task SpotCheckForExpectedTranscripts {
             variant_consequence NOT IN ("downstream_gene_variant","upstream_gene_variant") AND
             gene_symbol NOT IN ("IGFLR1","AD000671.2")' > bq_query_output.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
         echo "false" > ~{pf_file}
@@ -395,7 +397,7 @@ task SpotCheckForExpectedTranscripts {
             echo "The VAT table ~{fq_vat_table} only has the expected transcripts at the tested location ('IGFLR1' and 'AD000671.2' in chromosome 19, between positions 35,740,407 - 35,740,469)." > ~{results_file}
             echo "true" > ~{pf_file}
         else
-            echo "The VAT table ~{fq_vat_table} had unexpected transcripts at the tested location: [csv output follows] " > ~{results_file}
+            echo "The VAT table ~{fq_vat_table} had unexpected transcripts at the tested location: [csv output with 100 results max follows] " > ~{results_file}
             cat bq_query_output.csv >> ~{results_file}
         fi
     >>>
@@ -438,6 +440,7 @@ task SchemaNoNullRequiredFields {
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
 
+        # bq query --max_rows check: ok may produce > 100 rows but anything > 0 is an error, error message explicit about row limit
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             contig,
@@ -470,7 +473,7 @@ task SchemaNoNullRequiredFields {
             genomic_location IS NULL' > bq_null_required_output.csv
 
 
-            # get number of lines in bq query output
+            # get number of lines in bq query output (100 results max)
             NUMRESULTS=$(awk 'END{print NR}' bq_null_required_output.csv)
 
             echo "false" > ~{pf_file}
@@ -479,7 +482,7 @@ task SchemaNoNullRequiredFields {
                 echo "The VAT table ~{fq_vat_table} has no null values in required fields" > ~{results_file}
                 echo "true" > ~{pf_file}
             else
-                echo "The VAT table ~{fq_vat_table} had null values in required fields: [csv output follows] " > ~{results_file}
+                echo "The VAT table ~{fq_vat_table} had null values in required fields: [csv output with 100 results max follows] " > ~{results_file}
                 cat bq_null_required_output.csv >> ~{results_file}
             fi
     >>>
@@ -517,6 +520,7 @@ task SchemaOnlyOneRowPerNullTranscript {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok may produce > 100 rows but anything > 0 is an error, error message explicit about row limit
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid,
             COUNT(vid) AS num_rows
@@ -528,7 +532,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         GROUP BY vid
         HAVING num_rows > 1' > bq_variant_count.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
         echo "false" > ~{pf_file}
@@ -539,7 +543,7 @@ task SchemaOnlyOneRowPerNullTranscript {
             echo "true" > ~{pf_file}
         else
             tr "\n" "; " < bq_variant_count.csv > bq_variant_count_list.txt
-            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row:  $(cat bq_variant_count_list.txt) " > ~{results_file}
+            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row (100 results max):  $(cat bq_variant_count_list.txt) " > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -577,6 +581,7 @@ task SchemaPrimaryKey {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok may produce > 100 rows but anything > 0 is an error, error message explicit about row limit
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv \
         'SELECT
             vid,
@@ -588,7 +593,7 @@ task SchemaPrimaryKey {
         GROUP BY vid, transcript
         HAVING num_vids > 1 OR num_transcripts > 1' > bq_primary_key.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_primary_key.csv)
 
         echo "false" > ~{pf_file}
@@ -597,7 +602,7 @@ task SchemaPrimaryKey {
           echo "The VAT table ~{fq_vat_table} has all unique key combinations (vid+transcript)" > ~{results_file}
           echo "true" > ~{pf_file}
         else
-          echo "The VAT table ~{fq_vat_table} had repeating key combinations (vid+transcript): [csv output follows] " > ~{results_file}
+          echo "The VAT table ~{fq_vat_table} had repeating key combinations (vid+transcript): [csv output with 100 results max follows] " > ~{results_file}
           cat bq_primary_key.csv >> ~{results_file}
         fi
     >>>
@@ -636,6 +641,7 @@ task SchemaEnsemblTranscripts {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok may produce > 100 rows but anything > 0 is an error, error message explicit about row limit
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
@@ -648,7 +654,7 @@ task SchemaEnsemblTranscripts {
             transcript IS NOT NULL AND
             transcript_source != "Ensembl"' > bq_transcript_output.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_transcript_output.csv)
 
         echo "false" > ~{pf_file}
@@ -657,7 +663,7 @@ task SchemaEnsemblTranscripts {
             echo "The VAT table ~{fq_vat_table} only has the expected Ensembl transcripts"  > ~{results_file}
             echo "true" > ~{pf_file}
         else
-            echo "The VAT table ~{fq_vat_table} had unexpected transcripts (not from Ensembl): [csv output follows] " > ~{results_file}
+            echo "The VAT table ~{fq_vat_table} had unexpected transcripts (not from Ensembl): [csv output with 100 results max follows] " > ~{results_file}
             cat bq_transcript_output.csv >> ~{results_file}
         fi
     >>>
@@ -696,6 +702,7 @@ task SchemaNonzeroAcAn {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok may produce > 100 rows but anything > 0 is an error, error message explicit about row limit
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
@@ -711,7 +718,7 @@ task SchemaNonzeroAcAn {
             gvs_all_an = 0' > bq_ac_an_output.csv
 
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_ac_an_output.csv)
 
         echo "false" > ~{pf_file}
@@ -720,7 +727,7 @@ task SchemaNonzeroAcAn {
             echo "The VAT table ~{fq_vat_table} only has no rows with AC of zero or AN of zero" > ~{results_file}
             echo "true" > ~{pf_file}
         else
-            echo "The VAT table ~{fq_vat_table} had unexpected rows with AC of zero or AN of zero: [csv output follows] " > ~{results_file}
+            echo "The VAT table ~{fq_vat_table} had unexpected rows with AC of zero or AN of zero: [csv output with 100 results max follows] " > ~{results_file}
             cat bq_ac_an_output.csv >> ~{results_file}
         fi
     >>>
@@ -758,6 +765,7 @@ task SchemaNullTranscriptsExist {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: may produce > 100 rows but anything > 0 is fine; zero is the error case, error message is fine.
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
@@ -766,7 +774,7 @@ task SchemaNullTranscriptsExist {
             transcript_source is NULL AND
             transcript is NULL' > bq_variant_count.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
         echo "false" > ~{pf_file}
@@ -815,6 +823,7 @@ task SubpopulationMax {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
+        # bq query --max_rows check: may produce > 100 rows but anything > 0 is an error; error message is fine
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
@@ -828,7 +837,7 @@ task SubpopulationMax {
             gvs_max_af < gvs_oth_af OR
             gvs_max_af < gvs_sas_af' > bq_query_output.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
         echo "false" > ~{pf_file}
@@ -877,6 +886,7 @@ task SubpopulationAlleleCount {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
+        # bq query --max_rows check: may produce > 100 rows but anything > 0 is an error; error message is fine
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
@@ -884,7 +894,7 @@ task SubpopulationAlleleCount {
         WHERE
             gvs_all_ac != gvs_afr_ac + gvs_amr_ac + gvs_eas_ac + gvs_eur_ac + gvs_mid_ac + gvs_oth_ac + gvs_sas_ac'  > bq_query_output.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
         echo "false" > ~{pf_file}
@@ -933,6 +943,7 @@ task SubpopulationAlleleNumber {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
+        # bq query --max_rows check: may produce > 100 rows but anything > 0 is an error; error message is fine
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         vid
         FROM
@@ -940,7 +951,7 @@ task SubpopulationAlleleNumber {
         WHERE
         gvs_all_an != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an' > bq_an_output.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
 
         echo "false" > ~{pf_file}
@@ -988,6 +999,7 @@ task DuplicateAnnotations {
 
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: may produce > 100 rows but anything > 0 is an error; error message is fine.
         bq --apilog=false query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
         SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count
         FROM `~{fq_vat_table}`
@@ -995,6 +1007,7 @@ task DuplicateAnnotations {
         HAVING an_count > 1
         ' > bq_an_output.csv
 
+        # bq query --max_rows check: may produce > 100 rows but anything > 0 is an error; error message is fine.
         bq --apilog=false query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
         SELECT contig, position, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count
         FROM `~{fq_vat_table}`
@@ -1002,7 +1015,7 @@ task DuplicateAnnotations {
         HAVING ac_count > 1
         ' > bq_ac_output.csv
 
-        # get number of lines in bq query output
+        # get number of lines in bq query output (100 results max)
         NUMANRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
         NUMACRESULTS=$(awk 'END{print NR}' bq_ac_output.csv)
 
@@ -1010,10 +1023,10 @@ task DuplicateAnnotations {
         echo "false" > ~{pf_file}
         # if the results of the queries have any rows, that means there are sites with mis-matched gvs_all_an or gvs_all_ac
         if [[ $NUMANRESULTS != "0" ]]; then
-          echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AC, and AC of subpopulations" > ~{results_file}
+          echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AC, and AC of subpopulations, 100 rows max shown in results." 1>&2
           cp bq_an_output.csv ~{results_file}
         elif [[ $NUMACRESULTS != "0" ]]; then
-          echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AN, and AN of subpopulations" > ~{results_file}
+          echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AN, and AN of subpopulations, 100 rows max shown in results." 1>&2
           cp bq_ac_output.csv ~{results_file}
         else
           echo "The VAT table ~{fq_vat_table} has correct calculations for AN, AC, AN of subpopulations and AC of subpopulations" > ~{results_file}
@@ -1073,7 +1086,8 @@ task ClinvarSignificance {
         #                                 "other",
         #                                 "not provided"]
 
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        # bq query --max_rows check: we currently expect this to be at least 13 but it could be more, set --max_rows to a ridiculously high value.
+        bq --apilog=false query --max_rows 1000000 --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
         `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.txt
@@ -1147,6 +1161,7 @@ task SchemaAAChangeAndExonNumberConsistent {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok single row
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) AS count FROM
         (
@@ -1247,6 +1262,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # bq query --max_rows check: ok single row
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) FROM
         (
