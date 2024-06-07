@@ -3,10 +3,15 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
+import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
+import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -14,10 +19,13 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceParquetFileWriter;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+
 
 
 public final class RefCreator {
@@ -29,6 +37,7 @@ public final class RefCreator {
 
     private final boolean writeReferenceRanges;
     private final Long sampleId;
+    private GvsReferenceParquetFileWriter refRangesParquetFileWriter = null;
     private SimpleInterval previousInterval;
     private final Set<GQStateEnum> gqStatesToIgnore;
     private final GenomeLocSortedSet coverageLocSortedSet;
@@ -72,7 +81,7 @@ public final class RefCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences) {
+    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
@@ -97,11 +106,16 @@ public final class RefCreator {
                     case TSV:
                         refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
                         break;
-                    case AVRO:
+                    case AVRO: // when do we use this/!?!
                         refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
+                        break;
+                    case PARQUET:
+                        refRangesParquetFileWriter = new GvsReferenceParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                         break;
                 }
             }
+        } catch (final FileAlreadyExistsException fs) {
+            throw new UserException("This reference parquet file already exists", fs);
         } catch (final IOException ioex) {
             throw new UserException("Could not create reference range outputs", ioex);
         }
@@ -161,19 +175,43 @@ public final class RefCreator {
                         int localStart = start;
                         while ( localStart <= end ) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                            if (storeCompressedReferences) {
-                                refRangesWriter.writeCompressed(
-                                        SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
+                            switch(outputType) {
+                                case BQ:
+                                    try {
+                                        if (storeCompressedReferences) {
+                                            refRangesWriter.writeCompressed(
+                                                    SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
+                                                            getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
+                                                    sampleId
+                                            );
+                                        } else {
+                                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                                    sampleId,
+                                                    length,
+                                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                            );
+                                        }
+                                    } catch (IOException ex) {
+                                        throw new IOException("BQ exception", ex);
+                                    }
+                                    break;
+                                case PARQUET:
+                                    if (storeCompressedReferences) {
+                                        JSONObject record = GvsReferenceParquetFileWriter.writeCompressed(
+                                                SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
                                                 getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
-                                        sampleId
-                                );
-                            } else {
-                                refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                        sampleId,
-                                        length,
-                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
-                                );
+                                                sampleId
+                                        );
+                                        refRangesParquetFileWriter.write(record);
+                                    } else {
+                                        JSONObject record = GvsReferenceParquetFileWriter.writeJson(SchemaUtils.encodeLocation(variantChr, localStart), sampleId, length, getGQStateEnum(variant.getGenotype(0).getGQ()).getValue());
+                                        refRangesParquetFileWriter.write(record);
+                                    }
+                                    break;
+
                             }
+
+
 
                             localStart = localStart + length ;
                         }
@@ -331,6 +369,13 @@ public final class RefCreator {
         if (outputType == CommonCode.OutputType.BQ) {
             if (writeReferenceRanges && refRangesWriter != null) {
                 refRangesWriter.commitData();
+            }
+        } else if (outputType == CommonCode.OutputType.PARQUET && refRangesParquetFileWriter != null) {
+            try {
+                refRangesParquetFileWriter.close();
+            } catch (IOException exception) {
+                System.out.println("ERROR CLOSING PARQUET FILE: ");
+                exception.printStackTrace();
             }
         }
     }
