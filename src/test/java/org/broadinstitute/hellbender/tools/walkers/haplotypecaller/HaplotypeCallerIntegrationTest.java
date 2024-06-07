@@ -54,7 +54,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
