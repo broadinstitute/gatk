@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
@@ -68,6 +69,8 @@ public class VetCreator {
                     vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, false, CompressionCodecName.SNAPPY);
                     break;
             }
+        } catch (final FileAlreadyExistsException fs) {
+            throw new UserException("This variants parquet file already exists", fs);
         } catch (final IOException ioex) {
             throw new UserException("Could not create vet outputs", ioex);
         }
@@ -149,8 +152,6 @@ public class VetCreator {
                 exception.printStackTrace();
             }
         }
-
-
     }
 
     public void closeTool() {

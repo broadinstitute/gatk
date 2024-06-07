@@ -5,15 +5,15 @@ import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
 import org.json.JSONObject;
 
-
 import java.io.IOException;
 
-public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
+public class GvsHeaderParquetFileWriter extends ParquetWriter<JSONObject> {
 
     /**
      * This is very deprecated, and we'll need to figure out how to do this from a builder once it works!
@@ -23,16 +23,16 @@ public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
      * @param codecName
      * @throws IOException
      */
-    public GvsVariantParquetFileWriter(
+    public GvsHeaderParquetFileWriter(
             Path file,
             MessageType schema,
             boolean enableDictionary,
             CompressionCodecName codecName
     ) throws FileAlreadyExistsException, IOException {
-        super(file, new GvsVariantWriteSupport(schema), codecName, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE, enableDictionary, false);
+        super(file, new GvsHeaderWriteSupport(schema), codecName, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE, enableDictionary, false);
     }
 
-    GvsVariantParquetFileWriter(
+    GvsHeaderParquetFileWriter(
             Path file,
             GvsVariantWriteSupport writeSupport,
             CompressionCodecName compressionCodecName,
@@ -54,6 +54,13 @@ public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
                 enableValidation,
                 writerVersion,
                 conf);
+    }
+
+    public static JSONObject writeJson(Long sampleId, String headerLineHash) {
+        JSONObject record = new JSONObject();
+        record.put("sample_id", sampleId);
+        record.put("headerLineHash", headerLineHash);
+        return record;
     }
 
     public static class Builder extends ParquetWriter.Builder<JSONObject, Builder> {
@@ -78,9 +85,9 @@ public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
         }
 
         @Override
-        protected GvsVariantWriteSupport getWriteSupport(Configuration conf) {
-            return new GvsVariantWriteSupport(schema);
+        protected GvsHeaderWriteSupport getWriteSupport(Configuration conf) {
+            return new GvsHeaderWriteSupport(schema);
         }
-     }
+    }
 
 }
