@@ -1047,6 +1047,11 @@ task IndexVcf {
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
         String gatk_docker
     }
+    parameter_meta {
+      input_vcf: {
+        localization_optional: true
+      }
+  }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -1064,14 +1069,10 @@ task IndexVcf {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # Localize the passed input_vcf to the working directory so the
-        # to-be-created index file is also created there, alongside it.
-        ln -s ~{input_vcf} ~{local_file}
-
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
             IndexFeatureFile \
-            -I ~{local_file}
-
+            -I ~{input_vcf} \
+            -O "~{local_file}~{index_extension}"
     >>>
 
     runtime {
@@ -1103,15 +1104,21 @@ task SelectVariants {
         String gatk_docker
     }
 
+    parameter_meta {
+        input_vcf: {
+            localization_optional: true
+        }
+        input_vcf_index: {
+            localization_optional: true
+        }
+    }
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
-    String local_vcf = basename(input_vcf)
-    String local_index = basename(input_vcf_index)
-
-    Boolean is_compressed = basename(local_vcf, "gz") != local_vcf
+    String vcf_name = basename(input_vcf)
+    Boolean is_compressed = basename(vcf_name, "gz") != vcf_name
     String output_vcf_name = output_basename + if is_compressed then ".vcf.gz" else ".vcf"
     String output_vcf_index_name = output_basename + if is_compressed then ".vcf.gz.tbi" else ".vcf.idx"
 
@@ -1122,14 +1129,9 @@ task SelectVariants {
 
       bash ~{monitoring_script} > monitoring.log &
 
-      # Localize the passed input_vcf and input_vcf_index to the working directory so the
-      # index and the VCF are side by side in the same directory.
-      ln -s ~{input_vcf} ~{local_vcf}
-      ln -s ~{input_vcf_index} ~{local_index}
-
       gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-          -V ~{local_vcf} \
+          -V ~{input_vcf} \
           ~{"-L " + interval_list} \
           ~{"--select-type-to-include " + type_to_include} \
           ~{true="--exclude-filtered true" false="" exclude_filtered} \
@@ -1313,5 +1315,59 @@ task PopulateFilterSetInfo {
 
   output {
     File monitoring_log = "monitoring.log"
+  }
+}
+
+task CopyFile {
+  input {
+    File input_file
+    String output_gcs_dir
+    Boolean allow_overwrite = false
+    String cloud_sdk_docker
+  }
+  parameter_meta {
+    input_file: {
+      localization_optional: true
+    }
+  }
+
+  String base_filename = basename(input_file)
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    OUTPUT_PATH=${OUTPUT_GCS_DIR}/~{base_filename}
+    if [[ ~{allow_overwrite} = 'false' ]]; then
+    # gsutil ls will return non-zero if the file does not exist - we don't want to fail the task for that
+      set +o errexit
+
+      # Test if file exists
+      gsutil ls $OUTPUT_PATH > the_output.txt
+      rc=$?
+      if [[ $rc -eq 0 ]]; then
+        echo "Output file $OUTPUT_PATH already exists and 'allow_overwrite' flag is set to false"
+        exit 1
+      fi
+      set -o errexit
+    fi
+
+    gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
+    echo ${OUTPUT_PATH} > output_file_path.txt
+  >>>
+  output {
+    String output_file_path = read_string("output_file_path.txt")
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }
