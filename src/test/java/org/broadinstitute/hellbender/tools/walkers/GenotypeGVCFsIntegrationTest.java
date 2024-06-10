@@ -1101,10 +1101,10 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     public void testMixHaploidDiploidHighAltSite() {
         final String inputVcfsDir = toolsTestDir + "/walkers/GenotypeGVCFs/mixHaploidDiploidHighAlt/";
         List<File> inputs = new ArrayList<>();
-        
-        // list of 24 genotype 1/2 samples and one genotype 1 sample with 49 alt alleles
+
+        // list of 3 genotype 1/2 samples and one genotype 1 sample with 6 alt alleles
         inputs.add(new File(inputVcfsDir + "haploid.rb.g.vcf"));
-        for (int i = 1; i <= 24; i++) {
+        for (int i = 1; i <= 3; i++) {
             String str = String.format("%ss%02d.rb.g.vcf", inputVcfsDir, i);
             inputs.add(new File(str));
         }
@@ -1119,6 +1119,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         argsGenotypeGVCFs.addReference(hg38Reference)
                 .addVCF(outputImport)
                 .addInterval(interval)
+                // 6 alt alleles is 6C2 = 15 genotypes for diploids, but only 6 genotypes for haploids
+                .add("max-genotype-count", 8)
                 .addOutput(output);
         //Make sure we don't hit an exception
         runCommandLine(argsGenotypeGVCFs);
