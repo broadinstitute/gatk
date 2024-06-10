@@ -1099,14 +1099,29 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testMixHaploidDiploidHighAltSite() {
-        final File output = createTempFile("MixHaploidDiploidHighAltSite", ".vcf");
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(hg38Reference)
-                .addVCF("gendb://" + toolsTestDir + "/walkers/GenotypeGVCFs/mixHaploidDiploidHighAlt")
-                .add("L", "chrX:66780645")
+        final String inputVcfsDir = toolsTestDir + "/walkers/GenotypeGVCFs/mixHaploidDiploidHighAlt/";
+        List<File> inputs = new ArrayList<>();
+        
+        // list of 24 genotype 1/2 samples and one genotype 1 sample with 49 alt alleles
+        inputs.add(new File(inputVcfsDir + "haploid.rb.g.vcf"));
+        for (int i = 1; i <= 24; i++) {
+            String str = String.format("%ss%02d.rb.g.vcf", inputVcfsDir, i);
+            inputs.add(new File(str));
+        }
+        final SimpleInterval interval =  new SimpleInterval("chrX", 66780645, 66780645);
+        final File tempGenomicsDB2 = GenomicsDBTestUtils.createTempGenomicsDB(inputs, interval);
+        final String genomicsDBUri2 = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB2);
+        final List<String> argsImport = new ArrayList<>();
+        final File outputImport = runGenotypeGVCFS(genomicsDBUri2, null, argsImport, hg38Reference);
+        final File output = createTempFile("mixHaploidDiploidHighAlt", ".vcf");
+
+        final ArgumentsBuilder argsGenotypeGVCFs = new ArgumentsBuilder();
+        argsGenotypeGVCFs.addReference(hg38Reference)
+                .addVCF(outputImport)
+                .addInterval(interval)
                 .addOutput(output);
         //Make sure we don't hit an exception
-        runCommandLine(args);
+        runCommandLine(argsGenotypeGVCFs);
 
         final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         //Make sure the site was successfully removed and therefore the VCF is empty
