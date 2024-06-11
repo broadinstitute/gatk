@@ -57,14 +57,14 @@ workflow GvsExtractAvroFilesForHail {
             basic_docker = effective_basic_docker,
     }
 
-    call ExtractFromSampleInfoTable {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            avro_sibling = OutputPath.out,
-            call_set_identifier = call_set_identifier,
-            variants_docker = effective_variants_docker,
-    }
+#    call ExtractFromSampleInfoTable {
+#        input:
+#            project_id = project_id,
+#            dataset_name = dataset_name,
+#            avro_sibling = OutputPath.out,
+#            call_set_identifier = call_set_identifier,
+#            variants_docker = effective_variants_docker,
+#    }
 
     call ExtractFromFilterTables {
         input:
@@ -78,43 +78,43 @@ workflow GvsExtractAvroFilesForHail {
             variants_docker = effective_variants_docker,
     }
 
-    call Utils.CountSuperpartitions {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+#    call Utils.CountSuperpartitions {
+#        input:
+#            project_id = project_id,
+#            dataset_name = dataset_name,
+#            cloud_sdk_docker = effective_cloud_sdk_docker,
+#    }
 
-    call Utils.GetBQTableLastModifiedDatetime as RefTableDatetimeCheck {
-        input:
-            project_id = project_id,
-            fq_table = "~{project_id}.~{dataset_name}.ref_ranges_001",
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+#    call Utils.GetBQTableLastModifiedDatetime as RefTableDatetimeCheck {
+#        input:
+#            project_id = project_id,
+#            fq_table = "~{project_id}.~{dataset_name}.ref_ranges_001",
+#            cloud_sdk_docker = effective_cloud_sdk_docker,
+#    }
 
 
-    call Utils.IsUsingCompressedReferences {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+#    call Utils.IsUsingCompressedReferences {
+#        input:
+#            project_id = project_id,
+#            dataset_name = dataset_name,
+#            ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
+#            cloud_sdk_docker = effective_cloud_sdk_docker,
+#    }
 
-    scatter (i in range(scatter_width)) {
-        call ExtractFromSuperpartitionedTables {
-            input:
-                project_id = project_id,
-                dataset_name = dataset_name,
-                call_set_identifier = call_set_identifier,
-                avro_sibling = OutputPath.out,
-                num_superpartitions = CountSuperpartitions.num_superpartitions,
-                shard_index = i,
-                num_shards = scatter_width,
-                variants_docker = effective_variants_docker,
-                use_compressed_references = IsUsingCompressedReferences.is_using_compressed_references,
-        }
-    }
+#    scatter (i in range(scatter_width)) {
+#        call ExtractFromSuperpartitionedTables {
+#            input:
+#                project_id = project_id,
+#                dataset_name = dataset_name,
+#                call_set_identifier = call_set_identifier,
+#                avro_sibling = OutputPath.out,
+#                num_superpartitions = CountSuperpartitions.num_superpartitions,
+#                shard_index = i,
+#                num_shards = scatter_width,
+#                variants_docker = effective_variants_docker,
+#                use_compressed_references = IsUsingCompressedReferences.is_using_compressed_references,
+#        }
+#    }
 
     output {
         String avro_path = ExtractFromFilterTables.output_prefix

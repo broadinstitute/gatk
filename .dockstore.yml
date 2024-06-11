@@ -356,6 +356,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - vs_1409_extract_rev1_filter
          tags:
              - /.*/
    - name: GvsCallsetStatistics
