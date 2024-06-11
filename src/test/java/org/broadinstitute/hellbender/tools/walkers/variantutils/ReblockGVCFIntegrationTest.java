@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -17,7 +16,6 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -700,5 +698,20 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(v0.getGenotype(0).getGQ(), 0);
         //no more star alleles because deletions are all gone
         Assert.assertFalse(variants.stream().anyMatch(v -> v.getAlternateAlleles().contains(Allele.SPAN_DEL)));
+    }
+
+    @Test
+    public void warnWhenRemovingAnnotations() {
+        final File input = getTestFile("gvcfWithNoPRI.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addReference(hg38Reference)
+                .addVCF(input)
+                .addOutput(output)
+                .add("format-annotations-to-remove","PRI");
+
+        //make sure it doesn't error
+        runCommandLine(args);
     }
 }
