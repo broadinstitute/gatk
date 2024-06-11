@@ -843,6 +843,78 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
+     * Get the 5' UTR sequence from the given {@link ReferenceContext} for a given {@link GencodeGtfTranscriptFeature}.
+     * @param referenceContext The {@link ReferenceContext} from which to get the 5' UTR sequence.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} for which to get the 5' UTR sequence.
+     * @param numExtraBases The number of extra bases from the coding region to include in the results after the 5' UTR region.
+     * @return A {@link String} containing the 5' UTR sequence for the given {@code transcript} as represented in the given {@code referenceContext}.
+     */
+    private static String getFivePrimeUtrSequenceFromReference(final ReferenceContext referenceContext, final GencodeGtfTranscriptFeature transcript, final int numExtraBases) {
+
+        // The 5' UTR is always the UTR that occurs at the beginning of the transcript, so we can grab the CDS and UTR regions
+        // and sort them to find where the 5' UTR is (if there is one):
+        List<GencodeGtfFeature> transcriptFeatureList = transcript.getAllFeatures().stream()
+                .filter((feature) -> feature.getFeatureType() == GencodeGtfFeature.FeatureType.CDS || feature.getFeatureType() == GencodeGtfFeature.FeatureType.UTR)
+                .sorted(Comparator.comparingInt(Locatable::getStart).thenComparing(Locatable::getEnd))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        // If we're on the reverse strand, let's reverse the list so that we can get the UTRs in the correct order:
+        if (transcript.getGenomicStrand() == Strand.NEGATIVE) {
+            Collections.reverse(transcriptFeatureList);
+        }
+
+        // Now that we've sorted our feature list, we can go through and collect all the UTRs at the start to get the
+        // combined 5' UTR:
+        final List<Locatable> fivePrimeUtrs = new ArrayList<>();
+        for ( final GencodeGtfFeature feature : transcriptFeatureList ) {
+            if ( feature.getFeatureType() == GencodeGtfFeature.FeatureType.UTR ) {
+                fivePrimeUtrs.add(feature);
+            }
+            else {
+                // As soon as we see any feature that is not a UTR, we know
+                // we are done with the 5' UTR:
+                break;
+            }
+        }
+
+        // If we need to get extra bases at the end, we do so:
+        String extraBases = "";
+        if (numExtraBases > 0) {
+            // Once again we must check our strandedness:
+            if (transcript.getGenomicStrand() == Strand.NEGATIVE) {
+                extraBases = new String(referenceContext.getBases(
+                        new SimpleInterval(
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getContig(),
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getStart() - numExtraBases,
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getStart() - 1)  // subtract an additional 1 here because coordinates are inclusive and we need to have exactly `numExtraBases` more bases
+                ));
+            }
+            else {
+                extraBases = new String(referenceContext.getBases(
+                        new SimpleInterval(
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getContig(),
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd(),
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd() + numExtraBases)
+                ));
+            }
+        }
+
+        // Now we have our start and end coordinates for the 5' UTR, we can extract that from the reference
+        final String utrBases = TranscriptUtils.extractTrascriptFromReference(referenceContext, fivePrimeUtrs);
+
+        // Finally, if we're on the reverse strand, we need to reverse complement the UTR bases.
+        // NOTE: the extra bases are not reverse complemented because they are not part of the UTR.
+        if (transcript.getGenomicStrand() == Strand.NEGATIVE) {
+            return new String(BaseUtils.simpleReverseComplement(utrBases.getBytes())) + new String(BaseUtils.simpleReverseComplement(extraBases.getBytes()));
+        }
+        else {
+            return utrBases + extraBases;
+        }
+    }
+
+
+
+    /**
      * Returns whether a variant is in a coding region based on its primary and secondary {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
      * @param varClass Primary {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} of a variant.
      * @param secondaryVarClass Secondary {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} of a variant.
@@ -1683,8 +1755,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 // Note: We grab 3 extra bases at the end (from the coding sequence) so that we can check for denovo starts
                 //       even if the variant occurs in the last base of the UTR.
                 final int numExtraTrailingBases = variant.getReference().length() < defaultNumTrailingBasesForUtrAnnotationSequenceConstruction ? defaultNumTrailingBasesForUtrAnnotationSequenceConstruction : variant.getReference().length() + 1;
-                final String fivePrimeUtrCodingSequence =
-                        getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
+//                final String fivePrimeUtrCodingSequenceOld =
+//                        getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
+
+                final String fivePrimeUtrCodingSequence = getFivePrimeUtrSequenceFromReference(reference, transcript, numExtraTrailingBases);
+
+//                // todo: DEBUGGING:
+//                if (!fivePrimeUtrCodingSequence.equals(fivePrimeUtrCodingSequenceOld)) {
+//                    getFivePrimeUtrSequenceFromReference(reference, transcript, numExtraTrailingBases);
+//                    throw new RuntimeException("5' UTR sequences do not match!  This is a bug!");
+//                }
 
                 // Get our start position in our coding sequence:
                 final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, transcript.getExons(), strand);
@@ -2077,7 +2157,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         transcript,
                         transcriptTailPaddingBaseString
                 );
-
 
 //                final String rawCodingSequenceOld = getCodingSequenceFromTranscriptFasta(
 //                        transcript.getTranscriptId(),
