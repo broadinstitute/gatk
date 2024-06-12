@@ -1108,16 +1108,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             String str = String.format("%ss%02d.rb.g.vcf", inputVcfsDir, i);
             inputs.add(new File(str));
         }
-        final SimpleInterval interval =  new SimpleInterval("chrX", 66780645, 66780645);
+        final SimpleInterval interval =  new SimpleInterval("chrX", 66780645, 66780646);
         final File tempGenomicsDB2 = GenomicsDBTestUtils.createTempGenomicsDB(inputs, interval);
         final String genomicsDBUri2 = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB2);
-        final List<String> argsImport = new ArrayList<>();
-        final File outputImport = runGenotypeGVCFS(genomicsDBUri2, null, argsImport, hg38Reference);
         final File output = createTempFile("mixHaploidDiploidHighAlt", ".vcf");
 
         final ArgumentsBuilder argsGenotypeGVCFs = new ArgumentsBuilder();
         argsGenotypeGVCFs.addReference(hg38Reference)
-                .addVCF(outputImport)
+                .addVCF(genomicsDBUri2)
                 .addInterval(interval)
                 // 6 alt alleles is 6C2 = 15 genotypes for diploids, but only 6 genotypes for haploids
                 .add("max-genotype-count", 8)
@@ -1126,7 +1124,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsGenotypeGVCFs);
 
         final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
-        //Make sure the site was successfully removed and therefore the VCF is empty
-        Assert.assertEquals(outputData.getRight().size(), 0);
+        //Make sure the first site was successfully removed and the second site exists
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        Assert.assertEquals(vc.getStart(), 66780646);
     }
 }
