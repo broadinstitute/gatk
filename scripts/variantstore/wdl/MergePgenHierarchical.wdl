@@ -85,7 +85,9 @@ task MergePgen {
     Int cpu = threads + 1
 
     command <<<
-        set -euxo pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # Download files using gsutil
         mkdir pgen_dir
@@ -109,7 +111,7 @@ task MergePgen {
         0)
             echo "No pgen files so creating empty ones"
             touch ~{output_file_base_name}.pgen
-            touch ~{output_file_base_name}.pvar
+            touch ~{output_file_base_name}.pvar.zst
             touch ~{output_file_base_name}.psam
             ;;
         1)
@@ -135,11 +137,14 @@ task MergePgen {
             ;;
         esac
 
+        # Decompress for earlier versions of PLINK that can't handle zst compression.
+        plink2 --zst-decompress ~{output_file_base_name}.pvar.zst > ~{output_file_base_name}.pvar
+
     >>>
 
     output {
         File pgen_file = "${output_file_base_name}.pgen"
-        File pvar_file = "${output_file_base_name}.pvar.zst"
+        File pvar_file = "${output_file_base_name}.pvar"
         File psam_file = "${output_file_base_name}.psam"
     }
 
