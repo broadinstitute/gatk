@@ -65,7 +65,9 @@ public class AlleleFilteringHC extends AlleleFiltering {
         for (int i = 0; i < genotypingLikelihoods.numberOfSamples(); i++) {
             final int[] pls = genotypingLikelihoods.sampleLikelihoods(i).getAsPLs();
             perSamplePLs.add(Math.min(pls[1] - pls[0], pls[2] - pls[0]));
-            logger.debug(() -> String.format("GAL:: %s: %d %d %d", allele.toString(), pls[0], pls[1], pls[2]));
+            final int finalI = i;
+            logger.debug(() -> String.format("GAL (%s):: %s: %d %d %d",
+                    genotypingLikelihoods.getSample(finalI), allele.toString(), pls[0], pls[1], pls[2]));
         }
         return Collections.min(perSamplePLs);
     }
