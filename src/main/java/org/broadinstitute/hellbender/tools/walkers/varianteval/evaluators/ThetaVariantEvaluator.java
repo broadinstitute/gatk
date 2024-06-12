@@ -77,7 +77,7 @@ public class ThetaVariantEvaluator extends VariantEvaluator {
             //compute based on num sites
             float harmonicFactor = 0;
             for (int i = 1; i <= numIndsHere; i++) {
-                harmonicFactor += 1.0 / i;
+                harmonicFactor += 1.0f / i;
             }
             this.thetaRegionNumSites += 1.0 / harmonicFactor;
 
@@ -92,7 +92,7 @@ public class ThetaVariantEvaluator extends VariantEvaluator {
                         continue;
                     }
                     if (allele1 .compareTo(allele2) == 0) {
-                        numPairwise += allele1Count * (allele1Count - 1) * .5;
+                        numPairwise += allele1Count * (allele1Count - 1) * .5f;
 
                     }
                     else {

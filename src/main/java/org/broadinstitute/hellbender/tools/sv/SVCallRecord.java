@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
 
-public class SVCallRecord implements SVLocatable {
+public final class SVCallRecord implements SVLocatable {
 
     public static final String STRAND_PLUS = "+";
     public static final String STRAND_MINUS = "-";
