@@ -56,7 +56,7 @@ public class AlleleFilteringHC extends AlleleFiltering {
         AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(notAllele, allele));
 
         final GenotypingLikelihoods<Allele> genotypingLikelihoods = genotypesModel.calculateLikelihoods(alleleList,
-                genotypingData, null, 0, null);
+                genotypingData, null, 0, null, null);
         AFCalculationResult af = afCalc.fastCalculateDiploidBasedOnGLs(genotypingLikelihoods, genotypingEngine.getPloidyModel().totalPloidy());
         final double log10Confidence = af.log10ProbOnlyRefAlleleExists();
         final double phredScaledConfidence = (10.0 * log10Confidence) + 0.0;

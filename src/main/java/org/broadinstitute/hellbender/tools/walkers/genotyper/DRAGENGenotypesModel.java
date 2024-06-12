@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingDebugger;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
@@ -13,6 +15,7 @@ import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.hipparchus.util.MathArrays;
 
 import java.io.Serializable;
 import java.util.*;
@@ -39,24 +42,22 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
     private final boolean computeBQD;
     private final boolean computeFRD;
-    private final int allelePadding;
     private final int maxEffectiveDepthAdjustment;
     private final DragstrParams dragstrParams;
 
-    public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
+    public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel,
                                 final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
         this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY,
-                useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
+                useBQDModel, useFRDModel, maxEffectiveDepthAdjustment,  dragstrParams); }
 
     /*
      *  Initialize model with given maximum allele count and ploidy for caching
      */
     public DRAGENGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
-                                final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
+                                final boolean useBQDModel, final boolean useFRDModel,
                                 final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
         this.computeBQD = useBQDModel;
         this.computeFRD = useFRDModel;
-        this.allelePadding = allelePadding;
         this.maxEffectiveDepthAdjustment = maxEffectiveDepthAdjustment;
         this.dragstrParams = dragstrParams;
 
@@ -65,9 +66,11 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         }
     }
 
+    @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
-                                                                            final DragstrReferenceAnalyzer dragstrs) {
+                                                                            final DragstrReferenceAnalyzer dragstrs,
+                                                                            final Locatable eventLocus) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
@@ -94,8 +97,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         final int sampleCount = data.numberOfSamples();
         final PloidyModel ploidyModel = data.ploidyModel();
         final List<GenotypeLikelihoods> genotypeLikelihoods = new ArrayList<>(sampleCount);
-        final int alleleCount = genotypingAlleles.numberOfAlleles();
-        final int variantOffset = data.readLikelihoods().getVariantCallingSubsetApplied().getStart() + allelePadding;
+        final int variantOffset = eventLocus.getStart();
 
         for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
 
@@ -130,32 +132,50 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             // Compute default likelihoods as normal (before we go ahead and alter the likelihoods for the call)
             final int samplePloidy = ploidyModel.samplePloidy(sampleIndex);
 
-            // this is the data array for the read likelihoods without any trouble
+            // start with the genotyping likelihoods without any BQD or FRD (possibly overridden by the joint detection haplotype-based genotyping)
+            // then modify in-place with BQD and FRD, which in general increase hom likelihoods while leaving het likelihoods unchanged
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
-            final double[] ploidyModelGenotypeLikelihoods = GenotypeLikelihoodCalculator.computeLog10GenotypeLikelihoods(samplePloidy, sampleLikelihoods);
+            
+            final double[] ploidyModelGLs = GenotypeLikelihoodCalculator.computeLog10GenotypeLikelihoods(samplePloidy, sampleLikelihoods);
+            final double[] ploidyModelGLsCorrected = ploidyModelGLs.clone();
 
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n Standard Genotyping Likelihoods Results:");
-                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
+                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGLs));
             }
 
             if (computeBQD) {
-                applyLikelihoodsAdjusmentToBaseline(ploidyModelGenotypeLikelihoods, "BQD",
+                applyLikelihoodsAdjusmentToBaseline(ploidyModelGLsCorrected, "BQD",
                 GenotypeLikelihoodCalculatorDRAGEN.calculateBQDLikelihoods(samplePloidy, sampleLikelihoods, strandForward, strandReverse,
                         paddedReference, offsetForRefIntoEvent));
             }
             if (computeFRD) {
-                applyLikelihoodsAdjusmentToBaseline(ploidyModelGenotypeLikelihoods, "FRD",
-                        GenotypeLikelihoodCalculatorDRAGEN.calculateFRDLikelihoods(samplePloidy, sampleLikelihoods, ploidyModelGenotypeLikelihoods,
+                applyLikelihoodsAdjusmentToBaseline(ploidyModelGLsCorrected, "FRD",
+                        GenotypeLikelihoodCalculatorDRAGEN.calculateFRDLikelihoods(samplePloidy, sampleLikelihoods, ploidyModelGLsCorrected,
                                 Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                                 FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment));
             }
 
+            // go over all homozygous genotypes and find how close they are to the maximum likelihood after the FRD/BQD
+            // correction.  Then use this difference to truncate the equivalent different in the corrected GLs.
+            final double[] correctedGLs = ploidyModelGLs;
+            final double maxPloidyModelCorrectedGL = MathUtils.arrayMax(ploidyModelGLsCorrected);
+            final double maxCorrectedGL = MathUtils.arrayMax(correctedGLs);
+
+            for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidyModel.samplePloidy(sampleIndex), genotypingAlleles.numberOfAlleles())) {
+                if (gac.distinctAlleleCount() == 1) {   // homozygous
+                    final int idx = gac.index();
+
+                    // if this hom GL is farther from the max GL than the BQD/FRD-corrected ploidy model GLs have it, move it closer
+                    correctedGLs[idx] = Math.max(correctedGLs[idx], maxCorrectedGL + ploidyModelGLsCorrected[idx] - maxPloidyModelCorrectedGL);
+                }
+            }
+
             // this is what the work actually is, after we have computed a few things
-            genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(ploidyModelGenotypeLikelihoods));
+            genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(correctedGLs));
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("merged matrix:");
-                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
+                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(correctedGLs));
             }
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);

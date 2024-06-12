@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,11 +20,13 @@ import java.util.List;
 public final class IndependentSampleGenotypesModel implements GenotypingModel {
     public IndependentSampleGenotypesModel() { }
 
+    @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles,
                                                                             final GenotypingData<A> data,
                                                                             final byte[] paddedReference,
                                                                             final int offsetForRefIntoEvent,
-                                                                            final DragstrReferenceAnalyzer dragstrs) {
+                                                                            final DragstrReferenceAnalyzer dragstrs,
+                                                                            final Locatable eventLocus) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 

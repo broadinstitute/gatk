@@ -8,13 +8,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PDPairHMMLikelihoodCalculationEngine;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -191,7 +188,9 @@ public abstract class PDPairHMM implements Closeable{
                 final byte[] nextAlleleBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
                 final byte[] nextAllelePDBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
                 // if we aren't apply the optimization (range == -1) or if the read overlaps the determined region for calling:
-                if (rangeForReadOverlapToDeterminedBases < 0 || allele.getMaximumExtentOfSiteDeterminedAlleles()
+                // TODO: with joint detection a read can overlap the determined span of a PD haplotype without overlapping any of the
+                // TODO: actual determined alleles.  Does the logic here need to change?
+                if (rangeForReadOverlapToDeterminedBases < 0 || allele.getDeterminedSpan()
                         .overlapsWithMargin((Locatable) read.getTransientAttribute(PDPairHMMLikelihoodCalculationEngine.UNCLIPPED_ORIGINAL_SPAN_ATTR), rangeForReadOverlapToDeterminedBases + 1)) { // the +1 here is us erring on the side of caution
                     lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases, allele.getAlternateBases(),
                             readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases, nextAllelePDBases);

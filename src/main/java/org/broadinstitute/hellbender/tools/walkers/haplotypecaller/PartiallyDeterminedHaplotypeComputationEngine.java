@@ -4,14 +4,16 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.SmallBitSet;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -19,10 +21,6 @@ import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotyp
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.jgrapht.Graph;
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.SimpleGraph;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -44,6 +42,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //(2048 is Illumina's #) (without optimizing the hmm to some degree this is probably unattainable)
     final static int MAX_BRANCH_PD_HAPS = 128; //(128 is Illumina's #)
     final static int MAX_VAR_IN_EVENT_GROUP = 17; // (20 is Illumina's #)
+
+    // TODO: make these command line arguments?
+    // TODO: is 3 repeats the right criterion for STR, regardless of unit length?
+    final static int MAX_STR_UNIT_LENGTH = 6;
+    final static int MIN_NUM_STR_REPEATS = 3;
 
     //To make this somewhat cleaner of a port from Illumina, we have two base spaces. R and U space. R space is vcf coordinate space,
     //U is a 0->N (N = region size) based space where Insertions are +0.5 and deletions are + 1 from their original position
@@ -92,93 +95,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final boolean debug = pileupArgs.debugPileupStdout;
 
         final List<Event> eventsInOrder = makeFinalListOfEventsInOrder(sourceSet, badPileupEvents, goodPileupEvents, referenceHaplotype, pileupArgs, debug);
+        List<List<Event>> swMutexes = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
 
-        // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
-        SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
-                .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
-
-        List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
-        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
-
-        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations);
-        // if any of our merged event groups is too large, abort.
-        if (eventGroups == null) {
-            Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
+        final Set<Haplotype> outputHaplotypes = generatePDHaplotypes(referenceHaplotype, eventsInOrder, swMutexes,
+            debug, pileupArgs.useDeterminedHaplotypesDespitePdhmmMode, pileupArgs.disableJointDetection);
+        if (outputHaplotypes == null) {
             return sourceSet;
-        }
-        Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
-
-        /*
-          Outer loop: iterate over all loci with events, setting each in turn as the determined locus with all other loci being undetermined
-          Inner loop: iterate over all alleles at the determined locus, including the reference allele unless we are making determined haplotypes, to set as
-                    the determined allele.  For each choice of determined allele generate all possible partially determined haplotypes
-         */
-        final Set<Haplotype> outputHaplotypes = pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
-        for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
-            final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
-            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
-
-            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
-                Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
-                continue;
-            }
-
-            for (int determinedAlleleIndex = (pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
-                final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
-                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
-                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
-
-                final List<Set<Event>> branches = computeBranches(eventGroups, determinedEvents, allEventsHere);
-
-                if (branches == null) {
-                    Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
-                    return sourceSet;
-                }
-
-                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, determinedEvents, branches);
-
-                // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
-                for (Set<Event> branch : branches) {
-                    if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
-                        final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
-                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
-                        branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
-                        outputHaplotypes.add(newPDHaplotype);
-                    } else {
-                        // TODO currently this approach doesn't properly handle a bunch of duplicate events...
-                        // Start with a single "seed" haplotype containing the determined event(s). At each downstream locus,
-                        // every haplotype can grow by every event, or remain unchanged.  For example, if we have haplotypes
-                        // H1 and H2 so far and reach a locus with events A and B our list grows to H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
-                        List<List<Event>> fullyDeterminedHaplotypes = new ArrayList<>();
-                        fullyDeterminedHaplotypes.add(new ArrayList<>(determinedEvents)); // the seed haplotype
-
-                        for (final int locus : eventsByStartPos.keySet()) {
-                            if (determinedLocus < locus) {
-                                final List<List<Event>> children = eventsByStartPos.get(locus).stream().filter(branch::contains)
-                                        .flatMap(event -> fullyDeterminedHaplotypes.stream().map(group -> growEventList(group, event))).toList();
-                                children.forEach(child -> child.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR));
-                                fullyDeterminedHaplotypes.addAll(children);
-
-                                if (fullyDeterminedHaplotypes.size() > MAX_BRANCH_PD_HAPS) {
-                                    Utils.printIf(debug, () -> "Too many branch haplotypes [" + fullyDeterminedHaplotypes.size() + "] generated from site, falling back on assembly variants!");
-                                    return sourceSet;
-                                }
-                            }
-                        }
-                        fullyDeterminedHaplotypes.forEach(events -> Utils.printIf(debug, () -> "Constructing Haplotype From Events:" + formatEventsLikeDragenLogs(events, referenceHaplotype.getStart())));
-                        final List<Haplotype> branchHaps = fullyDeterminedHaplotypes.stream()
-                                .map(events -> constructHaplotypeFromEvents(referenceHaplotype, events, true)).toList();
-                        branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, branchHaps);
-                        outputHaplotypes.addAll(branchHaps);
-                    }
-
-                    if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-                        Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
-                        return sourceSet;
-                    }
-                }
-            }
         }
 
         sourceSet.storeAssemblyHaplotypes();
@@ -192,6 +114,128 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         sourceSet.setPartiallyDeterminedMode(!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode);
         Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
         return sourceSet;
+    }
+
+    /**
+     * This just splits off some of the above code so that it can be tested without having to construct an entire
+     * AssemblyResultSet
+     * @param referenceHaplotype
+     * @param eventsInOrder
+     * @param swMutexes
+     * @param debug
+     * @return  null if the calling code should return the original AssemblyResultSet and not PD haplotypes
+     */
+    @VisibleForTesting
+    static Set<Haplotype> generatePDHaplotypes(final Haplotype referenceHaplotype, final List<Event> eventsInOrder,
+                                                      final List<List<Event>> swMutexes, final boolean debug,
+                                               final boolean useDeterminedHaplotypesDespitePdhmmMode,
+                                               final boolean disableJointDetection) {
+        // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
+        final SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
+                .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
+
+        final List<SimpleInterval> strIntervals = findSTRs(referenceHaplotype);
+
+
+        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, swMutexes);
+
+        // TODO: add in command line argument to activate joint detection and only use the STR overlap detector if joint detection is turned on
+        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, swMutexes, strIntervals);
+        // if any of our merged event groups is too large, abort.
+        if (eventGroups == null) {
+            Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
+            return null;
+        }
+        Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
+
+        /*
+          Outer loop: iterate over which EventGroup to treat as determined
+          Inner loop: iterate over subsets of the determined EventGroup, building PD haplotypes from these determined subsets
+                      and branches of undetermined events drawn from other EventGroups
+
+          To be clear, each EventGroup may have multiple determined subsets, and
+         */
+        final Set<Haplotype> outputHaplotypes = useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
+
+        for (int determinedEventGroupIndex = 0; determinedEventGroupIndex < eventGroups.size(); determinedEventGroupIndex++) {
+            final EventGroup determinedEventGroup = eventGroups.get(determinedEventGroupIndex);
+            Utils.printIf(debug, () -> "working with determined EventGroup: " + determinedEventGroup.toDisplayString(referenceHaplotype.getStart()));
+
+            // TODO: do we need this check?
+            // if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
+            //    Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
+            //    continue;
+            //}
+
+            // note that the undetermined event branching from other EventGroups is independent of the determined subset
+            final List<Set<Event>> undeterminedBranches = computeUndeterminedBranches(eventGroups, determinedEventGroupIndex);
+
+            if (undeterminedBranches == null) {
+                Utils.printIf(debug, () -> "Found too many branches, aborting and falling back to Assembly Variants!");
+                return null;
+            }
+
+            // by default, the whole event group is the determined span, but we can optionally revert to pre-joint detection behavior
+            // where only one event at a time is determined and the rest of the event group is undetermined
+            final List<Pair<Set<Event>, SimpleInterval>> eventSetsAndDeterminedSpans = disableJointDetection ? determinedEventGroup.determinedUndeterminedHybridSets() :
+                    determinedEventGroup.determinedEventSets().stream().map(s -> Pair.of(s, determinedEventGroup.getSpan())).toList();
+            ;
+
+            for (final Pair<Set<Event>, SimpleInterval> eventSetAndDeterminedSpan : eventSetsAndDeterminedSpans) {
+                final Set<Event> eventsFromDeterminedGroup = eventSetAndDeterminedSpan.getLeft();
+                final SimpleInterval determinedSpan = eventSetAndDeterminedSpan.getRight();
+                Utils.printIf(debug, () -> "Constructing PD haplotypes with determined events (if no determined events, PD haplotypes match the reference over the determined span): " +
+                        eventsFromDeterminedGroup.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", ")));
+
+                // add the determined events to the undetermined branches
+                final List<ImmutableSet<Event>> branches = undeterminedBranches.stream()
+                        .map(branch -> Sets.union(branch, eventsFromDeterminedGroup).immutableCopy()).toList();
+                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branches);
+
+                for (Set<Event> branch : branches) {
+                    if (!useDeterminedHaplotypesDespitePdhmmMode) {
+                        final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
+                        // TODO: in the disable-joint-detection mode, don't use the span of the determined event group
+                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, eventsFromDeterminedGroup, determinedSpan, eventsInPDHap);
+                        branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
+                        outputHaplotypes.add(newPDHaplotype);
+                    } else {
+                        // TODO currently this approach doesn't properly handle a bunch of duplicate events...
+                        // Start with a single "seed" haplotype containing the determined event(s). At each downstream locus,
+                        // every haplotype can grow by every event, or remain unchanged.  For example, if we have haplotypes
+                        // H1 and H2 so far and reach a locus with events A and B our list grows to H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
+                        List<List<Event>> fullyDeterminedHaplotypes = new ArrayList<>();
+                        fullyDeterminedHaplotypes.add(new ArrayList<>(eventsFromDeterminedGroup)); // the seed haplotype
+
+                        for (final int locus : eventsByStartPos.keySet()) {
+                            // TODO: don't know if the logic on the next line is right, but this code path could probably be deleted anyway
+                            if (determinedEventGroup.getSpan().getEnd() < locus) {
+                                final List<List<Event>> children = eventsByStartPos.get(locus).stream().filter(branch::contains)
+                                        .flatMap(event -> fullyDeterminedHaplotypes.stream().map(group -> growEventList(group, event))).toList();
+                                children.forEach(child -> child.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR));
+                                fullyDeterminedHaplotypes.addAll(children);
+
+                                if (fullyDeterminedHaplotypes.size() > MAX_BRANCH_PD_HAPS) {
+                                    Utils.printIf(debug, () -> "Too many branch haplotypes [" + fullyDeterminedHaplotypes.size() + "] generated from site, falling back on assembly variants!");
+                                    return null;
+                                }
+                            }
+                        }
+                        fullyDeterminedHaplotypes.forEach(events -> Utils.printIf(debug, () -> "Constructing Haplotype From Events:" + formatEventsLikeDragenLogs(events, referenceHaplotype.getStart())));
+                        final List<Haplotype> branchHaps = fullyDeterminedHaplotypes.stream()
+                                .map(events -> constructHaplotypeFromEvents(referenceHaplotype, events, true)).toList();
+                        branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, branchHaps);
+                        outputHaplotypes.addAll(branchHaps);
+                    }
+
+                    if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
+                        Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
+                        return null;
+                    }
+                }
+            }
+        }
+        return outputHaplotypes;
     }
 
     /**
@@ -224,6 +268,29 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Event> eventsInOrder = passingEvents.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
         finalEventsListMessage(referenceHaplotype.getStart(), debug, eventsInOrder);
         return eventsInOrder;
+    }
+
+    // TODO: should there be any padding at the edges of STRs?
+    @VisibleForTesting
+    static List<SimpleInterval> findSTRs(final Haplotype referenceHaplotype) {
+        final List<SimpleInterval> strs = new ArrayList<>();
+        final DragstrReferenceAnalyzer analyzer = DragstrReferenceAnalyzer.of(referenceHaplotype.getBases(), 0, referenceHaplotype.length(), MAX_STR_UNIT_LENGTH);
+
+        final int refStart = referenceHaplotype.getStart();
+        final String refContig = referenceHaplotype.getContig();
+        int n = 0;
+        while (n < referenceHaplotype.length()) {
+            final int numRepeats = analyzer.repeatLength(n);
+            if (numRepeats >= MIN_NUM_STR_REPEATS) {  // found an STR starting at n
+                final int strLength = analyzer.repeatUnit(n).length * numRepeats;
+                strs.add(new SimpleInterval(refContig, refStart + n, refStart + n + strLength));
+                n += strLength; // jump to end of this STR
+            } else {
+                n++;
+            }
+        }
+
+        return strs;
     }
 
     /**
@@ -309,72 +376,138 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Partition events into the largest possible clusters such that events in distinct clusters are mutually compatible
-     * i.e. can exist on the same haplotype.
+     * Partition events into the smallest possible contiguous clusters such that events in different clusters are compatible i.e. can
+     * exist on the same haplotype.
      *
-     * The resulting event groups are a disjoint cover of the input events; that is, every input event belongs to exactly one
-     * output EventGroup.
+     * More precisely, given a collection of Events, a list of tuples of events that are mutually excluded, and (optionally)
+     * a set of STR intervals, the resulting partition into EventGroups satisfies the following:
+     *  1) Each Event is assigned to exactly one EventGroup.
+     *  2) Events that overlap are assigned to the same EventGroup.
+     *  3) Events that overlap the same STR interval are assigned to the same EventGroup.
+     *  4) Events that belong to the same mutex are assigned to the same EventGroup.
+     *  5) Each EventGroup contains every Event in its span.  That is, between the first Event start and the last Event end
+     *     of an EventGroup there are no Events assigned to another EventGroup.
+     *  6) No EventGroup can be split into proper subsets while satisfying 2-5.
      *
-     * In the common case that all events are compatible -- they are non-overlapping SNPs, for example -- the result is a bunch of singleton event groups
+     * In the common case that all events are compatible and don't overlap the same STRs -- they are non-overlapping SNPs, for example --
+     * the result is a bunch of singleton event groups.
      *
-     * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
-     * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
-     * haplotype against the reference haplotype via Smith-Waterman.  If the resulting reduced representation contains other events
-     * that have already been found the two or three events are mutually forbidden.
+     * The input mutexes are defined by the heuristic in which we inject two or three events into the reference haplotype and
+     * realign the resulting two- or three-event haplotype against the reference haplotype via Smith-Waterman.  If the resulting
+     * reduced representation contains other events that have already been found the two or three events are mutually forbidden.
      *
-     * To find the desired partition we calculate the connected components of an undirected graph whose edges correspond to
-     * either type of incompatibility.  That is, overlapping events and Smith-Waterman-forbidden pairs get an edge; Smith-Waterman-forbidden
-     * trios get three edges, one for every two events in the trio.
+     * To find the desired partition we imagine lighting up genomic intervals:
+     *  1) light up the span of every STR
+     *  2) light up the span from the leftmost start to the rightmost end of every mutex
+     *  3) light up the span from the start to the end of each Event
+     * Each resulting contiguous lit-up interval defines an EventGroup.
      *
-     * Note: Although the resulting partition is the same as DRAGEN's, the graph-based algorithm below is a very different
-     * implementation.
+     * Note: The resulting partition is the same as DRAGEN's except for the extremely rare (perhaps impossible) edge case in which
+     * DRAGEN would yield a non-contiguous EventGroup.  This could *only* occur if a Smith-Waterman mutex somehow happened
+     * without an STR (which itself is extremely dubious) and the Events of that mutex spanned an intervening non-overlapping
+     * Event that was compatible with all the Events of the mutex.
      *
      * @param eventsInOrder all events in a calling region
-     * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
+     * @param swMutexes list of lists of two or three non-overlapping events that are mutually excluded according
      *                                to the Smith-Waterman heuristic in which injecting them into the reference haplotype and
      *                                simplifying via Smith Waterman yields other events
      */
     @VisibleForTesting
-    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
-        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
-
-        // edges due to overlapping position
+    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swMutexes, List<SimpleInterval> strIntervals) {
+        // In addition to the Smith-Waterman mutexes, we find the mutexes due to overlap
+        // Note that overlapping SNPs are allowed on the undetermined parts of PD haplotypes.  Here we include overlapping SNPS
+        // as mutexes and let the EventGroup class handle them.
+        final List<List<Event>> overlapMutexes = new ArrayList<>();
         for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
             final Event event1 = eventsInOrder.get(e1);
             for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
                 final Event event2 = eventsInOrder.get(e2);
-                if (eventsOverlapForPDHapsCode(event1, event2)) {
-                    allMutexes.add(List.of(event1, event2));
+
+                // TODO: we need to differentiate overlap mutexes from SW mutexes in EventGroup constructor
+                if (event1.overlaps(event2)) {  // the EventGroup constructor will sort out when the stricter condition of DRAGEN overlap is relevant
+                    overlapMutexes.add(List.of(event1, event2));
                 }
             }
         }
 
-        // for each mutex, add edges 0-1, 1-2. . . to put all mutex events in one connected component
-        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-        eventsInOrder.forEach(graph::addVertex);
-        allMutexes.forEach(mutex -> new IndexRange(0, mutex.size() - 1).forEach(n -> graph.addEdge(mutex.get(n), mutex.get(n+1))));
+        final List <DoubleRange> allIntervals = new ArrayList<>();
+        strIntervals.forEach(str -> allIntervals.add(new DoubleRange(str.getStart(), str.getEnd())));   // light up STRs
+        eventsInOrder.forEach(event -> allIntervals.add(new DoubleRange(event.getStart(), dragenEnd(event))));    // light up each Event from VCF start to DRAGEN end
+        swMutexes.forEach(tuple -> allIntervals.add(unionOfDragenAndVCFSpans(tuple)));  // light up each mutex
+        allIntervals.sort(Comparator.comparingDouble(DoubleRange::getMinimumDouble));   // no need to break ties here -- the end result is unique regardless
+        allIntervals.add(new DoubleRange(Double.MAX_VALUE));    // add a dummy interval at the end with no possible overlap to simplify the loop below
 
-        final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
-        return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
-                components.stream().map(component -> new EventGroup(component, allMutexes)).toList();
+        final List<EventGroup> eventGroups = new ArrayList<>();
+        double start = allIntervals.get(0).getMinimumDouble();
+        double end = allIntervals.get(0).getMaximumDouble();
+        int eventIndex = 0;
+        final List<Event> eventsInDragenOrder = eventsInOrder.stream().sorted(Comparator.comparingDouble(e -> dragenStart(e))).toList();
+
+        for (final DoubleRange interval : allIntervals) {
+            if (interval.getMinimumDouble() <= end) {    // contiguous with previous span.  Note that DoubleRanges are closed (inclusive) on both ends
+                end = Math.max(end, interval.getMaximumDouble());
+            } else {    // add the previous span and begin a new one.  Note that the dummy last interval at triggers processing of the last EventGroup
+                final DoubleRange span = new DoubleRange(start, end);
+                final Set<Event> eventsInSpan = new HashSet<>();
+                while (eventIndex < eventsInDragenOrder.size() && span.overlapsRange(new DoubleRange(eventsInDragenOrder.get(eventIndex).getStart(), dragenEnd(eventsInDragenOrder.get(eventIndex))))) {
+                    eventsInSpan.add(eventsInDragenOrder.get(eventIndex));
+                    eventIndex++;
+                }
+                if (!eventsInSpan.isEmpty()) {  // the interval could be an STR with no Events within
+                    if (eventsInSpan.size() > MAX_VAR_IN_EVENT_GROUP) {
+                        return null;
+                    }
+                    try {
+                        eventGroups.add(new EventGroup(eventsInSpan, swMutexes, overlapMutexes));
+                    } catch (Exception e) {
+                        System.out.println("The exception was: " + e);
+                        System.out.println("Events in order: " + eventsInOrder);
+                        System.out.println("Events in DRAGEN order: " + eventsInDragenOrder);
+                        System.out.println("Event groups found so far: " + eventGroups);
+                        System.out.println("All intervals in order: " + allIntervals);
+                        System.out.println("current span: " + span);
+                        System.out.println("Events in the current span: " + eventsInSpan);
+                        System.out.println("All SW mutexes here: " + swMutexes);
+                        System.out.println("All STR intervals here: " + strIntervals);
+                        throw e;
+                    }
+                }
+
+                start = interval.getMinimumDouble();
+                end = interval.getMaximumDouble();
+            }
+        }
+
+        return eventGroups;
+    }
+
+
+    // same as above without the STR overlap detector
+    @VisibleForTesting
+    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
+        return getEventGroupClusters(eventsInOrder, swForbiddenPairsAndTrios, List.of());
     }
 
     /**
-     * Compute the branches (sets of mutually allowed Events) that define partially determined haplotypes.  For a given set of determined events
-     * each event group has one or more 1) maximal subsets that 2) contain all the determined events (if they belong to the event group)
-     * and 3) contain no mutually-exclusive pairs or trios of events.
+     * Compute the branches (sets of mutually allowed Events) that define partially determined haplotypes over their undetermined parts.
      *
-     * When constructing PD haplotypes we take all possible unions of these subsets over all event groups.
+     * Each undetermined event group has one or more 1) maximal subsets that 2) contain no mutually-exclusive pairs or trios of events.
+     * When constructing PD haplotypes we take all possible unions of these subsets over all undetermined event groups.
      *
      * Returns null if the combinatorial explosion of branches becomes too large.
      */
     @VisibleForTesting
-    static List<Set<Event>> computeBranches(List<EventGroup> eventGroups, Set<Event> determinedEvents, final List<Event> allEventsAtDeterminedLocus) {
+    static List<Set<Event>> computeUndeterminedBranches(final List<EventGroup> eventGroups, final int determinedEventGroupIndex) {
         List<Set<Event>> branches = new ArrayList<>();
         branches.add(new HashSet<>());   // start with a single empty branch
 
-        for (EventGroup group : eventGroups) {
-            final List<Set<Event>> setsToAdd = group.eventSetsForPDHaplotypes(determinedEvents, allEventsAtDeterminedLocus);
+        for (int eventGroupIndex = 0; eventGroupIndex < eventGroups.size(); eventGroupIndex++) {
+            if (eventGroupIndex == determinedEventGroupIndex) {
+                continue;
+            }
+            final EventGroup group = eventGroups.get(eventGroupIndex);
+
+            final List<Set<Event>> setsToAdd = group.undeterminedEventSets();
 
             // Take every possible union of existing branches and this event group's sets to add. As an optimization
             // we add the 0th set's elements in-place, and append unions with the 1st, 2nd etc sets to add.
@@ -533,10 +666,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      */
     @VisibleForTesting
     //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be prsent...
-    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final int determinedLocus,
-                                                                       final List<Event> constituentEvents, final List<Event> allEventsAtDeterminedLocus) {
+    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final SimpleInterval determinedSpan,
+                                                                       final List<Event> constituentEvents) {
         Utils.validate(refHap.isReference() && refHap.getCigar().numCigarElements() == 1, "This is not a valid base haplotype for construction");
-        final boolean refIsDetermined = determinedEvents.isEmpty();
 
         //TODO add a more stringent check that the format of constituentEvents works
         int refStart = refHap.getStart();
@@ -563,9 +695,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 final byte byteForLastSnp = pdBytes.get(bufferPositionOfLastSnp);
                 pdBytes.put(bufferPositionOfLastSnp,(byte) (byteForLastSnp | byteForThisSnp) );
                 continue;
-            } else if (event.getStart() == determinedLocus && refIsDetermined) {
-                // Ref alleles (even if they overlap undetermined events) should be skipped
-                continue;
             }
 
             Utils.validate(basesBeforeNextEvent >= 0, () -> "Event " + event + " is out of order in PD event list: " + constituentEvents + ".");
@@ -575,20 +704,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             final int altRefLengthDiff = altAllele.length() - refAllele.length();
 
             boolean isInsertion = altRefLengthDiff > 0; // If it's an insertion we flip to "ADD" the bases to the ref.
-            final boolean isEvent = determinedEvents.stream().anyMatch(event::equals);
+            final boolean isDeterminedEvent = determinedEvents.stream().anyMatch(event::equals);    // TODO: could this be replaced by simply a call to contains?
             runningCigar.add(new CigarElement(basesBeforeNextEvent, CigarOperator.M));
 
             // Figure out the cigar element to add:
             // - If we are in the ref, simply add the cigar corresponding to the allele we are using
             if (event.isSNP()) {    // SNPs are straightforward, whether or not it's the special event
-                runningCigar.add(new CigarElement(refAllele.length(), refIsDetermined || !isEvent ? CigarOperator.M : CigarOperator.X));
-            } else if (isEvent) {   // special indel
+                runningCigar.add(new CigarElement(refAllele.length(), !isDeterminedEvent ? CigarOperator.M : CigarOperator.X));
+            } else if (isDeterminedEvent) {
+                // TODO: this comment seems wrong -- it seems like for determined events there is no hocus pocus where we treat insertions as deletions
                 // The event is considered a deletion of the longer allele, regardless of which is ref
                 // we subtract 1 for the dummy initial indel base.
-                final int elementLength = isInsertion && refIsDetermined ? 0 : Math.max(refAllele.length(), altAllele.length()) - 1;
-                final CigarOperator operator = isInsertion ? CigarOperator.I : (refIsDetermined ? CigarOperator.M : CigarOperator.D);
+                final int elementLength = Math.max(refAllele.length(), altAllele.length()) - 1;
+                final CigarOperator operator = isInsertion ? CigarOperator.I : CigarOperator.D;
                 runningCigar.add(new CigarElement(elementLength, operator));
             } else {    // non-special indel. Insertions are treated as such; deletions become matches
+                // in the undetermined part of PD haplotypes, indels are always treated as deletions relative to the longer allele,
+                // regardless of which is ref.  Hence when we have an insertion the alt allele is treated as a match and the ref allele is
+                // treated as a deletion
+                // TODO: double-check this line
                 runningCigar.add(new CigarElement(Math.abs(altRefLengthDiff), altRefLengthDiff > 0 ? CigarOperator.I : CigarOperator.M));
             }
 
@@ -598,12 +732,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             // Now add event bases.  If this is the blessed variant, add the ref or alt as appropriate
             // Otherwise make sure we are adding the longest allele (for indels) or the ref allele for snps.
-            final boolean alleleToUseIsRef = (isEvent && refIsDetermined) || (!isEvent && altRefLengthDiff <= 0);
+            final boolean alleleToUseIsRef = (!isDeterminedEvent && altRefLengthDiff <= 0);
             final Allele alleleToUse = alleleToUseIsRef ? refAllele : altAllele;
             final Allele otherAllele = alleleToUseIsRef ? altAllele : refAllele;
             final byte[] basesToAdd = event.isIndel() ? basesAfterFirst(alleleToUse) : alleleToUse.getBases();
             newHapBases.put(basesToAdd); // refbases added
-            pdBytes.put(isEvent ? new byte[basesToAdd.length] :
+            pdBytes.put(isDeterminedEvent ? new byte[basesToAdd.length] :
                     PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(alleleToUse, otherAllele)); // refbases added
 
             lastPositionAdded = event.getEnd() + 1; //TODO this is probably not set for future reference
@@ -622,8 +756,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 constituentEvents,
                 determinedEvents,
                 runningCigar.make(),
-                determinedLocus,
-                allEventsAtDeterminedLocus,
+                determinedSpan,
                 refHap.getAlignmentStartHapwrtRef());
 
     }
@@ -639,30 +772,59 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // then the corresponding subset of events is allowed i.e. doesn't contain a mutex.  For example, if the 11th bit is true we know
         // that the subset containing events 0, 1, and 3 (11 = 2^3 + 2^1 + 2^0) is allowed because neither {0,1}, {0,3}, {1,3}, or {0,1,3}
         // are mutually excluded.
-        private final BitSet allowedSubsets;
+        private final BitSet allowedUndeterminedSubsets;
 
-        // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
-        List<Set<Event>> cachedEventSets = null;
+        // same as above, except that overlapping SNPs are not allowed to coexist in determined subsets of event
+        private final BitSet allowedDeterminedSubsets;
+
+        private final Lazy<List<Set<Event>>> lazyUndeterminedEventSets;
+
+        private final SimpleInterval span;
 
         /**
          * @param events all events in this event group
-         * @param mutexPairsAndTrios all mutexes of two or three events, defined by overlap and by the Smith-Waterman heuristic,
+         * @param swMutexes all mutexes of two or three events, defined by the Smith-Waterman heuristic,
          *                           that determined the event groups in this calling region
          */
-        public EventGroup(final Collection<Event> events, List<List<Event>> mutexPairsAndTrios) {
+        public EventGroup(final Collection<Event> events, final List<List<Event>> swMutexes, final List<List<Event>> overlapMutexes) {
             Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
             eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
             eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
-            allowedSubsets = new BitSet(1 << eventsInOrder.size());
 
-            final List<List<Event>> overlappingMutexes = mutexPairsAndTrios.stream()
-                    // overlapping SNPs are mutexes for forming event groups, but they are NOT forbidden combinations for PD haplotypes!
-                    .filter(mutex -> !(mutex.size() == 2 && mutex.get(0).getStart() == mutex.get(1).getStart() && mutex.get(0).isSNP() && mutex.get(1).isSNP()))
-                    .filter(mutex -> mutex.stream().anyMatch(eventIndices::containsKey)).toList();
-            for (final List<Event> mutex : overlappingMutexes) {
+            final List<List<Event>> relevantSWMutexes = swMutexes.stream().filter(mutex -> eventIndices.containsKey(mutex.get(0))).toList();
+
+            // the Smith-Waterman mutexes are non-negotiable and apply in both the determined and undetermined parts of PD haplotypes
+            final List<List<Event>> mutexesForDeterminedEvents = new ArrayList<>(relevantSWMutexes);
+            final List<List<Event>> mutexesForUndeterminedEvents = new ArrayList<>(relevantSWMutexes);
+
+            // overlapping SNPs can't both be determined but they may coexist in the undetermined span by being merged into an undetermined SNP pseudo-allele
+            // two indels or one indel and a SNP that overlap in the DRAGEN sense (excluding the dummy leading base etc) may never coexist
+            for (final List<Event> mutex : overlapMutexes) {
+                if (!eventIndices.containsKey(mutex.get(0))) {
+                    continue;
+                }
+                if (mutex.get(0).isSNP() && mutex.get(1).isSNP()) { // if they are both SNPs and are in overlapMutexes, they must be at the same locus, no check needed
+                    mutexesForDeterminedEvents.add(mutex);
+                } else if (eventsOverlapForPDHapsCode(mutex.get(0), mutex.get(1))) {    // the strict DRAGEN sense of overlap is a strict mutex, except for undetermined SNPs as above
+                    mutexesForDeterminedEvents.add(mutex);
+                    mutexesForUndeterminedEvents.add(mutex);
+                } else {    // VCF overlap but not DRAGEN overlap -- they may coexist behind the scenes in the undetermined part of PD haplotypes
+                    mutexesForDeterminedEvents.add(mutex);
+                }
+            }
+
+            for (final List<Event> mutex : mutexesForDeterminedEvents) {
                 Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
             }
-            computeAllowedSubsets(overlappingMutexes);
+
+            allowedUndeterminedSubsets = computeAllowedSubsets(mutexesForUndeterminedEvents);
+            allowedDeterminedSubsets = computeAllowedSubsets(mutexesForDeterminedEvents);
+            lazyUndeterminedEventSets = new Lazy<>(() -> computeUndeterminedEventSetsForPDHaplotypes());
+
+            final String contig = eventsInOrder.get(0).getContig();
+            final int minStart = eventsInOrder.stream().mapToInt(Event::getStart).min().getAsInt();
+            final int maxEnd = eventsInOrder.stream().mapToInt(Event::getEnd).max().getAsInt();
+            span = new SimpleInterval(contig, minStart, maxEnd);
         }
 
         /**
@@ -672,15 +834,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          *
          * @param mutexPairsAndTrios The groups of mutually forbidden events that generated all the event groups in this calling region.
          */
+         private BitSet computeAllowedSubsets(List<List<Event>> mutexPairsAndTrios) {
+             final BitSet result = new BitSet(1 << eventsInOrder.size());
+             // initialize all subsets as being allowed and then disallow any subset containing a mutex below
+             result.set(0, 1 << eventsInOrder.size());
 
-
-         private void computeAllowedSubsets(List<List<Event>> mutexPairsAndTrios) {
              if (eventsInOrder.size() < 2) {
-                 return;
+                 return result;
              }
-
-             // initialize all events as being allowed and then disallow them in turn .
-             allowedSubsets.set(1, 1 << eventsInOrder.size());
 
              // make SmallBitSet of the event indices of each mutex
              final List<SmallBitSet> mutexes = mutexPairsAndTrios.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).toList();
@@ -692,77 +853,138 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              if (!mutexes.isEmpty()) {
                  for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
                      if (mutexes.stream().anyMatch(subset::contains)) {
-                         allowedSubsets.set(subset.index(), false);
+                         result.set(subset.index(), false);
                      }
                  }
              }
+             return result;
          }
 
         /**
-         * For a given set of determined events, find all subsets of the event group such that each subset
+         * Find a minimal and complete collection of allowed subsets of this EventGroup for the purposes of the
+         * undetermined parts of PD haplotypes.
          *
-         * 1) contains all determined events that overlap this event group
-         * 2) contains no two or three mutually exclusive elements i.e. is an allowed subset as computed in this object's constructor
-         * 3) is not a subset of any larger subset that satisfies 1) and 2)
+         * That is, we find every subset of this EventGroup that satisfies
          *
-         * Note that the subsets need not be disjoint and need not cover all events in this EventGroup.
+         * 1) contains no two or three mutually exclusive elements i.e. is an allowed subset as computed in this object's constructor
+         * 2) is not a subset of any larger subset that satisfies 1) and 2)
+         *
+         * The resulting subsets need not be disjoint.
          *
          * Because these subsets contain no mutexes, one can sensibly make partially-determined haplotypes out of them,
-         * with each subset entailing a unique set of undetermined alleles.  Property 3) above ensures that we make as
+         * with each subset entailing a unique set of undetermined alleles.  Property 2) above ensures that we make as
          * few partially-determined haplotypes as possible.
          *
          * @return
          */
-        public List<Set<Event>> eventSetsForPDHaplotypes(final Set<Event> determinedEvents, final List<Event> locusEvents) {
-            final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
-            final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
-
+        private List<Set<Event>> computeUndeterminedEventSetsForPDHaplotypes() {
             if (eventsInOrder.size() == 1) {
-                // if this is the determined locus and ref is determined, return an empty set; otherwise return a singleton set of the lone event
-                return (!locusOverlapSet.isEmpty() && determinedEvents.isEmpty()) ? Collections.singletonList(Set.of()) :
-                        Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
+                return Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
             }
 
-            // the repeated case is when the determined locus is external to this event group
-            final boolean cachedCase = locusOverlapSet.isEmpty() && determinedOverlapSet.isEmpty();
+            final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
 
-            // We use a cache for the recurring case where the determined events do not belong to this event group
-            if (cachedCase && cachedEventSets != null) {
-                return cachedEventSets;
-            }
-
-            final List<SmallBitSet> maximalAllowedContainingDetermined = new ArrayList<>();
-
+            // TODO: I think this comment may be wrong
             // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
-                if (allowedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
-                    // Only check for subsets if we need to
-                    if (maximalAllowedContainingDetermined.stream().noneMatch(group -> group.contains(subset))) {
-                        maximalAllowedContainingDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
-                    }
+                if (allowedUndeterminedSubsets.get(subset.index()) && maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
+                    maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
                 }
             }
 
             // Now that we have all the maximal sets, map bitset indices to Events
-            List<Set<Event>> output = maximalAllowedContainingDetermined.stream()
-                    .map(bitset -> bitset.stream(eventsInOrder.size()).mapToObj(eventsInOrder::get).collect(Collectors.toSet())).toList();
+            return maximalAllowedSubsets.stream().map(bitset -> bitset.asSet(eventsInOrder)).toList();
+        }
 
-            // Cache the result
-            if(cachedCase) {
-                cachedEventSets = Collections.unmodifiableList(output);
+        public List<Set<Event>> undeterminedEventSets() {
+            return lazyUndeterminedEventSets.get();
+        }
+
+        /**
+         * Find every allowed subset of this EventGroup for the purposes of the determined part of PD haplotypes.  This simply
+         * means every subset (including the empty and full subsets) that does not contain a mutex.
+         *
+         * @return
+         */
+        public List<Set<Event>> determinedEventSets() {
+            final List<Set<Event>> result = new ArrayList<>();
+            for (final SmallBitSet subset = new SmallBitSet(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
+                if (allowedDeterminedSubsets.get(subset.index())) {
+                    result.add(subset.asSet(eventsInOrder));
+                }
             }
-            return output;
+
+            return result;
         }
 
-        // create the SmallBitSet of those elements from some collection of events that overlap this EventGroup
-        private SmallBitSet overlapSet(final Collection<Event> events) {
-            return new SmallBitSet(events.stream().map(e -> eventIndices.getOrDefault(e, -1)).filter(n -> n != -1).toList());
+        /**
+         * Pre-joint detection behavior where individual events are set as determined and the rest of the event group is
+         * undetermined.
+         * @return a list of branches, each branch a mix of determined and undetermined events from this EventGroup paired with
+         * a SimpleInterval denoting which span is considered determined
+         */
+        public List<Pair<Set<Event>, SimpleInterval>> determinedUndeterminedHybridSets() {
+            if (eventsInOrder.size() == 1) {    // if only one event return 1) event is determined; 2) ref is determined
+                final Event event = eventsInOrder.get(0);
+                final SimpleInterval determinedSpan = new SimpleInterval(event);
+                return List.of(Pair.of(Set.of(event), determinedSpan), Pair.of(Set.of(), determinedSpan));
+            }
+
+            final List<Pair<Set<Event>, SimpleInterval>> result = new ArrayList<>();
+
+            // case where ref is determined -- every event at a given locus shares the same undetermined sets
+            for (final int locus : eventsInOrder.stream().map(Event::getStart).collect(Collectors.toSet())) {
+                // TODO: should this instead be all events that overlap the locus?
+                final List<Event> eventsAtDeterminedLocus = eventsInOrder.stream().filter(event -> event.getStart() == locus).toList();
+                final SimpleInterval determinedSpan = IntervalUtils.getSpanningInterval(eventsAtDeterminedLocus);
+                final SmallBitSet locusEvents = new SmallBitSet(eventsAtDeterminedLocus.stream().map(eventIndices::get).toList());
+
+                final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
+
+                // find all subsets of events that 1) are allowed, 2) contain no events at the determined locus (ie are ref there), and 3)
+                // are maximal (they are not proper subsets of anything bigger that satisfies 1 and 2).
+                for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
+                    if (allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusEvents).isEmpty() &&
+                            maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
+                        maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
+                    }
+                }
+
+                // the iteration above excludes the empty set, and it's possible that the empty set *is* the unique maximal subset satisfying
+                // conditions 1 and 2.  For example, any time an EventGroup contains events only at a single locus.
+                if (maximalAllowedSubsets.isEmpty()) {
+                    maximalAllowedSubsets.add(SmallBitSet.emptySet());
+                }
+
+                maximalAllowedSubsets.forEach(mas -> result.add(Pair.of(mas.asSet(eventsInOrder), determinedSpan)));
+            }
+
+            // case where one event at a time is determined
+            for (final Event determinedEvent : eventsInOrder) {
+                final int determinedEventIndex = eventIndices.get(determinedEvent);
+                // here locusEvents exclude the determinedEvent
+                final SmallBitSet locusEvents = new SmallBitSet(eventsInOrder.stream().filter(determinedEvent::overlaps).map(eventIndices::get)
+                        .filter(i -> i != determinedEventIndex).toList());
+
+                final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
+
+                // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
+                // conditions 1) allowed 2) contains the determined event but nothing else at that locus 3) maximal
+                for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
+                    if (subset.get(determinedEventIndex) && allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusEvents).isEmpty() &&
+                            maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
+                        maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
+                    }
+                }
+                maximalAllowedSubsets.forEach(mas -> result.add(Pair.of(mas.asSet(eventsInOrder), new SimpleInterval(determinedEvent))));
+            }
+
+            // Now that we have all the maximal sets, map bitset indices to Events
+            return result;
         }
 
-        public boolean causesBranching() {
-            return eventsInOrder.size() > 1;
-        }
+        public SimpleInterval getSpan() { return span; }
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
@@ -784,6 +1006,20 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     // To match DRAGEN we must define a modified start position for indels, which is used to determine overlaps when creating event groups
     private static double dragenStart(final Event event) {
         return event.getStart() + (event.isIndel() ? (event.isSimpleDeletion() ? 1 : 0.5) : 0);
+    }
+
+    private static double dragenEnd(final Event event) {
+        return event.getEnd() + (event.isSimpleInsertion() ? 0.5 : 0);
+    }
+
+    // the union of VCF span and DRAGEN span uses the VCF start (which can be before the DRAGEN start) and the DRAGEN end (which can be after the VCF end)
+    private static final DoubleRange unionOfDragenAndVCFSpans(final List<Event> tuple) {
+        final int size = tuple.size();
+        Utils.validate(size == 2 || size == 3, "this is supposed to be a pair or a trio");
+        final double start01 = Math.min(tuple.get(0).getStart(), tuple.get(1).getStart());
+        final double end01 = Math.max(dragenEnd(tuple.get(0)), dragenEnd(tuple.get(1)));
+        return size == 2 ? new DoubleRange(start01, end01) :
+                new DoubleRange(Math.min(start01, tuple.get(2).getStart()), Math.max(end01, dragenEnd(tuple.get(2))));
     }
 
     /**
@@ -816,8 +1052,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> formatEventsLikeDragenLogs(group, refStart)).collect(Collectors.joining("\n")));
     }
 
-    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder,
-                                                    final Set<Event> determinedEvents, List<Set<Event>> branches) {
+    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder, List<? extends Set<Event>> branches) {
         if (debug) {
             System.out.println("Branches:");
             for (int i = 0; i < branches.size(); i++) {
