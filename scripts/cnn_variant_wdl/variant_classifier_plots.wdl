@@ -262,7 +262,7 @@ task MakePlots {
     }
 
     runtime {
-        docker: "rocker/tidyverse"
+        docker: "rocker/tidyverse:4.1"
 
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
