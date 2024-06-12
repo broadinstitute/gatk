@@ -105,7 +105,6 @@ public final class HaplotypeBasedVariantRecaller extends GATKTool {
         final SAMSequenceDictionary             samSequenceDictionary = readsReader.getSamSequenceDictionary(null);
         final List<SimpleInterval>              intervals = hasUserSuppliedIntervals() ? getUserSuppliedIntervals() : IntervalUtils.getAllIntervalsForReference(samSequenceDictionary);
         readsReader.setReadFilter(readFilter);
-        progressMeter.setRecordsBetweenTimeChecks(1);
 
         // walk regions, as defined by argument
         for ( SimpleInterval region : intervals ) {

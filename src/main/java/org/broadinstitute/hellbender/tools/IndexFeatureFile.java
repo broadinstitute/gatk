@@ -3,7 +3,10 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.*;
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
+import htsjdk.tribble.Tribble;
+import htsjdk.tribble.TribbleException;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixIndex;
@@ -14,12 +17,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPath;
-import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.progressmeter.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
+import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.io.IOException;
 import java.nio.file.Files;

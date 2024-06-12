@@ -9,13 +9,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
-
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -23,11 +16,22 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
+import org.broadinstitute.hellbender.engine.progressmeter.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -45,6 +49,18 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that want to write a "GATK" tool but not use one of
@@ -224,10 +240,10 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
-     * {@link ProgressMeter#update(Locatable)} after each record processed from
+     * {@link LocatableProgressMeter#update(Locatable)} after each record processed from
      * the primary input in their {@link #traverse} method.
      */
-    protected ProgressMeter progressMeter;
+    protected LocatableProgressMeter progressMeter;
 
     /**
      * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
@@ -600,7 +616,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Does this tool want to disable the progress meter? If so, override here to return true
-     * 
+     *
      * @return true if this tools wants to disable progress meter output, otherwise false
      */
     public boolean disableProgressMeter() {
@@ -740,7 +756,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method to initialize the progress meter without exposing engine level arguements.
      */
     protected final void initializeProgressMeter(final String progressMeterRecordLabel) {
-        progressMeter = new ProgressMeter(secondsBetweenProgressUpdates, disableProgressMeter());
+        progressMeter = new LocatableProgressMeter(secondsBetweenProgressUpdates, disableProgressMeter());
         progressMeter.setRecordLabel(progressMeterRecordLabel);
     }
 
