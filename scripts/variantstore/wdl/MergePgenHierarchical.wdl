@@ -137,8 +137,11 @@ task MergePgen {
             ;;
         esac
 
-        # Decompress for earlier versions of PLINK that can't handle zst compression.
-        plink2 --zst-decompress ~{output_file_base_name}.pvar.zst > ~{output_file_base_name}.pvar
+        if [[ -e ~{output_file_base_name}.pvar.zst ]]
+        then
+            # Decompress for earlier versions of PLINK that can't handle zst compression.
+            plink2 --zst-decompress ~{output_file_base_name}.pvar.zst > ~{output_file_base_name}.pvar
+        fi
 
     >>>
 
