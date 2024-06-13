@@ -667,10 +667,17 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc2WithSource = new VariantContextBuilder(vc2).source("source2").make();
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
                 Arrays.asList(vc1WithSource, vc2WithSource), null, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false);
+                GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false, true, -1);
 
         // test sources are merged
         Assert.assertEquals(merged.getSource(), "source1-source2");
+
+        final VariantContext mergedTruncated = GATKVariantContextUtils.simpleMerge(
+                Arrays.asList(vc1WithSource, vc2WithSource), null, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false, true, 2);
+
+        // test sources are merged and respects maxSourceFieldLength
+        Assert.assertEquals(mergedTruncated.getSource(), "so");
     }
 
 // TODO: remove after testing
