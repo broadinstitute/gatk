@@ -206,7 +206,7 @@ public class ExtractCohortEngine {
 
         this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
         this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
-        this.samplePloidyTableRef = (samplePloidyTableName != null? new TableReference(samplePloidyTableName, SchemaUtils.SAMPLE_PLOIDY_FIELDS) : null);
+        this.samplePloidyTableRef = (samplePloidyTableName == null? null : new TableReference(samplePloidyTableName, SchemaUtils.SAMPLE_PLOIDY_FIELDS));
 
         this.filterSetName = filterSetName;
 
@@ -253,7 +253,7 @@ public class ExtractCohortEngine {
         String ploidyTableRestriction = null;
         if (minLocation != null && maxLocation != null) {
             rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
-            // This block of code already requires minLocation and maxLocation to be on the same chromosome, so we can just hold to that here
+            // This block of code already requires minLocation and maxLocation to be on the same chromosome, so we can rely on that here
             ploidyTableRestriction = "chromosome = " + ((minLocation/SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment);
         }
         final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
@@ -310,8 +310,7 @@ public class ExtractCohortEngine {
                     String chromosome = queryRow.get(SchemaUtils.CHROMOSOME).toString();
                     String sampleId = queryRow.get(SchemaUtils.SAMPLE_ID).toString();
                     Integer ploidy = Integer.parseInt(queryRow.get(SchemaUtils.PLOIDY).toString());
-                    // If not for this, we'd need a map to another data structure just to look up the ploidy. Best to flatten the compound key
-                    samplePloidyMap.put(chromosome+"-"+sampleId, ploidy);
+                    samplePloidyMap.put(makePloidyLookupKey(chromosome, sampleId), ploidy);
                 }
                 processBytesScanned(reader);
             }
@@ -596,7 +595,7 @@ public class ExtractCohortEngine {
             genotypeBuilder.name(info.getSampleName());
 
             long chromAsPosition = location - SchemaUtils.decodePosition(location);
-            String key = chromAsPosition+"-"+info.getSampleId();
+            String key = makePloidyLookupKey(Long.toString(chromAsPosition), Integer.toString(info.getSampleId()));
 
             // Logic for determining the correct ploidy for reference data
             // If we have no info in the table, the ploidy is explicitly 2, OR we are in a PAR, use diploid reference.
@@ -670,7 +669,13 @@ public class ExtractCohortEngine {
         return removeAnnotations(filteredVC);
     }
 
-    boolean isInPAR(final long location) {
+
+    private String makePloidyLookupKey(final String chromosome, final String sampleId) {
+        // This is almost stupidly simple, but we do this in more than one place and need to be consistent about it
+        return chromosome+"-"+sampleId;
+    }
+
+    private boolean isInPAR(final long location) {
         for (LongRange region : PARRegions) {
             if (region.containsLong(location)) {
                 return true;
