@@ -34,11 +34,14 @@ import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtils {
 
+    /** maximum number of sources to include when merging sources */
+    private static final int MAX_SOURCES_TO_INCLUDE = 10;
     private static final Logger logger = LogManager.getLogger(GATKVariantContextUtils.class);
 
     public static final String MERGE_FILTER_PREFIX = "filterIn";
@@ -1232,8 +1235,12 @@ public final class GATKVariantContextUtils {
 
         final String ID = rsIDs.isEmpty() ? VCFConstants.EMPTY_ID_FIELD : Utils.join(",", rsIDs);
 
-        // This preserves the GATK3-like behavior of reporting all sources, delimited with hyphen:
-        String allSources = variantSources.isEmpty() ? name : variantSources.stream().sorted().collect(Collectors.joining("-"));
+        // This preserves the GATK3-like behavior of reporting multiple sources, delimited with hyphen:
+        final String allSources = variantSources.isEmpty() ? name : variantSources.stream()
+                .sorted()
+                .distinct()
+                .limit(MAX_SOURCES_TO_INCLUDE)
+                .collect(Collectors.joining("-"));
         if (maxSourceFieldLength != -1 && allSources.length() > maxSourceFieldLength) {
             allSources = allSources.substring(0, maxSourceFieldLength);
         }
