@@ -1096,16 +1096,18 @@ public final class GATKVariantContextUtils {
                                              final GenotypeMergeType genotypeMergeOptions,
                                              final boolean filteredAreUncalled) {
         int originalNumOfVCs = priorityListOfVCs == null ? 0 : priorityListOfVCs.size();
-        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled);
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled, false, -1);
     }
 
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
                                              final List<String> priorityListOfVCs,
-                                             final int originalNumOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
-                                             final boolean filteredAreUncalled) {
-        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled, false, -1);
+                                             final boolean filteredAreUncalled,
+                                             final boolean storeAllVcfSources,
+                                             final int maxSourceFieldLength) {
+        int originalNumOfVCs = priorityListOfVCs == null ? 0 : priorityListOfVCs.size();
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled, storeAllVcfSources, maxSourceFieldLength);
     }
 
     /**
