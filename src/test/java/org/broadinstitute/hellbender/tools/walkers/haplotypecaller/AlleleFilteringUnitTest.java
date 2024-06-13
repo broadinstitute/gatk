@@ -1,12 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AlleleFiltering;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AlleleFilteringHC;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
@@ -67,6 +62,76 @@ public class AlleleFilteringUnitTest {
         AlleleLikelihoods<GATKRead, Haplotype> filtered_lks = alleleFiltering.filterAlleles(lks, 0, new HashSet<>());
         Assert.assertEquals(filtered_lks.alleles(), lks.alleles());
     }
+    @Test
+    public void testNoNeedToFilterTwoSamples(){
+        List<Haplotype> haplotypeList = new ArrayList<>();
+        final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
+        Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
+        haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
+        haplotypeList.add(haplotype);
+
+        haplotype = new Haplotype("CAGGCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
+        haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
+        haplotypeList.add(haplotype);
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
+
+        haplotype = new Haplotype("CATTCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
+        haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
+        haplotypeList.add(haplotype);
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
+
+        AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
+        SampleList samples = new IndexedSampleList(Arrays.asList(new String[]{"sm1", "sm2"}));
+
+        List<GATKRead> readList = new ArrayList<>(30);
+        Map<String, List<GATKRead>>ebs = new HashMap<>();
+        ebs.put("sm1", readList);
+
+        for (int i = 0 ; i < 30; i++) {
+            readList.add(ArtificialReadUtils.createArtificialRead("20M"));
+        }
+
+        List<GATKRead> readList2 = new ArrayList<>(30);
+        ebs.put("sm2", readList2);
+        for (int i = 0 ; i < 30; i++) {
+            readList2.add(ArtificialReadUtils.createArtificialRead("20M"));
+        }
+
+        double[][] values = {{0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3},
+                {3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0},
+                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+        };
+        AlleleLikelihoods<GATKRead, Haplotype> lks = new AlleleLikelihoods<>(samples, haplotypes, ebs);
+        LikelihoodMatrix<GATKRead, Haplotype> lkm = lks.sampleMatrix(0);
+        for (int i = 0; i < lks.numberOfAlleles(); i++){
+            for (int j = 0 ; j < lkm.evidenceCount(); j++) {
+                lkm.set(i,j,values[i][j]);
+            }
+        }
+
+
+        double[][] values2 = {{0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3},
+                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0}
+        };
+        LikelihoodMatrix<GATKRead, Haplotype> lkm2 = lks.sampleMatrix(1);
+        for (int i = 0; i < lks.numberOfAlleles(); i++){
+            for (int j = 0 ; j < lkm2.evidenceCount(); j++) {
+                lkm2.set(i,j,values2[i][j]);
+            }
+        }
+
+        HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
+        HaplotypeCallerGenotypingEngine genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samples, ! hcArgs.doNotRunPhysicalPhasing, false);
+
+
+        AlleleFiltering alleleFiltering = new AlleleFilteringHC(hcArgs, null, genotypingEngine);
+        AlleleLikelihoods<GATKRead, Haplotype> filtered_lks = alleleFiltering.filterAlleles(lks, 0, new HashSet<>());
+        Assert.assertEquals(filtered_lks.alleles(), lks.alleles());
+    }
+
+
 
     @Test
     public void testFilterCloseMis(){
