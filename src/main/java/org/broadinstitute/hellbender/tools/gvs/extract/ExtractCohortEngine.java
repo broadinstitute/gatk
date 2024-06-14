@@ -7,7 +7,6 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -36,6 +35,7 @@ import java.util.stream.Stream;
 public class ExtractCohortEngine {
     private final Logger logger;
 
+    // See: https://en.wikipedia.org/wiki/Pseudoautosomal_region
     private final List<LongRange> PARRegions = List.of(
             new LongRange(23000000010001L, 23000002781479L),    // PAR1, X
             new LongRange(24000000010001L, 24000002781479L),    // PAR1, Y
