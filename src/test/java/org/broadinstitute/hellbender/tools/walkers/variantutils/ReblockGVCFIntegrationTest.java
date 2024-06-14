@@ -701,7 +701,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void warnWhenRemovingAnnotations() {
+    public void testRemovingAnnotationFromEmptyAttributes() {
         final File input = getTestFile("gvcfWithNoPRI.vcf");
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
