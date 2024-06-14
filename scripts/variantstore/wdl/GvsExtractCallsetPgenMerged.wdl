@@ -138,6 +138,7 @@ workflow GvsExtractCallsetPgenMerged {
                 pgen_file_list = SplitFilesByChromosome.pgen_lists[i],
                 pvar_file_list = SplitFilesByChromosome.pvar_lists[i],
                 psam_file_list = SplitFilesByChromosome.psam_lists[i],
+                pgen_chromosome_code = pgen_chromosome_code,
                 plink_docker = effective_plink_docker,
                 output_file_base_name = "~{output_file_base_name}.${contig}",
                 merge_disk_size = 1024,
