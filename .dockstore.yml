@@ -222,6 +222,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCFEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -327,6 +328,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1395_Have_CreateVATFromVDS_OptionallyTakeSitesOnlyVCFEchoCallsetVersion
          tags:
              - /.*/
    - name: GvsIngestTieout
