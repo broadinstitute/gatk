@@ -1124,9 +1124,15 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsGenotypeGVCFs);
 
         final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
-        //Make sure the first site was successfully removed and the second site exists
+        //Make sure the first site was successfully removed
         Assert.assertEquals(outputData.getRight().size(), 1);
         final VariantContext vc = outputData.getRight().get(0);
+        //Make sure the second site was successfully genotyped (3 no calls and 1 haploid alt genotype)
         Assert.assertEquals(vc.getStart(), 66780646);
+        Assert.assertEquals(vc.getGenotypes().size(), 4);
+        List<Genotype> calledGenotypes = vc.getGenotypes().stream().filter(g -> !g.isNoCall()).toList();
+        Assert.assertEquals(calledGenotypes.size(), 1);
+        Assert.assertEquals(calledGenotypes.get(0).getAlleles().size(), 1);
+        Assert.assertEquals(calledGenotypes.get(0).getAlleles().get(0), Allele.create("TA", false));
     }
 }
