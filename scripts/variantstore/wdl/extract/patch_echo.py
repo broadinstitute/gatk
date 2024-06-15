@@ -63,6 +63,8 @@ def patch_vds(
         Paths to site filtering files.
     vets_filtering_data : list[str]
         Paths to VETS/VQSR filtering files.
+    ploidy_data : str | list[str]
+        Path(s) to ploidy data file(s).
     output_path : str
         Path to the new vds
     tmp_dir : str
