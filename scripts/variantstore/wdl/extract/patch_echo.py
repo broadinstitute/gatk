@@ -53,7 +53,8 @@ def patch_vds(
     ploidy_data: str | abc.Sequence[str],
     output_path: str,
     tmp_dir: str,
-):
+    overwrite: bool = False,
+) -> hl.vds.VariantDataset:
     """
     Parameters
     ----------
@@ -69,6 +70,8 @@ def patch_vds(
         Path to the new vds
     tmp_dir : str
         Temporary directory
+    overwrite : bool
+        Overwrite ``output_path``?
     """
     vds_intervals = extract_vds_intervals(vds_path)
     vds = hl.vds.read_vds(vds_path)
@@ -86,9 +89,10 @@ def patch_vds(
     variant_data = patch_variant_data(vds.variant_data, site, vets)
     reference_data = patch_reference_data(vds.reference_data, ploidy)
 
-    hl.vds.VariantDataset(
+
+    return hl.vds.VariantDataset(
         reference_data=reference_data, variant_data=variant_data
-    ).write(output_path, overwrite=True)
+    ).checkpoint(output_path, overwrite=overwrite)
 
 
 def extract_vds_intervals(path: str) -> list[hl.Interval]:
@@ -201,7 +205,7 @@ def import_ploidy(*avros) -> dict[str, dict[str, int]]:
     }
 
 
-def patch_variant_data(vd, site, vets):
+def patch_variant_data(vd, site, vets) -> hl.MatrixTable:
     """
     Parameters
     ----------
@@ -296,7 +300,7 @@ def patch_variant_data(vd, site, vets):
     return vd
 
 
-def patch_reference_data(rd, ploidy):
+def patch_reference_data(rd, ploidy) -> hl.MatrixTable:
     """
     Parameters
     ----------
