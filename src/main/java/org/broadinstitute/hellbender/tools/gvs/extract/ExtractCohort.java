@@ -392,8 +392,9 @@ public abstract class ExtractCohort extends ExtractTool {
         }
 
         if (emitADs) {
-            VCFStandardHeaderLines.addStandardFormatLines(extraHeaderLines, true,
-                    VCFConstants.GENOTYPE_ALLELE_DEPTHS
+            extraHeaderLines.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_ALLELE_DEPTHS, VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.Integer,
+                    "Allelic depths for the alleles specified in the genotype field (GT), with the reference allele always included. For diploid samples, this will have zero (hom ref), two (het ref), or three (het alt) values.")
             );
         }
 
