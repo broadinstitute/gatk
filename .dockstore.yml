@@ -164,6 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1379-ploidy
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -437,6 +438,7 @@ workflows:
          - ah_var_store
          - EchoCallset
          - gg_VS-1413_FixPgenMergeChromEncoding
+         - vs_1412_pgen_pvars_not_compressed
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
