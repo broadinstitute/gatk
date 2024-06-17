@@ -35,6 +35,8 @@ import java.util.stream.Stream;
 public class ExtractCohortEngine {
     private final Logger logger;
 
+    // These represent the PARs given for hg38.  They are defined differently for other references, so we'll have to store this in
+    // a better, ref-dependent different manner if/when we get around to supporting other references
     // See: https://en.wikipedia.org/wiki/Pseudoautosomal_region
     private final List<LongRange> PARRegions = List.of(
             new LongRange(23000000010001L, 23000002781479L),    // PAR1, X
