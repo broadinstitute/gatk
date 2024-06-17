@@ -38,6 +38,7 @@ workflow GvsExtractCallset {
 
     String output_file_base_name = filter_set_name
 
+    String? ploidy_table_name
     Int? extract_maxretries_override
     Int? extract_preemptible_override
     String? output_gcs_dir
@@ -68,6 +69,9 @@ workflow GvsExtractCallset {
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
   String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
   String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
+
+  # make the fully qualified version of the ploidy table if present, otherwise leave it undefined
+  String? fq_ploidy_mapping_table = if (defined(ploidy_table_name)) then "~{fq_gvs_dataset}.~{ploidy_table_name}" else ploidy_table_name
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
@@ -209,6 +213,7 @@ workflow GvsExtractCallset {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
 
+
     call ExtractTask {
       input:
         go                                    = select_first([ValidateFilterSetName.done, true]),
@@ -231,6 +236,7 @@ workflow GvsExtractCallset {
         do_not_filter_override                = do_not_filter_override,
         fq_filter_set_info_table              = fq_filter_set_info_table,
         fq_filter_set_site_table              = fq_filter_set_site_table,
+        fq_ploidy_mapping_table               = fq_ploidy_mapping_table,
         fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
         filter_set_name                       = filter_set_name,
         drop_state                            = drop_state,
@@ -312,6 +318,7 @@ task ExtractTask {
     String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
+    String? fq_ploidy_mapping_table
     String? vet_extract_table_version
     String read_project_id
     String output_file
@@ -407,6 +414,7 @@ task ExtractTask {
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
+        ~{"--sample-ploidy-table " + fq_ploidy_mapping_table} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsExtractCallset \
