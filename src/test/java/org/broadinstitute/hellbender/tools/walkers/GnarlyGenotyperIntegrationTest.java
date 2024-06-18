@@ -276,4 +276,30 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(g.hasAD());
         Assert.assertFalse(g.hasPL());
     }
+
+    @Test
+    public void gnarlyHomRefNullPLs() {
+        final File output = createTempFile("nullPLs", ".vcf");
+        final File inputNull = new File(toolsTestDir, "walkers/GnarlyGenotyper/NA20890.rb.g.vcf");
+        final File inputVariant = new File(toolsTestDir, "walkers/GnarlyGenotyper/NA20846.rb.g.vcf");
+        final SimpleInterval interval =  new SimpleInterval("chr1", 13273, 13273);
+
+        File tempGdb = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(inputNull, inputVariant), interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGdb);
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(hg38Reference)
+                .addVCF(genomicsDBUri)
+                .addInterval(interval)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final Genotype nullPlGenotype = outputData.getRight().get(0).getGenotype("NA20890");
+        Assert.assertEquals(nullPlGenotype.getPL(), null);
+        Assert.assertEquals(nullPlGenotype.getAlleles(), Arrays.asList(Allele.create("G", true), Allele.create("G", true)));
+        Assert.assertEquals(nullPlGenotype.getGQ(), 0);
+        Assert.assertEquals(nullPlGenotype.getDP(), 4);
+    }
 }
