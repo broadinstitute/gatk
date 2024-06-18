@@ -37,7 +37,7 @@ While the GVS has been tested with 410,000 single sample whole genome GVCF files
 
 ### What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket) or in the Google bucket specified in the inputs.
+The following files are stored in the Google bucket specified in the inputs or in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket).
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in megabytes
@@ -135,16 +135,17 @@ Details on citing Terra workspaces can be found in [How to cite Terra](https://s
 Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2023 | Apache**  
+**Copyright Broad Institute, 2024 | Apache**  
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date       | Change                                    | Author         |
-|------------|-------------------------------------------|----------------|
-| 09/01/2023 | Updated to reflect VETS being the default | Bec Asch       |
-| 08/11/2023 | Updated to VETS                           | Kylee Degatano |
-| 06/29/2023 | Updated to support larger sample sizes.   | Kylee Degatano | 
-| 09/08/2022 | Updated information on workflow outputs.  | Aaron Hatcher  |
-| 09/07/2022 | Added licensing information.              | Kaylee Mathews |
-| 09/06/2022 | Added note about storage cost.            | Kaylee Mathews |
-| 06/24/2022 | First release of the workspace.           | Kaylee Mathews |
+| Date       | Change                                                 | Author         |
+|------------|--------------------------------------------------------|----------------|
+| 06/xx/2024 | Add ReblockGVCF workflow and update input requirements | Kylee Degatano |
+| 09/01/2023 | Updated to reflect VETS being the default              | Bec Asch       |
+| 08/11/2023 | Updated to VETS                                        | Kylee Degatano |
+| 06/29/2023 | Updated to support larger sample sizes.                | Kylee Degatano | 
+| 09/08/2022 | Updated information on workflow outputs.               | Aaron Hatcher  |
+| 09/07/2022 | Added licensing information.                           | Kaylee Mathews |
+| 09/06/2022 | Added note about storage cost.                         | Kaylee Mathews |
+| 06/24/2022 | First release of the workspace.                        | Kaylee Mathews |
