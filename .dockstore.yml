@@ -437,7 +437,6 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - gg_VS-1413_FixPgenMergeChromEncoding
          - vs_1412_pgen_pvars_not_compressed
    - name: MergePgenHierarchicalWdl
      subclass: WDL
