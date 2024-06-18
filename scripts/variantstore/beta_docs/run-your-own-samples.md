@@ -12,10 +12,10 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files with specific annotations described below
+- GVCF index files
 
-While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
 
 #### Reblocked GVCF files
 
@@ -132,12 +132,24 @@ You will need to delete the example sample data from your workspace so that it i
 3. Make sure “Convert DRS URLs to Google Cloud Storage Paths (gs://)" is selected, then click the “EXPORT SNAPSHOT” button.
 4. Choose the workspace created in Step 7 of the Setup instructions in [gvs-quickstart](./gvs-quickstart.md)
 
+--- 
+
 **Warning:**        
 The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
 
+---
 ## Run the workflow
 
-Now that your samples are loaded into data table in Terra, it’s time to setup and run the GVS workflow! Note that GVS **expects reblocked gVCFs**. If your gVCFs are not reblocked, see the text above on how you can use the ReblockGVCF workflow in this workspace.
+Now that your samples are loaded into data table in Terra, it’s time to setup and run the GVS workflow! 
+
+---
+**Notes**
+1. Note that GVS **expects reblocked gVCFs**. If your gVCFs are not reblocked, see the text above on how you can use the ReblockGVCF workflow in this workspace.
+2. The workflow is designed to run on ALL samples in the `sample` data table.
+
+---
+
+To run:
 
 1. **Select the workflow** from the Workflows tab.
 1. Configure the workflow inputs.
@@ -147,7 +159,7 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
     2. Update the name of the **column of reblocked gvcfs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
     3. Update the name of the **column of reblocked gvcf index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
     4. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
-    5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name.
+    5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 

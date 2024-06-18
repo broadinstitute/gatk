@@ -16,12 +16,12 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What data does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`)
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files
+- GVCF index files
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
 
 ### What does it return as output?
 
@@ -96,23 +96,9 @@ The GVS beta workspaces in Terra are read-only, so you’ll need to clone the wo
 
 ## Running the workflow
 
-The workflow in the GVS beta workspace is pre-configured to use the 10 sample reblocked GVCF files in the workspace Data tab.
+The workflow in the GVS beta workspace is pre-configured to use the 10 sample reblocked GVCF files in the workspace Data tab. See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
 
-The workflow is configured to call this input from the data table. To run:
-
-1. Select the "GvsBeta" workflow from the Workflows tab.
-1. Configure the workflow inputs.
-    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
-    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    2. Update the name of the **column of reblocked gvcfs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_. 
-    3. Update the name of the **column of reblocked gvcf index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
-    4. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
-    5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name.
-1. **Save** the workflow configuration.
-1. **Run** the workflow.
-
-To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](./run-your-own-samples.md).
+To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 ### Time and cost
 Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.

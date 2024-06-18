@@ -14,7 +14,7 @@ The materials in this workspace were developed by the Data Sciences Platform at 
 
 ### What does it do?
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in single sample GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in single sample reblocked GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, and metrics.
 
 For workflow documentation, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-overview.md).
 
@@ -28,12 +28,12 @@ Starting September 1 2023, variants in GVS are filtered using the GATK Variant E
 
 ### What data does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`)
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files
+- GVCF index files
 
 To see details about input requirements, see [Run Your Own Samples](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md). Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are currently supported by the beta workflow.
 
 ### What does it return as output?
 
@@ -61,14 +61,18 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ## Running the workflow
 
-The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files in the workspace Data tab. To run:
+The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sample reblocked GVCF files in the workspace Data tab. To run the example data:
 
 1. **Select the workflow** from the Workflows tab.
 1. Select the 'Run workflow with inputs defined by file paths' radio button.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    2. Update the name of the **column of reblocked gvcfs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
+    3. Update the name of the **column of reblocked gvcf index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
+    4. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
+    5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 

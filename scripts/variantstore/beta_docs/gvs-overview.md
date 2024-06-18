@@ -40,23 +40,23 @@ The following table provides a quick overview of the GVS workflow features:
 
 #### Terra, Google Cloud, and BigQuery
 
-The GVS workflow needs to be run in [Terra](https://app.terra.bio/), a cloud-based platform for biomedical research. The workflow relies on the structure of workspace data tables to call input sample files. The workflow also requires that you have a Terra account, billing project, and BigQuery dataset with permissions that allow Terra to access it. For step-by-step instructions for setting up these requirements, see the [GVS Beta Quickstart](./gvs-quickstart.md).
+The GVS workflow needs to be run in [Terra](https://app.terra.bio/), a cloud-based platform for biomedical research. The workflow also requires that you have a Terra account, billing project, and BigQuery dataset with permissions that allow Terra to access it. For step-by-step instructions for setting up these requirements, see the [GVS Beta Quickstart](./gvs-quickstart.md).
 
 #### Input GVCF files
 
-The GVS workflow takes in reblocked GVCF files as input. If your files are not already reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
+The GVS workflow takes in reblocked GVCF files as input. If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the GVS workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
 The workflow also requires specific annotations in input GVCF files, which are described in the tutorial, [Upload data to Terra and run the GVS workflow](./run-your-own-samples.md).
 
 ### Inputs
 
-The GVS workflow inputs are described in the sections below and are specified in the Terra GVS beta workspace [workflow configuration](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta/workflows/help-terra/GvsJointVariantCalling).
+The GVS workflow inputs are described in the sections below and are specified in the Terra GVS beta workspace [workflow configuration](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta/workflows/gvs-prod/GvsBeta).
 
 The workflow is configured to use hg38 (aka GRCh38) as the reference genome.
 
 #### Sample data
 
-The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 samples are being used for beta testing.
+The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files from the user-indicated columns of the `sample` data table. While the GVS workflow has been tested with 410,000 single sample GVCF files as input, only datasets of up to 25,000 samples are being used for beta testing.
 
 The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) has been configured with example reblocked GVCF files that you can use to test the workflow.
 
@@ -64,20 +64,24 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 The table below describes the GVS workflow input variables:
 
-| Input variable name    | Description                                                                                                                                                                                                                                                                   | Type    |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| dataset_name           | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                                                                                                                  | String  |
-| project_id             | Name of the Google project that contains the BigQuery dataset.                                                                                                                                                                                                                | String  |
-| call_set_identifier    | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”.                                                                                                    | String  |
-| extract_output_gcs_dir | Optional; desired cloud path for output files. If unspecified, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. The actual output location will be specified by the workflow output `output_gcs_path`. | String  |
-| use_classic_VQSR       | Optional; defaults to false since September 1, 2023.                                                                                                                                                                                                                          | Boolean |
-| billing_project_id     | Optional; Google project ID to charge for the egress of the GVCFs  and index files, useful if the bucket the GVCFs are in has "requester pays" enabled                                                                                                                        | String  |
+| Input variable name         | Description                                                                                                                                                                                                                                                         | Type    |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                                                                                                        | String  |
+| project_id                  | Name of the Google project that contains the BigQuery dataset.                                                                                                                                                                                                      | String  |
+| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”.                                                                                          | String  |
+| vcf_files_column_name       | Name of the column in the `sample` workspace data table with the reblocked gvcf file gcs paths.                                                                                                                                                                     | String  |
+| vcf_index_files_column_name | Name of the column in the `sample` workspace data table with the reblocked gvcf index file gcs paths.                                                                                                                                                               | String  |
+| sample_id_column_name       | Name of the column in the `sample` workspace data table with the desired sample identifiers. These IDs will be used to name the samples in the VCFs. They **MUST** be unique.                                                                                       | String  |
+| extract_output_gcs_dir      | Desired cloud path for output files. If unspecified, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. The actual output location will be specified by the workflow output `output_gcs_path`. | String  |
+| use_classic_VQSR            | Optional; defaults to false since September 1, 2023.                                                                                                                                                                                                                | Boolean |
+| billing_project_id          | Optional; Google project ID to charge for the egress of the GVCFs and index files, useful if the bucket the GVCFs are in has "requester pays" enabled                                                                                                               | String  |
 
 ## Tasks and tools
 
 Overall, the GVS workflow:
 
-1. Trains the filtering model.
+1. Imports the gvcfs into BigQuery.
+2. Trains the filtering model.
 1. Extracts VCF files.
 
 The steps of the workflow, in addition to the GATK tools used in each step, are described below. Custom tools are used throughout the workflow to read from and write to the BigQuery dataset.
@@ -123,7 +127,7 @@ Details on citing Terra workspaces can be found here: [How to cite Terra](https:
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2022 | Apache**
+**Copyright Broad Institute, 2024 | Apache**
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.  
 
 ## Feedback
