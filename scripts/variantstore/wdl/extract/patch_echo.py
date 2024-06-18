@@ -311,7 +311,7 @@ def patch_reference_data(rd, ploidy) -> hl.MatrixTable:
         Values of inner dict are the ploidy to use for the reference genotype in nonpar regions.
     """
     rd = rd.annotate_globals(ploidy_data=hl.literal(ploidy))
-    rd = rd.annotate_rows(autosome_or_par=rd.locus.is_autosome_or_par())
+    rd = rd.annotate_rows(autosome_or_par=rd.locus.in_autosome_or_par())
     rd = rd.annotate_entries(
         GT=hl.if_else(
             rd.autosome_or_par,
