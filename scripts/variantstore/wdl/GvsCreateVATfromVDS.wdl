@@ -49,13 +49,13 @@ workflow GvsCreateVATfromVDS {
             help: "name of the filter set used to generate the callset in GVS"
         }
         sites_only_vcf: {
-            help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped"
+            help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped. If defined, then 'vds_path' must NOT be defined."
         }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
         }
         vds_path: {
-            help: "the top-level directory of the GVS VDS to be used to create the VAT"
+            help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
         }
     }
 
@@ -88,13 +88,7 @@ workflow GvsCreateVATfromVDS {
     String vat_table_name = filter_set_name + "_vat" + effective_vat_version
 
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
-    if (output_path == output_path_without_a_trailing_slash) {
-        call Utils.TerminateWorkflow as OutputPathMustEndWithASlash {
-            input:
-                message = "Error: 'output_path' MUST end with a trailing '/'",
-                basic_docker = effective_basic_docker,
-        }
-    }
+    String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
 
     if ((defined(sites_only_vcf)) && (defined(vds_path))) {
         call Utils.TerminateWorkflow as IfSitesOnlyVcfSetDontSetCreateParameters {
@@ -161,7 +155,7 @@ workflow GvsCreateVATfromVDS {
         call Utils.CopyFile as CopySitesOnlyVcf {
             input:
                 input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
-                output_gcs_dir = output_path + "sites_only_vcf",
+                output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -176,7 +170,7 @@ workflow GvsCreateVATfromVDS {
         call Utils.CopyFile as CopySitesOnlyVcfIndex {
             input:
                 input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
-                output_gcs_dir = output_path + "sites_only_vcf",
+                output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -187,7 +181,7 @@ workflow GvsCreateVATfromVDS {
                 ref_fai = reference_index,
                 ref_dict = reference_dict,
                 scatter_count = effective_scatter_count,
-                output_gcs_dir = output_path + "intervals",
+                output_gcs_dir = effective_output_path + "intervals",
                 split_intervals_disk_size_override = split_intervals_disk_size_override,
                 split_intervals_mem_override = split_intervals_mem_override,
                 gatk_docker = effective_gatk_docker,
@@ -238,7 +232,7 @@ workflow GvsCreateVATfromVDS {
                 input:
                     positions_annotation_json = AnnotateVCF.positions_annotation_json,
                     output_file_suffix = "${vcf_filename}.json.gz",
-                    output_path = output_path,
+                    output_path = effective_output_path,
                     variants_docker = effective_variants_docker,
             }
 
@@ -246,7 +240,7 @@ workflow GvsCreateVATfromVDS {
                 input:
                     genes_annotation_json = AnnotateVCF.genes_annotation_json,
                     output_file_suffix = "${vcf_filename}.json.gz",
-                    output_path = output_path,
+                    output_path = effective_output_path,
                     variants_docker = effective_variants_docker,
             }
 
@@ -266,7 +260,7 @@ workflow GvsCreateVATfromVDS {
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
-                output_path = output_path,
+                output_path = effective_output_path,
                 base_vat_table_name = vat_table_name,
                 prep_vt_json_done = PrepVtAnnotationJson.done,
                 prep_genes_json_done = PrepGenesAnnotationJson.done,
@@ -290,7 +284,7 @@ workflow GvsCreateVATfromVDS {
                 git_hash = GetToolVersions.git_hash,
                 dataset_name = dataset_name,
                 vat_table_name = DeduplicateVatInBigQuery.vat_table,
-                output_path = output_path,
+                output_path = effective_output_path,
                 merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
                 precondition_met = BigQueryLoadJson.done,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
