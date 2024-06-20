@@ -334,22 +334,26 @@ public final class GATKVariantContextUtils {
                     gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
                 }
             } else {
-                final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-                final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(ploidy, maxLikelihoodIndex);
-                final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
-                final double gq = GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods);
-                if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
-                    final Allele ref = allelesToUse.stream().filter(Allele::isReference).collect(Collectors.toList()).get(0);
-                    gb.alleles(Collections.nCopies(ploidy, ref));
-                    gb.PL(new int[genotypeLikelihoods.length]).log10PError(0);
-                } else if (maxLikelihoodIndex == 0 && gq > GATKVariantContextUtils.SUM_GL_THRESH_NOCALL){ //GLs are log10s, so they're negative, GQ is also negative, so less negative is greater than
-                    gb.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
+                if (genotypeLikelihoods == null) {
+                    gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT.getAlleles()));
                 } else {
-                    gb.alleles(finalAlleles);
-                }
-                final int numAltAlleles = allelesToUse.size() - 1;
-                if ( numAltAlleles > 0 ) {
-                    gb.log10PError(gq);
+                    final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
+                    final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(ploidy, maxLikelihoodIndex);
+                    final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
+                    final double gq = GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods);
+                    if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                        final Allele ref = allelesToUse.stream().filter(Allele::isReference).collect(Collectors.toList()).get(0);
+                        gb.alleles(Collections.nCopies(ploidy, ref));
+                        gb.PL(new int[genotypeLikelihoods.length]).log10PError(0);
+                    } else if (maxLikelihoodIndex == 0 && gq > GATKVariantContextUtils.SUM_GL_THRESH_NOCALL) { //GLs are log10s, so they're negative, GQ is also negative, so less negative is greater than
+                        gb.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
+                    } else {
+                        gb.alleles(finalAlleles);
+                    }
+                    final int numAltAlleles = allelesToUse.size() - 1;
+                    if (numAltAlleles > 0) {
+                        gb.log10PError(gq);
+                    }
                 }
             }
         } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
