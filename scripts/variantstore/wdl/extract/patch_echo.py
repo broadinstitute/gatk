@@ -187,10 +187,23 @@ def import_ploidy(*avros) -> dict[str, dict[str, int]]:
         Path(s) of ploidy data
     """
     PloidyRecord = namedtuple("PloidyRecord", "location sample_name ploidy")
-    rfs = RouterFS()
+
+    # the implementation of GCS for Hadoop doesn't allow seeking to the end of a file
+    # so I'm monkey patching DataFileReader
+    def patched_determine_file_length(self) -> int:
+        remember_pos = self.reader.tell()
+        self.reader.seek(-1, 2)
+        file_length = self.reader.tell() + 1
+        self.reader.seek(remember_pos)
+        return file_length
+
+    original_determine_file_length = DataFileReader.determine_file_length
+    DataFileReader.determine_file_length = patched_determine_file_length
+
+    fs = hl.current_backend().fs
     ploidy_table = defaultdict(dict)
     for file in avros:
-        with rfs.open(file, "rb") as data:
+        with fs.open(file, "rb") as data:
             for record in DataFileReader(data, DatumReader()):
                 location, sample_name, ploidy = PloidyRecord(**record)
                 if sample_name in ploidy_table[location]:
@@ -198,6 +211,10 @@ def import_ploidy(*avros) -> dict[str, dict[str, int]]:
                         f"duplicate key `{sample_name}` for location {location}"
                     )
                 ploidy_table[location][sample_name] = ploidy
+
+    # undo our monkey patch
+    DataFileReader.determine_file_length = original_determine_file_length
+
     hg38 = hl.get_reference("GRCh38")
     return {
         contig: ploidy_table[key]
