@@ -73,7 +73,7 @@ task GetToolVersions {
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-06-06-alpine-b96f6b13570b"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024_05_28-gatkbase-d303d1217d50"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024-06-18-gatkbase-f997ff1369ab"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"

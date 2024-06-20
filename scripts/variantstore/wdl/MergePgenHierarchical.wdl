@@ -5,6 +5,9 @@ workflow MergePgenWorkflow {
         File pgen_file_list
         File pvar_file_list
         File psam_file_list
+        # Chromosome code corresponding to the set of contig names used by plink that matches those used by the
+        # reference
+        String pgen_chromosome_code = "chrM"
         String plink_docker
         String output_file_base_name
         Int? threads
@@ -38,6 +41,7 @@ workflow MergePgenWorkflow {
                 pgen_list = SplitFileLists.pgen_lists[i],
                 psam_list = SplitFileLists.psam_lists[i],
                 pvar_list = SplitFileLists.pvar_lists[i],
+                pgen_chromosome_code = pgen_chromosome_code,
                 plink_docker = plink_docker,
                 output_file_base_name = "${output_file_base_name}${i}",
                 threads = threads,
@@ -58,6 +62,7 @@ workflow MergePgenWorkflow {
             pgen_list = MakeListsForFinal.pgen_list,
             psam_list = MakeListsForFinal.psam_list,
             pvar_list = MakeListsForFinal.pvar_list,
+            pgen_chromosome_code = pgen_chromosome_code,
             plink_docker = plink_docker,
             output_file_base_name = output_file_base_name,
             threads = threads,
@@ -76,6 +81,7 @@ task MergePgen {
         File pgen_list
         File psam_list
         File pvar_list
+        String pgen_chromosome_code
         String plink_docker
         String output_file_base_name
         Int threads = 1
@@ -85,7 +91,9 @@ task MergePgen {
     Int cpu = threads + 1
 
     command <<<
-        set -euxo pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # Download files using gsutil
         mkdir pgen_dir
@@ -109,7 +117,7 @@ task MergePgen {
         0)
             echo "No pgen files so creating empty ones"
             touch ~{output_file_base_name}.pgen
-            touch ~{output_file_base_name}.pvar
+            touch ~{output_file_base_name}.pvar.zst
             touch ~{output_file_base_name}.psam
             ;;
         1)
@@ -128,18 +136,24 @@ task MergePgen {
             echo "${count} pgen files, merging"
             if head -n 1 "~{pvar_list}" | grep -q "pvar$"
             then
-                plink2 --pmerge-list mergelist.txt --memory 10000 --threads ~{threads} --out ~{output_file_base_name} --pmerge-output-vzs
+                plink2 --pmerge-list mergelist.txt --memory 10000 --threads ~{threads} --output-chr ~{pgen_chromosome_code} --out ~{output_file_base_name} --pmerge-output-vzs
             else
-                plink2 --pmerge-list mergelist.txt pfile-vzs --memory 10000 --threads ~{threads} --out ~{output_file_base_name} --pmerge-output-vzs
+                plink2 --pmerge-list mergelist.txt pfile-vzs --memory 10000 --threads ~{threads} --output-chr ~{pgen_chromosome_code} --out ~{output_file_base_name} --pmerge-output-vzs
             fi
             ;;
         esac
+
+        if [[ -e ~{output_file_base_name}.pvar.zst ]]
+        then
+            # Decompress for earlier versions of PLINK that can't handle zst compression.
+            plink2 --zst-decompress ~{output_file_base_name}.pvar.zst > ~{output_file_base_name}.pvar
+        fi
 
     >>>
 
     output {
         File pgen_file = "${output_file_base_name}.pgen"
-        File pvar_file = "${output_file_base_name}.pvar.zst"
+        File pvar_file = "${output_file_base_name}.pvar"
         File psam_file = "${output_file_base_name}.psam"
     }
 
