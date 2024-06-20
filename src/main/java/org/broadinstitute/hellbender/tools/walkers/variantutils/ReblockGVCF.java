@@ -351,6 +351,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private VariantContext removeVCFFormatAnnotations(final VariantContext vc) {
         final Genotype genotype = vc.getGenotype(0);
         Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
+        // If extendedAttributes is empty, we get an unmodifiable empty map, so skip removing any annotations
+        if (extendedAttributes.isEmpty()) {
+            return vc;
+        }
+
         for (String annotation : annotationsToRemove) {
             extendedAttributes.remove(annotation);
         }
