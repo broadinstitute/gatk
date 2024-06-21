@@ -18,15 +18,21 @@ The AC and AN numbers we calculate in the VCFs are based on following the filter
 The VCFs and indices that come out of GVS are sharded based on the size of the callset. They follow approximately this schema:
 
 **Genomes**
-0-4999 samples: 1 shard per chr
-5,000-19,999 samples: 2,000 shards
-20,000-25,000 samples = 10k shards
+
+| Number of Samples | Number of Shards |
+|-------------------|----------------- |
+| 0-4,999           | 1 shard per chromosome |
+| 5,000-19,999      | 2,000 shards  |
+| 20,000-25,000     | 10,000 shards |
 
 **Exomes**
-0-4999 samples: 1 shard per chr
-5000-19,999 samples: 1,000 shards
-20,000-49,999 samples: 2,500 shards
->50,000 samples: 7,500 shards
+
+| Number of Samples | Number of Shards |
+|-------------------|----------------- |
+| 0-4,999           | 1 shard per chromosome |
+| 5,000-19,999      | 1,000 shards  |
+| 20,000-49,999     | 2,500 shards |
+| > 50,000          | 7,500 shards |
 
 No shard will ever contain data from more than one chromosome, so for callsets over 5k samples, the number of shards will be close to these but not exactly.
 
