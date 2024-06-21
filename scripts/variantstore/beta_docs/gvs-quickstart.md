@@ -28,6 +28,7 @@ While the GVS has been tested with 410,000 single sample whole genome GVCF files
 The following files are stored in the Google bucket specified in the inputs or in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket).
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
+- A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in MB
 - Manifest file containing the destinations and sizes in B of the output sharded joint VCF and index files
 

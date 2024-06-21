@@ -2,7 +2,7 @@
 
 The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
-This workspace contains a fully reproducible example workflow for variant discovery using the GVS workflow.
+This workspace contains a fully reproducible example workflow for variant discovery in genomes using the GVS workflow. If you have exome data, see the [GVS Exome workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta).
 
 Scroll down for an overview of the workflow, example data, cost estimates, and additional resources.
 
@@ -37,9 +37,10 @@ While the GVS has been tested with 410,000 single sample whole genome GVCF files
 
 ### What does it return as output?
 
-The following files are stored in the Google bucket specified in the inputs or in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket).
+The following files are stored in the Google bucket specified in the inputs:
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
+- A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in megabytes
 - Manifest file containing the destinations and sizes in bytes of the output sharded joint VCF and index files
 
@@ -79,10 +80,6 @@ The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sam
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
-
-### Important configuration notes
-
-By default, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. The actual output location will be specified by the workflow output `output_gcs_path`.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
