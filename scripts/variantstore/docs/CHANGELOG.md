@@ -1,5 +1,12 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.5 - 2024-06-21
+
+### Changed
+
+Inputs `vcf_files_column_name`, `vcf_index_files_column_name`, `sample_id_column_name`, and `extract_output_gcs_dir` are no longer optional.
+
+
 ## 0.5.4 - 2024-03-18
 
 ### Changed
