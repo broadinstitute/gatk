@@ -426,9 +426,13 @@ public final class SVCallRecordUtils {
 
     public static GATKSVVCFConstants.ComplexVariantSubtype getComplexSubtype(final VariantContext variant) {
         Utils.nonNull(variant);
-        final String subtypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
+        String subtypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
         if (subtypeString == null) {
             return null;
+        }
+        else {
+            // replace / in CTX_PP/QQ and CTX_PQ/QP with _ to match ComplexVariantSubtype constants which cannot contain slashes
+            subtypeString = subtypeString.replace("/", "_");
         }
         if (!VALID_CPX_SUBTYPES.contains(subtypeString)) {
             throw new IllegalArgumentException("Invalid CPX subtype: " + subtypeString + ", valid values are: " +

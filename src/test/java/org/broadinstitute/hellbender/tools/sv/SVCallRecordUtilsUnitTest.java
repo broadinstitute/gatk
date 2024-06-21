@@ -583,4 +583,57 @@ public class SVCallRecordUtilsUnitTest {
         final SVCallRecord resultKeepAttr = SVCallRecordUtils.create(variant, true);
         SVTestUtils.assertEqualsExceptExcludedAttributes(resultKeepAttr, expected, Collections.emptyList());
     }
+
+    @DataProvider(name = "testGetComplexSubtypeData")
+    public Object[][] testGetComplexSubtypeData() {
+        return new Object[][]{
+                {new VariantContextBuilder()
+                        .source("source")
+                        .id("id")
+                        .chr("chr1")
+                        .start(2000)
+                        .stop(3000)
+                        .alleles(Arrays.asList(Allele.REF_N, Allele.create("<CPX>", false)))
+                        .attributes(Map.of(
+                                GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.CPX_TYPE, "dupINVdup"
+                        ))
+                        .make(),
+                        GATKSVVCFConstants.ComplexVariantSubtype.dupINVdup
+                },
+                {new VariantContextBuilder()
+                        .source("source")
+                        .id("id")
+                        .chr("chr1")
+                        .start(2000)
+                        .stop(3000)
+                        .alleles(Arrays.asList(Allele.REF_N, Allele.create("<CPX>", false)))
+                        .attributes(Map.of(
+                                GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.CPX_TYPE, "CTX_PP/QQ"
+                        ))
+                        .make(),
+                        GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ
+                },
+                {new VariantContextBuilder()
+                        .source("source")
+                        .id("id")
+                        .chr("chr1")
+                        .start(2000)
+                        .stop(3000)
+                        .alleles(Arrays.asList(Allele.REF_N, Allele.create("<DEL>", false)))
+                        .attributes(Map.of(
+                                GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
+                        ))
+                        .make(),
+                        null
+                }
+        };
+    }
+
+    @Test(dataProvider= "testGetComplexSubtypeData")
+    public void testGetComplexSubtype(final VariantContext variant, final GATKSVVCFConstants.ComplexVariantSubtype expected) {
+        final GATKSVVCFConstants.ComplexVariantSubtype actual = SVCallRecordUtils.getComplexSubtype(variant);
+        Assert.assertEquals(actual, expected);
+    }
 }

@@ -9,6 +9,7 @@ import org.apache.commons.compress.utils.Sets;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -862,12 +863,7 @@ public class SVAnnotateEngine {
     protected Map<String, Object> annotateStructuralVariant(final VariantContext variant) {
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         final GATKSVVCFConstants.StructuralVariantAnnotationType overallSVType = getSVType(variant);
-        final String complexTypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
-        GATKSVVCFConstants.ComplexVariantSubtype complexType = null;
-        if (complexTypeString != null) {
-            // replace / in CTX_PP/QQ and CTX_PQ/QP with _ to match ComplexVariantSubtype constants which cannot contain slashes
-            complexType = GATKSVVCFConstants.ComplexVariantSubtype.valueOf(complexTypeString.replace("/", "_"));
-        }
+        final GATKSVVCFConstants.ComplexVariantSubtype complexType = SVCallRecordUtils.getComplexSubtype(variant);
         final boolean includesDispersedDuplication = includesDispersedDuplication(complexType, COMPLEX_SUBTYPES_WITH_DISPERSED_DUP);
         final List<SVSegment> svSegmentsForGeneOverlaps = getSVSegments(variant, overallSVType, maxBreakendLen, complexType);
 
