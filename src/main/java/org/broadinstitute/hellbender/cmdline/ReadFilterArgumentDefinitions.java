@@ -53,8 +53,8 @@ public final class ReadFilterArgumentDefinitions {
 
     public static final String KEEP_INTERVAL_NAME = "keep-intervals";
 
-    public static final String SOFT_CLIPPED_RATIO_THRESHOLD = "soft-clipped-ratio-threshold";
-    public static final String SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD = "soft-clipped-leading-trailing-ratio";
+    public static final String SOFT_CLIPPED_RATIO_THRESHOLD = "max-soft-clipped-ratio-threshold";
+    public static final String SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD = "max-soft-clipped-leading-trailing-ratio";
 
     public static final String INVERT_SOFT_CLIP_RATIO_FILTER = "invert-soft-clip-ratio-filter";
 

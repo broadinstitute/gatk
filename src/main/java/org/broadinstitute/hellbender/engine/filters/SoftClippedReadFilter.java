@@ -25,12 +25,12 @@ public final class SoftClippedReadFilter extends ReadFilter {
     static final long serialVersionUID = 1L;
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    @VisibleForTesting
-    @Argument(fullName = ReadFilterArgumentDefinitions.INVERT_SOFT_CLIP_RATIO_FILTER,
-            doc = "Inverts the results from this filter, causing all variants that would pass to fail and visa-versa.",
-            optional = true
-    )
-    boolean doInvertFilter = false;
+//    @VisibleForTesting
+//    @Argument(fullName = ReadFilterArgumentDefinitions.INVERT_SOFT_CLIP_RATIO_FILTER,
+//            doc = "Inverts the results from this filter, causing all variants that would pass to fail and visa-versa.",
+//            optional = true
+//    )
+//    boolean doInvertFilter = false;
 
     @VisibleForTesting
     @Argument(fullName = ReadFilterArgumentDefinitions.SOFT_CLIPPED_RATIO_THRESHOLD,
@@ -38,7 +38,7 @@ public final class SoftClippedReadFilter extends ReadFilter {
             optional = true,
             mutex = { ReadFilterArgumentDefinitions.SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD }
     )
-    Double minimumSoftClippedRatio = null;
+    Double maximumSoftClippedRatio = null;
 
     @VisibleForTesting
     @Argument(fullName = ReadFilterArgumentDefinitions.SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD,
@@ -46,7 +46,7 @@ public final class SoftClippedReadFilter extends ReadFilter {
             optional = true,
             mutex = {ReadFilterArgumentDefinitions.SOFT_CLIPPED_RATIO_THRESHOLD}
     )
-    Double minimumLeadingTrailingSoftClippedRatio = null;
+    Double maximumLeadingTrailingSoftClippedRatio = null;
 
     // Command line parser requires a no-arg constructor
     public SoftClippedReadFilter() {}
@@ -63,7 +63,7 @@ public final class SoftClippedReadFilter extends ReadFilter {
 
         final double softClipRatio = ((double)numSoftClippedBases / (double)totalLength);
 
-        return softClipRatio > minimumSoftClippedRatio;
+        return softClipRatio < maximumSoftClippedRatio;
     }
 
     private boolean testMinLeadingTrailingSoftClippedRatio(final GATKRead read) {
@@ -92,10 +92,11 @@ public final class SoftClippedReadFilter extends ReadFilter {
         // Calculate the ratio:
         final double softClipRatio = ((double)numLeadingTrailingSoftClippedBases / (double)totalLength);
 
-        return softClipRatio > minimumLeadingTrailingSoftClippedRatio;
+        return softClipRatio < maximumLeadingTrailingSoftClippedRatio;
     }
 
     @Override
+    // NOTE: for read filters we always return true if the read passes the filter, and false if it doesn't.
     public boolean test(final GATKRead read) {
 
         final boolean result;
@@ -103,11 +104,11 @@ public final class SoftClippedReadFilter extends ReadFilter {
         // NOTE: Since we have mutex'd the args for the clipping ratios, we only need to see if they
         //       have been specified.  If they have, that's the filter logic we're using.
         // If we specified the clipping ratio, we use the min sequence length test:
-        if ( minimumSoftClippedRatio != null ) {
+        if ( maximumSoftClippedRatio != null ) {
             result = testMinSoftClippedRatio(read);
         }
         // If we specified the leading/trailing clipping ratio, we use the min sequence length test:
-        else if ( minimumLeadingTrailingSoftClippedRatio != null ) {
+        else if ( maximumLeadingTrailingSoftClippedRatio != null ) {
             result = testMinLeadingTrailingSoftClippedRatio(read);
         }
         else {
