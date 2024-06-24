@@ -1096,4 +1096,43 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(g.hasAD());
         Assert.assertFalse(g.hasPL());
     }
+
+    @Test
+    public void testMixHaploidDiploidHighAltSite() {
+        final String inputVcfsDir = toolsTestDir + "/walkers/GenotypeGVCFs/mixHaploidDiploidHighAlt/";
+        List<File> inputs = new ArrayList<>();
+
+        // list of 3 genotype 1/2 samples and one genotype 1 sample with 6 alt alleles
+        inputs.add(new File(inputVcfsDir + "haploid.rb.g.vcf"));
+        for (int i = 1; i <= 3; i++) {
+            String str = String.format("%ss%02d.rb.g.vcf", inputVcfsDir, i);
+            inputs.add(new File(str));
+        }
+        final SimpleInterval interval =  new SimpleInterval("chrX", 66780645, 66780646);
+        final File tempGenomicsDB2 = GenomicsDBTestUtils.createTempGenomicsDB(inputs, interval);
+        final String genomicsDBUri2 = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB2);
+        final File output = createTempFile("mixHaploidDiploidHighAlt", ".vcf");
+
+        final ArgumentsBuilder argsGenotypeGVCFs = new ArgumentsBuilder();
+        argsGenotypeGVCFs.addReference(hg38Reference)
+                .addVCF(genomicsDBUri2)
+                .addInterval(interval)
+                // 6 alt alleles is 6C2 = 15 genotypes for diploids, but only 6 genotypes for haploids
+                .add("max-genotype-count", 8)
+                .addOutput(output);
+        //Make sure we don't hit an exception
+        runCommandLine(argsGenotypeGVCFs);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        //Make sure the first site was successfully removed
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        //Make sure the second site was successfully genotyped (3 no calls and 1 haploid alt genotype)
+        Assert.assertEquals(vc.getStart(), 66780646);
+        Assert.assertEquals(vc.getGenotypes().size(), 4);
+        List<Genotype> calledGenotypes = vc.getGenotypes().stream().filter(g -> !g.isNoCall()).toList();
+        Assert.assertEquals(calledGenotypes.size(), 1);
+        Assert.assertEquals(calledGenotypes.get(0).getAlleles().size(), 1);
+        Assert.assertEquals(calledGenotypes.get(0).getAlleles().get(0), Allele.create("TA", false));
+    }
 }
