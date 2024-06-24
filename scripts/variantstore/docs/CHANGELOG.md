@@ -1,5 +1,15 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.5 - 2024-06-24
+
+### Changed
+
+- Inputs `vcf_files_column_name`, `vcf_index_files_column_name`, `sample_id_column_name`, and `extract_output_gcs_dir` are no longer optional.
+- high_CALIBRATION_SENSITIVITY_SNP and high_CALIBRATION_SENSITIVITY_INDEL were moved from the ##FILTER entry in the header to a ##COMMENT. No change to behavior or vcf content outside of header. 
+- Reduced the number of sharded vcfs coming out of beta workflow for smaller callsets. Documentation on details coming soon. 
+- Bug fix to correctly handle samples with chromosomes with differing ploidy for DRAGEN 3.7.8 data.
+
+
 ## 0.5.4 - 2024-03-18
 
 ### Changed
