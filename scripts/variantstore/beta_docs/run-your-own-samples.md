@@ -10,14 +10,14 @@ The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scri
 
 To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](./gvs-overview.md).
 
-### What does it require as input?
+## What does it require as input?
 
 - Reblocked single sample GVCF files with specific annotations described below
 - GVCF index files
 
 While the GVS has been tested with 410,000 single sample whole genome GVCF files and 190,000 single sample whole exome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
 
-#### Supported data types
+### Supported data types
 _* indicates regularly tested and validated_
 
 **Species**
@@ -36,8 +36,7 @@ _* indicates regularly tested and validated_
 - WARP Whole Genome + GATK 3.5
 - DRAGEN 3.4.12
 
-
-#### Reblocked GVCF files
+### Reblocked GVCF files
 
 If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/ReblockGVCF_v2.1.12/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in this workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
 
@@ -45,7 +44,7 @@ Note that the ReblockGVCF pipeline defaults to the file extension `.gvcf.gz`, wh
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
-#### GVCF annotations
+### GVCF annotations
 
 Input GVCF files for the GVS workflow must include the annotations described in the table below:
 
@@ -62,7 +61,7 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 | call_GT                                   | Genotype.                                                                                 | ---                        |
 | call_GQ                                   | Genotype quality.                                                                         | ---                        |
 
-### What does it return as output?
+## What does it return as output?
 
 The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
