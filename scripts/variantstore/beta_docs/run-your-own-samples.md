@@ -19,7 +19,7 @@ While the GVS has been tested with 410,000 single sample whole genome GVCF files
 
 #### Reblocked GVCF files
 
-If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in this workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
+If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/ReblockGVCF_v2.1.12/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in this workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
 
 Note that the ReblockGVCF pipeline defaults to the file extension `.gvcf.gz`, which is the default for DRAGEN gvcfs. If this is not the extension on your data, update the input variable `gvcf_file_extension`. 
 

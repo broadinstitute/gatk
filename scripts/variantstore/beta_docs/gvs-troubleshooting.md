@@ -11,5 +11,5 @@
 1. My workflow failed during ingestion, can I restart it?
    1. If it fails during ingestion, yes, the GvsBeta workflow is restartable and will pick up where it left off.
 2. Duplicate sample names error: `ERROR: The input file ~{sample_names_file} contains the following duplicate entries:`
-   1. The GVS requires that sample names are unique because the sample names are used to name the samples in the VCF ,and VCF format requires unique sample names. 
+   1. The GVS requires that sample names are unique because the sample names are used to name the samples in the VCF, and VCF format requires unique sample names. 
    2. After deleting or renaming the duplicate sample, you can restart the workflow without any clean up.

@@ -1,4 +1,4 @@
-### Genomic Variant Store workflow (beta) for variant discovery
+## Genomic Variant Store workflow (beta) for variant discovery
 
 The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
