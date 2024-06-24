@@ -42,7 +42,6 @@ import hail as hl
 from avro.datafile import DataFileReader
 from avro.io import DatumReader
 from hail.utils.java import info
-from hailtop.fs.router_fs import RouterFS
 
 
 def patch_vds(
