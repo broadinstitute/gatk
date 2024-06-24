@@ -130,6 +130,7 @@ You will need to delete the example sample data from your workspace so that it i
 1. Navigate to the data snapshot that needs to be processed. 
 2. Select the EXPORT SNAPSHOT tab once the snapshot is selected. The sample rows should include a `sample_id`, `gvcf_path`, and `gvcf_index_path` at a minimum.
 3. Make sure “Convert DRS URLs to Google Cloud Storage Paths (gs://)" is selected, then click the “EXPORT SNAPSHOT” button.
+   1. **Warning: The workflows will fail without selecting this.**
 4. Choose the workspace created in Step 7 of the Setup instructions in [gvs-quickstart](./gvs-quickstart.md)
 
 --- 

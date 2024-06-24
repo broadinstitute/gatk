@@ -13,3 +13,7 @@
 2. Duplicate sample names error: `ERROR: The input file ~{sample_names_file} contains the following duplicate entries:`
    1. The GVS requires that sample names are unique because the sample names are used to name the samples in the VCF, and VCF format requires unique sample names. 
    2. After deleting or renaming the duplicate sample, you can restart the workflow without any clean up.
+
+## Reblocking
+1. `htsjdk.tribble.TribbleException$MalformedFeatureFile: Unable to parse header with error: Your input file has a malformed header: We never saw the required CHROM header line (starting with one #) for the input VCF file, for input source: file:///cromwell_root/v1_[uuid]`
+   1. If you are running ReblockGVCF from a TDR snapshot, you will see this error if you did not check the “Convert DRS URLs to Google Cloud Storage Paths (gs://)" box before exporting the snapshot.
