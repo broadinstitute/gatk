@@ -27,6 +27,8 @@ RUN apk add --no-cache jq
 COPY --from=build /root/.local /root/.local
 # Copy bcftools artifacts
 COPY --from=build /bcftools /bcftools
+# Copy vcftools artifacts
+COPY --from=build /vcftools /vcftools
 
 # Copy the application source code.
 RUN mkdir /app
@@ -37,5 +39,5 @@ COPY *.sql /app/
 RUN mkdir -p /data/variant_annotation_table/schema
 COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
-ENV PATH=/bcftools/bin\:$PATH
+ENV PATH=/bcftools/bin\:/vcftools/bin\:$PATH
 WORKDIR /app
