@@ -64,9 +64,9 @@ No shard will ever contain data from more than one chromosome, so for callsets o
 You can merge the VCF shards using [GatherVCFsCloud from GATK](https://app.terra.bio/#workspaces/help-gatk/GATK4-Germline-Preprocessing-VariantCalling-JointCalling/workflows/broad-firecloud-dsde/Optional-Gatk-GatherVCFsCloud).
 
 Other tools, in order of our recommendation, that are available for working with VCFs include:
-[Hail](https://www.hail.is/) (see below).
-`merge` from [bcftools](https://samtools.github.io/bcftools/).
-`MergeVcfs` from [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037226612-MergeVcfs-Picard).
+- [Hail](https://www.hail.is/) (see below).
+- `merge` from [bcftools](https://samtools.github.io/bcftools/).
+- `MergeVcfs` from [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037226612-MergeVcfs-Picard).
 
 #### Merging GVS outputs in Hail
 Here is a block of Hail code that will convert a GVS VCF to a Hail Matrix Table (MT).
