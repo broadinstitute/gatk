@@ -4,8 +4,7 @@
 1. `Failed to create dataset: Access Denied: User does not have bigquery.datasets.create permission.`
    1. See steps 5 and 6 in the [quickstart](./gvs-quickstart.md) to assign the right permissions on your google project for your Terra proxy user.
 2. `BadRequestException: 400 Bucket is a requester pays bucket but no user project provided.`
-   1. GVS can ingest data from a requester pays bucket by setting the optional `billing_project_id` input variable. This variable takes a string of a Google project ID to charge for the egress of the GVCFs and index files.                                                                                                               | String  |
-
+   1. GVS can ingest data from a requester pays bucket by setting the optional `billing_project_id` input variable. This variable takes a string of a Google project ID to charge for the egress of the GVCFs and index files.
 
 ## Runtime errors
 1. My workflow failed during ingestion, can I restart it?
