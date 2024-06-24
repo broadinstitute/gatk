@@ -15,7 +15,27 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 - Reblocked single sample GVCF files with specific annotations described below
 - GVCF index files
 
-While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files and 190,000 single sample whole exome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
+
+#### Supported data types
+_* indicates regularly tested and validated_
+
+**Species**
+- Human data only (hg38)*
+
+**Sequencing details**
+- Illumina short read sequencing*
+- Whole Genome Sequencing*
+- Whole Exome Sequencing*
+- Blended Genome Exome Sequencing*
+
+**Secondary Analysis Methods**
+- DRAGEN 3.7.8*
+- GATK4*
+- DRAGEN-GATK
+- WARP Whole Genome + GATK 3.5
+- DRAGEN 3.4.12
+
 
 #### Reblocked GVCF files
 

@@ -118,3 +118,9 @@ PLs (phred-scaled genotype likelihoods) are critically important for downstream 
 Note that normally the array for PL is length "G" where G is the number of genotypes. Instead, we output "." which is length 1, to represent the missing PL format field. 
 
 PL can be approximated as [0, GQ, ~2*GQ]
+
+### Missing (`./.`) and `GQ0 0/0`
+Reblocking, a step required before running GVS, combines `./.` and `0/0`, see quote from reblocking release notes:
+> Missing (`./.`) genotype calls will be output at `GQ0` homozygous reference calls in the new pipeline version, so QC methods that rely on “missingness” will also need to be modified.
+
+On output to both VCF and VDS, we output `./.` and `0/0 GQ0` calls as `./.`. 
