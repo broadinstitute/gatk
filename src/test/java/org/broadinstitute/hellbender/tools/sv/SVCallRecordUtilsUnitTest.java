@@ -636,4 +636,19 @@ public class SVCallRecordUtilsUnitTest {
         final GATKSVVCFConstants.ComplexVariantSubtype actual = SVCallRecordUtils.getComplexSubtype(variant);
         Assert.assertEquals(actual, expected);
     }
+
+    @DataProvider(name = "testGetComplexSubtypeStringData")
+    public Object[][] testGetComplexSubtypeStringData() {
+        return new Object[][]{
+                {GATKSVVCFConstants.ComplexVariantSubtype.CTX_PQ_QP, "CTX_PQ/QP"},
+                {GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ, "CTX_PP/QQ"},
+                {GATKSVVCFConstants.ComplexVariantSubtype.INS_iDEL, "INS_iDEL"}
+        };
+    }
+
+    @Test(dataProvider= "testGetComplexSubtypeStringData")
+    public void testGetComplexSubtypeString(final GATKSVVCFConstants.ComplexVariantSubtype subtype, final String expected) {
+        final String actual = SVCallRecordUtils.getComplexSubtypeString(subtype);
+        Assert.assertEquals(actual, expected);
+    }
 }

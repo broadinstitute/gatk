@@ -91,7 +91,7 @@ public final class SVCallRecordUtils {
             builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
         }
         if (cpxType != null) {
-            builder.attribute(GATKSVVCFConstants.CPX_TYPE, record.getComplexSubtype().toString());
+            builder.attribute(GATKSVVCFConstants.CPX_TYPE, getComplexSubtypeString(cpxType));
         }
 
         builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
@@ -430,15 +430,15 @@ public final class SVCallRecordUtils {
         if (subtypeString == null) {
             return null;
         }
-        else {
-            // replace / in CTX_PP/QQ and CTX_PQ/QP with _ to match ComplexVariantSubtype constants which cannot contain slashes
-            subtypeString = subtypeString.replace("/", "_");
-        }
-        if (!VALID_CPX_SUBTYPES.contains(subtypeString)) {
+        if (!GATKSVVCFConstants.ComplexVariantSubtypeMap.containsKey(subtypeString)) {
             throw new IllegalArgumentException("Invalid CPX subtype: " + subtypeString + ", valid values are: " +
                     String.join(", ", VALID_CPX_SUBTYPES));
         }
-        return GATKSVVCFConstants.ComplexVariantSubtype.valueOf(subtypeString);
+        return GATKSVVCFConstants.ComplexVariantSubtypeMap.get(subtypeString);
+    }
+
+    public static String getComplexSubtypeString(final GATKSVVCFConstants.ComplexVariantSubtype subtype) {
+        return GATKSVVCFConstants.ComplexVariantSubtypeMap.inverse().get(subtype);
     }
 
     private static String getStrands(final VariantContext variant, final GATKSVVCFConstants.StructuralVariantAnnotationType type) {

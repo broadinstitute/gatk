@@ -1,6 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.Allele;
+
+import java.util.Map;
+
+import static java.util.Map.entry;
 
 public final class GATKSVVCFConstants {
 
@@ -76,6 +81,7 @@ public final class GATKSVVCFConstants {
     public static final String CPX_INTERVALS = "CPX_INTERVALS";
     public static final String CPX_TYPE = "CPX_TYPE";
 
+    // keep in sync with map below
     public enum ComplexVariantSubtype {
         delINV,
         INVdel,
@@ -94,6 +100,26 @@ public final class GATKSVVCFConstants {
         CTX_PQ_QP,
         CTX_INV
     }
+
+    // keep in sync with enum above
+    public static final HashBiMap<String, ComplexVariantSubtype> ComplexVariantSubtypeMap = HashBiMap.create(Map.ofEntries(
+            entry("delINV", ComplexVariantSubtype.delINV),
+            entry("INVdel", ComplexVariantSubtype.INVdel),
+            entry("dupINV", ComplexVariantSubtype.dupINV),
+            entry("INVdup", ComplexVariantSubtype.INVdup),
+            entry("delINVdel", ComplexVariantSubtype.delINVdel),
+            entry("dupINVdup", ComplexVariantSubtype.dupINVdup),
+            entry("delINVdup", ComplexVariantSubtype.delINVdup),
+            entry("dupINVdel", ComplexVariantSubtype.dupINVdel),
+            entry("piDUP_FR", ComplexVariantSubtype.piDUP_FR),
+            entry("piDUP_RF", ComplexVariantSubtype.piDUP_RF),
+            entry("dDUP", ComplexVariantSubtype.dDUP),
+            entry("dDUP_iDEL", ComplexVariantSubtype.dDUP_iDEL),
+            entry("INS_iDEL", ComplexVariantSubtype.INS_iDEL),
+            entry("CTX_PP/QQ", ComplexVariantSubtype.CTX_PP_QQ),
+            entry("CTX_PQ/QP", ComplexVariantSubtype.CTX_PQ_QP),
+            entry("CTX_INV", ComplexVariantSubtype.CTX_INV)
+    ));
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
