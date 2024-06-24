@@ -3,14 +3,38 @@
 ## Applying the GVS Joint Calling Filters
 During joint calling using GVS, filters are tagged onto the data based on the filtering model. However, the VCFs we output from GVS are not hard filtered, which means we include the filters in the FT flag and have a recommended filtering approach. Here, we outline that approach.
 
+Unfiltered variants will have “.” or PASS in the site level filters fields in the srWGS joint callset SNP & Indel VCFs. Filtered variants will have the filter name in the site level filters of the VCF (FILTER). Additionally,  We recommend that researchers do not include variant sites that were filtered in their analyses.
+
+| Site-level Filters and Allele Specific Filters | Definition                                                                | Details                                                                                                                                                                                                                                                                                                                                               |
+|------------------------------------------------|---------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| NO_HQ_GENOTYPES                                | Site has no high quality variant genotypes                                | No high-quality genotype (GQ>=20, DP>=10, and AB>=0.2 for heterozygotes) called for the variant. Allele Balance (AB) is calculated for each heterozygous variant as the number of bases supporting the least-represented allele over the total number of base observations.  In other words, min(AD)/DP for diploid GTs.                              |
+| ExcessHet                                      | Site has excess het value larger than the threshold                       | This filter appears when phred-scaled p-value is < 54.69. We cutoff anything more extreme than a z-score of -4.5 (p-value of 3.4e-06), which phred-scaled is 54.69.                                                                                                                                                                                   |
+| LowQual                                        | Low Quality                                                               | QUAL score is too low (lower than 60 for SNPs; lower than 69 for Indels). QUAL tells you how confident we are that there is some kind of variation at a given site. The variation may be present in one or more samples.                                                                                                                              |
+| high_CALIBRATION_SENSITIVITY_SNP               | Sample Genotype failed SNP model calibration sensitivity cutoff (0.997)   | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below. |
+| high_CALIBRATION_SENSITIVITY_INDEL             | Sample Genotype failed INDEL model calibration sensitivity cutoff (0.999) | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below. |
+| OUTSIDE_OF_TARGETS                             | Outside of sequencing target intervals                                    | Exome only. The site is not within the target intervals of the exome assay. We recommend filtering out these sites as we cannot stand behind the quality of sites called outside of the targets.                                                                                                                                                      |
+
+
+### Example sites and how to interpret them
+#### Passing site
 ```
-[TODO] Insert filtering best practices here
+chr20   66369   .       C       T       .       .       AC=2;AF=1.00;AN=2;AS_QUALapprox=0|982;AS_YNG=G;CALIBRATION_SENSITIVITY=0.2492;QUALapprox=982;SCORE=-0.3836      GT:AD:GQ:RGQ    ./.         ./.     1/1:0,29:87:982
+```
+
+#### A site with failing calibration sensitivity SNPs for all sample genotypes
+```
+chr20   62898   .       T       A       .       .       AS_QUALapprox=0|933;AS_YNG=G;CALIBRATION_SENSITIVITY=0.9999;QUALapprox=324;SCORE=-0.7456        GT:AD:FT:GQ:PGT:PID:RGQ 0/1:26,11:high_CALIBRATION_SENSITIVITY_SNP:99:0|1:62818_T_G:384     0/1:23,7:high_CALIBRATION_SENSITIVITY_SNP:99:0|1:62818_T_G:225  0/1:18,9:high_CALIBRATION_SENSITIVITY_SNP:99:0|1:62818_T_G:324
+```
+
+#### Multi-allelic site with one passing and one failed sample genotype
+```
+chr20   245443  .       GTATATATA       GTATATA,G       .       .       AC=0,1;AF=0.00,0.500;AN=2;AS_QUALapprox=0|339|238;AS_YNG=G,G;CALIBRATION_SENSITIVITY=0.9957,0.9402;QUALapprox=238;SCORE=-0.6448,-0.5305     GT:AD:FT:GQ:RGQ 0/2:11,0,9:PASS:99:238  0/1:10,5,0:high_CALIBRATION_SENSITIVITY_INDEL:99:264    0/1:5,3,0:high_CALIBRATION_SENSITIVITY_INDEL:75:75
 ```
 
 ---
 
 **Warning:**
-The AC and AN numbers we calculate in the VCFs are based on following the filtering recommendations. This follows GATK best practices.
+The AC and AN numbers we calculate in the VCFs are based on following the filtering recommendations above. This follows GATK best practices.
 
 ---
 

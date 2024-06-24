@@ -6,6 +6,8 @@
    1. Alongside the output vcfs there is a file called `sample-name-list.txt`
 2. How can I know which sharded vcf files should be merged together? Is there any file indicating the relationship between sharded vcf and chromosome?
    3. Yes, please see details on the [outputs of gvs](./gvs-outputs.md).
+4. There are so many variants! I thought this was filtered.
+   5. The GVS 'soft filters' the data in that we tag site-level filters and allele specific filters onto the data for the user to be able to filter based on their research needs. Please see details on the [outputs of gvs](./gvs-outputs.md).
 
 ## Runtime
 1. For running GVS, do we need to make a separate BigQuery dataset for every callset we want to create, or just once and then that can hold multiple cohorts across GVS runs?
