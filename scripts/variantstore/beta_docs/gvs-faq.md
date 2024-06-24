@@ -1,5 +1,6 @@
 # Frequently Asked Questions about the Genomic Variant Store
 
+## Output questions
 1. Is the resulting callset different from the WARP Joint Calling Pipeline?
    1. Yes, to enable scale, cost, and runtime efficiencies in GVS, we have optimized what data is output in the final VCFs. Please see details on the [outputs of gvs](./gvs-outputs.md).
    2. Additionally, GVS defaults to use GATK VETS over the prior tool, GATK VQSR. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf).
