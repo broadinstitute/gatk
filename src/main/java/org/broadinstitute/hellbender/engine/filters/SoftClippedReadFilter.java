@@ -25,13 +25,6 @@ public final class SoftClippedReadFilter extends ReadFilter {
     static final long serialVersionUID = 1L;
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-//    @VisibleForTesting
-//    @Argument(fullName = ReadFilterArgumentDefinitions.INVERT_SOFT_CLIP_RATIO_FILTER,
-//            doc = "Inverts the results from this filter, causing all variants that would pass to fail and visa-versa.",
-//            optional = true
-//    )
-//    boolean doInvertFilter = false;
-
     @VisibleForTesting
     @Argument(fullName = ReadFilterArgumentDefinitions.SOFT_CLIPPED_RATIO_THRESHOLD,
             doc = "Threshold ratio of soft clipped bases (anywhere in the cigar string) to total bases in read for read to be filtered.",
@@ -61,15 +54,15 @@ public final class SoftClippedReadFilter extends ReadFilter {
             totalLength += element.getLength();
         }
 
-        final double softClipRatio = ((double)numSoftClippedBases / (double)totalLength);
+        final double softClipRatio = totalLength != 0 ? ((double)numSoftClippedBases / (double)totalLength) : 0.0;
 
-        return softClipRatio < maximumSoftClippedRatio;
+        return softClipRatio <= maximumSoftClippedRatio;
     }
 
     private boolean testMinLeadingTrailingSoftClippedRatio(final GATKRead read) {
 
         if ( read.getCigarElements().size() < 1 ) {
-            return false;
+            return true; //NOTE: in this edge case that the read should pass this filter as there are no cigar elements to have edge soft-clipping.
         }
 
         // Get the index of the last cigar element:
@@ -90,9 +83,9 @@ public final class SoftClippedReadFilter extends ReadFilter {
                 .sum();
 
         // Calculate the ratio:
-        final double softClipRatio = ((double)numLeadingTrailingSoftClippedBases / (double)totalLength);
+        final double softClipRatio = totalLength != 0 ? ((double)numLeadingTrailingSoftClippedBases / (double)totalLength) : 0.0;
 
-        return softClipRatio < maximumLeadingTrailingSoftClippedRatio;
+        return softClipRatio <= maximumLeadingTrailingSoftClippedRatio;
     }
 
     @Override
@@ -119,10 +112,6 @@ public final class SoftClippedReadFilter extends ReadFilter {
             );
         }
 
-        // Check for if we want to invert our results:
-        if ( doInvertFilter ) {
-            return !result;
-        }
         return result;
     }
 }

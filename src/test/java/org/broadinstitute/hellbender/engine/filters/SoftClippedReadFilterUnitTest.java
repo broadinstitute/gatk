@@ -41,9 +41,6 @@ public class SoftClippedReadFilterUnitTest {
 
         final GATKRead read = buildSAMRead(cigarString);
         Assert.assertEquals(filter.test(read), expectedResult, cigarString);
-
-//        filter.doInvertFilter = true;
-//        Assert.assertEquals(filter.test(read), !expectedResult, "Inverted case: " + cigarString);
     }
 
     @Test(dataProvider= "SoftClippedLeadingTrailingRatioDataProvider")
@@ -56,9 +53,6 @@ public class SoftClippedReadFilterUnitTest {
 
         final GATKRead read = buildSAMRead(cigarString);
         Assert.assertEquals(filter.test(read), expectedResult, cigarString);
-
-//        filter.doInvertFilter = true;
-//        Assert.assertEquals(filter.test(read), !expectedResult, "Inverted case: " + cigarString);
     }
 
     @DataProvider(name = "SoftClipRatioDataProvider")
