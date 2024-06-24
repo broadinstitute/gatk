@@ -79,8 +79,8 @@ mt.write(output_gs_url)
 ## Interval lists
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi
 
-## Content in the VCF [In progress]
-These are the filters and format and info fields in the GVS VCFs. Note that they are different from the ones in the GATK WARP Joint Calling VCFs. Additionally, some are new with the introduction of VETS. Read more about VETS [here](https://github.com/broadinstitute/gatk/blob/gvs_0.5.5/scripts/variantstore/docs/release_notes/VETS_Release.pdf). 
+## Content in the VCF
+This is the full list of the filters, format, comment, and info fields in the GVS VCFs. Note that they are different from the ones in the GATK WARP Joint Calling VCFs. Additionally, some are new with the introduction of VETS. Read more about VETS [here](https://github.com/broadinstitute/gatk/blob/gvs_0.5.5/scripts/variantstore/docs/release_notes/VETS_Release.pdf). 
 
 ```
 ##FILTER=<ID=PASS,Description="All filters passed">
