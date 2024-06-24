@@ -36,7 +36,21 @@ The VCFs and indices that come out of GVS are sharded based on the size of the c
 
 No shard will ever contain data from more than one chromosome, so for callsets over 5k samples, the number of shards will be close to these but not exactly.
 
-You can merge the shards using MergeVcfs from [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037226612-MergeVcfs-Picard).
+### Merging Shards
+You can merge the VCF shards using [GatherVCFsCloud from GATK](https://app.terra.bio/#workspaces/help-gatk/GATK4-Germline-Preprocessing-VariantCalling-JointCalling/workflows/broad-firecloud-dsde/Optional-Gatk-GatherVCFsCloud).
+
+Other tools, in order of our recommendation, that are available for working with VCFs include:
+[Hail](https://www.hail.is/) (see below).
+`merge` from [bcftools](https://samtools.github.io/bcftools/).
+`MergeVcfs` from [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037226612-MergeVcfs-Picard).
+
+#### Merging GVS outputs in Hail
+Here is a block of Hail code that will convert a GVS VCF to a Hail Matrix Table (MT).
+
+```
+mt = hl.import_vcf(vcf_bgz, force_bgz=True)
+mt.write(output_gs_url)
+```
 
 ## Interval lists
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi
