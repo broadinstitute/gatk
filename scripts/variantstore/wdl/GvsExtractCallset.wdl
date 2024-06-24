@@ -18,6 +18,9 @@ workflow GvsExtractCallset {
     String query_project = project_id
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
+    Int? extract_memory_override_gib
+    Int? disk_override
+    Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
@@ -35,6 +38,7 @@ workflow GvsExtractCallset {
 
     String output_file_base_name = filter_set_name
 
+    String? ploidy_table_name
     Int? extract_maxretries_override
     Int? extract_preemptible_override
     String? output_gcs_dir
@@ -42,7 +46,10 @@ workflow GvsExtractCallset {
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
+    Boolean is_wgs = true
+    Boolean convert_filtered_genotypes_to_nocalls = false
     Boolean write_cost_to_db = true
+    Int? maximum_alternate_alleles
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -60,7 +67,11 @@ workflow GvsExtractCallset {
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
   String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
-  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__VET_DATA"
+  String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
+
+  # make the fully qualified version of the ploidy table if present, otherwise leave it undefined
+  String? fq_ploidy_mapping_table = if (defined(ploidy_table_name)) then "~{fq_gvs_dataset}.~{ploidy_table_name}" else ploidy_table_name
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
@@ -68,7 +79,8 @@ workflow GvsExtractCallset {
   Boolean emit_pls = false
   Boolean emit_ads = true
 
-  String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
+  String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
+  String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
 
   if (!defined(git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
@@ -106,18 +118,28 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
-                                else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
-                                     else if GetNumSamplesLoaded.num_samples < 1000 then 500
-                                          else if GetNumSamplesLoaded.num_samples < 5000 then 1000
-                                               else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
-                                                    else if GetNumSamplesLoaded.num_samples < 50000 then 10000
-                                                         else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
-                                                              else 40000
+                                else if is_wgs then
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                               else 20000
+                                     else
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 1000
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 2500
+                                               else 7500
 
-Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override, 
-                                if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                     else 500])
+  Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
+                                                                  if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                                                  else 500])
+
+  Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
+                                     else if effective_scatter_count <= 100 then 40
+                                          else if effective_scatter_count <= 500 then 20
+                                               else 12
+
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
     File? none = ""
@@ -178,42 +200,58 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  call Utils.GetExtractVetTableVersion {
+    input:
+      query_project = query_project,
+      data_project = project_id,
+      dataset_name = dataset_name,
+      table_name = fq_ranges_cohort_vet_extract_table_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     String interval_filename = basename(SplitIntervals.interval_files[i])
-    String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}.vcf.gz"
+    String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
+
 
     call ExtractTask {
       input:
-        go                                 = select_first([ValidateFilterSetName.done, true]),
-        dataset_name                       = dataset_name,
-        call_set_identifier                = call_set_identifier,
-        use_VQSR_lite                      = use_VQSR_lite,
-        gatk_docker                        = effective_gatk_docker,
-        gatk_override                      = gatk_override,
-        reference                          = reference,
-        reference_index                    = reference_index,
-        reference_dict                     = reference_dict,
-        fq_samples_to_extract_table        = fq_samples_to_extract_table,
-        interval_index                     = i,
-        intervals                          = SplitIntervals.interval_files[i],
-        fq_cohort_extract_table            = fq_cohort_extract_table,
-        fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
-        fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
-        read_project_id                    = query_project,
-        do_not_filter_override             = do_not_filter_override,
-        fq_filter_set_info_table           = fq_filter_set_info_table,
-        fq_filter_set_site_table           = fq_filter_set_site_table,
-        fq_filter_set_tranches_table       = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
-        filter_set_name                    = filter_set_name,
-        drop_state                         = drop_state,
-        output_file                        = vcf_filename,
-        output_gcs_dir                     = output_gcs_dir,
-        max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
-        extract_preemptible_override       = extract_preemptible_override,
-        extract_maxretries_override        = extract_maxretries_override,
-        emit_pls                           = emit_pls,
-        emit_ads                           = emit_ads,
-        write_cost_to_db                   = write_cost_to_db,
+        go                                    = select_first([ValidateFilterSetName.done, true]),
+        dataset_name                          = dataset_name,
+        call_set_identifier                   = call_set_identifier,
+        use_VQSR_lite                         = use_VQSR_lite,
+        gatk_docker                           = effective_gatk_docker,
+        gatk_override                         = gatk_override,
+        reference                             = reference,
+        reference_index                       = reference_index,
+        reference_dict                        = reference_dict,
+        fq_samples_to_extract_table           = fq_samples_to_extract_table,
+        interval_index                        = i,
+        intervals                             = SplitIntervals.interval_files[i],
+        fq_cohort_extract_table               = fq_cohort_extract_table,
+        fq_ranges_cohort_ref_extract_table    = fq_ranges_cohort_ref_extract_table,
+        fq_ranges_cohort_vet_extract_table    = fq_ranges_cohort_vet_extract_table,
+        vet_extract_table_version             = GetExtractVetTableVersion.version,
+        read_project_id                       = query_project,
+        do_not_filter_override                = do_not_filter_override,
+        fq_filter_set_info_table              = fq_filter_set_info_table,
+        fq_filter_set_site_table              = fq_filter_set_site_table,
+        fq_ploidy_mapping_table               = fq_ploidy_mapping_table,
+        fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
+        filter_set_name                       = filter_set_name,
+        drop_state                            = drop_state,
+        output_file                           = vcf_filename + vcf_extension,
+        output_gcs_dir                        = output_gcs_dir,
+        max_last_modified_timestamp           = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
+        extract_preemptible_override          = extract_preemptible_override,
+        extract_maxretries_override           = extract_maxretries_override,
+        disk_override                         = disk_override,
+        memory_gib                            = effective_extract_memory_gib,
+        emit_pls                              = emit_pls,
+        emit_ads                              = emit_ads,
+        convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
+        write_cost_to_db                      = write_cost_to_db,
+        maximum_alternate_alleles             = maximum_alternate_alleles,
     }
   }
 
@@ -230,23 +268,20 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  if (control_samples == false) {
+  call Utils.GetBQTableLastModifiedDatetime {
+    input:
+      project_id = query_project,
+      fq_table = fq_samples_to_extract_table,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
 
-    call Utils.GetBQTableLastModifiedDatetime {
-      input:
-        project_id = query_project,
-        fq_table = fq_samples_to_extract_table,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    call GenerateSampleListFile {
-      input:
-        fq_samples_to_extract_table = fq_samples_to_extract_table,
-        samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-        output_gcs_dir = output_gcs_dir,
-        query_project = query_project,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+  call GenerateSampleListFile {
+    input:
+      fq_samples_to_extract_table = fq_samples_to_extract_table,
+      samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+      output_gcs_dir = output_gcs_dir,
+      query_project = query_project,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
@@ -255,7 +290,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
     Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
-    File? sample_name_list = GenerateSampleListFile.sample_name_list
+    File sample_name_list = GenerateSampleListFile.sample_name_list
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
@@ -283,6 +318,8 @@ task ExtractTask {
     String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
+    String? fq_ploidy_mapping_table
+    String? vet_extract_table_version
     String read_project_id
     String output_file
     String? output_gcs_dir
@@ -291,6 +328,7 @@ task ExtractTask {
 
     Boolean emit_pls
     Boolean emit_ads
+    Boolean convert_filtered_genotypes_to_nocalls = false
 
     Boolean do_not_filter_override
     String fq_filter_set_info_table
@@ -304,8 +342,11 @@ task ExtractTask {
     File? gatk_override
     Int? extract_preemptible_override
     Int? extract_maxretries_override
+    Int? disk_override
+    Int memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
+    Int? maximum_alternate_alleles
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
@@ -322,7 +363,9 @@ task ExtractTask {
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -341,9 +384,21 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
     fi
 
-    gatk --java-options "-Xmx9g" \
+    # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
+    # the input `memory_gib`, so use the memory-related environment variables rather than the `memory_gib` input.
+    # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
+    if [[ ${MEM_UNIT} == "GB" ]]
+    then
+        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+    else
+        echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
+        exit 1
+    fi
+
+    gatk --java-options "-Xmx${memory_mb}m" \
       ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+        ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \
@@ -355,8 +410,11 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='' false='--use-vqsr-classic-scoring' use_VQSR_lite} \
+        ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+        ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
+        ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
+        ~{"--sample-ploidy-table " + fq_ploidy_mapping_table} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsExtractCallset \
@@ -389,12 +447,13 @@ task ExtractTask {
   >>>
   runtime {
     docker: gatk_docker
-    memory: "12 GB"
-    disks: "local-disk 150 HDD"
+    memory: memory_gib + " GB"
+    disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
     preemptible: select_first([extract_preemptible_override, "2"])
     maxRetries: select_first([extract_maxretries_override, "3"])
     cpu: 2
+    noAddress: true
   }
 
   # files sizes are floats instead of ints because they can be larger
@@ -418,7 +477,10 @@ task SumBytes {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python3 -c "
     import sys;
     total_bytes = sum(float(i.strip()) for i in sys.stdin);
@@ -449,7 +511,10 @@ task CreateManifest {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
     echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
     sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
@@ -500,7 +565,9 @@ task GenerateSampleListFile {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    bq --apilog=false --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
+    # bq query --max_rows check: max rows set to at least the number of samples
+    bq --apilog=false --project_id=~{query_project} --format=csv query --max_rows 1000000000 --use_legacy_sql=false ~{bq_labels} \
+      'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/

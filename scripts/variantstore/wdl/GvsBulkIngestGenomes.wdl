@@ -19,7 +19,7 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
-
+        Boolean samples_are_controls = false
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker
@@ -36,8 +36,8 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsImportGenomes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-        # set to "ZERO" to drop GQ0 upon ingest into GVS for VDS (instead of VCF) output
-        String drop_state = "ZERO"
+        # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
+        String drop_state = "NONE"
 
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,
         # so if specifying `load_data_batch_size`, adjust preemptible and maxretries accordingly. Or just take the defaults, as those should work fine in most cases.
@@ -45,9 +45,13 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
-        Boolean process_vcf_headers = false
+        Boolean load_vet_and_ref_ranges = true
+        Boolean load_vcf_headers = false
         Boolean tighter_gcp_quotas = false
+        Boolean is_wgs = true
         # End GvsImportGenomes
+
+        Boolean use_compressed_references = false
     }
 
     parameter_meta {
@@ -75,6 +79,14 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
+    if (!load_vcf_headers && !load_vet_and_ref_ranges) {
+        call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
+            input:
+                message = "GvsBulkIngestGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     call GenerateImportFofnFromDataTable {
         input:
             variants_docker = effective_variants_docker,
@@ -100,9 +112,11 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            samples_are_controls = false,
-            process_vcf_headers = process_vcf_headers,
+            load_vcf_headers = load_vcf_headers,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             cloud_sdk_docker = effective_cloud_sdk_docker,
+            use_compressed_references = use_compressed_references,
+            samples_are_controls = samples_are_controls,
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -131,8 +145,21 @@ workflow GvsBulkIngestGenomes {
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
             billing_project_id = billing_project_id,
-            process_vcf_headers = process_vcf_headers,
+            use_compressed_references = use_compressed_references,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            load_vcf_headers = load_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
+            is_wgs = is_wgs,
+    }
+
+    if (!load_vet_and_ref_ranges && load_vcf_headers) {
+        # TODO Insert judgy header logic (aka VS-1215) here, then:
+        call Utils.TerminateWorkflow as HeadersLoaded {
+            input:
+                message = "Header data successfully loaded, exiting.",
+                go = ImportGenomes.done,
+                basic_docker = effective_basic_docker,
+        }
     }
 
     output {
@@ -175,7 +202,6 @@ task GenerateImportFofnFromDataTable {
     String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
 
     command <<<
-
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -258,8 +284,9 @@ task SplitBulkImportFofn {
     }
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         cut -f 1 ~{import_fofn} > sample_names.txt
         cut -f 2 ~{import_fofn} > vcf_file_names.txt

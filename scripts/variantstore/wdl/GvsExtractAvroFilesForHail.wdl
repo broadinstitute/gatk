@@ -57,7 +57,16 @@ workflow GvsExtractAvroFilesForHail {
             basic_docker = effective_basic_docker,
     }
 
-    call ExtractFromNonSuperpartitionedTables {
+    call ExtractFromSampleInfoTable {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            avro_sibling = OutputPath.out,
+            call_set_identifier = call_set_identifier,
+            variants_docker = effective_variants_docker,
+    }
+
+    call ExtractFromFilterTables {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
@@ -76,6 +85,22 @@ workflow GvsExtractAvroFilesForHail {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call Utils.GetBQTableLastModifiedDatetime as RefTableDatetimeCheck {
+        input:
+            project_id = project_id,
+            fq_table = "~{project_id}.~{dataset_name}.ref_ranges_001",
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+
+    call Utils.IsUsingCompressedReferences {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
@@ -87,14 +112,15 @@ workflow GvsExtractAvroFilesForHail {
                 shard_index = i,
                 num_shards = scatter_width,
                 variants_docker = effective_variants_docker,
+                use_compressed_references = IsUsingCompressedReferences.is_using_compressed_references,
         }
     }
 
     call GenerateHailScripts {
         input:
-            go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
+            go_non_superpartitioned = ExtractFromFilterTables.done && ExtractFromSampleInfoTable.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
-            avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
+            avro_prefix = ExtractFromFilterTables.output_prefix,
             variants_docker = effective_variants_docker,
     }
     output {
@@ -103,7 +129,7 @@ workflow GvsExtractAvroFilesForHail {
         String vds_output_path = GenerateHailScripts.vds_output_path
         String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
         String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
-        String avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
+        String avro_prefix = ExtractFromFilterTables.output_prefix
         String recorded_git_hash = effective_git_hash
     }
 }
@@ -130,10 +156,54 @@ task OutputPath {
     }
 }
 
-
-task ExtractFromNonSuperpartitionedTables {
+# splitting out the extract sample_info Avros into its own task to create partition-based files
+# this might not be the most efficient for callsets under a certain size
+task ExtractFromSampleInfoTable {
     meta {
-        description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_sites, filter_set_info/filter_set_info_vqsr_lite, and filter_set_tranches (if using VQSR Classic)"
+        description: "Extracts from the sample_info table, split up by partition"
+        # Not dealing with caching for now as that would introduce a lot of complexity.
+        volatile: true
+    }
+    input {
+        String project_id
+        String dataset_name
+        String avro_sibling
+        String call_set_identifier
+        String variants_docker
+    }
+
+    parameter_meta {
+        avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        avro_prefix="$(dirname ~{avro_sibling})/avro"
+        echo $avro_prefix > "avro_prefix.out"
+
+        python3 /app/run_avro_query_for_sample_info.py --avro_prefix ${avro_prefix} \
+            --call_set_identifier ~{call_set_identifier} \
+            --dataset_name ~{dataset_name} \
+            --project_id=~{project_id}
+    >>>
+
+    output {
+        Boolean done = true
+        String output_prefix = read_string("avro_prefix.out")
+    }
+
+    runtime {
+        docker: variants_docker
+        disks: "local-disk 500 HDD"
+    }
+}
+
+
+task ExtractFromFilterTables {
+    meta {
+        description: "Extracts from the tables: filter_set_sites, filter_set_info/filter_set_info_vqsr_lite, and filter_set_tranches (if using VQSR Classic)"
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
@@ -154,21 +224,12 @@ task ExtractFromNonSuperpartitionedTables {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
-
-        python3 /app/run_avro_query.py --sql "
-            EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/sample_mapping/sample_mapping_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT sample_id, sample_name, '40',
-            'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
-            FROM \`~{project_id}.~{dataset_name}.sample_info\`
-            WHERE withdrawn IS NULL AND
-            is_control = false
-            ORDER BY sample_id
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
@@ -177,7 +238,7 @@ task ExtractFromNonSuperpartitionedTables {
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{filter_set_info_tablename} --project_id ~{project_id}
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{filter_set_info_tablename} --project_id=~{project_id}
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
@@ -186,7 +247,7 @@ task ExtractFromNonSuperpartitionedTables {
             FROM \`~{project_id}.~{dataset_name}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id ~{project_id}
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id=~{project_id}
 
         if [ ~{is_vqsr_lite} = false ]; then
             python3 /app/run_avro_query.py --sql "
@@ -195,7 +256,7 @@ task ExtractFromNonSuperpartitionedTables {
                 SELECT model, truth_sensitivity, min_vqslod, filter_name
                 FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
                 WHERE filter_set_name = '~{filter_set_name}'
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id ~{project_id}
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id=~{project_id}
         fi
     >>>
 
@@ -226,6 +287,7 @@ task ExtractFromSuperpartitionedTables {
         Int shard_index
         Int num_shards
         String variants_docker
+        Boolean use_compressed_references = false
     }
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -235,7 +297,10 @@ task ExtractFromSuperpartitionedTables {
     }
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
@@ -248,24 +313,56 @@ task ExtractFromSuperpartitionedTables {
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ,
-                call_PGT as PGT, call_PID as PID, call_PS as PS
+                call_PS as PS
                 FROM \`~{project_id}.~{dataset_name}.vet_${str_table_index}\` v
                 INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = v.sample_id
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id ~{project_id}
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id=~{project_id}
 
-            python3 /app/run_avro_query.py --sql "
-                EXPORT DATA OPTIONS(
-                uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT location, r.sample_id, length, state
-                FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
-                INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
-                WHERE withdrawn IS NULL AND
-                is_control = false
-                ORDER BY location
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
+            if [ ~{use_compressed_references} = false ]; then
+                python3 /app/run_avro_query.py --sql "
+                    EXPORT DATA OPTIONS(
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    SELECT location, r.sample_id, length, state
+                    FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
+                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    WHERE withdrawn IS NULL AND
+                    is_control = false
+                    ORDER BY location
+                " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
+            else
+                python3 /app/run_avro_query.py --sql "
+                    CREATE TEMP FUNCTION intToState(state INT64)
+                        RETURNS string
+                        AS (
+                          CASE state
+                            WHEN 7 THEN 'v'
+                            WHEN 8 THEN '*'
+                            WHEN 9 THEN 'm'
+                            WHEN 10 THEN 'u'
+                            ELSE CAST(state as string)
+                          END
+                    );
+                    CREATE TEMP FUNCTION UnpackRefRangeInfo(superpackEntry int64)
+                        RETURNS STRUCT<location INT64, len INT64, state string>
+                        AS (
+                          STRUCT(
+                          1000000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
+                          (superpackEntry >> 4) & 0xFFF,
+                          intToState(superpackEntry & 0xF))
+                    );
+                    EXPORT DATA OPTIONS(
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    SELECT UnpackRefRangeInfo(packed_ref_data).location as location, r.sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state
+                    FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
+                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    WHERE withdrawn IS NULL AND
+                    is_control = false
+                    ORDER BY location
+                    " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
+            fi
         done
     >>>
 
@@ -276,6 +373,7 @@ task ExtractFromSuperpartitionedTables {
     runtime {
         docker: variants_docker
         disks: "local-disk 500 HDD"
+        noAddress: true
     }
 }
 
@@ -296,7 +394,9 @@ task GenerateHailScripts {
     }
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
         # Unlike many implementations, at the time of this writing this works on both Debian and Alpine based images

@@ -52,6 +52,13 @@ public abstract class ExtractCohort extends ExtractTool {
     private String tranchesTableName = null;
 
     @Argument(
+            fullName = "sample-ploidy-table",
+            doc = "Fully qualified name of the sample ploidy table to use for cohort extraction.  It stores ploidy data for every sample and chromosome",
+            optional = true
+    )
+    private String samplePloidyTableName = null;
+
+    @Argument(
             fullName = "vet-ranges-fq-dataset",
             doc = "Fully qualified name for the dataset (<project>.<dataset>) that contains the VET and REF_RANGES data for extract",
             optional = true
@@ -61,14 +68,20 @@ public abstract class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "vet-ranges-extract-fq-table",
-            doc = "EXPERIMENTAL - ",
+            doc = "Fully qualified name for the VET table prepared for extract.",
             optional = true
     )
     private String fqRangesExtractVetTable = null;
 
+    @Argument(fullName = "vet-ranges-extract-table-version",
+            doc = "Version of the vet ranges extract table - for maintaining backwards-compatibility",
+            optional = true)
+    private VetRangesExtractVersionEnum vetRangesExtractTableVersion = VetRangesExtractVersionEnum.V2;
+
+
     @Argument(
             fullName = "ref-ranges-extract-fq-table",
-            doc = "EXPERIMENTAL - ",
+            doc = "Fully qualified name for the REF_RANGES table prepared for extract.",
             optional = true
     )
     private String fqRangesExtractRefTable = null;
@@ -116,19 +129,35 @@ public abstract class ExtractCohort extends ExtractTool {
     private boolean emitADs = false;
 
     @Argument(
-            fullName = "use-vqsr-classic-scoring",
-            doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity)",
+            fullName = "use-vqsr-scoring",
+            doc = "If true, use VQSR scoring (vqs Lod score). Otherwise use VETS scoring (calibration_sensitivity)",
             optional = true
     )
-    private boolean isVQSRClassic = false;
+    private boolean isVQSR = false;
 
     @Argument(
-            fullName = "vqsr-score-filter-by-site",
-            doc = "If VQSR Score filtering is applied, it should be at a site level. Default is false",
+            fullName = "vqs-score-filter-by-site",
+            doc = "If Variant Quality Score filtering (either VETS or VQSR) is applied, it should be at a site level. Default is false",
             optional = true
     )
+    // historical note that this parameter was previously named 'vqsr-score-filter-by-site', changed as it's not VQSR-specific
     private boolean performSiteSpecificVQScoreFiltering = false;
     private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
+
+    @Argument(
+            fullName = "convert-filtered-genotypes-to-no-calls",
+            doc = "Set filtered genotypes to no-calls. This option can only be used if Variant Quality Score filtering " +
+                    "is applied at the genotype level",
+            optional = true
+    )
+    private boolean convertFilteredGenotypesToNoCalls = false;
+
+    @Argument(
+            fullName = "maximum-alternate-alleles",
+            doc = "The maximum number of alternate alleles a site can have before it is hard-filtered from the output",
+            optional = true
+    )
+    private Long maximumAlternateAlleles = 0L;
 
     @Argument(
             fullName = "snps-truth-sensitivity-filter-level",
@@ -215,6 +244,7 @@ public abstract class ExtractCohort extends ExtractTool {
 
         // Filter fields
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
 
@@ -232,8 +262,6 @@ public abstract class ExtractCohort extends ExtractTool {
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
-
 
         headerLines.addAll(extraHeaders);
 
@@ -265,12 +293,12 @@ public abstract class ExtractCohort extends ExtractTool {
                 errors.add("Parameter 'indels-truth-sensitivity-filter-level' must be between > 0.0 and < 100.0");
             }
         }
-        if (!isVQSRClassic) {
+        if (!isVQSR) {
             if (tranchesTableName != null) {
-                errors.add("Parameter 'tranches-table' is not allowed for VQSR Lite");
+                errors.add("Parameter 'tranches-table' is not allowed for VETS");
             }
             if ((vqsLodSNPThreshold != null) || (vqsLodINDELThreshold != null)) {
-                errors.add("Parameters 'snps-lod-score-cutoff' and 'indels-lod-score-cutoff' cannot be used in VQSR Lite mode");
+                errors.add("Parameters 'snps-lod-score-cutoff' and 'indels-lod-score-cutoff' cannot be used in VETS mode");
             }
         }
         if (!errors.isEmpty()) {
@@ -289,6 +317,11 @@ public abstract class ExtractCohort extends ExtractTool {
             vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
 
+        if (convertFilteredGenotypesToNoCalls && vqScoreFilteringType != VQScoreFilteringType.GENOTYPE) {
+            throw new UserException("The option '--convert-filtered-genotypes-to-no-calls' can ONLY be used if you are filtering at the " +
+                    "Genotype level (you have set '--filter-set-info-table' and NOT set '--vqs-score-filter-by-site')");
+        }
+
         // filter at a site level (but not necessarily use vqslod)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
             throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
@@ -296,13 +329,18 @@ public abstract class ExtractCohort extends ExtractTool {
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
             //noinspection ConstantValue
             if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-                throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any VQSR filtering operations");
+                throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any Variant Quality" +
+                        " filtering operations");
             }
+        }
+
+        if (samplePloidyTableName == null) {
+            logger.warn("No linked table with ploidy information.  Assuming fully diploid genome");
         }
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
-            if (isVQSRClassic) {
+            if (isVQSR) {
                 extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
                 FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
                 Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
@@ -314,8 +352,15 @@ public abstract class ExtractCohort extends ExtractTool {
                     vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
                     vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
                     // set headers
-                    extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                    extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+
+                    if (vqScoreFilteringType.equals(VQScoreFilteringType.SITES)) {
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFilterHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityFilterHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                    }
+                    else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                        extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                    }
                 }
             } else {
                 extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SCORE_KEY));
@@ -332,15 +377,23 @@ public abstract class ExtractCohort extends ExtractTool {
                 truthSensitivityINDELThreshold /= 100.0;
                 logger.info("Passing all INDEL variants with " + GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY + " < " + truthSensitivityINDELThreshold);
 
-                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
-                        "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
-                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
-                        "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                if (vqScoreFilteringType.equals(VQScoreFilteringType.SITES)) {
+                    extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
+                            "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                    extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
+                            "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                }
+                else if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
+                    extraHeaderLines.add(new VCFHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
+                            "Sample Genotype FT filter value indicating that the genotyped allele failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                    extraHeaderLines.add(new VCFHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
+                            "Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+                }
             }
         }
 
         if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
-            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
+            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Sample Genotype Filter Field"));
         }
 
         if (emitPLs) {
@@ -359,6 +412,12 @@ public abstract class ExtractCohort extends ExtractTool {
         Map<Long, String> sampleIdToName = sampleList.getSampleIdToNameMap();
 
         reference = directlyAccessEngineReferenceDataSource();
+
+        if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V2) {
+            extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+            extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+            extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHASE_SET_KEY));
+        }
 
         header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
@@ -389,8 +448,12 @@ public abstract class ExtractCohort extends ExtractTool {
                     "if no sample file (--sample-file) is provided.");
         }
 
-        engine = !isVQSRClassic ?
-                new ExtractCohortLiteEngine(
+        OptionalLong optionalMaximumAlternateAlleles =
+                maximumAlternateAlleles != null && maximumAlternateAlleles > 0L ?
+                        OptionalLong.of(maximumAlternateAlleles) : OptionalLong.empty();
+
+        engine = !isVQSR ?
+                new ExtractCohortVETSEngine(
                         projectID,
                         header,
                         annotationEngine,
@@ -398,6 +461,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         sampleIdToName,
                         vetRangesFQDataSet,
                         fqRangesExtractVetTable,
+                        vetRangesExtractTableVersion,
                         fqRangesExtractRefTable,
                         vetAvroFileName,
                         refRangesAvroFileName,
@@ -406,6 +470,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         maxLocation,
                         filterSetInfoTableName,
                         filterSetSiteTableName,
+                        samplePloidyTableName,
                         localSortMaxRecordsInRam,
                         printDebugInformation,
                         truthSensitivitySNPThreshold,
@@ -414,6 +479,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
+                        convertFilteredGenotypesToNoCalls,
+                        optionalMaximumAlternateAlleles,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply)
@@ -426,6 +493,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         sampleIdToName,
                         vetRangesFQDataSet,
                         fqRangesExtractVetTable,
+                        vetRangesExtractTableVersion,
                         fqRangesExtractRefTable,
                         vetAvroFileName,
                         refRangesAvroFileName,
@@ -434,6 +502,7 @@ public abstract class ExtractCohort extends ExtractTool {
                         maxLocation,
                         filterSetInfoTableName,
                         filterSetSiteTableName,
+                        samplePloidyTableName,
                         localSortMaxRecordsInRam,
                         printDebugInformation,
                         vqsLodSNPThreshold,
@@ -442,6 +511,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
+                        convertFilteredGenotypesToNoCalls,
+                        optionalMaximumAlternateAlleles,
                         inferredReferenceState,
                         presortedAvroFiles,
                         this::apply);

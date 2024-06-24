@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.protobuf.Descriptors;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.json.JSONObject;
 
@@ -23,12 +24,28 @@ public class RefRangesBQWriter extends RefRangesWriter {
         }
     }
 
+    @Override
+    public void writeCompressed(long packedData, long sampleId) throws IOException {
+        try {
+            bqWriter.addJsonRow(createCompressedJsonRow(packedData, sampleId));
+        } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
+            throw new IOException("BQ exception", ex);
+        }
+    }
+
     private JSONObject createJsonRow(long location, long sampleId, int length, String state) {
         JSONObject record = new JSONObject();
         record.put("location", location);
         record.put("sample_id", sampleId);
         record.put("length", length);
         record.put("state", state);
+        return record;
+    }
+
+    private JSONObject createCompressedJsonRow(long packedData, long sampleId) {
+        JSONObject record = new JSONObject();
+        record.put("packed_ref_data", packedData);
+        record.put("sample_id", sampleId);
         return record;
     }
 

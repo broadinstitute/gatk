@@ -2,98 +2,109 @@
 
 ## Setup
 - Create a Terra workspace
-  - using your @pmi-ops.org account 
-  - with the `allofus-drc-wgs-dev` Terra Billing account 
-  - in the `AOU_DRC_WGS_OPERATORS` Authorization Domain
-  - Share it with `dsp-variant-team@firecloud.org` so the rest of the team can see it (Reader) and with the individual users who will be running the workflows (Owner).
-- Populate the workspace with the following:
-  - [Fetch WGS metadata for samples from list](http://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%20Charlie/notebooks/launch/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) notebook
+  - Request a new AoU workspace as described in Section 3.D. of [AoU DRC Protocols](https://docs.google.com/document/d/1ooK0wbHLgSueiepjTTyLLI6Zz7vi1-GhKTjmCd8ZHwU/edit?usp=sharing).
+  - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
+  - There is a quota that needs to be upgraded for the process of Bulk Ingest.
+    When we ingest data, we use the Write API, which is part of BQ’s Storage API. Since we are hitting this API with so much data all at once, we want to increase our CreateWriteStream quota. Follow the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md).
+    Once that quota has been increased, the `load_data_batch` value needs to be updated based on calculations in the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md) doc. Even if no increased quota is granted, this doc goes over how to choose the value for this param.
+  - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
+    - Update the .dockstore.yml file on that feature branch to add the feature branch for all the WDLs that will be loaded into the workspace in the next step.
+- Once the requested workspace has been created and permissioned, populate with the following WDLs:
   - [GvsBulkIngestGenomes](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsBulkIngestGenomes) workflow
-  - [GvsAssignIds](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsAssignIds) workflow
-  - [GvsImportGenomes](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsImportGenomes) workflow
   - [GvsWithdrawSamples](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsWithdrawSamples) workflow
   - [GvsPopulateAltAllele](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPopulateAltAllele) workflow
   - [GvsCreateFilterSet](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateFilterSet) workflow
   - [GvsExtractAvroFilesForHail](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractAvroFilesForHail) workflow
   - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow
   - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow
+  - [GvsExtractCallsetPgenMerged](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallsetPgenMerged) workflow
   - [GvsCallsetStatistics](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetStatistics) workflow
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
-- Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
-  - Set the `sample_list_file_path` variable in that notebook to the path of the file
-  - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Set the `SUBSET_SIZE` and `set_name` variables to customize.
+  - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
+  - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
+  - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+- Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
+  - Placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
+  - Run the steps in the notebook:
+      - In section 1.2, Set the `sample_list_file_path` variable in that notebook to the path of the file
+      - Run the cells up to and through, section 1.4 ("Perform the copy, in batches")
+      - If you want to automatically break up the new samples into smaller sample sets, then run the "now that the data have been copied, you can make sample sets if you wish" step. Set the `SUBSET_SIZE` and `set_name` variables to customize.
 - **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
-- Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name ("aou_wgs") and callset identifier (e.g. "Bravo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Create a dataset in the Google project. Make sure that when you are creating the dataset that you set the `location type` to be `Multi-Region`.
+- Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name (e.g. "aou_wgs" — if it does not exist be sure to create one before running any workflows) and callset identifier (e.g. "Bravo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately
 
 ## The Pipeline
 1. `GvsBulkIngestGenomes` workflow
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
+   - Set `sample_id_column_name` to "research_id" to use the shorter unique ID from AoU for the `sample_name` column.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - Set `process_vcf_headers` to true to include sample header information in your database.
+     - This slows down the ingestion process by about 30%, so if you dont care about this addtional data, leave it as false. 
+     - Once these headers have been loaded, they can be queried to provide helpful context on the samples pipeline, such as DRAGEN version.
+   - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to true (this will further compress the reference data).
    - `GvsBulkIngestGenomes` performs the functions of both `GvsAssignIds` and `GvsImportGenomes` with a much more scalable design. Detailed bulk ingest documentation can be found [here](../gvs-bulk-ingest-details.md).
-1. `GvsAssignIds` workflow
-   - For use with **control** samples only!
-   - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` will create a unique GVS ID for each sample (`sample_id`) and update the BQ `sample_info` table (creating it if it doesn't exist). This workflow takes care of creating the BQ `vet_*`, `ref_ranges_*` and `cost_observability` tables needed for the sample IDs generated.
-   - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-   - You will want to set the `external_sample_names` input based on the GCS path of a text file that lists all the sample names (external sample IDs).
-   - If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id" instead of "this.samples.research_id").
-1. `GvsImportGenomes` workflow
-   - For use with **control** samples only!
-   - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
-   - Run at the `sample set` level ("Step 1" in workflow submission).  You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  
-   - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
-   - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
+   - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
+   - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
+     - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
+     - If the workflow fails, it may have failed if the list of smaples that was supplied to it includes samples that have not yet been ingested. To determine if this is the case, inspect the output (STDOUT) of the workflow and if it includes a list of samples that need to be ingested, then do so (or investigate the discreprancy). Note that there is a boolean variable `allow_uningested_samples` for this workflow that will allow it to pass if this condition occurs.
 1. **TBD Workflow to soft delete samples**
 1. `GvsPopulateAltAllele` workflow
-   - **TODO:** needs to be made cumulative so that it can add data to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
    - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCreateFilterSet` workflow
-   - This step calculates features from the `alt_allele` table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
+   - This step calculates features from the `alt_allele` table, and trains the VETS filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `filter_set_name`, which you will need to keep track of for the `GvsExtractAvroFilesForHail` WDL. If, for some reason, this step needs to be run multiple times, be sure to use a different `filter_set_name` (the doc has guidance for this, as well).
+   - **NOTE** For the Echo callset, the `CreateFilteredScoredSNPsVCF` failed twice, needing to be rerun with first more disk and then more memory. Since that time the call to the underlying method has been changed, but it is possible that the future runs may also need to have additional memory or disk - in which case the defaults used by that task may need to be updated.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsExtractAvroFilesForHail` workflow
-   - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VQSR filter set data.
-   - The extracted Avro files will then be used as an input for the python script `hail_gvs_import.py` which will then be used to produce a Hail VDS.
+   - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VETS filter set data.
+   - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
    - This workflow needs to be run with the `filter_set_name` from `GvsCreateFilterSet` step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-1. Run the VDS Extract using a notebook terminal and the python script called `hail_gvs_import.py` from the GenerateHailScripts task in the `GvsExtractAvroFilesForHail` workflow. It will look something like: `gs://fc-<workspace-id>/submissions/<submission id>/GvsExtractAvroFilesForHail/<workflow id>/call-GenerateHailScripts/hail_gvs_import.py`
-   - This step creates a VDS based on the Avro files 
-   - Notebook provisioning suggestions and other necessary set up details (e.g. the Hail wheel to use) can be found in the file: [AoU Delta VDS Cluster Configuration.md](vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md)
-   - Avro files from the above `GvsExtractAvroFilesForHail` step can be found in the avro directory in the OutputPath task: `gs://fc-<workspace-id>/submissions/<submission id>/GvsExtractAvroFilesForHail/<workflow id>/call-OutputPath/avro`
-   - We suggest gsutil cp-ing `hail_gvs_import.py` to the notebook and then invoking it directly in the terminal
-   - inputs to the python script are:
-     1. `--avro-path`: the directory path at which exported GVS Avro files are found in GCP.  This path can be found by navigating to the execution directory of the `OutputPath` task in the `GvsExtractAvroFilesForHail ` workflow.  The files are in a directory there named "avro".
-     1. `--vds-path`: the desired output path to which the VDS should be written
-     1. `--temp-path`: a convenient path to temporary directory. We suggest a folder under the GCP bucket of the workspace that the notebook is in, e.g. `gs://fc-<workspace-id>/hail_tmp`.
-1. `GvsPrepareRangesCallset` workflow
-    - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
-    - It will need to be run twice. Once with `only_output_vet_tables` set to "true" (the default value is `false`) and once with `control_samples` set to "true" (the default value is `false`).
-    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats. Use the same prefix for both runs.
-    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-1. `GvsExtractCallset` workflow
-    - This workflow extracts the control data in BigQuery and transforms it into a sharded joint VCF incorporating the VQSR filter set data.
-    - It will need to be run once with `control_samples` set to "true", and with the `filter_set_name` from the `GvsCreateFilterSet` step and the `extract_table_prefix` from the `GvsPrepareRangesCallset` step.  
-    - Include a valid `output_gcs_dir` parameter, which is where the VCF, interval list, manifest, and sample name list files will go, e.g. `gs://fc-<workspace-id>/extractedcontrol-vcfs/`
-    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+1. `GvsCreateVDS` workflow
+   - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
+   - You can find what the `avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the `GenerateHailScripts` task has an input of `avro_prefix` which is the location of the files created by that workflow.
+   - The `vds_path` path input to this workflow represents the output path for the VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in `#dsp-variants`.
+   - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
+   - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
 1. `GvsCallsetStatistics` workflow
+    - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
+       - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
+       - The `only_output_vet_tables` input should be set to `true` (the default value is `false`).
+       - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
+       - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
+       - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
     - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
     - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
     - This workflow needs to be run with the `filter_set_name` input from `GvsCreateFilterSet` step.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+1. `GvsExtractCallset` / `GvsExtractCallsetPgenMerged` workflows ("small callset" Exome, Clinvar, and ACAF threshold extracts in VCF and PGEN formats respectively)
+    - You will need to run the `GvsPrepareRangesCallset` workflow for each "[Region](https://support.researchallofus.org/hc/en-us/articles/14929793660948-Smaller-Callsets-for-Analyzing-Short-Read-WGS-SNP-Indel-Data-with-Hail-MT-VCF-and-PLINK)" (interval list) for which a PGEN or VCF deliverable is required for the callset.
+        - This workflow transforms the data in the vet, ref_ranges, and samples tables into a schema optimized for extract.
+        - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
+        - `extract_table_prefix` should be set to a name that is unique to the given Region / interval list. See the [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use.
+        - Specify the `interval_list` appropriate for the PGEN / VCF extraction run you are performing.
+        - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
+        - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+    - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
+    - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
+    - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
+    - For `GvsExtractCallset`, make sure to specify the appropriate `maximum_alternate_alleles` value (currently 100).
+    - For `GvsExtractCallset`, if you want to output VCFs that are compressed using bgzip, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
+    - These workflows do not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCalculatePrecisionAndSensitivity` workflow
-    - You will need to have "Storage Object View" access granted for your @pmi-ops proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
-    - This workflow needs to be run with the control sample chr20 vcfs from `GvsExtractCallset` step which were placed in the `output_gcs_dir`.
-    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+    - Please see the detailed instructions for running the Precision and Sensitivity workflow [here](../../tieout/AoU_PRECISION_SENSITIVITY.md).
 1. `GvsCallsetCost` workflow
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
 
 ## Deliverables (via email to stakeholders once the above steps are complete)
-To get the VDS someplace secure and accessible for delivery, see [Delivering a VDS](vds/delivery/Delivering%20a%20VDS.md)
-This includes details of how to get the VDS to the AoU delivery bucket as well as VDS naming conventions.
-The Callset Stats and S&P files can be simply gsutil cp-ed to the AoU delivery bucket since they are so much smaller.
+
+The Callset Stats and S&P files can be simply `gsutil cp`ed to the AoU delivery bucket since they are so much smaller.
 1. GCS location of the VDS in the AoU delivery bucket
 2. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
 3. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket

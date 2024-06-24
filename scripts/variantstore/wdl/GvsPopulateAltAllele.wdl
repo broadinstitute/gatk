@@ -93,9 +93,12 @@ task GetMaxSampleId {
   }
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
     'SELECT IFNULL(MAX(sample_id), 0) AS max_sample_id FROM `~{dataset_name}.alt_allele`' > num_rows.csv
 
@@ -133,7 +136,10 @@ task GetVetTableNames {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:populate_alt_allele"
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # if the maximum sample_id value is evenly divisible by 4000, then max_sample_id / 4000 will
@@ -145,8 +151,14 @@ task GetVetTableNames {
     fi
 
     # use the number calculated from the above math to get the vet_* table names to grab data from
-    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
+    # set max rows to at least the number of superpartitions (Math.ceil(num_samples / 4000))
+    bq --apilog=false query --max_rows 10000000 --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+      'SELECT
+          table_name
+        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
+        WHERE
+          table_name LIKE "vet_%" AND
+          CAST(SUBSTRING(table_name, length("vet_") + 1) AS INT64) >= '"${min_vat_table_num}" > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
     # no more than max_alt_allele_shards files (which is the estimated number of BQ queries we can run at once without
@@ -189,9 +201,12 @@ task CreateAltAlleleTable {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:create_alt_allele"
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    # bq query --max_rows check: ok create table
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'CREATE TABLE IF NOT EXISTS `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,
@@ -254,7 +269,9 @@ task PopulateAltAlleleTable {
   Array[String] vet_table_names = read_lines(vet_table_names_file)
 
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     VET_TABLES_ARRAY=(~{sep=" " vet_table_names})
 
@@ -272,6 +289,7 @@ task PopulateAltAlleleTable {
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
+    noAddress: true
   }
 
   output {

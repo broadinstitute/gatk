@@ -32,8 +32,9 @@ public final class RefCreator {
     private final boolean writeReferenceRanges;
     private final Long sampleId;
     private SimpleInterval previousInterval;
-    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
+    private final Set<GQStateEnum> gqStatesToIgnore;
     private final GenomeLocSortedSet coverageLocSortedSet;
+    private final boolean storeCompressedReferences;
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
@@ -42,10 +43,12 @@ public final class RefCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
+    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
+        this.storeCompressedReferences = storeCompressedReferences;
+        this.gqStatesToIgnore = gqStatesToIgnore;
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
@@ -69,11 +72,6 @@ public final class RefCreator {
             }
         } catch (final IOException ioex) {
             throw new UserException("Could not create reference range outputs", ioex);
-        }
-
-        this.gqStatesToIgnore.add(gqStateToIgnore);
-        if (dropAboveGqThreshold) {
-            this.gqStatesToIgnore.addAll(getGQStateEnumGreaterThan(gqStateToIgnore));
         }
     }
 
@@ -106,22 +104,39 @@ public final class RefCreator {
                         int localStart = start;
                         while ( localStart <= end ) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                    sampleId,
-                                    length,
-                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
-                            );
+                            if (storeCompressedReferences) {
+                                refRangesWriter.writeCompressed(
+                                        SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
+                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
+                                        sampleId
+                                );
+                            } else {
+                                refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                        sampleId,
+                                        length,
+                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                );
+                            }
+
                             localStart = localStart + length ;
                         }
 
                     // Write out no-calls as a single-base GQ0 reference.
                     // UNLESS we are ignoring GQ0, in which case ignore them too.
                     } else if (CreateVariantIngestFiles.isNoCall(variant) && (!this.gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
-                        refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
-                                sampleId,
-                                1,
-                                GQStateEnum.ZERO.getValue()
-                        );
+                        if (storeCompressedReferences) {
+                            refRangesWriter.writeCompressed(
+                                    SchemaUtils.encodeCompressedRefBlock(variantChr, start, 1,
+                                            GQStateEnum.ZERO.getCompressedValue()),
+                                    sampleId
+                            );
+                        } else {
+                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
+                                    sampleId,
+                                    1,
+                                    GQStateEnum.ZERO.getValue()
+                            );
+                        }
                     }
                 }
             }
@@ -165,11 +180,21 @@ public final class RefCreator {
             long localStart = start;
             while ( localStart <= end ) {
                 int length = (int) Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                refRangesWriter.write(localStart,
-                        sampleId,
-                        length,
-                        GQStateEnum.MISSING.getValue()
-                );
+                if (storeCompressedReferences) {
+                    String chromosome = SchemaUtils.decodeContig(localStart);
+                    int position = SchemaUtils.decodePosition(localStart);
+                    refRangesWriter.writeCompressed(
+                            SchemaUtils.encodeCompressedRefBlock(chromosome, position, length,
+                                    GQStateEnum.ZERO.getCompressedValue()),
+                            sampleId
+                    );
+                } else {
+                    refRangesWriter.write(localStart,
+                            sampleId,
+                            length,
+                            GQStateEnum.ZERO.getValue()
+                    );
+                }
                 localStart = localStart + length ;
             }
         }

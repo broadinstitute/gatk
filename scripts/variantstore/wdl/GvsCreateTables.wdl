@@ -10,13 +10,14 @@ workflow CreateBQTables {
     String? git_hash
 
     Int max_table_id
+    Boolean use_compressed_references = false
 
     Int? preemptible_tries
     String? cloud_sdk_docker
   }
 
-  String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
+  String ref_ranges_compressed_schema_json = '[{"name": "packed_ref_data","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}]'
   String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PS", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
 
   if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
@@ -28,34 +29,40 @@ workflow CreateBQTables {
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+  String ref_ranges_schema_used = if use_compressed_references then ref_ranges_compressed_schema_json else ref_ranges_schema_json
+  String ref_ranges_clustering_field = if use_compressed_references then "packed_ref_data" else "location"
 
   call CreateTables as CreateVetTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = true,
       datatype = "vet",
       max_table_id = max_table_id,
       schema_json = vet_schema_json,
       superpartitioned = "true",
       partitioned = "true",
       cloud_sdk_docker = effective_cloud_sdk_docker,
+      clustering_field = "location",
   }
 
   call CreateTables as CreateRefRangesTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = true,
       datatype = "ref_ranges",
       max_table_id = max_table_id,
-      schema_json = ref_ranges_schema_json,
+      schema_json = ref_ranges_schema_used,
       superpartitioned = "true",
       partitioned = "true",
       cloud_sdk_docker = effective_cloud_sdk_docker,
+      clustering_field = ref_ranges_clustering_field,
   }
 
   output {
-    String vetDone = CreateVetTables.done
-    String refDone = CreateRefRangesTables.done
+    Boolean vetDone = CreateVetTables.done
+    Boolean refDone = CreateRefRangesTables.done
     String recorded_git_hash = effective_git_hash
   }
 }
@@ -66,20 +73,24 @@ task CreateTables {
   input {
     String project_id
     String dataset_name
+    Boolean go
     String datatype
     Int max_table_id
     String schema_json
     String superpartitioned
     String partitioned
     String cloud_sdk_docker
+    String clustering_field = "location"
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # set to volatile because if the table already exists, this will not remake it
+    volatile: true
   }
 
   command <<<
-    set -x
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -92,7 +103,7 @@ task CreateTables {
         let "PARTITION_END=$PARTITION_START+4000"
         let "PARTITION_STEP=1"
         PARTITION_FIELD="sample_id"
-        CLUSTERING_FIELD="location"
+        CLUSTERING_FIELD="~{clustering_field}"
         PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP"
         CLUSTERING_STRING="--clustering_fields=$CLUSTERING_FIELD"
       fi
@@ -106,7 +117,7 @@ task CreateTables {
 
       # Check that the table has not been created yet
       set +e
-      bq --apilog=false show --project_id ~{project_id} $TABLE > /dev/null
+      bq --apilog=false show --project_id=~{project_id} $TABLE > /dev/null
       BQ_SHOW_RC=$?
       set -e
       if [ $BQ_SHOW_RC -ne 0 ]; then
@@ -118,7 +129,7 @@ task CreateTables {
   >>>
 
   output {
-    String done = "true"
+    Boolean done = true
   }
 
   runtime {

@@ -47,6 +47,11 @@ public class RefRangesAvroWriter extends RefRangesWriter {
         writer.append(record);
     }
 
+    @Override
+    public void writeCompressed(long packedData, long sampleId) throws IOException {
+        throw new GATKException("AvroWriter doesn't support compressed reference blocks");
+    }
+
     public void close() throws IOException {
         writer.close();
     }

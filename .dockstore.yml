@@ -97,7 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1045_header_creator_hang
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -149,6 +148,15 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsCreateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -156,7 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1004-extract
+             - VS-1379-ploidy
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -195,6 +203,8 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1355
+             - gg_VS-1395_Have_CreateVATFromVDS_MoreGoodness
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -242,6 +252,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1300
          tags:
              - /.*/
    - name: GvsBeta
@@ -261,7 +272,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - bulk_ingest_staging
          tags:
              - /.*/
    - name: GvsCalculatePrecisionAndSensitivity
@@ -271,6 +281,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1168_bge
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -298,6 +309,8 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1396_bq_query_audit
+             - gg_VS-1395_Have_CreateVATFromVDS_MoreGoodness
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -336,13 +349,30 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsFindHailCruft
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsFindHailCruft.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+         tags:
+             - /.*/
+   - name: GvsTieoutVcfMaxAltAlleles
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutVcfMaxAltAlleles.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - master
+       tags:
+         - /.*/
    - name: HailFromWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
@@ -393,3 +423,35 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallsetPgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
+   - name: GvsExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
+         - vs_1412_pgen_pvars_not_compressed
+   - name: MergePgenHierarchicalWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
+   - name: GvsTieoutPgenToVcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - EchoCallset

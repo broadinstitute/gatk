@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
+import "GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
@@ -11,10 +12,11 @@ workflow GvsQuickstartHailIntegration {
         Boolean is_wgs
         File? interval_list
         Boolean use_VQSR_lite = true
-        Boolean use_classic_VQSR = true
+        Boolean use_compressed_references = false
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
+        Boolean bgzip_output_vcfs = false
 
         String? basic_docker
         String? cloud_sdk_docker
@@ -22,23 +24,26 @@ workflow GvsQuickstartHailIntegration {
         String? variants_docker
         String? gatk_docker
 
-        String? gatk_override
+        File? gatk_override
+        String? hail_version
         String expected_output_prefix
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket
         String? workspace_id
         String? submission_id
+
+        Int? maximum_alternate_alleles
     }
 
     String project_id = "gvs-internal"
 
     if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
         !defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
-        !defined(variants_docker) || !defined(gatk_docker)) {
+        !defined(variants_docker) || !defined(gatk_docker) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -51,6 +56,7 @@ workflow GvsQuickstartHailIntegration {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
@@ -62,11 +68,14 @@ workflow GvsQuickstartHailIntegration {
             git_hash = git_hash,
             drop_state = "ZERO",
             use_VQSR_lite = use_VQSR_lite,
+            use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
-            process_vcf_headers = true,
+            load_vcf_headers = true,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
+            check_expected_cost_and_table_size_outputs = false,
             gatk_override = gatk_override,
+            bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,
@@ -82,6 +91,7 @@ workflow GvsQuickstartHailIntegration {
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             submission_id = effective_submission_id,
+            maximum_alternate_alleles = maximum_alternate_alleles,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
@@ -100,15 +110,33 @@ workflow GvsQuickstartHailIntegration {
             variants_docker = effective_variants_docker,
     }
 
-    call CreateAndTieOutVds {
+    call CreateVds.GvsCreateVDS {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            use_VQSR_lite = use_VQSR_lite,
-            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
+            hail_version = effective_hail_version,
+            use_classic_VQSR = !use_VQSR_lite,
+            avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+            cluster_prefix = "vds-cluster",
+            gcs_subnetwork_name = "subnetwork",
+            region = "us-central1",
+            basic_docker = effective_basic_docker,
+            variants_docker = effective_variants_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            cluster_max_age_minutes = 120,
+            cluster_max_idle_minutes = 60,
+    }
+
+    call TieOutVds {
+        input:
+            go = GvsCreateVDS.done,
+            git_branch_or_tag = git_branch_or_tag,
+            vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
+            tieout_vcf_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            hail_version = effective_hail_version,
     }
 
     output {
@@ -124,15 +152,16 @@ workflow GvsQuickstartHailIntegration {
 }
 
 
-task CreateAndTieOutVds {
+task TieOutVds {
     input {
-        String? git_branch_or_tag
-        Boolean use_VQSR_lite
-        String avro_prefix
-        String vds_destination_path
+        Boolean go
+        String git_branch_or_tag
+        String vds_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
+        String tieout_vcf_suffix
         String cloud_sdk_slim_docker
+        String hail_version
     }
     parameter_meta {
         tieout_vcfs: {
@@ -168,15 +197,12 @@ task CreateAndTieOutVds {
         # Copy VCFs and indexes to the current directory.
         cat vcf_manifest.txt | gcloud storage cp -I .
 
-        # `avro_prefix` includes a trailing `avro` so don't add another `avro` here.
-        gcloud storage cp --recursive ~{avro_prefix} $PWD
-
         export REFERENCES_PATH=$PWD/references
         mkdir -p ${REFERENCES_PATH}
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
-        # Current version of Hail (0.2.117) demands Java 8 or Java 11, refuses to run on Java 17.
+        # Versions of Hail near 0.2.117 demand Java 8 or Java 11, and refuse to run on Java 17. (This is because Google Dataproc is still on Java 11)
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
@@ -186,7 +212,7 @@ task CreateAndTieOutVds {
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
-        pip install hail==0.2.120
+        pip install hail==~{hail_version}
 
         export WORK=$PWD/work
         mkdir ${WORK}
@@ -194,22 +220,15 @@ task CreateAndTieOutVds {
         export TEMP_PATH=$WORK/temp
         mkdir ${TEMP_PATH}
 
-        export VDS_PATH=$WORK/gvs_import.vds
-        export AVRO_PATH=$PWD/avro
+        export VDS_PATH=$WORK/gvs_export.vds
+        mkdir ${VDS_PATH}
 
-        python3 ./hail_gvs_import.py \
-            --avro-path ${AVRO_PATH} \
-            --vds-path ${VDS_PATH} \
-            --temp-path ${TEMP_PATH} \
-            --references-path ${REFERENCES_PATH} \
-            ~{true='--use-vqsr-lite' false='' use_VQSR_lite}
+        gcloud storage cp -r ~{vds_path}  ${WORK}
+
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 
-        python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
-
-        # Copy up the VDS
-        gcloud storage cp --recursive ${VDS_PATH} ~{vds_destination_path}
+        python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf~{tieout_vcf_suffix}
 
         pip install pytest
         ln -s ${WORK}/joined.mt .
@@ -218,6 +237,7 @@ task CreateAndTieOutVds {
     runtime {
         # `slim` here to be able to use Java
         docker: cloud_sdk_slim_docker
+        maxRetries: 2
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }

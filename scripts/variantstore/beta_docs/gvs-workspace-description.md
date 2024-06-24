@@ -37,7 +37,7 @@ While the GVS has been tested with 410,000 single sample whole genome GVCF files
 
 ### What does it return as output?
 
-The following files are stored in the Google bucket specified in the inputs:
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - A list of the sample names included in the callset called `sample-name-list.txt`
@@ -138,7 +138,8 @@ The workflow script is released under the Apache License, Version 2.0 (full lice
 ### Workspace Change Log
 | Date       | Change                                                 | Author         |
 |------------|--------------------------------------------------------|----------------|
-| 06/xx/2024 | Add ReblockGVCF workflow and update input requirements | Kylee Degatano |
+| 06/30/2024 | Add ReblockGVCF workflow and update input requirements | Kylee Degatano |
+| 06/25/2024 | Updated to reflect new required inputs                 | Bec Asch       |
 | 09/01/2023 | Updated to reflect VETS being the default              | Bec Asch       |
 | 08/11/2023 | Updated to VETS                                        | Kylee Degatano |
 | 06/29/2023 | Updated to support larger sample sizes.                | Kylee Degatano | 

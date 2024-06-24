@@ -1,5 +1,48 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.5.4 - 2024-03-18
+
+### Changed
+
+VCF files generated using the Extract workflow (`GvsExtractCallset`) no longer contain the INFO field `AS_YNG`. AS_YNG contained the allele-specific YNG field (Yay/Nay/Gray). Yay meant that allele is known good (in the VQSR/VETS training set), Nay is known bad and Gray means it's not in the training set, so use the VQSR/VETS score to determine whether to filter the genotype. Although `AS_YNG` is no longer included in the VCF explicitly, it is implicitly used to filter genotypes.
+
+## 0.5.3 - 2024-02-20
+
+### Changed
+
+Updated the representation of sample load states in the `sample_load_status` table from using `STARTED` and `FINISHED`
+to using `HEADERS_LOADED`, `REFERENCES_LOADED` and `VARIANTS_LOADED`. The new status reading/writing code is backward
+compatible with the old `STARTED` and `FINISHED` states if those have already been used within a callset. The new statuses
+should allow for faster recovery if an ingest task or workflow is preempted or aborted and then restarted.
+
+## 0.5.2 - 2024-01-17
+
+### Changed
+
+- Updated release process to version `GvsExtractCohortFromSampleNames` in addition to `GvsBeta`.
+
+### Fixed
+
+- `OutOfMemoryExceptions` conditions with default settings in `ExtractTask` addressed, memory override now passed through correctly.
+
+## 0.5.1 - 2024-01-04
+
+### Changed
+
+- Modified GvsPrepareRangesCallset.wdl and GvsExtractCohortFromSampleNames.wdl to make the tables created as part of preparing the callset to *by default* have a time-to-live of 14 days.
+
+## 0.5.0 - 2023-10-26
+
+### Changed
+
+- Modified loading of ref_ranges_* tables to now use GQ0 band (state = 0) instead of Missing (state = 'm') for regions where the interval list chosen for importing data extends beyond regions covered in the gVCF data. NOTE that when importing data with a drop state of 0, then those regions will not be written at all to ref_ranges_*, since we are dropping the state of 0.
+
+## 0.4.1 - 2023-10-16
+
+### Fixed
+
+- Updated input VCF and VCF index localization in ingest to support Google Cloud Storage composite objects.
+
 ## 0.4.0 - 2023-10-10
 
 ### Added

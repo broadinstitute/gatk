@@ -88,15 +88,24 @@ task IngestTieout {
         check_table() {
             local table_name=$1
 
+            # bq query --max_rows check: ok, anything > 0 is an error, error message explicit about 100 row limit.
             bq --apilog=false query --project_id=~{project} --format=csv --use_legacy_sql=false \
-                "select actual.sample_id, expected.sample_id from
-                (select sample_id, count(*) as count from \`gvs-internal.~{dataset_name}.${table_name}\` group by sample_id) actual full outer join
-                (select sample_id, count(*) as count from \`gvs-internal.~{reference_dataset_name}.${table_name}\` group by sample_id) expected on actual.sample_id = expected.sample_id
-                where actual.count != expected.count OR actual.sample_id is null OR expected.sample_id is null" > differences.txt
+                '(SELECT
+                        sample_id, count(*) AS count
+                    FROM
+                        `gvs-internal.~{dataset_name}.'"${table_name}"'`
+                    GROUP BY sample_id) actual
+                FULL OUTER JOIN
+                (SELECT
+                        sample_id, count(*) AS count
+                    FROM
+                        `gvs-internal.~{reference_dataset_name}.'"${table_name}"'`
+                    GROUP BY sample_id) expected
+                ON actual.sample_id = expected.sample_id' > differences.txt
 
             if [[ -s differences.txt ]]; then
                 fail=1
-                echo "${table_name} row counts are mismatched for the following samples:"
+                echo "${table_name} row counts are mismatched for the following samples (100 samples max in output):"
                 cat differences.txt
             fi
         }

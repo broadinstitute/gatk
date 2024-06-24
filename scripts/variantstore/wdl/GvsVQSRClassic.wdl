@@ -294,28 +294,29 @@ task SNPsVariantRecalibratorCreateModel {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -euo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
-    gatk --java-options -Xms~{java_mem}g \
-    VariantRecalibrator \
-    -V ~{sites_only_variant_filtered_vcf} \
-    -O ~{recalibration_filename} \
-    --tranches-file ~{tranches_filename} \
-    --trust-all-polymorphic \
-    -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
-    -an ~{sep=' -an ' recalibration_annotation_values} \
-    ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
-    -mode SNP \
-    --sample-every-Nth-variant ~{sample_every_nth_variant} \
-    --maximum-training-variants ~{maximum_training_variants} \
-    --output-model ~{model_report_filename} \
-    --max-gaussians ~{max_gaussians} \
-    -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
-    -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
-    -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
-    -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
+    gatk --java-options -Xms~{java_mem}g VariantRecalibrator \
+      -V ~{sites_only_variant_filtered_vcf} \
+      -O ~{recalibration_filename} \
+      --tranches-file ~{tranches_filename} \
+      --trust-all-polymorphic \
+      -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
+      -an ~{sep=' -an ' recalibration_annotation_values} \
+      ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
+      -mode SNP \
+      --sample-every-Nth-variant ~{sample_every_nth_variant} \
+      --maximum-training-variants ~{maximum_training_variants} \
+      --output-model ~{model_report_filename} \
+      --max-gaussians ~{max_gaussians} \
+      -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
+      -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
+      -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
+      -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
   >>>
 
   runtime {
@@ -353,7 +354,9 @@ task GatherTranches {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -euo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -373,21 +376,20 @@ task GatherTranches {
 
     count=0
     until cat $tranches_fofn | gsutil -m cp -L cp.log -c -I tranches/; do
-    sleep 1
-    ((count++)) && ((count >= $RETRY_LIMIT)) && break
+      sleep 1
+      ((count++)) && ((count >= $RETRY_LIMIT)) && break
     done
     if [ "$count" -ge "$RETRY_LIMIT" ]; then
-    echo 'Could not copy all the tranches from the cloud' && exit 1
+      echo 'Could not copy all the tranches from the cloud' && exit 1
     fi
 
     cat $tranches_fofn | rev | cut -d '/' -f 1 | rev | awk '{print "tranches/" $1}' > inputs.list
 
-    gatk --java-options -Xms6g \
-    GatherTranches \
-    --input inputs.list \
-    --mode ~{mode} \
-    -tranche ~{sep=' -tranche ' output_tranche_values} \
-    --output ~{output_filename}
+    gatk --java-options -Xms6g GatherTranches \
+      --input inputs.list \
+      --mode ~{mode} \
+      -tranche ~{sep=' -tranche ' output_tranche_values} \
+      --output ~{output_filename}
   >>>
 
   runtime {
@@ -438,27 +440,28 @@ task IndelsVariantRecalibrator {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -euo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
-    gatk --java-options -Xmx~{java_mem}g \
-    VariantRecalibrator \
-    -V ~{sites_only_variant_filtered_vcf} \
-    -O ~{recalibration_filename} \
-    --output-model indels.model \
-    --tranches-file ~{tranches_filename} \
-    --trust-all-polymorphic \
-    -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
-    -an ~{sep=' -an ' recalibration_annotation_values} \
-    ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
-    -mode INDEL \
-    ~{"--input-model " + model_report} \
-    --max-gaussians ~{max_gaussians} \
-    --maximum-training-variants ~{maximum_training_variants} \
-    -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
-    -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
-    -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}
+    gatk --java-options -Xmx~{java_mem}g VariantRecalibrator \
+      -V ~{sites_only_variant_filtered_vcf} \
+      -O ~{recalibration_filename} \
+      --output-model indels.model \
+      --tranches-file ~{tranches_filename} \
+      --trust-all-polymorphic \
+      -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
+      -an ~{sep=' -an ' recalibration_annotation_values} \
+      ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
+      -mode INDEL \
+      ~{"--input-model " + model_report} \
+      --max-gaussians ~{max_gaussians} \
+      --maximum-training-variants ~{maximum_training_variants} \
+      -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
+      -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
+      -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}
   >>>
 
   runtime {
@@ -519,30 +522,31 @@ task SNPsVariantRecalibrator {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -euo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
     MODEL_REPORT=~{model_report}
 
-    gatk --java-options -Xmx~{java_mem}g \
-    VariantRecalibrator \
-    -V ~{sites_only_variant_filtered_vcf} \
-    -O ~{recalibration_filename} \
-    --output-model snps.model \
-    --tranches-file ~{tranches_filename} \
-    --trust-all-polymorphic \
-    -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
-    -an ~{sep=' -an ' recalibration_annotation_values} \
-    ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
-    -mode SNP \
-    --sample-every-Nth-variant 1 \
-    ~{model_report_arg} \
-    --max-gaussians ~{max_gaussians} \
-    -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
-    -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
-    -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
-    -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
+    gatk --java-options -Xmx~{java_mem}g VariantRecalibrator \
+      -V ~{sites_only_variant_filtered_vcf} \
+      -O ~{recalibration_filename} \
+      --output-model snps.model \
+      --tranches-file ~{tranches_filename} \
+      --trust-all-polymorphic \
+      -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
+      -an ~{sep=' -an ' recalibration_annotation_values} \
+      ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
+      -mode SNP \
+      --sample-every-Nth-variant 1 \
+      ~{model_report_arg} \
+      --max-gaussians ~{max_gaussians} \
+      -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
+      -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
+      -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
+      -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
   >>>
 
   runtime {
@@ -551,6 +555,7 @@ task SNPsVariantRecalibrator {
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 0
     docker: gatk_docker
+    noAddress: true
   }
 
   output {
@@ -582,7 +587,9 @@ task PopulateFilterSetTranches {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -eo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 

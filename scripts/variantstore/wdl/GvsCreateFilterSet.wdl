@@ -308,7 +308,10 @@ task ExtractFilterTask {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     bash ~{monitoring_script} > monitoring.log &
@@ -341,6 +344,7 @@ task ExtractFilterTask {
     preemptible: 3
     maxRetries: 3
     cpu: 2
+    noAddress: true
   }
 
   output {
@@ -360,6 +364,8 @@ task PopulateFilterSetSites {
 
     String project_id
 
+    Int disk_size_gb = ceil(2 * (size(sites_only_variant_filtered_vcf, "GiB") +
+                                 size(sites_only_variant_filtered_vcf_index, "GiB"))) + 200
     String gatk_docker
     File? gatk_override
   }
@@ -370,7 +376,9 @@ task PopulateFilterSetSites {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    set -eo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -378,28 +386,28 @@ task PopulateFilterSetSites {
 
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
-    CreateSiteFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -V ~{sites_only_variant_filtered_vcf} \
-    -O ~{filter_set_name}.filter_sites_load.tsv
+      CreateSiteFilteringFiles \
+      --ref-version 38 \
+      --filter-set-name ~{filter_set_name} \
+      -V ~{sites_only_variant_filtered_vcf} \
+      -O ~{filter_set_name}.filter_sites_load.tsv
 
     # BQ load likes a : instead of a . after the project
     bq_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
 
     echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
     bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 1 -F "tab" \
-    --range_partitioning=location,0,26000000000000,6500000000 \
-    --clustering_fields=location \
-    --schema "filter_set_name:string,location:integer,filters:string" \
-    ${bq_table} \
-    ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
+      --range_partitioning=location,0,26000000000000,6500000000 \
+      --clustering_fields=location \
+      --schema "filter_set_name:string,location:integer,filters:string" \
+      ${bq_table} \
+      ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
   >>>
 
   runtime {
     docker: gatk_docker
     memory: "3500 MB"
-    disks: "local-disk 200 HDD"
+    disks: "local-disk ~{disk_size_gb} HDD"
     bootDiskSizeGb: 15
     preemptible: 0
     cpu: 1

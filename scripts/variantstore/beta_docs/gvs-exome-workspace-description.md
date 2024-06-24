@@ -35,11 +35,11 @@ To see details about input requirements, see [Run Your Own Samples](https://gith
 
 While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are currently supported by the beta workflow.
 
-Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions.
+Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions. For information on how that interval list was generated, see `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list.README.md`.
 
 ### What does it return as output?
 
-The following files are stored in the Google bucket specified in the inputs:
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - A list of the sample names included in the callset called `sample-name-list.txt`
@@ -126,19 +126,20 @@ If you don’t plan to create subcohorts of your data, you can delete your BigQu
     * Any relevant log information
 
 ### Workspace Citation
-If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta).
+If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS Exomes beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta).
 
 Details on citing Terra workspaces can be found in [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652).
 
-Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
+Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Exomes_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta
 
 ### License
 **Copyright Broad Institute, 2024 | Apache**  
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date       | Change                                   | Author         |
-|------------|------------------------------------------|----------------|
+| Date       | Change                                  | Author       |
+|------------|-----------------------------------------|--------------|
 | 06/18/2024 | Add ReblockGVCF and update documentation | Kylee Degatano |
-| 09/08/2023 | First release of the exomes workspace.   | George Grant   |
-
+| 05/08/2024 | Third release of the exomes workspace.  | Bec Asch     |
+| 01/09/2024 | Second release of the exomes workspace. | Bec Asch     |
+| 09/08/2023 | First release of the exomes workspace.  | George Grant |

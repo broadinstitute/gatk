@@ -1,15 +1,7 @@
 """
-The following instructions can be used from the terminal of a Terra notebook to import GVS QuickStart Avro files
-and generate a VDS.
 
-* Hail installation
+Convenience script to wrap `import_gvs.py` for creating a VDS from a collection of Avro files exported from GVS.
 
-Copy the appropriate Hail wheel locally and install:
-
-```
-gsutil -m cp 'gs://gvs-internal-scratch/hail-wheels/<date>-<short git hash>/hail-<Hail version>-py3-none-any.whl' .
-pip install --force-reinstall hail-<Hail version>-py3-none-any.whl
-```
 """
 
 
@@ -22,41 +14,54 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
+def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr, intermediate_resume_point):
     import hail as hl
     import import_gvs
+    from hail.utils.java import Env
+    from hailtop.fs.router_fs import RouterFS
+
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
+    hl._set_flags(use_new_shuffle='1')
 
     rg38 = hl.get_reference('GRCh38')
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-    ## Note that a full description of the create_vds function written by Hail for this process can be found here:
-    ## https://github.com/tpoterba/hail/blob/import-gvs/hail/python/hail/methods/impex.py
-    ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
-    import_gvs.import_gvs(
-        vets=argsfn('vets'),
-        refs=argsfn('refs'),
-        sample_mapping=argsfn('sample_mapping'),
-        site_filtering_data=argsfn('site_filtering_data'),
-        vqsr_filtering_data=argsfn('vqsr_filtering_data'),
-        vqsr_tranche_data=argsfn('vqsr_tranche_data'),
-        reference_genome=rg38,
-        final_path=vds_path,
-        tmp_dir=f'{temp_path}/hail_tmp_create_vds',
-        # truth_sensitivity_snp_threshold: 'float' = 0.997,
-        # truth_sensitivity_indel_threshold: 'float' = 0.990,
-        # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
-        # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
-        # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-        unphase=True, # the default in Hail is to keep phasing information, but it's not necessary for AoU, so it can be dropped
-        use_classic_vqsr=use_classic_vqsr
-    )
+    # A full description of the `import_gvs` function written by Hail for this process can be found in `import_gvs.py`:
+    # https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/extract/import_gvs.py
+    # Commented out parameters are ones where we are comfortable with the default, but want to make them easily
+    # accessible to users.
+    try:
+        import_gvs.import_gvs(
+            vets=argsfn('vets'),
+            refs=argsfn('refs'),
+            sample_mapping=argsfn('sample_mapping'),
+            site_filtering_data=argsfn('site_filtering_data'),
+            vqsr_filtering_data=argsfn('vqsr_filtering_data'),
+            vqsr_tranche_data=argsfn('vqsr_tranche_data'),
+            reference_genome=rg38,
+            final_path=vds_path,
+            tmp_dir=f'{temp_path}/hail_tmp_create_vds',
+            # truth_sensitivity_snp_threshold: 'float' = 0.997,
+            # truth_sensitivity_indel_threshold: 'float' = 0.990,
+            # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
+            # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
+            # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
+            use_classic_vqsr=use_classic_vqsr,
+            intermediate_resume_point=intermediate_resume_point
+        )
+    finally:
+        local_hail_log_path = os.path.realpath(Env.hc()._log)
+        fs = RouterFS()
+        fs.copy(
+            local_hail_log_path,
+            f'{vds_path}.log'
+        )
 
 
 def gcs_generate_avro_args(bucket, blob_prefix, key):
     """
-    Generate a list of the Avro arguments for the `create_vds` invocation for the specified key. The datatype should
+    Generate a list of the Avro arguments for the `import_gvs` invocation for the specified key. The datatype should
     match these parameters:
 
     * vets (list of lists, one outer list per GVS superpartition of 4000 samples max)
@@ -132,20 +137,25 @@ if __name__ == '__main__':
     parser.add_argument('--avro-path', type=str, help='Path at which exported GVS Avro files are found',
                         default="@AVRO_PATH@",
                         required=True)
-    parser.add_argument('--vds-path', type=str, help='Path to which the VDS should be written', default="@VDS_PATH@",
+    parser.add_argument('--vds-path', type=str, help='Path to which the VDS should be written',
+                        default="@VDS_PATH@",
                         required=True)
-    parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
+    parser.add_argument('--temp-path', type=str, help='Path to temporary directory',
+                        default="@TEMP_DIR@",
                         required=True)
     parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
                         required=False)
-    # TODO - When we change to make VQSR Lite, change this line to '--use-classic-vqsr' and remove the not from 'use_classic_vqsr = not args.use_vqsr_lite' below
-    parser.add_argument("--use-vqsr-lite", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Lite")
+    parser.add_argument("--use-classic-vqsr", action="store_true",
+                        help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
+    parser.add_argument('--intermediate-resume-point', type=int, required=False, default=0,
+                        help='Intermediate VDS index at which to resume')
+
     args = parser.parse_args()
 
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
-    use_classic_vqsr = not args.use_vqsr_lite
+    use_classic_vqsr =  args.use_classic_vqsr
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
 
@@ -153,10 +163,11 @@ if __name__ == '__main__':
         avro_bucket_name, avro_object_prefix = gcs_re.match(avro_path).groups()
         avro_bucket = storage.Client().get_bucket(avro_bucket_name)
 
-        def args(key):
+        def arguments(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr)
+        create_vds(arguments, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr,
+                   args.intermediate_resume_point)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -165,9 +176,10 @@ if __name__ == '__main__':
         if gcs_re.match(references_path):
             raise ValueError(f"--references-path must refer to a local path")
 
-        def args(key):
+        def arguments(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr)
+        create_vds(arguments, vds_path, references_path, temp_path, use_classic_vqsr,
+                   args.intermediate_resume_point)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")

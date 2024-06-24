@@ -21,7 +21,7 @@ def run_avro_query(call_set_identifier, dataset_name, table_name, project_id, sq
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract avro files from GVS BigQuery dataset')
     parser.add_argument('--call_set_identifier', type=str,
-                        help='callset identifier used to track costs in cost_observability table', default='false')
+                        help='callset identifier used to track costs in cost_observability table', required=True)
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--table_name',type=str, help='BigQuery table name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)

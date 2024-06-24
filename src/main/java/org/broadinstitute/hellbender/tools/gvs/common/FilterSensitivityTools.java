@@ -123,11 +123,20 @@ public class FilterSensitivityTools {
                 "Site failed " + model + " model VQSLOD cutoff of " + vqsLodThreshold.toString());
     }
 
-    public static VCFHeaderLine getTruthSensitivityHeader(Double truthSensitivityThreshold, Double vqsLodThreshold, String model) {
+    public static VCFHeaderLine getTruthSensitivityFilterHeader(Double truthSensitivityThreshold, Double vqsLodThreshold, String model) {
         if (truthSensitivityThreshold == null) {  // at this point, we know that all vqsr threshold inputs are null, so use defaults
             truthSensitivityThreshold = GATKVCFConstants.SNP.contains(model) ? DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS : DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
         }
         return new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
                 "Site failed " + model + " model sensitivity cutoff (" + truthSensitivityThreshold + "), corresponding with VQSLOD cutoff of " + vqsLodThreshold.toString());
     }
+
+    public static VCFHeaderLine getTruthSensitivityHeader(Double truthSensitivityThreshold, Double vqsLodThreshold, String model) {
+        if (truthSensitivityThreshold == null) {  // at this point, we know that all vqsr threshold inputs are null, so use defaults
+            truthSensitivityThreshold = GATKVCFConstants.SNP.contains(model) ? DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS : DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
+        }
+        return new VCFHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
+                "Sample Genotype FT filter value indicating that the genotyped allele failed " + model + " model sensitivity cutoff (" + truthSensitivityThreshold + "), corresponding with VQSLOD cutoff of " + vqsLodThreshold.toString());
+    }
+
 }
