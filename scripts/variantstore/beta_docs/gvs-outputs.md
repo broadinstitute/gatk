@@ -65,7 +65,7 @@ These are the filters and format and info fields in the GVS VCFs. Note that they
 Exomes will additionally have:
 
 ```
-##FILTER=<ID=OUTSIDE_OF_TARGETS,Description="Doesn't overlap the user-defined interval list">
+##FILTER=<ID=OUTSIDE_OF_TARGETS,Description="Outside of sequencing target intervals">
 ```
 
 ## Notable content NOT in the VCF
