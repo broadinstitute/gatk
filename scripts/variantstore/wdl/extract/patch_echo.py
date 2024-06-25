@@ -355,4 +355,4 @@ def patch_reference_data(rd, ploidy) -> hl.MatrixTable:
         )
     )
 
-    return rd.drop("ploidy_data", "autosome_or_par")
+    return rd.drop("ploidy_data", "autosome_or_par", "is_y")
