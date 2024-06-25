@@ -322,7 +322,7 @@ command <<<
   echo "ls (4): complete"
   >>>
   runtime {
-    docker: "${gatk_docker}"
+    docker: "$broadinstitute/gatk:gatkbase-3.2.0"
     memory: machine_mem + " MB"
 
     # Note that the space before SSD and HDD should be included.
@@ -352,7 +352,7 @@ task SamtoolsMergeBAMs {
     }
 
   runtime {
-    docker: "${gatk_docker}"
+    docker: "broadinstitute/gatk:gatkbase-3.2.0"
     memory: "16 GB"
     disks: "local-disk " + disk_space_gb + " HDD"
   }
