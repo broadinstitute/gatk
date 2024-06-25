@@ -322,7 +322,7 @@ command <<<
   echo "ls (4): complete"
   >>>
   runtime {
-    docker: "broadinstitute/genomes-in-the-cloud:2.1.1"
+    docker: "${gatk_docker}"
     memory: machine_mem + " MB"
 
     # Note that the space before SSD and HDD should be included.
@@ -352,7 +352,7 @@ task SamtoolsMergeBAMs {
     }
 
   runtime {
-    docker: "broadinstitute/genomes-in-the-cloud:2.1.1"
+    docker: "${gatk_docker}"
     memory: "16 GB"
     disks: "local-disk " + disk_space_gb + " HDD"
   }
