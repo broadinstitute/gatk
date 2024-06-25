@@ -322,7 +322,7 @@ command <<<
   echo "ls (4): complete"
   >>>
   runtime {
-    docker: "$broadinstitute/gatk:gatkbase-3.2.0"
+    docker: "broadinstitute/gatk:gatkbase-3.2.0"
     memory: machine_mem + " MB"
 
     # Note that the space before SSD and HDD should be included.
