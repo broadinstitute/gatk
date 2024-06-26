@@ -810,7 +810,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // If we're on the reverse strand, we need to reverse complement the sequence:
         if ( transcript.getGenomicStrand() == Strand.NEGATIVE ) {
-            return new String(BaseUtils.simpleReverseComplement(TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList).getBytes())) + tailPaddingBases;
+            return new String(BaseUtils.simpleReverseComplement(TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList, doExonContigConversionToB37ForTranscripts).getBytes())) + tailPaddingBases;
         }
         else {
             return TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList, doExonContigConversionToB37ForTranscripts) + tailPaddingBases;
