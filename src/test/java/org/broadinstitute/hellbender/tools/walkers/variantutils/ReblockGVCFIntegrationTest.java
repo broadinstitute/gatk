@@ -620,7 +620,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         final Pair<VCFHeader, List<VariantContext>> outVCF = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
-        Assert.assertNull(outVCF.getLeft().getFormatHeaderLine("PRI"));
+        Assert.assertNull(outVCF.getLeft().getFormatHeaderLine(priKey));
         final List<VariantContext> outVCs = outVCF.getRight();
         for(VariantContext vc : outVCs){
             Assert.assertNull(vc.getGenotype(0).getExtendedAttribute(priKey));
