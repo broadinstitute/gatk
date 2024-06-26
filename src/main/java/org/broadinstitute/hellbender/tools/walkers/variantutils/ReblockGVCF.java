@@ -159,7 +159,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Advanced
     @Argument(fullName=ANNOTATIONS_TO_REMOVE_LONG_NAME, doc="FORMAT level annotations to remove from all genotypes in final GVCF.", optional = true)
-    private List<String> annotationsToRemove = new ArrayList<>();
+    private List<String> formatAnnotationsToRemove = new ArrayList<>();
 
     @Advanced
     @Argument(fullName=QUAL_APPROX_LONG_NAME, shortName=QUAL_APPROX_SHORT_NAME, doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper", optional = true)
@@ -238,9 +238,6 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 + ", but the " + GATKVCFConstants.TREE_SCORE + " annotation is not present in the input GVCF.");
         }
 
-        List<String> missingAnnotationsToRemove = annotationsToRemove.stream().filter(a -> inputHeader.getFormatHeaderLine(a)==null).toList();
-        missingAnnotationsToRemove.forEach(a -> logger.warn("FORMAT level annotation " + a + ", which was requested to be removed by --" + ANNOTATIONS_TO_REMOVE_LONG_NAME + ", not found in input GVCF header."));
-
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeaders);
@@ -248,6 +245,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCFWriter.GVCF_BLOCK) ||
                 (vcfHeaderLine.getKey().equals("INFO")) && ((VCFInfoHeaderLine)vcfHeaderLine).getID().equals(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED) ||  //remove old (maybe wrong type) and add new with deprecated note
                 (vcfHeaderLine.getKey().equals("INFO")) && infoFieldAnnotationKeyNamesToRemove.contains(((VCFInfoHeaderLine)vcfHeaderLine).getID()));
+
+        List<String> missingAnnotationsToRemove = formatAnnotationsToRemove.stream().filter(a -> inputHeader.getFormatHeaderLine(a)==null).toList();
+        missingAnnotationsToRemove.forEach(a -> logger.warn("FORMAT level annotation " + a + ", which was requested to be removed by --" + ANNOTATIONS_TO_REMOVE_LONG_NAME + ", not found in input GVCF header."));
+        headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().equals("FORMAT") &&
+                formatAnnotationsToRemove.contains(((VCFFormatHeaderLine) vcfHeaderLine).getID()));
 
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 
@@ -338,7 +340,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
-        VariantContext newVC = annotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
+        VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
         regenotypeVC(newVC);
     }
 
@@ -356,7 +358,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             return vc;
         }
 
-        for (String annotation : annotationsToRemove) {
+        for (String annotation : formatAnnotationsToRemove) {
             extendedAttributes.remove(annotation);
         }
         final Genotype newGenotype = new GenotypeBuilder(genotype).noAttributes().attributes(extendedAttributes).make();
