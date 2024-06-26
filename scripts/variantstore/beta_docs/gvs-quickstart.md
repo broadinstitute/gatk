@@ -95,6 +95,8 @@ If you’ve done this correctly, you should see your Terra proxy group listed in
 
 The GVS beta workspaces in Terra are read-only, so you’ll need to clone the workspace to create a copy where you can upload your own data and run the workflow. Clone the workspace using the billing project you created in Step 2 (above) by following the instructions in the article [Make your own project workspace](https://support.terra.bio/hc/en-us/articles/360026130851).
 
+The GVS beta workspace for genomes is [here](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) and the workspace for exomes is [here](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta). 
+
 ## Running the workflow
 
 The workflow in the GVS beta workspace is pre-configured to use the 10 sample reblocked GVCF files in the workspace Data tab. See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
