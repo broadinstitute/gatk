@@ -108,7 +108,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             doc="File to which variants should be written", optional=false)
     private GATKPath outputFile;
 
-    @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
+    @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping. Requires -L parameter to be set to a particular interval or contig. If the source does not contain any of those intervals then you may receive an exception message.", optional=true)
     private boolean includeNonVariants = false;
 
     /**
@@ -251,6 +251,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         }
 
         forceOutputIntervalsPresent = !forceOutputIntervalStrings.isEmpty();
+
+        if(includeNonVariants) {
+            if( !hasUserSuppliedIntervals()) {
+                throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ALL_SITES_LONG_NAME + " was specified.");
+            }
+        }
 
         if (includeNonVariants && forceOutputIntervalsPresent ) {
             throw new CommandLineException.BadArgumentValue(String.format("Force output (--%s) is incompatible with including " +
