@@ -105,6 +105,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     final static private int referenceWindow = 10;
 
     /**
+     * Whether to convert input contigs to hg19 before processing.
+     * This is only used to pull the transcript information from the reference FASTA in the case where we are running
+     * HG19 data on a B37 reference.
+     */
+    private boolean doExonContigConversionToB37ForTranscripts = false;
+
+    /**
      * List of valid Appris Ranks used for sorting funcotations to get the "best" one.z
      */
     private static final LinkedHashMap<String, GencodeGTFFieldConstants.FeatureTag> apprisRanks = new LinkedHashMap<>() {{
@@ -788,9 +795,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param referenceContext The {@link ReferenceContext} from which to get the coding sequence.
      * @param transcript The {@link GencodeGtfTranscriptFeature} for which to get the coding sequence.
      * @param tailPaddingBases Bases to add to the end of the transcript base string to enable processing variants that overrrun the end of the transcript.
+     * @param doExonContigConversionToB37ForTranscripts If {@code true}, convert the exon contig to B37 for the transcript sequence.
      * @return The coding sequence for the given {@code transcript} as represented in the given {@code referenceContext}.
      */
-    private static String getCodingSequenceFromReferenceContext(final ReferenceContext referenceContext, final GencodeGtfTranscriptFeature transcript, final String tailPaddingBases) {
+    private static String getCodingSequenceFromReferenceContext(final ReferenceContext referenceContext,
+                                                                final GencodeGtfTranscriptFeature transcript,
+                                                                final String tailPaddingBases,
+                                                                final boolean doExonContigConversionToB37ForTranscripts) {
 
         // The transcript strings consist of CDS and stop_codon sequences:
         final List<Locatable> transcriptFeatureList = transcript.getAllFeatures().stream()
@@ -802,7 +813,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             return new String(BaseUtils.simpleReverseComplement(TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList).getBytes())) + tailPaddingBases;
         }
         else {
-            return TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList) + tailPaddingBases;
+            return TranscriptUtils.extractTrascriptFromReference(referenceContext, transcriptFeatureList, doExonContigConversionToB37ForTranscripts) + tailPaddingBases;
         }
     }
 
@@ -1363,7 +1374,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set up our SequenceComparison object so we can calculate some useful fields more easily
         // These fields can all be set without knowing the alternate allele:
-        final SequenceComparison sequenceComparison = createSequenceComparison(variant, altAllele, reference, transcript, exonPositionList, transcriptIdMap, transcriptFastaReferenceDataSource, true);
+        final SequenceComparison sequenceComparison = createSequenceComparison(
+                variant, altAllele, reference, transcript, exonPositionList, transcriptIdMap, doExonContigConversionToB37ForTranscripts
+        );
 
         // Set our transcript positions:
         setTranscriptPosition(variant, altAllele, sequenceComparison.getTranscriptAlleleStart(), gencodeFuncotationBuilder);
@@ -2033,8 +2046,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param transcript The {@link GencodeGtfTranscriptFeature} for the current gene feature / alt allele.
      * @param exonPositionList A {@link List} of {@link htsjdk.samtools.util.Locatable} objects representing exon positions in the transcript.
      * @param transcriptIdMap The {@link Map} of TranscriptID to {@link MappedTranscriptIdInfo} for all transcripts in the current Gencode data source.
-     * @param transcriptFastaReferenceDataSource The {@link ReferenceDataSource} of the transcript FASTA file containing the sequence information for all Transcripts in the current Gencode data source.
-     * @param processSequenceInformation If {@code true} will attempt to process and create sequence information for the given {@code variant}.
+     * @param doExonContigConversionToB37ForTranscripts If {@code true} will convert exon contigs to B37 for the purposes of transcript sequence extraction.
      * @return A populated {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} object.
      */
     @VisibleForTesting
@@ -2044,8 +2056,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                        final GencodeGtfTranscriptFeature transcript,
                                                        final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
                                                        final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
-                                                       final ReferenceDataSource transcriptFastaReferenceDataSource,
-                                                       final boolean processSequenceInformation) {
+                                                       final boolean doExonContigConversionToB37ForTranscripts) {
 
         // TODO: Somewhere down the line we should adjust the positions at creation-time to account for the leading bases in VCF input files.  (issue 5349 - https://github.com/broadinstitute/gatk/issues/5349)
         // This will have ramifications down the line for all fields that get rendered.
@@ -2145,7 +2156,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         //==============================================================================================================
         // Get the coding sequence for the transcript if we have a transcript sequence for this variant:
 
-        if ( processSequenceInformation ) {
+        if ( true ) {
             if ( transcriptIdMap.containsKey(transcript.getTranscriptId()) ) {
 
                 // Get padding bases just in case this variant is an indel and trails off the end of our transcript:
@@ -2155,7 +2166,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 final String rawCodingSequence = getCodingSequenceFromReferenceContext(
                         reference,
                         transcript,
-                        transcriptTailPaddingBaseString
+                        transcriptTailPaddingBaseString,
+                        doExonContigConversionToB37ForTranscripts
                 );
 
 //                final String rawCodingSequenceOld = getCodingSequenceFromTranscriptFasta(
@@ -2270,6 +2282,21 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         return new String(transcriptTailPaddingBases);
+    }
+
+    /**
+     * @return Whether this {@link GencodeFuncotationFactory} will convert contigs to hg19 before processing transcript sequences.
+     */
+    public boolean getDoExonContigConversionToB37ForTranscripts() {
+        return this.doExonContigConversionToB37ForTranscripts;
+    }
+
+    /**
+     * Set whether this {@link GencodeFuncotationFactory} will convert contigs to hg19 before processing transcript sequences.
+     * @param b Whether to convert contigs to hg19 before processing transcript sequences.
+     */
+    public void setDoExonContigConversionToB37ForTranscripts(final boolean b) {
+        this.doExonContigConversionToB37ForTranscripts = b;
     }
 
     /**

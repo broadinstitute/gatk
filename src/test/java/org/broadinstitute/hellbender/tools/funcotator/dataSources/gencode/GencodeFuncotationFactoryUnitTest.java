@@ -1353,8 +1353,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         transcript,
                         exonPositionList,
                         muc16TranscriptIdMap,
-                        muc16TranscriptDataSource,
-                        true);
+                        false);
 
         final GencodeFuncotation.VariantClassification varClass = GencodeFuncotationFactory.createVariantClassification(
                 variantContext,
@@ -1442,8 +1441,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         transcript,
                         exonPositionList,
                         muc16TranscriptIdMap,
-                        muc16TranscriptDataSource,
-                        true);
+                        false);
 
         final GencodeFuncotation.VariantClassification varClass = GencodeFuncotationFactory.createVariantClassification(
                 variantContext,
