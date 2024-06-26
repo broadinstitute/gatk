@@ -24,8 +24,10 @@ _* indicates regularly tested and validated_
 **Species**
 - Human data only (hg38)*
 
-**Sequencing details**
+**Sequencing platforms**
 - Illumina short read sequencing*
+
+**Data Types**
 - Whole Genome Sequencing*
 - Whole Exome Sequencing*
 - Blended Genome Exome Sequencing*
@@ -41,7 +43,7 @@ _* indicates regularly tested and validated_
 
 If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/ReblockGVCF_v2.1.12/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in this workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
 
-Note that the ReblockGVCF pipeline defaults to the file extension `.gvcf.gz`, which is the default for DRAGEN gvcfs. If this is not the extension on your data, update the input variable `gvcf_file_extension`. 
+Note that the ReblockGVCF pipeline inputs default to accepting inputs with the file extension `.gvcf.gz`, which is the default for DRAGEN GVCFs. If this is not the extension on your input GVCFs, update the input variable `gvcf_file_extension`. 
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
@@ -165,7 +167,7 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
 
 ---
 **Notes**
-1. Note that GVS **expects reblocked gVCFs**. If your gVCFs are not reblocked, see the text above on how you can use the ReblockGVCF workflow in this workspace.
+1. Note that GVS **expects reblocked GVCFs**. If your GVCFs are not reblocked, see the text above on how you can use the ReblockGVCF workflow in this workspace.
 2. The workflow is designed to run on ALL samples in the `sample` data table.
 
 ---
@@ -177,8 +179,8 @@ To run:
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    2. Update the name of the **column of reblocked gvcfs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
-    3. Update the name of the **column of reblocked gvcf index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
+    2. Update the name of the **column of reblocked GVCFs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
+    3. Update the name of the **column of reblocked GVCF index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
     4. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
     5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
     1. If running exomes, ensure that the (optional) `is_wgs` parameter is set to false.

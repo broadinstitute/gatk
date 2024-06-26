@@ -16,3 +16,5 @@
 ## Reblocking
 1. `htsjdk.tribble.TribbleException$MalformedFeatureFile: Unable to parse header with error: Your input file has a malformed header: We never saw the required CHROM header line (starting with one #) for the input VCF file, for input source: file:///cromwell_root/v1_[uuid]`
    1. If you are running ReblockGVCF from a TDR snapshot, you will see this error if you did not check the “Convert DRS URLs to Google Cloud Storage Paths (gs://)" box before exporting the snapshot.
+2. GVS is running very slowly!
+   1. If your GVS workflow is running very slowly compared to the example runtimes in the workspace, you may have run GVS on GVCFs that have not been reblocked. Confirm your GVCFs are reblocked.

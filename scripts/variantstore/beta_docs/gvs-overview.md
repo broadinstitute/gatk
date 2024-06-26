@@ -69,8 +69,8 @@ The table below describes the GVS workflow input variables:
 | dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                                                                                                        | String  |
 | project_id                  | Name of the Google project that contains the BigQuery dataset.                                                                                                                                                                                                      | String  |
 | call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”.                                                                                          | String  |
-| vcf_files_column_name       | Name of the column in the `sample` workspace data table with the reblocked gvcf file gcs paths.                                                                                                                                                                     | String  |
-| vcf_index_files_column_name | Name of the column in the `sample` workspace data table with the reblocked gvcf index file gcs paths.                                                                                                                                                               | String  |
+| vcf_files_column_name       | Name of the column in the `sample` workspace data table with the reblocked GVCF file gcs paths.                                                                                                                                                                     | String  |
+| vcf_index_files_column_name | Name of the column in the `sample` workspace data table with the reblocked GVCF index file gcs paths.                                                                                                                                                               | String  |
 | sample_id_column_name       | Name of the column in the `sample` workspace data table with the desired sample identifiers. These IDs will be used to name the samples in the VCFs. They **MUST** be unique.                                                                                       | String  |
 | extract_output_gcs_dir      | Desired cloud path for output files. If unspecified, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. The actual output location will be specified by the workflow output `output_gcs_path`. | String  |
 | use_classic_VQSR            | Optional; defaults to false since September 1, 2023.                                                                                                                                                                                                                | Boolean |
@@ -80,9 +80,9 @@ The table below describes the GVS workflow input variables:
 
 Overall, the GVS workflow:
 
-1. Imports the gvcfs into BigQuery.
+1. Imports the GVCFs into BigQuery.
 2. Trains the filtering model.
-1. Extracts VCF files.
+3. Extracts VCF files.
 
 The steps of the workflow, in addition to the GATK tools used in each step, are described below. Custom tools are used throughout the workflow to read from and write to the BigQuery dataset.
 
@@ -92,11 +92,11 @@ This step validates that sample GVCF files contain required annotations and load
 
 ### 2. Train the filtering model
 
-GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [ExtractVariantAnnotations](https://gatk.broadinstitute.org/hc/en-us/articles/9570430059803-ExtractVariantAnnotations-BETA-), [TrainVariantAnnotationsModel](https://gatk.broadinstitute.org/hc/en-us/articles/9570371970587-TrainVariantAnnotationsModel-BETA-), [ScoreVariantAnnotations](https://gatk.broadinstitute.org/hc/en-us/articles/9570326304155-ScoreVariantAnnotations-BETA-), and [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339).
+GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [ExtractVariantAnnotations](https://gatk.broadinstitute.org/hc/en-us/articles/9570430059803-ExtractVariantAnnotations-BETA-), [TrainVariantAnnotationsModel](https://gatk.broadinstitute.org/hc/en-us/articles/9570371970587-TrainVariantAnnotationsModel-BETA-), [ScoreVariantAnnotations](https://gatk.broadinstitute.org/hc/en-us/articles/9570326304155-ScoreVariantAnnotations-BETA-), and [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339) (only used for VQSR).
 
 This step splits alternate alleles, calculates annotations to be used for filtering, and creates a filtering model using VETS and annotations from the input samples. To learn more about the VETS release in GVS see this [release note](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf). 
 
-SNPs and Indels are filtered using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR` and `AS_MQ`.
+SNPs and Indels are filtered using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR` and `AS_MQ`. The annotations are not output into the final callset.
 
 ### 3. Extract VCF files
 
@@ -115,7 +115,7 @@ The final outputs of the GVS workflow are described in the table below:
 | total_vcfs_size_mb | Float describing the total size of the output VCF files in MB. | Float |
 | manifest | TXT file listing output file destinations and other metadata. | TXT | 
 
-The GVS workflow outputs a sharded joint VCF file containing filter sites and genotypes flagged as probable artifacts and annotations calculated during the `GvsExtractCallset` subworkflow, including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The output VCF file is sharded so that no shards span multiple chromosomes. 
+The GVS workflow outputs a sharded joint VCF file containing filter sites and genotypes flagged as probable artifacts and annotations calculated during the `GvsExtractCallset` subworkflow, including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The output VCF file is sharded so that no shards span multiple chromosomes. See [GVS outputs documentation](./gvs-outputs.md) for more information on the expected number of shards.
 
 The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) is configured to write the outputs of the workflow to the Google bucket specified in the inputs at runtime.
 
