@@ -102,7 +102,7 @@ public final class GATKSVVCFConstants {
     }
 
     // keep in sync with enum above
-    public static final HashBiMap<String, ComplexVariantSubtype> ComplexVariantSubtypeMap = HashBiMap.create(Map.ofEntries(
+    public static final HashBiMap<String, ComplexVariantSubtype> COMPLEX_VARIANT_SUBTYPE_MAP = HashBiMap.create(Map.ofEntries(
             entry("delINV", ComplexVariantSubtype.delINV),
             entry("INVdel", ComplexVariantSubtype.INVdel),
             entry("dupINV", ComplexVariantSubtype.dupINV),

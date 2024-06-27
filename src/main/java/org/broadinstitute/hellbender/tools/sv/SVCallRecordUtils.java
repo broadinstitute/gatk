@@ -430,15 +430,15 @@ public final class SVCallRecordUtils {
         if (subtypeString == null) {
             return null;
         }
-        if (!GATKSVVCFConstants.ComplexVariantSubtypeMap.containsKey(subtypeString)) {
+        if (!GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.containsKey(subtypeString)) {
             throw new IllegalArgumentException("Invalid CPX subtype: " + subtypeString + ", valid values are: " +
                     String.join(", ", VALID_CPX_SUBTYPES));
         }
-        return GATKSVVCFConstants.ComplexVariantSubtypeMap.get(subtypeString);
+        return GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.get(subtypeString);
     }
 
     public static String getComplexSubtypeString(final GATKSVVCFConstants.ComplexVariantSubtype subtype) {
-        return GATKSVVCFConstants.ComplexVariantSubtypeMap.inverse().get(subtype);
+        return GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.inverse().get(subtype);
     }
 
     private static String getStrands(final VariantContext variant, final GATKSVVCFConstants.StructuralVariantAnnotationType type) {
