@@ -894,11 +894,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // If we need to get extra bases at the end, we do so:
         String extraBases = "";
         if (numExtraBases > 0) {
+
+            // TODO: Yet another B37 conversion.  This is getting out of hand.  We need to refactor this.
+            final String contig = doExonContigConversionToB37ForTranscripts ? FuncotatorUtils.convertHG19ContigToB37Contig(fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getContig()) : fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getContig();
+
             // Once again we must check our strandedness:
             if (transcript.getGenomicStrand() == Strand.NEGATIVE) {
                 extraBases = new String(referenceContext.getBases(
                         new SimpleInterval(
-                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getContig(),
+                                contig,
                                 fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getStart() - numExtraBases,
                                 fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getStart() - 1)  // subtract an additional 1 here because coordinates are inclusive and we need to have exactly `numExtraBases` more bases
                 ));
@@ -906,7 +910,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             else {
                 extraBases = new String(referenceContext.getBases(
                         new SimpleInterval(
-                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getContig(),
+                                contig,
                                 fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd(),
                                 fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd() + numExtraBases)
                 ));
