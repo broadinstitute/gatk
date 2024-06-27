@@ -860,7 +860,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param numExtraBases The number of extra bases from the coding region to include in the results after the 5' UTR region.
      * @return A {@link String} containing the 5' UTR sequence for the given {@code transcript} as represented in the given {@code referenceContext}.
      */
-    private static String getFivePrimeUtrSequenceFromReference(final ReferenceContext referenceContext, final GencodeGtfTranscriptFeature transcript, final int numExtraBases) {
+    private static String getFivePrimeUtrSequenceFromReference(final ReferenceContext referenceContext,
+                                                               final GencodeGtfTranscriptFeature transcript,
+                                                               final int numExtraBases,
+                                                               final boolean doExonContigConversionToB37ForTranscripts) {
 
         // The 5' UTR is always the UTR that occurs at the beginning of the transcript, so we can grab the CDS and UTR regions
         // and sort them to find where the 5' UTR is (if there is one):
@@ -911,7 +914,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Now we have our start and end coordinates for the 5' UTR, we can extract that from the reference
-        final String utrBases = TranscriptUtils.extractTrascriptFromReference(referenceContext, fivePrimeUtrs);
+        final String utrBases = TranscriptUtils.extractTrascriptFromReference(referenceContext, fivePrimeUtrs, doExonContigConversionToB37ForTranscripts);
 
         // Finally, if we're on the reverse strand, we need to reverse complement the UTR bases.
         // NOTE: the extra bases are not reverse complemented because they are not part of the UTR.
@@ -1771,7 +1774,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 //                final String fivePrimeUtrCodingSequenceOld =
 //                        getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
 
-                final String fivePrimeUtrCodingSequence = getFivePrimeUtrSequenceFromReference(reference, transcript, numExtraTrailingBases);
+                final String fivePrimeUtrCodingSequence = getFivePrimeUtrSequenceFromReference(reference, transcript, numExtraTrailingBases, doExonContigConversionToB37ForTranscripts);
 
 //                // todo: DEBUGGING:
 //                if (!fivePrimeUtrCodingSequence.equals(fivePrimeUtrCodingSequenceOld)) {
