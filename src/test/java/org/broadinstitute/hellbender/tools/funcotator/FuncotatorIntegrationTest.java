@@ -108,6 +108,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     private static String hg38Chr3Ref;
     private static String hg19Chr3Ref;
+    private static String b37Chr2Ref;
     private static String hg19Chr19Ref;
 
     private static String eColiRef;
@@ -125,6 +126,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         hg38Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg38Chr3Ref();
         hg19Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref();
+        b37Chr2Ref = FuncotatorReferenceTestUtils.retrieveB37Chr2Ref();
         hg19Chr19Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref();
         eColiRef = FuncotatorReferenceTestUtils.retrieveEcoliReference();
     }
@@ -1681,12 +1683,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // The input VCF and Reference file are incompatible because
         // the reference file dictionary has only chromosome 2 and the
         // input VCF has a dictionary that contains all contigs for HG19.
-        // Therefore the reference dictionary is NOT a superset of the input VCF dictionary.
+        // Therefore, the reference dictionary is NOT a superset of the input VCF dictionary.
 
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 XSV_CLINVAR_COL_TEST_VCF,
                 outputFile,
-                b37Reference,
+                b37Chr2Ref,
                 DS_XSV_CLINVAR_TESTS,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
