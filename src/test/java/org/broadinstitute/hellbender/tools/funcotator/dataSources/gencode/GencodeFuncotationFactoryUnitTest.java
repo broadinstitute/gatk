@@ -2737,6 +2737,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 new FlankSettings(5000, 0),
                 "TEST")) {
 
+            // We have to set the contig conversion because of the datasources / B37 mismatch:
+            funcotationFactory.setDoExonContigConversionToB37ForTranscripts(true);
+
             final List<Funcotation> gencodeFuncotationList = funcotationFactory.createFuncotations(vcHg19, referenceContext, featureContext);
 
             System.out.println(gencodeFuncotationList.size());
