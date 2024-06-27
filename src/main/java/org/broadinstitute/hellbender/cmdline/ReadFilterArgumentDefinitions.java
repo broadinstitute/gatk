@@ -53,7 +53,7 @@ public final class ReadFilterArgumentDefinitions {
 
     public static final String KEEP_INTERVAL_NAME = "keep-intervals";
 
-    public static final String SOFT_CLIPPED_RATIO_THRESHOLD = "max-soft-clipped-ratiogit";
+    public static final String SOFT_CLIPPED_RATIO_THRESHOLD = "max-soft-clipped-ratio";
     public static final String SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD = "max-soft-clipped-leading-trailing-ratio";
 
     public static final String READ_FILTER_TAG = "read-filter-tag";
