@@ -47,7 +47,7 @@ chr1	10177	.	A	C	.	LowQual;NO_HQ_GENOTYPES	AC=1;AF=0.500;AN=2;AS_QUALapprox=0|26
 **Note**
 The AC and AN numbers that we calculate for sites with passing genotypes are calculated based on following the allele filtering in the VCF.
 
-Currently, there will be no AC and AN calculated nor output when all alleles fail filtering. For sites with only site level filters, we do calculate AC and AN.
+Currently, there will be no AC or AN output when all alleles fail filtering. For sites with only site level filters, we do calculate AC and AN.
 
 ---
 
@@ -131,4 +131,4 @@ Note that normally the array for PL is length "G" where G is the number of genot
 PL can be approximated as [0, GQ, ~2*GQ] for biallelic sites.
 
 ### Missing (`./.`) and `GQ0 0/0`
-Reblocking, a step required before running GVS, combines `./.` and `0/0`. So GVS VCFs will output `./.` and `0/0 GQ0` calls as `./.`. QC methods that rely on “missingness” will need to be modified to accommodate this.
+Reblocking, a step required before running GVS, combines `./.` and `0/0`. So GVS VCFs will output `./.` and `0/0 GQ0` calls as `./.`.

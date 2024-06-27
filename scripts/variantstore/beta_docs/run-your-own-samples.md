@@ -36,7 +36,7 @@ _* indicates regularly tested and validated_
 - DRAGEN 3.7.8*
 - GATK4*
 - DRAGEN-GATK
-- WARP Whole Genome + GATK 3.5
+- WARP Whole Genome + GATK 3.5*
 - DRAGEN 3.4.12
 
 ### Reblocked GVCF files
