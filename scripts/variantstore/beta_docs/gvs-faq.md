@@ -22,7 +22,7 @@
 ## VETS
 1. What training resources and truth data are used for VETS model training?
 
-The following resources are used to train the models for both SNPs and INDELS:
+The following resources are used to train the models and calibrate the scores for both SNPs and INDELS:
 
 | Resource     | Training | Calibration | Details                                                                                                | Data Location                                                                                                 |
 |--------------|----------|-------------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
@@ -32,4 +32,6 @@ The following resources are used to train the models for both SNPs and INDELS:
 | Mills        | TRUE     | TRUE        | This resource is an Indel callset that has been validated to a high degree of confidence.              | `gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz`             |
 | Axiom        | TRUE     | FALSE       | This resource is an Indel callset based on the Affymetrix Axiom array on 1000 Genomes Project samples. | `gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz`  |
 
-Note that these are the same resources used to train VQSR, the GATK filtering tool used in past joint calling pipelines. 
+Note that these are the same resources used to train VQSR, the GATK filtering tool used in past joint calling pipelines.
+
+To read more about how VETS uses training and calibration resources, see the GATK TrainVariantAnnotationsModel [documentation](https://gatk.broadinstitute.org/hc/en-us/articles/13832697082907-TrainVariantAnnotationsModel-BETA).
