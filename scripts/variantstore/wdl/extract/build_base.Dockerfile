@@ -80,7 +80,8 @@ RUN mkdir /bcftools bcftools-build && \
     make && \
     make install
 
-# Build vcf-tools
+# Build vcf-tools following this example:
+# https://github.com/overcookedfrog/vcftools/blob/master/Dockerfile
 ARG VCFTOOLS_VERSION=0.1.16
 RUN mkdir /vcftools vcftools-build && \
     cd vcftools-build && \
