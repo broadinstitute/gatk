@@ -23,12 +23,17 @@ public class SVCallRecordUtilsUnitTest {
     private static final List<Allele> ALLELES_INS = Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS);
     private static final List<Allele> ALLELES_BND = Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.BND_ALLELE);
     private static final List<Allele> ALLELES_CPX = Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.CPX_ALLELE);
+    private static final List<Allele> ALLELES_CTX = Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.CTX_ALLELE);
 
     private static final Map<String, Object> TEST_ATTRIBUTES = Collections.singletonMap("TEST_KEY", "TEST_VAL");
     private static final Map<String, Object> TEST_ATTRIBUTES_CPX = Lists.newArrayList(
             new AbstractMap.SimpleImmutableEntry<String, Object>("TEST_KEY", "TEST_VAL"),
             new AbstractMap.SimpleImmutableEntry<String, Object>(GATKSVVCFConstants.CPX_TYPE, GATKSVVCFConstants.ComplexVariantSubtype.dDUP.toString())
             ).stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    private static final Map<String, Object> TEST_ATTRIBUTES_CTX = Map.of(
+            "TEST_KEY", "TEST_VAL",
+            GATKSVVCFConstants.CPX_TYPE, "CTX_PP/QQ"
+    );
 
     private static final Genotype GENOTYPE_DEL_1 = new GenotypeBuilder("sample1")
             .alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL))
@@ -54,6 +59,8 @@ public class SVCallRecordUtilsUnitTest {
             .alleles(Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.BND_ALLELE)).make();
     private static final Genotype GENOTYPE_CPX_1 = new GenotypeBuilder("sample1")
             .alleles(Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.CPX_ALLELE)).make();
+    private static final Genotype GENOTYPE_CTX_1 = new GenotypeBuilder("sample1")
+            .alleles(Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.CTX_ALLELE)).make();
 
     private static final Comparator<SVCallRecord> RECORD_COMPARATOR = SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict);
 
@@ -568,6 +575,15 @@ public class SVCallRecordUtilsUnitTest {
                                 "chrX", 2000, TEST_ATTRIBUTES, null),
                         new SVCallRecord("var10", "chr1", 1000, null, "chrX", 2000, null, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX, null, 250,
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST, ALLELES_CPX, Collections.singletonList(GENOTYPE_CPX_1),
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
+                },
+                {
+                        SVTestUtils.newVariantContext("var11", "chr1", 1000, 1000,
+                                ALLELES_CTX, Collections.singletonList(GENOTYPE_CTX_1), -1, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CTX, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                                "chrX", 2000, TEST_ATTRIBUTES_CTX, null),
+                        new SVCallRecord("var11", "chr1", 1000, null, "chrX", 2000, null, GATKSVVCFConstants.StructuralVariantAnnotationType.CTX, GATKSVVCFConstants.ComplexVariantSubtype.CTX_PP_QQ, null,
+                                SVTestUtils.PESR_ONLY_ALGORITHM_LIST, ALLELES_CTX, Collections.singletonList(GENOTYPE_CTX_1),
                                 TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
         };
