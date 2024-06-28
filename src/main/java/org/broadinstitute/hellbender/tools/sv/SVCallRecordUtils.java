@@ -329,8 +329,7 @@ public final class SVCallRecordUtils {
         final int positionA = variant.getStart();
 
         final GATKSVVCFConstants.StructuralVariantAnnotationType type = inferStructuralVariantType(variant);
-        final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype =
-                type == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX ? getComplexSubtype(variant) : null;
+        final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype = getComplexSubtype(variant);
         final List<String> algorithms = getAlgorithms(variant);
 
         final String strands;
