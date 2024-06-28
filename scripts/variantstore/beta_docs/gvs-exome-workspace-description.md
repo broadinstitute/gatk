@@ -1,8 +1,8 @@
-### Genomic Variant Store Exomes workflow (beta) for variant discovery
+## Genomic Variant Store Exomes workflow (beta) for variant discovery
 
 The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
-This workspace contains a fully reproducible example workflow for Exomes variant discovery using the GVS workflow.
+This workspace contains a fully reproducible example workflow for Exomes variant discovery using the GVS workflow. If you have genome data, see the [GVS Genome workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta).
 
 Scroll down for an overview of the workflow, example data, cost estimates, and additional resources.
 
@@ -33,7 +33,7 @@ Starting September 1 2023, variants in GVS are filtered using the GATK Variant E
 
 To see details about input requirements, see [Run Your Own Samples](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md). Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are being used for beta testing.
+While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are currently supported by the beta workflow.
 
 Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions. For information on how that interval list was generated, see `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list.README.md`.
 
@@ -42,10 +42,11 @@ Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interva
 The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
+- A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in megabytes
 - Manifest file containing the destinations and sizes in bytes of the output sharded joint VCF and index files
 
-There are example outputs from the sample data in the workspace bucket.
+There are example outputs from the sample data in the workspace bucket. For more information on GVS outputs, including the number of shards to expect, VCF content, and filters, see the [GVS outputs documentation](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-outputs.md).
 
 ## Setup
 
@@ -63,26 +64,25 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ## Running the workflow
 
-The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files in the workspace Data tab. To run:
+The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sample reblocked GVCF files in the workspace Data tab. To run the example data:
 
 1. **Select the workflow** from the Workflows tab.
 1. Select the 'Run workflow with inputs defined by file paths' radio button.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
-    1. Enter a GCS path for `extract_output_gcs_dir`, which is where the callset VCFs, VCF indexes and interval lists will be copied.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    2. Update the name of the **column of reblocked GVCFs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
+    3. Update the name of the **column of reblocked GVCF index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
+    4. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
+    5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
     1. Ensure that the (optional) `is_wgs` parameter is set to false.
-    1. Check the workspace Data tab, and fill out the below inputs according to the data column names that contain the values you want to use:
-       - `sample_id_column_name`: a unique identifier for each sample (the workflow will fail if there are any duplicates)
-       - `vcf_files_column_name`: the path to the sample VCF file
-       - `vcf_index_files_column_name`: the path to the sample VCF index file
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
-See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
+See the "Job History" tab in the Genomic_Variant_Store_Exomes_Beta workspace for a recent example configuration.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow. Generally the cost is around a half a cent per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
@@ -133,14 +133,13 @@ Details on citing Terra workspaces can be found in [How to cite Terra](https://s
 Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Exomes_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta
 
 ### License
-**Copyright Broad Institute, 2023 | Apache**  
+**Copyright Broad Institute, 2024 | Apache**  
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
 | Date       | Change                                  | Author       |
 |------------|-----------------------------------------|--------------|
-| 09/08/2023 | First release of the exomes workspace.  | George Grant |
-| 01/09/2024 | Second release of the exomes workspace. | Bec Asch     |
+| 06/18/2024 | Add ReblockGVCF and update documentation | Kylee Degatano |
 | 05/08/2024 | Third release of the exomes workspace.  | Bec Asch     |
-
-
+| 01/09/2024 | Second release of the exomes workspace. | Bec Asch     |
+| 09/08/2023 | First release of the exomes workspace.  | George Grant |
