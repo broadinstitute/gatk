@@ -11,16 +11,17 @@ import java.io.IOException;
  */
 public class BAIAnalyzer extends HTSAnalyzer {
 
-    public BAIAnalyzer(final GATKPath inputPath, final File outputFile) {
-        super(inputPath, outputFile);
+    public BAIAnalyzer(final GATKPath inputPath, final GATKPath outputPath) {
+        super(inputPath, outputPath);
     }
 
     /**
      * Run the analyzer for the file.
      */
     protected void doAnalysis() {
-        System.out.println(String.format("\nOutput written to %s\n", outputFile));
-        BAMIndexer.createAndWriteIndex(inputPath.toPath().toFile(), outputFile, true);
+        System.out.println(String.format("\nOutput written to %s\n", outputPath));
+        // note this method is not nio aware
+        BAMIndexer.createAndWriteIndex(inputPath.toPath().toFile(), new File(outputPath.getRawInputString()), true);
     }
 
     @Override

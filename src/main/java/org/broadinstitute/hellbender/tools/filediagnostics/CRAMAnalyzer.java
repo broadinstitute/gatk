@@ -11,14 +11,11 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.hellbender.engine.GATKPath;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -36,13 +33,13 @@ public class CRAMAnalyzer extends HTSAnalyzer {
     long coreBlocksDataSize = 0L;
     long recordCount = 0;
     final long countLimit;
-    final FileOutputStream fos;
+    final OutputStream fos;
 
-    public CRAMAnalyzer(final GATKPath inputPathName, final File outputFile, final long countLimit) {
-        super(inputPathName, outputFile);
+    public CRAMAnalyzer(final GATKPath inputPathName, final GATKPath outputPath, final long countLimit) {
+        super(inputPathName, outputPath);
         this.countLimit = countLimit;
         try {
-            fos = new FileOutputStream(outputFile);
+            fos = Files.newOutputStream(outputPath.toPath());
         } catch (final IOException e) {
             throw new RuntimeIOException(e);
         }

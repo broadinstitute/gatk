@@ -5,23 +5,22 @@ import htsjdk.samtools.cram.CRAIIndex;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.hellbender.engine.GATKPath;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.file.Files;
 
 /**
  * Analyzer for CRAM (.crai) index files.
  */
 public class CRAIAnalyzer extends HTSAnalyzer {
 
-    final FileOutputStream fos;
+    final OutputStream fos;
 
-    public CRAIAnalyzer(final GATKPath inputPath, final File outputFile) {
-        super(inputPath, outputFile);
+    public CRAIAnalyzer(final GATKPath inputPath, final GATKPath outputPath) {
+        super(inputPath, outputPath);
         try {
-            fos = new FileOutputStream(outputFile);
+            fos = Files.newOutputStream(outputPath.toPath());
         } catch (final IOException e) {
+
             throw new RuntimeIOException(e);
         }
     }
