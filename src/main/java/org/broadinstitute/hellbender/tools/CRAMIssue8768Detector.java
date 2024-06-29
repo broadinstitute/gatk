@@ -8,25 +8,56 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
 /**
- * A diagnostic tool that analyzes a CRAM input file to look for conditions that trigger issue 8768.
+ * A diagnostic tool that analyzes a CRAM file to look for possible base corruption caused by
+ * <a href="https://github.com/broadinstitute/gatk/issues/8768">GATK issue 8768</a>.
  *
- * Writes a report to a file indicating whether the file appears to have read base corruption caused by 8768.
+ * <p>This issue affects GATK versions 4.3.0.0 through 4.5.0.0, and is fixed in GATK 4.6.0.0.</p>
  *
- * By default, the output report will have a summary of the average mismatch rate for all suspected bad containers
- * and a few presumed good containers in order to determine if there is a large difference in the base mismatch rate.
- * To analyze the base mismatch rate for ALL containers, use the "verbose" option.
+ * <p>This issue also affects Picard versions 2.27.3 through 3.1.1, and is fixed in Picard 3.2.0.</p>
  *
- * Works on files ending in .cram.
+ * <p>The bug is triggered when writing a CRAM file using one of the affected GATK/Picard versions,
+ * and both of the following conditions are met:</p>
  *
- * Sample Usage:
+ * <ul>
+ *     <li>At least one read is mapped to the very first base of a reference contig</li>
+ *     <li>The file contains more than one CRAM container (10,000 reads) with reads mapped to that same reference contig</li>
+ * </ul>
  *
- * gatk CRAMIssue8768Detector -I input.cram -O output.txt -R reference.fasta
+ * <p>When both of these conditions are met, the resulting CRAM file may have corrupt containers containing reads
+ * with an incorrect sequence.</p>
+ *
+ * <p>This tool writes a report to an output text file indicating whether the CRAM file appears to have read base corruption caused by issue 8768,
+ * and listing the affected containers. By default, the output report will have a summary of the average mismatch rate for all suspected bad containers
+ * and a few presumed good containers in order to determine if there is a large difference in the base mismatch rate.</p>
+ *
+ * <p>Optionally, a TSV file with the same information as the textual report, but in tabular form, can be written
+ * using the "--output-tsv" argument.</p>
+ *
+ * <p>To analyze the base mismatch rate for ALL containers, use the "verbose" option.</p>
+ *
+ * <p>Works on files ending in .cram.</p>
+ * <br />
+ *
+ * <h4>Sample Usage:</h4>
+ * <pre>
+ * gatk CRAMIssue8768Detector \
+ *     -I input.cram \
+ *     -O output_report.txt \
+ *     -R reference.fasta
+ * </pre>
+ * <pre>
+ * gatk CRAMIssue8768Detector \
+ *     -I input.cram \
+ *     -O output_report.txt \
+ *     -R reference.fasta \
+ *     --output-tsv output_report_as_table.tsv
+ * </pre>
  */
 @ExperimentalFeature
 @WorkflowProperties
 @CommandLineProgramProperties(
-        summary = "Analyze a CRAM file for issue 8768",
-        oneLineSummary = "Analyze a CRAM file for issue 8768",
+        summary = "Analyze a CRAM file to check for base corruption caused by GATK issue 8768",
+        oneLineSummary = "Analyze a CRAM file to check for base corruption caused by GATK issue 8768",
         programGroup = OtherProgramGroup.class
 )
 public class CRAMIssue8768Detector extends CommandLineProgram {
@@ -35,7 +66,7 @@ public class CRAMIssue8768Detector extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "Input path of file to analyze",
+            doc = "Input path of CRAM file to analyze",
             common = true)
     @WorkflowInput
     public GATKPath inputPath;

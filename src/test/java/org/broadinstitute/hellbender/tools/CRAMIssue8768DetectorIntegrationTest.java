@@ -1,15 +1,14 @@
-package org.broadinstitute.hellbender;
+package org.broadinstitute.hellbender.tools;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.broadinstitute.hellbender.tools.CRAMIssue8768Detector;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.List;
 
 public class CRAMIssue8768DetectorIntegrationTest extends CommandLineProgramTest {

@@ -81,7 +81,6 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
     @DataProvider(name="testingData")
     public Object[][] testingData() {
         return new String[][]{
-//                {"/Users/cnorman/projects/gatk/ultMerge.testfix.cram", ".cram", "/Users/cnorman/projects/gatk/Homo_sapiens_assembly19_1000genomes_decoy.fasta"},
                 {"print_reads.sam", ".sam", null},
                 {"print_reads.sam", ".bam", null},
                 {"print_reads.sam", ".cram", "print_reads.fasta"},
