@@ -149,12 +149,17 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     scatter(i in range(length(JointVariantCalling.output_vcfs))) {
-        call ValidateVcf {
+        call ValidateVariants {
             input:
                 input_vcf = JointVariantCalling.output_vcfs[i],
                 input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
                 ref_fasta = reference_fasta,
                 gatk_docker = effective_gatk_docker,
+        }
+        call ValidateVcf {
+            input:
+                input_vcf = JointVariantCalling.output_vcfs[i],
+                variants_docker = effective_variants_docker
         }
     }
 
@@ -443,7 +448,7 @@ task AssertTableSizesAreExpected {
     }
 }
 
-task ValidateVcf {
+task ValidateVariants {
     input {
         File input_vcf
         File input_vcf_index
@@ -488,6 +493,51 @@ task ValidateVcf {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task ValidateVcf {
+    input {
+        File input_vcf
+
+        Int? preemptible_tries
+        String variants_docker
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    parameter_meta {
+        input_vcf: {
+           localization_optional: true
+        }
+        input_vcf_index: {
+            localization_optional: true
+        }
+        ref_fasta: {
+            localization_optional: true
+        }
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        vcf-validator ~{input_vcf} >& output.txt
+    >>>
+
+    runtime {
+        docker: variants_docker
+        preemptible: select_first([preemptible_tries, 3])
+        memory: "3 GiB"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        File output_file = "output.txt"
         File monitoring_log = "monitoring.log"
     }
 }

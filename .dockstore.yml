@@ -290,6 +290,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1433_Add_vcf_validator_ToTests
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -299,6 +300,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1433_Add_vcf_validator_ToTests
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -309,6 +311,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1396_bq_query_audit
+             - gg_VS-1433_Add_vcf_validator_ToTests
          tags:
              - /.*/
    - name: GvsIngestTieout
