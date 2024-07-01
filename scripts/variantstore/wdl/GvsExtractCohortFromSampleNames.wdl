@@ -42,6 +42,8 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
+    File? target_interval_list
+
     String? git_branch_or_tag
     String? gatk_docker
     File? gatk_override
@@ -159,7 +161,8 @@ workflow GvsExtractCohortFromSampleNames {
       gatk_docker = effective_gatk_docker,
       git_hash = effective_git_hash,
       variants_docker = effective_variants_docker,
-      write_cost_to_db = write_cost_to_db
+      write_cost_to_db = write_cost_to_db,
+      target_interval_list = target_interval_list,
   }
 
   output {

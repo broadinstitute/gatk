@@ -29,6 +29,8 @@ workflow GvsExtractCallset {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
+    File? target_interval_list
+
     String? variants_docker
     String? cloud_sdk_docker
     String? gatk_docker
@@ -348,6 +350,8 @@ task ExtractTask {
     Int? local_sort_max_records_in_ram = 10000000
     Int? maximum_alternate_alleles
 
+    File? target_interval_list
+
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
   }
@@ -421,6 +425,18 @@ task ExtractTask {
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
         ~{cost_observability_line}
+
+    if [[ -n "~{target_interval_list}" ]]
+    then
+      pre_off_target_vcf="pre_off_target_~{output_file}"
+      mv ~{output_file} ${pre_off_target_vcf}
+      mv ~{output_file}.tbi "${pre_off_target_vcf}.tbi"
+      gatk --java-options "-Xmx${memory_mb}m" \
+        VariantFiltration \
+          ~{"--filter-not-in-mask --mask-name OUTSIDE_OF_TARGETS --mask-description 'Outside of sequencing target intervals' --mask " + target_interval_list} \
+          -O ~{output_file}
+          -V ${pre_off_target_vcf}
+    fi
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')

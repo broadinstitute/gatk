@@ -309,8 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1396_bq_query_audit
-             - gg_VS-1395_Have_CreateVATFromVDS_MoreGoodness
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsIngestTieout

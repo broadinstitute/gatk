@@ -34,6 +34,7 @@ workflow GvsQuickstartVcfIntegration {
         String? workspace_id
         String? submission_id
 
+        File? target_interval_list
         Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
@@ -113,6 +114,7 @@ workflow GvsQuickstartVcfIntegration {
             git_hash = effective_git_hash,
             tighter_gcp_quotas = false,
             maximum_alternate_alleles = maximum_alternate_alleles,
+            target_interval_list = target_interval_list,
             extract_output_gcs_dir = extract_output_gcs_dir,
     }
 

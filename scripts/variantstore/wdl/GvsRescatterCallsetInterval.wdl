@@ -14,6 +14,7 @@ workflow GvsRescatterCallsetInterval {
     String output_file_base_name
     String project_id
     Int re_scatter_count
+    File? target_interval_list
 
     Int? extract_preemptible_override
     String? final_output_gcs_dir
@@ -50,6 +51,7 @@ workflow GvsRescatterCallsetInterval {
         interval_list = sub(interval_file_dir, "/$", "") + '/' + intervals_to_scatter[i] + "-scattered.interval_list",
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
+        target_interval_list = target_interval_list,
         gatk_docker = effective_gatk_docker,
         cloud_sdk_docker = effective_cloud_sdk_docker,
         variants_docker = effective_variants_docker,

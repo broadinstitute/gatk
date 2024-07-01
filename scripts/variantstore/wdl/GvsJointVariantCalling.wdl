@@ -58,6 +58,8 @@ workflow GvsJointVariantCalling {
         String? extract_table_prefix
         String? filter_set_name
 
+        File? target_interval_list
+
         # Overrides to be passed to GvsCreateFilterSet
         Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
         Int? INDEL_VQSR_CLASSIC_mem_gb_override
@@ -228,6 +230,7 @@ workflow GvsJointVariantCalling {
             bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             maximum_alternate_alleles = maximum_alternate_alleles,
+            target_interval_list = target_interval_list,
     }
 
     output {

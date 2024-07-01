@@ -21,6 +21,7 @@ workflow GvsQuickstartIntegration {
         String exome_vcf_files_column_name = "hg38_reblocked_gvcf"
         String exome_vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
         String exome_sample_set_name = "exome_integration_sample_set"
+        File? target_interval_list = "gs://broad-gotc-test-storage/JointGenotyping/inputs/scientific/bge/TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list"
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -250,6 +251,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                target_interval_list = target_interval_list,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
