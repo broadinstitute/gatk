@@ -8,7 +8,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2024-06-24-alpine-build-base as build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2024-07-01-alpine-build-base as build
 
 # Install all of our variantstore Python requirements.
 COPY requirements.txt requirements.txt
