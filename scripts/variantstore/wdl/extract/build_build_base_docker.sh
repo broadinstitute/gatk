@@ -47,4 +47,4 @@ fi
 docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
 docker push "${GCR_TAG}"
 
-echo "docker image  pushed to \"${GCR_TAG}\""
+echo "docker image pushed to \"${GCR_TAG}\""
