@@ -19,7 +19,7 @@ class GeneralizedContinuousModel(Model):
 
     def _get_var_name(self, var) -> str:
         assert hasattr(var, 'name')
-        name = self.rvs_to_values[var].name # TODO transformed name
+        name = self.rvs_to_values[var].name
         return name
 
     def _assert_var_is_unannotated(self, var):

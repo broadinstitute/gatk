@@ -866,7 +866,8 @@ class DenoisingModel(GeneralizedContinuousModel):
         else:
             raise Exception("Unknown q_c expectation mode; an exception should have been raised earlier")
 
-        # PR #8561 originally DensityDist in PyMC3, but this now raises an error about sampling
+        # originally DensityDist in PyMC3, but this now raises an error about sampling;
+        # changed in https://github.com/broadinstitute/gatk/pull/8561
         Potential(name='n_st_obs',
                   var=_copy_number_emission_logp(shared_workspace.n_st))
 

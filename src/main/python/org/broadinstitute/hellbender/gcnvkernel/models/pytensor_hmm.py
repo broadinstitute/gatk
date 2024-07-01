@@ -317,12 +317,12 @@ class PytensorForwardBackward:
                                         log_trans_tcc: types.PytensorTensor3,
                                         log_emission_tc: types.PytensorMatrix,
                                         temperature: pt.scalar):
-        inv_temperature = pt.reciprocal(temperature) # TODO inv to reciprocal
+        inv_temperature = pt.reciprocal(temperature)
 
         thermal_log_prior_c = inv_temperature * log_prior_c
         thermal_log_prior_c -= logsumexp(thermal_log_prior_c)
         thermal_log_trans_tcc = inv_temperature * log_trans_tcc
-        thermal_log_trans_tcc -= logsumexp(thermal_log_trans_tcc, axis=-1) # TODO check this
+        thermal_log_trans_tcc -= logsumexp(thermal_log_trans_tcc, axis=-1)
         thermal_log_emission_tc = inv_temperature * log_emission_tc
 
         return thermal_log_prior_c, thermal_log_trans_tcc, thermal_log_emission_tc

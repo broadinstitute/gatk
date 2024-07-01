@@ -289,7 +289,6 @@ def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[VarMap
     # Unfortunately, this new functionality appears to be somewhat brittle and yields an error in our use case.
     # We instead bring the old VarMap class into this module and recreate the old functionality to
     # preserve our preexisting interfaces.
-    # TODO
     var_map_list = []
     for var, slc, shp, dtyp in approx.ordering.values():
         var_map_list.append(VarMap(var, slc, shp, dtyp))
