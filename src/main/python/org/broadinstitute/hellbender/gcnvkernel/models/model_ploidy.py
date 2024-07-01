@@ -213,7 +213,6 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_global = self.register_as_global
         register_as_sample_specific = self.register_as_sample_specific
 
-        # TODO check Bound -> TruncatedNormal
         # mean per-contig bias
         mean_bias_j = TruncatedNormal(name='mean_bias_j',
                                       mu=1.0,
@@ -235,7 +234,7 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_sample_specific(psi_s, sample_axis=0)
 
         # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_sj = pt.maximum(pt.reciprocal((pt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0)), # TODO inv to reciprocal
+        alpha_sj = pt.maximum(pt.reciprocal((pt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0)),
                               _eps)
 
         # mean ploidy per contig per sample
@@ -267,13 +266,8 @@ class PloidyModel(GeneralizedContinuousModel):
             return _logp_sjk
 
 
-        # TODO originally DensityDist, but this raised an error about random
-        # Mixture(name='n_sj_obs',
-        #         w=q_ploidy_sjk,
-        #         comp_dists=NegativeBinomial.dist(
-        #             mu=mu_sjk,
-        #             alpha=alpha_sj.dimshuffle(0, 1, 'x')),
-        #         observed=n_sj)
+        # originally DensityDist, but this raised an error about random;
+        # changed in https://github.com/broadinstitute/gatk/pull/8561
         Potential(name='n_sj_obs',
                   var=pt.sum(q_ploidy_sjk * _get_logp_sjk(n_sj)))
 

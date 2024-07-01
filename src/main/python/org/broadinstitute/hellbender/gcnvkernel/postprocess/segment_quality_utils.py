@@ -113,7 +113,7 @@ class HMMSegmentationQualityCalculator:
                          c_log_trans_cc: pt.matrix,
                          p_alpha_c: pt.vector):
             return c_log_emission_c + commons.logsumexp(
-                p_alpha_c.dimshuffle(0, 'x') + c_log_trans_cc, axis=0).dimshuffle(1) # TODO check this
+                p_alpha_c.dimshuffle(0, 'x') + c_log_trans_cc, axis=0).dimshuffle(1)
 
         alpha_seg_iters, _ = pytensor.scan(
             fn=update_alpha,

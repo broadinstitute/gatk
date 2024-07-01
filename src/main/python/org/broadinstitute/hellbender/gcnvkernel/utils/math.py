@@ -78,7 +78,6 @@ def logsumexp_double_complement(a: np.ndarray, rel_tol: float = 1e-3) -> float:
     Returns:
         a float scalar
     """
-    print(a)
     try:
         assert isinstance(a, np.ndarray)
         a = np.asarray(a.copy(), dtype=float)

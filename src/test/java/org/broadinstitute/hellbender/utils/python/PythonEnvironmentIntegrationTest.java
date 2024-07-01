@@ -42,7 +42,7 @@ public class PythonEnvironmentIntegrationTest {
     @DataProvider(name="dataPackageMKLEnabled")
     public Object[][] getDataPackageMKLEnabled() {
         return new Object[][] {
-                // { "numpy",          "numpy.__config__.get_info('blas_mkl_info') != {} and numpy.__config__.get_info('lapack_mkl_info') != {}" },  TODO this check might need to be done differently for conda-forge numpy 1.26.2, we remove it for now
+                // { "numpy",          "numpy.__config__.get_info('blas_mkl_info') != {} and numpy.__config__.get_info('lapack_mkl_info') != {}" },  TODO this check was removed after the update to conda-forge numpy 1.26.2, see https://github.com/broadinstitute/gatk/pull/8561
                 { "pytensor",       "'-lmkl_rt' in pytensor.config.blas__ldflags" },
                 { "torch",          "'BLAS_INFO=mkl' in torch.__config__.show() and 'USE_MKL=ON' in torch.__config__.show()" }
         };
