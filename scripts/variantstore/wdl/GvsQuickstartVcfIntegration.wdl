@@ -507,12 +507,6 @@ task ValidateVcf {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    parameter_meta {
-        input_vcf: {
-           localization_optional: true
-        }
-    }
-
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
