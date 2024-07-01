@@ -393,7 +393,7 @@ public abstract class ExtractCohort extends ExtractTool {
         }
 
         if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
-            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Sample Genotype Filter Field"));
+            extraHeaderLines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_FILTER_KEY));
         }
 
         if (emitPLs) {

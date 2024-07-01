@@ -35,7 +35,9 @@ To see details about input requirements, see [Run Your Own Samples](https://gith
 
 While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are currently supported by the beta workflow.
 
-Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions. For information on how that interval list was generated, see `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list.README.md`.
+Note that, by default, the Exomes Beta workflow uses two interval lists by default:
+1. The calling region interval list defaults to the Blended Genome Exome Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` . For information on how that interval list was generated, see `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list.README.md`.
+1. The target region interval list defaults to `gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list``. Any variants called outside these interval will be *genotype* filtered with `OUTSIDE_OF_TARGETS`.
 
 ### What does it return as output?
 

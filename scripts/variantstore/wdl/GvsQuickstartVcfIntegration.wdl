@@ -34,6 +34,7 @@ workflow GvsQuickstartVcfIntegration {
         String? workspace_id
         String? submission_id
 
+        File? target_interval_list
         Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
@@ -113,6 +114,7 @@ workflow GvsQuickstartVcfIntegration {
             git_hash = effective_git_hash,
             tighter_gcp_quotas = false,
             maximum_alternate_alleles = maximum_alternate_alleles,
+            target_interval_list = target_interval_list,
             extract_output_gcs_dir = extract_output_gcs_dir,
     }
 
@@ -231,7 +233,7 @@ task AssertIdenticalOutputs {
           actual="actual/$vcf"
           expected="expected/$vcf"
           set +o errexit
-          cmp <(grep '^#' $actual) <(grep '^#' $expected)
+          cmp <(grep '^#' $actual | grep -E -v '^##GATKCommandLine=') <(grep '^#' $expected | grep -E -v '^##GATKCommandLine=')
           rc=$?
           set -o errexit
           if [[ $rc -ne 0 ]]; then
@@ -260,7 +262,7 @@ task AssertIdenticalOutputs {
           expected="expected/$vcf"
           actual="actual/$vcf"
           set +o errexit
-          cmp $actual $expected
+          cmp <(grep -E -v '^##GATKCommandLine=' $actual) <(grep -E -v '^##GATKCommandLine=' $expected)
           rc=$?
           set -o errexit
           if [[ $rc -ne 0 ]]; then

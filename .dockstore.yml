@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -126,6 +127,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -135,6 +137,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -164,7 +167,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1379-ploidy
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -174,6 +177,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -183,6 +187,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -194,6 +199,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -280,6 +286,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -307,7 +314,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1225
+             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsIngestTieout

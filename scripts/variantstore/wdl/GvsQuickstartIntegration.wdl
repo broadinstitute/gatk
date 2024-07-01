@@ -20,6 +20,7 @@ workflow GvsQuickstartIntegration {
         String wgs_sample_set_name = "wgs_integration_sample_set"
         String exome_sample_set_name = "exome_integration_sample_set"
         String bge_sample_set_name = "bge_integration_sample_set"
+        File? target_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list`"
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -33,7 +34,7 @@ workflow GvsQuickstartIntegration {
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-05-23/" + expected_subdir
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-07-03/" + expected_subdir
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -249,6 +250,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                target_interval_list = target_interval_list,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {

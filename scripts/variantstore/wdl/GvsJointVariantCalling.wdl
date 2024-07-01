@@ -58,6 +58,8 @@ workflow GvsJointVariantCalling {
         String? extract_table_prefix
         String? filter_set_name
 
+        File? target_interval_list
+
         # Overrides to be passed to GvsCreateFilterSet
         Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
         Int? INDEL_VQSR_CLASSIC_mem_gb_override
@@ -70,15 +72,15 @@ workflow GvsJointVariantCalling {
         Int? maximum_alternate_alleles
     }
 
-    # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use
-    # the same weighted bed file for whole genomes and exomes.
-    # But, if interval_list is defined, we'll use that instead of choosing based on is_wgs
+    # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
+    # We currently use the same weighted bed file for whole genomes and exomes. However if `interval_list` is defined,
+    # we'll use that instead of choosing based on `is_wgs`.
     File default_interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
                                              else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     File interval_list_to_use = select_first([interval_list, default_interval_list])
 
-    # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
-    # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
+    # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
+    # To make sure nothing is broken by creative users we replace spaces and underscores with hyphens.
     String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|\_+", "-")])
     String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|\_+", "-")])
     String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|\_+", "-")])
@@ -228,6 +230,7 @@ workflow GvsJointVariantCalling {
             bgzip_output_vcfs = bgzip_output_vcfs,
             is_wgs = is_wgs,
             maximum_alternate_alleles = maximum_alternate_alleles,
+            target_interval_list = target_interval_list,
     }
 
     output {
