@@ -199,7 +199,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         final List<Genotype> genotypes = item.getGenotypes().stream().map(SVConcordance::stripTruthGenotype).collect(Collectors.toList());
         return new SVCallRecord(item.getId(), item.getContigA(), item.getPositionA(),
                 item.getStrandA(), item.getContigB(), item.getPositionB(), item.getStrandB(), item.getType(),
-                item.getCpxSubtype(), item.getLength(), item.getAlgorithms(), item.getAlleles(), genotypes,
+                item.getComplexSubtype(), item.getLength(), item.getAlgorithms(), item.getAlleles(), genotypes,
                 item.getAttributes(), item.getFilters(), item.getLog10PError(), dictionary);
     }
 

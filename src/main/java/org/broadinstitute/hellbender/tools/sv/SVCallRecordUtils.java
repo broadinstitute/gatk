@@ -91,7 +91,7 @@ public final class SVCallRecordUtils {
             builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
         }
         if (cpxType != null) {
-            builder.attribute(GATKSVVCFConstants.CPX_TYPE, record.getComplexSubtype().toString());
+            builder.attribute(GATKSVVCFConstants.CPX_TYPE, getComplexSubtypeString(cpxType));
         }
 
         builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
@@ -329,8 +329,7 @@ public final class SVCallRecordUtils {
         final int positionA = variant.getStart();
 
         final GATKSVVCFConstants.StructuralVariantAnnotationType type = inferStructuralVariantType(variant);
-        final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype =
-                type == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX ? getComplexSubtype(variant) : null;
+        final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype = getComplexSubtype(variant);
         final List<String> algorithms = getAlgorithms(variant);
 
         final String strands;
@@ -426,15 +425,19 @@ public final class SVCallRecordUtils {
 
     public static GATKSVVCFConstants.ComplexVariantSubtype getComplexSubtype(final VariantContext variant) {
         Utils.nonNull(variant);
-        final String subtypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
+        String subtypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
         if (subtypeString == null) {
             return null;
         }
-        if (!VALID_CPX_SUBTYPES.contains(subtypeString)) {
+        if (!GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.containsKey(subtypeString)) {
             throw new IllegalArgumentException("Invalid CPX subtype: " + subtypeString + ", valid values are: " +
                     String.join(", ", VALID_CPX_SUBTYPES));
         }
-        return GATKSVVCFConstants.ComplexVariantSubtype.valueOf(subtypeString);
+        return GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.get(subtypeString);
+    }
+
+    public static String getComplexSubtypeString(final GATKSVVCFConstants.ComplexVariantSubtype subtype) {
+        return GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.inverse().get(subtype);
     }
 
     private static String getStrands(final VariantContext variant, final GATKSVVCFConstants.StructuralVariantAnnotationType type) {

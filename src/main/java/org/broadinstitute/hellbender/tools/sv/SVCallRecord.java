@@ -384,7 +384,4 @@ public class SVCallRecord implements SVLocatable {
         return log10PError;
     }
 
-    public GATKSVVCFConstants.ComplexVariantSubtype getCpxSubtype() {
-        return cpxSubtype;
-    }
 }
