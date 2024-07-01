@@ -8,7 +8,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-build-base as build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2024-07-01-alpine-build-base as build
 
 # Install all of our variantstore Python requirements.
 COPY requirements.txt requirements.txt
@@ -21,12 +21,14 @@ RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
 
 # Add any generally useful Alpine packages here.
-RUN apk add --no-cache jq
+RUN apk add --no-cache perl jq
 
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /root/.local /root/.local
 # Copy bcftools artifacts
 COPY --from=build /bcftools /bcftools
+# Copy vcftools artifacts
+COPY --from=build /vcftools /vcftools
 
 # Copy the application source code.
 RUN mkdir /app
@@ -37,5 +39,6 @@ COPY *.sql /app/
 RUN mkdir -p /data/variant_annotation_table/schema
 COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
-ENV PATH=/bcftools/bin\:$PATH
+ENV PERL5LIB=/vcftools/share/perl5/site_perl/:$PERL5LIB
+ENV PATH=/bcftools/bin\:/vcftools/bin\:$PATH
 WORKDIR /app
