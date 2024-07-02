@@ -435,7 +435,7 @@ task ExtractTask {
       gatk --java-options "-Xmx${memory_mb}m" \
         VariantFiltration \
           ~{"--filter-not-in-mask --mask-name OUTSIDE_OF_TARGETS --mask-description 'Outside of sequencing target intervals' --mask " + target_interval_list} \
-          -O ~{output_file}
+          -O ~{output_file} \
           -V ${pre_off_target_vcf}
     fi
 
