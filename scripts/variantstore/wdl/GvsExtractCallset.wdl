@@ -432,6 +432,11 @@ task ExtractTask {
       pre_off_target_vcf="pre_off_target_~{output_file}"
       mv ~{output_file} ${pre_off_target_vcf}
       mv ~{output_file}.tbi "${pre_off_target_vcf}.tbi"
+
+      gatk --java-options "-Xmx${memory_mb}m" \
+        IndexFeatureFile \
+          -I ~{target_interval_list}
+
       gatk --java-options "-Xmx${memory_mb}m" \
         VariantFiltration \
           ~{"--filter-not-in-mask --mask-name OUTSIDE_OF_TARGETS --mask-description 'Outside of sequencing target intervals' --mask " + target_interval_list} \
