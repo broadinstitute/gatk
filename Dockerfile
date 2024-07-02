@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.2.0
+ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.3.0
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
@@ -85,7 +85,7 @@ ENV CLASSPATH=/gatk/gatk.jar:$CLASSPATH PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PA
 
 # Start GATK Python environment
 
-RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
+RUN conda env create -vv -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -afy && \

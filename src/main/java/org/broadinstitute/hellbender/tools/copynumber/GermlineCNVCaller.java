@@ -92,12 +92,12 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * <p>OpenMP and MKL parallelism can be controlled by setting the <code>OMP_NUM_THREADS</code> and <code>MKL_NUM_THREADS</code>
  * environment variables, respectively.</p>
  *
- * <p>Advanced users may wish to set the <code>THEANO_FLAGS</code> environment variable to override the GATK theano
+ * <p>Advanced users may wish to set the <code>PYTENSOR_FLAGS</code> environment variable to override the GATK PyTensor
  * configuration. For example, by running
- * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk GermlineCNVCaller ...</code>, users can specify
- * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
- * at <a href="https://theano-pymc.readthedocs.io/en/latest/library/config.html">
- *     https://theano-pymc.readthedocs.io/en/latest/library/config.html</a>.
+ * <code>PYTENSOR_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk DetermineGermlineContigPloidy ...</code>, users can specify
+ * the PyTensor compilation directory (which is set to <code>$HOME/.pytensor</code> by default).  See PyTensor documentation
+ * at <a href="https://pytensor.readthedocs.io/en/latest/library/config.html">
+ *     https://pytensor.readthedocs.io/en/latest/library/config.html</a>.
  * </p>
  *
  * <h3>Resource usage</h3>

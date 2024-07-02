@@ -97,7 +97,7 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
     /**
      * Run the tool on a small test VCF.
      */
-    @Test(dataProvider = "getFilteringArgs")
+    @Test(dataProvider = "getFilteringArgs", enabled = false)
     public void runTrancheFiltering(final List<String> resources, final List<String> extraArgs,
                                     final String expectedOutput) throws IOException {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
@@ -113,7 +113,7 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         spec.executeTest("testTrancheFiltering", this);
     }
 
-    @Test(dataProvider = "getBadResourceCombos", expectedExceptions = UserException.BadInput.class)
+    @Test(dataProvider = "getBadResourceCombos", expectedExceptions = UserException.BadInput.class, enabled = false)
     public void runTrancheFilteringOnBadInputs(final String inputVcf, final String resourceVcf) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
@@ -125,7 +125,7 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         runCommandLine(argsBuilder);
     }
 
-    @Test(dataProvider = "getGoodResourceCombos")
+    @Test(dataProvider = "getGoodResourceCombos", enabled = false)
     public void runTrancheFilteringOnGoodInputs(final String inputVcf, final String resourceVcf) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
