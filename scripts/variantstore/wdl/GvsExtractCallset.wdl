@@ -254,6 +254,7 @@ workflow GvsExtractCallset {
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
         maximum_alternate_alleles             = maximum_alternate_alleles,
+        target_interval_list                  = target_interval_list,
     }
   }
 
