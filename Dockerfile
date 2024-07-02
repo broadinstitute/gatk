@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=us.gcr.io/broad-dsde-methods/gatk-base-image-staging-area:gatkbase-3.3.0rc2
+ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.3.0
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
