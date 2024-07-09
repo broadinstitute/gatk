@@ -21,13 +21,14 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
 
 ### What does it return as output?
 
-The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input or in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket).
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
+- A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in MB
 - Manifest file containing the destinations and sizes in B of the output sharded joint VCF and index files
 
@@ -39,7 +40,7 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ### Step 1. Register for Terra
 
-The GVS workflow requires a Terra data table to run properly.  If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911).
+The GVS workflow requires Terra to run properly.  If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911).
 
 If you already have a Terra account, you can skip this step.
 
@@ -63,7 +64,7 @@ If you already have a GCP project that you would like to use to test the GVS wor
 
 ### Step 4. Create a BigQuery dataset
 
-BigQuery datasets store the tables created during the execution of the GVS workflow. A new dataset should be created for each callset you want to create using the workflow. Samples can be added to BiqQuery datasets cumulatively and any samples in the dataset will be included in the extracted callset. 
+BigQuery datasets store the tables created during the execution of the GVS workflow. A new dataset should be created for each callset you want to create using the workflow. 
 
 Create a dataset in BigQuery inside the GCP project you created in Step 3 (above) by following the instructions in the Google Cloud documentation article, [Creating datasets](https://cloud.google.com/bigquery/docs/datasets#create-dataset). We recommend that you select "Multi-region" for the dataset's "Location type" in order to avoid more restrictive Google quotas.
 
@@ -92,29 +93,15 @@ If you’ve done this correctly, you should see your Terra proxy group listed in
 
 ### Step 7. Clone the GVS beta workspace
 
-The GVS beta workspace in Terra is read-only, so you’ll need to clone the workspace to create a copy where you can upload your own data and run the workflow. Clone the workspace using the billing project you created in Step 2 (above) by following the instructions in the article [Make your own project workspace](https://support.terra.bio/hc/en-us/articles/360026130851).
+The GVS beta workspaces in Terra are read-only, so you’ll need to clone the workspace to create a copy where you can upload your own data and run the workflow. Clone the workspace using the billing project you created in Step 2 (above) by following the instructions in the article [Make your own project workspace](https://support.terra.bio/hc/en-us/articles/360026130851).
+
+The GVS beta workspace for genomes is [here](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) and the workspace for exomes is [here](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta). 
 
 ## Running the workflow
 
-The workflow in the GVS beta workspace is pre-configured to use the 10 sample GVCF files in the workspace Data tab.
+The workflow in the GVS beta workspace is pre-configured to use the 10 sample reblocked GVCF files in the workspace Data tab. See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
 
-The workflow is configured to call this input from the data table. To run:
-
-1. Select the "GvsBeta" workflow from the Workflows tab.
-1. Configure the workflow inputs.
-    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
-    1. Enter a GCS path for `extract_output_gcs_dir`, which is where the callset VCFs, VCF indexes and interval lists will be copied.
-    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    1. Ensure that the (optional) `is_wgs` parameter is set to false.
-    1. Check the workspace Data tab, and fill out the below inputs according to the data column names that contain the values you want to use:
-        - `sample_id_column_name`: a unique identifier for each sample (the workflow will fail if there are any duplicates)
-        - `vcf_files_column_name`: the path to the sample VCF file
-        - `vcf_index_files_column_name`: the path to the sample VCF index file
-1. **Save** the workflow configuration.
-1. **Run** the workflow.
-
-To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](./run-your-own-samples.md).
+To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 ### Time and cost
 Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
