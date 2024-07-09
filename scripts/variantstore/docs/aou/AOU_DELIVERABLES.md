@@ -96,6 +96,8 @@
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
     - For `GvsExtractCallset`, make sure to specify the appropriate `maximum_alternate_alleles` value (currently 100).
     - For `GvsExtractCallset`, if you want to output VCFs that are compressed using bgzip, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
+    - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs; the successful shards will call cache and only the failed ones will run.
+      - If you want to collect the monitoring logs from the `PgenExtractTask` shards, the `summarize_task_monitor_logs.py` script will not work if the task is scattered too wide.  Use the `summarize_task_monitor_logs_from_file.py` script, instead, which takes a FOFN of GCS paths instead of a space-separated series of localized files.
     - These workflows do not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCalculatePrecisionAndSensitivity` workflow
     - Please see the detailed instructions for running the Precision and Sensitivity workflow [here](../../tieout/AoU_PRECISION_SENSITIVITY.md).
