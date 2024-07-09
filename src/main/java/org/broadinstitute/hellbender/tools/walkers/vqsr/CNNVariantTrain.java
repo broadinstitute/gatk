@@ -57,8 +57,8 @@ import java.util.List;
         oneLineSummary = "Train a CNN model for filtering variants",
         programGroup = VariantFilteringProgramGroup.class
 )
+@DeprecatedFeature
 @DocumentedFeature
-@ExperimentalFeature
 public class CNNVariantTrain extends CommandLineProgram {
 
     @Argument(fullName = "input-tensor-dir", shortName = "input-tensor-dir", doc = "Directory of training tensors to create.")

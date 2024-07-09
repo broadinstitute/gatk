@@ -103,6 +103,7 @@ import com.intel.gkl.IntelGKLUtils;
  *   -weights path/to/my_model_folder/2dmodel.hd5
  * </pre>
  */
+@DeprecatedFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = CNNScoreVariants.USAGE_SUMMARY,
