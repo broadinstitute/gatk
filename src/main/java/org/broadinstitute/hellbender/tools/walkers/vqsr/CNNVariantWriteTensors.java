@@ -71,8 +71,8 @@ import java.util.List;
         oneLineSummary = "Write variant tensors for training a CNN to filter variants",
         programGroup = VariantFilteringProgramGroup.class
 )
+@DeprecatedFeature
 @DocumentedFeature
-@ExperimentalFeature
 public class CNNVariantWriteTensors extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,

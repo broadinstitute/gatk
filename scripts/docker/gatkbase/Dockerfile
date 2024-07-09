@@ -30,6 +30,7 @@ RUN apt update && \
     git \
     gpg-agent \
     build-essential \
+    libblas-dev \
     openjdk-17-jdk \
     vim \
     software-properties-common && \

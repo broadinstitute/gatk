@@ -684,7 +684,7 @@ task localDevCondaEnv(type: Exec) {
     dependsOn 'condaEnvironmentDefinition'
     inputs.file("$buildDir/$pythonPackageArchiveName")
     workingDir "$buildDir"
-    commandLine "conda", "env", "create", "--force", "-f", gatkCondaYML
+    commandLine "conda", "env", "create", "--yes", "-f", gatkCondaYML
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
