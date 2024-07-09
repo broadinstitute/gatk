@@ -507,6 +507,10 @@ task ValidateVcf {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
+    String base_vcf = basename(input_vcf)
+    Boolean is_bgzipped = basename(base_vcf, "bgz") != base_vcf
+    String bgzipped_vcf_renamed_as_gzipped = input_vcf + ".gz"
+
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -514,7 +518,16 @@ task ValidateVcf {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        vcf-validator ~{input_vcf} >& output.txt
+        if ~{is_bgzipped}; then
+            # Change the extension of the file so that vcf-validator can handle it (doesn't understand '.bgz' extension)
+            cp ~{input_vcf} ~{bgzipped_vcf_renamed_as_gzipped}
+            vcf-valiator ~{bgzipped_vcf_renamed_as_gzipped} >& validation_output.txt
+        else
+            vcf-validator ~{input_vcf} >& validation_output.txt
+        fi
+
+        # We should NOT find error messages about AD in the validation_output.txt file. If we do this grep will fail
+        grep AD validation_output.txt
     >>>
 
     runtime {
@@ -525,7 +538,7 @@ task ValidateVcf {
     }
 
     output {
-        File output_file = "output.txt"
+        File output_file = "validation_output.txt"
         File monitoring_log = "monitoring.log"
     }
 }
