@@ -208,7 +208,7 @@ public class SVCallRecordUtilsUnitTest {
                                 .attribute(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX)
                                 .attribute(GATKSVVCFConstants.CPX_TYPE, GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL.name())
                                 .attribute(GATKSVVCFConstants.SVLEN, 100)
-                                .attribute(GATKSVVCFConstants.CPX_INTERVALS, "DUP_chr1:5000-5100,DEL_chr2:100-200")
+                                .attribute(GATKSVVCFConstants.CPX_INTERVALS, "DEL_chr2:100-200,DUP_chr1:5000-5100")
                                 .make(),
                         Collections.emptyList()
                 },

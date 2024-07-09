@@ -113,7 +113,7 @@ public class SVCallRecord implements SVLocatable {
         this.positionB = positionB;
         this.type = Utils.nonNull(type);
         this.cpxSubtype = cpxSubtype;
-        this.cpxIntervals = cpxIntervals;
+        this.cpxIntervals = canonicalizeComplexEventList(cpxIntervals);
         this.algorithms = Collections.unmodifiableList(algorithms);
         this.alleles = Collections.unmodifiableList(alleles);
         this.altAlleles = alleles.stream().filter(allele -> !allele.isNoCall() && !allele.isReference()).collect(Collectors.toList());
@@ -146,17 +146,20 @@ public class SVCallRecord implements SVLocatable {
                 throw new IllegalArgumentException("End precedes start in variant " + id);
             }
         }
-        ComplexEventInterval lastInterval = null;
         for (final ComplexEventInterval interval : cpxIntervals) {
             Utils.nonNull(interval);
             validatePosition(interval.getContig(), interval.getStart(), dictionary);
             validatePosition(interval.getContig(), interval.getEnd(), dictionary);
-            if (lastInterval != null && IntervalUtils.compareLocatables(lastInterval, interval, dictionary) > 0) {
-                throw new IllegalArgumentException("Complex intervals out of order: " + lastInterval + " and "
-                        + interval + " in variant " + id);
-            }
-            lastInterval = interval;
         }
+    }
+
+    /**
+     * Sorts complex intervals list so that they can be efficiently compared across records.
+     * @param intervals complex intervals
+     * @return canonicalized list
+     */
+    private static List<ComplexEventInterval> canonicalizeComplexEventList(final List<ComplexEventInterval> intervals) {
+        return intervals.stream().sorted(Comparator.comparing(ComplexEventInterval::encode)).collect(Collectors.toList());
     }
 
     private static void validatePosition(final String contig, final int position, final SAMSequenceDictionary dictionary) {
