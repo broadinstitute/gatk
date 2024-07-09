@@ -18,8 +18,8 @@ def parse_monitoring_log_files(mlog_file, output_file):
                  f"%)\tTask\tShard\tFile\n"
         output.write(header)
 
+        client = storage.Client()
         for path in input:
-            client = storage.Client()
             gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<blob_name>.*)$")
             match = gcs_re.match(path)
 
