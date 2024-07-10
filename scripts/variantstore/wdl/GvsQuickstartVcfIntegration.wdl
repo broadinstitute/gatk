@@ -509,7 +509,6 @@ task ValidateVcf {
 
     String base_vcf = basename(input_vcf)
     Boolean is_bgzipped = basename(base_vcf, "bgz") != base_vcf
-    String bgzipped_vcf_renamed_as_gzipped = input_vcf + ".gz"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -520,8 +519,8 @@ task ValidateVcf {
 
         if ~{is_bgzipped}; then
             # Change the extension of the file so that vcf-validator can handle it (doesn't understand '.bgz' extension)
-            cp ~{input_vcf} ~{bgzipped_vcf_renamed_as_gzipped}
-            vcf-valiator ~{bgzipped_vcf_renamed_as_gzipped} >& validation_output.txt
+            cp ~{input_vcf} ~{input_vcf}.gz
+            vcf-valiator ~{input_vcf}.gz >& validation_output.txt
         else
             vcf-validator ~{input_vcf} >& validation_output.txt
         fi
