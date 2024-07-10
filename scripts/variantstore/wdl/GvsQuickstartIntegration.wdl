@@ -5,7 +5,7 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsJointVariantCalling.wdl" as JointVariantCalling
 import "GvsUtils.wdl" as Utils
 
-# This here is a comment..
+# This here is a comment...
 
 workflow GvsQuickstartIntegration {
     input {
@@ -297,6 +297,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 git_branch_or_tag = git_branch_or_tag,
+                sample_set_name = wgs_sample_set_name,
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
