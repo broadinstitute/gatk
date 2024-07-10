@@ -526,8 +526,16 @@ task ValidateVcf {
             vcf-validator ~{input_vcf} >& validation_output.txt
         fi
 
+        set +o errexit
+
         # We should NOT find error messages about AD in the validation_output.txt file. If we do this grep will fail
         grep AD validation_output.txt
+        if [[ $? -eq 0 ]]; then
+            exit 1
+        fi
+
+        set -o errexit
+
     >>>
 
     runtime {
