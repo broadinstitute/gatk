@@ -164,7 +164,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1379-ploidy
+             - methods_sensitivity_args
          tags:
              - /.*/
    - name: GvsImportGenomes

@@ -23,6 +23,9 @@ workflow GvsExtractCallset {
     Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
 
+    Float truth_sensitivity_SNP_threshold = 99.7
+    Float truth_sensitivity_INDEL_threshold = 99.0
+
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
 
@@ -239,6 +242,8 @@ workflow GvsExtractCallset {
         fq_ploidy_mapping_table               = fq_ploidy_mapping_table,
         fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
         filter_set_name                       = filter_set_name,
+        truth_sensitivity_SNP_threshold       = truth_sensitivity_SNP_threshold,
+        truth_sensitivity_INDEL_threshold     = truth_sensitivity__threshold,
         drop_state                            = drop_state,
         output_file                           = vcf_filename + vcf_extension,
         output_gcs_dir                        = output_gcs_dir,
@@ -335,6 +340,8 @@ task ExtractTask {
     String fq_filter_set_site_table
     String? fq_filter_set_tranches_table
     String? filter_set_name
+    Float truth_sensitivity_SNP_threshold = 99.7
+    Float truth_sensitivity_INDEL_threshold = 99.0
     Boolean write_cost_to_db
 
     # Runtime Options:
@@ -417,6 +424,8 @@ task ExtractTask {
         ~{"--sample-ploidy-table " + fq_ploidy_mapping_table} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
+        --snps-truth-sensitivity-filter-level ~{truth_sensitivity_SNP_threshold} \
+        --indels-truth-sensitivity-filter-level ~{truth_sensitivity_INDEL_threshold} \
         --wdl-step GvsExtractCallset \
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
