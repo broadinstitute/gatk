@@ -243,7 +243,7 @@ workflow GvsExtractCallset {
         fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
         filter_set_name                       = filter_set_name,
         truth_sensitivity_SNP_threshold       = truth_sensitivity_SNP_threshold,
-        truth_sensitivity_INDEL_threshold     = truth_sensitivity__threshold,
+        truth_sensitivity_INDEL_threshold     = truth_sensitivity_INDEL_threshold,
         drop_state                            = drop_state,
         output_file                           = vcf_filename + vcf_extension,
         output_gcs_dir                        = output_gcs_dir,
