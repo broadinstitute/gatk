@@ -17,6 +17,7 @@ workflow GvsCreateVATfromVDS {
         String? basic_docker
         String? git_branch_or_tag
         String? hail_version
+        File? hail_wheel
         String? vat_version
         String? workspace_gcs_project
 
@@ -143,6 +144,7 @@ workflow GvsCreateVATfromVDS {
                     use_classic_VQSR = use_classic_VQSR,
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
+                    hail_wheel = hail_wheel,
                     ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
                     workspace_bucket = GetToolVersions.workspace_bucket,
                     region = region,
@@ -311,6 +313,7 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
+        File? hail_wheel
         String ancestry_file_path
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
@@ -328,14 +331,17 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         pip3 install --upgrade pip
-        pip3 install hail~{'==' + hail_version}
+        if [[ ! -z "~{hail_wheel}" ]]
+        then
+            pip3 install ~{hail_wheel}
+        else
+            pip3 install hail~{'==' + hail_version}
+        fi
 
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        # hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
-        # HACK hard code the hex so sites-only Hail table pieces have matching names between runs.
-        hex="997d8faf-6cf5"
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
