@@ -520,7 +520,7 @@ task ValidateVcf {
         if ~{is_bgzipped}; then
             # Change the extension of the file so that vcf-validator can handle it (doesn't understand '.bgz' extension)
             cp ~{input_vcf} ~{input_vcf}.gz
-            vcf-valiator ~{input_vcf}.gz >& validation_output.txt
+            vcf-validator ~{input_vcf}.gz >& validation_output.txt
         else
             vcf-validator ~{input_vcf} >& validation_output.txt
         fi
