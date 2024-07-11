@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfTranscriptFeature;
 import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
@@ -57,36 +56,6 @@ public class SVAnnotateEngine {
                     GATKSVVCFConstants.ComplexVariantSubtype.dupINVdel,
                     GATKSVVCFConstants.ComplexVariantSubtype.delINVdup,
                     GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL);
-
-    // Mini class to package SV type and interval into one object
-    @VisibleForTesting
-    protected static final class SVSegment {
-        private final GATKSVVCFConstants.StructuralVariantAnnotationType intervalSVType;
-        private final SimpleInterval interval;
-        protected SVSegment(final GATKSVVCFConstants.StructuralVariantAnnotationType svType, final SimpleInterval interval) {
-            this.intervalSVType = svType;
-            this.interval = interval;
-        }
-        public GATKSVVCFConstants.StructuralVariantAnnotationType getIntervalSVType() {
-            return intervalSVType;
-        }
-        public SimpleInterval getInterval() {
-            return interval;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            final SVSegment svSegment = (SVSegment) o;
-            return intervalSVType == svSegment.intervalSVType && interval.equals(svSegment.interval);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(intervalSVType, interval);
-        }
-    }
 
     // Container class for all SVIntervalTree trees created from the GTF
     @VisibleForTesting

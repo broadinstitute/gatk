@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -295,7 +296,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         vcfInputFilenames.stream()
                 .flatMap(vcfFilename -> VariantContextTestUtils.readEntireVCFIntoMemory(getToolTestDataDir() + vcfFilename).getValue().stream())
                 .sorted(IntervalUtils.getDictionaryOrderComparator(referenceSequenceFile.getSequenceDictionary()))
-                .map(SVCallRecordUtils::create)
+                .map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict))
                 .forEach(engine::add);
 
         final Comparator<SVCallRecord> recordComparator = SVCallRecordUtils.getCallComparator(referenceSequenceFile.getSequenceDictionary());
