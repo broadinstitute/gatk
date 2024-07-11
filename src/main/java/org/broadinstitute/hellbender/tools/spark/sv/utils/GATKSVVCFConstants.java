@@ -2,10 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.Allele;
-import org.aeonbits.owner.util.Collections;
 
 import java.util.Map;
-import java.util.Set;
 
 import static java.util.Map.entry;
 
@@ -122,13 +120,6 @@ public final class GATKSVVCFConstants {
             entry("CTX_PQ/QP", ComplexVariantSubtype.CTX_PQ_QP),
             entry("CTX_INV", ComplexVariantSubtype.CTX_INV)
     ));
-
-    // complex subtypes expected to have POS=END
-    public static final Set<ComplexVariantSubtype> COMPLEX_POINT_SUBTYPES =
-            Collections.set(
-                    GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
-                    GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL
-            );
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
