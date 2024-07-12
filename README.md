@@ -156,7 +156,9 @@ For more details on system packages, see the GATK [Base Dockerfile](scripts/dock
         
     * This creates a zip archive in the `build/` directory with a name like `gatk-VERSION.zip` containing a complete standalone GATK distribution, including our launcher `gatk`, both the local and spark jars, and this README.    
     * You can also run GATK commands directly from the root of your git clone after running this command.
-    * Note that you *must* have a full git clone in order to build GATK, including the git-lfs files in src/main/resources. The zipped source code alone is not buildable.
+    * Note that you *must* have a full git clone in order to build GATK, including the git-lfs files in `src/main/resources/large`. The zipped source code alone is not buildable.
+    * The large files under `src/main/resources/large/` are required to build GATK, since they are packaged inside the GATK jar and used by tools at runtime. These include things like ML models and native C/C++ libraries used for acceleration of certain tools.
+    * The large files under `src/test/resources/large/`, on the other hand, are only required by the test suite when running tests, and are not required to build GATK.
 
 * **Other ways to build:**
     * `./gradlew installDist`  
