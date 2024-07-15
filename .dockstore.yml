@@ -203,8 +203,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1355
-             - gg_VS-1395_Have_CreateVATFromVDS_MoreGoodness
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -281,7 +279,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1168_bge
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -309,8 +306,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1396_bq_query_audit
-             - gg_VS-1395_Have_CreateVATFromVDS_MoreGoodness
          tags:
              - /.*/
    - name: GvsIngestTieout
