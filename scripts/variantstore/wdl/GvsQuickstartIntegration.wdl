@@ -13,14 +13,13 @@ workflow GvsQuickstartIntegration {
         Boolean run_hail_integration = true
         Boolean run_exome_integration = true
         Boolean run_beta_integration = true
-        String wgs_sample_id_column_name = "sample_id"
-        String wgs_vcf_files_column_name = "hg38_reblocked_gvcf"
-        String wgs_vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
+        Boolean run_bge_integration = true
+        String sample_id_column_name = "sample_id"
+        String vcf_files_column_name = "hg38_reblocked_gvcf"
+        String vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
         String wgs_sample_set_name = "wgs_integration_sample_set"
-        String exome_sample_id_column_name = "sample_id"
-        String exome_vcf_files_column_name = "hg38_reblocked_gvcf"
-        String exome_vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
         String exome_sample_set_name = "exome_integration_sample_set"
+        String bge_sample_set_name = "bge_integration_sample_set"
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -89,9 +88,9 @@ workflow GvsQuickstartIntegration {
                 is_wgs = true,
                 interval_list = select_first([FilterIntervalListChromosomes.out, full_wgs_interval_list]),
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = wgs_sample_id_column_name,
-                vcf_files_column_name = wgs_vcf_files_column_name,
-                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = wgs_sample_set_name,
                 bgzip_output_vcfs = true,
                 basic_docker = effective_basic_docker,
@@ -117,9 +116,9 @@ workflow GvsQuickstartIntegration {
                 is_wgs = true,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = wgs_sample_id_column_name,
-                vcf_files_column_name = wgs_vcf_files_column_name,
-                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = wgs_sample_set_name,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -163,9 +162,9 @@ workflow GvsQuickstartIntegration {
                 is_wgs = true,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = wgs_sample_id_column_name,
-                vcf_files_column_name = wgs_vcf_files_column_name,
-                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = wgs_sample_set_name,
                 drop_state = "FORTY",
                 basic_docker = effective_basic_docker,
@@ -190,9 +189,9 @@ workflow GvsQuickstartIntegration {
                 is_wgs = true,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = wgs_sample_id_column_name,
-                vcf_files_column_name = wgs_vcf_files_column_name,
-                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = wgs_sample_set_name,
                 drop_state = "FORTY",
                 basic_docker = effective_basic_docker,
@@ -236,9 +235,9 @@ workflow GvsQuickstartIntegration {
                 is_wgs = false,
                 interval_list = full_exome_interval_list,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = exome_sample_id_column_name,
-                vcf_files_column_name = exome_vcf_files_column_name,
-                vcf_index_files_column_name = exome_vcf_index_files_column_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = exome_sample_set_name,
                 drop_state = "FORTY",
                 basic_docker = effective_basic_docker,
@@ -256,6 +255,44 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as ExomeQuotaFail {
                 input:
                     message = "QuickstartVcfExomeIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_basic_docker,
+            }
+        }
+    }
+
+    if (run_bge_integration) {
+        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfBgeIntegration {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+                git_hash = GetToolVersions.git_hash,
+                use_VQSR_lite = true,
+                extract_do_not_filter_override = false,
+                dataset_suffix = "bge",
+                use_default_dockers = use_default_dockers,
+                gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
+                is_wgs = false,
+                interval_list = full_exome_interval_list,
+                expected_output_prefix = expected_output_prefix,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
+                sample_set_name = bge_sample_set_name,
+                drop_state = "FORTY",
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
+                workspace_bucket = GetToolVersions.workspace_bucket,
+                workspace_id = GetToolVersions.workspace_id,
+                submission_id = GetToolVersions.submission_id,
+                maximum_alternate_alleles = maximum_alternate_alleles,
+        }
+
+        if (QuickstartVcfBgeIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as BgeQuotaFail {
+                input:
+                    message = "QuickstartVcfBgeIntegration should not have used tighter GCP quotas but did!",
                     basic_docker = effective_basic_docker,
             }
         }
@@ -286,6 +323,7 @@ workflow GvsQuickstartIntegration {
                 extract_output_file_base_name = "quickit",
                 filter_set_name = "quickit",
                 extract_table_prefix = "quickit",
+                sample_set_name = wgs_sample_set_name,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 variants_docker = effective_variants_docker,
@@ -295,9 +333,9 @@ workflow GvsQuickstartIntegration {
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 git_branch_or_tag = git_branch_or_tag,
-                sample_id_column_name = wgs_sample_id_column_name,
-                vcf_files_column_name = wgs_vcf_files_column_name,
-                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
                 extract_output_gcs_dir = extract_output_gcs_dir,
         }
 
