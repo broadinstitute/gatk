@@ -12,6 +12,8 @@
 2. Duplicate sample names error: `ERROR: The input file ~{sample_names_file} contains the following duplicate entries:`
    1. The GVS requires that sample names are unique because the sample names are used to name the samples in the VCF, and VCF format requires unique sample names. 
    2. After deleting or renaming the duplicate sample, you can restart the workflow without any clean up.
+3. `BulkIngestGenomes/GvsBulkIngestGenomes/hash/call-ImportGenomes/GvsImportGenomes/hash/call-GetUningestedSampleIds/gvs_ids.csv Required file output '/cromwell_root/gvs_ids.csv' does not exist.`
+   1. If you've attempted to run GVS more than once in the same BigQuery dataset, you may see this error. Please delete the dataset and create a new one. It can have the same name.  
 
 ## Reblocking
 1. `htsjdk.tribble.TribbleException$MalformedFeatureFile: Unable to parse header with error: Your input file has a malformed header: We never saw the required CHROM header line (starting with one #) for the input VCF file, for input source: file:///cromwell_root/v1_[uuid]`
