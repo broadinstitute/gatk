@@ -3,13 +3,6 @@
 ## Applying the GVS Joint Calling Filters
 During joint calling using GVS, filters are evaluated at the site and allele level. All data is retained, but sites failing the site filters will be indicated by one of the site level filters from the table below appearing in the VCF FILTER field. Genotypes that have been filtered by the Genotype filters in the table below will be tagged in the FORMAT FT field. Variants that pass site level filters will have “.”.
 
-To post process to keep only data that was not filtered at the site level, you could use this command:
-
-```
-bcftools view -f 'PASS,.' [YOUR VCF]
-```
-
-
 | Filter Names                       | Type of Filter | Definition                                                                                                                    | Details                                                                                                                                                                                                                                                                                                                                                                                                                               |
 |------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | NO_HQ_GENOTYPES                    | Site Level     | Site has *no* high quality variant genotypes                                                                                  | No high-quality genotype (GQ>=20, DP>=10, and AB>=0.2 for heterozygotes) called for the variant. If there is one genotype at the variant site, the filter will not be applied and the variant site will pass. Allele Balance (AB) is calculated for each heterozygous variant as the number of bases supporting the least-represented allele over the total number of base observations.  In other words, min(AD)/DP for diploid GTs. |
@@ -19,6 +12,32 @@ bcftools view -f 'PASS,.' [YOUR VCF]
 | high_CALIBRATION_SENSITIVITY_SNP   | Genotype level | Sample Genotype FT filter value indicating that the genotyped allele failed SNP model calibration sensitivity cutoff (0.997)  | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below.                                                                                 |
 | high_CALIBRATION_SENSITIVITY_INDEL | Genotype level | Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (0.99) | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below.                                                                                 |
 | OUTSIDE_OF_TARGETS                 | Site level     | Outside of sequencing target intervals                                                                                        | Exome only. The site is not within the target intervals of the exome assay. We recommend filtering out these sites as we cannot stand behind the quality of sites called outside of the targets.                                                                                                                                                                                                                                      |
+
+To post process to keep only data that was not filtered at the site level, you could use this command:
+
+```
+bcftools view -f 'PASS,.' [YOUR VCF]
+```
+You can also use bcftools to filter based on the genotype level filters based on your analysis needs:
+
+#TODO
+
+Here are other examples of filters you may want to apply:
+
+Filter out sites with too many alt alleles
+```
+bcftools view -e 'N_ALT>100' input.vcf -Oz -o output.vcf.gz
+```
+
+Filter out spanning deletions and variants with an AC of 0
+```
+bcftools view -e 'ALT[0]="*" || AC=0' input.vcf.gz -Oz -o output.vcf.gz
+```
+
+Ensure that we respect the FT tag
+```
+bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . input.vcf.gz -Oz -o output.vcf.gz
+```
 
 
 ### Example sites and how to interpret them
