@@ -81,9 +81,9 @@ Before you can begin uploading your data to Terra, you’ll need to setup some a
 
 ## Upload data to your workspace
 
-To run the GVS workflow, your single sample reblocked GVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta). The procedure is a little different, depending on whether your samples are already stored in the cloud or are in the Terra Data Repository. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
+To run the GVS workflow, your single sample reblocked GVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta). The procedure is a little different, depending on whether your samples are already stored in the cloud, in another workspace, or are in the Terra Data Repository. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
 
-### For Uploading Data From a Source Other than TDR
+### For Uploading Data from Local or Cloud Storage, or Another Terra Workspace
 
 #### Download the sample table template
 
@@ -119,6 +119,23 @@ The workflow in the GVS beta workspace assumes the table with samples is called 
 
 4. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
 5. Grant your Terra proxy group the Storage Object Creator and Storage Object Viewer roles on the Google Cloud Storage (GCS) bucket that holds your sample data by following the **Add a principal to a bucket-level policy** instructions in the Google Cloud documentation article, [Use IAM permissions](https://cloud.google.com/storage/docs/access-control/using-iam-permissions).
+
+#### Edit TSV to upload data stored in another Terra workspace(s)
+
+If your data is living in one or more Terra workspaces, your data can stay in those workspaces and you can still run GVS in your GVS workspace on that data. There is no need to make a copy. This can be done by uploading a TSV to your GVS workspace with the cloud paths to the gvcfs in your other workspaces. 
+
+1. **Download the data table TSV** from each Terra workspace with your reblocked gvcfs following the steps outlined above in `Download the sample table template`
+2. **Open the GVS sample TSV file** with a spreadsheet editor of your choice.
+3. **Replace the cloud paths and `sample_id` fields** to the example GVCF and index files in the second and third columns with the sample ids and cloud paths to your GVCF and index files. The sample ids will be used to name the samples in the output joint VCF files. They must be unique.
+
+---
+
+**Warning:**
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+
+---
+
+4. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
 
 #### Edit TSV to upload data NOT stored in the cloud
 

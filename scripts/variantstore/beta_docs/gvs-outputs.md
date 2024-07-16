@@ -16,25 +16,17 @@ During joint calling using GVS, filters are evaluated at the site and allele lev
 To post process to keep only data that was not filtered at the site level, you could use this command:
 
 ```
-bcftools view -f 'PASS,.' [YOUR VCF]
+bcftools view -f 'PASS,.' -Oz -o output.vcf.gz
 ```
+
 You can also use bcftools to filter based on the genotype level filters based on your analysis needs:
-
-#TODO
-
-Here are other examples of filters you may want to apply:
-
-Filter out sites with too many alt alleles
-```
-bcftools view -e 'N_ALT>100' input.vcf -Oz -o output.vcf.gz
-```
 
 Filter out spanning deletions and variants with an AC of 0
 ```
 bcftools view -e 'ALT[0]="*" || AC=0' input.vcf.gz -Oz -o output.vcf.gz
 ```
 
-Ensure that we respect the FT tag
+Ensure that we respect the FT tag to exclude alleles with high_CALIBRATION_SENSITIVITY_SNP and INDEL and recalculate AC, AN, AF
 ```
 bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . input.vcf.gz -Oz -o output.vcf.gz
 ```
