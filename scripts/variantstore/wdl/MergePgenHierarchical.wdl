@@ -156,9 +156,9 @@ task MergePgen {
         fi
 
          if [ -n "${OUTPUT_GCS_DIR}" ]; then
-            gsutil cp ${output_file_base_name}.pgen ${OUTPUT_GCS_DIR}/
-            gsutil cp ${output_file_base_name}.pvar ${OUTPUT_GCS_DIR}/
-            gsutil cp ${output_file_base_name}.psam ${OUTPUT_GCS_DIR}/
+            gsutil cp ~{output_file_base_name}.pgen ${OUTPUT_GCS_DIR}/
+            gsutil cp ~{output_file_base_name}.pvar ${OUTPUT_GCS_DIR}/
+            gsutil cp ~{output_file_base_name}.psam ${OUTPUT_GCS_DIR}/
         fi
     >>>
 
