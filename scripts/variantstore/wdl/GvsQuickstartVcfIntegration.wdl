@@ -149,12 +149,17 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     scatter(i in range(length(JointVariantCalling.output_vcfs))) {
-        call ValidateVcf {
+        call ValidateVariants {
             input:
                 input_vcf = JointVariantCalling.output_vcfs[i],
                 input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
                 ref_fasta = reference_fasta,
                 gatk_docker = effective_gatk_docker,
+        }
+        call ValidateVcf {
+            input:
+                input_vcf = JointVariantCalling.output_vcfs[i],
+                variants_docker = effective_variants_docker
         }
     }
 
@@ -443,7 +448,7 @@ task AssertTableSizesAreExpected {
     }
 }
 
-task ValidateVcf {
+task ValidateVariants {
     input {
         File input_vcf
         File input_vcf_index
@@ -488,6 +493,59 @@ task ValidateVcf {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task ValidateVcf {
+    input {
+        File input_vcf
+
+        Int? preemptible_tries
+        String variants_docker
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    String base_vcf = basename(input_vcf)
+    Boolean is_bgzipped = basename(base_vcf, "bgz") != base_vcf
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        if ~{is_bgzipped}; then
+            # Change the extension of the file so that vcf-validator can handle it (doesn't understand '.bgz' extension)
+            cp ~{input_vcf} ~{input_vcf}.gz
+            vcf-validator ~{input_vcf}.gz >& validation_output.txt
+        else
+            vcf-validator ~{input_vcf} >& validation_output.txt
+        fi
+
+        set +o errexit
+
+        # We should NOT find error messages about AD in the validation_output.txt file. If we do this grep will fail
+        grep AD validation_output.txt
+        if [[ $? -eq 0 ]]; then
+            exit 1
+        fi
+
+        set -o errexit
+
+    >>>
+
+    runtime {
+        docker: variants_docker
+        preemptible: select_first([preemptible_tries, 3])
+        memory: "3 GiB"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        File output_file = "validation_output.txt"
         File monitoring_log = "monitoring.log"
     }
 }
