@@ -16,6 +16,8 @@ Generally, if you have started the GVS workflow and it failed after ingestion, o
    2. After deleting or renaming the duplicate sample, you can restart the workflow without any clean up.
 3. `BulkIngestGenomes/GvsBulkIngestGenomes/hash/call-ImportGenomes/GvsImportGenomes/hash/call-GetUningestedSampleIds/gvs_ids.csv Required file output '/cromwell_root/gvs_ids.csv' does not exist.`
    1. If you've attempted to run GVS more than once in the same BigQuery dataset, you may see this error. Please delete the dataset and create a new one. We recommend naming the new dataset something different than the one you deleted.
+4. AssignIds failure with error message: `BigQuery error in mk operation: Not found: Dataset`
+   1. This is saying that GVS was unable to find the BigQuery dataset specified in the inputs. If you haven't created a BigQuery dataset prior to running the workflow, you can follow the steps in [the quickstart](./gvs-quickstart.md). If you created it and still see this error, check the naming of the dataset matches your input specified and that the google project in the inputs is correct. Lastly, confirm you have set up the correct permissions for your Terra proxy account following the instructions in the quickstart. 
 
 ## Reblocking
 1. `htsjdk.tribble.TribbleException$MalformedFeatureFile: Unable to parse header with error: Your input file has a malformed header: We never saw the required CHROM header line (starting with one #) for the input VCF file, for input source: file:///cromwell_root/v1_[uuid]`
