@@ -29,7 +29,7 @@ Exomes will additionally have:
 
 ## Notable content NOT in the VCF
 ### DP
-DP is not in GVS VCFs. It can be approximated from SUM of AD and in most cases should be equal, unless there were some low AF alternates that were dropped in reblocking. AD is a 2 or 3 length vector (only 3 if ½ genotype) and is only included for variant sites.
+DP is not in GVS VCFs. It can be approximated from SUM of AD and in most cases should be equal, unless there were some low AF alternates that were dropped in reblocking. AD is a 2 or 3 length vector (only 3 if 1 / 2 genotype) and is only included for variant sites.
 
 ### PL: phred-scaled genotype likelihoods
 PLs (phred-scaled genotype likelihoods) are expected by some downstream tools, but they can (mostly) be derived from the GQ value. Removing PLs from VCFs has enabled us to reduce file sizes by over an order of magnitude because the typical PL representation leads to an explosion of VCF sites at highly multi-alleleic sites.
@@ -54,7 +54,7 @@ During joint calling using GVS, filters are evaluated at the site and allele lev
 | high_CALIBRATION_SENSITIVITY_INDEL | Genotype level | Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (0.99) | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below.                                                                                 |
 | OUTSIDE_OF_TARGETS                 | Site level     | Outside of sequencing target intervals                                                                                        | Exome only. The site is not within the target intervals of the exome assay. We recommend filtering out these sites as we cannot stand behind the quality of sites called outside of the targets.                                                                                                                                                                                                                                      |
 
-To post-process to keep only data that was not filtered at the site level, you could use this command:
+To post-process to keep only data that was not filtered at the site level, you could use [bcftools](https://samtools.github.io/bcftools/). Here is an example command:
 
 ```
 bcftools view -f 'PASS,.' -Oz -o output.vcf.gz
