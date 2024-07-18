@@ -54,7 +54,7 @@ During joint calling using GVS, filters are evaluated at the site and allele lev
 | high_CALIBRATION_SENSITIVITY_INDEL | Genotype level | Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (0.99) | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below.                                                                                 |
 | OUTSIDE_OF_TARGETS                 | Site level     | Outside of sequencing target intervals                                                                                        | Exome only. The site is not within the target intervals of the exome assay. We recommend filtering out these sites as we cannot stand behind the quality of sites called outside of the targets.                                                                                                                                                                                                                                      |
 
-To post process to keep only data that was not filtered at the site level, you could use this command:
+To post-process to keep only data that was not filtered at the site level, you could use this command:
 
 ```
 bcftools view -f 'PASS,.' -Oz -o output.vcf.gz
