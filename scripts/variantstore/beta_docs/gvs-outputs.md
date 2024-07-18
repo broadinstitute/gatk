@@ -1,14 +1,48 @@
 # Working with the outputs of the Genomic Variant Store
 
+## Content in the VCF
+This is the full list of the filters, format, comment, and info fields in the GVS VCFs. Note that they are different from the ones in the GATK WARP Joint Calling VCFs. Additionally, some are new with the introduction of VETS. Read more about VETS [here](https://github.com/broadinstitute/gatk/blob/gvs_0.5.5/scripts/variantstore/docs/release_notes/VETS_Release.pdf).
+
+```
+##FILTER=<ID=ExcessHet,Description="Site has excess het value larger than the threshold">
+##FILTER=<ID=NO_HQ_GENOTYPES,Description="Site has no high quality variant genotypes">
+##FILTER=<ID=EXCESS_ALLELES,Description="Site has an excess of alternate alleles based on the input threshold">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
+##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
+##COMMENT=<ID=high_CALIBRATION_SENSITIVITY_SNP,Description="Sample Genotype FT filter value indicating that the genotyped allele failed SNP model calibration sensitivity cutoff (0.997)">
+##COMMENT=<ID=high_CALIBRATION_SENSITIVITY_INDEL,Description="Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (0.99)">
+```
+
+Exomes will additionally have:
+
+```
+##FILTER=<ID=OUTSIDE_OF_TARGETS,Description="Outside of sequencing target intervals">
+```
+
+## Notable content NOT in the VCF
+### DP
+DP is not in GVS VCFs. It can be approximated from SUM of AD and in most cases should be equal, unless there were some low AF alternates that were dropped in reblocking. AD is a 2 or 3 length vector (only 3 if 1 / 2 genotype) and is only included for variant sites.
+
+### PL: phred-scaled genotype likelihoods
+PLs (phred-scaled genotype likelihoods) are expected by some downstream tools, but they can (mostly) be derived from the GQ value. Removing PLs from VCFs has enabled us to reduce file sizes by over an order of magnitude because the typical PL representation leads to an explosion of VCF sites at highly multi-alleleic sites.
+
+Note that normally the array for PL is length "G" where G is the number of genotypes. Instead, we output "." which is length 1, to represent the missing PL format field.
+
+PL can be approximated as [0, GQ, ~2*GQ] for biallelic sites.
+
+### Missing (`./.`) and `GQ0 0/0`
+Reblocking, a step required before running GVS, combines `./.` and `0/0`. So GVS VCFs will output `./.` and `0/0 GQ0` calls as `./.`.
+
 ## Applying the GVS Joint Calling Filters
 During joint calling using GVS, filters are evaluated at the site and allele level. All data is retained, but sites failing the site filters will be indicated by one of the site level filters from the table below appearing in the VCF FILTER field. Genotypes that have been filtered by the Genotype filters in the table below will be tagged in the FORMAT FT field. Variants that pass site level filters will have “.”.
-
-To post process to keep only data that was not filtered at the site level, you could use this command:
-
-```
-bcftools view -f 'PASS,.' [YOUR VCF]
-```
-
 
 | Filter Names                       | Type of Filter | Definition                                                                                                                    | Details                                                                                                                                                                                                                                                                                                                                                                                                                               |
 |------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -19,6 +53,24 @@ bcftools view -f 'PASS,.' [YOUR VCF]
 | high_CALIBRATION_SENSITIVITY_SNP   | Genotype level | Sample Genotype FT filter value indicating that the genotyped allele failed SNP model calibration sensitivity cutoff (0.997)  | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below.                                                                                 |
 | high_CALIBRATION_SENSITIVITY_INDEL | Genotype level | Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (0.99) | The VETS filtering score. This is a ##COMMENT in the VCF because this is not applied as a site-level filter. GVS is allele-specific. The FT for an allele will have this FT tag if it hits the CALIBRATION_SENSITIVITY threshold. A site can pass with failing genotypes, however we recommend filtering these genotypes. See example variants below.                                                                                 |
 | OUTSIDE_OF_TARGETS                 | Site level     | Outside of sequencing target intervals                                                                                        | Exome only. The site is not within the target intervals of the exome assay. We recommend filtering out these sites as we cannot stand behind the quality of sites called outside of the targets.                                                                                                                                                                                                                                      |
+
+To post-process to keep only data that was not filtered at the site level, you could use [bcftools](https://samtools.github.io/bcftools/). Here is an example command:
+
+```
+bcftools view -f 'PASS,.' -Oz -o output.vcf.gz
+```
+
+You can also use bcftools to filter based on the genotype level filters based on your analysis needs:
+
+Filter out spanning deletions and variants with an AC of 0
+```
+bcftools view -e 'ALT[0]="*" || AC=0' input.vcf.gz -Oz -o output.vcf.gz
+```
+
+Ensure that we respect the FT tag to exclude alleles with high_CALIBRATION_SENSITIVITY_SNP and INDEL and recalculate AC, AN, AF
+```
+bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . input.vcf.gz -Oz -o output.vcf.gz
+```
 
 
 ### Example sites and how to interpret them
@@ -91,44 +143,3 @@ mt.write(output_gs_url)
 
 ## Interval lists
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi
-
-## Content in the VCF
-This is the full list of the filters, format, comment, and info fields in the GVS VCFs. Note that they are different from the ones in the GATK WARP Joint Calling VCFs. Additionally, some are new with the introduction of VETS. Read more about VETS [here](https://github.com/broadinstitute/gatk/blob/gvs_0.5.5/scripts/variantstore/docs/release_notes/VETS_Release.pdf). 
-
-```
-##FILTER=<ID=ExcessHet,Description="Site has excess het value larger than the threshold">
-##FILTER=<ID=NO_HQ_GENOTYPES,Description="Site has no high quality variant genotypes">
-##FILTER=<ID=EXCESS_ALLELES,Description="Site has an excess of alternate alleles based on the input threshold">
-##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
-##FORMAT=<ID=FT,Number=1,Type=String,Description="Genotype Filter Field">
-##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
-##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
-##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
-##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
-##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
-##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
-##COMMENT=<ID=high_CALIBRATION_SENSITIVITY_SNP,Description="Sample Genotype FT filter value indicating that the genotyped allele failed SNP model calibration sensitivity cutoff (0.997)">
-##COMMENT=<ID=high_CALIBRATION_SENSITIVITY_INDEL,Description="Sample Genotype FT filter value indicating that the genotyped allele failed INDEL model calibration sensitivity cutoff (0.99)">
-```
-
-Exomes will additionally have:
-
-```
-##FILTER=<ID=OUTSIDE_OF_TARGETS,Description="Outside of sequencing target intervals">
-```
-
-## Notable content NOT in the VCF
-### DP
-DP is not in GVS VCFs. It can be approximated from SUM of AD and in most cases should be equal, unless there were some low AF alternates that were dropped in reblocking. AD is a 2 or 3 length vector (only 3 if ½ genotype) and is only included for variant sites.
-
-### PL: phred-scaled genotype likelihoods
-PLs (phred-scaled genotype likelihoods) are expected by some downstream tools, but they can (mostly) be derived from the GQ value. Removing PLs from VCFs has enabled us to reduce file sizes by over an order of magnitude because the typical PL representation leads to an explosion of VCF sites at highly multi-alleleic sites.
-
-Note that normally the array for PL is length "G" where G is the number of genotypes. Instead, we output "." which is length 1, to represent the missing PL format field. 
-
-PL can be approximated as [0, GQ, ~2*GQ] for biallelic sites.
-
-### Missing (`./.`) and `GQ0 0/0`
-Reblocking, a step required before running GVS, combines `./.` and `0/0`. So GVS VCFs will output `./.` and `0/0 GQ0` calls as `./.`.
