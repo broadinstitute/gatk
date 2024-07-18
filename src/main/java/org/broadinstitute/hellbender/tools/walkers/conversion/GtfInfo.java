@@ -12,10 +12,10 @@ public class GtfInfo {
     private String geneName;
     private Interval interval;
 
-    public GtfInfo(Type type, String geneName, Interval interval){
+    public GtfInfo(Interval interval, Type type, String geneName){
+        this.interval = interval;
         this.type = type;
         this.geneName = geneName;
-        this.interval = interval;
     }
 
     public Type getType(){
