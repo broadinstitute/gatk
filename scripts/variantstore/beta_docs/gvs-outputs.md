@@ -8,7 +8,7 @@ This is the full list of the filters, format, comment, and info fields in the GV
 ##FILTER=<ID=NO_HQ_GENOTYPES,Description="Site has no high quality variant genotypes">
 ##FILTER=<ID=EXCESS_ALLELES,Description="Site has an excess of alternate alleles based on the input threshold">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
-##FORMAT=<ID=FT,Number=1,Type=String,Description="Genotype Filter Field">
+##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
