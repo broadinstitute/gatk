@@ -119,8 +119,7 @@ The pipeline takes in the VDS and outputs a variant annotations table in BigQuer
     - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflows have finished.
     - For `GvsExtractCallset`, make sure to specify the appropriate `maximum_alternate_alleles` value (currently 100).
-    - For `GvsExtractCallset`, if you want to output VCFs that are compressed using bgzip, set the `bgzip_output_vcfs` input to `true` to generate VCFs that are compressed using bgzip.
-    - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs; the successful shards will call cache and only the failed ones will run.
+    - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
     - If you want to collect the monitoring logs from a large number of `Extract` shards, the `summarize_task_monitor_logs.py` script will not work if the task is scattered too wide.  Use the `summarize_task_monitor_logs_from_file.py` script, instead, which takes a FOFN of GCS paths instead of a space-separated series of localized files.
     - These workflows do not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
@@ -130,8 +129,8 @@ The pipeline takes in the VDS and outputs a variant annotations table in BigQuer
 You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSampleNames.wdl`, to create VCFs for a subset of callset samples.
 - Specify the same `call_set_identifier`, `gvs_dataset` (same as `dataset_name` in other runs), `gvs_project` (same as `project_id` in other runs), and `filter_set_name` that were used in the creation of the main callset. 
 - Specify a unique `cohort_table_prefix` to this subset of samples so as to not overwrite the prepare tables for the full callset.
-- You will need to either fill out `cohort_sample_names` with a GCS path to a new-line-deliniated list of the sample names or `cohort_sample_names_array` with an Array of sample name Strings.  The `cohort_sample_names_array` input will take precedence over `cohort_sample_names` if both are set. 
-- Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflow have finished.
+- You will need to either fill out `cohort_sample_names` with a GCS path to a newline-deliniated list of the sample names or `cohort_sample_names_array` with an Array of sample name Strings.  The `cohort_sample_names_array` input will take precedence over `cohort_sample_names` if both are set. 
+- Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy the output files there yourself once the workflow has finished.
 - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
 #### PGEN Outputs
@@ -146,11 +145,7 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - Specify the `interval_weights_bed` appropriate for the PGEN extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - Select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
     - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
-    - Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflows have finished.
-    - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs; the successful shards will call cache and only the failed ones will run.
+    - Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy the output files there yourself once the workflow has finished.
+    - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
     - If you want to collect the monitoring logs from a large number of `Extract` shards, the `summarize_task_monitor_logs.py` script will not work if the task is scattered too wide.  Use the `summarize_task_monitor_logs_from_file.py` script, instead, which takes a FOFN of GCS paths instead of a space-separated series of localized files.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-
-
-
-
