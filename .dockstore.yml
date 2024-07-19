@@ -437,7 +437,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - vs_1412_pgen_pvars_not_compressed
+         - rsa_vs_1431
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
