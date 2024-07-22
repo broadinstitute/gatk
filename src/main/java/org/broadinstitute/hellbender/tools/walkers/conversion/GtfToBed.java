@@ -2,26 +2,18 @@ package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
-import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
-import scala.Int;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Converts Gtf files to Bed file format", //TODO: make better summaries
@@ -40,14 +32,13 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BED file")
     public GATKPath outputFile;
 
-    @Argument(doc = "Make each row of BED file sorted by transcript (false is sorted by gene)", fullName = SORT_BY_TRANSCRIPT_LONG_NAME , optional = true)
+    @Argument(doc = "Make each row of BED file sorted by transcript (false is sorted by gene)", fullName = SORT_BY_TRANSCRIPT_LONG_NAME, optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument(doc = "sequence dictionary", fullName = "blah")
-//    public SAMSequenceDictionary sequenceDictionary;
+    @Argument(doc = "path sequence dictionary", fullName = "Dictionary", shortName = "D")
+    public GATKPath dictionaryPath;
 
-    File dictFile = new File("/Users/shahsana/TestGatk/reference.dict");
-    //File dictFile = new File("reference.dict");
+    //File dictFile = new File("/Users/shahsana/TestGatk/reference.dict");
 
 
     private final Map<String, GtfInfo> idToInfo = new HashMap<>();
@@ -115,49 +106,33 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Override
     public Object onTraversalSuccess() {
 
-        SamReader reader = SamReaderFactory.makeDefault().open(dictFile);
-
+        SamReader reader = SamReaderFactory.makeDefault().open(new File(String.valueOf(dictionaryPath)));
         SAMSequenceDictionary sequenceDictionary = reader.getFileHeader().getSequenceDictionary();
-//        List<Interval> intervalList = getIntervalsFromMap(idToInfo);
-//        intervalList.sort(Comparator
-//                .comparingInt((Interval interval) -> sequenceDictionary.getSequence(interval.getContig()).getSequenceIndex())
-//                .thenComparingInt(Interval::getStart));
 
         List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet());
         entries.sort(new CompareGtfInfo(sequenceDictionary));
 
         LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = new LinkedHashMap<>();
-        for(Map.Entry<String, GtfInfo> entry: entries){
+        for (Map.Entry<String, GtfInfo> entry : entries) {
             karyotypeIdToInfo.put(entry.getKey(), entry.getValue());
         }
-
-        if(sortByTranscript) {
+        if (sortByTranscript) {
             writeToBed(GtfInfo.Type.TRANSCRIPT, karyotypeIdToInfo);
-        }
-        else{
+        } else {
             writeToBed(GtfInfo.Type.GENE, karyotypeIdToInfo);
         }
         return null;
     }
 
 
-
-    public static List<Interval> getIntervalsFromMap(Map<String, GtfInfo> hashMap){
-        List<Interval> intervals = new ArrayList<>();
-        for(GtfInfo gtfInfo: hashMap.values()){
-            intervals.add(gtfInfo.getInterval());
-        }
-        return intervals;
-    }
-
     public void writeToBed(GtfInfo.Type type, Map<String, GtfInfo> sortedMap) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(String.valueOf(outputFile)))) { //TODO: figure out what should be the output file path
             for (Map.Entry<String, GtfInfo> entry : sortedMap.entrySet()) {
                 if (entry.getValue().getType() == type) {
                     String line = entry.getValue().getInterval().getContig() + "\t" + //chr
-                             entry.getValue().getInterval().getStart() + "\t" + //start
-                             entry.getValue().getInterval().getEnd() + "\t" + //end
-                             entry.getValue().getGeneName(); //gene name
+                            entry.getValue().getInterval().getStart() + "\t" + //start
+                            entry.getValue().getInterval().getEnd() + "\t" + //end
+                            entry.getValue().getGeneName(); //gene name
 
                     if (type == GtfInfo.Type.TRANSCRIPT) {
                         line = line + "," + entry.getKey();
