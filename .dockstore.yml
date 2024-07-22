@@ -280,7 +280,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1168_bge
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -308,7 +307,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1396_bq_query_audit
+             - rsa_vs_1225
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -437,7 +436,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - vs_1412_pgen_pvars_not_compressed
+         - rsa_vs_1431
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
