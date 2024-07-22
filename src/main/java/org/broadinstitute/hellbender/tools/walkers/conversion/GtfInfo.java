@@ -1,8 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
+import org.apache.parquet.filter2.predicate.Operators;
+import org.jetbrains.annotations.NotNull;
 
-public class GtfInfo {
+import java.util.Comparator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class GtfInfo{
+
     public enum Type{
         GENE,
         TRANSCRIPT
