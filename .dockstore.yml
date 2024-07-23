@@ -97,7 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -127,7 +126,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -137,7 +135,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -167,7 +164,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -177,7 +173,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -187,7 +182,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -199,7 +193,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -209,7 +202,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1355
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -257,7 +249,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1300
          tags:
              - /.*/
    - name: GvsBeta
@@ -286,7 +277,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -314,7 +304,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1375_off_target
+             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -443,7 +433,6 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - rsa_vs_1431
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
