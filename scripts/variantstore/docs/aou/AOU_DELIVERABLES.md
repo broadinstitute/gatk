@@ -1,4 +1,4 @@
-# Running the Genome Variant Store (GVS) Pipeline(s) for AoU
+# Running the Genome Variant Store (GVS) Pipelines for AoU
 
 ## Setup
 - Create a Terra workspace
@@ -130,7 +130,7 @@ The pipeline takes in the VDS and outputs a variant annotations table in BigQuer
 You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSampleNames.wdl`, to create VCFs for a subset of callset samples.
 - Specify the same `call_set_identifier`, `gvs_dataset` (same as `dataset_name` in other runs), `gvs_project` (same as `project_id` in other runs), and `filter_set_name` that were used in the creation of the main callset. 
 - Specify a unique `cohort_table_prefix` to this subset of samples so as to not overwrite the prepare tables for the full callset.
-- You will need to either fill out `cohort_sample_names` with a GCS path to a newline-deliniated list of the sample names or `cohort_sample_names_array` with an Array of sample name Strings.  The `cohort_sample_names_array` input will take precedence over `cohort_sample_names` if both are set. 
+- You will need to either fill out `cohort_sample_names` with a GCS path to a newline-delimited list of the sample names or `cohort_sample_names_array` with an Array of sample name Strings.  The `cohort_sample_names_array` input will take precedence over `cohort_sample_names` if both are set. 
 - Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy the output files there yourself once the workflow has finished.
 - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
