@@ -173,6 +173,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
