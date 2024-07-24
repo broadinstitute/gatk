@@ -1,5 +1,20 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.0 - 2024-07-24
+
+### Added
+
+- Blended Genome Exome (BGE) support added.
+- `OUTSIDE_OF_TARGETS` genotype filter support added for Exomes and BGEs for a specified target interval list.
+
+### Changed
+
+- As a consequence of the `OUTSIDE_OF_TARGETS` change for Exomes and BGEs described above, the VCF header line for *all* GVS-produced VCFs (including WGS) has changed slightly. In particular the `Number` attribute now has a value of `.` rather than `1`, and the `Description` attribute now has a value of `Genotype-level filter`.
+
+### Fixed
+
+- Fixed an edge case where untimely VM preemption could cause sample load status to not be recorded correctly.
+
 ## 0.5.5 - 2024-06-24
 
 ### Changed
