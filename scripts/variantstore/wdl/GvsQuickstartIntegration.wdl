@@ -289,6 +289,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                target_interval_list = target_interval_list,
         }
 
         if (QuickstartVcfBgeIntegration.used_tighter_gcp_quotas) {
