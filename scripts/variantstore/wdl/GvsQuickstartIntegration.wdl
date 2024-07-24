@@ -20,7 +20,7 @@ workflow GvsQuickstartIntegration {
         String wgs_sample_set_name = "wgs_integration_sample_set"
         String exome_sample_set_name = "exome_integration_sample_set"
         String bge_sample_set_name = "bge_integration_sample_set"
-        File? target_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list`"
+        File? target_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list"
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
