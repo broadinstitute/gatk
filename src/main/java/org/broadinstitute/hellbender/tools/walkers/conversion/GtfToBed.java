@@ -114,50 +114,58 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         GtfInfo gtfGeneInfo = new GtfInfo(geneInterval, GtfInfo.Type.GENE, gtfFeature.getGeneName());
         idToInfo.put(gtfFeature.getGeneId(), gtfGeneInfo);
     }
-
-
-
     @Override
-    public Object onTraversalSuccess() { //after going through every line of the gtf
-        SamReader reader = SamReaderFactory.makeDefault().open(new File(String.valueOf(dictionaryPath))); //TODO: what is makeDefault() doing
-        SAMSequenceDictionary sequenceDictionary = reader.getFileHeader().getSequenceDictionary(); //get the sequence dictionary
+    public Object onTraversalSuccess(){
+        SAMSequenceDictionary sequenceDictionary = getSequenceDictionary(String.valueOf(dictionaryPath));
+        LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedIdToInfo(sequenceDictionary);
 
-        List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet()); //convert the hashmap (populate in apply()) to a list
-        entries.sort(new CompareGtfInfo(sequenceDictionary)); //sort the list by contig and then start
+        GtfInfo.Type selectedType = sortByTranscript ? GtfInfo.Type.TRANSCRIPT : GtfInfo.Type.GENE;
+        writeToBed(selectedType, karyotypeIdToInfo);
 
-        LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = new LinkedHashMap<>(); //create a new linked hashmap to preserve order
-        for (Map.Entry<String, GtfInfo> entry : entries) {
-            karyotypeIdToInfo.put(entry.getKey(), entry.getValue()); // put the sorted ordering of the entries the linked hashmap
-        }
-        if (sortByTranscript) { //if the user has selected the transcript option
-            writeToBed(GtfInfo.Type.TRANSCRIPT, karyotypeIdToInfo);
-        } else {
-            writeToBed(GtfInfo.Type.GENE, karyotypeIdToInfo); //if user has selected gene option (default)
-        }
         return null;
     }
 
+    private SAMSequenceDictionary getSequenceDictionary(String dictionaryPath) {
+        SamReader reader = SamReaderFactory.makeDefault().open(new File(dictionaryPath)); //TODO: figure out what makeDefault() does
+        return reader.getFileHeader().getSequenceDictionary();
+    }
+
+    private LinkedHashMap<String, GtfInfo> getSortedIdToInfo(SAMSequenceDictionary sequenceDictionary) {
+        List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet());
+        entries.sort(new CompareGtfInfo(sequenceDictionary));
+
+        LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = new LinkedHashMap<>();
+        for (Map.Entry<String, GtfInfo> entry : entries) {
+            karyotypeIdToInfo.put(entry.getKey(), entry.getValue());
+        }
+        return karyotypeIdToInfo;
+    }
 
     private void writeToBed(GtfInfo.Type type, Map<String, GtfInfo> sortedMap) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(String.valueOf(outputFile)))) { //write to bed file
-            for (Map.Entry<String, GtfInfo> entry : sortedMap.entrySet()) { //for each entry in the sorted map
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(String.valueOf(outputFile)))) {
+            for (Map.Entry<String, GtfInfo> entry : sortedMap.entrySet()) {
                 if (entry.getValue().getType() == type) {
-                    String line = entry.getValue().getInterval().getContig() + "\t" + //chr + tab
-                            entry.getValue().getInterval().getStart() + "\t" + //start + tab
-                            entry.getValue().getInterval().getEnd() + "\t" + //end + tab
-                            entry.getValue().getGeneName(); //gene name
-
-                    if (type == GtfInfo.Type.TRANSCRIPT) { //if the user selected transcript option
-                        line = line + "," + entry.getKey(); //add a comma and the transcript id to the line
-                    }
-                    writer.write(line + System.lineSeparator()); //go to next line in file
+                    String line = formatBedLine(entry, type);
+                    writer.write(line + System.lineSeparator());
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace(); //TODO: figure out better exception
+            System.err.println("Error writing to BED file: " + e.getMessage());
         }
     }
 
+    private String formatBedLine(Map.Entry<String, GtfInfo> entry, GtfInfo.Type type) {
+        GtfInfo info = entry.getValue();
+        String line = info.getInterval().getContig() + "\t" +
+                info.getInterval().getStart() + "\t" +
+                info.getInterval().getEnd() + "\t" +
+                info.getGeneName();
+
+        if (type == GtfInfo.Type.TRANSCRIPT) {
+            line += "," + entry.getKey();
+        }
+        return line;
+    }
 
     @Override
     public GATKPath getDrivingFeaturePath() {
