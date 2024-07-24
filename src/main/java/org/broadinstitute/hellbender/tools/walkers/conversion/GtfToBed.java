@@ -44,60 +44,82 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         return featureType.isAssignableFrom(GencodeGtfFeature.class);
     }
 
-    //Apply runs PER line
     @Override
     public void apply(GencodeGtfFeature feature, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        int geneStart = 0;
-        int geneEnd = 0;
-        List<GencodeGtfFeature> geneFeature = feature.getAllFeatures();
+        List<GencodeGtfFeature> geneFeatures = feature.getAllFeatures();
 
-        for (GencodeGtfFeature gtfFeature : geneFeature) {
-            List<GencodeGtfFeature.OptionalField<?>> optionalFields = null;
-            try {
-                optionalFields = gtfFeature.getOptionalField("tag");
-            } catch (Exception e) {
-                System.err.println("Could not retrieve optional fields" + e.getMessage());
-                //continue; //TODO: do i need continue? or return? or nothing?
-            }
-            try {
-                if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.GENE) { //if the feature type is gene
-                    geneStart = gtfFeature.getStart(); //get gene start
-                    geneEnd = gtfFeature.getEnd(); //get gene end
-                    Interval interval = new Interval(gtfFeature.getContig(), geneStart, geneEnd); //create interval: contig (chromosome), start of gene, end of gene
-                    GtfInfo gtfInfo = new GtfInfo(interval, GtfInfo.Type.GENE, gtfFeature.getGeneName()); //create a new gtfInfo object: the interval, type as gene, and name of gene
-                    idToInfo.put(gtfFeature.getGeneId(), gtfInfo); //create a new entry in the hashmap: key = geneId value = gtfInfo
-                }
-                for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
-                    if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT && field.getValue().equals("basic")) { //if the feature type is transcript and has the "basic" tag
-                        Interval interval = new Interval(gtfFeature.getContig(), gtfFeature.getStart(), gtfFeature.getEnd()); //create interval: contig, start of transcript, end of transcript
-                        GtfInfo gtfInfo = new GtfInfo(interval, GtfInfo.Type.TRANSCRIPT, gtfFeature.getGeneName()); //create a new gtfInfo object: the interval, type as trnascript, and name of gene
-                        idToInfo.put(gtfFeature.getTranscriptId(), gtfInfo); //create a new entry in hashmap: key = transcriptId value = gtfInfo
-                        if (gtfFeature.getStart() < idToInfo.get(gtfFeature.getGeneId()).getStart()) { //if transcript start is less than it's corresponding gene's start
-                            geneStart = gtfFeature.getStart(); //set the gene start to the transcript start
-                            Interval geneInterval = new Interval(gtfFeature.getContig(), geneStart, geneEnd); //create new interval with this update
-                            GtfInfo gtfGeneInfo = new GtfInfo(geneInterval, GtfInfo.Type.GENE, gtfFeature.getGeneName()); //create new gtfInfo with this update
-                            idToInfo.put(gtfFeature.getGeneId(), gtfGeneInfo); //update the entry of the gene in hashmap to now have correct start value
-                        }
+        for (GencodeGtfFeature gtfFeature : geneFeatures) {
+            processFeature(gtfFeature);
+        }
+    }
 
-                        if (gtfFeature.getEnd() > idToInfo.get(gtfFeature.getGeneId()).getEnd()) { //if transcript end is greater than it's corresponding gene's end
-                            geneEnd = gtfFeature.getEnd(); //set the gene end to the transcript end
-                            Interval geneInterval = new Interval(gtfFeature.getContig(), geneStart, geneEnd); //create new interval with this update
-                            GtfInfo gtfGeneInfo = new GtfInfo(geneInterval, GtfInfo.Type.GENE, gtfFeature.getGeneName()); //create new gtfInfo with this update
-                            idToInfo.put(gtfFeature.getGeneId(), gtfGeneInfo); //update the entry of the gene in hashmap to now have correct end value
-                        }
-                    }
-                }
+    private void processFeature(GencodeGtfFeature gtfFeature) {
+        List<GencodeGtfFeature.OptionalField<?>> optionalFields = getOptionalFields(gtfFeature);
 
-            } catch (Exception e) {
-                System.err.println("Error processing feature: " + e.getMessage());
+        if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.GENE) {
+            processGeneFeature(gtfFeature);
+        }
+
+        for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
+            if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT && "basic".equals(field.getValue())) {
+                processTranscriptFeature(gtfFeature);
             }
         }
     }
 
+    private List<GencodeGtfFeature.OptionalField<?>> getOptionalFields(GencodeGtfFeature gtfFeature) {
+        List<GencodeGtfFeature.OptionalField<?>> optionalFields = null;
+        try {
+            optionalFields = gtfFeature.getOptionalField("tag");
+        } catch (Exception e) {
+            System.err.println("Could not retrieve optional fields: " + e.getMessage());
+        }
+        return optionalFields;
+    }
+
+    private void processGeneFeature(GencodeGtfFeature gtfFeature) {
+        int geneStart = gtfFeature.getStart();
+        int geneEnd = gtfFeature.getEnd();
+        Interval interval = new Interval(gtfFeature.getContig(), geneStart, geneEnd);
+        GtfInfo gtfInfo = new GtfInfo(interval, GtfInfo.Type.GENE, gtfFeature.getGeneName());
+        idToInfo.put(gtfFeature.getGeneId(), gtfInfo);
+    }
+
+    private void processTranscriptFeature(GencodeGtfFeature gtfFeature) {
+        Interval interval = new Interval(gtfFeature.getContig(), gtfFeature.getStart(), gtfFeature.getEnd());
+        GtfInfo gtfInfo = new GtfInfo(interval, GtfInfo.Type.TRANSCRIPT, gtfFeature.getGeneName());
+        idToInfo.put(gtfFeature.getTranscriptId(), gtfInfo);
+        updateGeneStartIfNeeded(gtfFeature);
+        updateGeneEndIfNeeded(gtfFeature);
+    }
+
+    private void updateGeneStartIfNeeded(GencodeGtfFeature gtfFeature) {
+        int geneStart = idToInfo.get(gtfFeature.getGeneId()).getStart();
+        if (gtfFeature.getStart() < geneStart) {
+            geneStart = gtfFeature.getStart();
+            updateGeneInterval(gtfFeature, geneStart, idToInfo.get(gtfFeature.getGeneId()).getEnd());
+        }
+    }
+
+    private void updateGeneEndIfNeeded(GencodeGtfFeature gtfFeature) {
+        int geneEnd = idToInfo.get(gtfFeature.getGeneId()).getEnd();
+        if (gtfFeature.getEnd() > geneEnd) {
+            geneEnd = gtfFeature.getEnd();
+            updateGeneInterval(gtfFeature, idToInfo.get(gtfFeature.getGeneId()).getStart(), geneEnd);
+        }
+    }
+
+    private void updateGeneInterval(GencodeGtfFeature gtfFeature, int geneStart, int geneEnd) {
+        Interval geneInterval = new Interval(gtfFeature.getContig(), geneStart, geneEnd);
+        GtfInfo gtfGeneInfo = new GtfInfo(geneInterval, GtfInfo.Type.GENE, gtfFeature.getGeneName());
+        idToInfo.put(gtfFeature.getGeneId(), gtfGeneInfo);
+    }
+
+
 
     @Override
     public Object onTraversalSuccess() { //after going through every line of the gtf
-        SamReader reader = SamReaderFactory.makeDefault().open(new File(String.valueOf(dictionaryPath)));
+        SamReader reader = SamReaderFactory.makeDefault().open(new File(String.valueOf(dictionaryPath))); //TODO: what is makeDefault() doing
         SAMSequenceDictionary sequenceDictionary = reader.getFileHeader().getSequenceDictionary(); //get the sequence dictionary
 
         List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet()); //convert the hashmap (populate in apply()) to a list
@@ -116,7 +138,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     }
 
 
-    public void writeToBed(GtfInfo.Type type, Map<String, GtfInfo> sortedMap) {
+    private void writeToBed(GtfInfo.Type type, Map<String, GtfInfo> sortedMap) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(String.valueOf(outputFile)))) { //write to bed file
             for (Map.Entry<String, GtfInfo> entry : sortedMap.entrySet()) { //for each entry in the sorted map
                 if (entry.getValue().getType() == type) {
@@ -135,6 +157,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
             e.printStackTrace(); //TODO: figure out better exception
         }
     }
+
 
     @Override
     public GATKPath getDrivingFeaturePath() {
