@@ -55,7 +55,7 @@ workflow GvsQuickstartIntegration {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    if (chr20_X_Y_only) {
+    if (chr20_X_Y_only && (run_hail_integration || run_vcf_integration)) {
         call FilterIntervalListChromosomes {
             input:
                 full_interval_list = full_wgs_interval_list,
