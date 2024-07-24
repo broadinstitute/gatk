@@ -2,7 +2,7 @@
 
 The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
-This workspace contains a fully reproducible example workflow for variant discovery in genomes using the GVS workflow. If you have exome data, see the [GVS Exome workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta).
+This workspace contains a fully reproducible example workflow for variant discovery in genomes using the GVS workflow. If you have exome or Blended Genome Exome (BGE) data, see the [GVS Exome workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta).
 
 Scroll down for an overview of the workflow, example data, cost estimates, and additional resources.
 
