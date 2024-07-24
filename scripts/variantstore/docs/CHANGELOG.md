@@ -9,7 +9,7 @@
 
 ### Changed
 
-- As a consequence of the `OUTSIDE_OF_TARGETS` change for Exomes and BGEs described above, the VCF header line for *all* GVS-produced VCFs (including WGS) has changed slightly. In particular the `Number` attribute now has a value of `.` rather than `1`, and the `Description` attribute now has a value of `Genotype-level filter`.
+- As a consequence of the `OUTSIDE_OF_TARGETS` change for Exomes and BGEs described above, the VCF header line for *all* GVS-produced VCFs (including WGS) has changed slightly. In particular the `Number` attribute of the `FORMAT` record for the `FT` genotype-level filter now has a value of `.` rather than `1`, and the `Description` attribute for it now has a value of `Genotype-level filter`.
 
 ### Fixed
 
