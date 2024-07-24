@@ -1,6 +1,6 @@
 # Genomic Variant Store Beta Quickstart
 
-In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) with provided example data.
+In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) with provided example data. Using the example data in the [Exome GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta) is a similar process.
 
 The [GVS](../gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
 
@@ -104,23 +104,19 @@ The workflow in the GVS beta workspace is pre-configured to use the 10 sample re
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 ### Time and cost
-Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
+Generally, once over ~100 samples, the GVS costs $0.06 USD in compute per sample to run on genomes and $0.005 USD in compute per sample to run on exomes. Cost to run the example data is below and for more information on cost see the [run your own samples](./run-your-own-samples.md) document. 
+
+Cost and runtime of a callset of the **whole genome** sample data pre-loaded in the genome workspace.
 
 | Number of Genome Samples | Elapsed Time (hh:mm) | Terra Cost $ | BigQuery Cost | Total Cost | Measured Cost per Sample |
 |-------------------|----------------------|------------|---------------|------------|-----------------------------|
 | 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
 
-Here are several more examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
+Cost and runtime of a callset of the **exome** sample data pre-loaded in the exome workspace.
 
-| Number of Samples | Wall Clock Time (hh:mm) | Cost $     | Cost per Sample |
-|------------------|-------------------------|------------|------------|
-| 1000             | 07:24                   | $59.64     | $0.06      |
-| 2500             | 08:45                   | $141.28    | $0.06      |
-| 5000             | 12:00                   | $286.71    | $0.06      |
-| 10000            | 13:41                   | $604.97    | $0.06      |
-| 25000            | 63:35*                  | $1,282.65  | $0.051     |
-
-*Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
+| Number of Samples | Elapsed Time (hh:mm) |	Cost $ |Cost per Sample | 
+|-------------------|----------------------|--------|----------------| 
+| 10                | 	03:08               | 	$0.76	 | $0.07562 |
 
 **Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation. For example, in practice we've seen 10,000 genome runs take from 13-20 hours.
 

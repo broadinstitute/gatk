@@ -2,7 +2,7 @@
 
 The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
-This workspace contains a fully reproducible example workflow for Exomes variant discovery using the GVS workflow. If you have genome data, see the [GVS Genome workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta).
+This workspace contains a fully reproducible example workflow for Exomes and Blended Genome Exome variant discovery using the GVS workflow. If you have genome data, see the [GVS Genome workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta).
 
 Scroll down for an overview of the workflow, example data, cost estimates, and additional resources.
 
@@ -35,9 +35,13 @@ To see details about input requirements, see [Run Your Own Samples](https://gith
 
 While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are currently supported by the beta workflow.
 
-Note that, by default, the Exomes Beta workflow uses two interval lists by default:
+Note that, by default, the Exomes Beta workflow uses two interval lists:
 1. The calling region interval list defaults to the Blended Genome Exome Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` . For information on how that interval list was generated, see `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list.README.md`.
-1. The target region interval list defaults to `gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list``. Any variants called outside these interval will be *genotype* filtered with `OUTSIDE_OF_TARGETS`.
+2. The target region interval list defaults to the [Twist Alliance Clinical Research Exome targets](https://www.twistbioscience.com/resources/safety-data-sheet/twist-alliance-clinical-research-exome-349-mb-bed-files). This interval list is publicly available here: `gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list`. 
+   1. Any variants called outside these interval will be *genotype* filtered with `OUTSIDE_OF_TARGETS`. See [GVS output documentation](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-outputs.md) for more details on this filter.
+   2. If your exome data was run using different targets, please obtain the target interval list from your library construction method to utilize this filter.
+   3. This filter is a nice to have for standard Exomes. However, it is highly recommended to use this filter for Blended Genome Exome data because in BGE data there are low coverage reads that cause more off target calls. 
+   4. If you do not have your target interval list, this is optional and can be omitted from the inputs.
 
 ### What does it return as output?
 
@@ -89,7 +93,6 @@ See the "Job History" tab in the Genomic_Variant_Store_Exomes_Beta workspace for
 ### Time and cost
 Below are several examples of the time and cost of running the workflow. Generally the cost is around a half a cent per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
 
-
 | Number of Samples | Wall Clock Time (hh:mm) | Cost $    | Cost per Sample |
 |-------------------|-------------------------|-----------|-----------------|
 | 10                | 3:08:00                 | $0.76     | $0.07562        |
@@ -139,9 +142,10 @@ Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace wa
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date       | Change                                  | Author       |
-|------------|-----------------------------------------|--------------|
-| 06/18/2024 | Add ReblockGVCF and update documentation | Kylee Degatano |
-| 05/08/2024 | Third release of the exomes workspace.  | Bec Asch     |
-| 01/09/2024 | Second release of the exomes workspace. | Bec Asch     |
-| 09/08/2023 | First release of the exomes workspace.  | George Grant |
+| Date       | Change                                   | Author             |
+|------------|------------------------------------------|--------------------|
+| 07/25/2024 | Add new input to support BGE data        | Miguel Covarrubias |
+| 06/18/2024 | Add ReblockGVCF and update documentation | Kylee Degatano     |
+| 05/08/2024 | Third release of the exomes workspace.   | Bec Asch           |
+| 01/09/2024 | Second release of the exomes workspace.  | Bec Asch           |
+| 09/08/2023 | First release of the exomes workspace.   | George Grant       |

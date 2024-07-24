@@ -1,5 +1,15 @@
 # Frequently Asked Questions about the Genomic Variant Store
 
+## Input questions
+### Reblocking
+Here are our guidelines for which version of the reblocking workflow can be used with GVS.
+
+1. Our top recommendation is to use the same version of the reblocking workflow for all GVCFs for a callset. Ideally the most recent version published in the GVS workspace.
+2. If all data is reblocked with an older version of reblocking, for now it is fine to stay on that version if the version is at least over 2.0.0.
+3. If data for the callset is reblocked with different versions of reblocking, as long as they all have the same major version number and are above 2.0.0 that will also be ok. We would still recommend that new reblocking takes place with the latest version with the same major version number.
+4. When and if a new major version is released, we will update GVS documentation to reflect if a user should move to the new major version. We also recommend reading the [release notes](https://github.com/broadinstitute/warp/blob/develop/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.changelog.md) or reaching out with questions to determine if any reprocessing would be necessary. 
+   1. Major version updates can occur if the outputs change in a way that impacts the science, or if the interface of the pipeline changes (ie a new required input). If the update is due to the latter reason, it would not require re-reblocking past samples. We will do our best to keep GVS backwards compatible to past versions of reblocking workflows.
+
 ## Output questions
 1. Is the resulting callset different from the WARP Joint Calling Pipeline?
    1. Yes, to enable scale, cost, and runtime efficiencies in GVS, we have optimized what data is output in the final VCFs. Please see details on the [outputs of gvs](./gvs-outputs.md).
