@@ -47,6 +47,8 @@ Note that the ReblockGVCF pipeline inputs default to accepting inputs with the f
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
+For questions regarding which version of ReblockGVCF workflow to use, see [our FAQ](gvs-faq.md) 
+
 ### GVCF annotations
 
 Input GVCF files for the GVS workflow must include the annotations described in the table below:
