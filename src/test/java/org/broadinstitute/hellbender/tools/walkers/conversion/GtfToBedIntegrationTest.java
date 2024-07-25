@@ -8,10 +8,10 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public class GtfToBedIntegrationTest extends CommandLineProgramTest {
-    private static final File input = new File(TestUtils.getGencodeGtf());
-    private static final File mapk1 = new File(TestUtils.getMapk1Gtf());
-    private static final File decoys = new File(TestUtils.getDecoysGtf());
-    private static final File dictionary = new File(TestUtils.getReferenceDict());
+    private static final File input = new File(ConversionTestUtils.getGencodeGtf());
+    private static final File mapk1 = new File(ConversionTestUtils.getMapk1Gtf());
+    private static final File decoys = new File(ConversionTestUtils.getDecoysGtf());
+    private static final File dictionary = new File(ConversionTestUtils.getReferenceDict());
 
 
     @Test
@@ -46,7 +46,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
 
     private void runGtfToBed(boolean transcript){
-        //File outputFile = new File("/Users/shahsana/TestGatk/output.bed");
         final File outputFile = createTempFile("gtf_to_bed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", input)
@@ -58,7 +57,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runMapk1(boolean transcript){
-        //File outputFile = new File("/Users/shahsana/TestGatk/output.bed");
         final File outputFile = createTempFile("gtf_to_bed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", mapk1)
@@ -70,7 +68,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runDecoys(boolean transcript){
-        //File outputFile = new File("/Users/shahsana/TestGatk/output.bed");
         final File outputFile = createTempFile("gtf_to_bed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", decoys)
