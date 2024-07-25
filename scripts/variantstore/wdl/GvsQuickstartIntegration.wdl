@@ -20,7 +20,7 @@ workflow GvsQuickstartIntegration {
         String wgs_sample_set_name = "wgs_integration_sample_set"
         String exome_sample_set_name = "exome_integration_sample_set"
         String bge_sample_set_name = "bge_integration_sample_set"
-        File? target_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list`"
+        File? target_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list"
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -55,7 +55,7 @@ workflow GvsQuickstartIntegration {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    if (chr20_X_Y_only) {
+    if (chr20_X_Y_only && (run_hail_integration || run_vcf_integration)) {
         call FilterIntervalListChromosomes {
             input:
                 full_interval_list = full_wgs_interval_list,
@@ -289,6 +289,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                target_interval_list = target_interval_list,
         }
 
         if (QuickstartVcfBgeIntegration.used_tighter_gcp_quotas) {
