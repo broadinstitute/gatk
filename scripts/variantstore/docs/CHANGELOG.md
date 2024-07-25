@@ -1,6 +1,6 @@
 # Genomic Variant Store (GVS) Changelog
 
-## 0.6.0 - 2024-07-24
+## 0.6.0 - 2024-07-25
 
 ### Added
 
