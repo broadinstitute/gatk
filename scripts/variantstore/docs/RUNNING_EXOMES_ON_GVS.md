@@ -60,5 +60,5 @@ This document describes the changes necessary to run exome gVCFs through the GVS
      - `vcf_eval_bed_file`: `"gs://gvs-internal/truth/HG001.exome_evaluation_regions.v1.1.bed"`
      - `chromosomes`: `[ "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22" ]`
      - `interval_list`: `"gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"`
-     - `target_interval_list`: `"gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list`"`
+     - `target_interval_list`: `"gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list"`
      - `is_wgs`: `false`

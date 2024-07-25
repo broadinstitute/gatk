@@ -370,10 +370,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
-
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoadedStatusRow) {
-                loadStatus.writeHeadersLoadedStatus(sampleId);
-            }
         }
 
         if (refCreator != null) {
@@ -388,16 +384,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteReferencesLoadedStatusRow) {
-                loadStatus.writeReferencesLoadedStatus(sampleId);
-            }
         }
 
         if (vetCreator != null) {
             vetCreator.commitData();
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteVariantsLoadedStatusRow) {
-                loadStatus.writeVariantsLoadedStatus(sampleId);
-            }
+        }
+
+        if (outputType == CommonCode.OutputType.BQ) {
+            if (shouldWriteVCFHeadersLoadedStatusRow) loadStatus.writeHeadersLoadedStatus(sampleId);
+            if (shouldWriteVariantsLoadedStatusRow) loadStatus.writeVariantsLoadedStatus(sampleId);
+            if (shouldWriteReferencesLoadedStatusRow) loadStatus.writeReferencesLoadedStatus(sampleId);
         }
 
         return 0;
