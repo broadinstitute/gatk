@@ -11,6 +11,6 @@ Steps for creating a new version of GVS:
 1. Update the [GVS Beta](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta/workflows) and [GVS Exomes Beta](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta/workflows) workspaces so their `GvsBeta` workflow configuration is set to the new version. Don't forget to hit the 'Save' button when you're done!
 1. Update workspace descriptions if any changes have been made since the last release. Copy/paste the contents of the appropriate Markdown file into the contents of `DASHBOARD ⇒ ABOUT THE WORKSPACE`. Don't forget to hit the 'Save' button when you're done!
    1. The WGS workspace description corresponds to the contents of `gvs-workspace-description.md`.
-   1. The Exomes / BGE workspace description corresponds to the contents of `gvs-exome-workspace-description`.
+   1. The Exomes / BGE workspace description corresponds to the contents of `gvs-exome-workspace-description.md`.
 
 Done!
