@@ -1,8 +1,9 @@
 # Genomic Variant Store workflow overview
  
-| Workflow Version | Date Updated | Documentation Authors | Questions or Feedback |
-| :----: | :---: | :----: | :--------------: |
-| [GvsJointVariantCalling](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) | June, 2022 | [Kaylee Mathews](mailto:kmathews@broadinstitute.org) and [Aurora Cremer](mailto:aurora@broadinstitute.org) | If you have questions or feedback, contact the [Broad Variants team](mailto:variants@broadinstitute.org) |
+| Workflow Version | Date Updated |                                     Contributing Documentation Authors                                     | Questions or Feedback |
+| :----: |:------------:|:----------------------------------------------------------------------------------------------------------:| :--------------: |
+| [GvsJointVariantCalling](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |  June, 2024  | [Kylee Degatano](mailto:kmathews@broadinstitute.org) | If you have questions or feedback, contact the [Broad Variants team](mailto:variants@broadinstitute.org) |
+| [GvsJointVariantCalling](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |  July, 2022  | [Kaylee Mathews](mailto:kmathews@broadinstitute.org) and [Aurora Cremer](mailto:aurora@broadinstitute.org) | If you have questions or feedback, contact the [Broad Variants team](mailto:variants@broadinstitute.org) |
  
 ![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Extract-Train-Score, or VETS, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](./genomic-variant-store_diagram.png)
 
@@ -56,25 +57,27 @@ The workflow is configured to use hg38 (aka GRCh38) as the reference genome.
 
 #### Sample data
 
-The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files from the user-indicated columns of the `sample` data table. While the GVS workflow has been tested with 410,000 single sample GVCF files as input, only datasets of up to 25,000 samples are being used for beta testing.
+The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files from the user-indicated columns of the `sample` data table. While the GVS workflow has been tested with 410,000 human genome and 190,000 human exome single sample GVCF files as input, only datasets of up to 25,000 genomes or 100,000 exomes are being used for beta testing.
 
-The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) has been configured with example reblocked GVCF files that you can use to test the workflow.
+The [GVS Genome beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) and [Exome beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta) has been configured with example reblocked GVCF files that you can use to test the workflow.
 
 #### Input descriptions
 
-The table below describes the GVS workflow input variables:
+The table below describes the GVS workflow input variables that a user may need to use:
 
-| Input variable name         | Description                                                                                                                                                                                                                                                         | Type    |
-|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                                                                                                        | String  |
-| project_id                  | Name of the Google project that contains the BigQuery dataset.                                                                                                                                                                                                      | String  |
-| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”.                                                                                          | String  |
-| vcf_files_column_name       | Name of the column in the `sample` workspace data table with the reblocked GVCF file gcs paths.                                                                                                                                                                     | String  |
-| vcf_index_files_column_name | Name of the column in the `sample` workspace data table with the reblocked GVCF index file gcs paths.                                                                                                                                                               | String  |
-| sample_id_column_name       | Name of the column in the `sample` workspace data table with the desired sample identifiers. These IDs will be used to name the samples in the VCFs. They **MUST** be unique.                                                                                       | String  |
-| extract_output_gcs_dir      | Desired cloud path for output files. If unspecified, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. The actual output location will be specified by the workflow output `output_gcs_path`. | String  |
-| use_classic_VQSR            | Optional; defaults to false since September 1, 2023.                                                                                                                                                                                                                | Boolean |
-| billing_project_id          | Optional; Google project ID to charge for the egress of the GVCFs and index files, useful if the bucket the GVCFs are in has "requester pays" enabled                                                                                                               | String  |
+| Input variable name         | Description                                                                                                                                                                                                                                                         | Type     |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                                                                                                        | String   |
+| project_id                  | Name of the Google project that contains the BigQuery dataset.                                                                                                                                                                                                      | String   |
+| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”.                                                                                          | String   |
+| vcf_files_column_name       | Name of the column in the `sample` workspace data table with the reblocked GVCF file gcs paths.                                                                                                                                                                     | String   |
+| vcf_index_files_column_name | Name of the column in the `sample` workspace data table with the reblocked GVCF index file gcs paths.                                                                                                                                                               | String   |
+| sample_id_column_name       | Name of the column in the `sample` workspace data table with the desired sample identifiers. These IDs will be used to name the samples in the VCFs. They **MUST** be unique.                                                                                       | String   |
+| extract_output_gcs_dir      | Desired cloud path for output files. If unspecified, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. The actual output location will be specified by the workflow output `output_gcs_path`. | String   |
+| is_wgs                      | Optional; Defaults to true for genomes. Set to false for exomes.                                                                                                                                                                                                    | Boolean  |
+| target_interval_list        | Optional; Set to Twist Alliance target list for exomes and BGE only. Should be set to the targets used for your data.                                                                                                                                               | String   | 
+| use_classic_VQSR            | Optional; defaults to false since September 1, 2023.                                                                                                                                                                                                                | Boolean  |
+| billing_project_id          | Optional; Google project ID to charge for the egress of the GVCFs and index files, useful if the bucket the GVCFs are in has "requester pays" enabled                                                                                                               | String   |
 
 ## Tasks and tools
 

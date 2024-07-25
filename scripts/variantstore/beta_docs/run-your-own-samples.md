@@ -47,6 +47,8 @@ Note that the ReblockGVCF pipeline inputs default to accepting inputs with the f
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
+For questions regarding which version of ReblockGVCF workflow to use, see [our FAQ](gvs-faq.md) 
+
 ### GVCF annotations
 
 Input GVCF files for the GVS workflow must include the annotations described in the table below:
@@ -194,18 +196,22 @@ To run:
 1. **Select the workflow** from the Workflows tab.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
-    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    2. Update the name of the **column of reblocked GVCFs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
-    3. Update the name of the **column of reblocked GVCF index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
-    4. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
-    5. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
-    1. If running exomes, ensure that the (optional) `is_wgs` parameter is set to false.
+    2. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
+    3. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    4. Update the name of the **column of reblocked GVCFs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
+    5. Update the name of the **column of reblocked GVCF index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
+    6. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
+    7. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
+    8. If running exomes: 
+       1. ensure that the (optional) `is_wgs` parameter is set to false.
+       2. ensure that the (optional) `target_interval_list` parameter is set to the appropriate target list for your data.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow.
+
+**Genomes**
 
 | Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
 |-------------------|----------------------|------------|---------------|------------|-----------------------------|
@@ -215,6 +221,15 @@ Below are several examples of the time and cost of running the workflow.
 | 5000              | 12:00                | $54.00     | $232.71       | $286.71    | $0.06                       |
 | 10000             | 13:41                | $138.1     | $466.87       | $604.97    | $0.06                       |
 
+**Exomes**
+
+| Number of Samples | Wall Clock Time (hh:mm) | Cost $    | Cost per Sample |
+|-------------------|-------------------------|-----------|-----------------|
+| 10                | 3:08:00                 | $0.76     | $0.07562        |
+| 5000              | 5:21:00                 | $20.41    | $0.00408        |
+| 20000             | 10:38:00                | $94.60    | $0.00473        |
+| 50000             | 20:29:00                | $250.07   | $0.00500        |
+| 100000            | 45:11:00                | $274.15   | $0.00274        |
 
 **Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
 
