@@ -2158,7 +2158,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider="HaplotypeCallerTestInputs", groups={"bucket"}) 
+    @Test(dataProvider="HaplotypeCallerTestInputs", groups={"bucket"})
     public void testPileupCallingDRAGEN378OptimizedModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
