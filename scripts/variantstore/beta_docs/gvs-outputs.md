@@ -134,10 +134,13 @@ Other tools, in order of our recommendation, that are available for working with
 - `MergeVcfs` from [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037226612-MergeVcfs-Picard).
 
 #### Merging GVS outputs in Hail
-Here is a block of Hail code that will convert a GVS VCF to a Hail Matrix Table (MT).
+Here is a block of Hail code that will import and convert a GVS VCF to a Hail Matrix Table (MT).
+
+Note: The 'Number' attribute of the 'FT' format specifier has changed from '1' to '.', causing the Hail VCF import logic to change its datatype representation of 'FT' from 'string' to 'array<string>'. The code below includes some Hail logic to unwrap any non-missing arrays, which in current GVS practice always have a single element.
 
 ```
 mt = hl.import_vcf(vcf_bgz, force_bgz=True)
+mt = mt.annotate_entries(FT=hl.or_missing(hl.is_defined(mt.FT), mt.FT[0]))
 mt.write(output_gs_url)
 ```
 
