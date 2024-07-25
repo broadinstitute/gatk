@@ -136,7 +136,7 @@ Other tools, in order of our recommendation, that are available for working with
 #### Merging GVS outputs in Hail
 Here is a block of Hail code that will import and convert a GVS VCF to a Hail Matrix Table (MT).
 
-Note: The 'Number' attribute of the 'FT' format specifier has changed from '1' to '.', causing the Hail VCF import logic to change its datatype representation of 'FT' from 'string' to 'array<string>'. The code below includes some Hail logic to unwrap any non-missing arrays, which in current GVS practice always have a single element.
+Note: In GVS version 0.6.0 the 'Number' attribute of the 'FT' format specifier has changed from '1' to '.', causing the Hail VCF import logic to change its datatype representation of 'FT' from 'string' to 'array<string>'. If compatibility with GVS versions prior to 0.6.0 is required, the sample Hail code below will unwrap any non-missing arrays, which in current GVS practice always have a single element.
 
 ```
 mt = hl.import_vcf(vcf_bgz, force_bgz=True)
