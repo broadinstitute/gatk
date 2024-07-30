@@ -44,7 +44,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     private boolean isSingleSample = true;
     private boolean alleleNumberIsDifferent = false;
     private boolean inbreedingCoeffIsDifferent = false;
-    private List<String> annotationsThatVaryWithNoCalls = Arrays.asList(VCFConstants.ALLELE_NUMBER_KEY, GATKVCFConstants.INBREEDING_COEFFICIENT_KEY,
+    private final List<String> annotationsThatVaryWithNoCalls = Arrays.asList(VCFConstants.ALLELE_NUMBER_KEY, GATKVCFConstants.INBREEDING_COEFFICIENT_KEY,
             GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.EXCESS_HET_KEY,
             GATKVCFConstants.MLE_ALLELE_COUNT_KEY, GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, VCFConstants.ALLELE_FREQUENCY_KEY,
             VCFConstants.DEPTH_KEY, GATKVCFConstants.QUAL_BY_DEPTH_KEY, GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
@@ -56,82 +56,82 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             shortName = "warn-on-errors",
             doc = "just emit warnings on errors instead of terminating the run at the first instance",
             optional = true)
-    Boolean WARN_ON_ERROR = false;
+    private boolean warnOnError = false;
 
     @Argument(fullName = "finish-before-failing",
     doc = "emit warnings as necesarry, but perform the whole comparison before failing",
     optional= true)
-    Boolean FINISH_BEFORE_FAILING = false;
+    private boolean finishBeforeFailing = false;
 
     @Argument(fullName = IGNORE_QUALS_LONG_NAME, optional = true, mutex={POSITIONS_ONLY_LONG_NAME})
-    Boolean IGNORE_QUALS = false;
+    private boolean ignoreQuals = false;
 
     @Argument(fullName = "qual-change-allowed", optional = true)
-    Double QUAL_TOLERANCE = 0.001;
+    private double qualTolerance = 0.001;
 
     @Argument(fullName = "inbreeding-coeff-change-allowed", optional = true)
-    Double INBREEDING_COEFF_TOLERANCE = 0.001;
+    private double inbreedingCoeffTolerance = 0.001;
 
     @Argument(fullName = "good-qual-threshold", optional = true, doc = "Variants with QUAL at or above this value are considered high quality and should appear in both files")
-    Double GOOD_QUAL_THRESHOLD = 100.0;
+    private double goodQualThreshold = 100.0;
 
     @Argument(fullName = DP_CHANGE_ALLOWED_LONG_NAME, optional = true, doc = "Note that this is a signed change (actual - expected)", mutex={POSITIONS_ONLY_LONG_NAME})
-    Integer DP_CHANGE = 0;
+    private int dpChange = 0;
 
     @Argument(fullName = RANK_SUM_CHANGE_ALLOWED_LONG_NAME, optional = true, doc = "Amount of numerical 'noise' allowed in rank sum annotations")
-    Double RANKSUM_TOLERANCE = 0.0;
+    private double ranksumTolerance = 0.0;
 
     @Argument(fullName = "likelihood-change-allowed", optional = true)
-    Integer LIKELIHOOD_TOLERANCE = 0;
+    private int likelihoodTolerance = 0;
 
     @Argument(fullName = "ignore-non-ref-data", optional = true)
-    Boolean IGNORE_NON_REF_DATA = false;
+    private boolean ignoreNonRefData = false;
 
     @Argument(fullName = "ignore-annotations", optional = true, doc = "Only match on position and alleles, ignoring all INFO annotations", mutex={POSITIONS_ONLY_LONG_NAME})
-    Boolean IGNORE_ANNOTATIONS = false;
+    private boolean ignoreAnnotations = false;
 
     @Argument(fullName = "ignore-genotype-annotations", optional = true, doc = "Only match on genotype call, ignoring all FORMAT annotations", mutex={POSITIONS_ONLY_LONG_NAME})
-    Boolean IGNORE_GENOTYPE_ANNOTATIONS = false;
+    private boolean ignoreGenotypeAnnotations = false;
 
     @Argument(fullName = "ignore-genotype-phasing", optional = true, doc = "Only check called genotype alleles, not order or phasing status")
-    Boolean IGNORE_GENOTYPE_PHASING = false;
+    private boolean ignoreGenotypePhasing = false;
 
     @Argument(fullName = "ignore-filters", optional = true, doc = "Ignore filter status when comparing variants", mutex={POSITIONS_ONLY_LONG_NAME})
-    Boolean IGNORE_FILTERS = false;
+    private boolean ignoreFilters = false;
 
     @Argument(fullName = "ignore-attribute", optional = true, doc = "Ignore INFO attributes with this key", mutex={POSITIONS_ONLY_LONG_NAME})
-    List<String> IGNORE_ATTRIBUTES = new ArrayList<>(5);
+    private List<String> ignoreAttributes = new ArrayList<>(5);
 
     @Argument(fullName = POSITIONS_ONLY_LONG_NAME, optional = true, doc = "Only match on position, ignoring alleles and annotations", mutex={})
-    Boolean POSITIONS_ONLY = false;
+    private boolean positionsOnly = false;
 
     @Argument(fullName = ALLOW_NEW_STARS_LONG_NAME, optional = true, doc = "Allow additional * alleles in actual if there is a corresponding deletion", mutex={POSITIONS_ONLY_LONG_NAME})
-    Boolean ALLOW_NEW_STARS = false;
+    private boolean allowNewStars = false;
 
     @Argument(fullName = "allow-extra-alleles", optional = true, doc = "Allow extra alleles in actual provided actual is a superset of expected", mutex={ALLOW_NEW_STARS_LONG_NAME, POSITIONS_ONLY_LONG_NAME})
-    Boolean ALLOW_EXTRA_ALLELES = false;
+    private boolean allowExtraAlleles = false;
 
     @Argument(fullName = "allow-missing-stars", optional = true, doc = "Allow missing * in actual if actual has no corresponding deletions")
-    Boolean ALLOW_MISSING_STARS = false;
+    private boolean allowMissingStars = false;
 
     @Argument(fullName = "ignore-star-attributes", optional = true, doc = "Ignore annotation values for spanning deletion (*) alleles")
-    Boolean IGNORE_STAR_ATTRIBUTES = false;
+    private boolean ignoreStarAttributes = false;
 
     @Argument(fullName = "allow-nan-mismatch", optional = true, doc = "Allow VCF values of missing (.) and NaN to match")
-    Boolean ALLOW_NAN_MISMATCH = false;
+    private boolean allowNanMismatch = false;
 
     @Argument(fullName = "mute-acceptable-diffs", optional = true, doc = "Suppress warnings or exceptions for differences that are consequences of low quality genotypes or AN discrepancies")
-    Boolean MUTE_DIFFS = false;
+    private boolean muteDiffs = false;
 
     @Argument(fullName = "ignore-hom-ref-attributes", optional = true, doc = "Skip attribute comparison for homozygous reference genotypes")
-    Boolean IGNORE_HOM_REF_ATTRIBUTES = false;
+    private boolean ignoreHomRefAttributes = false;
 
     @Argument(fullName = "ignore-dbsnp-ids", optional = true)
-    Boolean IGNORE_DBSNP = false;
+    private boolean ignoreDbsnp = false;
 
     @Hidden
     @Argument(fullName = "output-warnings", optional = true, doc = "Output warnings to a file, useful for testing")
-    GATKPath WARNINGS_OUTPUT = null;
+    private GATKPath warningsOutput = null;
 
     private PrintStream outputStream = null;
 
@@ -162,8 +162,8 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
         isSingleSample = getSamplesForVariants().size() == 1 ? true : false;  //if either expected or actual has more than one sample then we're not single-sample
 
-        if (WARNINGS_OUTPUT != null) {
-            outputStream = new PrintStream(WARNINGS_OUTPUT.getOutputStream());
+        if (warningsOutput != null) {
+            outputStream = new PrintStream(warningsOutput.getOutputStream());
         }
     }
 
@@ -176,7 +176,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         if (variantContexts.size() == 1) {
             final VariantContext vc = variantContexts.get(0);
             //TODO: if there's a variant that overlaps the requested interval the start may not be in the requested intervals
-            if (!MUTE_DIFFS) {
+            if (!muteDiffs) {
                 throwOrWarn(new UserException("Unmatched variant in " + vc.getSource() + " at position " + vc.getContig() + ":" + vc.getStart()));
             //low coverage sites will have QUAL for singleton hom-vars boosted because of GQ0 hom-refs
             } else if (hasGoodEvidence(vc)) {
@@ -204,7 +204,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                 }
             } else {
                 if ((!isHighQuality(vc) || (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(vc.getGenotype(0).getAlleles())))
-                && IGNORE_HOM_REF_ATTRIBUTES) { //TODO: check * genotypes somehow
+                && ignoreHomRefAttributes) { //TODO: check * genotypes somehow
                     return;
                 }
                 final VariantContext match;
@@ -229,7 +229,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     }
                 }
 
-                if (POSITIONS_ONLY) {
+                if (positionsOnly) {
                     return;
                 }
 
@@ -238,15 +238,15 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     areVariantContextsEqualOrderIndependent(actualTrimmed, expectedTrimmed, overlappingDels);
                 } catch (UserException e) {
                     final boolean hasLowQualityGenotype = expectedTrimmed.getGenotypes().stream().anyMatch(g -> g.getGQ() < 20);
-                    if (!MUTE_DIFFS || !(alleleNumberIsDifferent || inbreedingCoeffIsDifferent || hasLowQualityGenotype)) {
+                    if (!muteDiffs || !(alleleNumberIsDifferent || inbreedingCoeffIsDifferent || hasLowQualityGenotype)) {
                         throwOrWarn(e);
                     }
                 }
 
-                if (alleleNumberIsDifferent && !MUTE_DIFFS) {
+                if (alleleNumberIsDifferent && !muteDiffs) {
                     logger.warn("Observed allele number differed at position " + vc.getContig() + ":" + vc.getStart());
                 }
-                if (inbreedingCoeffIsDifferent && expectedTrimmed.getGenotypes().stream().anyMatch(g -> g.getGQ() < 20) && !MUTE_DIFFS) {
+                if (inbreedingCoeffIsDifferent && expectedTrimmed.getGenotypes().stream().anyMatch(g -> g.getGQ() < 20) && !muteDiffs) {
                     logger.warn("Low quality genotype may have caused inbreeding coeff differences at position " + vc.getContig() + ":" + vc.getStart());
                 }
             }
@@ -261,7 +261,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         final Genotype actualGenotype = actualTrimmed.getGenotype(0);
         final List<Allele> actualGenotypeAlleles = actualGenotype.getAlleles();
 
-        if (IGNORE_GENOTYPE_PHASING && !actualHasNewAlleles(expectedTrimmed, actualTrimmed)) {
+        if (ignoreGenotypePhasing && !actualHasNewAlleles(expectedTrimmed, actualTrimmed)) {
             return;
         }
 
@@ -296,7 +296,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                 return;
             } else {
                 if (overlappingDels.stream().anyMatch(v -> v.getSource().equals("actual"))) {  //there should be one overlapping that got trimmed and the other shouldn't overlap anymore
-                    if (!ALLOW_MISSING_STARS) {
+                    if (!allowMissingStars) {
                         throw wrapWithPosition(vc.getContig(), vc.getStart(), new UserException("genotype alleles do not match at spanning deletion site. "
                                 +  vc.getSource() + " has " + expectedGenotype.toString() + " and " + match.getSource() + " has "
                                 + actualGenotype.toString()));
@@ -315,9 +315,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     }
 
     private boolean hasGoodEvidence(final VariantContext vc) {
-        return (vc.getPhredScaledQual() > GOOD_QUAL_THRESHOLD)
+        return (vc.getPhredScaledQual() > goodQualThreshold)
             && (vc.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)/(double)vc.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY,0)) > 5
-                && vc.getGenotypes().stream().filter(g -> !g.isHomRef()).mapToInt(Genotype::getGQ).sum() > GOOD_QUAL_THRESHOLD;
+                && vc.getGenotypes().stream().filter(g -> !g.isHomRef()).mapToInt(Genotype::getGQ).sum() > goodQualThreshold;
     }
 
     private void areVariantContextsEqualOrderIndependent(final VariantContext actual, final VariantContext expected,
@@ -341,18 +341,18 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             }
         }
 
-        if (!IGNORE_DBSNP && !actual.getID().equals(expected.getID())) {  //more alleles might mean more dbSNP matches
+        if (!ignoreDbsnp && !actual.getID().equals(expected.getID())) {  //more alleles might mean more dbSNP matches
             throw wrapWithPosition(expected.getContig(), expected.getStart(), new UserException("dbsnp IDs differ for VCs"));
         }
 
-        if (IGNORE_ANNOTATIONS) {
+        if (ignoreAnnotations) {
             return;
         }
 
-        if (!IGNORE_QUALS) {
+        if (!ignoreQuals) {
             final double diff = Math.abs(actual.getPhredScaledQual() - expected.getPhredScaledQual());
-            if (diff > QUAL_TOLERANCE) {
-                throw wrapWithPosition(expected.getContig(), expected.getStart(), new UserException("qual scores differ by " + diff + ", which is more than " + QUAL_TOLERANCE));
+            if (diff > qualTolerance) {
+                throw wrapWithPosition(expected.getContig(), expected.getStart(), new UserException("qual scores differ by " + diff + ", which is more than " + qualTolerance));
             }
         }
 
@@ -363,7 +363,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         }
 
         if (!alleleNumberIsDifferent) {
-            if (!IGNORE_FILTERS) {
+            if (!ignoreFilters) {
                 if (actual.filtersWereApplied() != expected.filtersWereApplied()) {
                     throw wrapWithPosition(expected.getContig(), expected.getStart(), new UserException(" filters were not applied to both variants"));
                 }
@@ -385,20 +385,20 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
     private void checkAlleles(final VariantContext actual, final VariantContext expected, final List<VariantContext> overlappingDels) {
         //TODO: this could be more rigorous
-        if (IGNORE_GENOTYPE_PHASING && !actualHasNewAlleles(actual, expected)) {
+        if (ignoreGenotypePhasing && !actualHasNewAlleles(actual, expected)) {
             return;
         }
-        if (!ALLOW_EXTRA_ALLELES && actualHasNewAlleles(actual, expected)) {
+        if (!allowExtraAlleles && actualHasNewAlleles(actual, expected)) {
             throw new UserException("Alleles are mismatched at " + actual.getContig() + ":" + actual.getStart() + ": actual has "
                     + actual.getAlternateAlleles() + " and expected has " + expected.getAlternateAlleles());
 
-        } else if (ALLOW_NEW_STARS && hasNewStar(actual, expected)) {
+        } else if (allowNewStars && hasNewStar(actual, expected)) {
             if (overlappingDels.size() == 0 || !overlappingDels.stream().anyMatch(vc -> vc.getSource().equals("actual"))) {
                 throw new UserException("Actual has new unmatched * allele. Alleles are mismatched at " + actual.getContig() + ":" + actual.getStart() + ": actual has "
                         + actual.getAlternateAlleles() + " and expected has " + expected.getAlternateAlleles());
             }
             //this is a GenomicsDB/CombineGVCFs bug -- there is an overlapping deletion and * should be output, but those tools don't account for multiple haplotypes and upstream variant "ends" the deletion
-        } else if (ALLOW_MISSING_STARS && hasMissingStar(actual, expected)) {
+        } else if (allowMissingStars && hasMissingStar(actual, expected)) {
             final Set<Allele> remainder = new LinkedHashSet<>(expected.getAlleles());
             remainder.removeAll(actual.getAlleles());
             if (remainder.size() > 1 || !remainder.contains(Allele.SPAN_DEL)) {
@@ -474,7 +474,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                 if (key.equals(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY)
                         || key.equals(VCFConstants.ALLELE_NUMBER_KEY)
                         || (key.equals(GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY) && !(expected.get(key) instanceof List))
-                        || IGNORE_ATTRIBUTES.contains(key)) {
+                        || ignoreAttributes.contains(key)) {
                     continue;
                 }
                 final Object actualValue = actual.get(key);
@@ -499,7 +499,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                         }
                     }
                     //we've already gotten rid of stars... I think -- do we have to sort the alts?  Maybe...  I should be using my own AlleleSpecificAnnotationData!!!
-                    final int iterationEnd = IGNORE_NON_REF_DATA && actualAlts.contains(Allele.NON_REF_ALLELE) ? expectedAlts.size()-1 : expectedAlts.size();  //exclusive
+                    final int iterationEnd = ignoreNonRefData && actualAlts.contains(Allele.NON_REF_ALLELE) ? expectedAlts.size()-1 : expectedAlts.size();  //exclusive
                     for (int i = 0; i < iterationEnd; i++) {
                         if (i >= actualList.size() || i >= expectedList.size()) {
                             //TODO: the toStrings here don't do a great job
@@ -511,7 +511,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                             final double expectedPerAlleleValue = Double.parseDouble(expectedList.get(i).toString());
                             if (!isAttributeEqualDoubleSmart(key,
                                     actualPerAlleleValue, expectedPerAlleleValue,
-                                    INBREEDING_COEFF_TOLERANCE)) {
+                                    inbreedingCoeffTolerance)) {
                                 throw makeVariantExceptionFromDifference(key, Double.toString(actualPerAlleleValue), Double.toString(expectedPerAlleleValue));
                             }
                         }
@@ -523,13 +523,13 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                     expectedPerAlleleValue = Double.parseDouble(expectedList.get(i).toString());
                                     if (!isAttributeEqualDoubleSmart(key,
                                             actualPerAlleleValue, expectedPerAlleleValue,
-                                            RANKSUM_TOLERANCE)) {
+                                            ranksumTolerance)) {
                                         throw makeVariantExceptionFromDifference(key, Double.toString(actualPerAlleleValue), Double.toString(expectedPerAlleleValue));
                                     }
                                     continue;
                                 //}
                             } else {
-                                if (!MUTE_DIFFS && !ALLOW_NAN_MISMATCH) {
+                                if (!muteDiffs && !allowNanMismatch) {
                                     logger.warn("GATK version-specific NaN versus empty AS_RAW annotation discrepancy");
                                 }
                             }
@@ -539,7 +539,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                         try
                        {check = isAttributeValueEqual(key, actualList.get(i), expectedList.get(i)); }
                        catch (final UserException e){
-                           if (!IGNORE_STAR_ATTRIBUTES && !actualAlts.get(i).equals(Allele.SPAN_DEL) && !actualAlts.get(i).equals(Allele.SPAN_DEL)) {
+                           if (!ignoreStarAttributes && !actualAlts.get(i).equals(Allele.SPAN_DEL) && !actualAlts.get(i).equals(Allele.SPAN_DEL)) {
                                throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
                            }
                         }
@@ -548,7 +548,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     try {
                         if (key.contains("RankSum") && !key.contains("AS_")) {
                             if (!isAttributeEqualDoubleSmart(key, Double.parseDouble(actualValue.toString()), Double.parseDouble(expectedValue.toString()),
-                                    RANKSUM_TOLERANCE)) {
+                                    ranksumTolerance)) {
                                 throw makeVariantExceptionFromDifference(key, actualValue.toString(), actualValue.toString());
                             }
                         } else {
@@ -563,7 +563,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                 final double expectedDouble = Double.parseDouble(expectedValue.toString());
                                 final int expectedDP = Integer.parseInt(expected.get(VCFConstants.DEPTH_KEY).toString());
                                 if (qualByDepthDifferenceIsAcceptable(actualDouble, expectedDouble, expectedQual, expectedDP)) {  //QD won't match if DP doesn't
-                                    if (!MUTE_DIFFS) {
+                                    if (!muteDiffs) {
                                         logger.warn(key + " difference is within expected tolerances");
                                     }
                                     continue;
@@ -628,7 +628,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
      * @return
      */
     private boolean isAttributeValueEqual(final String key, final Object actual, final Object expected) {
-        if (ALLOW_NAN_MISMATCH && (actual.toString()).equals(".") && expected.toString().equals("NaN")) {
+        if (allowNanMismatch && (actual.toString()).equals(".") && expected.toString().equals("NaN")) {
             return true;
         }
         if (!actual.toString().equals(expected.toString())) {
@@ -655,7 +655,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             throw makeGenotypeExceptionFromDifference("alleles", actual.getAlleles().toString(), expected.getAlleles().toString());
         }
 
-        if (!IGNORE_GENOTYPE_PHASING) {
+        if (!ignoreGenotypePhasing) {
             if (!actual.getGenotypeString(false).equals(expected.getGenotypeString(false))) {
                 throw makeGenotypeExceptionFromDifference("genotype string", actual.getGenotypeString(false), expected.getGenotypeString(false));
             }
@@ -663,7 +663,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                 throw makeGenotypeExceptionFromDifference("phasing status", Boolean.toString(actual.isPhased()), Boolean.toString(expected.isPhased()));
             }
         }
-        if (IGNORE_HOM_REF_ATTRIBUTES && actual.isHomRef()) {
+        if (ignoreHomRefAttributes && actual.isHomRef()) {
             return;
         }
         if (actual.hasDP() != expected.hasDP()) {
@@ -676,33 +676,33 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             throw makeGenotypeExceptionFromDifference("GQ presence", Boolean.toString(actual.hasGQ()), Boolean.toString(expected.hasGQ()));
         }
         if (!actual.isHomRef()) {
-            if (actual.hasGQ() && (Math.abs(actual.getGQ() - expected.getGQ())) > LIKELIHOOD_TOLERANCE) {
+            if (actual.hasGQ() && (Math.abs(actual.getGQ() - expected.getGQ())) > likelihoodTolerance) {
                 //allele subsetting can return GQs over 99, which apparently are capped on VCF write
                 if (actual.getGQ() < 99 || expected.getGQ() < 99) {
                     throw makeGenotypeExceptionFromDifference("GQ value", Integer.toString(actual.getGQ()), Integer.toString(expected.getGQ()));
                 }
             }
         }
-        if (IGNORE_GENOTYPE_ANNOTATIONS) {
+        if (ignoreGenotypeAnnotations) {
             return;
         }
         //allow DP difference due to non-ref AD correction
         if (actual.hasDP() && expected.hasDP()) {
             if (actual.getDP() != expected.getDP()) {
-                if (DP_CHANGE == 0 && expected.getDP() - actual.getDP() != expected.getAD()[expected.getAD().length - 1]) {
+                if (dpChange == 0 && expected.getDP() - actual.getDP() != expected.getAD()[expected.getAD().length - 1]) {
                     throw makeGenotypeExceptionFromDifference("DP value", Integer.toString(actual.getDP()), Integer.toString(expected.getDP()));
                 }
-                if (actual.getDP() - expected.getDP() > DP_CHANGE) {
-                    throw new UserException("DP difference exceeds allowable tolerance of " + DP_CHANGE
+                if (actual.getDP() - expected.getDP() > dpChange) {
+                    throw new UserException("DP difference exceeds allowable tolerance of " + dpChange
                             + ", actual has " + Integer.toString(actual.getDP()) + " expected has " + Integer.toString(expected.getDP()));
                 }
                 if (actual.hasAD() && (!Arrays.equals(actual.getAD(), expected.getAD()))) {
-                    if (DP_CHANGE == 0 && actual.getAD()[actual.getAD().length - 1] == expected.getAD()[expected.getAD().length - 1]) {  //non-ref differences are okay, but if there's an AD different that's not non-ref we're in trouble
+                    if (dpChange == 0 && actual.getAD()[actual.getAD().length - 1] == expected.getAD()[expected.getAD().length - 1]) {  //non-ref differences are okay, but if there's an AD different that's not non-ref we're in trouble
                         throw makeGenotypeExceptionFromDifference("AD values", Arrays.toString(actual.getAD()), Arrays.toString(expected.getAD()));
                     }
                     for (int i = 0; i < actual.getAD().length - 1; i++) {
-                        if (actual.getAD()[i] - expected.getAD()[i] > DP_CHANGE) {
-                            throw new UserException("AD difference exceeds allowable tolerance of " + DP_CHANGE
+                        if (actual.getAD()[i] - expected.getAD()[i] > dpChange) {
+                            throw new UserException("AD difference exceeds allowable tolerance of " + dpChange
                                     + ", actual has " + actual.getAD().toString() + " expected has " + expected.getAD().toString());
                         }
                     }
@@ -719,7 +719,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     throw new UserException("PL lengths for genotype vary: actual is size " + actualPls.length + " and expected is " + expectedPls.length);
                 }
                 for (int i = 0; i < actualPls.length; i++) {
-                    if (Math.abs(actualPls[i] - expectedPls[i]) > LIKELIHOOD_TOLERANCE) {
+                    if (Math.abs(actualPls[i] - expectedPls[i]) > likelihoodTolerance) {
                         throw makeGenotypeExceptionFromDifference("PL value", Arrays.toString(actual.getPL()), Arrays.toString(expected.getPL()));
                     }
                 }
@@ -728,15 +728,15 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     }
 
     private void throwOrWarn(final UserException e) {
-        if (MUTE_DIFFS && (alleleNumberIsDifferent || inbreedingCoeffIsDifferent)) {
+        if (muteDiffs && (alleleNumberIsDifferent || inbreedingCoeffIsDifferent)) {
             return;
         }
-        if (WARN_ON_ERROR || FINISH_BEFORE_FAILING) {
-            if (WARNINGS_OUTPUT != null) {
+        if (warnOnError || finishBeforeFailing) {
+            if (warningsOutput != null) {
                 outputStream.println(e.getMessage());
             }
             logger.warn("***** " + e.getMessage() + " *****");
-            if (FINISH_BEFORE_FAILING) {
+            if (finishBeforeFailing) {
                 failOnCompletion = true;
             }
         } else {
@@ -758,7 +758,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         }
         final VariantContextBuilder vcBuilder = new VariantContextBuilder(variant);
         final List<Allele> orderedRelevantAlleles = new ArrayList<>(relevantAlleles);
-        if (vcBuilder.getGenotypes().size() == 1 && !IGNORE_NON_REF_DATA) {
+        if (vcBuilder.getGenotypes().size() == 1 && !ignoreNonRefData) {
             orderedRelevantAlleles.add(Allele.NON_REF_ALLELE);
         }
         vcBuilder.alleles(orderedRelevantAlleles);
