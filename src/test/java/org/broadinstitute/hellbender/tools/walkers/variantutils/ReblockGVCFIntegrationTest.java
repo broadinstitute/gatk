@@ -711,9 +711,38 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         args.addReference(hg38Reference)
                 .addVCF(input)
                 .addOutput(output)
-                .add("format-annotations-to-remove","PRI");
+                .add("format-annotations-to-remove", "PRI");
 
         //make sure it doesn't error
         runCommandLine(args);
+    }
+
+    @Test
+    public void testNoCallWhenGQ0InNonRefAllele() {
+        final File input = getTestFile("reblockEdgeCase.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addReference(hg38Reference)
+                .add("V", input)
+                .add("do-qual-approx", true)
+                .add("floor-blocks", true)
+                .add("GQB", 20)
+                .add("GQB", 30)
+                .add("GQB", 40)
+                .addOutput(output);
+
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        boolean foundNoCallSite = false;
+        for (VariantContext vc : outVCs) {
+            if (vc.getStart() == 13675308) {
+                Assert.assertEquals(vc.getEnd(), 13675325);
+                Assert.assertEquals(vc.getGenotype(0).getGQ(), 0);
+                foundNoCallSite = true;
+            }
+        }
+        Assert.assertTrue(foundNoCallSite);
     }
 }
