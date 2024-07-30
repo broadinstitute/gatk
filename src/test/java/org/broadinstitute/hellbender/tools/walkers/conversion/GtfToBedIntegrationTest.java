@@ -22,12 +22,12 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File mapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
 
     @Test
-    public void testGene() {
+    public void testGene() throws IOException {
         runGtfToBed(false);
     }
 
     @Test
-    public void testTranscript() {
+    public void testTranscript() throws IOException {
         runGtfToBed(true);
     }
 
@@ -52,7 +52,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
 
-    private void runGtfToBed(boolean transcript) {
+    private void runGtfToBed(boolean transcript) throws IOException {
         final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", input)
@@ -61,9 +61,9 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         if (transcript) {
-            Assert.assertEquals(1, 3);
+            Assert.assertEquals(countLines(outputFile), 1);
         } else {
-            Assert.assertEquals(1, 1);
+            Assert.assertEquals(countLines(outputFile), 1);
         }
     }
 
