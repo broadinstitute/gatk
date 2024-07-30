@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections4.CollectionUtils;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -17,6 +15,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
+import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -130,6 +129,12 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     @Argument(fullName = "ignore-dbsnp-ids", optional = true)
     Boolean IGNORE_DBSNP = false;
 
+    @Hidden
+    @Argument(fullName = "output-warnings", optional = true, doc = "Output warnings to a file, useful for testing")
+    GATKPath WARNINGS_OUTPUT = null;
+
+    private PrintStream outputStream = null;
+
     @Override
     public boolean doDictionaryCrossValidation() {
         return false;
@@ -156,6 +161,10 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
         isSingleSample = getSamplesForVariants().size() == 1 ? true : false;  //if either expected or actual has more than one sample then we're not single-sample
+
+        if (WARNINGS_OUTPUT != null) {
+            outputStream = new PrintStream(WARNINGS_OUTPUT.getOutputStream());
+        }
     }
 
     @Override
@@ -204,13 +213,6 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                 } else {
                     match = matches.get(1);
                 }
-
-                /*  I don't remember why this is here
-                if (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(match.getGenotype(0).getAlleles()) && !vc.getGenotype(0).isHomRef()) {
-                    throwOrWarn(new UserException("Apparent unmatched high quality variant in " + vc.getSource() + " at " + vc.getContig() + ":" + vc.getStart()));
-                    return;
-                }
-                */
 
                 final List<VariantContext> overlappingDels = variantContexts.stream().filter(v -> v.getStart() < vc.getStart() && v.overlaps(vc))
                         .collect(Collectors.toList());
@@ -730,6 +732,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             return;
         }
         if (WARN_ON_ERROR || FINISH_BEFORE_FAILING) {
+            if (WARNINGS_OUTPUT != null) {
+                outputStream.println(e.getMessage());
+            }
             logger.warn("***** " + e.getMessage() + " *****");
             if (FINISH_BEFORE_FAILING) {
                 failOnCompletion = true;
@@ -871,5 +876,12 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             throw new UserException("Some comparisons failed.  See stderr log for details.");
         }
         return null;
+    }
+
+    @Override
+    public void closeTool() {
+        if ( outputStream != null ) {
+            outputStream.close();
+        }
     }
 }
