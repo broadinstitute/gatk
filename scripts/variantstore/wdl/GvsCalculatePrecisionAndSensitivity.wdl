@@ -103,12 +103,12 @@ workflow GvsCalculatePrecisionAndSensitivity {
     call IntersectTargetIntervalListWithTruthBeds {
       input:
         truth_beds = truth_beds,
-        target_interval_list = target_interval_list,
+        target_interval_list = select_first([target_interval_list]),
         gatk_docker = effective_gatk_docker,
     }
   }
 
-  Array[File] effective_truth_beds = if (defined(target_interval_list)) then IntersectTargetIntervalListWithTruthBeds.intersected_truth_beds else truth_beds
+  Array[File] effective_truth_beds = if (defined(target_interval_list)) then select_first([IntersectTargetIntervalListWithTruthBeds.intersected_truth_beds]) else truth_beds
 
   scatter(i in range(length(sample_names))) {
     String sample_name = sample_names[i]
