@@ -99,6 +99,17 @@ workflow GvsCalculatePrecisionAndSensitivity {
       gatk_docker = effective_gatk_docker,
   }
 
+  if (defined(target_interval_list)) {
+    call IntersectTargetIntervalListWithTruthBeds {
+      input:
+        truth_beds = truth_beds,
+        target_interval_list = target_interval_list,
+        gatk_docker = effective_gatk_docker,
+    }
+  }
+
+  Array[File] effective_truth_beds = if (defined(target_interval_list)) then IntersectTargetIntervalListWithTruthBeds.intersected_truth_beds else truth_beds
+
   scatter(i in range(length(sample_names))) {
     String sample_name = sample_names[i]
     String output_sample_basename = output_basename + "." + sample_name
@@ -138,7 +149,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = truth_beds[i],
+        truth_bed = effective_truth_beds[i],
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
@@ -153,7 +164,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = truth_beds[i],
+        truth_bed = effective_truth_beds[i],
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         all_records = true,
@@ -523,4 +534,43 @@ task CountInputVcfs {
   runtime {
     docker: basic_docker
   }
+}
+
+
+task IntersectTargetIntervalListWithTruthBeds {
+    input {
+        Array[File] truth_beds
+        File target_interval_list
+        String gatk_docker
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        target_bed="~{target_interval_list}"
+        target_bed="${target_bed%%.interval_list}.bed"
+
+        gatk IntervalListToBed -I ~{target_interval_list} -O "${target_bed}" --SORT
+
+        intersected_beds="intersected_beds.txt"
+        touch $intersected_beds
+
+        for truth_bed in ~{sep=' ' truth_beds}
+        do
+            intersected_truth_bed="${truth_bed%%.bed}"
+            intersected_truth_bed="${intersected_truth_bed}_intersected.bed"
+
+            bedtools intersect -a "${target_bed}" -b ${truth_bed} > ${intersected_truth_bed}
+
+            # Need to preserve the same order in the output intersected beds as in the input
+            echo ${intersected_truth_bed} >> ${intersected_beds}
+        done
+    >>>
+    runtime {
+        docker: gatk_docker
+    }
+    output {
+        Array[File] intersected_truth_beds = read_lines("intersected_beds.txt")
+    }
 }
