@@ -99,17 +99,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
       gatk_docker = effective_gatk_docker,
   }
 
-  if (defined(target_interval_list)) {
-    call IntersectTargetIntervalListWithTruthBeds {
-      input:
-        truth_beds = truth_beds,
-        target_interval_list = select_first([target_interval_list]),
-        gatk_docker = effective_gatk_docker,
-    }
-  }
-
-  Array[File] effective_truth_beds = if (defined(target_interval_list)) then select_first([IntersectTargetIntervalListWithTruthBeds.intersected_truth_beds]) else truth_beds
-
   scatter(i in range(length(sample_names))) {
     String sample_name = sample_names[i]
     String output_sample_basename = output_basename + "." + sample_name
@@ -143,13 +132,24 @@ workflow GvsCalculatePrecisionAndSensitivity {
         gotc_imputation_docker = effective_gotc_imputation_docker,
     }
 
+    if (defined(target_interval_list)) {
+      call IntersectTargetIntervalListWithTruthBed {
+        input:
+          truth_bed = truth_beds[i],
+          target_interval_list = select_first([target_interval_list]),
+          gatk_docker = effective_gatk_docker,
+      }
+    }
+
+    File effective_truth_bed = select_first([IntersectTargetIntervalListWithTruthBed.intersected_truth_bed, truth_beds[i]])
+
     call EvaluateVcf as EvaluateVcfFiltered {
       input:
         input_vcf = BgzipAndTabix.output_vcf,
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = effective_truth_beds[i],
+        truth_bed = effective_truth_bed,
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
@@ -164,7 +164,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = effective_truth_beds[i],
+        truth_bed = effective_truth_bed,
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         all_records = true,
@@ -537,9 +537,9 @@ task CountInputVcfs {
 }
 
 
-task IntersectTargetIntervalListWithTruthBeds {
+task IntersectTargetIntervalListWithTruthBed {
     input {
-        Array[File] truth_beds
+        File truth_bed
         File target_interval_list
         String gatk_docker
     }
@@ -553,24 +553,15 @@ task IntersectTargetIntervalListWithTruthBeds {
 
         gatk IntervalListToBed -I ~{target_interval_list} -O "${target_bed}" --SORT
 
-        intersected_beds="intersected_beds.txt"
-        touch $intersected_beds
+        intersected_truth_bed="${truth_bed%%.bed}"
+        intersected_truth_bed="${intersected_truth_bed}_intersected.bed"
 
-        for truth_bed in ~{sep=' ' truth_beds}
-        do
-            intersected_truth_bed="${truth_bed%%.bed}"
-            intersected_truth_bed="${intersected_truth_bed}_intersected.bed"
-
-            bedtools intersect -a "${target_bed}" -b ${truth_bed} > ${intersected_truth_bed}
-
-            # Need to preserve the same order in the output intersected beds as in the input
-            echo ${intersected_truth_bed} >> ${intersected_beds}
-        done
+        bedtools intersect -a "${target_bed}" -b ${truth_bed} > ${intersected_truth_bed}
     >>>
     runtime {
         docker: gatk_docker
     }
     output {
-        Array[File] intersected_truth_beds = read_lines("intersected_beds.txt")
+        File intersected_truth_bed = glob("*_intersected.bed")[0]
     }
 }
