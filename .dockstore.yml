@@ -180,6 +180,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - vs_1366_acaf_vcf
          tags:
              - /.*/
    - name: GvsImportGenomes

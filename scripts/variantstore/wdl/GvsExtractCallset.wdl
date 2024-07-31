@@ -19,6 +19,8 @@ workflow GvsExtractCallset {
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
     Int? extract_memory_override_gib
+    # The amount of memory on the extract VM *not* allocated to the GATK process.
+    Int extract_overhead_memory_override_gib = 3
     Int? disk_override
     Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
@@ -136,9 +138,9 @@ workflow GvsExtractCallset {
                                                                   else 500])
 
   Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
-                                     else if effective_scatter_count <= 100 then 40
-                                          else if effective_scatter_count <= 500 then 20
-                                               else 12
+                                     else if effective_scatter_count <= 100 then 37 + extract_overhead_memory_override_gib
+                                          else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
+                                               else 9 + extract_overhead_memory_override_gib
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
@@ -247,6 +249,7 @@ workflow GvsExtractCallset {
         extract_maxretries_override           = extract_maxretries_override,
         disk_override                         = disk_override,
         memory_gib                            = effective_extract_memory_gib,
+        overhead_memory_gib                   = extract_overhead_memory_override_gib,
         emit_pls                              = emit_pls,
         emit_ads                              = emit_ads,
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
@@ -347,6 +350,7 @@ task ExtractTask {
     Int? extract_maxretries_override
     Int? disk_override
     Int memory_gib
+    Int overhead_memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
     Int? maximum_alternate_alleles
@@ -392,7 +396,7 @@ task ExtractTask {
     # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
     if [[ ${MEM_UNIT} == "GB" ]]
     then
-        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
     else
         echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
         exit 1
