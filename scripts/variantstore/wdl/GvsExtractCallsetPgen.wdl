@@ -141,9 +141,9 @@ workflow GvsExtractCallsetPgen {
                                                                     else 500])
 
     Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
-                                       else if effective_scatter_count <= 100 then 40
-                                            else if effective_scatter_count <= 500 then 20
-                                                 else 12
+                                       else if effective_scatter_count <= 100 then 42
+                                            else if effective_scatter_count <= 500 then 22
+                                                 else 14
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
@@ -412,7 +412,7 @@ task PgenExtractTask {
         # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
         if [[ ${MEM_UNIT} == "GB" ]]
         then
-            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 5) * 1000))")
         else
             echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
             exit 1
