@@ -459,6 +459,14 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+   - name: GvsExtractCallsetPgenMerged_ACAF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
          - vs_1109_acaf_pgen
    - name: MergePgenHierarchicalWdl
      subclass: WDL
