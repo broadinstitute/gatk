@@ -37,6 +37,8 @@ workflow GvsExtractCallsetPgen {
         # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
         Int? scatter_count
         Int? extract_memory_override_gib
+        # The amount of memory on the extract VM *not* allocated to the GATK process.
+        Int extract_overhead_memory_override_gib = 3
         Int? disk_override
         # If true, the output files will be named with a zero-padded interval number prefix
         # If false, the output files will be named with a non-zero-padded interval number suffix
@@ -141,9 +143,9 @@ workflow GvsExtractCallsetPgen {
                                                                 else 500])
 
     Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
-                                       else if effective_scatter_count <= 100 then 42
-                                           else if effective_scatter_count <= 500 then 22
-                                               else 14
+                                       else if effective_scatter_count <= 100 then 37 + extract_overhead_memory_override_gib
+                                           else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
+                                               else 9 + extract_overhead_memory_override_gib
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
@@ -254,6 +256,7 @@ workflow GvsExtractCallsetPgen {
                 extract_maxretries_override        = extract_maxretries_override,
                 disk_override                      = disk_override,
                 memory_gib                         = effective_extract_memory_gib,
+                overhead_memory_gib                = extract_overhead_memory_override_gib,
                 emit_pls                           = emit_pls,
                 emit_ads                           = emit_ads,
                 write_cost_to_db                   = write_cost_to_db,
@@ -365,6 +368,7 @@ task PgenExtractTask {
         Int? extract_maxretries_override
         Int? disk_override
         Int memory_gib
+        Int overhead_memory_gib
 
         Int? local_sort_max_records_in_ram = 10000000
 
