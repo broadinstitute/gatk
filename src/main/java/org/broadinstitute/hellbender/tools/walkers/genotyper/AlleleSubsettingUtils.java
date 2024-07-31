@@ -126,7 +126,7 @@ public final class AlleleSubsettingUtils {
             attributesToRemove.forEach(attributes::remove);
             gb.noPL().noGQ().noAttributes().attributes(attributes);  //if alleles are subset, old PLs and GQ are invalid
             if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
-                gb.log10PError(Math.max(newLog10GQ, -9.9)); //do cap here in case we want to
+                gb.log10PError(newLog10GQ);
             }
             gb.PL(newLikelihoods);
 
