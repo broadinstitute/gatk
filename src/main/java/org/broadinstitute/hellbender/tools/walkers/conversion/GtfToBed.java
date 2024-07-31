@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -16,14 +17,14 @@ import java.io.IOException;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "Converts Gtf files to Bed file format", //TODO: make better summaries
+        summary = "Converts Gencode Gtf files to Bed file format with each row of bed file being either a gene or a transcript. ",
         oneLineSummary = "Gtf to Bed",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "dont-mix-contigs";
 
-    @Argument(fullName = "Gtf",
+    @Argument(fullName = "Gencode Gtf input file",
             shortName = "G", doc = "Gencode GTF file")
     public GATKPath inputFile;
 
@@ -31,10 +32,10 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BED file")
     public GATKPath outputFile;
 
-    @Argument(doc = "Make each row of BED file sorted by transcript (false is sorted by gene)", fullName = SORT_BY_TRANSCRIPT_LONG_NAME, optional = true)
+    @Argument(doc = "Make each row of BED file sorted by transcript (false is sorted by gene)", shortName = "T", fullName = SORT_BY_TRANSCRIPT_LONG_NAME, optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument(doc = "path sequence dictionary", fullName = "Dictionary", shortName = "D")
+    @Argument(doc = "path to sequence dictionary", fullName = "Dictionary", shortName = "D")
     public GATKPath dictionaryPath;
 
     private final Map<String, GtfInfo> idToInfo = new HashMap<>();
@@ -181,7 +182,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error writing to BED file: " + e.getMessage());
+            throw new GATKException("Error writing to BED file", e);
         }
     }
 

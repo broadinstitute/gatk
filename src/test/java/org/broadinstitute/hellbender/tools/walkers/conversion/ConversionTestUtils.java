@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
+
 public class ConversionTestUtils {
 
     public static String getTestDataDir(){
-        return "src/test/resources/org/broadinstitute/hellbender/tools/walkers/conversion/";
+        return GATKBaseTest.toolsTestDir + "/walkers/conversion/";
     }
 
     public static String getDecoySampleGtf(){

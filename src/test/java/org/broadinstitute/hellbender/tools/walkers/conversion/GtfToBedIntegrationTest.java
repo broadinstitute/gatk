@@ -21,31 +21,37 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File mapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
 
 
+    //Tests any Gtf file (gene)
     @Test
     public void testGene() throws IOException {
         runGtfToBed(false);
     }
 
+    //Tests any Gtf file (transcript)
     @Test
     public void testTranscript() throws IOException {
         runGtfToBed(true);
     }
 
+    //Tests specifically mapk1 gene
     @Test
     public void testMapk1Gene() throws IOException {
         runMapk1(false);
     }
 
+    //Tests transcripts in mapk1 gene
     @Test
     public void testMapk1Transcript() throws IOException {
         runMapk1(true);
     }
 
+    //Tests a sample of decoy genes (gene) - decoy = any gene that doesn't start with "chr"
     @Test
     public void testDecoyGenes() throws IOException {
         runDecoySample(false);
     }
 
+    //Tests a sample of decoy genes (transcript)
     @Test
     public void testDecoyTranscripts() throws IOException {
         runDecoySample(true);
@@ -99,7 +105,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         } else {
             Assert.assertEquals(countLines(outputFile), 19);
             Assert.assertTrue(compareFiles(decoysGeneBed, outputFile));
-
         }
     }
 
