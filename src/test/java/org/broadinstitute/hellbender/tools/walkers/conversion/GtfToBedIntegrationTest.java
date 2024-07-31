@@ -9,7 +9,6 @@ import java.io.*;
 
 
 public class GtfToBedIntegrationTest extends CommandLineProgramTest {
-    //private static final File input = new File(ConversionTestUtils.getGencodeGtf());
     private static final File TEST_SUB_DIR = new File(toolsTestDir);
     private static final File input = new File(TEST_SUB_DIR, "/funcotator/small_pik3ca_dbsnp_ds/gencode_pik3ca/hg19/gencode.v19.PIK3CA.gtf");
 
@@ -20,6 +19,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File decoysTranscriptBed = new File(ConversionTestUtils.getDecoySamplesTranscriptBed());
     private static final File mapk1GeneBed = new File(ConversionTestUtils.getMapk1GeneBed());
     private static final File mapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
+
 
     @Test
     public void testGene() throws IOException {
@@ -50,7 +50,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     public void testDecoyTranscripts() throws IOException {
         runDecoySample(true);
     }
-
 
     private void runGtfToBed(boolean transcript) throws IOException {
         final File outputFile = createTempFile("outputBed", ".bed");
