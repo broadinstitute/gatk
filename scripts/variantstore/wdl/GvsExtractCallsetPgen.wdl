@@ -416,7 +416,7 @@ task PgenExtractTask {
         # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
         if [[ ${MEM_UNIT} == "GB" ]]
         then
-            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 5) * 1000))")
+            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
         else
             echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
             exit 1
