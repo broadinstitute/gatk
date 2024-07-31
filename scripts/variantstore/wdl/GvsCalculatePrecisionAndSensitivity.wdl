@@ -553,6 +553,7 @@ task IntersectTargetIntervalListWithTruthBed {
 
         gatk IntervalListToBed -I ~{target_interval_list} -O "${target_bed}" --SORT
 
+        truth_bed="~{truth_bed}"
         intersected_truth_bed="${truth_bed%%.bed}"
         intersected_truth_bed="${intersected_truth_bed}_intersected.bed"
 
