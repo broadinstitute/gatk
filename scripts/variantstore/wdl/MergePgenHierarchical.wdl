@@ -15,6 +15,7 @@ workflow MergePgenWorkflow {
         Int split_count
         Boolean zero_padded_prefix
         String variants_docker
+        String? output_gcs_dir
     }
 
     call SortFileLists {
@@ -46,7 +47,7 @@ workflow MergePgenWorkflow {
                 output_file_base_name = "${output_file_base_name}${i}",
                 threads = threads,
                 disk_in_gb = merge_disk_size
-           }
+        }
     }
 
     call MakeFileLists as MakeListsForFinal {
@@ -66,7 +67,8 @@ workflow MergePgenWorkflow {
             plink_docker = plink_docker,
             output_file_base_name = output_file_base_name,
             threads = threads,
-            disk_in_gb = merge_disk_size
+            disk_in_gb = merge_disk_size,
+            output_gcs_dir = output_gcs_dir,
     }
 
     output {
@@ -84,6 +86,7 @@ task MergePgen {
         String pgen_chromosome_code
         String plink_docker
         String output_file_base_name
+        String? output_gcs_dir
         Int threads = 1
         Int disk_in_gb
     }
@@ -94,6 +97,9 @@ task MergePgen {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         # Download files using gsutil
         mkdir pgen_dir
@@ -127,18 +133,18 @@ task MergePgen {
             mv ${pgen_basename}.psam ~{output_file_base_name}.psam
             if test -f ${pgen_basename}.pvar
             then
-                mv ${pgen_basename}.pvar ~{output_file_base_name}.pvar
+            mv ${pgen_basename}.pvar ~{output_file_base_name}.pvar
             else
-                mv ${pgen_basename}.pvar.zst ~{output_file_base_name}.pvar.zst
+            mv ${pgen_basename}.pvar.zst ~{output_file_base_name}.pvar.zst
             fi
             ;;
         *)
             echo "${count} pgen files, merging"
             if head -n 1 "~{pvar_list}" | grep -q "pvar$"
             then
-                plink2 --pmerge-list mergelist.txt --memory 10000 --threads ~{threads} --output-chr ~{pgen_chromosome_code} --out ~{output_file_base_name} --pmerge-output-vzs
+            plink2 --pmerge-list mergelist.txt --memory 10000 --threads ~{threads} --output-chr ~{pgen_chromosome_code} --out ~{output_file_base_name} --pmerge-output-vzs
             else
-                plink2 --pmerge-list mergelist.txt pfile-vzs --memory 10000 --threads ~{threads} --output-chr ~{pgen_chromosome_code} --out ~{output_file_base_name} --pmerge-output-vzs
+            plink2 --pmerge-list mergelist.txt pfile-vzs --memory 10000 --threads ~{threads} --output-chr ~{pgen_chromosome_code} --out ~{output_file_base_name} --pmerge-output-vzs
             fi
             ;;
         esac
@@ -149,6 +155,11 @@ task MergePgen {
             plink2 --zst-decompress ~{output_file_base_name}.pvar.zst > ~{output_file_base_name}.pvar
         fi
 
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+            gsutil cp ~{output_file_base_name}.pgen ${OUTPUT_GCS_DIR}/
+            gsutil cp ~{output_file_base_name}.pvar ${OUTPUT_GCS_DIR}/
+            gsutil cp ~{output_file_base_name}.psam ${OUTPUT_GCS_DIR}/
+        fi
     >>>
 
     output {
@@ -185,7 +196,7 @@ task MakeFileLists {
             localization_optional: true
         }
     }
-    
+
     meta {
         # This causes issues when call cached for some reason, so we don't want to do that
         volatile: true

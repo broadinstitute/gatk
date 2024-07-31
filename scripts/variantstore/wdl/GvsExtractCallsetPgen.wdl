@@ -130,22 +130,20 @@ workflow GvsExtractCallsetPgen {
     }
 
     Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
-                                  else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
-                                       else if GetNumSamplesLoaded.num_samples < 1000 then 500
-                                            else if GetNumSamplesLoaded.num_samples < 5000 then 1000
-                                                 else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
-                                                      else if GetNumSamplesLoaded.num_samples < 50000 then 10000
-                                                           else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
-                                                                 else 34000
+                                  else if GetNumSamplesLoaded.num_samples < 5000 then 1
+                                       else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                            else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                                 else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
+                                                      else 34000
 
     Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
-                                                                if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                                                else 500])
+                                                                    if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                                                    else 500])
 
     Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
                                        else if effective_scatter_count <= 100 then 40
-                                           else if effective_scatter_count <= 500 then 20
-                                               else 12
+                                            else if effective_scatter_count <= 500 then 20
+                                                 else 12
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
@@ -166,6 +164,7 @@ workflow GvsExtractCallsetPgen {
             split_intervals_mem_override = split_intervals_mem_override,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
+            output_gcs_dir = output_gcs_dir,
     }
 
     call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
@@ -250,7 +249,6 @@ workflow GvsExtractCallsetPgen {
                 drop_state                         = drop_state,
                 output_pgen_basename               = pgen_basename,
                 zero_pad_output_pgen_filenames     = zero_pad_output_pgen_filenames,
-                output_gcs_dir                     = output_gcs_dir,
                 max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
                 extract_preemptible_override       = extract_preemptible_override,
                 extract_maxretries_override        = extract_maxretries_override,
@@ -265,6 +263,7 @@ workflow GvsExtractCallsetPgen {
     call SumBytes {
         input:
             file_sizes_bytes = flatten([PgenExtractTask.output_pgen_bytes, PgenExtractTask.output_pvar_bytes, PgenExtractTask.output_psam_bytes]),
+            output_gcs_dir = output_gcs_dir,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -346,7 +345,6 @@ task PgenExtractTask {
         String read_project_id
         String output_pgen_basename
         Boolean zero_pad_output_pgen_filenames
-        String? output_gcs_dir
 
         String cost_observability_tablename = "cost_observability"
 
@@ -421,39 +419,36 @@ task PgenExtractTask {
         fi
 
         gatk --java-options "-Xmx${memory_mb}m" \
-            ExtractCohortToPgen \
-                --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
-                ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
-                --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-                --ref-version 38 \
-                -R ~{reference} \
-                -O ~{output_pgen_basename}.pgen \
-                --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
-                --sample-table ~{fq_samples_to_extract_table} \
-                ~{"--inferred-reference-state " + inferred_reference_state} \
-                -L ~{interval_filename} \
-                --project-id ~{read_project_id} \
-                ~{true='--emit-pls' false='' emit_pls} \
-                ~{true='--emit-ads' false='' emit_ads} \
-                ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
-                --convert-filtered-genotypes-to-no-calls \
-                ${FILTERING_ARGS} \
-                --dataset-id ~{dataset_name} \
-                --call-set-identifier ~{call_set_identifier} \
-                --wdl-step GvsExtractCallsetPgenPgen \
-                --wdl-call PgenExtractTask \
-                --shard-identifier ~{interval_filename} \
-                ~{cost_observability_line} \
-                --writer-log-file writer.log \
-                --pgen-chromosome-code ~{pgen_chromosome_code} \
-                --max-alt-alleles ~{max_alt_alleles} \
-                ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
-                ~{true='--preserve-phasing' false='' preserve_phasing} \
-                --allow-empty-pgen
+        ExtractCohortToPgen \
+            --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+            ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
+            --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
+            --ref-version 38 \
+            -R ~{reference} \
+            -O ~{output_pgen_basename}.pgen \
+            --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
+            --sample-table ~{fq_samples_to_extract_table} \
+            ~{"--inferred-reference-state " + inferred_reference_state} \
+            -L ~{interval_filename} \
+            --project-id ~{read_project_id} \
+            ~{true='--emit-pls' false='' emit_pls} \
+            ~{true='--emit-ads' false='' emit_ads} \
+            ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+            --convert-filtered-genotypes-to-no-calls \
+            ${FILTERING_ARGS} \
+            --dataset-id ~{dataset_name} \
+            --call-set-identifier ~{call_set_identifier} \
+            --wdl-step GvsExtractCallsetPgenPgen \
+            --wdl-call PgenExtractTask \
+            --shard-identifier ~{interval_filename} \
+            ~{cost_observability_line} \
+            --writer-log-file writer.log \
+            --pgen-chromosome-code ~{pgen_chromosome_code} \
+            --max-alt-alleles ~{max_alt_alleles} \
+            ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation} \
+            ~{true='--preserve-phasing' false='' preserve_phasing} \
+            --allow-empty-pgen
 
-
-        # Drop trailing slash if one exists
-        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         OUTPUT_FILE_BYTES="$(du -b ~{output_pgen_basename}.pgen | cut -f1)"
         echo ${OUTPUT_FILE_BYTES} > pgen_bytes.txt
@@ -464,18 +459,9 @@ task PgenExtractTask {
         OUTPUT_FILE_PSAM_BYTES="$(du -b ~{output_pgen_basename}.psam | cut -f1)"
         echo ${OUTPUT_FILE_PSAM_BYTES} > psam_bytes.txt
 
-        if [ -n "${OUTPUT_GCS_DIR}" ]; then
-            gsutil cp ~{output_pgen_basename}.pgen ${OUTPUT_GCS_DIR}/
-            gsutil cp ~{output_pgen_basename}.pvar.zst ${OUTPUT_GCS_DIR}/
-            gsutil cp ~{output_pgen_basename}.psam ${OUTPUT_GCS_DIR}/
-            OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.pgen"
-            OUTPUT_FILE_PVAR_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.pvar.zst"
-            OUTPUT_FILE_PSAM_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.psam"
-        else
-            OUTPUT_FILE_DEST="~{output_pgen_basename}.pgen"
-            OUTPUT_FILE_PVAR_DEST="~{output_pgen_basename}.pvar.zst"
-            OUTPUT_FILE_PSAM_DEST="~{output_pgen_basename}.psam"
-        fi
+        OUTPUT_FILE_DEST="~{output_pgen_basename}.pgen"
+        OUTPUT_FILE_PVAR_DEST="~{output_pgen_basename}.pvar.zst"
+        OUTPUT_FILE_PSAM_DEST="~{output_pgen_basename}.psam"
 
         # Parent Task will collect manifest lines and create a joined file
         # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_pvar_location], [output_file_pvar_size_bytes], [output_file_psam_location], [output_file_psam_size_bytes]`
@@ -510,6 +496,7 @@ task SumBytes {
     input {
         Array[Float] file_sizes_bytes
         String cloud_sdk_docker
+        String? output_gcs_dir
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -561,7 +548,7 @@ task CreateManifest {
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         if [ -n "$OUTPUT_GCS_DIR" ]; then
-        gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+            gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
         fi
     >>>
     output {
@@ -608,7 +595,7 @@ task GenerateSampleListFile {
         'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
 
         if [ -n "$OUTPUT_GCS_DIR" ]; then
-        gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
+            gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
         fi
     >>>
     output {

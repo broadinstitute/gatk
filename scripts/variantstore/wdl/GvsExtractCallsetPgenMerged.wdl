@@ -118,6 +118,7 @@ workflow GvsExtractCallsetPgenMerged {
             x_bed_weight_scaling = x_bed_weight_scaling,
             y_bed_weight_scaling = y_bed_weight_scaling,
             write_cost_to_db = write_cost_to_db,
+            output_gcs_dir = output_gcs_dir,
     }
 
     call SplitFilesByChromosome {
@@ -145,6 +146,7 @@ workflow GvsExtractCallsetPgenMerged {
                 split_count = split_count,
                 zero_padded_prefix = zero_pad_output_pgen_filenames,
                 variants_docker = effective_variants_docker,
+                output_gcs_dir = output_gcs_dir,
         }
     }
 
@@ -206,7 +208,7 @@ task SplitFilesByChromosome {
         Array[File] pvar_lists = glob("*.pvar_list")
         Array[File] psam_lists = glob("*.psam_list")
     }
-    
+
     runtime {
         docker: "ubuntu:20.04"
         memory: "1 GB"
