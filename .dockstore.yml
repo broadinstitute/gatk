@@ -459,7 +459,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - rsa_pgen_output_gcs_dir
+         - vs_1109_acaf_pgen
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
