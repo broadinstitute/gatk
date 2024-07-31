@@ -183,6 +183,15 @@ workflows:
              - vs_1366_acaf_vcf
          tags:
              - /.*/
+   - name: GvsExtractCallset_ACAF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
+         - vs_1366_acaf_vcf
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
