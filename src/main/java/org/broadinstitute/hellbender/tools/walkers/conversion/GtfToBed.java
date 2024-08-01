@@ -17,15 +17,15 @@ import java.io.IOException;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "Converts Gencode Gtf files to Bed file format with each row of bed file being either a gene or a transcript. ",
-        oneLineSummary = "Gtf to Bed",
+        summary = "Converts Gencode GTF files to Bed file format with each row of bed file being either a gene or a transcript.",
+        oneLineSummary = "GTF to BED",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "dont-mix-contigs";
 
-    @Argument(fullName = "Gencode Gtf input file",
-            shortName = "G", doc = "Gencode GTF file")
+    @Argument(fullName = "GTF",
+            shortName = "G", doc = "Path to Gencode GTF file")
     public GATKPath inputFile;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -35,7 +35,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Argument(doc = "Make each row of BED file sorted by transcript (false is sorted by gene)", shortName = "T", fullName = SORT_BY_TRANSCRIPT_LONG_NAME, optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument(doc = "path to sequence dictionary", fullName = "Dictionary", shortName = "D")
+    @Argument(doc = "Path to sequence dictionary", fullName = "Dictionary", shortName = "D")
     public GATKPath dictionaryPath;
 
     private final Map<String, GtfInfo> idToInfo = new HashMap<>();
@@ -56,6 +56,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         }
     }
 
+    //gets both genes and transcripts from GTF and puts it in a hashmap
     private void processFeature(GencodeGtfFeature gtfFeature) {
         //the basic tag is in optional fields
         List<GencodeGtfFeature.OptionalField<?>> optionalFields = getOptionalFields(gtfFeature);
@@ -84,7 +85,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         return optionalFields;
     }
 
-
+    //stores the gene ID and Interval info in hashmap
     private void processGeneFeature(GencodeGtfFeature gtfFeature) {
         //gene start
         int geneStart = gtfFeature.getStart();
@@ -97,6 +98,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         idToInfo.put(gtfFeature.getGeneId(), gtfInfo);
     }
 
+    ///stores the transcript ID and Interval info in hashmap
     private void processTranscriptFeature(GencodeGtfFeature gtfFeature) {
         Interval interval = new Interval(gtfFeature.getContig(), gtfFeature.getStart(), gtfFeature.getEnd());
         //put the interval, type as transcript, and the name of the gene it's in
@@ -104,11 +106,12 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         //store in hashmap with key as transcriptId
         idToInfo.put(gtfFeature.getTranscriptId(), gtfInfo);
         //update start/end of corresponding gene if needed
-        updateGeneStartIfNeeded(gtfFeature);
-        updateGeneEndIfNeeded(gtfFeature);
+        updateGeneStart(gtfFeature);
+        updateGeneEnd(gtfFeature);
     }
 
-    private void updateGeneStartIfNeeded(GencodeGtfFeature gtfFeature) {
+    //update the gene interval start position based on the transcript
+    private void updateGeneStart(GencodeGtfFeature gtfFeature) {
         //get the start value of the gene
         int geneStart = idToInfo.get(gtfFeature.getGeneId()).getStart();
         //if the transcript start is less than the gene start
@@ -119,7 +122,8 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         }
     }
 
-    private void updateGeneEndIfNeeded(GencodeGtfFeature gtfFeature) {
+    //update the gene interval end position based on the transcript
+    private void updateGeneEnd(GencodeGtfFeature gtfFeature) {
         //get the end value of the gene
         int geneEnd = idToInfo.get(gtfFeature.getGeneId()).getEnd();
         //if the transcript start is greater than the gene start
@@ -137,14 +141,14 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         idToInfo.put(gtfFeature.getGeneId(), gtfGeneInfo);
     }
 
-   //immediately after it has gone through each line of gtf (apply method)
+   //runs immediately after it has gone through each line of gtf (apply method)
     @Override
     public Object onTraversalSuccess(){
         //get the user input dictionary
         SAMSequenceDictionary sequenceDictionary = getSequenceDictionary(String.valueOf(dictionaryPath));
 
         //create linked hash map to store sorted values of idToInfo
-        LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedIdToInfo(sequenceDictionary);
+        LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedMap(sequenceDictionary);
 
         //if user wants to sort by transcript only use transcripts else only use genes
         GtfInfo.Type selectedType = sortByTranscript ? GtfInfo.Type.TRANSCRIPT : GtfInfo.Type.GENE;
@@ -153,12 +157,14 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         return null;
     }
 
+    //reads the dictionary
     private SAMSequenceDictionary getSequenceDictionary(String dictionaryPath) {
         SamReader reader = SamReaderFactory.makeDefault().open(new File(dictionaryPath)); //TODO: figure out what makeDefault() does
         return reader.getFileHeader().getSequenceDictionary();
     }
 
-    private LinkedHashMap<String, GtfInfo> getSortedIdToInfo(SAMSequenceDictionary sequenceDictionary) {
+    //sorts the map containing the features based on contig and start position
+    private LinkedHashMap<String, GtfInfo> getSortedMap(SAMSequenceDictionary sequenceDictionary) {
         //create a list that has the keys and values of idToInfo
         List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet());
         //sort the list using CompareGtfInfo

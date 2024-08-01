@@ -1,13 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
-import org.apache.parquet.filter2.predicate.Operators;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.Comparator;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class GtfInfo{
 
@@ -17,7 +10,7 @@ public class GtfInfo{
     }
 
     private Type type;
-    private String geneName;
+    private final String geneName;
     private Interval interval;
 
     public GtfInfo(Interval interval, Type type, String geneName){
@@ -36,10 +29,6 @@ public class GtfInfo{
 
     public String getGeneName(){
         return geneName;
-    }
-
-    public void setGeneName(String geneName){
-        this.geneName = geneName;
     }
 
     public Interval getInterval(){
