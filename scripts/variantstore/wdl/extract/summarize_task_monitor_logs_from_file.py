@@ -201,4 +201,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=str, help='Output Monitoring log summary file', required=True)
     args = parser.parse_args()
 
+    if not os.path.exists("temp"):
+        os.makedirs("temp")
+
     parse_monitoring_log_files(args.input, args.output)
