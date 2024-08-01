@@ -279,6 +279,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1460_intersect_target_truth_ps
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration

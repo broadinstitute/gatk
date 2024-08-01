@@ -132,13 +132,24 @@ workflow GvsCalculatePrecisionAndSensitivity {
         gotc_imputation_docker = effective_gotc_imputation_docker,
     }
 
+    if (defined(target_interval_list)) {
+      call IntersectTargetIntervalListWithTruthBed {
+        input:
+          truth_bed = truth_beds[i],
+          target_interval_list = select_first([target_interval_list]),
+          gatk_docker = effective_gatk_docker,
+      }
+    }
+
+    File effective_truth_bed = select_first([IntersectTargetIntervalListWithTruthBed.intersected_truth_bed, truth_beds[i]])
+
     call EvaluateVcf as EvaluateVcfFiltered {
       input:
         input_vcf = BgzipAndTabix.output_vcf,
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = truth_beds[i],
+        truth_bed = effective_truth_bed,
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
@@ -153,7 +164,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = truth_beds[i],
+        truth_bed = effective_truth_bed,
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         all_records = true,
@@ -523,4 +534,37 @@ task CountInputVcfs {
   runtime {
     docker: basic_docker
   }
+}
+
+
+task IntersectTargetIntervalListWithTruthBed {
+    input {
+        File truth_bed
+        File target_interval_list
+        String gatk_docker
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # `basename` so the output ends up in $PWD (/cromwell_root) and not wherever the inputs were localized.
+        # The outputs of these transformations need to be in a place where the `glob` expression will find them.
+        target_bed="$(basename ~{target_interval_list})"
+        target_bed="${target_bed%%.interval_list}.bed"
+
+        gatk IntervalListToBed -I ~{target_interval_list} -O "${target_bed}" --SORT
+
+        truth_bed="~{truth_bed}"
+        intersected_truth_bed="$(basename ${truth_bed%%.bed})"
+        intersected_truth_bed="${intersected_truth_bed}_intersected.bed"
+
+        bedtools intersect -a "${target_bed}" -b ${truth_bed} > ${intersected_truth_bed}
+    >>>
+    runtime {
+        docker: gatk_docker
+    }
+    output {
+        File intersected_truth_bed = glob("*_intersected.bed")[0]
+    }
 }
