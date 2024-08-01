@@ -12,6 +12,7 @@ import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockGunzipper;
 import htsjdk.samtools.util.Log;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
@@ -23,6 +24,7 @@ import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.io.MountOptionChecker;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.IOException;
@@ -167,6 +169,23 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         final Path p = tmpDir.toPath();
         try {
             p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
+
+            // Warn if there's anything that prevents execution in the tmp dir because some tools need that
+            if(SystemUtils.IS_OS_LINUX) {
+                if(MountOptionChecker.pathIsNoExec(p.toString())){
+                    logger.warn(
+                        "The temporary directory GATK is configured to use is mounted as noexec, which can cause " +
+                            "issues for some GATK tools. You can specify a different directory using --tmp-dir"
+                    );
+                }
+            }
+            if(!Files.isExecutable(p)) {
+                logger.warn(
+                    "The temporary directory GATK is configured to use is not executable, which can cause issues for" +
+                            "some GATK tools. You can specify a different directory using --tmp-dir"
+                    );
+            }
+
             System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
         } catch (final AccessDeniedException | NoSuchFileException e) {
             // TODO: it may be that the program does not need a tmp dir
