@@ -16,13 +16,17 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ *
+ */
+
 @CommandLineProgramProperties(
-        summary = "Converts Gencode GTF files to Bed file format with each row of bed file being either a gene or a transcript.",
+        summary = "Converts GTF files to Bed file format with each row of bed file being either a gene or a transcript.",
         oneLineSummary = "GTF to BED",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
-    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "dont-mix-contigs";
+    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-by-transcript";
 
     @Argument(fullName = "GTF",
             shortName = "G", doc = "Path to Gencode GTF file")
