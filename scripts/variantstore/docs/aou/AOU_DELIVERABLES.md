@@ -153,7 +153,7 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
 
 
 ### VID to Participant ID Mapping Table.
-Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all of the participants in the dataset that share that VID. This table is used by the AoU Research Workbench, and will need to be copied over to a location specified by them. 
+Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all of the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them. 
 
 1. Create the database table. Using (for instance) the BigQuery cloud user interface, run the query below. Note that you should redirect the output of this query to a new database table in the same dataset, for instance by using the 'query settings' feature in the BigQuery cloud user interface. Also note that you will need to specify the `project`, `dataset`, and `vat_table_name` fields before running the query. Further note that this query might take an hour or two to run to completion:
     ```
