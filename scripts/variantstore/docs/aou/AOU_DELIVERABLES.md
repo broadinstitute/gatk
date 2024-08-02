@@ -188,7 +188,7 @@ Once the VAT has been created, you will need to create a database table mapping 
         SPLIT(vat.vid, '-')[OFFSET(2)],
         SPLIT(vat.vid, '-')[OFFSET(3)]
    ```
-1. Once the query has successfully finished, you should cluster it on the field `vid`. This can be accomplished using the command below. Note that you will need to specify the `project`, `dataset`, and `mapping_table_name` fields before running the command :
+1. Once the query has successfully finished, you should cluster it on the field `vid`. This can be accomplished using the command below. Note that you will need to specify the `project`, `dataset`, and `mapping_table_name` fields before running the command:
 ```
     bq update --project_id=<project> --clustering_fields=vid <dataset>.<mapping_table_name>
 ```
