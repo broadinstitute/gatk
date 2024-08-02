@@ -21,11 +21,6 @@ public class MountOptionChecker {
                 }
             }
         }
-        catch(FileNotFoundException e) {
-            // If there's no /proc/mounts file, something weird is probably going on, but it obviously isn't noexec if
-            // it doesn't exist, so return false
-            return false;
-        }
         catch (IOException e) {
             throw e;
         }

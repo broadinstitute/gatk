@@ -172,17 +172,28 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
             // Warn if there's anything that prevents execution in the tmp dir because some tools need that
             if(SystemUtils.IS_OS_LINUX) {
-                if(MountOptionChecker.pathIsNoExec(p.toString())){
+                try {
+                    if (MountOptionChecker.pathIsNoExec(p.toString())) {
+                        logger.warn(
+                            "The temporary directory GATK is configured to use is mounted as noexec, which can cause " +
+                                "issues for some GATK tools. You can specify a different directory using --tmp-dir"
+                        );
+                    }
+                }
+                catch(IOException e) {
+                    // If we run into an exception during this check, we don't want it to cause the program to fail, so
+                    // we'll just log it an move on
                     logger.warn(
-                        "The temporary directory GATK is configured to use is mounted as noexec, which can cause " +
-                            "issues for some GATK tools. You can specify a different directory using --tmp-dir"
+                        "Encountered an error while trying to check if your temporary directory is noexec. This is " +
+                            "probably not an issue, but, if you're running into tmp-dir-related problems, it's " +
+                            "possible "
                     );
                 }
             }
             if(!Files.isExecutable(p)) {
                 logger.warn(
                     "The temporary directory GATK is configured to use is not executable, which can cause issues for" +
-                            "some GATK tools. You can specify a different directory using --tmp-dir"
+                        "some GATK tools. You can specify a different directory using --tmp-dir"
                     );
             }
 
