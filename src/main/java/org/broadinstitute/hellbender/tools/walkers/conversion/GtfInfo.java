@@ -13,42 +13,42 @@ public class GtfInfo{
     private final String geneName;
     private Interval interval;
 
-    public GtfInfo(Interval interval, Type type, String geneName){
+    public GtfInfo(Interval interval, Type type, String geneName) {
         this.interval = interval;
         this.type = type;
         this.geneName = geneName;
     }
 
-    public Type getType(){
+    public Type getType() {
         return type;
     }
 
-    public void setType(Type type){
+    public void setType(Type type) {
         this.type = type;
     }
 
-    public String getGeneName(){
+    public String getGeneName() {
         return geneName;
     }
 
-    public Interval getInterval(){
+    public Interval getInterval() {
         return interval;
     }
 
-    public Integer getStart(){
+    public Integer getStart() {
         return interval.getStart();
     }
 
-    public Integer getEnd(){
+    public Integer getEnd() {
         return interval.getEnd();
     }
 
-    public void setInterval(Interval interval){
+    public void setInterval(Interval interval) {
         this.interval = interval;
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return "GtfInfo{ " + "type = " + type + " geneName = " + geneName + "interval = " + interval;
     }
 

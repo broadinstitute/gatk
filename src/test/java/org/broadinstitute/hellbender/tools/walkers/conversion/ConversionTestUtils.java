@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 public class ConversionTestUtils {
 
     public static String getTestDataDir(){
-        return GATKBaseTest.toolsTestDir + "/walkers/conversion/";
+        return GATKBaseTest.toolsTestDir + "/walkers/gtfToBed/";
     }
 
     public static String getDecoySampleGtf(){
@@ -14,6 +14,10 @@ public class ConversionTestUtils {
 
     public static String getMapk1Gtf(){
         return getTestDataDir()+"/mapk1.gtf";
+    }
+
+    public static String getManyTranscriptsGtf(){
+        return getTestDataDir() + "/manyTranscripts.gtf";
     }
 
     public static String getReferenceDict(){
@@ -34,5 +38,9 @@ public class ConversionTestUtils {
 
     public static String getMapk1TranscriptBed(){
         return getTestDataDir() + "/mapk1Transcript.bed";
+    }
+
+    public static String getManyTranscriptsBed(){
+        return getTestDataDir() + "/manyTranscripts.bed";
     }
 }
