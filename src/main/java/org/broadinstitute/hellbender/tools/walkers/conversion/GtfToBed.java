@@ -18,7 +18,53 @@ import java.io.IOException;
 import java.util.*;
 
 /**
+ * <p>Convert GTF files to BED format with options for gene and transcript level processing.
+ * This tool allows for the extraction of gene and transcript information from GTF files and
+ * outputs the data in BED format.</p>
  *
+ *
+ * <p>The conversion process includes sorting entries
+ * by karyotype, providing flexibility in the selection of either gene or transcript level
+ * data, and an option to only use basic tags. It ensures that the BED output is sorted and formatted correctly for subsequent use.</p>
+ *
+ * <h3>Usage examples</h3>
+ * <p>Example commands to run GtfToBed for typical scenarios:</p>
+ *
+ * <h4>(i) Convert GTF to BED with gene level data</h4>
+ * <p>This mode extracts and converts gene data from the input GTF file to BED format:</p>
+ *
+ * <pre>
+ *     java -jar GtfToBed.jar \
+ *     -G input.gtf \
+ *     -SD dictionary.dict \
+ *     -T False \
+ *     -B False \
+ *     -O output.bed \
+ * </pre>
+ *
+ * <h4>(ii) Convert GTF to BED with transcript level data</h4>
+ * <p>This mode extracts and converts transcript data from the input GTF file to BED format:</p>
+ *
+ * <pre>
+ *     java -jar GtfToBed.jar \
+ *     -G input.gtf \
+ *     -SD dictionary.dict \
+ *     -T True \
+ *     -B False \
+ *     -O output.bed \
+ * </pre>
+ *
+ * <h4>(iii) Convert GTF to BED with transcript level data filtering for only those with the basic tag</h4>
+ *  * <p>This mode extracts and converts basic transcript data from the input GTF file to BED format:</p>
+ *  *
+ *  * <pre>
+ *     java -jar GtfToBed.jar \
+ *     -G input.gtf \
+ *     -SD dictionary.dict \
+ *     -T True \
+ *     -B True \
+ *     -O output.bed \
+ *  * </pre>
  */
 
 @CommandLineProgramProperties(
