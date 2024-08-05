@@ -43,4 +43,8 @@ public class ConversionTestUtils {
     public static String getManyTranscriptsBed(){
         return getTestDataDir() + "/manyTranscripts.bed";
     }
+
+    public static String getNotBasicBed(){
+        return getTestDataDir() + "/notBasic.bed";
+    }
 }

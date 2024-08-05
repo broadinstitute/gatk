@@ -20,6 +20,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File mapk1GeneBed = new File(ConversionTestUtils.getMapk1GeneBed());
     private static final File mapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
     private static final File manyTranscriptsBed = new File (ConversionTestUtils.getManyTranscriptsBed());
+    private static final File notBasicBed = new File(ConversionTestUtils.getNotBasicBed());
 
     // tests any Gtf file (gene)
     @Test
@@ -63,13 +64,19 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         runManyTranscripts();
     }
 
+    @Test
+    public void testNotBasic() throws IOException {
+        runNotBasic();
+    }
+
 
     private void runGtfToBed(boolean transcript) throws IOException {
         final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", input)
                 .add("SD", dictionary)
-                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add("T", transcript)
+                .add("B", true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
 
@@ -85,7 +92,8 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", mapk1)
                 .add("SD", dictionary)
-                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add("T", transcript)
+                .add("B", true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
 
@@ -103,7 +111,8 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", decoys)
                 .add("SD", dictionary)
-                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add("T", transcript)
+                .add("B", true)
                 .addOutput(outputFile);
         countLines(outputFile);
         runCommandLine(argsBuilder);
@@ -123,11 +132,24 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", manyTranscripts)
                 .add("SD", dictionary)
-                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, true)
+                .add("T", true)
+                .add("B", true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(compareFiles( manyTranscriptsBed, outputFile));
 
+    }
+
+    private void runNotBasic() throws IOException {
+        final File outputFile = createTempFile("outputBed", ".bed");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .add("G", manyTranscripts)
+                .add("SD", dictionary)
+                .add("T", true)
+                .add("B", false)
+                .addOutput(outputFile);
+        runCommandLine(argsBuilder);
+        Assert.assertTrue(compareFiles(notBasicBed, outputFile));
     }
 
     private int countLines(File file) throws IOException {

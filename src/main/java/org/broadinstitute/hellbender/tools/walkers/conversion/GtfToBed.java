@@ -29,7 +29,11 @@ import java.util.*;
 
 //TODO: make args all caps
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
-    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-by-transcript";
+    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "SORT_BY_TRANSCRIPT";
+    public static final String SEQUENCE_DICTIONARY_LONG_NAME = "SEQUENCE_DICTIONARY";
+    public static final String SORT_BY_BASIC_LONG_NAME = "SORT_BY_BASIC";
+
+
 
     @Argument(fullName = "GTF",
             shortName = "G", doc = "Path to Gencode GTF file")
@@ -39,11 +43,14 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BED file")
     public GATKPath outputFile;
 
-    @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, shortName = "T", doc = "Make each row of BED file sorted by transcript (false is sorted by gene)", optional = true)
+    @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, shortName = "T", doc = "Make each row of BED file sorted by transcript", optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument( fullName = "SEQUENCE_DICTIONARY", shortName = "SD", doc = "Path to sequence dictionary")
-    public GATKPath SEQUENCE_DICTIONARY;
+    @Argument( fullName = SEQUENCE_DICTIONARY_LONG_NAME, shortName = "SD", doc = "Path to sequence dictionary")
+    public GATKPath sequenceDictionary;
+
+    @Argument( fullName = SORT_BY_BASIC_LONG_NAME, shortName = "B", doc = "Only use basic transcripts")
+    public boolean sortByBasic = false;
 
     private final Map<String, GtfInfo> idToInfo = new HashMap<>();
 
@@ -73,9 +80,15 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
             processGeneFeature(gtfFeature);
         }
 
-        // if the gtf feature is a transcript and has the basic tag
-        for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
-            if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT && "basic".equals(field.getValue())) {
+        //  check if the gtf feature is a transcript. If user only wants basic transcripts check that it has the basic tag
+        if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT) {
+            if (sortByBasic) {
+                for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
+                    if ("basic".equals(field.getValue())) {
+                        processTranscriptFeature(gtfFeature);
+                    }
+                }
+            } else {
                 processTranscriptFeature(gtfFeature);
             }
         }
@@ -156,7 +169,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Override
     public Object onTraversalSuccess() {
         // get the user input dictionary
-        SAMSequenceDictionary sequenceDictionary = getSequenceDictionary(String.valueOf(SEQUENCE_DICTIONARY));
+        SAMSequenceDictionary sequenceDictionary = getSequenceDictionary(String.valueOf(this.sequenceDictionary));
 
         // create linked hash map to store sorted values of idToInfo
         LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedMap(sequenceDictionary);
