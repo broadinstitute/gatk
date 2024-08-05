@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
-import htsjdk.samtools.*; //TODO: make these individual imports
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.*;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -73,7 +75,6 @@ import java.util.*;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 
-//TODO: make args all caps
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "SORT_BY_TRANSCRIPT";
     public static final String SEQUENCE_DICTIONARY_LONG_NAME = "SEQUENCE_DICTIONARY";
@@ -229,7 +230,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
 
     // reads the dictionary
     private SAMSequenceDictionary getSequenceDictionary(String dictionaryPath) {
-        SamReader reader = SamReaderFactory.makeDefault().open(new File(dictionaryPath)); //TODO: figure out what makeDefault() does
+        SamReader reader = SamReaderFactory.makeDefault().open(new File(dictionaryPath));
 
         return reader.getFileHeader().getSequenceDictionary();
     }

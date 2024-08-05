@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
-import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Comparator;
@@ -10,8 +9,7 @@ import java.util.Map;
 
 public class CompareGtfInfo implements Comparator<Map.Entry<String, GtfInfo>> {
 
-    @Argument(shortName = "SD", fullName = "SEQUENCE_DICTIONARY", optional =  true)//TODO: figure this out
-    SAMSequenceDictionary dictionary;
+    private final SAMSequenceDictionary dictionary;
 
     CompareGtfInfo(SAMSequenceDictionary dictionary) {
         this.dictionary = dictionary;
