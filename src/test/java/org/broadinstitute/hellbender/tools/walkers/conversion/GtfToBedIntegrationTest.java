@@ -60,7 +60,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     // tests a gene with many transcripts and a gene in another chr
     @Test
     public void testManyTranscripts() throws IOException {
-        runManyTranscripts(true);
+        runManyTranscripts();
     }
 
 
@@ -118,20 +118,16 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    private void runManyTranscripts(boolean transcript) throws IOException {
+    private void runManyTranscripts() throws IOException {
         final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add("G", manyTranscripts)
                 .add("SD", dictionary)
-                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
+        Assert.assertTrue(compareFiles( manyTranscriptsBed, outputFile));
 
-        if (transcript) {
-            Assert.assertTrue(compareFiles( manyTranscriptsBed, outputFile));
-        } else {
-            Assert.assertTrue(compareFiles( manyTranscriptsBed, outputFile));
-        }
     }
 
     private int countLines(File file) throws IOException {

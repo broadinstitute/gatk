@@ -26,7 +26,23 @@ public class CompareGtfInfo implements Comparator<Map.Entry<String, GtfInfo>> {
         Utils.nonNull(dictionary.getSequence(e1Interval.getContig()), "could not get sequence for " + e1Interval.getContig());
         Utils.nonNull(dictionary.getSequence(e2Interval.getContig()), "could not get sequence for " + e2Interval.getContig());
 
-        // compare by contig then start
-        return Comparator.comparingInt((Interval interval) -> dictionary.getSequence(interval.getContig()).getSequenceIndex()).thenComparingInt(Interval::getStart).compare(e1Interval, e2Interval);
+        // compare by contig
+        int contigComparison = Integer.compare(
+                dictionary.getSequence(e1Interval.getContig()).getSequenceIndex(),
+                dictionary.getSequence(e2Interval.getContig()).getSequenceIndex()
+        );
+
+        if (contigComparison != 0) {
+            return contigComparison;
+        }
+
+        // compare by start if contigs are the same
+        int startComparison = Integer.compare(e1Interval.getStart(), e2Interval.getStart());
+        if (startComparison != 0) {
+            return startComparison;
+        }
+
+        // tiebreaker: compare by key
+        return e1.getKey().compareTo(e2.getKey());
     }
 }
