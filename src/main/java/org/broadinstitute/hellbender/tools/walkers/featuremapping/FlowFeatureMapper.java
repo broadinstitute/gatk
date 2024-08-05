@@ -17,23 +17,30 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
-import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
-import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Supplier;
 
 
@@ -82,7 +89,9 @@ import java.util.function.Supplier;
 
 @DocumentedFeature
 @ExperimentalFeature
-public final class FlowFeatureMapper extends ReadWalker {
+public final class FlowFeatureMapper extends ReadWalker implements Runnable {
+
+    private static final int MESSAGE_QUEUE_CAPACITY = 5000;
 
     static class CopyAttrInfo {
         public final String name;
@@ -126,6 +135,14 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
 
     final private List<CopyAttrInfo> copyAttrInfo = new LinkedList<>();
+
+    static class Message {
+        GATKRead read;
+        ReferenceContext referenceContext;
+    }
+
+    private BlockingQueue<Message> downstreamQueue;
+    private BlockingQueue<Message> upstreamQueue;
 
     // order here is according to SequenceUtil.VALID_BASES_UPPER
     final private String scoreForBaseNames[] = new String[SequenceUtil.VALID_BASES_UPPER.length];
@@ -277,11 +294,27 @@ public final class FlowFeatureMapper extends ReadWalker {
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5, outputSitesOnlyVCFs);
         vcfWriter.writeHeader(makeVCFHeader(sequenceDictionary, getDefaultToolVCFHeaderLines()));
+
+        // start threading?
+        if ( fmArgs.useMapperThread ) {
+            downstreamQueue = new LinkedBlockingQueue<>(MESSAGE_QUEUE_CAPACITY);
+            upstreamQueue = new LinkedBlockingQueue<>();
+            (new Thread(this)).start();
+        }
     }
 
     @Override
     public void closeTool() {
-        flushQueue(null, null);
+        if ( downstreamQueue != null ) {
+            downstreamQueue.add(new Message());
+            try {
+                upstreamQueue.take();
+            } catch (Throwable e) {
+                throw new GATKException("", e);
+            }
+        } else {
+            flushQueue(null, null);
+        }
         super.closeTool();
         if ( vcfWriter != null ) {
             vcfWriter.close();
@@ -394,6 +427,22 @@ public final class FlowFeatureMapper extends ReadWalker {
             return;
         }
 
+        // process the read
+        if ( downstreamQueue != null ) {
+            Message message = new Message();
+            message.read = read;
+            message.referenceContext = referenceContext;
+            try {
+                downstreamQueue.put(message);
+            } catch (Throwable e) {
+                throw  new GATKException("", e);
+            }
+        } else {
+            processRead(read, referenceContext);
+        }
+    }
+
+    private void processRead(final GATKRead read, final ReferenceContext referenceContext) {
         // flush qeues up to this read
         flushQueue(read, referenceContext);
 
@@ -760,6 +809,25 @@ public final class FlowFeatureMapper extends ReadWalker {
             return new SNVMapper(fmArgs);
         } else {
             throw new GATKException("unsupported mappingFeature: " + fmArgs.mappingFeature);
+        }
+    }
+
+    @Override
+    public void run() {
+        try {
+            boolean done = false;
+            while (!done) {
+                Message message = downstreamQueue.take();
+                if (message.read != null) {
+                    processRead(message.read, message.referenceContext);
+                } else {
+                    flushQueue(null, null);
+                    upstreamQueue.put(message);
+                    done = true;
+                }
+            }
+        } catch (Throwable e) {
+            throw  new GATKException("", e);
         }
     }
 }

@@ -96,6 +96,12 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     public boolean noEditDistance = false;
 
     /**
+     *  use a separate thread for the mapper
+     **/
+    @Argument(fullName = "use-mapper-thread", doc = "use a separate thread for the mapper ?", optional = true)
+    public boolean useMapperThread = false;
+
+    /**
      *  debug negatives?
      **/
     @Hidden
