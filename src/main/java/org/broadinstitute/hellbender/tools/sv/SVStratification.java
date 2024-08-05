@@ -4,10 +4,12 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Collections;
 import java.util.List;
 
 public final class SVStratification {
@@ -52,9 +54,12 @@ public final class SVStratification {
     }
 
     public boolean matches(final VariantContext variant, final double overlapFraction,
-                           final int numBreakpointOverlaps, final SAMSequenceDictionary dictionary) {
-        final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
-        return matchesType(record) && matchesSize(record) && matchesContext(record, overlapFraction, numBreakpointOverlaps);
+                           final int numBreakpointOverlaps, final int numBreakpointOverlapsInterchrom,
+                           final SAMSequenceDictionary dictionary) {
+        // Save a ton of compute by not copying genotypes into the new record
+        final VariantContext variantNoGenotypes = new VariantContextBuilder(variant).genotypes(Collections.emptyList()).make();
+        final SVCallRecord record = SVCallRecordUtils.create(variantNoGenotypes, dictionary);
+        return matchesType(record) && matchesSize(record) && matchesContext(record, overlapFraction, numBreakpointOverlaps, numBreakpointOverlapsInterchrom);
     }
 
     protected boolean matchesType(final SVCallRecord record) {
@@ -68,7 +73,8 @@ public final class SVStratification {
 
     public boolean matchesContext(final SVCallRecord record,
                                   final double overlapFraction,
-                                  final int numBreakpointOverlaps) {
+                                  final int numBreakpointOverlaps,
+                                  final int numBreakpointOverlapsInterchrom) {
         Utils.nonNull(record);
         Utils.validate(overlapFraction >= 0 && overlapFraction <= 1,
                 "Invalid overlap fraction threshold " + overlapFraction);
@@ -79,7 +85,7 @@ public final class SVStratification {
         if (record.isIntrachromosomal()) {
             return matchesContextIntrachromosomal(record, overlapFraction, numBreakpointOverlaps);
         } else {
-            return matchesContextBreakpointOverlap(record, numBreakpointOverlaps);
+            return matchesContextBreakpointOverlap(record, numBreakpointOverlapsInterchrom);
         }
     }
 

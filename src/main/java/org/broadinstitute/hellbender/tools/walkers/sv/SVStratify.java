@@ -185,6 +185,7 @@ public final class SVStratify extends MultiVariantWalker {
     public static final String CONTEXT_INTERVAL_FILE_LONG_NAME = "context-intervals";
     public static final String OVERLAP_FRACTION_LONG_NAME = "overlap-fraction";
     public static final String NUM_BREAKPOINT_OVERLAPS_LONG_NAME = "num-breakpoint-overlaps";
+    public static final String NUM_BREAKPOINT_INTERCHROM_OVERLAPS_LONG_NAME = "num-breakpoint-overlaps-interchromosomal";
 
     // Default output group suffix for unmatched records
     public static final String DEFAULT_STRATIFICATION = "non_matched";
@@ -220,13 +221,15 @@ public final class SVStratify extends MultiVariantWalker {
 
     @Argument(
             doc = "Context intervals file. Can be specified multiple times.",
-            fullName = CONTEXT_INTERVAL_FILE_LONG_NAME
+            fullName = CONTEXT_INTERVAL_FILE_LONG_NAME,
+            optional = true
     )
     private List<GATKPath> contextFileList;
 
     @Argument(
             doc = "Context names. Must be once for each --" + CONTEXT_INTERVAL_FILE_LONG_NAME,
-            fullName = CONTEXT_NAME_FILE_LONG_NAME
+            fullName = CONTEXT_NAME_FILE_LONG_NAME,
+            optional = true
     )
     private List<String> contextNameList;
 
@@ -236,7 +239,7 @@ public final class SVStratify extends MultiVariantWalker {
             maxValue = 1,
             fullName = OVERLAP_FRACTION_LONG_NAME
     )
-    private double overlapFraction;
+    private double overlapFraction = 0.5;
 
     @Argument(
             doc = "Minimum number of breakpoint overlaps for contexts",
@@ -244,7 +247,15 @@ public final class SVStratify extends MultiVariantWalker {
             maxValue = 2,
             fullName = NUM_BREAKPOINT_OVERLAPS_LONG_NAME
     )
-    private int numBreakpointOverlaps;
+    private int numBreakpointOverlaps = 0;
+
+    @Argument(
+            doc = "Minimum number of breakpoint overlaps for contexts for interchromosomal variants (e.g. BNDs)",
+            minValue = 1,
+            maxValue = 2,
+            fullName = NUM_BREAKPOINT_INTERCHROM_OVERLAPS_LONG_NAME
+    )
+    private int numBreakpointOverlapsInterchrom = 1;
 
     protected SAMSequenceDictionary dictionary;
     protected Map<String, List<Locatable>> contextMap;
@@ -254,8 +265,9 @@ public final class SVStratify extends MultiVariantWalker {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        dictionary = getSequenceDictionaryForDrivingVariants();
-        Utils.validateArg(dictionary != null, "Reference dictionary is required in the input VCF");
+        dictionary = getMasterSequenceDictionary();
+        Utils.validateArg(dictionary != null, "Reference dictionary is required; please specify with --" +
+                StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME);
         contextMap = loadContextIntervals();
         strats = loadConfigurationTable();
         logger.debug("Loaded stratification groups:");
@@ -269,7 +281,7 @@ public final class SVStratify extends MultiVariantWalker {
         final String filename = outputPrefix + "." + name + ".vcf.gz";
         final Path path = outputPath.toPath().resolve(filename);
         final VariantContextWriter writer = createVCFWriter(path);
-        writer.setHeader(getHeaderForVariants());
+        writer.writeHeader(getHeaderForVariants());
         if (writers.containsKey(name)) {
             throw new GATKException.ShouldNeverReachHereException("Stratification name already exists: " + name);
         }
@@ -277,6 +289,7 @@ public final class SVStratify extends MultiVariantWalker {
     }
 
     protected void initializeWriters() {
+        writers = new HashMap<>();
         createGroupWriter(DEFAULT_STRATIFICATION);
         for (final SVStratification s : strats) {
             createGroupWriter(s.getName());
@@ -332,7 +345,7 @@ public final class SVStratify extends MultiVariantWalker {
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
         for (final SVStratification s : strats) {
-            if (s.matches(variant, overlapFraction, numBreakpointOverlaps, dictionary)) {
+            if (s.matches(variant, overlapFraction, numBreakpointOverlaps, numBreakpointOverlapsInterchrom, dictionary)) {
                 writers.get(s.getName()).add(variant);
                 return;
             }
