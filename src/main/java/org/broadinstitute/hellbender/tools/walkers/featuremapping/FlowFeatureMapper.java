@@ -34,6 +34,7 @@ import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
 import java.util.*;
+import java.util.function.Supplier;
 
 
 /**
@@ -197,7 +198,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         int         filteredCount;
         int         nonIdentMBasesOnRead;
         int         featuresOnRead;
-        int         refEditDistance;
+        Supplier<Integer> refEditDistance;
         int         index;
         int         smqLeft;
         int         smqRight;
@@ -703,7 +704,9 @@ public final class FlowFeatureMapper extends ReadWalker {
         vcb.attribute(VCF_FC1, fr.nonIdentMBasesOnRead);
         vcb.attribute(VCF_FC2, fr.featuresOnRead);
         vcb.attribute(VCF_LENGTH, fr.read.getLength());
-        vcb.attribute(VCF_EDIST, fr.refEditDistance);
+        if ( !fmArgs.noEditDistance && fr.refEditDistance != null ) {
+            vcb.attribute(VCF_EDIST, fr.refEditDistance.get());
+        }
         vcb.attribute(VCF_INDEX, fr.index);
 
         // median/mean quality on?

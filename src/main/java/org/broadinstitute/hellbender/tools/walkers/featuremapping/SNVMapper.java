@@ -70,7 +70,6 @@ public class SNVMapper implements FeatureMapper {
         } else {
             basesString = new String(Arrays.copyOfRange(bases, startSoftClip, bases.length - endSoftClip));
         }
-        int               refEditDistance = levDistance.apply(basesString, new String(ref));
 
         // count bases delta on M cigar elements
         int         nonIdentMBases = 0;
@@ -144,7 +143,7 @@ public class SNVMapper implements FeatureMapper {
                         if ( (fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff) && !surrounded )
                             feature.adjacentRefDiff = true;
                         feature.nonIdentMBasesOnRead = nonIdentMBases;
-                        feature.refEditDistance = refEditDistance;
+                        feature.refEditDistance = () -> levDistance.apply(basesString, new String(ref));
                         if ( !read.isReverseStrand() )
                             feature.index = readOfs;
                         else
