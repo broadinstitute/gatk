@@ -189,8 +189,14 @@ Once the VAT has been created, you will need to create a database table mapping 
         SPLIT(vat.vid, '-')[OFFSET(3)]
    ```
 1. Once the query has successfully finished, you should cluster it on the field `vid`. This can be accomplished using the command below. Note that you will need to specify the `project`, `dataset`, and `mapping_table_name` fields before running the command:
-```
+    ```
     bq update --project_id=<project> --clustering_fields=vid <dataset>.<mapping_table_name>
-```
+    ```
 
 1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
+
+1. Note well that there will be a small difference in the number of vids in the VAT and that in the new mapping table that you have just created. For the Echo callset there are 3595 vids in the VAT that don't exist in the new mapping table (use the query below to determine them). The difference occurs because when we generate annotations using Nirvana, Nirvana left align and truncates the indels. For some of these indels, they now are remapped to a slightly different location than we had defined them as in the `alt_allele` table. This is a known issue that will be resolved in a future release.
+
+    ```
+   select distinct vid from `<dataset>.<vat_table_name>` where vid not in (select vid from `<dataset>.<mapping_table_name>`) ;
+    ```
