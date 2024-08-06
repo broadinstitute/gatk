@@ -24,7 +24,9 @@ public class VCFComparatorIntegrationTest extends CommandLineProgramTest {
                 { " -L chr1:186475", "expected_warning_as_vqslod.txt" },
                 { " -L chr1:186475 --ignore-attribute AS_VQSLOD", "empty_file.txt" },
                 { " -L chr1:187471 --ignore-attribute AS_VQSLOD", "expected_warning_filter.txt" },
-                { " -L chr1:186475-945670 " + DEFAULT_WARP_SETTINGS, "empty_file.txt" },
+                { " -L chr1:186475-945669 " + DEFAULT_WARP_SETTINGS, "empty_file.txt" },
+                { " -L chr1:945670 " + DEFAULT_WARP_SETTINGS, "qual_diff_warning.txt"}, // different QUAL values
+                { " -L chr1:945670 --qual-change-allowed 0.1 --ignore-attribute AS_VQSLOD", "empty_file.txt"},
                 { " -L chr1:186475 --mute-acceptable-diffs", "empty_file.txt" } // low quality site is muted even though the AS_VQSLOD is different
         };
     }
