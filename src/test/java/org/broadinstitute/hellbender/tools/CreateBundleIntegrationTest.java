@@ -17,7 +17,8 @@ import java.util.List;
 public class CreateBundleIntegrationTest extends CommandLineProgramTest {
 
     // force our local paths to use absolute path names to make BundleResource and IOPath equality checks easier,
-    // since all serialized JSON bundles always contain absolute path names for local files
+    // since once a bundle is round-tripped/serialized to JSON, the resources will always contain absolute path names
+    // for local files
     private final static String LOCAL_VCF = new GATKPath(getTestDataDir() + "/count_variants_withSequenceDict.vcf").getURIString();
     private final static String LOCAL_VCF_IDX = new GATKPath(getTestDataDir() + "/count_variants_withSequenceDict.vcf.idx").getURIString();
     private final static String LOCAL_VCF_GZIP = new GATKPath("src/test/resources/large/NA24385.vcf.gz").getURIString();
@@ -97,7 +98,7 @@ public class CreateBundleIntegrationTest extends CommandLineProgramTest {
 
                 // no index file can be inferred
                 {LOCAL_VCF_WITH_NO_INDEX, null, null, null, null, null, false, new VariantsBundle(new GATKPath(LOCAL_VCF_WITH_NO_INDEX))},
-                // primary content type not provided and cannot be inferred from the extension
+                // primary content type not provided, and cannot be inferred from the extension
                 {"primaryFile.ext", null, null, null, null, null, false, null},
                 // secondary content type not provided
                 {"primaryFile.ext", PRIMARY_CT, "secondaryFile.ext", null, null, null, false, null},
@@ -148,29 +149,31 @@ public class CreateBundleIntegrationTest extends CommandLineProgramTest {
 
         final List<String> args = new ArrayList<>();
 
-        args.add("--" + StandardArgumentDefinitions.PRIMARY_INPUT_LONG_NAME + (primaryInputTag != null ? ":" + primaryInputTag : ""));
+        args.add("--" + StandardArgumentDefinitions.PRIMARY_RESOURCE_LONG_NAME + (primaryInputTag != null ? ":" + primaryInputTag : ""));
         args.add(primaryInput);
         if (secondaryInput != null) {
-            args.add("--" + StandardArgumentDefinitions.SECONDARY_INPUT_LONG_NAME + (secondaryInputTag != null ? ":" + secondaryInputTag : ""));
+            args.add("--" + StandardArgumentDefinitions.SECONDARY_RESOURCE_LONG_NAME + (secondaryInputTag != null ? ":" + secondaryInputTag : ""));
             args.add(secondaryInput);
         }
         if (otherInputs != null) {
             for (int i = 0; i < otherInputs.size(); i++) {
-                args.add("--" + CreateBundle.OTHER_INPUT_FULL_NAME + ((otherInputTags != null && otherInputTags.get(i) != null) ? ":" + otherInputTags.get(i) : ""));
+                args.add("--" + CreateBundle.OTHER_RESOURCE_FULL_NAME + ((otherInputTags != null && otherInputTags.get(i) != null) ? ":" + otherInputTags.get(i) : ""));
                 args.add(otherInputs.get(i) != null ? otherInputs.get(i) : "");
             }
         }
         if (suppressIndexResolution == true) {
-            args.add("--" + CreateBundle.SUPPRESS_INDEX_RESOLUTION_FULL_NAME);
+            args.add("--" + CreateBundle.SUPPRESS_SECONDARY_RESOURCE_RESOLUTION_FULL_NAME);
         }
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         args.add(outputPath.toString());
+
+        System.out.println(args.stream().reduce("", (acc, arg) -> acc + " " + arg));
 
         runCommandLine(args);
 
         final Bundle actualBundle = BundleJSON.toBundle(IOUtils.getStringFromPath(outputPath), GATKPath::new);
 
-        // bundle resource order is not preserved when roundtripping through JSON, so compare ignoring order
+        // bundle resource order is not preserved when round-tripping through JSON, so compare ignoring order
         Assert.assertTrue(Bundle.equalsIgnoreOrder(actualBundle, expectedBundle));
     }
 }
