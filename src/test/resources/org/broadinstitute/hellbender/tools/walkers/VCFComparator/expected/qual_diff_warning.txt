@@ -1,0 +1,1 @@
+At position chr1:945670 qual scores differ by 0.010000000000218279, which is more than 0.001
