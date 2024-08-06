@@ -34,6 +34,7 @@ import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Supplier;
 
 
@@ -83,6 +84,8 @@ import java.util.function.Supplier;
 @DocumentedFeature
 @ExperimentalFeature
 public final class FlowFeatureMapper extends ThreadedReadWalker {
+
+    public static final int CAPACITY1 = 5000;
 
     static class CopyAttrInfo {
         public final String name;
@@ -163,6 +166,15 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
 
     @ArgumentCollection
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
+
+    // emit() message and queue
+    static class WriterMessage {
+        MappedFeature mappedFeature;
+    }
+    private LinkedBlockingQueue<WriterMessage> writerQueue;
+    private Thread  writerWorker;
+    @Argument(fullName = "threaded-writer", doc = "turn threaded writer on?", optional = true)
+    public boolean threadedWriter = false;
 
     protected static class ReadContext implements Comparable<ReadContext> {
         final GATKRead         read;
@@ -277,12 +289,43 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5, outputSitesOnlyVCFs);
         vcfWriter.writeHeader(makeVCFHeader(sequenceDictionary, getDefaultToolVCFHeaderLines()));
+
+        // threaded writer?
+        if ( threadedWriter ) {
+            writerQueue = new LinkedBlockingQueue<>(CAPACITY1);
+            writerWorker = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    WriterMessage message;
+                    while ( true ) {
+                        try {
+                            message = writerQueue.take();
+                            if ( message.mappedFeature == null ) {
+                                break;
+                            }
+                            emitFeature(message.mappedFeature);
+                        } catch (InterruptedException e) {
+                            throw new GATKException("", e);
+                        }
+                    }
+                }
+            });
+            writerWorker.start();;
+        }
     }
 
     @Override
     public void closeTool() {
         super.closeTool();
         flushQueue(null, null);
+        if ( threadedWriter ) {
+            try {
+                writerQueue.put(new WriterMessage());
+                writerWorker.join();
+            } catch (InterruptedException e) {
+                throw new GATKException("", e);
+            }
+        }
         if ( vcfWriter != null ) {
             vcfWriter.close();
         }
@@ -441,7 +484,17 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
             while ( featureQueue.size() != 0 ) {
                 final MappedFeature fr = featureQueue.poll();
                 enrichFeature(fr);
-                emitFeature(fr);
+                if ( !threadedWriter ) {
+                    emitFeature(fr);
+                } else {
+                    try {
+                        WriterMessage message = new WriterMessage();
+                        message.mappedFeature = fr;
+                        writerQueue.put(message);
+                    } catch (InterruptedException e) {
+                        throw new GATKException("", e);
+                    }
+                }
             }
         } else {
             // enter read into the queue
@@ -454,7 +507,17 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
                             || (fr.start < read.getStart()) ) {
                     fr = featureQueue.poll();
                     enrichFeature(fr);
-                    emitFeature(fr);
+                    if ( !threadedWriter ) {
+                        emitFeature(fr);
+                    } else {
+                        try {
+                            WriterMessage message = new WriterMessage();
+                            message.mappedFeature = fr;
+                            writerQueue.put(message);
+                        } catch (InterruptedException e) {
+                            throw new GATKException("", e);
+                        }
+                    }
                 }
                 else {
                     break;
