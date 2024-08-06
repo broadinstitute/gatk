@@ -273,7 +273,7 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
                 "--snv-identical-bases", "10",
                 "--debug-negatives", "false",
                 "--debug-read-name", "150451-BC94-0645901755",
-                "--use-mapper-thread"
+                "--threaded-walker"
         };
 
         // run the tool
