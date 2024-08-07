@@ -171,7 +171,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
 
             // Warn if there's anything that prevents execution in the tmp dir because some tools need that
-            if(SystemUtils.IS_OS_LINUX) {
+            if(SystemUtils.IS_OS_MAC || SystemUtils.IS_OS_UNIX) {
                 try {
                     if (MountOptionChecker.pathIsNoExec(p.toString())) {
                         logger.warn(
