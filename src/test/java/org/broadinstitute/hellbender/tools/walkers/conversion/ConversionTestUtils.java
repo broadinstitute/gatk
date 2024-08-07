@@ -47,4 +47,16 @@ public class ConversionTestUtils {
     public static String getNotBasicBed(){
         return getTestDataDir() + "/notBasic.bed";
     }
+
+    public static String getMouseGtf(){
+        return getTestDataDir() + "/mouseSample.gtf";
+    }
+
+    public static String getMouseDict(){
+        return getTestDataDir() + "/mouseReference.dict";
+    }
+
+    public static String getMouseBed(){
+        return getTestDataDir() + "/mouse.bed";
+    }
 }

@@ -27,7 +27,8 @@ import java.util.*;
  *
  * <p>The conversion process includes sorting entries
  * by karyotype, providing flexibility in the selection of either gene or transcript level
- * data, and an option to only use basic tags. It ensures that the BED output is sorted and formatted correctly for subsequent use.</p>
+ * data, and an option to only use basic tags. It ensures that the BED output is sorted and formatted correctly for subsequent use.
+ * Note that it has been tested for both human and mouse Gencode GTFs. </p>
  *
  * <h3>Usage examples</h3>
  * <p>Example commands to run GtfToBed for typical scenarios:</p>

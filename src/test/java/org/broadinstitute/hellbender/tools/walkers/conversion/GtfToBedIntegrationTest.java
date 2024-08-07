@@ -14,6 +14,8 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File mapk1 = new File(ConversionTestUtils.getMapk1Gtf());
     private static final File decoys = new File(ConversionTestUtils.getDecoySampleGtf());
     private static final File manyTranscripts = new File(ConversionTestUtils.getManyTranscriptsGtf());
+    private static final File mouse = new File(ConversionTestUtils.getMouseGtf());
+    private static final File mouseDictionary = new File(ConversionTestUtils.getMouseDict());
     private static final File dictionary = new File(ConversionTestUtils.getReferenceDict());
     private static final File decoysGeneBed = new File(ConversionTestUtils.getDecoySamplesGeneBed());
     private static final File decoysTranscriptBed = new File(ConversionTestUtils.getDecoySamplesTranscriptBed());
@@ -21,6 +23,9 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File mapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
     private static final File manyTranscriptsBed = new File (ConversionTestUtils.getManyTranscriptsBed());
     private static final File notBasicBed = new File(ConversionTestUtils.getNotBasicBed());
+    private static final File mouseBed = new File(ConversionTestUtils.getMouseBed());
+
+
 
     // tests any Gtf file (gene)
     @Test
@@ -67,6 +72,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testNotBasic() throws IOException {
         runNotBasic();
+    }
+
+    @Test
+    public void testMouse() throws IOException {
+        runMouse();
     }
 
 
@@ -150,6 +160,18 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(compareFiles(notBasicBed, outputFile));
+    }
+
+    private void runMouse() throws IOException {
+        final File outputFile = createTempFile("outputBed", ".bed");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .add("G", mouse)
+                .add("SD", mouseDictionary)
+                .add("T", true)
+                .add("B", false)
+                .addOutput(outputFile);
+        runCommandLine(argsBuilder);
+        Assert.assertTrue(compareFiles(mouseBed, outputFile));
     }
 
     private int countLines(File file) throws IOException {
