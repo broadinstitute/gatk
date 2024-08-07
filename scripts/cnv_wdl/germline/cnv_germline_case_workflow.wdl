@@ -122,6 +122,8 @@ workflow CNVGermlineCaseWorkflow {
       Array[String]? allosomal_contigs
       Int? disk_space_gb_for_postprocess_germline_cnv_calls
       Int? mem_gb_for_postprocess_germline_cnv_calls
+      File? clustered_vcf
+      File? clustered_vcf_index
 
       ##########################
       #### arguments for QC ####
@@ -252,6 +254,8 @@ workflow CNVGermlineCaseWorkflow {
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
+                clustered_vcf = clustered_vcf
+                clustered_vcf_index = clustered_vcf_index
         }
     }
 

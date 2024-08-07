@@ -111,6 +111,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
       ###################################################
       Int ref_copy_number_autosomal_contigs
       Array[String]? allosomal_contigs
+      File? clustered_vcf
+      File? clustered_vcf_index
 
       ##########################
       #### arguments for QC ####
@@ -200,6 +202,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 allosomal_contigs = allosomal_contigs,
                 maximum_number_events_per_sample = maximum_number_events_per_sample,
                 maximum_number_pass_events_per_sample = maximum_number_pass_events_per_sample
+                clustered_vcf = clustered_vcf
+                clustered_vcf_index = clustered_vcf_index
         }
     }
 
