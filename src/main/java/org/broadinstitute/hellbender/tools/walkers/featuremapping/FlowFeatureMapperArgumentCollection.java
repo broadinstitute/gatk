@@ -90,6 +90,12 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     public boolean keepSupplementaryAlignments = false;
 
     /**
+     *  do not emit edit distance at all
+     **/
+    @Argument(fullName = "no-edit-distance", doc = "do not emit edit distance at all ?", optional = true)
+    public boolean noEditDistance = false;
+
+    /**
      *  edit distance should come from computed NM
      **/
     @Argument(fullName = "nm-edit-distance", doc = "edit distance should come from computed NM ?", optional = true)
