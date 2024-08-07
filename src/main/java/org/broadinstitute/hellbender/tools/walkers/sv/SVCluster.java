@@ -313,6 +313,12 @@ public final class SVCluster extends MultiVariantWalker {
     )
     private boolean defaultNoCall = false;
 
+    @Argument(
+            doc = "Skip output sorting. This can substantially reduce memory usage.",
+            fullName = SVConcordance.UNSORTED_OUTPUT_LONG_NAME
+    )
+    private boolean doNotSort;
+
     @ArgumentCollection
     private final SVClusterEngineArgumentsCollection clusterParameterArgs = new SVClusterEngineArgumentsCollection();
 
@@ -355,6 +361,9 @@ public final class SVCluster extends MultiVariantWalker {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
 
+        if (doNotSort) {
+            createOutputVariantIndex = false;
+        }
         writer = createVCFWriter(outputFile);
         header = createHeader();
         writer.writeHeader(header);
@@ -402,7 +411,8 @@ public final class SVCluster extends MultiVariantWalker {
             clusterEngine.add(filteredCall);
         }
 
-        write(false);
+        // Simply force the flush if we're not sorting
+        write(doNotSort);
     }
 
     private void write(final boolean force) {

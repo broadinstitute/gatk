@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
@@ -402,7 +403,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testClusterSampleOverlap() {
+    public void testClusterSampleOverlapAndUnsortedOutput() {
         final File output = createTempFile("cluster_sample_overlap", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(output)
@@ -461,6 +462,38 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
             }
         }
         Assert.assertEquals(expectedRecordsFound, 1);
+
+        // Test unsorted output
+        final File outputUnsorted = createTempFile("cluster_sample_overlap_unsorted", ".vcf");
+        final ArgumentsBuilder argsUnsorted = new ArgumentsBuilder()
+                .addOutput(outputUnsorted)
+                .addVCF(getToolTestDataDir() + "1kgp_test.batch1.pesr.chr22.vcf.gz")
+                .addVCF(getToolTestDataDir() + "1kgp_test.batch1.depth.chr22.vcf.gz")
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500)
+                .addFlag(SVConcordance.UNSORTED_OUTPUT_LONG_NAME);
+
+        runCommandLine(argsUnsorted, SVCluster.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> vcfUnsorted = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final List<String> unsortedMembers = vcfUnsorted.getValue().stream().map(v -> v.getAttributeAsString(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, "")).sorted().collect(Collectors.toList());
+        final List<String> sortedMembers = vcf.getValue().stream().map(v -> v.getAttributeAsString(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, "")).sorted().collect(Collectors.toList());
+        final Comparator<Locatable> comparator = IntervalUtils.getDictionaryOrderComparator(SVTestUtils.hg38Dict);
+        Assert.assertNotEquals(vcfUnsorted.getValue().stream().map(VariantContext::toString).collect(Collectors.toList()),
+                vcfUnsorted.getValue().stream().sorted(comparator).map(VariantContext::toString).collect(Collectors.toList()),
+                "The test example for unsorted otuput is already sorted!");
+        Assert.assertEquals(sortedMembers, unsortedMembers, "Cluster members were not identical when specifying unsorted output");
     }
 
 
