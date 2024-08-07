@@ -171,7 +171,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
         while (line1 != null || line2 != null) {
             if (line1 == null || line2 == null) {
-                System.out.println("File are different lenghts");
+                System.out.println("File are different lengths");
                 return false;
             } else if (!line1.equals(line2)) {
                 System.out.println("Difference at line " + lineNum);

@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * <p>Convert GTF files to BED format with options for gene and transcript level processing.
- * This tool allows for the extraction of gene and transcript information from GTF files and
+ * <p>Convert Gencode GTF files to BED format with options for gene and transcript level processing.
+ * This tool allows for the extraction of gene and transcript information from Gencode GTF files and
  * outputs the data in BED format.</p>
  *
  *
@@ -70,8 +70,8 @@ import java.util.*;
  */
 
 @CommandLineProgramProperties(
-        summary = "Converts GTF files to Bed file format with each row of bed file being either a gene or a transcript.",
-        oneLineSummary = "GTF to BED",
+        summary = "Converts Gencode GTF files to Bed file format with each row of bed file being either a gene or a transcript.",
+        oneLineSummary = "Gencode GTF to BED",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 
