@@ -15,6 +15,7 @@ public class MountOptionChecker {
         ProcessController processController = ProcessController.getThreadLocal();
         final String[] command = {"mount"};
         final ProcessSettings settings = new ProcessSettings(command);
+        settings.getStdoutSettings().setBufferSize(65536);
         final ProcessOutput mountOutput = processController.exec(settings);
 
         // Check line by line for the specified path until we find the path and check whether it is noexec
@@ -27,7 +28,7 @@ public class MountOptionChecker {
                 // the path
                 if(splitLine.length > 3 && splitLine[2].equals(pathToCheck)) {
                     // The flags are in a comma (and space on Mac) separated list enclosed in parentheses at the end of the line
-                    final String[] flags = line.substring(line.lastIndexOf('('), line.lastIndexOf(')')).split(", ?");
+                    final String[] flags = line.substring(line.lastIndexOf('(')+1, line.lastIndexOf(')')).split(", ?");
                     if(Arrays.stream(flags).anyMatch("noexec"::equals)) {
                         return true;
                     }
