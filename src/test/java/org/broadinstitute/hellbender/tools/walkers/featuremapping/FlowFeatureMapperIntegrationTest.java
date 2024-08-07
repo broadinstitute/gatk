@@ -221,11 +221,11 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testNoEditDistance() throws IOException {
+    public void testNmEditDistance() throws IOException {
 
         final File outputDir = createTempDir("testFlowFeatureMapperTest");
-        final File expectedFile = new File(testDir + "/snv_feature_mapper_no_edit_disance_output.vcf");
-        final File outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedFile : new File(outputDir + "/snv_feature_mapper_no_edit_disance_output.vcf");
+        final File expectedFile = new File(testDir + "/snv_feature_mapper_nm_edit_disance_output.vcf");
+        final File outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedFile : new File(outputDir + "/snv_feature_mapper_nm_edit_disance_output.vcf");
 
         final String[] args = new String[] {
                 "-R", largeFileTestDir + "/Homo_sapiens_assembly38.fasta.gz",
@@ -239,7 +239,7 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
                 "--snv-identical-bases", "10",
                 "--debug-negatives", "false",
                 "--debug-read-name", "150451-BC94-0645901755",
-                "--no-edit-distance"
+                "--nm-edit-distance"
         };
 
         // run the tool

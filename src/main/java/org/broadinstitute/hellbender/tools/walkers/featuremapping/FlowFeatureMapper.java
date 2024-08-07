@@ -17,21 +17,25 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
-import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
-import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -199,6 +203,7 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
     protected static class MappedFeature implements Comparable<MappedFeature> {
 
         GATKRead    read;
+        ReferenceContext referenceContext;
         FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type;
         byte[]      readBases;
         byte[]      refBases;
@@ -220,9 +225,10 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         double      scoreForBase[];
         boolean     adjacentRefDiff;
 
-        public MappedFeature(GATKRead read, FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type, byte[] readBases,
+        public MappedFeature(GATKRead read, ReferenceContext referenceContext, FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type, byte[] readBases,
                              byte[] refBases, int readBasesOffset, int start, int offsetDelta) {
             this.read = read;
+            this.referenceContext = referenceContext;
             this.type = type;
             this.readBases = readBases;
             this.refBases = refBases;
@@ -231,11 +237,12 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
             this.offsetDelta = offsetDelta;
         }
 
-        static MappedFeature makeSNV(GATKRead read, int offset, byte refBase, int start, int offsetDelta) {
+        static MappedFeature makeSNV(GATKRead read, int offset, byte refBase, int start, int offsetDelta, ReferenceContext referenceContext) {
             byte[]      readBases = {read.getBasesNoCopy()[offset]};
             byte[]      refBases = {refBase};
             return new MappedFeature(
                     read,
+                    referenceContext,
                     FlowFeatureMapperArgumentCollection.MappingFeatureEnum.SNV,
                     readBases,
                     refBases,
@@ -774,8 +781,12 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         vcb.attribute(VCF_FC1, fr.nonIdentMBasesOnRead);
         vcb.attribute(VCF_FC2, fr.featuresOnRead);
         vcb.attribute(VCF_LENGTH, fr.read.getLength());
-        if ( !fmArgs.noEditDistance && fr.refEditDistance != null ) {
-            vcb.attribute(VCF_EDIST, fr.refEditDistance.get());
+        if ( fmArgs.nmEditDistance ) {
+            int nmScore = SequenceUtil.calculateSamNmTag(fr.read.convertToSAMRecord(getHeaderForReads()), fr.referenceContext.getBases(new SimpleInterval(fr.read)), fr.read.getStart() - 1);
+            vcb.attribute(VCF_EDIST, nmScore);
+        } else if ( fr.refEditDistance != null ) {
+            int editDisance = fr.refEditDistance.get(); // this actually computes the distance
+            vcb.attribute(VCF_EDIST, editDisance);
         }
         vcb.attribute(VCF_INDEX, fr.index);
 

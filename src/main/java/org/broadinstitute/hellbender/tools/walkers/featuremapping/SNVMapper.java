@@ -139,7 +139,7 @@ public class SNVMapper implements FeatureMapper {
                         }
 
                         // add this feature
-                        FlowFeatureMapper.MappedFeature feature = FlowFeatureMapper.MappedFeature.makeSNV(read, readOfs, ref[refOfs], referenceContext.getStart() + refOfs, readOfs - refOfs);
+                        FlowFeatureMapper.MappedFeature feature = FlowFeatureMapper.MappedFeature.makeSNV(read, readOfs, ref[refOfs], referenceContext.getStart() + refOfs, readOfs - refOfs, referenceContext);
                         if ( (fmArgs.reportAllAlts || fmArgs.tagBasesWithAdjacentRefDiff) && !surrounded )
                             feature.adjacentRefDiff = true;
                         feature.nonIdentMBasesOnRead = nonIdentMBases;
