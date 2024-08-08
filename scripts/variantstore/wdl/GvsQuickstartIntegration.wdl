@@ -77,13 +77,13 @@ workflow GvsQuickstartIntegration {
     # though in practice likely they are the same.
     if (run_hail_integration) {
         # This test workflow is probably best representative of the AoU workflow. Parameters used here should be those used for AoU callsets
-        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
+        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVETSIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VQSR_lite = true,
+                use_VETS = true,
                 extract_do_not_filter_override = false,
-                dataset_suffix = "lite_hail",
+                dataset_suffix = "vets_hail",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = true,
@@ -105,13 +105,13 @@ workflow GvsQuickstartIntegration {
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
-        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
+        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VQSR_lite = false,
+                use_VETS = false,
                 extract_do_not_filter_override = false,
-                dataset_suffix = "classic_hail",
+                dataset_suffix = "vqsr_hail",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = true,
@@ -133,31 +133,31 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
 
-        if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
-            call Utils.TerminateWorkflow as HailVQSRLiteQuotaFail {
+        if (GvsQuickstartHailVETSIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as HailVETSQuotaFail {
                 input:
-                    message = "GvsQuickstartHailVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    message = "GvsQuickstartHailVETSIntegration should not have used tighter GCP quotas but did!",
                     basic_docker = effective_basic_docker,
             }
         }
 
-        if (GvsQuickstartHailVQSRClassicIntegration.used_tighter_gcp_quotas) {
-            call Utils.TerminateWorkflow as HailVQSRClassicQuotaFail {
+        if (GvsQuickstartHailVQSRIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as HailVQSRQuotaFail {
                 input:
-                    message = "GvsQuickstartHailVQSRClassicIntegration should not have used tighter GCP quotas but did!",
+                    message = "GvsQuickstartHailVQSRIntegration should not have used tighter GCP quotas but did!",
                     basic_docker = effective_basic_docker,
             }
         }
     }
 
     if (run_vcf_integration) {
-        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRLiteIntegration {
+        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVETSIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VQSR_lite = true,
+                use_VETS = true,
                 extract_do_not_filter_override = false,
-                dataset_suffix = "lite_vcf",
+                dataset_suffix = "vets_vcf",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = true,
@@ -178,13 +178,13 @@ workflow GvsQuickstartIntegration {
                 submission_id = GetToolVersions.submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
-        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
+        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VQSR_lite = false,
+                use_VETS = false,
                 extract_do_not_filter_override = true,
-                dataset_suffix = "classic_vcf",
+                dataset_suffix = "vqsr_vcf",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = true,
@@ -206,18 +206,18 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
 
-        if (QuickstartVcfVQSRClassicIntegration.used_tighter_gcp_quotas) {
-            call Utils.TerminateWorkflow as VcfVQSRClassicQuotaFail {
+        if (QuickstartVcfVQSRIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as VcfVQSRQuotaFail {
                 input:
-                    message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    message = "QuickstartVcfVQSRIntegration should not have used tighter GCP quotas but did!",
                     basic_docker = effective_basic_docker,
             }
         }
 
-        if (QuickstartVcfVQSRLiteIntegration.used_tighter_gcp_quotas) {
-            call Utils.TerminateWorkflow as VcfVQSRLiteQuotaFail {
+        if (QuickstartVcfVETSIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as VcfVETSQuotaFail {
                 input:
-                    message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    message = "QuickstartVcfVETSIntegration should not have used tighter GCP quotas but did!",
                     basic_docker = effective_basic_docker,
             }
         }
@@ -228,7 +228,7 @@ workflow GvsQuickstartIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VQSR_lite = true,
+                use_VETS = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "exome",
                 use_default_dockers = use_default_dockers,
@@ -267,7 +267,7 @@ workflow GvsQuickstartIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VQSR_lite = true,
+                use_VETS = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "bge",
                 use_default_dockers = use_default_dockers,
