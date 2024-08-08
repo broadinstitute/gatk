@@ -8,8 +8,23 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import java.io.*;
 import java.util.Arrays;
 
+/**
+ * Provides utility function(s) for checking the mount options on directories.  Currently limited
+ * to checking whether a specific directory is mounted as noexec
+ */
 public class MountOptionChecker {
 
+    /**
+     * Uses the linux/unix cli utility "mount" to check if the specified directory is mounted using the noexec flag
+     *
+     * @param pathToCheck - String representation of the path to check for a noexec flag
+     * @return true if {@code pathToCheck} corresponds to a directory that has been mounted with the noexec option,
+     *  otherwise false
+     * @throws IOException - BufferedReader.readLine() technically throws this exception, but we're reading from a
+     *  BufferedReader wrapped around a StringReader, so if it throws an exception, I'd assume something has gone very
+     *  wrong
+     * @throws GATKException - if an error occurs running mount
+     */
     public static boolean pathIsNoExec(final String pathToCheck) throws IOException, GATKException {
         // Run the mount command without arguments to get mount information
         ProcessController processController = ProcessController.getThreadLocal();
