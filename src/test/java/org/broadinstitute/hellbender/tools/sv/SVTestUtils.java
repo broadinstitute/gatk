@@ -526,6 +526,14 @@ public class SVTestUtils {
                 Collections.emptyMap(), Collections.emptySet(), null);
     }
 
+    public static SVCallRecord newCallRecordInsertionWithLengthAndCoordinates(final String chrA, final int posA, final Integer length) {
+        return new SVCallRecord("", chrA, posA, true, chrA, posA, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS, null, Collections.emptyList(), length,
+                PESR_ONLY_ALGORITHM_LIST,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap(), Collections.emptySet(), null);
+    }
+
     public static VariantContext newVariantContext(final String id, final String chrA, final int posA,
                                                    final int end, final List<Allele> alleles,
                                                    final List<Genotype> genotypes, final Integer svlen,

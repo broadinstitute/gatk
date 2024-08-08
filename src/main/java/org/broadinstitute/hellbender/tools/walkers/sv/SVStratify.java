@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -14,18 +15,14 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.sv.SVStratification;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.SVStatificationEngine;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * <p>Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:</p>
@@ -190,12 +187,6 @@ public final class SVStratify extends MultiVariantWalker {
     // Default output group suffix for unmatched records
     public static final String DEFAULT_STRATIFICATION = "non_matched";
 
-    // Configuration table column names
-    public static final String SVTYPE_COLUMN = "SVTYPE";
-    public static final String MIN_SIZE_COLUMN = "MIN_SIZE";
-    public static final String MAX_SIZE_COLUMN = "MAX_SIZE";
-    public static final String CONTEXT_COLUMN = "CONTEXT";
-
     @Argument(
             doc = "Output directory",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -258,9 +249,8 @@ public final class SVStratify extends MultiVariantWalker {
     private int numBreakpointOverlapsInterchrom = 1;
 
     protected SAMSequenceDictionary dictionary;
-    protected Map<String, List<Locatable>> contextMap;
-    protected List<SVStratification> strats;
     protected Map<String, VariantContextWriter> writers;
+    protected SVStatificationEngine engine;
 
     @Override
     public void onTraversalStart() {
@@ -268,10 +258,9 @@ public final class SVStratify extends MultiVariantWalker {
         dictionary = getMasterSequenceDictionary();
         Utils.validateArg(dictionary != null, "Reference dictionary is required; please specify with --" +
                 StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME);
-        contextMap = loadContextIntervals();
-        strats = loadConfigurationTable();
+        loadStratificationConfig();
         logger.debug("Loaded stratification groups:");
-        for (final SVStratification s : strats) {
+        for (final SVStatificationEngine.SVStratification s : engine.getStratifications()) {
             logger.debug(s);
         }
         initializeWriters();
@@ -291,12 +280,12 @@ public final class SVStratify extends MultiVariantWalker {
     protected void initializeWriters() {
         writers = new HashMap<>();
         createGroupWriter(DEFAULT_STRATIFICATION);
-        for (final SVStratification s : strats) {
+        for (final SVStatificationEngine.SVStratification s : engine.getStratifications()) {
             createGroupWriter(s.getName());
         }
     }
 
-    protected Map<String, List<Locatable>> loadContextIntervals() {
+    protected SVStatificationEngine loadStratificationConfig() {
         Utils.validateArg(contextNameList.size() == contextFileList.size(), "Arguments --" +
                 CONTEXT_NAME_FILE_LONG_NAME + " and --" + CONTEXT_INTERVAL_FILE_LONG_NAME +
                 " must be specified the same number of times.");
@@ -309,29 +298,14 @@ public final class SVStratify extends MultiVariantWalker {
             final GATKPath path = pathIterator.next();
             final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(path.toString()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
             final List<Locatable> intervals = Collections.unmodifiableList(genomeLocs.toList());
+            if (map.containsKey(name)) {
+                throw new UserException.BadInput("Duplicate context name was specified: " + name);
+            }
             map.put(name, intervals);
         }
-        return map;
+        return SVStatificationEngine.create(map, configFile);
     }
 
-    protected List<SVStratification> loadConfigurationTable() {
-        final List<SVStratification> configList;
-        try (final TableReader<SVStratification> tableReader = TableUtils.reader(configFile.toPath(), this::tableParser)) {
-            // force into array list to ensure fast index lookup
-            configList = new ArrayList<>(tableReader.toList());
-        } catch (final IOException e) {
-            throw new GATKException("IO error while reading config table", e);
-        }
-        for (int i = 0; i < configList.size(); i++) {
-            for (int j = i + 1; j < configList.size(); j++) {
-                if (!configList.get(i).isMutuallyExclusive(configList.get(j))) {
-                    throw new UserException.BadInput("Configuration records " + configList.get(i) + " and "
-                            + configList.get(j) + " are not mutually exclusive.");
-                }
-            }
-        }
-        return configList;
-    }
 
     @Override
     public void closeTool() {
@@ -344,42 +318,15 @@ public final class SVStratify extends MultiVariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        for (final SVStratification s : strats) {
-            if (s.matches(variant, overlapFraction, numBreakpointOverlaps, numBreakpointOverlapsInterchrom, dictionary)) {
-                writers.get(s.getName()).add(variant);
-                return;
-            }
-        }
-        writers.get(DEFAULT_STRATIFICATION).add(variant);
-    }
 
-    public Function<DataLine, SVStratification> tableParser(TableColumnCollection columns, Function<String, RuntimeException> exceptionFactory) {
-        if (columns.columnCount() != 4) {
-            throw exceptionFactory.apply("Expected 4 columns but found " + columns.columnCount());
+        // Save a ton of compute by not copying genotypes into the new record
+        final VariantContext variantNoGenotypes = new VariantContextBuilder(variant).genotypes(Collections.emptyList()).make();
+        final SVCallRecord record = SVCallRecordUtils.create(variantNoGenotypes, dictionary);
+        final SVStatificationEngine.SVStratification stratification = engine.getMatch(record, overlapFraction, numBreakpointOverlaps, numBreakpointOverlapsInterchrom);
+        if (stratification == null) {
+            writers.get(DEFAULT_STRATIFICATION).add(variant);
+        } else {
+            writers.get(stratification.getName()).add(variant);
         }
-        if (!columns.contains(SVTYPE_COLUMN)) {
-            throw exceptionFactory.apply("Missing column " + SVTYPE_COLUMN);
-        }
-        if (!columns.contains(MIN_SIZE_COLUMN)) {
-            throw exceptionFactory.apply("Missing column " + MIN_SIZE_COLUMN);
-        }
-        if (!columns.contains(MAX_SIZE_COLUMN)) {
-            throw exceptionFactory.apply("Missing column " + MAX_SIZE_COLUMN);
-        }
-        if (!columns.contains(CONTEXT_COLUMN)) {
-            throw exceptionFactory.apply("Missing column " + CONTEXT_COLUMN);
-        }
-        return this::parseTableLine;
-    }
-
-    protected SVStratification parseTableLine(final DataLine dataLine) {
-        final GATKSVVCFConstants.StructuralVariantAnnotationType svType = GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(dataLine.get(SVTYPE_COLUMN));
-        Integer minSize = Integer.valueOf(dataLine.get(MIN_SIZE_COLUMN));
-        Integer maxSize = Integer.valueOf(dataLine.get(MAX_SIZE_COLUMN));
-        final String context = dataLine.get(CONTEXT_COLUMN);
-        if (!contextMap.containsKey(context)) {
-            throw new GATKException("Could not find context with name " + context);
-        }
-        return new SVStratification(svType, minSize, maxSize, context, contextMap.get(context));
     }
 }
