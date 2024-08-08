@@ -160,7 +160,6 @@ workflow GvsExtractCallsetPgen {
             interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
-            output_gcs_dir = output_gcs_dir,
             split_intervals_extra_args = split_intervals_extra_args,
             split_intervals_disk_size_override = effective_split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
