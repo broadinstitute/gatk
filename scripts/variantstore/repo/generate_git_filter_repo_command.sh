@@ -33,7 +33,7 @@ ah_var_store_branch_point() {
 files_added_on_ah_var_store() {
   # Look for files added to ah_var_store since the branch point. Note that these files were not necessarily *uniquely*
   # added to ah_var_store and might represent cherry picks from master (e.g. scripts and build files for the migration
-  # from Travis to GitHub Actions, VQSR Lite work, etc.)
+  # from Travis to GitHub Actions, VETS work, etc.)
   git diff "$(ah_var_store_branch_point)" $variants_branch --name-status | grep -E '^A' | cut -f 2-
 }
 
@@ -46,8 +46,8 @@ files_added_on_ah_var_store_not_on_master() {
 
 files_deleted_from_master() {
   # This intentionally does not use `git diff` as is used in `files_added_on_ah_var_store` since that would only show
-  # files deleted from the branch point to the head of master. There are numerous files here (mostly related to VQSR
-  # Lite) where files added to master after the branch point were cherry picked onto ah_var_store and subsequently
+  # files deleted from the branch point to the head of master. There are numerous files here (mostly related to VETS)
+  # where files added to master after the branch point were cherry picked onto ah_var_store and subsequently
   # deleted from master. This `git log` finds these while the `git diff` does not.
   #
   # https://waylonwalker.com/git-find-deleted-files/#git-log-diff-filter

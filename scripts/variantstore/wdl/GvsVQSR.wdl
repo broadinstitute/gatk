@@ -33,7 +33,7 @@ workflow JointVcfFiltering {
 
     # This is the minimum number of samples where the SNP model will be created and applied in separate tasks
     # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
-    # For VQSR classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
+    # For VQSR this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
     # with the default VM memory settings) so this was adjusted down to 5K.
     Int snps_variant_recalibration_threshold = 5000
   }
@@ -214,7 +214,7 @@ workflow JointVcfFiltering {
       indel_recal_file = IndelsVariantRecalibrator.recalibration,
       indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
       project_id = project_id,
-      useClassic = true
+      useVQSR = true
   }
 
   call PopulateFilterSetTranches {

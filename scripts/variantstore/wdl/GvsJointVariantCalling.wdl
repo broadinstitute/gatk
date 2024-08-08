@@ -21,7 +21,7 @@ workflow GvsJointVariantCalling {
 
         Boolean bgzip_output_vcfs = false
         String drop_state = "FORTY"
-        Boolean use_classic_VQSR = false
+        Boolean use_VQSR = false
         Boolean use_compressed_references = false
         Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
@@ -61,10 +61,10 @@ workflow GvsJointVariantCalling {
         File? target_interval_list
 
         # Overrides to be passed to GvsCreateFilterSet
-        Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
-        Int? INDEL_VQSR_CLASSIC_mem_gb_override
-        Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
-        Int? SNP_VQSR_CLASSIC_mem_gb_override
+        Int? INDEL_VQSR_max_gaussians_override = 4
+        Int? INDEL_VQSR_mem_gb_override
+        Int? SNP_VQSR_max_gaussians_override = 6
+        Int? SNP_VQSR_mem_gb_override
 
         File? training_python_script
         File? scoring_python_script
@@ -168,15 +168,15 @@ workflow GvsJointVariantCalling {
             project_id = project_id,
             call_set_identifier = call_set_identifier,
             filter_set_name = effective_filter_set_name,
-            use_VQSR_lite = !use_classic_VQSR,
+            use_VETS = !use_VQSR,
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
-            INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
-            INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
-            SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
-            SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
+            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
+            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
+            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             training_python_script = training_python_script,
             scoring_python_script = scoring_python_script,

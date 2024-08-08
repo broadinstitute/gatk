@@ -119,7 +119,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         variants_docker = effective_variants_docker,
     }
 
-    call IsVQSRLite {
+    call IsVETS {
       input:
         input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
         basic_docker = effective_basic_docker,
@@ -153,7 +153,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         vcf_eval_bed_file = vcf_eval_bed_file,
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
-        is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
+        is_vets = IsVETS.is_vets,
         ref_fasta = ref_fasta,
         real_time_genomics_docker = effective_real_time_genomics_docker,
     }
@@ -169,7 +169,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         chromosomes = chromosomes,
         all_records = true,
         output_basename = sample_name + "-bq_all",
-        is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
+        is_vets = IsVETS.is_vets,
         ref_fasta = ref_fasta,
         real_time_genomics_docker = effective_real_time_genomics_docker,
     }
@@ -320,13 +320,13 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
   }
 }
 
-task IsVQSRLite {
+task IsVETS {
   input {
     File input_vcf
     String basic_docker
   }
 
-  String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
+  String is_vets_file = "is_vets_file.txt"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -337,9 +337,9 @@ task IsVQSRLite {
     set +o errexit
     grep -v '^#' ~{input_vcf} | grep CALIBRATION_SENSITIVITY > /dev/null
     if [[ $? -eq 0 ]]; then
-      echo "true" > ~{is_vqsr_lite_file}
+      echo "true" > ~{is_vets_file}
     else
-      echo "false" > ~{is_vqsr_lite_file}
+      echo "false" > ~{is_vets_file}
     fi
     set -o errexit
   >>>
@@ -351,7 +351,7 @@ task IsVQSRLite {
     preemptible: 3
   }
   output {
-    Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
+    Boolean is_vets = read_boolean(is_vets_file)
   }
 }
 
@@ -406,7 +406,7 @@ task EvaluateVcf {
 
     String output_basename
 
-    Boolean is_vqsr_lite
+    Boolean is_vets
 
     String real_time_genomics_docker
     Int cpu = 1
@@ -414,7 +414,7 @@ task EvaluateVcf {
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 500
   }
 
-  String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
+  String max_score_field_tag = if (is_vets == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
 
   command <<<
     chromosomes=( ~{sep=' ' chromosomes} )
@@ -436,7 +436,7 @@ task EvaluateVcf {
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
-      ~{if is_vqsr_lite then "--sort-order ascending" else "--sort-order descending"} \
+      ~{if is_vets then "--sort-order ascending" else "--sort-order descending"} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\

@@ -182,7 +182,7 @@ workflow GvsExtractCallset {
         cloud_sdk_docker = effective_cloud_sdk_docker,
       }
 
-    call Utils.IsVQSRLite {
+    call Utils.IsVETS {
       input:
         project_id = query_project,
         fq_filter_set_info_table = "~{fq_filter_set_info_table}",
@@ -191,9 +191,9 @@ workflow GvsExtractCallset {
     }
   }
 
-  # If we're not using the VQSR filters, set it to Lite (really shouldn't matter one way or the other)
+  # If we're not using the VQSR filters, set it to VETS (really shouldn't matter one way or the other)
   # Otherwise use the auto-derived flag.
-  Boolean use_VQSR_lite = select_first([IsVQSRLite.is_vqsr_lite, true])
+  Boolean use_VETS = select_first([IsVETS.isVETS, true])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:
@@ -223,7 +223,7 @@ workflow GvsExtractCallset {
         go                                    = select_first([ValidateFilterSetName.done, true]),
         dataset_name                          = dataset_name,
         call_set_identifier                   = call_set_identifier,
-        use_VQSR_lite                         = use_VQSR_lite,
+        use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
         reference                             = reference,
@@ -241,7 +241,7 @@ workflow GvsExtractCallset {
         fq_filter_set_info_table              = fq_filter_set_info_table,
         fq_filter_set_site_table              = fq_filter_set_site_table,
         fq_ploidy_mapping_table               = fq_ploidy_mapping_table,
-        fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
+        fq_filter_set_tranches_table          = if (use_VETS) then none else fq_filter_set_tranches_table,
         filter_set_name                       = filter_set_name,
         drop_state                            = drop_state,
         output_file                           = vcf_filename + vcf_extension,
@@ -309,7 +309,7 @@ task ExtractTask {
     String dataset_name
     String call_set_identifier
 
-    Boolean use_VQSR_lite
+    Boolean use_VETS
 
     File reference
     File reference_index
@@ -382,7 +382,7 @@ task ExtractTask {
 
     if [ ~{do_not_filter_override} = true ]; then
       FILTERING_ARGS=''
-    elif [ ~{use_VQSR_lite} = false ]; then
+    elif [ ~{use_VETS} = false ]; then
       FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
         --filter-set-site-table ~{fq_filter_set_site_table}
         --tranches-table ~{fq_filter_set_tranches_table}
@@ -419,7 +419,7 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+        ~{true='' false='--use-vqsr-scoring' use_VETS} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \

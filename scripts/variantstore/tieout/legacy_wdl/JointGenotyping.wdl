@@ -269,7 +269,7 @@ workflow JointGenotyping {
   }
 
   if (num_gvcfs <= snps_variant_recalibration_threshold) {
-    call Tasks.SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
+    call Tasks.SNPsVariantRecalibrator {
       input:
         sites_only_variant_filtered_vcf = SitesOnlyGatherVcf.output_vcf,
         sites_only_variant_filtered_vcf_index = SitesOnlyGatherVcf.output_vcf_index,
@@ -300,9 +300,9 @@ workflow JointGenotyping {
         indels_recalibration = IndelsVariantRecalibrator.recalibration,
         indels_recalibration_index = IndelsVariantRecalibrator.recalibration_index,
         indels_tranches = IndelsVariantRecalibrator.tranches,
-        snps_recalibration = if defined(SNPsVariantRecalibratorScattered.recalibration) then select_first([SNPsVariantRecalibratorScattered.recalibration])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration]),
-        snps_recalibration_index = if defined(SNPsVariantRecalibratorScattered.recalibration_index) then select_first([SNPsVariantRecalibratorScattered.recalibration_index])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration_index]),
-        snps_tranches = select_first([SNPGatherTranches.tranches, SNPsVariantRecalibratorClassic.tranches]),
+        snps_recalibration = if defined(SNPsVariantRecalibratorScattered.recalibration) then select_first([SNPsVariantRecalibratorScattered.recalibration])[idx] else select_first([SNPsVariantRecalibrator.recalibration]),
+        snps_recalibration_index = if defined(SNPsVariantRecalibratorScattered.recalibration_index) then select_first([SNPsVariantRecalibratorScattered.recalibration_index])[idx] else select_first([SNPsVariantRecalibrator.recalibration_index]),
+        snps_tranches = select_first([SNPGatherTranches.tranches, SNPsVariantRecalibrator.tranches]),
         indel_filter_level = indel_filter_level,
         snp_filter_level = snp_filter_level,
         use_allele_specific_annotations = allele_specific_annotations,

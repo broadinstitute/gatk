@@ -184,7 +184,7 @@ workflow GvsExtractCallsetPgen {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call Utils.IsVQSRLite {
+        call Utils.IsVETS {
             input:
                 project_id = query_project,
                 fq_filter_set_info_table = "~{fq_filter_set_info_table}",
@@ -193,9 +193,9 @@ workflow GvsExtractCallsetPgen {
         }
     }
 
-    # If we're not using the VQSR filters, set it to Lite (really shouldn't matter one way or the other)
+    # If we're not using the VQSR filters, set it to VETS (really shouldn't matter one way or the other)
     # Otherwise use the auto-derived flag.
-    Boolean use_VQSR_lite = select_first([IsVQSRLite.is_vqsr_lite, true])
+    Boolean use_VETS = select_first([IsVETS.is_vets, true])
 
     call Utils.GetBQTablesMaxLastModifiedTimestamp {
         input:
@@ -226,7 +226,7 @@ workflow GvsExtractCallsetPgen {
                 max_alt_alleles                    = max_alt_alleles,
                 lenient_ploidy_validation          = lenient_ploidy_validation,
                 preserve_phasing                   = preserve_phasing,
-                use_VQSR_lite                      = use_VQSR_lite,
+                use_VETS                           = use_VETS,
                 gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
                 reference                          = reference,
@@ -244,7 +244,7 @@ workflow GvsExtractCallsetPgen {
                 do_not_filter_override             = do_not_filter_override,
                 fq_filter_set_info_table           = fq_filter_set_info_table,
                 fq_filter_set_site_table           = fq_filter_set_site_table,
-                fq_filter_set_tranches_table       = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
+                fq_filter_set_tranches_table       = if (use_VETS) then none else fq_filter_set_tranches_table,
                 filter_set_name                    = filter_set_name,
                 drop_state                         = drop_state,
                 output_pgen_basename               = pgen_basename,
@@ -326,7 +326,7 @@ task PgenExtractTask {
         # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
         Boolean preserve_phasing = false
 
-        Boolean use_VQSR_lite
+        Boolean use_VETS
 
         File reference
         File reference_index
@@ -393,7 +393,7 @@ task PgenExtractTask {
 
         if [ ~{do_not_filter_override} = true ]; then
             FILTERING_ARGS=''
-        elif [ ~{use_VQSR_lite} = false ]; then
+        elif [ ~{use_VETS} = false ]; then
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
             --filter-set-site-table ~{fq_filter_set_site_table}
             --tranches-table ~{fq_filter_set_tranches_table}
@@ -435,7 +435,7 @@ task PgenExtractTask {
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
                 ~{true='--emit-ads' false='' emit_ads} \
-                ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+                ~{true='' false='--use-vqsr-scoring' use_VETS} \
                 --convert-filtered-genotypes-to-no-calls \
                 ${FILTERING_ARGS} \
                 --dataset-id ~{dataset_name} \

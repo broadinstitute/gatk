@@ -19,7 +19,7 @@ workflow GvsCreateVDS {
         Int? cluster_max_age_minutes
         Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
-        Boolean use_classic_VQSR = false
+        Boolean use_VQSR = false
 
         String? git_branch_or_tag
         String? hail_version
@@ -111,7 +111,7 @@ workflow GvsCreateVDS {
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             avro_path = avro_path,
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR = use_VQSR,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
@@ -158,7 +158,7 @@ task CreateVds {
         String prefix
         String vds_path
         String avro_path
-        Boolean use_classic_VQSR
+        Boolean use_VQSR
         Boolean leave_cluster_running_at_end
         File hail_gvs_import_script
         File gvs_import_script
@@ -233,7 +233,7 @@ task CreateVds {
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}"
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
-            ~{true=', "use-classic-vqsr": ""' false='' use_classic_VQSR}
+            ~{true=', "use-vqsr": ""' false='' use_VQSR}
         }
         FIN
 
