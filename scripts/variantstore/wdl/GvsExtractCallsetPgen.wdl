@@ -166,7 +166,6 @@ workflow GvsExtractCallsetPgen {
             split_intervals_mem_override = split_intervals_mem_override,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
-            output_gcs_dir = output_gcs_dir,
           }
 
     call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
