@@ -428,6 +428,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
+         - rsa_vs_1110
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
