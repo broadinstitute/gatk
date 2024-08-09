@@ -20,8 +20,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-import static org.broadinstitute.barclay.argparser.CommandLineProgramGroup.comparator;
-
 /**
  * <p>Convert Gencode GTF files to BED format with options for gene and transcript level processing.
  * This tool allows for the extraction of gene and transcript information from Gencode GTF files and
