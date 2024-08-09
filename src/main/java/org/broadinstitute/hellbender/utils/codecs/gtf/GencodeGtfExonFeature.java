@@ -77,7 +77,7 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
 
 
     @Override
-    protected List<GencodeGtfFeature> getAllFeatures() {
+    public List<GencodeGtfFeature> getAllFeatures() {
         final ArrayList<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
 
