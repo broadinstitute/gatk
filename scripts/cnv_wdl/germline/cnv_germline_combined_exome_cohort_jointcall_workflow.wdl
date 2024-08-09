@@ -3,7 +3,7 @@ version 1.0
 import "../cnv_germline_cohort_workflow.wdl" as CohortWorkflow
 import "../joint_call_exome_cnvs.wdl" as JointCallWorkflow
 
-workflow CombinedCohortJointcallingGermlineCNVs {
+workflow CNVGermlineCombinedCohortJointcalling {
 
     input {
         #####

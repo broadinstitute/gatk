@@ -1,5 +1,14 @@
 version: 1.2
 workflows:
+   - name: cnv_germline_combined_exome_cohort_jointcall_workflow.wdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_combined_exome_cohort_jointcall_workflow.wdl
+     filters:
+         branches:
+            - master
+            - tm_combine_gcnv_cohort_jointcalling
+         tags:
+           - /.*/
    - name: cnv_germline_case_scattered_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_scattered_workflow.wdl
