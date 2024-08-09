@@ -20,6 +20,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+import static org.broadinstitute.barclay.argparser.CommandLineProgramGroup.comparator;
+
 /**
  * <p>Convert Gencode GTF files to BED format with options for gene and transcript level processing.
  * This tool allows for the extraction of gene and transcript information from Gencode GTF files and
@@ -252,24 +254,15 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
             Utils.nonNull(dictionary.getSequence(e1Interval.getContig()), "could not get sequence for " + e1Interval.getContig());
             Utils.nonNull(dictionary.getSequence(e2Interval.getContig()), "could not get sequence for " + e2Interval.getContig());
 
-            // compare by contig
-            int contigComparison = Integer.compare(
-                    dictionary.getSequence(e1Interval.getContig()).getSequenceIndex(),
-                    dictionary.getSequence(e2Interval.getContig()).getSequenceIndex()
-            );
+            //compare by contig, then start, then by key
+            return Comparator
+                    .comparingInt((Map.Entry<String, GtfInfo> e) ->
+                            dictionary.getSequence(e.getValue().getInterval().getContig()).getSequenceIndex())
+                    .thenComparingInt(e -> e.getValue().getInterval().getStart())
+                    .thenComparing(Map.Entry::getKey)
+                    .compare(e1,e2);
 
-            if (contigComparison != 0) {
-                return contigComparison;
-            }
 
-            // compare by start if contigs are the same
-            int startComparison = Integer.compare(e1Interval.getStart(), e2Interval.getStart());
-            if (startComparison != 0) {
-                return startComparison;
-            }
-
-            // tiebreaker: compare by key
-            return e1.getKey().compareTo(e2.getKey());
         }
     }
 
@@ -322,4 +315,3 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         return inputFile;
     }
 }
-
