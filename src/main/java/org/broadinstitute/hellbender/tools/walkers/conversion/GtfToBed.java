@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 
 import java.io.BufferedWriter;
@@ -235,11 +236,50 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         return reader.getFileHeader().getSequenceDictionary();
     }
 
+    //Compare GtfInfo objects positionally by contig and start position. If transcripts have the same contig and start, compare by TranscriptId
+    public static class GtfInfoComparator implements Comparator<Map.Entry<String, GtfInfo>> {
+
+        private final SAMSequenceDictionary dictionary;
+
+        GtfInfoComparator(SAMSequenceDictionary dictionary) {
+            this.dictionary = dictionary;
+        }
+
+        // compare two entries of a map where key = geneId or transcriptId and value = gtfInfo object
+        @Override
+        public int compare(Map.Entry<String, GtfInfo> e1, Map.Entry<String, GtfInfo> e2) {
+            Interval e1Interval = e1.getValue().getInterval();
+            Interval e2Interval = e2.getValue().getInterval();
+
+            Utils.nonNull(dictionary.getSequence(e1Interval.getContig()), "could not get sequence for " + e1Interval.getContig());
+            Utils.nonNull(dictionary.getSequence(e2Interval.getContig()), "could not get sequence for " + e2Interval.getContig());
+
+            // compare by contig
+            int contigComparison = Integer.compare(
+                    dictionary.getSequence(e1Interval.getContig()).getSequenceIndex(),
+                    dictionary.getSequence(e2Interval.getContig()).getSequenceIndex()
+            );
+
+            if (contigComparison != 0) {
+                return contigComparison;
+            }
+
+            // compare by start if contigs are the same
+            int startComparison = Integer.compare(e1Interval.getStart(), e2Interval.getStart());
+            if (startComparison != 0) {
+                return startComparison;
+            }
+
+            // tiebreaker: compare by key
+            return e1.getKey().compareTo(e2.getKey());
+        }
+    }
+
     // sorts the map containing the features based on contig and start position
     private LinkedHashMap<String, GtfInfo> getSortedMap(SAMSequenceDictionary sequenceDictionary) {
-        // create a list that has the keys and values of idToInfo and sort the list using CompareGtfInfo
+        // create a list that has the keys and values of idToInfo and sort the list using GtfInfoComparator
         List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet());
-        entries.sort(new CompareGtfInfo(sequenceDictionary));
+        entries.sort(new GtfInfoComparator(sequenceDictionary));
 
         // put each (sorted) entry in the list into a linked hashmap
         LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = new LinkedHashMap<>();
