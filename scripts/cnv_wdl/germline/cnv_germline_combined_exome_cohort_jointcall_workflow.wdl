@@ -166,22 +166,22 @@ workflow CNVGermlineCombinedCohortJointcalling {
               File intervals
               File? blacklist_intervals
 
-              File contig_ploidy_calls_tar_path_list
-              File gcnv_calls_tars_path_list
-              File genotyped_intervals_vcf_indexes_path_list
-              File genotyped_intervals_vcfs_path_list
-              File genotyped_segments_vcf_indexes_path_list
-              File genotyped_segments_vcfs_path_list
+#              File contig_ploidy_calls_tar_path_list
+#              File gcnv_calls_tars_path_list
+#              File genotyped_intervals_vcf_indexes_path_list
+#              File genotyped_intervals_vcfs_path_list
+#              File genotyped_segments_vcf_indexes_path_list
+#              File genotyped_segments_vcfs_path_list
 
               #qc arguments
               Int maximum_number_events
               Int maximum_number_pass_events
 
-              Array[File] gcnv_model_tars
-              Array[File] calling_configs
-              Array[File] denoising_configs
-              Array[File] gcnvkernel_version
-              Array[File] sharded_interval_lists
+#              Array[File] gcnv_model_tars
+#              Array[File] calling_configs
+#              Array[File] denoising_configs
+#              Array[File] gcnvkernel_version
+#              Array[File] sharded_interval_lists
               Array[String]? allosomal_contigs
               Int ref_copy_number_autosomal_contigs
               File ref_fasta_dict
