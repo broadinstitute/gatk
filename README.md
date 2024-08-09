@@ -48,6 +48,7 @@ releases of the toolkit.
 * [How to contribute to GATK](#contribute)
 * [Discussions](#discussions)
 * [Authors](#authors)
+* [Citing GATK](#citing)
 * [License](#license)
 
 ## <a name="requirements">Requirements</a>
@@ -672,6 +673,9 @@ Thank you for getting involved!
 ## <a name="authors">Authors</a>
 The authors list is maintained in the [AUTHORS](https://github.com/broadinstitute/gatk/edit/master/AUTHORS) file. 
 See also the [Contributors](https://github.com/broadinstitute/gatk/graphs/contributors) list at github. 
+
+## <a name="citing">Citing GATK</a>
+If you use GATK in your research, please see [this article](https://gatk.broadinstitute.org/hc/en-us/articles/360035530852-How-should-I-cite-GATK-in-my-own-publications) for details on how to properly cite GATK.
 
 ## <a name="license">License</a>
 Licensed under the Apache 2.0 License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
