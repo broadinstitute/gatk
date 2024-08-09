@@ -141,11 +141,11 @@ public final class BQSRReadTransformer implements ReadTransformer {
                 throw new MalformedRead(read, "illegal base quality encountered; " + e.getMessage());
             }
         }
-
+        // tsato: this part needs to be updated if covariates are to be dynamic
         final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, header, covariates, false, keyCache);
 
         //clear indel qualities
-        read.clearAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES);
+        read.clearAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES); // tsato: I forget wtf are indel qualities...how are they computed....
         read.clearAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES);
 
         // get the keyset for this base using the error model
