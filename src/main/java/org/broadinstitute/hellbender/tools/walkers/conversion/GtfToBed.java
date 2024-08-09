@@ -78,10 +78,10 @@ import java.util.*;
 )
 
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
-    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "SORT_BY_TRANSCRIPT";
-    public static final String SEQUENCE_DICTIONARY_LONG_NAME = "SEQUENCE_DICTIONARY";
-    public static final String SORT_BY_BASIC_LONG_NAME = "SORT_BY_BASIC";
-    public static final String INPUT_LONG_NAME = "GTF_PATH";
+    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-by-transcript";
+    public static final String SEQUENCE_DICTIONARY_LONG_NAME = "gtf-sequence-dictionary";
+    public static final String SORT_BY_BASIC_LONG_NAME = "sort-by-basic";
+    public static final String INPUT_LONG_NAME = "gtf-path";
 
 
 
