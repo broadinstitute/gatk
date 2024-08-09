@@ -80,24 +80,23 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "SORT_BY_TRANSCRIPT";
     public static final String SEQUENCE_DICTIONARY_LONG_NAME = "SEQUENCE_DICTIONARY";
     public static final String SORT_BY_BASIC_LONG_NAME = "SORT_BY_BASIC";
+    public static final String INPUT_LONG_NAME = "GTF_PATH";
 
 
 
-    @Argument(fullName = "GTF",
-            shortName = "G", doc = "Path to Gencode GTF file")
+    @Argument(fullName = INPUT_LONG_NAME, doc = "Path to Gencode GTF file")
     public GATKPath inputFile;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BED file")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc = "Output BED file")
     public GATKPath outputFile;
 
-    @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, shortName = "T", doc = "Make each row of BED file sorted by transcript", optional = true)
+    @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, doc = "Make each row of BED file sorted by transcript", optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument( fullName = SEQUENCE_DICTIONARY_LONG_NAME, shortName = "SD", doc = "Path to sequence dictionary")
+    @Argument( fullName = SEQUENCE_DICTIONARY_LONG_NAME, doc = "Path to sequence dictionary")
     public GATKPath sequenceDictionary;
 
-    @Argument( fullName = SORT_BY_BASIC_LONG_NAME, shortName = "B", doc = "Only use basic transcripts")
+    @Argument( fullName = SORT_BY_BASIC_LONG_NAME, doc = "Only use basic transcripts")
     public boolean sortByBasic = false;
 
     private final Map<String, GtfInfo> idToInfo = new HashMap<>();

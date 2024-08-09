@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -10,6 +11,7 @@ import java.io.*;
 public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir);
     private static final File input = new File(TEST_SUB_DIR, "/funcotator/small_pik3ca_dbsnp_ds/gencode_pik3ca/hg19/gencode.v19.PIK3CA.gtf");
+    final File outputFile = createTempFile("outputBed", ".bed");
 
     private static final File mapk1 = new File(ConversionTestUtils.getMapk1Gtf());
     private static final File decoys = new File(ConversionTestUtils.getDecoySampleGtf());
@@ -81,12 +83,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
 
     private void runGtfToBed(boolean transcript) throws IOException {
-        final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add("G", input)
-                .add("SD", dictionary)
-                .add("T", transcript)
-                .add("B", true)
+                .add(GtfToBed.INPUT_LONG_NAME, input)
+                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, dictionary)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
 
@@ -98,12 +99,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runMapk1(boolean transcript) throws IOException {
-        final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add("G", mapk1)
-                .add("SD", dictionary)
-                .add("T", transcript)
-                .add("B", true)
+                .add(GtfToBed.INPUT_LONG_NAME, mapk1)
+                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, dictionary)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
 
@@ -117,12 +117,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runDecoySample(boolean transcript) throws IOException {
-        final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add("G", decoys)
-                .add("SD", dictionary)
-                .add("T", transcript)
-                .add("B", true)
+                .add(GtfToBed.INPUT_LONG_NAME, decoys)
+                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, dictionary)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
+                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
                 .addOutput(outputFile);
         countLines(outputFile);
         runCommandLine(argsBuilder);
@@ -138,12 +137,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runManyTranscripts() throws IOException {
-        final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add("G", manyTranscripts)
-                .add("SD", dictionary)
-                .add("T", true)
-                .add("B", true)
+                .add(GtfToBed.INPUT_LONG_NAME, manyTranscripts)
+                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, dictionary)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, true)
+                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(compareFiles( manyTranscriptsBed, outputFile));
@@ -151,24 +149,22 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runNotBasic() throws IOException {
-        final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add("G", manyTranscripts)
-                .add("SD", dictionary)
-                .add("T", true)
-                .add("B", false)
+                .add(GtfToBed.INPUT_LONG_NAME, manyTranscripts)
+                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, dictionary)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, true)
+                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, false)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(compareFiles(notBasicBed, outputFile));
     }
 
     private void runMouse() throws IOException {
-        final File outputFile = createTempFile("outputBed", ".bed");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add("G", mouse)
-                .add("SD", mouseDictionary)
-                .add("T", true)
-                .add("B", false)
+                .add(GtfToBed.INPUT_LONG_NAME, mouse)
+                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, mouseDictionary)
+                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, true)
+                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, false)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(compareFiles(mouseBed, outputFile));
