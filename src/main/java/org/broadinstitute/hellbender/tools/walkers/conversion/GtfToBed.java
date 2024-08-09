@@ -39,11 +39,9 @@ import java.util.*;
  *
  * <pre>
  *     java -jar GtfToBed.jar \
- *     -G input.gtf \
- *     -SD dictionary.dict \
- *     -T False \
- *     -B False \
- *     -O output.bed \
+ *     -gtf-path input.gtf \
+ *     -gtf-sequence-dictionary dictionary.dict \
+= *    -output output.bed \
  * </pre>
  *
  * <h4>(ii) Convert GTF to BED with transcript level data</h4>
@@ -51,11 +49,10 @@ import java.util.*;
  *
  * <pre>
  *     java -jar GtfToBed.jar \
- *     -G input.gtf \
- *     -SD dictionary.dict \
- *     -T True \
- *     -B False \
- *     -O output.bed \
+ *     -gtf-path input.gtf \
+ *     -gtf-sequence-dictionary dictionary.dict \
+ *     -sort-by-transcript \
+ *     -output output.bed \
  * </pre>
  *
  * <h4>(iii) Convert GTF to BED with transcript level data filtering for only those with the basic tag</h4>
@@ -63,11 +60,11 @@ import java.util.*;
  *  *
  *  * <pre>
  *     java -jar GtfToBed.jar \
- *     -G input.gtf \
- *     -SD dictionary.dict \
- *     -T True \
- *     -B True \
- *     -O output.bed \
+ *     -gtf-path input.gtf \
+ *     -gtf-sequence-dictionary dictionary.dict \
+ *     -sort-by-transcript \
+ *     -sort-by-basic \
+ *     -output output.bed \
  *  * </pre>
  */
 
@@ -88,7 +85,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Argument(fullName = INPUT_LONG_NAME, doc = "Path to Gencode GTF file")
     public GATKPath inputFile;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc = "Output BED file")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME , doc = "Output BED file")
     public GATKPath outputFile;
 
     @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, doc = "Make each row of BED file sorted by transcript", optional = true)
