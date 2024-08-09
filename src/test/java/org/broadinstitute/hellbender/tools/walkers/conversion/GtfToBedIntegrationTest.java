@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
@@ -18,13 +17,13 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File mouse = new File(ConversionTestUtils.getMouseGtf());
     private static final File mouseDictionary = new File(ConversionTestUtils.getMouseDict());
     private static final File dictionary = new File(ConversionTestUtils.getReferenceDict());
-    private static final File decoysGeneBed = new File(ConversionTestUtils.getDecoySamplesGeneBed());
-    private static final File decoysTranscriptBed = new File(ConversionTestUtils.getDecoySamplesTranscriptBed());
-    private static final File mapk1GeneBed = new File(ConversionTestUtils.getMapk1GeneBed());
-    private static final File mapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
-    private static final File manyTranscriptsBed = new File (ConversionTestUtils.getManyTranscriptsBed());
-    private static final File notBasicBed = new File(ConversionTestUtils.getNotBasicBed());
-    private static final File mouseBed = new File(ConversionTestUtils.getMouseBed());
+    private static final File expectedDecoysGeneBed = new File(ConversionTestUtils.getDecoySamplesGeneBed());
+    private static final File expectedDecoysTranscriptBed = new File(ConversionTestUtils.getDecoySamplesTranscriptBed());
+    private static final File expectedMapk1GeneBed = new File(ConversionTestUtils.getMapk1GeneBed());
+    private static final File expectedMapk1TranscriptBed = new File(ConversionTestUtils.getMapk1TranscriptBed());
+    private static final File expectedManyTranscriptsBed = new File (ConversionTestUtils.getManyTranscriptsBed());
+    private static final File expectedNotBasicBed = new File(ConversionTestUtils.getNotBasicBed());
+    private static final File expectedMouseBed = new File(ConversionTestUtils.getMouseBed());
 
     // tests specifically mapk1 gene
     @Test
@@ -77,10 +76,10 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
         if (transcript) {
             Assert.assertEquals(countLines(outputFile), 3);
-            IntegrationTestSpec.assertEqualTextFiles(mapk1TranscriptBed, outputFile);
+            IntegrationTestSpec.assertEqualTextFiles(expectedMapk1TranscriptBed, outputFile);
         } else {
             Assert.assertEquals(countLines(outputFile), 1);
-            IntegrationTestSpec.assertEqualTextFiles(mapk1GeneBed, outputFile);
+            IntegrationTestSpec.assertEqualTextFiles(expectedMapk1GeneBed, outputFile);
         }
     }
 
@@ -96,11 +95,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
         if (transcript) {
             Assert.assertEquals(countLines(outputFile), 20);
-            IntegrationTestSpec.assertEqualTextFiles(decoysTranscriptBed, outputFile);
+            IntegrationTestSpec.assertEqualTextFiles(expectedDecoysTranscriptBed, outputFile);
 
         } else {
             Assert.assertEquals(countLines(outputFile), 19);
-            IntegrationTestSpec.assertEqualTextFiles(decoysGeneBed, outputFile);
+            IntegrationTestSpec.assertEqualTextFiles(expectedDecoysGeneBed, outputFile);
         }
     }
 
@@ -112,7 +111,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        IntegrationTestSpec.assertEqualTextFiles(manyTranscriptsBed, outputFile);
+        IntegrationTestSpec.assertEqualTextFiles(expectedManyTranscriptsBed, outputFile);
 
     }
 
@@ -124,7 +123,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, false)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        IntegrationTestSpec.assertEqualTextFiles(notBasicBed, outputFile);
+        IntegrationTestSpec.assertEqualTextFiles(expectedNotBasicBed, outputFile);
     }
 
     private void runMouse() throws IOException {
@@ -135,7 +134,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, false)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        IntegrationTestSpec.assertEqualTextFiles(mouseBed, outputFile);
+        IntegrationTestSpec.assertEqualTextFiles(expectedMouseBed, outputFile);
     }
 
     private int countLines(File file) throws IOException {

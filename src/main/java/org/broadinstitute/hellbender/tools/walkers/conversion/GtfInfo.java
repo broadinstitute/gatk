@@ -9,9 +9,9 @@ public class GtfInfo{
         TRANSCRIPT
     }
 
-    private Type type;
+    private final Type type;
     private final String geneName;
-    private Interval interval;
+    private final Interval interval;
 
     public GtfInfo(Interval interval, Type type, String geneName) {
         this.interval = interval;
@@ -21,10 +21,6 @@ public class GtfInfo{
 
     public Type getType() {
         return type;
-    }
-
-    public void setType(Type type) {
-        this.type = type;
     }
 
     public String getGeneName() {
@@ -41,10 +37,6 @@ public class GtfInfo{
 
     public Integer getEnd() {
         return interval.getEnd();
-    }
-
-    public void setInterval(Interval interval) {
-        this.interval = interval;
     }
 
     @Override

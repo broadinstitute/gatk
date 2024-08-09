@@ -97,7 +97,8 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Argument( fullName = SORT_BY_BASIC_LONG_NAME, doc = "Only use basic transcripts")
     public boolean sortByBasic = false;
 
-    private final Map<String, GtfInfo> idToInfo = new HashMap<>();
+    //stores either gene or transcript ID and summary information about the feature
+    private final Map<String, GtfInfo> featureInfoMap = new HashMap<>();
 
     @Override
     protected boolean isAcceptableFeatureType(Class<? extends Feature> featureType) {
@@ -160,7 +161,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         final GtfInfo gtfInfo = new GtfInfo(interval, GtfInfo.Type.GENE, gtfFeature.getGeneName());
 
         // store in hashmap with key as geneId
-        idToInfo.put(gtfFeature.getGeneId(), gtfInfo);
+        featureInfoMap.put(gtfFeature.getGeneId(), gtfInfo);
     }
 
     // stores the transcript ID and Interval info in hashmap
@@ -170,7 +171,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         final GtfInfo gtfInfo = new GtfInfo(interval, GtfInfo.Type.TRANSCRIPT, gtfFeature.getGeneName());
 
         //store in hashmap with key as transcriptId
-        idToInfo.put(gtfFeature.getTranscriptId(), gtfInfo);
+        featureInfoMap.put(gtfFeature.getTranscriptId(), gtfInfo);
 
         //update start/end of corresponding gene if needed
         updateGeneStart(gtfFeature);
@@ -180,26 +181,26 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     // update the gene interval start position based on the transcript
     private void updateGeneStart(GencodeGtfFeature gtfFeature) {
         // get the start value of the gene
-        int geneStart = idToInfo.get(gtfFeature.getGeneId()).getStart();
+        int geneStart = featureInfoMap.get(gtfFeature.getGeneId()).getStart();
 
         // if the transcript start is less than the gene start
         if (gtfFeature.getStart() < geneStart) {
             // set the gene start to be the transcript start
             geneStart = gtfFeature.getStart();
-            updateGeneInterval(gtfFeature, geneStart, idToInfo.get(gtfFeature.getGeneId()).getEnd());
+            updateGeneInterval(gtfFeature, geneStart, featureInfoMap.get(gtfFeature.getGeneId()).getEnd());
         }
     }
 
     // update the gene interval end position based on the transcript
     private void updateGeneEnd(GencodeGtfFeature gtfFeature) {
         // get the end value of the gene
-        int geneEnd = idToInfo.get(gtfFeature.getGeneId()).getEnd();
+        int geneEnd = featureInfoMap.get(gtfFeature.getGeneId()).getEnd();
 
         // if the transcript start is greater than the gene start
         if (gtfFeature.getEnd() > geneEnd) {
             // set the gene end to be the transcript end
             geneEnd = gtfFeature.getEnd();
-            updateGeneInterval(gtfFeature, idToInfo.get(gtfFeature.getGeneId()).getStart(), geneEnd);
+            updateGeneInterval(gtfFeature, featureInfoMap.get(gtfFeature.getGeneId()).getStart(), geneEnd);
         }
     }
 
@@ -207,7 +208,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     private void updateGeneInterval(GencodeGtfFeature gtfFeature, int geneStart, int geneEnd) {
         Interval geneInterval = new Interval(gtfFeature.getContig(), geneStart, geneEnd);
         GtfInfo gtfGeneInfo = new GtfInfo(geneInterval, GtfInfo.Type.GENE, gtfFeature.getGeneName());
-        idToInfo.put(gtfFeature.getGeneId(), gtfGeneInfo);
+        featureInfoMap.put(gtfFeature.getGeneId(), gtfGeneInfo);
     }
 
     // runs immediately after it has gone through each line of gtf (apply method)
@@ -245,8 +246,8 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         // compare two entries of a map where key = geneId or transcriptId and value = gtfInfo object
         @Override
         public int compare(Map.Entry<String, GtfInfo> e1, Map.Entry<String, GtfInfo> e2) {
-            Interval e1Interval = e1.getValue().getInterval();
-            Interval e2Interval = e2.getValue().getInterval();
+            final Interval e1Interval = e1.getValue().getInterval();
+            final Interval e2Interval = e2.getValue().getInterval();
 
             Utils.nonNull(dictionary.getSequence(e1Interval.getContig()), "could not get sequence for " + e1Interval.getContig());
             Utils.nonNull(dictionary.getSequence(e2Interval.getContig()), "could not get sequence for " + e2Interval.getContig());
@@ -275,7 +276,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     // sorts the map containing the features based on contig and start position
     private LinkedHashMap<String, GtfInfo> getSortedMap(SAMSequenceDictionary sequenceDictionary) {
         // create a list that has the keys and values of idToInfo and sort the list using GtfInfoComparator
-        List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(idToInfo.entrySet());
+        List<Map.Entry<String, GtfInfo>> entries = new ArrayList<>(featureInfoMap.entrySet());
         entries.sort(new GtfInfoComparator(sequenceDictionary));
 
         // put each (sorted) entry in the list into a linked hashmap
