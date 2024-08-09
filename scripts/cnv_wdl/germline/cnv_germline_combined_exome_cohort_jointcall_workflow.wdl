@@ -1,7 +1,7 @@
 version 1.0
 
 import "cnv_germline_cohort_workflow.wdl" as CohortWorkflow
-import "../cnv_common_tasks.wdl" as CNVCommonTasks
+import "../cnv_common_tasks.wdl" as CNVTasks
 
 workflow CNVGermlineCombinedCohortJointcalling {
 
@@ -489,6 +489,44 @@ workflow CNVGermlineCombinedCohortJointcalling {
 
 
 
+}
+
+task MakePedFile {
+    input {
+        Array[File] contig_ploidy_calls_tar
+        String x_contig_name
+    }
+
+    command <<<
+        set -e
+
+        while read tar
+        do
+        mkdir callsDir
+        tar -xf $tar -C callsDir
+
+        for sample in $(ls -d -1 callsDir/SAMPLE*)
+        do
+        sample_name=$(cat $sample/sample_name.txt)
+        x_ploidy=$(grep ^~{x_contig_name} $sample/contig_ploidy.tsv | cut -f 2)
+        [[ -z "$x_ploidy" ]] && { echo "Chromosome ~{x_contig_name} ploidy call not found for sample " $sample_name; exit 1; }
+        printf "%s\t%s\t0\t0\t%s\t0\n" $sample_name $sample_name $x_ploidy >> cohort.ped
+        done
+        rm -rf callsDir
+        done < ~{write_lines(contig_ploidy_calls_tar)}
+    >>>
+
+    output {
+        File ped_file = "cohort.ped"
+    }
+
+    runtime {
+        docker: "gatksv/sv-base-mini:b3af2e3"
+        memory: "3000 MB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: 2
+    }
 }
 
 
