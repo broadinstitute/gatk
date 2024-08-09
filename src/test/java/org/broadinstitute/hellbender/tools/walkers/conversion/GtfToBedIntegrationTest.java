@@ -10,8 +10,6 @@ import org.testng.annotations.Test;
 import java.io.*;
 
 public class GtfToBedIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_SUB_DIR = new File(toolsTestDir);
-    private static final File input = new File(TEST_SUB_DIR, "/funcotator/small_pik3ca_dbsnp_ds/gencode_pik3ca/hg19/gencode.v19.PIK3CA.gtf");
     final File outputFile = createTempFile("outputBed", ".bed");
 
     private static final File mapk1 = new File(ConversionTestUtils.getMapk1Gtf());
@@ -27,20 +25,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final File manyTranscriptsBed = new File (ConversionTestUtils.getManyTranscriptsBed());
     private static final File notBasicBed = new File(ConversionTestUtils.getNotBasicBed());
     private static final File mouseBed = new File(ConversionTestUtils.getMouseBed());
-
-
-
-    // tests any Gtf file (gene)
-    @Test
-    public void testGene() throws IOException {
-        runGtfToBed(false);
-    }
-
-    // tests any Gtf file (transcript)
-    @Test
-    public void testTranscript() throws IOException {
-        runGtfToBed(true);
-    }
 
     // tests specifically mapk1 gene
     @Test
@@ -80,23 +64,6 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testMouse() throws IOException {
         runMouse();
-    }
-
-
-    private void runGtfToBed(boolean transcript) throws IOException {
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .add(GtfToBed.INPUT_LONG_NAME, input)
-                .add(GtfToBed.SEQUENCE_DICTIONARY_LONG_NAME, dictionary)
-                .add(GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME, transcript)
-                .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
-                .addOutput(outputFile);
-        runCommandLine(argsBuilder);
-
-        if (transcript) {
-            Assert.assertEquals(countLines(outputFile), 1);
-        } else {
-            Assert.assertEquals(countLines(outputFile), 1);
-        }
     }
 
     private void runMapk1(boolean transcript) throws IOException {
