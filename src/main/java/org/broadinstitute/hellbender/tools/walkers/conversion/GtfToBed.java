@@ -40,7 +40,7 @@ import java.util.*;
  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -gtf-sequence-dictionary dictionary.dict \
+ *     -gtf-dictionary dictionary.dict \
 = *    -output output.bed \
  * </pre>
  *
@@ -50,8 +50,8 @@ import java.util.*;
  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -gtf-sequence-dictionary dictionary.dict \
- *     -sort-by-transcript \
+ *     -gtf-dictionary dictionary.dict \
+ *     -sort-transcript \
  *     -output output.bed \
  * </pre>
  *
@@ -61,9 +61,9 @@ import java.util.*;
  *  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -gtf-sequence-dictionary dictionary.dict \
- *     -sort-by-transcript \
- *     -sort-by-basic \
+ *     -gtf-dictionary dictionary.dict \
+ *     -sort-transcript \
+ *     -sort-basic \
  *     -output output.bed \
  *  * </pre>
  */
@@ -75,9 +75,9 @@ import java.util.*;
 )
 
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
-    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-by-transcript";
-    public static final String SEQUENCE_DICTIONARY_LONG_NAME = "gtf-sequence-dictionary";
-    public static final String SORT_BY_BASIC_LONG_NAME = "sort-by-basic";
+    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-transcript";
+    public static final String SEQUENCE_DICTIONARY_LONG_NAME = "gtf-dictionary";
+    public static final String SORT_BY_BASIC_LONG_NAME = "sort-basic";
     public static final String INPUT_LONG_NAME = "gtf-path";
 
 
@@ -126,7 +126,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         }
 
         //  check if the gtf feature is a transcript. If user only wants basic transcripts check that it has the basic tag
-        if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT) {
+        else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT) {
             if (sortByBasic) {
                 for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
                     if ("basic".equals(field.getValue())) {

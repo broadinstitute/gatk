@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.conversion;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -109,10 +110,10 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
         if (transcript) {
             Assert.assertEquals(countLines(outputFile), 3);
-            Assert.assertTrue(compareFiles(mapk1TranscriptBed, outputFile));
+            IntegrationTestSpec.assertEqualTextFiles(mapk1TranscriptBed, outputFile);
         } else {
             Assert.assertEquals(countLines(outputFile), 1);
-            Assert.assertTrue(compareFiles(mapk1GeneBed, outputFile));
+            IntegrationTestSpec.assertEqualTextFiles(mapk1GeneBed, outputFile);
         }
     }
 
@@ -128,11 +129,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
 
         if (transcript) {
             Assert.assertEquals(countLines(outputFile), 20);
-            Assert.assertTrue(compareFiles(decoysTranscriptBed, outputFile));
+            IntegrationTestSpec.assertEqualTextFiles(decoysTranscriptBed, outputFile);
 
         } else {
             Assert.assertEquals(countLines(outputFile), 19);
-            Assert.assertTrue(compareFiles(decoysGeneBed, outputFile));
+            IntegrationTestSpec.assertEqualTextFiles(decoysGeneBed, outputFile);
         }
     }
 
@@ -144,7 +145,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, true)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        Assert.assertTrue(compareFiles( manyTranscriptsBed, outputFile));
+        IntegrationTestSpec.assertEqualTextFiles(manyTranscriptsBed, outputFile);
 
     }
 
@@ -156,7 +157,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, false)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        Assert.assertTrue(compareFiles(notBasicBed, outputFile));
+        IntegrationTestSpec.assertEqualTextFiles(notBasicBed, outputFile);
     }
 
     private void runMouse() throws IOException {
@@ -167,7 +168,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
                 .add(GtfToBed.SORT_BY_BASIC_LONG_NAME, false)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        Assert.assertTrue(compareFiles(mouseBed, outputFile));
+        IntegrationTestSpec.assertEqualTextFiles(mouseBed, outputFile);
     }
 
     private int countLines(File file) throws IOException {
@@ -177,32 +178,5 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
             lines++;
         }
         return lines;
-    }
-
-    private boolean compareFiles(File file1, File file2) throws IOException {
-        BufferedReader reader1 = new BufferedReader(new FileReader(file1));
-        BufferedReader reader2 = new BufferedReader(new FileReader(file2));
-
-        String line1 = reader1.readLine();
-        String line2 = reader2.readLine();
-        int lineNum = 1;
-
-        while (line1 != null || line2 != null) {
-            if (line1 == null || line2 == null) {
-                System.out.println("File are different lengths");
-                return false;
-            } else if (!line1.equals(line2)) {
-                System.out.println("Difference at line " + lineNum);
-                System.out.println("File1: " + line1);
-                System.out.println("File2: " + line2);
-                return false;
-            }
-            line1 = reader1.readLine();
-            line2 = reader2.readLine();
-            lineNum++;
-        }
-
-        System.out.println("Files are identical");
-        return true;
     }
 }

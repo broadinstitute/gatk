@@ -24,6 +24,10 @@ public class ConversionTestUtils {
         return getTestDataDir()+"/reference.dict";
     }
 
+//    public static String getReferenceDict(){
+//        return GATKBaseTest.publicTestDir + "large/Homo_sapiens_assembly38.dict";
+//    }
+
     public static String getDecoySamplesGeneBed(){
         return getTestDataDir() + "/decoySampleGene.bed";
     }
