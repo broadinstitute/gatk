@@ -201,8 +201,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 allosomal_contigs = allosomal_contigs,
                 maximum_number_events_per_sample = maximum_number_events_per_sample,
-                maximum_number_pass_events_per_sample = maximum_number_pass_events_per_sample
-                clustered_vcf = clustered_vcf
+                maximum_number_pass_events_per_sample = maximum_number_pass_events_per_sample,
+                clustered_vcf = clustered_vcf,
                 clustered_vcf_index = clustered_vcf_index
         }
     }

@@ -17,6 +17,7 @@ workflows:
      filters:
          branches: 
              - master
+             - tm_combine_gcnv_cohort_jointcalling
          tags:
              - /.*/
    - name: cnv_germline_case_workflow

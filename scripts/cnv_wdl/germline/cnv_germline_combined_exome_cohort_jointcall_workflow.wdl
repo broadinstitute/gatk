@@ -485,6 +485,7 @@ workflow CNVGermlineCombinedCohortJointcalling {
 #        File clustered_vcf_index = JointSegmentation.clustered_vcf_index
         File clustered_vcf = FastCombine.combined_vcf
         File clustered_vcf_index = FastCombine.combined_vcf_index
+        Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
 
     }
 
