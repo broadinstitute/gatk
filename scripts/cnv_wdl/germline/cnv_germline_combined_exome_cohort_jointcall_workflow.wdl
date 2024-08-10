@@ -489,7 +489,7 @@ workflow CNVGermlineCombinedCohortJointcalling {
 
 
 
-#        File preprocessed_intervals = CohortWF.preprocessed_intervals
+        File preprocessed_intervals = CohortWF.preprocessed_intervals
 #        Array[File] read_counts_entity_ids = CohortWF.entity_id
 #        Array[File] read_counts = CohortWF.counts
 #        File? annotated_intervals = CohortWF.annotated_intervals
