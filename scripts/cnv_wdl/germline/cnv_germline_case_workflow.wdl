@@ -253,9 +253,9 @@ workflow CNVGermlineCaseWorkflow {
                 maximum_number_pass_events = maximum_number_pass_events_per_sample,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts
-                clustered_vcf = clustered_vcf
-                clustered_vcf_index = clustered_vcf_index
+                preemptible_attempts = preemptible_attempts,
+                clustered_vcf = clustered_vcf,
+                clustered_vcf_index = clustered_vcf_index,
         }
     }
 

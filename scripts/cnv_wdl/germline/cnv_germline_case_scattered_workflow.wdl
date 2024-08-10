@@ -207,6 +207,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
         }
     }
 
+
     output {
         File preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals[0]
         Array[File] read_counts_entity_id = flatten(CNVGermlineCaseWorkflow.read_counts_entity_id)
