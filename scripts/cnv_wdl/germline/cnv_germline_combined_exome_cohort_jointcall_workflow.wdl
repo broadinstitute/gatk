@@ -493,37 +493,37 @@ workflow CNVGermlineCombinedCohortJointcalling {
         Array[File] read_counts_entity_ids = CohortWF.entity_id
         Array[File] read_counts = CohortWF.counts
         File? annotated_intervals = CohortWF.annotated_intervals
-        File filtered_intervals = CohortWF.filtered_intervals
-        File contig_ploidy_model_tar = CohortWF.contig_ploidy_model_tar
-        File contig_ploidy_calls_tar = CohortWF.contig_ploidy_calls_tar
-        File contig_ploidy_calls_tar_path_list = CohortWF.path_list
-        Array[File] sample_contig_ploidy_calls_tars = CohortWF.sample_contig_ploidy_calls_tar
-        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
-        Array[Array[File]] gcnv_calls_tars = CohortWF.gcnv_call_tars
-        File gcnv_calls_tars_path_list = CohortWF.path_list
-        Array[File] gcnv_tracking_tars = CohortWF.gcnv_tracking_tar
+#        File filtered_intervals = CohortWF.filtered_intervals
+#        File contig_ploidy_model_tar = CohortWF.contig_ploidy_model_tar
+#        File contig_ploidy_calls_tar = CohortWF.contig_ploidy_calls_tar
+#        File contig_ploidy_calls_tar_path_list = CohortWF.path_list
+#        Array[File] sample_contig_ploidy_calls_tars = CohortWF.sample_contig_ploidy_calls_tar
+#        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
+#        Array[Array[File]] gcnv_calls_tars = CohortWF.gcnv_call_tars
+#        File gcnv_calls_tars_path_list = CohortWF.path_list
+#        Array[File] gcnv_tracking_tars = CohortWF.gcnv_tracking_tar
 
-        Array[File] genotyped_intervals_vcfs = CohortWF.genotyped_intervals_vcf
-        File genotyped_intervals_vcfs_path_list = CohortWF.path_list
-        Array[File] genotyped_intervals_vcf_indexes = CohortWF.genotyped_intervals_vcf_index
-        File genotyped_intervals_vcf_indexes_path_list = CohortWF.path_list
-        Array[File] genotyped_segments_vcfs = CohortWF.genotyped_segments_vcf
-        File genotyped_segments_vcfs_path_list = CohortWF.path_list
-        Array[File] genotyped_segments_vcf_indexes = CohortWF.genotyped_segments_vcf_index
-        File genotyped_segments_vcf_indexes_path_list = CohortWF.path_list
-
-        Array[File] denoised_copy_ratios = CohortWF.denoised_copy_ratios
-        Array[File] sample_qc_status_files = CohortWF.qc_status_file
-        Array[String] sample_qc_status_strings = CohortWF.qc_status_string
-        File model_qc_status_file = CohortWF.qc_status_file
-        String model_qc_string = CohortWF.qc_status_string
-        Array[File] denoised_copy_ratios = CohortWF.denoised_copy_ratios
-
-        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
-        Array[File] calling_configs = CohortWF.calling_config_json
-        Array[File] denoising_configs = CohortWF.denoising_config_json
-        Array[File] gcnvkernel_version = CohortWF.gcnvkernel_version_json
-        Array[File] sharded_interval_lists = CohortWF.sharded_interval_list
+#        Array[File] genotyped_intervals_vcfs = CohortWF.genotyped_intervals_vcf
+#        File genotyped_intervals_vcfs_path_list = CohortWF.path_list
+#        Array[File] genotyped_intervals_vcf_indexes = CohortWF.genotyped_intervals_vcf_index
+#        File genotyped_intervals_vcf_indexes_path_list = CohortWF.path_list
+#        Array[File] genotyped_segments_vcfs = CohortWF.genotyped_segments_vcf
+#        File genotyped_segments_vcfs_path_list = CohortWF.path_list
+#        Array[File] genotyped_segments_vcf_indexes = CohortWF.genotyped_segments_vcf_index
+#        File genotyped_segments_vcf_indexes_path_list = CohortWF.path_list
+#
+#        Array[File] denoised_copy_ratios = CohortWF.denoised_copy_ratios
+#        Array[File] sample_qc_status_files = CohortWF.qc_status_file
+#        Array[String] sample_qc_status_strings = CohortWF.qc_status_string
+#        File model_qc_status_file = CohortWF.qc_status_file
+#        String model_qc_string = CohortWF.qc_status_string
+#        Array[File] denoised_copy_ratios = CohortWF.denoised_copy_ratios
+#
+#        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
+#        Array[File] calling_configs = CohortWF.calling_config_json
+#        Array[File] denoising_configs = CohortWF.denoising_config_json
+#        Array[File] gcnvkernel_version = CohortWF.gcnvkernel_version_json
+#        Array[File] sharded_interval_lists = CohortWF.sharded_interval_list
 
     }
 
