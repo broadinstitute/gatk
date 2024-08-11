@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -90,6 +91,7 @@ import java.util.function.Supplier;
 public final class FlowFeatureMapper extends ThreadedReadWalker {
 
     public static final int CAPACITY1 = 5000;
+    private static final int HAPLOTYPE_OPTIMIZED_SIZE = 10;
 
     static class CopyAttrInfo {
         public final String name;
@@ -179,6 +181,11 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
     private Thread  writerWorker;
     @Argument(fullName = "threaded-writer", doc = "turn threaded writer on?", optional = true)
     public boolean threadedWriter = false;
+
+    static class TrimInfo {
+        int trimFrom;
+        int trimTo;
+    }
 
     protected static class ReadContext implements Comparable<ReadContext> {
         final GATKRead         read;
@@ -564,19 +571,22 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
     private double scoreFeature(final MappedFeature fr) {
         return scoreFeature(fr, (byte)0);
     }
+
     private double scoreFeature(final MappedFeature fr, byte altBase) {
 
         // build haplotypes
         final FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(getHeaderForReads(), fr.read);
-        final FlowBasedHaplotype[]    haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase);
+        final TrimInfo trimInfo = new TrimInfo();
+        final FlowBasedHaplotype[] haplotypes = buildHaplotypes(fr, rgInfo.flowOrder, altBase, trimInfo);
+        final FlowBasedRead flowRead = buildTrimmedFlowBasedRead(fr.read, trimInfo, rgInfo);
 
-        // create flow read
-        final FlowBasedRead flowRead = new FlowBasedRead(fr.read, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
-
-        final int diffLeft = haplotypes[0].getStart() - flowRead.getStart() + fr.offsetDelta;
-        final int diffRight = flowRead.getEnd() - haplotypes[0].getEnd();
-        flowRead.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), false);
-
+        // check lengths
+        if ( haplotypes[0].length() != haplotypes[1].length() ) {
+            logger.warn("haplotypes are different in length: " + haplotypes[0].length() + " != " + haplotypes[1].length());
+        }
+        if ( flowRead.getLength() != haplotypes[0].length() ) {
+            logger.warn("flow read is different in length from haplotypes: " + flowRead.getLength() + " != " + haplotypes[0].length());
+        }
         if ( !flowRead.isValid() ) {
             return -1;
         }
@@ -676,7 +686,7 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         return result;
     }
 
-    private FlowBasedHaplotype[] buildHaplotypes(final MappedFeature fr, final String flowOrder, byte altBase) {
+    private FlowBasedHaplotype[] buildHaplotypes(final MappedFeature fr, final String flowOrder, byte altBase, TrimInfo trimInfo) {
 
         // build bases for flow haplotypes
         // NOTE!!!: this code assumes length of feature on read and reference is the same
@@ -694,6 +704,7 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
             fr.refBases[0] = altBase;
         }
 
+        int altOffset = offset;
         if ( offset > 0 ) {
             // reach into hmer before
             offset--;
@@ -708,8 +719,18 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
                 refStart--;
             }
         }
-        final byte[]      sAltBases = Arrays.copyOfRange(bases, offset, bases.length);
+
+        // build two haplotypes with existing data from the read
+        final int trimTo = Math.min(altOffset + fr.readBases.length + HAPLOTYPE_OPTIMIZED_SIZE, bases.length);
+        final byte[]      sAltBases = Arrays.copyOfRange(bases, offset, trimTo);
         final byte[]      sRefBases = Arrays.copyOf(sAltBases, sAltBases.length);
+
+        // verify that we are correctly positioned
+        if ( sRefBases[refModOfs] != fr.readBases[0] ) {
+            logger.warn("sRefBases[refModOfs] != fr.readBases[0] : " + sRefBases[refModOfs] + " != " + fr.readBases[0]);
+        }
+
+        // restore reference in ref haplotype
         System.arraycopy(fr.refBases, 0, sRefBases, refModOfs, fr.refBases.length);
 
         // construct haplotypes
@@ -732,6 +753,12 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         // restore changes
         if ( altBase != 0 ) {
             fr.refBases[0] = orgBase;
+        }
+
+        // returning trimming info
+        if ( trimInfo != null ) {
+            trimInfo.trimFrom = offset;
+            trimInfo.trimTo = trimTo - 1;
         }
 
         // return
@@ -844,6 +871,36 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         } else {
             throw new GATKException("unsupported mappingFeature: " + fmArgs.mappingFeature);
         }
+    }
+
+    private FlowBasedRead buildTrimmedFlowBasedRead(final GATKRead read, final TrimInfo trimInfo, final FlowBasedReadUtils.ReadGroupInfo rgInfo) {
+
+        // access origin arrays
+        final byte[] bases = read.getBasesNoCopy();
+        final byte[] quals = read.getBaseQualitiesNoCopy();
+        final byte[] tp = read.getAttributeAsByteArray("tp");
+        final String t0 = read.getAttributeAsString("t0");
+
+        // trim
+        final byte[] trimmed_bases = Arrays.copyOfRange(bases, trimInfo.trimFrom, trimInfo.trimTo + 1);
+        final byte[] trimmed_quals = Arrays.copyOfRange(quals, trimInfo.trimFrom, trimInfo.trimTo + 1);
+        final byte[] trimmed_tp = Arrays.copyOfRange(tp, trimInfo.trimFrom, trimInfo.trimTo + 1);
+        final String trimmed_t0 = t0.substring(trimInfo.trimFrom, trimInfo.trimTo + 1);
+
+        // build read
+        final SAMRecord samRecord = new SAMRecord(getHeaderForReads());
+        samRecord.setReadBases(trimmed_bases);
+        samRecord.setBaseQualities(trimmed_quals);
+        samRecord.setAttribute("tp", trimmed_tp);
+        samRecord.setAttribute("t0", trimmed_t0);
+        samRecord.setAttribute("RG", read.getAttributeAsString("RG"));
+        samRecord.setCigarString("" + (trimInfo.trimTo - trimInfo.trimFrom + 1) + "M");
+        final GATKRead gatkRead = new SAMRecordToGATKReadAdapter(samRecord);
+
+        // build flow based read
+        final FlowBasedRead flowRead = new FlowBasedRead(gatkRead, rgInfo.flowOrder, rgInfo.maxClass, fbargs);
+
+        return flowRead;
     }
 }
 
