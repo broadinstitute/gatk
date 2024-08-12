@@ -1274,7 +1274,7 @@ task PopulateFilterSetInfo {
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
         -mode SNP \
-        --use-VQSR ~{useVQSR} \
+        --use-vqsr ~{useVQSR} \
         -V ~{snp_recal_file} \
         -O ~{filter_set_name}.snps.recal.tsv
 
@@ -1284,7 +1284,7 @@ task PopulateFilterSetInfo {
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
         -mode INDEL \
-        --use-VQSR ~{useVQSR} \
+        --use-vqsr ~{useVQSR} \
         -V ~{indel_recal_file} \
         -O ~{filter_set_name}.indels.recal.tsv
 
