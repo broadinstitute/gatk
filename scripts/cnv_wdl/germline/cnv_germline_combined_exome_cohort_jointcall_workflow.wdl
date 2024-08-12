@@ -308,18 +308,18 @@ workflow CNVGermlineCombinedCohortJointcalling {
 
     }
 
-    File contig_ploidy_calls_tar_path_list = CohortWF.contig_ploidy_calls_tar_path_list
-    File gcnv_calls_tars_path_list = CohortWF.gcnv_calls_tars_path_list
-    File genotyped_intervals_vcf_indexes_path_list = CohortWF.genotyped_intervals_vcf_indexes_path_list
-    File genotyped_intervals_vcfs_path_list = CohortWF.genotyped_intervals_vcfs_path_list
-    File genotyped_segments_vcf_indexes_path_list = CohortWF.genotyped_segments_vcf_indexes_path_list
-    File genotyped_segments_vcfs_path_list = CohortWF.genotyped_segments_vcfs_path_list
+    File contig_ploidy_calls_tar_path_list_forclustering = CohortWF.contig_ploidy_calls_tar_path_list
+    File gcnv_calls_tars_path_list_forclustering = CohortWF.gcnv_calls_tars_path_list
+    File genotyped_intervals_vcf_indexes_path_list_forclustering = CohortWF.genotyped_intervals_vcf_indexes_path_list
+    File genotyped_intervals_vcfs_path_list_forclustering = CohortWF.genotyped_intervals_vcfs_path_list
+    File genotyped_segments_vcf_indexes_path_list_forclustering = CohortWF.genotyped_segments_vcf_indexes_path_list
+    File genotyped_segments_vcfs_path_list_forclustering = CohortWF.genotyped_segments_vcfs_path_list
 
-    Array[File] gcnv_model_tars = CohortWF.gcnv_model_tars
-    Array[File] calling_configs = CohortWF.calling_configs
-    Array[File] denoising_configs = CohortWF.denoising_configs
-    Array[File] gcnvkernel_version = CohortWF.gcnvkernel_version
-    Array[File] sharded_interval_lists = CohortWF.sharded_interval_lists
+    Array[File] gcnv_model_tars_forclustering = CohortWF.gcnv_model_tars
+    Array[File] calling_configs_forclustering = CohortWF.calling_configs
+    Array[File] denoising_configs_forclustering = CohortWF.denoising_configs
+    Array[File] gcnvkernel_version_forclustering = CohortWF.gcnvkernel_version
+    Array[File] sharded_interval_lists_forclustering = CohortWF.sharded_interval_lists
 
 #    call JointCallWorkflow.JointCallExomeCNVs as JointCallWF {
 #        input:
@@ -364,58 +364,58 @@ workflow CNVGermlineCombinedCohortJointcalling {
 
 
     #we do these as FoFNs for Terra compatibility
-        Array[File] contig_ploidy_calls_tars = read_lines(contig_ploidy_calls_tar_path_list)
-        Array[File] segments_vcfs = read_lines(genotyped_segments_vcfs_path_list)
-        Array[File] segments_vcf_indexes = read_lines(genotyped_segments_vcf_indexes_path_list)
-        Array[File] intervals_vcfs = read_lines(genotyped_intervals_vcfs_path_list)
-        Array[File] intervals_vcf_indexes = read_lines(genotyped_intervals_vcf_indexes_path_list)
-        Array[Array[File]] gcnv_calls_tars = read_tsv(gcnv_calls_tars_path_list)
-        Array[Array[File]] call_tars_sample_by_shard = transpose(gcnv_calls_tars)
+    Array[File] contig_ploidy_calls_tars = read_lines(contig_ploidy_calls_tar_path_list_forclustering)
+    Array[File] segments_vcfs = read_lines(genotyped_segments_vcfs_path_list_forclustering)
+    Array[File] segments_vcf_indexes = read_lines(genotyped_segments_vcf_indexes_path_list_forclustering)
+    Array[File] intervals_vcfs = read_lines(genotyped_intervals_vcfs_path_list_forclustering)
+    Array[File] intervals_vcf_indexes = read_lines(genotyped_intervals_vcf_indexes_path_list_forclustering)
+    Array[Array[File]] gcnv_calls_tars_forclustering = read_tsv(gcnv_calls_tars_path_list_forclustering)
+    Array[Array[File]] call_tars_sample_by_shard = transpose(gcnv_calls_tars_forclustering)
 
-        #create a ped file to use for allosome copy number (e.g. XX, XY)
-        call MakePedFile {
-          input:
-            contig_ploidy_calls_tar = read_lines(contig_ploidy_calls_tar_path_list),
+    #create a ped file to use for allosome copy number (e.g. XX, XY)
+    call MakePedFile {
+        input:
+            contig_ploidy_calls_tar = read_lines(contig_ploidy_calls_tar_path_list_forclustering),
             x_contig_name = x_contig_name
-        }
+    }
 
-        call CNVTasks.SplitInputArray as SplitSegmentsVcfsList {
-            input:
-                input_array = segments_vcfs,
-                num_inputs_in_scatter_block = num_samples_per_scatter_block,
-                gatk_docker = gatk_docker
-        }
+    call CNVTasks.SplitInputArray as SplitSegmentsVcfsList {
+        input:
+            input_array = segments_vcfs,
+            num_inputs_in_scatter_block = num_samples_per_scatter_block,
+            gatk_docker = gatk_docker
+    }
 
-        call CNVTasks.SplitInputArray as SplitSegmentsIndexesList {
-            input:
-                input_array = segments_vcf_indexes,
-                num_inputs_in_scatter_block = num_samples_per_scatter_block,
-                gatk_docker = gatk_docker
-        }
+    call CNVTasks.SplitInputArray as SplitSegmentsIndexesList {
+        input:
+            input_array = segments_vcf_indexes,
+            num_inputs_in_scatter_block = num_samples_per_scatter_block,
+            gatk_docker = gatk_docker
+    }
 
-        Array[Array[String]] split_segments = SplitSegmentsVcfsList.split_array
-        Array[Array[String]] split_segments_indexes = SplitSegmentsIndexesList.split_array
+    Array[Array[String]] split_segments = SplitSegmentsVcfsList.split_array
+    Array[Array[String]] split_segments_indexes = SplitSegmentsIndexesList.split_array
 
-        #for more than num_samples_per_scatter_block, do an intermediate combine first
-        if (length(split_segments) > 1) {
-          scatter (subarray_index in range(length(split_segments))) {
+    #for more than num_samples_per_scatter_block, do an intermediate combine first
+    if (length(split_segments) > 1) {
+        scatter (subarray_index in range(length(split_segments))) {
             call JointSegmentation as ScatterJointSegmentation {
-              input:
-                segments_vcfs = split_segments[subarray_index],
-                segments_vcf_indexes = split_segments_indexes[subarray_index],
-                ped_file = MakePedFile.ped_file,
-                ref_fasta = ref_fasta,
-                ref_fasta_fai = ref_fasta_fai,
-                ref_fasta_dict = ref_fasta_dict,
-                gatk_docker = gatk_docker_clustering,
-                model_intervals = intervals
+                input:
+                    segments_vcfs = split_segments[subarray_index],
+                    segments_vcf_indexes = split_segments_indexes[subarray_index],
+                    ped_file = MakePedFile.ped_file,
+                    ref_fasta = ref_fasta,
+                    ref_fasta_fai = ref_fasta_fai,
+                    ref_fasta_dict = ref_fasta_dict,
+                    gatk_docker = gatk_docker_clustering,
+                    model_intervals = intervals
             }
-          }
         }
+    }
 
-        #refine breakpoints over all samples
-        call JointSegmentation as GatherJointSegmentation {
-          input:
+    #refine breakpoints over all samples
+    call JointSegmentation as GatherJointSegmentation {
+        input:
             segments_vcfs = select_first([ScatterJointSegmentation.clustered_vcf, segments_vcfs]),
             segments_vcf_indexes = select_first([ScatterJointSegmentation.clustered_vcf_index, segments_vcfs]),
             ped_file = MakePedFile.ped_file,
@@ -424,54 +424,54 @@ workflow CNVGermlineCombinedCohortJointcalling {
             ref_fasta_dict = ref_fasta_dict,
             gatk_docker = gatk_docker_clustering,
             model_intervals = intervals
-        }
+    }
 
         #recalculate each sample's quality scores based on new breakpoints and filter low QS or high AF events;
         #exclude samples with too many events
-        scatter (scatter_index in range(length(segments_vcfs))) {
-          call CNVTasks.PostprocessGermlineCNVCalls as RecalcQual {
+    scatter (scatter_index in range(length(segments_vcfs))) {
+        call CNVTasks.PostprocessGermlineCNVCalls as RecalcQual {
             input:
-                  entity_id = sub(sub(basename(intervals_vcfs[scatter_index]), ".vcf.gz", ""), "intervals_output_", ""),
-                  gcnv_calls_tars = call_tars_sample_by_shard[scatter_index],
-                  gcnv_model_tars = gcnv_model_tars,
-                  calling_configs = calling_configs,
-                  denoising_configs = denoising_configs,
-                  gcnvkernel_version = gcnvkernel_version,
-                  sharded_interval_lists = sharded_interval_lists,
-                  contig_ploidy_calls_tar = read_lines(contig_ploidy_calls_tar_path_list)[0],  #this is always a list of one tar
-                  allosomal_contigs = allosomal_contigs,
-                  ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
-                  sample_index = scatter_index,
-                  maximum_number_events = maximum_number_events,
-                  maximum_number_pass_events = maximum_number_pass_events,
-                  intervals_vcf = intervals_vcfs[scatter_index],
-                  intervals_vcf_index = intervals_vcf_indexes[scatter_index],
-                  clustered_vcf = GatherJointSegmentation.clustered_vcf,
-                  clustered_vcf_index = GatherJointSegmentation.clustered_vcf_index,
-                  gatk_docker = gatk_docker_qual_calc
-          }
+                entity_id = sub(sub(basename(intervals_vcfs[scatter_index]), ".vcf.gz", ""), "intervals_output_", ""),
+                gcnv_calls_tars = call_tars_sample_by_shard[scatter_index],
+                gcnv_model_tars = gcnv_model_tars_forclustering,
+                calling_configs = calling_configs_forclustering,
+                denoising_configs = denoising_configs_forclustering,
+                gcnvkernel_version = gcnvkernel_version_forclustering,
+                sharded_interval_lists = sharded_interval_lists_forclustering,
+                contig_ploidy_calls_tar = read_lines(contig_ploidy_calls_tar_path_list_forclustering)[0],  #this is always a list of one tar
+                allosomal_contigs = allosomal_contigs,
+                ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
+                sample_index = scatter_index,
+                maximum_number_events = maximum_number_events,
+                maximum_number_pass_events = maximum_number_pass_events,
+                intervals_vcf = intervals_vcfs[scatter_index],
+                intervals_vcf_index = intervals_vcf_indexes[scatter_index],
+                clustered_vcf = GatherJointSegmentation.clustered_vcf,
+                clustered_vcf_index = GatherJointSegmentation.clustered_vcf_index,
+                gatk_docker = gatk_docker_qual_calc
         }
+    }
 
-        #only put samples that passed QC into the combined VCF
-        scatter(idx in range(length(RecalcQual.genotyped_segments_vcf))) {
-          if (RecalcQual.qc_status_string[idx] == "PASS") {
-            String subset = RecalcQual.genotyped_segments_vcf[idx]
-            String subset_indexes = RecalcQual.genotyped_segments_vcf_index[idx]
-          }
-          if (RecalcQual.qc_status_string[idx] != "PASS") {
-            String failed = sub(sub(basename(RecalcQual.genotyped_segments_vcf[idx]), ".vcf.gz", ""), "segments_output_", "")
-          }
-        }
-        Array[String] subset_arr = select_all(subset)
-        Array[String] subset_index_arr = select_all(subset_indexes)
-        Array[String] failed_qc_samples = select_all(failed)
+    #only put samples that passed QC into the combined VCF
+    scatter(idx in range(length(RecalcQual.genotyped_segments_vcf))) {
+      if (RecalcQual.qc_status_string[idx] == "PASS") {
+        String subset = RecalcQual.genotyped_segments_vcf[idx]
+        String subset_indexes = RecalcQual.genotyped_segments_vcf_index[idx]
+      }
+      if (RecalcQual.qc_status_string[idx] != "PASS") {
+        String failed = sub(sub(basename(RecalcQual.genotyped_segments_vcf[idx]), ".vcf.gz", ""), "segments_output_", "")
+      }
+    }
+    Array[String] subset_arr = select_all(subset)
+    Array[String] subset_index_arr = select_all(subset_indexes)
+    Array[String] failed_qc_samples = select_all(failed)
 
-        call FastCombine {
-          input:
-            input_vcfs = subset_arr,
-            input_vcf_indexes = subset_index_arr,
-            sv_pipeline_docker = sv_pipeline_docker
-        }
+    call FastCombine {
+      input:
+        input_vcfs = subset_arr,
+        input_vcf_indexes = subset_index_arr,
+        sv_pipeline_docker = sv_pipeline_docker
+    }
 
 
 
@@ -483,8 +483,8 @@ workflow CNVGermlineCombinedCohortJointcalling {
 #        File filtered_intervals = CohortWF.filtered_intervals
 #        File clustered_vcf = JointSegmentation.clustered_vcf
 #        File clustered_vcf_index = JointSegmentation.clustered_vcf_index
-        File clustered_vcf = FastCombine.combined_vcf
-        File clustered_vcf_index = FastCombine.combined_vcf_index
+        File combined_vcf = FastCombine.combined_vcf
+        File combined_vcf_index = FastCombine.combined_vcf_index
 #        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
 
 
@@ -494,37 +494,36 @@ workflow CNVGermlineCombinedCohortJointcalling {
 #        Array[File] read_counts = CohortWF.counts
 #        File? annotated_intervals = CohortWF.annotated_intervals
 #        File filtered_intervals = CohortWF.filtered_intervals
+
         File contig_ploidy_model_tar = CohortWF.contig_ploidy_model_tar
         File contig_ploidy_calls_tar = CohortWF.contig_ploidy_calls_tar
-        File contig_ploidy_calls_tar_path_list = CohortWF.path_list
-        Array[File] sample_contig_ploidy_calls_tars = CohortWF.sample_contig_ploidy_calls_tar
-        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
-        Array[Array[File]] gcnv_calls_tars = CohortWF.gcnv_call_tars
-        File gcnv_calls_tars_path_list = CohortWF.path_list
-        Array[File] gcnv_tracking_tars = CohortWF.gcnv_tracking_tar
-
-        Array[File] genotyped_intervals_vcfs = CohortWF.genotyped_intervals_vcf
-        File genotyped_intervals_vcfs_path_list = CohortWF.path_list
-        Array[File] genotyped_intervals_vcf_indexes = CohortWF.genotyped_intervals_vcf_index
-        File genotyped_intervals_vcf_indexes_path_list = CohortWF.path_list
-        Array[File] genotyped_segments_vcfs = CohortWF.genotyped_segments_vcf
-        File genotyped_segments_vcfs_path_list = CohortWF.path_list
-        Array[File] genotyped_segments_vcf_indexes = CohortWF.genotyped_segments_vcf_index
-        File genotyped_segments_vcf_indexes_path_list = CohortWF.path_list
+        File contig_ploidy_calls_tar_path_list = CohortWF.contig_ploidy_calls_tar_path_list #path_list
+        Array[File] sample_contig_ploidy_calls_tars = CohortWF.sample_contig_ploidy_calls_tars
+        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tars
+        Array[Array[File]] gcnv_calls_tars = CohortWF.gcnv_calls_tars
+        File gcnv_calls_tars_path_list = CohortWF.gcnv_calls_tars_path_list
+        Array[File] gcnv_tracking_tars = CohortWF.gcnv_tracking_tars
 #
+        Array[File] genotyped_intervals_vcfs = CohortWF.genotyped_intervals_vcfs
+        File genotyped_intervals_vcfs_path_list = CohortWF.genotyped_intervals_vcfs_path_list
+        Array[File] genotyped_intervals_vcf_indexes = CohortWF.genotyped_intervals_vcf_indexes
+        File genotyped_intervals_vcf_indexes_path_list = CohortWF.genotyped_intervals_vcf_indexes_path_list
+        Array[File] genotyped_segments_vcfs = CohortWF.genotyped_segments_vcfs
+        File genotyped_segments_vcfs_path_list = CohortWF.genotyped_segments_vcfs_path_list
+        Array[File] genotyped_segments_vcf_indexes = CohortWF.genotyped_segments_vcf_indexes
+        File genotyped_segments_vcf_indexes_path_list = CohortWF.genotyped_segments_vcf_indexes_path_list
+##
         Array[File] denoised_copy_ratios = CohortWF.denoised_copy_ratios
-        Array[File] sample_qc_status_files = CohortWF.qc_status_file
-        Array[String] sample_qc_status_strings = CohortWF.qc_status_string
-        File model_qc_status_file = CohortWF.qc_status_file
-        String model_qc_string = CohortWF.qc_status_string
+        Array[File] sample_qc_status_files = CohortWF.sample_qc_status_files
+        Array[String] sample_qc_status_strings = CohortWF.sample_qc_status_strings
+        File model_qc_status_file = CohortWF.model_qc_status_file
+        String model_qc_string = CohortWF.model_qc_string
         Array[File] denoised_copy_ratios = CohortWF.denoised_copy_ratios
-
-        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
-        Array[File] calling_configs = CohortWF.calling_config_json
-        Array[File] denoising_configs = CohortWF.denoising_config_json
-        Array[File] gcnvkernel_version = CohortWF.gcnvkernel_version_json
-        Array[File] sharded_interval_lists = CohortWF.sharded_interval_list
-g
+#
+        Array[File] calling_configs = CohortWF.calling_configs
+        Array[File] denoising_configs = CohortWF.denoising_configs
+        Array[File] gcnvkernel_version = CohortWF.gcnvkernel_version
+        Array[File] sharded_interval_lists = CohortWF.sharded_interval_lists
     }
 
 
