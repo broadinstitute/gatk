@@ -193,7 +193,7 @@ workflow GvsExtractCallset {
 
   # If we're not using the VQSR filters, set it to VETS (really shouldn't matter one way or the other)
   # Otherwise use the auto-derived flag.
-  Boolean use_VETS = select_first([IsVETS.isVETS, true])
+  Boolean use_VETS = select_first([IsVETS.is_vets, true])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:
