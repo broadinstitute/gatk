@@ -479,20 +479,16 @@ workflow CNVGermlineCombinedCohortJointcalling {
 
 
     output {
-#        File contig_ploidy_model_tar = CohortWF.contig_ploidy_model_tar
-#        File filtered_intervals = CohortWF.filtered_intervals
+
 #        File clustered_vcf = JointSegmentation.clustered_vcf
 #        File clustered_vcf_index = JointSegmentation.clustered_vcf_index
         File combined_vcf = FastCombine.combined_vcf
         File combined_vcf_index = FastCombine.combined_vcf_index
-#        Array[File] gcnv_model_tars = CohortWF.gcnv_model_tar
-
-
 
         File preprocessed_intervals = CohortWF.preprocessed_intervals
-#        Array[File] read_counts_entity_ids = CohortWF.entity_id
-#        Array[File] read_counts = CohortWF.counts
-#        File? annotated_intervals = CohortWF.annotated_intervals
+        Array[File] read_counts_entity_ids = CohortWF.read_counts_entity_ids
+        Array[File] read_counts = CohortWF.read_counts
+        File? annotated_intervals = CohortWF.annotated_intervals
         File filtered_intervals = CohortWF.filtered_intervals
 
         File contig_ploidy_model_tar = CohortWF.contig_ploidy_model_tar
