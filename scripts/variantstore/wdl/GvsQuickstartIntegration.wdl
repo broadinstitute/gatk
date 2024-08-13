@@ -5,6 +5,8 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsJointVariantCalling.wdl" as JointVariantCalling
 import "GvsUtils.wdl" as Utils
 
+# Comment!
+
 workflow GvsQuickstartIntegration {
     input {
         String git_branch_or_tag
