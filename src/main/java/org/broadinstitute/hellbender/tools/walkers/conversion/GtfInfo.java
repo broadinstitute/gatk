@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import htsjdk.samtools.util.Interval;
 
-public class GtfInfo{
+public class GtfInfo {
 
-    public enum Type{
+    public enum Type {
         GENE,
         TRANSCRIPT
     }

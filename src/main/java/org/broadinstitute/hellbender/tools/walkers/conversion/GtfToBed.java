@@ -5,8 +5,12 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.*;
 import htsjdk.tribble.Feature;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -14,10 +18,10 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.*;
 
 /**
@@ -74,13 +78,14 @@ import java.util.*;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 
+@DocumentedFeature
+@WorkflowProperties
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-transcript";
     public static final String SEQUENCE_DICTIONARY_LONG_NAME = "gtf-dictionary";
     public static final String SORT_BY_BASIC_LONG_NAME = "sort-basic";
     public static final String INPUT_LONG_NAME = "gtf-path";
-
-
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(fullName = INPUT_LONG_NAME, doc = "Path to Gencode GTF file")
     public GATKPath inputFile;
@@ -146,7 +151,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         try {
             optionalFields = gtfFeature.getOptionalField("tag");
         } catch (Exception e) {
-            System.err.println("Could not retrieve optional fields: " + e.getMessage());
+            logger.error("Could not retrieve optional fields: ", e);
         }
         return optionalFields;
     }
@@ -281,11 +286,11 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
 
     // writes to bed file
     private void writeToBed(GtfInfo.Type type, Map<String, GtfInfo> sortedMap) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(String.valueOf(outputFile)))) {
+        try (final OutputStream writer = Files.newOutputStream(outputFile.toPath())) {
             for (Map.Entry<String, GtfInfo> entry : sortedMap.entrySet()) {
                 if (entry.getValue().getType() == type) {
                     String line = formatBedLine(entry, type);
-                    writer.write(line + System.lineSeparator());
+                    writer.write((line + System.lineSeparator()).getBytes());
                 }
             }
         } catch (IOException e) {
