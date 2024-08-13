@@ -1193,29 +1193,22 @@ task SummarizeTaskMonitorLogs {
   input {
     Array[File] inputs
     String variants_docker
+    File log_fofn = write_lines(inputs)
   }
-
-  String use_fofn = if (length(inputs) > 10) then "true" else "false"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    if [[ -z "~{sep=" " inputs}" ]]; then
+    echo ${write_lines(inputs)}
+    if [[ -s "~{log_fofn}" ]]; then
       echo "No monitoring log files found" > monitoring_summary.txt
     else
-      if ~{use_fofn} ; then
-        python3 /app/summarize_task_monitor_logs.py \
-          --fofn_input ${write_lines(inputs)} \
+      python3 /app/summarize_task_monitor_logs.py \
+          --file_input ~{log_fofn} \
           --output monitoring_summary.txt
-      else
-        python3 /app/summarize_task_monitor_logs.py \
-          --file_input ~{sep=" " inputs} \
-          --output monitoring_summary.txt
-      fi
     fi
-
   >>>
 
   # ------------------------------------------------
