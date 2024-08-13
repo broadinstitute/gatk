@@ -1195,13 +1195,18 @@ task SummarizeTaskMonitorLogs {
     String variants_docker
     File log_fofn = write_lines(inputs)
   }
+  parameter_meta {
+    inputs: {
+      localization_optional: true
+    }
+  }
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    if [[ -s "~{log_fofn}" ]]; then
+    if [ -s ~{log_fofn} ]; then
       echo "No monitoring log files found" > monitoring_summary.txt
     else
       python3 /app/summarize_task_monitor_logs.py \
