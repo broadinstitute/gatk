@@ -1201,7 +1201,6 @@ task SummarizeTaskMonitorLogs {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    echo ${write_lines(inputs)}
     if [[ -s "~{log_fofn}" ]]; then
       echo "No monitoring log files found" > monitoring_summary.txt
     else
