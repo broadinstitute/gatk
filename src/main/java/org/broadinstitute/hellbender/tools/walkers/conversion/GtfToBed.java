@@ -108,32 +108,28 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public void apply(GencodeGtfFeature feature, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         // list of all features of the gene
         List<GencodeGtfFeature> geneFeatures = feature.getAllFeatures();
+
         // process each gtf feature in the list of gene features
         for (GencodeGtfFeature gtfFeature : geneFeatures) {
-            processFeature(gtfFeature);
-        }
-    }
+            // the basic tag is in optional fields
+            List<GencodeGtfFeature.OptionalField<?>> optionalFields = getOptionalFields(gtfFeature);
 
-    // gets both genes and transcripts from GTF and puts it in a hashmap
-    private void processFeature(GencodeGtfFeature gtfFeature) {
-        // the basic tag is in optional fields
-        List<GencodeGtfFeature.OptionalField<?>> optionalFields = getOptionalFields(gtfFeature);
+            // if the gtf feature is a Gene
+            if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.GENE) {
+                processGeneFeature(gtfFeature);
+            }
 
-        // if the gtf feature is a Gene
-        if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.GENE) {
-            processGeneFeature(gtfFeature);
-        }
-
-        //  check if the gtf feature is a transcript. If user only wants basic transcripts check that it has the basic tag
-        else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT) {
-            if (sortByBasic) {
-                for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
-                    if ("basic".equals(field.getValue())) {
-                        processTranscriptFeature(gtfFeature);
+            //  check if the gtf feature is a transcript. If user only wants basic transcripts check that it has the basic tag
+            else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.TRANSCRIPT) {
+                if (sortByBasic) {
+                    for (GencodeGtfFeature.OptionalField<?> field : optionalFields) {
+                        if ("basic".equals(field.getValue())) {
+                            processTranscriptFeature(gtfFeature);
+                        }
                     }
+                } else {
+                    processTranscriptFeature(gtfFeature);
                 }
-            } else {
-                processTranscriptFeature(gtfFeature);
             }
         }
     }
