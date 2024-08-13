@@ -72,7 +72,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-07-16-alpine-0b965b8d2679"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-08-13-alpine-fe21da898f54"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024-07-23-gatkbase-abbe96265d5f"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -1195,18 +1195,25 @@ task SummarizeTaskMonitorLogs {
     String variants_docker
   }
 
+  String use_fofn = if (length(inputs) > 1000) then "true" else "false"
+
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    INPUTS="~{sep=" " inputs}"
-    if [[ -z "$INPUTS" ]]; then
+    if [[ -z "~{sep=" " inputs}" ]]; then
       echo "No monitoring log files found" > monitoring_summary.txt
     else
-      python3 /app/summarize_task_monitor_logs.py \
-        --input $INPUTS \
-        --output monitoring_summary.txt
+      if ~{use_fofn} ; then
+        python3 /app/summarize_task_monitor_logs.py \
+          --fofn_input ${write_lines(inputs)} \
+          --output monitoring_summary.txt
+      else
+        python3 /app/summarize_task_monitor_logs.py \
+          --file_input ~{sep=" " inputs} \
+          --output monitoring_summary.txt
+      fi
     fi
 
   >>>

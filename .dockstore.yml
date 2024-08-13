@@ -126,6 +126,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1441
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -428,7 +429,6 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - rsa_vs_1110
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -437,7 +437,7 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - rsa_vs_1110
+         - rsa_vs_1441
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
