@@ -236,7 +236,27 @@ workflow CNVGermlineCaseWorkflow {
     Array[Array[File]] call_tars_sample_by_shard = transpose(GermlineCNVCallerCaseMode.gcnv_call_tars)
 
     scatter (sample_index in range(length(normal_bams))) {
-        call CNVTasks.PostprocessGermlineCNVCalls {
+        call CNVTasks.PostprocessGermlineCNVCalls as Postprocess1{
+            input:
+                entity_id = CollectCounts.entity_id[sample_index],
+                gcnv_calls_tars = call_tars_sample_by_shard[sample_index],
+                gcnv_model_tars = gcnv_model_tars,
+                calling_configs = GermlineCNVCallerCaseMode.calling_config_json,
+                denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
+                gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
+                sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
+                allosomal_contigs = allosomal_contigs,
+                ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
+                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+                sample_index = sample_index,
+                maximum_number_events = maximum_number_events_per_sample,
+                maximum_number_pass_events = maximum_number_pass_events_per_sample,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts,
+        }
+
+        call CNVTasks.PostprocessGermlineCNVCalls as Postprocess2{
             input:
                 entity_id = CollectCounts.entity_id[sample_index],
                 gcnv_calls_tars = call_tars_sample_by_shard[sample_index],
@@ -256,6 +276,8 @@ workflow CNVGermlineCaseWorkflow {
                 preemptible_attempts = preemptible_attempts,
                 clustered_vcf = clustered_vcf,
                 clustered_vcf_index = clustered_vcf_index,
+                intervals_vcf = Postprocess1.genotyped_intervals_vcf,
+                intervals_vcf_index = Postprocess1.genotyped_intervals_vcf_index,
         }
     }
 
@@ -274,13 +296,13 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] sample_contig_ploidy_calls_tars = ScatterPloidyCallsBySample.sample_contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
-        Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
-        Array[File] genotyped_intervals_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_intervals_vcf_index
-        Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
-        Array[File] genotyped_segments_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_segments_vcf_index
-        Array[File] qc_status_files = PostprocessGermlineCNVCalls.qc_status_file
-        Array[String] qc_status_strings = PostprocessGermlineCNVCalls.qc_status_string
-        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
+        Array[File] genotyped_intervals_vcfs = Postprocess2.genotyped_intervals_vcf
+        Array[File] genotyped_intervals_vcf_indexes = Postprocess2.genotyped_intervals_vcf_index
+        Array[File] genotyped_segments_vcfs = Postprocess2.genotyped_segments_vcf
+        Array[File] genotyped_segments_vcf_indexes = Postprocess2.genotyped_segments_vcf_index
+        Array[File] qc_status_files = Postprocess2.qc_status_file
+        Array[String] qc_status_strings = Postprocess2.qc_status_string
+        Array[File] denoised_copy_ratios = Postprocess2.denoised_copy_ratios
     }
 }
 

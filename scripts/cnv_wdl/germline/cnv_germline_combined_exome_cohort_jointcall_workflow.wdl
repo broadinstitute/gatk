@@ -150,11 +150,6 @@ workflow CNVGermlineCombinedCohortJointcalling {
           Int maximum_number_pass_events_per_sample
 
 
-
-
-
-
-
         #####
         ##### inputs for joint calling
         #####
@@ -321,48 +316,6 @@ workflow CNVGermlineCombinedCohortJointcalling {
     Array[File] gcnvkernel_version_forclustering = CohortWF.gcnvkernel_version
     Array[File] sharded_interval_lists_forclustering = CohortWF.sharded_interval_lists
 
-#    call JointCallWorkflow.JointCallExomeCNVs as JointCallWF {
-#        input:
-#             num_samples_per_scatter_block = num_samples_per_scatter_block,
-#             intervals = intervals,
-#             blacklist_intervals = blacklist_intervals,
-#
-#             contig_ploidy_calls_tar_path_list = CohortWF.contig_ploidy_calls_tar_path_list,
-#             gcnv_calls_tars_path_list = CohortWF.gcnv_calls_tars_path_list,
-#             genotyped_intervals_vcf_indexes_path_list = CohortWF.genotyped_intervals_vcf_indexes_path_list,
-#             genotyped_intervals_vcfs_path_list = CohortWF.genotyped_intervals_vcfs_path_list,
-#             genotyped_segments_vcf_indexes_path_list = CohortWF.genotyped_segments_vcf_indexes_path_list,
-#             genotyped_segments_vcfs_path_list = CohortWF.genotyped_segments_vcfs_path_list,
-#
-#             maximum_number_events = maximum_number_events,
-#             maximum_number_pass_events = maximum_number_pass_events,
-#
-#             gcnv_model_tars = CohortWF.gcnv_model_tars,
-#             calling_configs = CohortWF.calling_configs,
-#             denoising_configs = CohortWF.denoising_configs,
-#             gcnvkernel_version = CohortWF.gcnvkernel_version,
-#             sharded_interval_lists = CohortWF.sharded_interval_lists,
-#             allosomal_contigs = allosomal_contigs,
-#             ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
-#             ref_fasta_dict = ref_fasta_dict,
-#             ref_fasta_fai = ref_fasta_fai,
-#             ref_fasta = ref_fasta,
-#             x_contig_name = x_contig_name,
-#             protein_coding_gtf = protein_coding_gtf,
-#             linc_rna_gtf = linc_rna_gtf,
-#             promoter_bed = promoter_bed,
-#             noncoding_bed = noncoding_bed,
-#             gatk_docker = gatk_docker,
-#             gatk_docker_clustering = gatk_docker_clustering,
-#             gatk_docker_qual_calc = gatk_docker_qual_calc,
-#             sv_pipeline_docker = sv_pipeline_docker,
-#
-#    }
-
-
-
-
-
     #we do these as FoFNs for Terra compatibility
     Array[File] contig_ploidy_calls_tars = read_lines(contig_ploidy_calls_tar_path_list_forclustering)
     Array[File] segments_vcfs = read_lines(genotyped_segments_vcfs_path_list_forclustering)
@@ -474,14 +427,10 @@ workflow CNVGermlineCombinedCohortJointcalling {
     }
 
 
-
-
-
-
     output {
 
-#        File clustered_vcf = JointSegmentation.clustered_vcf
-#        File clustered_vcf_index = JointSegmentation.clustered_vcf_index
+        File clustered_vcf = GatherJointSegmentation.clustered_vcf
+        File clustered_vcf_index = GatherJointSegmentation.clustered_vcf_index
         File combined_vcf = FastCombine.combined_vcf
         File combined_vcf_index = FastCombine.combined_vcf_index
 

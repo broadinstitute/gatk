@@ -113,6 +113,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
       Array[String]? allosomal_contigs
       File? clustered_vcf
       File? clustered_vcf_index
+      File? intervals_vcfs
+      File? intervals_vcf_indexes
 
       ##########################
       #### arguments for QC ####
@@ -134,6 +136,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
             num_inputs_in_scatter_block = num_samples_per_scatter_block,
             gatk_docker = gatk_docker
     }
+
 
     Array[Array[String]] split_bams = SplitInputBamsList.split_array
     Array[Array[String]] split_bais = SplitInputBaisList.split_array
@@ -203,7 +206,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 maximum_number_events_per_sample = maximum_number_events_per_sample,
                 maximum_number_pass_events_per_sample = maximum_number_pass_events_per_sample,
                 clustered_vcf = clustered_vcf,
-                clustered_vcf_index = clustered_vcf_index
+                clustered_vcf_index = clustered_vcf_index,
         }
     }
 
