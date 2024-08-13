@@ -1195,7 +1195,7 @@ task SummarizeTaskMonitorLogs {
     String variants_docker
   }
 
-  String use_fofn = if (length(inputs) > 1000) then "true" else "false"
+  String use_fofn = if (length(inputs) > 10) then "true" else "false"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
