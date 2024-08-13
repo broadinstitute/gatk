@@ -180,7 +180,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     }
 
     private void add(final VariantContext variant, final boolean isTruth) {
-        SVCallRecord record = SVCallRecordUtils.create(variant);
+        SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         if (!record.getContigA().equals(currentContig)) {
             flushClusters(true);
             currentContig = record.getContigA();
@@ -199,8 +199,8 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         final List<Genotype> genotypes = item.getGenotypes().stream().map(SVConcordance::stripTruthGenotype).collect(Collectors.toList());
         return new SVCallRecord(item.getId(), item.getContigA(), item.getPositionA(),
                 item.getStrandA(), item.getContigB(), item.getPositionB(), item.getStrandB(), item.getType(),
-                item.getComplexSubtype(), item.getLength(), item.getAlgorithms(), item.getAlleles(), genotypes,
-                item.getAttributes(), item.getFilters(), item.getLog10PError(), dictionary);
+                item.getComplexSubtype(), item.getComplexEventIntervals(), item.getLength(), item.getAlgorithms(),
+                item.getAlleles(), genotypes, item.getAttributes(), item.getFilters(), item.getLog10PError(), dictionary);
     }
 
     private static Genotype stripTruthGenotype(final Genotype genotype) {

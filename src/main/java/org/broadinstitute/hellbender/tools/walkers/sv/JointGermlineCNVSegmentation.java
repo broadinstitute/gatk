@@ -646,11 +646,11 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
      * @param minQuality drop events with quality lower than this
      * @return a new record or null
      */
-    public static SVCallRecord createDepthOnlyFromGCNVWithOriginalGenotypes(final VariantContext variant,
-                                                                            final double minQuality,
-                                                                            final Set<String> allosomalContigs,
-                                                                            final int refAutosomalCopyNumber,
-                                                                            final SampleDB sampleDB) {
+    public SVCallRecord createDepthOnlyFromGCNVWithOriginalGenotypes(final VariantContext variant,
+                                                                     final double minQuality,
+                                                                     final Set<String> allosomalContigs,
+                                                                     final int refAutosomalCopyNumber,
+                                                                     final SampleDB sampleDB) {
         Utils.nonNull(variant);
         if (variant.getGenotypes().size() == 1) {
             //only cluster good variants
@@ -672,7 +672,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
                 .collect(Collectors.toList());
         svBuilder.genotypes(genotypesWithECN);
 
-        final SVCallRecord baseRecord = SVCallRecordUtils.create(svBuilder.make(), true);
+        final SVCallRecord baseRecord = SVCallRecordUtils.create(svBuilder.make(), true, dictionary);
         final List<Genotype> nonRefGenotypes = baseRecord.getGenotypes().stream()
                 .filter(g -> !(g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))))
                 .collect(Collectors.toList());

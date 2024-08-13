@@ -48,6 +48,7 @@ releases of the toolkit.
 * [How to contribute to GATK](#contribute)
 * [Discussions](#discussions)
 * [Authors](#authors)
+* [Citing GATK](#citing)
 * [License](#license)
 
 ## <a name="requirements">Requirements</a>
@@ -156,7 +157,9 @@ For more details on system packages, see the GATK [Base Dockerfile](scripts/dock
         
     * This creates a zip archive in the `build/` directory with a name like `gatk-VERSION.zip` containing a complete standalone GATK distribution, including our launcher `gatk`, both the local and spark jars, and this README.    
     * You can also run GATK commands directly from the root of your git clone after running this command.
-    * Note that you *must* have a full git clone in order to build GATK, including the git-lfs files in src/main/resources. The zipped source code alone is not buildable.
+    * Note that you *must* have a full git clone in order to build GATK, including the git-lfs files in `src/main/resources/large`. The zipped source code alone is not buildable.
+    * The large files under `src/main/resources/large/` are required to build GATK, since they are packaged inside the GATK jar and used by tools at runtime. These include things like ML models and native C/C++ libraries used for acceleration of certain tools.
+    * The large files under `src/test/resources/large/`, on the other hand, are only required by the test suite when running tests, and are not required to build GATK.
 
 * **Other ways to build:**
     * `./gradlew installDist`  
@@ -670,6 +673,9 @@ Thank you for getting involved!
 ## <a name="authors">Authors</a>
 The authors list is maintained in the [AUTHORS](https://github.com/broadinstitute/gatk/edit/master/AUTHORS) file. 
 See also the [Contributors](https://github.com/broadinstitute/gatk/graphs/contributors) list at github. 
+
+## <a name="citing">Citing GATK</a>
+If you use GATK in your research, please see [this article](https://gatk.broadinstitute.org/hc/en-us/articles/360035530852-How-should-I-cite-GATK-in-my-own-publications) for details on how to properly cite GATK.
 
 ## <a name="license">License</a>
 Licensed under the Apache 2.0 License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.

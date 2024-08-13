@@ -79,9 +79,9 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final SVConcordanceAnnotator annotator = new SVConcordanceAnnotator();
 
         final List<SVCallRecord> inputEvalVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
-                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+                .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
         final List<SVCallRecord> inputTruthVariants = VariantContextTestUtils.readEntireVCFIntoMemory(truthVcfPath).getValue()
-                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+                .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
 
         final ClosestSVFinder finder = new ClosestSVFinder(linkage, annotator::annotate, dictionary);
         final List<SVCallRecord> expectedRecords = new ArrayList<>(inputEvalVariants.size());
@@ -346,7 +346,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         final List<SVCallRecord> inputEvalVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
-                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+                .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
         Assert.assertEquals(outputVcf.getValue().size(), inputEvalVariants.size());
         final long numTruePositives = outputVcf.getValue().stream().filter(v -> v.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "").equals(ConcordanceState.TRUE_POSITIVE.getAbbreviation())).count();
         Assert.assertEquals((int) numTruePositives, 1104);

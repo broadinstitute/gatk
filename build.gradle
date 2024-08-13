@@ -303,7 +303,7 @@ dependencies {
 
     implementation 'it.unimi.dsi:fastutil:7.0.13'
 
-    implementation 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
+    implementation 'org.broadinstitute:hdf5-java-bindings:1.2.0-hdf5_2.11.0'
     implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
     implementation 'org.ojalgo:ojalgo:44.0.0'
