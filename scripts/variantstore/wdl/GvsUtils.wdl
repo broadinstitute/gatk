@@ -1190,43 +1190,36 @@ task MergeTsvs {
 }
 
 task SummarizeTaskMonitorLogs {
-  input {
-    Array[File] inputs
-    String variants_docker
-    File log_fofn = write_lines(inputs)
-  }
-  parameter_meta {
-    inputs: {
-      localization_optional: true
+    input {
+        Array[File] inputs
+        String variants_docker
+        File log_fofn = write_lines(inputs)
+        }
+    parameter_meta {
+        inputs: {
+            localization_optional: true
+        }
     }
-  }
 
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
-    if [ -s ~{log_fofn} ]; then
-      echo "No monitoring log files found" > monitoring_summary.txt
-    else
-      python3 /app/summarize_task_monitor_logs.py \
-          --file_input ~{log_fofn} \
-          --output monitoring_summary.txt
-    fi
-  >>>
+        python3 /app/summarize_task_monitor_logs.py --file_input ~{log_fofn} \
+            --output monitoring_summary.txt
+    >>>
 
-  # ------------------------------------------------
-  # Runtime settings:
-  runtime {
-    docker: variants_docker
-    memory: "1 GB"
-    preemptible: 3
-    cpu: "1"
-    disks: "local-disk 100 HDD"
-  }
-  output {
-    File monitoring_summary = "monitoring_summary.txt"
-  }
+    runtime {
+        docker: variants_docker
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    output {
+        File monitoring_summary = "monitoring_summary.txt"
+    }
 }
 
 # Note - this task should probably live in GvsCreateFilterSet, but I moved it here when I was refactoring VQSR Classic out of
