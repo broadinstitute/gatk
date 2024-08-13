@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.*;
 import htsjdk.tribble.Feature;
 import org.apache.log4j.LogManager;
@@ -18,7 +16,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -82,7 +79,6 @@ import java.util.*;
 @WorkflowProperties
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-transcript";
-    public static final String SEQUENCE_DICTIONARY_LONG_NAME = "gtf-dictionary";
     public static final String SORT_BY_BASIC_LONG_NAME = "sort-basic";
     public static final String INPUT_LONG_NAME = "gtf-path";
     protected final Logger logger = LogManager.getLogger(this.getClass());
@@ -96,10 +92,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, doc = "Make each row of BED file sorted by transcript", optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument( fullName = SEQUENCE_DICTIONARY_LONG_NAME, doc = "Path to sequence dictionary")
-    public GATKPath sequenceDictionary;
-
-    @Argument( fullName = SORT_BY_BASIC_LONG_NAME, doc = "Only use basic transcripts")
+    @Argument(fullName = SORT_BY_BASIC_LONG_NAME, doc = "Only use basic transcripts")
     public boolean sortByBasic = false;
 
     //stores either gene or transcript ID and summary information about the feature
@@ -219,8 +212,9 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     // runs immediately after it has gone through each line of gtf (apply method)
     @Override
     public Object onTraversalSuccess() {
-        // get the user input dictionary
-        SAMSequenceDictionary sequenceDictionary = getSequenceDictionary(String.valueOf(this.sequenceDictionary));
+        // get dictionary
+        SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+
 
         // create linked hash map to store sorted values of idToInfo
         LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedMap(sequenceDictionary);
@@ -230,13 +224,6 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         writeToBed(selectedType, karyotypeIdToInfo);
 
         return null;
-    }
-
-    // reads the dictionary
-    private SAMSequenceDictionary getSequenceDictionary(String dictionaryPath) {
-        SamReader reader = SamReaderFactory.makeDefault().open(new File(dictionaryPath));
-
-        return reader.getFileHeader().getSequenceDictionary();
     }
 
     //Compare GtfInfo objects positionally by contig and start position. If transcripts have the same contig and start, compare by TranscriptId
