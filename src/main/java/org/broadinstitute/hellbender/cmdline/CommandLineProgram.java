@@ -193,8 +193,6 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 );
             }
 
-
-
             System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
         } catch (final AccessDeniedException | NoSuchFileException e) {
             // TODO: it may be that the program does not need a tmp dir
