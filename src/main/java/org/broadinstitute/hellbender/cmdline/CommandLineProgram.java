@@ -25,10 +25,10 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermission;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -166,31 +166,42 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
         // set the temp directory as a java property, checking for existence and read/write access
         final Path p = tmpDir.toPath();
+        Path tempFilePath = null;
         try {
             p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
 
             // Warn if there's anything that prevents execution in the tmp dir because some tools need that
-            // Write an empty file to the tempdir
-            final Path tempFilePath = Files.createTempFile(p, "gatk_exec_test", null);
-            final File tempFile = tempFilePath.toFile();
-            tempFile.deleteOnExit();
-            // Add execute permissions
-            if(!tempFile.setExecutable(true, false)){
-                logger.warn(
-                    "Cannot create executable files within the configured temporary directory. It is possible " +
-                        "this user does not have the proper permissions to execute files within this directory. " +
-                        "This can cause issues for some GATK tools. You can specify a different directory using " +
-                        "--tmp-dir"
+            // This test relies on the file system supporting posix file permissions
+            if(p.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+                // Write an empty file to the tempdir
+                tempFilePath = Files.createTempFile(p, "gatk_exec_test", null);
+                // Add execute permissions
+                final Set<PosixFilePermission> executePermissions = EnumSet.of(
+                        PosixFilePermission.OWNER_EXECUTE,
+                        PosixFilePermission.GROUP_EXECUTE,
+                        PosixFilePermission.OTHERS_EXECUTE
                 );
-            }
-            // Now check if the file can be executed
-            else if(!tempFile.canExecute()) {
-                logger.warn(
-                    "User has permissions to create executable files within the configured temporary directory, " +
-                        "but cannot execute those files. It is possible the directory has been mounted using the " +
-                        "'noexec' flag. This can cause issues for some GATK tools. You can specify a different " +
-                        "directory using --tmp-dir"
-                );
+                final Set<PosixFilePermission> newPermissions = Files.getPosixFilePermissions(tempFilePath);
+                newPermissions.addAll(executePermissions);
+                try{
+                    Files.setPosixFilePermissions(tempFilePath, newPermissions);
+                    if(!Files.isExecutable(tempFilePath)) {
+                        logger.warn(
+                            "User has permissions to create executable files within the configured temporary directory, " +
+                                "but cannot execute those files. It is possible the directory has been mounted using the " +
+                                "'noexec' flag. This can cause issues for some GATK tools. You can specify a different " +
+                                "directory using --tmp-dir"
+                        );
+                    }
+                }
+                catch(IOException e) {
+                    logger.warn(
+                        "Cannot create executable files within the configured temporary directory. It is possible " +
+                            "this user does not have the proper permissions to execute files within this directory. " +
+                            "This can cause issues for some GATK tools. You can specify a different directory using " +
+                            "--tmp-dir"
+                    );
+                }
             }
 
             System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
@@ -202,6 +213,16 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         } catch (final IOException e) {
             // other exceptions with the tmp directory
             throw new UserException.BadTempDir(p, e.getMessage(), e);
+        }
+        finally {
+            // Make sure we clean up the test file
+            try {
+                if (tempFilePath != null)
+                    Files.deleteIfExists(tempFilePath);
+            }
+            catch(Exception e) {
+                logger.warn("Failed to delete temp file for testing temp dir", e);
+            }
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
