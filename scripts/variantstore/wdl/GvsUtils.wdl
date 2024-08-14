@@ -1206,7 +1206,7 @@ task SummarizeTaskMonitorLogs {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        python3 /app/summarize_task_monitor_logs.py --file_input ~{log_fofn} \
+        python3 /app/summarize_task_monitor_logs.py --fofn_input ~{log_fofn} \
             --output monitoring_summary.txt
     >>>
 
