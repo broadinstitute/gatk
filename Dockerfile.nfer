@@ -3,7 +3,8 @@ FROM hz-registry.nferx.com/ubuntu as builder
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
-
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
 # Install required packages and dependencies
 RUN apt-get update && \
     apt-get install -y \
