@@ -150,6 +150,12 @@ workflow GvsExtractCallsetPgenMerged {
         }
     }
 
+    call Utils.SummarizeTaskMonitorLogs as SummarizeExtractCallsetPgen {
+        input:
+            variants_docker = effective_variants_docker,
+            inputs = GvsExtractCallsetPgen.monitoring_logs,
+    }
+
     output {
         Array[File] merged_pgens = MergePgenWorkflow.pgen_file
         Array[File] merged_pvars = MergePgenWorkflow.pvar_file
@@ -161,6 +167,7 @@ workflow GvsExtractCallsetPgenMerged {
         Float total_pgens_size_mb = GvsExtractCallsetPgen.total_pgens_size_mb
         File manifest = GvsExtractCallsetPgen.manifest
         File? sample_name_list = GvsExtractCallsetPgen.sample_name_list
+        File monitoring_summary = SummarizeExtractCallsetPgen.monitoring_summary
     }
 
 }
