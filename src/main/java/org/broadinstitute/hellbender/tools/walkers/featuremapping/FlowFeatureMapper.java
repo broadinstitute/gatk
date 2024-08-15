@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCall
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.haplotype.FlowBasedHaplotype;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
@@ -92,6 +93,7 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
 
     public static final int CAPACITY1 = 5000;
     private static final int HAPLOTYPE_OPTIMIZED_SIZE = 10;
+    private static final long CACHE_SIZE_FACTOR = 5;
 
     static class CopyAttrInfo {
         public final String name;
@@ -325,6 +327,11 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
                 }
             });
             writerWorker.start();;
+        }
+
+        // if using threaded walker extend reference cache to avoid thrushing
+        if ( threadedWalker ) {
+            CachingIndexedFastaSequenceFile.requestedCacheSize = CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE * CACHE_SIZE_FACTOR;
         }
     }
 
