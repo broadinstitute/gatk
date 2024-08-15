@@ -37,6 +37,7 @@ public abstract class ThreadedReadWalker extends ReadWalker implements Runnable 
         if ( threadedWalker ) {
             applyQueue = new LinkedBlockingQueue<>(CAPACITY);
             worker = new Thread(this);
+            worker.setUncaughtExceptionHandler(getUncaughtExceptionHandler());
             worker.start();
         }
     }
@@ -103,4 +104,13 @@ public abstract class ThreadedReadWalker extends ReadWalker implements Runnable 
 
     public abstract boolean acceptRead(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext);
     public abstract void applyPossiblyThreaded(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext);
+
+    public Thread.UncaughtExceptionHandler getUncaughtExceptionHandler() {
+        Thread.UncaughtExceptionHandler handler = (th, ex) -> {
+            System.out.println("Uncaught exception: " + ex);
+            ex.printStackTrace(System.out);
+            System.exit(-1);
+        };
+        return handler;
+    }
 }

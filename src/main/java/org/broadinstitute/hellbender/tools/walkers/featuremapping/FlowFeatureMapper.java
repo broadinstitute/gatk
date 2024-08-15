@@ -326,13 +326,20 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
                     }
                 }
             });
+            writerWorker.setUncaughtExceptionHandler(getUncaughtExceptionHandler());
             writerWorker.start();;
+        }
+
+        // if using threads, set handler for this thread as well
+        if ( threadedWalker || threadedWriter ) {
+            Thread.currentThread().setUncaughtExceptionHandler(getUncaughtExceptionHandler());
         }
 
         // if using threaded walker extend reference cache to avoid thrushing
         if ( threadedWalker ) {
             CachingIndexedFastaSequenceFile.requestedCacheSize = CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE * CACHE_SIZE_FACTOR;
         }
+
     }
 
     @Override
