@@ -72,7 +72,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-08-08-alpine-44c8ad26dcb1"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-08-13-alpine-fe21da898f54"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024_08_08-gatkbase-7dc245ec27ce"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -1190,39 +1190,36 @@ task MergeTsvs {
 }
 
 task SummarizeTaskMonitorLogs {
-  input {
-    Array[File] inputs
-    String variants_docker
-  }
+    input {
+        Array[File] inputs
+        String variants_docker
+        File log_fofn = write_lines(inputs)
+        }
+    parameter_meta {
+        inputs: {
+            localization_optional: true
+        }
+    }
 
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
-    INPUTS="~{sep=" " inputs}"
-    if [[ -z "$INPUTS" ]]; then
-      echo "No monitoring log files found" > monitoring_summary.txt
-    else
-      python3 /app/summarize_task_monitor_logs.py \
-        --input $INPUTS \
-        --output monitoring_summary.txt
-    fi
+        python3 /app/summarize_task_monitor_logs.py --fofn_input ~{log_fofn} \
+            --output monitoring_summary.txt
+    >>>
 
-  >>>
-
-  # ------------------------------------------------
-  # Runtime settings:
-  runtime {
-    docker: variants_docker
-    memory: "1 GB"
-    preemptible: 3
-    cpu: "1"
-    disks: "local-disk 100 HDD"
-  }
-  output {
-    File monitoring_summary = "monitoring_summary.txt"
-  }
+    runtime {
+        docker: variants_docker
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    output {
+        File monitoring_summary = "monitoring_summary.txt"
+    }
 }
 
 # Note - this task should probably live in GvsCreateFilterSet, but I moved it here when I was refactoring VQSR out of

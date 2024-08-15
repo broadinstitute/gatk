@@ -16,7 +16,7 @@ class TestSummarizeTaskMonitorLogs(unittest.TestCase):
                        'summarize_task_monitor_logs_test_files/call-MergeVCFs/cacheCopy/monitoring.log',
                        'summarize_task_monitor_logs_test_files/call-SamplesTableDatetimeCheck/monitoring.log']
         with tempfile.NamedTemporaryFile() as actual_output_file:
-            parse_monitoring_log_files(input_files, actual_output_file.name)
+            parse_monitoring_log_files(input_files, '', actual_output_file.name)
 
             expected_output_file = 'summarize_task_monitor_logs_test_files/expected_monitoring_summary_file.txt'
             with open(actual_output_file.name, 'r') as actual, open(expected_output_file, 'r') as expected:

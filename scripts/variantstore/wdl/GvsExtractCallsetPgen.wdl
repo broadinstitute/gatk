@@ -298,6 +298,7 @@ workflow GvsExtractCallsetPgen {
         Array[File] output_pgens = PgenExtractTask.output_pgen
         Array[File] output_pvars = PgenExtractTask.output_pvar
         Array[File] output_psams = PgenExtractTask.output_psam
+        Array[File] monitoring_logs = PgenExtractTask.monitoring_log
         File output_pgen_interval_files = SplitIntervalsTarred.interval_files_tar
         Array[String] output_pgen_interval_filenames = SplitIntervalsTarred.interval_filenames
         Float total_pgens_size_mb = SumBytes.total_mb
