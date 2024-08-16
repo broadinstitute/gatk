@@ -1,8 +1,8 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-import "GvsVQSRClassic.wdl" as VQSRClassic
-import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
+import "GvsVQSR.wdl" as VQSR
+import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
   input {
@@ -21,16 +21,16 @@ workflow GvsCreateFilterSet {
     String? git_hash
     File? gatk_override
 
-    Boolean use_VQSR_lite = true
+    Boolean use_VETS = true
 
-    Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
-    Int? INDEL_VQSR_CLASSIC_mem_gb_override
-    Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
-    Int? SNP_VQSR_CLASSIC_mem_gb_override
+    Int? INDEL_VQSR_max_gaussians_override = 4
+    Int? INDEL_VQSR_mem_gb_override
+    Int? SNP_VQSR_max_gaussians_override = 6
+    Int? SNP_VQSR_mem_gb_override
 
-    RuntimeAttributes? vqsr_lite_extract_runtime_attributes = {"command_mem_gb": 27}
-    RuntimeAttributes? vqsr_lite_train_runtime_attributes = {"command_mem_gb": 27}
-    RuntimeAttributes? vqsr_lite_score_runtime_attributes = {"command_mem_gb": 15}
+    RuntimeAttributes? vets_extract_runtime_attributes = {"command_mem_gb": 27}
+    RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
+    RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
 
     File? training_python_script
     File? scoring_python_script
@@ -127,10 +127,10 @@ workflow GvsCreateFilterSet {
       gatk_docker = effective_gatk_docker,
   }
 
-  # From this point, the paths diverge depending on whether they're using classic VQSR or VQSR-Lite
-  # The first branch here is VQSR-Lite, and the second is classic VQSR
-  if (use_VQSR_lite) {
-    call VQSRLite.JointVcfFiltering as JointVcfFiltering {
+  # From this point, the paths diverge depending on whether they're using VQSR or VETS
+  # The first branch here is VETS, and the second is VQSR
+  if (use_VETS) {
+    call VETS.JointVcfFiltering as JointVcfFiltering {
       input:
         input_vcfs = ExtractFilterTask.output_vcf,
         input_vcf_idxs = ExtractFilterTask.output_vcf_index,
@@ -141,9 +141,9 @@ workflow GvsCreateFilterSet {
         resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
         extract_extra_args = "-L ${interval_list}",
         score_extra_args = "-L ${interval_list}",
-        extract_runtime_attributes = vqsr_lite_extract_runtime_attributes,
-        train_runtime_attributes = vqsr_lite_train_runtime_attributes,
-        score_runtime_attributes = vqsr_lite_score_runtime_attributes,
+        extract_runtime_attributes = vets_extract_runtime_attributes,
+        train_runtime_attributes = vets_train_runtime_attributes,
+        score_runtime_attributes = vets_score_runtime_attributes,
         gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
         monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh",
@@ -198,12 +198,12 @@ workflow GvsCreateFilterSet {
         indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
         indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
         project_id = project_id,
-        useClassic = false
+        useVQSR = false
     }
   }
 
-  if (!use_VQSR_lite) {
-    call VQSRClassic.JointVcfFiltering as VQSRClassic {
+  if (!use_VETS) {
+    call VQSR.JointVcfFiltering as VQSR {
       input:
         git_branch_or_tag = git_branch_or_tag,
         git_hash = git_hash,
@@ -218,10 +218,10 @@ workflow GvsCreateFilterSet {
         sites_only_variant_filtered_vcf_idx = MergeVCFs.output_vcf_index,
         sites_only_variant_filtered_vcfs = ExtractFilterTask.output_vcf,
         sites_only_variant_filtered_vcf_idxs = ExtractFilterTask.output_vcf_index,
-        INDEL_VQSR_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
-        INDEL_VQSR_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
-        SNP_VQSR_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
-        SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+        INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
+        INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
+        SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
+        SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
         gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
     }
@@ -255,7 +255,7 @@ workflow GvsCreateFilterSet {
                [CreateFilteredScoredSNPsVCF.monitoring_log],
                [CreateFilteredScoredINDELsVCF.monitoring_log],
                [PopulateFilterSetInfo.monitoring_log],
-               select_first([VQSRClassic.monitoring_logs, []]),
+               select_first([VQSR.monitoring_logs, []]),
                [PopulateFilterSetSites.monitoring_log]
                ]
                )

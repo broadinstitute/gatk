@@ -27,7 +27,6 @@ workflow GvsCreateVATfromVDS {
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
         Int? split_intervals_scatter_count
-        Boolean use_classic_VQSR = false
         Boolean use_reference_disk = true
 
         String? cloud_sdk_docker
@@ -144,7 +143,6 @@ workflow GvsCreateVATfromVDS {
             call GenerateSitesOnlyVcf {
                 input:
                     vds_path = select_first([vds_path]),
-                    use_classic_VQSR = use_classic_VQSR,
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
                     hail_wheel = hail_wheel,
@@ -310,7 +308,6 @@ workflow GvsCreateVATfromVDS {
 task GenerateSitesOnlyVcf {
     input {
         String vds_path
-        Boolean use_classic_VQSR
         String workspace_project
         String workspace_bucket
         String region
