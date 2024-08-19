@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -101,17 +102,17 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testComplexSelection()  throws IOException {
-        final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
-        final String samplesFile = getToolTestDataDir() + "samples.args";
+        public void testComplexSelection()  throws IOException {
+            final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
+            final String samplesFile = getToolTestDataDir() + "samples.args";
 
-        final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn NA11894 -se 'NA069*' -sn " + samplesFile + " -select 'RMSMAPQ < 170.0'", testFile),
-                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_ComplexSelection.vcf")
-        );
+            final IntegrationTestSpec spec = new IntegrationTestSpec(
+                    baseTestString(" -sn NA11894 -se 'NA069*' -sn " + samplesFile + " -select 'RMSMAPQ < 170.0'", testFile),
+                    Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_ComplexSelection.vcf")
+            );
 
-        spec.executeTest("testComplexSelection--" + testFile, this);
-    }
+            spec.executeTest("testComplexSelection--" + testFile, this);
+        }
 
     /**
      * When input variants are untrimmed, they can be trimmed by select variants, which may change their order.
@@ -1262,5 +1263,17 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 .addReference(b37Reference)
                 .addOutput(output);
         runCommandLine(args);
+    }
+
+    @Test
+    public void testOutputOnlyStartingInInterval() throws IOException {
+        final String testFile = getToolTestDataDir() + "complexExample1.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("-L 1:10045604-10046982 " +
+                        "--"+ StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " " + IntervalFilteringVcfWriter.Mode.STARTS_IN, testFile) ,
+                Collections.singletonList(getToolTestDataDir() + "expected/testSelectVariants_onlyOutputInInterval.vcf")
+        );
+        spec.executeTest("test that variant interval output filter mode is applied", this);
     }
 }

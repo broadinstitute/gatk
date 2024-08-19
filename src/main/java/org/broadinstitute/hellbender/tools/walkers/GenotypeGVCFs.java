@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -18,7 +19,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -41,13 +41,14 @@ import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -129,7 +130,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /**
      * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
      * sequencing, especially if GVCF data only exists for specified intervals.  Use with
-     * --{@value GATKTool#VARIANT_OUTPUT_INTERVAL_FILTERING_MODE} if input GVCFs contain calls outside the specified intervals.
+     * --{@value StandardArgumentDefinitions#VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME} if input GVCFs contain calls outside the specified intervals.
      */
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
@@ -271,7 +272,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
-        final Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
+        final Collection<Annotation> variantAnnotations = makeVariantAnnotations();
         final Set<Annotation> annotationsToKeep = getAnnotationsToKeep();
         annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, annotationsToKeep);
 

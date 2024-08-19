@@ -14,10 +14,10 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
@@ -107,6 +107,17 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
             oneLineSummary = "Test tool",
             programGroup = TestProgramGroup.class)
     public static class VariantEmitter extends GATKTool{
+        static final SimpleInterval INT1 = new SimpleInterval("1",10, 15);
+        static final SimpleInterval INT2 = new SimpleInterval("1",100, 105);
+        static final SimpleInterval INT3 = new SimpleInterval("1",1000, 1005);
+        static final SimpleInterval INT4 = new SimpleInterval("1",10000, 10005);
+        static final SimpleInterval INT5 = new SimpleInterval("2",20, 25);
+        static final SimpleInterval INT6 = new SimpleInterval("2",200, 205);
+        static final SimpleInterval INT7 = new SimpleInterval("2",2000, 2005);
+        static final SimpleInterval INT8 = new SimpleInterval("2",20000, 20005);
+
+        static final List<Locatable> INTERVALS = List.of(INT1, INT2, INT3, INT4, INT5, INT6, INT7, INT8);
+
         @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
         File output;
 
@@ -122,46 +133,48 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
                 final VariantContextBuilder vcb = new VariantContextBuilder();
                 vcb.alleles("AAAAAA", "A").chr("1");
 
-                vcfWriter.add(vcb.start(10).stop(15).make());
-                vcfWriter.add(vcb.start(100).stop(105).make());
-                vcfWriter.add(vcb.start(1000).stop(1005).make());
-                vcfWriter.add(vcb.start(10000).stop(10005).make());
-
-                vcb.chr("2");
-                vcfWriter.add(vcb.start(20).stop(25).make());
-                vcfWriter.add(vcb.start(200).stop(205).make());
-                vcfWriter.add(vcb.start(2000).stop(2005).make());
-                vcfWriter.add(vcb.start(20000).stop(20005).make());
+                for(final Locatable interval : INTERVALS){
+                    vcfWriter.add(vcb.loc(interval.getContig(),interval.getStart(), interval.getEnd()).make());
+                }
             }
         }
     }
 
     @DataProvider
     public Object[][] getIntervalsAndOverlapMode(){
+        final SimpleInterval chr1Interval = new SimpleInterval("1", 101, 10001);
+        final SimpleInterval chr2Interval = new SimpleInterval("2", 201, 20001);
         return new Object[][]{
-                {Arrays.asList(new SimpleInterval("1", 101, 10001), new SimpleInterval("2", 201, 20001)), IntervalFilteringVcfWriter.Mode.ANYWHERE, 8},
-                {Arrays.asList(new SimpleInterval("1", 101, 10001), new SimpleInterval("2", 201, 20001)), IntervalFilteringVcfWriter.Mode.OVERLAPS, 6},
-                {Arrays.asList(new SimpleInterval("1", 101, 10001), new SimpleInterval("2", 201, 20001)), IntervalFilteringVcfWriter.Mode.STARTS_IN, 4},
-                {Arrays.asList(new SimpleInterval("1", 101, 10001), new SimpleInterval("2", 201, 20001)), IntervalFilteringVcfWriter.Mode.ENDS_IN, 4},
-                {Arrays.asList(new SimpleInterval("1", 101, 10001), new SimpleInterval("2", 201, 20001)), IntervalFilteringVcfWriter.Mode.CONTAINED, 2},
-                {Arrays.asList(new SimpleInterval("1", 101, 10001), new SimpleInterval("2", 201, 20001)), null, 8},
+                {Arrays.asList(chr1Interval, chr2Interval), IntervalFilteringVcfWriter.Mode.ANYWHERE, VariantEmitter.INTERVALS },
+                {Arrays.asList(chr1Interval, chr2Interval), IntervalFilteringVcfWriter.Mode.OVERLAPS, List.of(VariantEmitter.INT2, VariantEmitter.INT3, VariantEmitter.INT4, VariantEmitter.INT6, VariantEmitter.INT7, VariantEmitter.INT8)},
+                {Arrays.asList(chr1Interval, chr2Interval), IntervalFilteringVcfWriter.Mode.STARTS_IN, List.of(VariantEmitter.INT3, VariantEmitter.INT4, VariantEmitter.INT7,  VariantEmitter.INT8)},
+                {Arrays.asList(chr1Interval, chr2Interval), IntervalFilteringVcfWriter.Mode.ENDS_IN, List.of(VariantEmitter.INT2, VariantEmitter.INT3, VariantEmitter.INT6, VariantEmitter.INT7)},
+                {Arrays.asList(chr1Interval, chr2Interval), IntervalFilteringVcfWriter.Mode.CONTAINED, List.of(VariantEmitter.INT3, VariantEmitter.INT7)},
+                {Arrays.asList(chr1Interval, chr2Interval), null, VariantEmitter.INTERVALS},
         };
     }
 
     @Test(dataProvider = "getIntervalsAndOverlapMode")
-    public void testVcfOutputFilterMode(List<? extends Locatable> intervals, IntervalFilteringVcfWriter.Mode mode, int variantsIncluded){
+    public void testVcfOutputFilterMode(List<? extends Locatable> intervals, IntervalFilteringVcfWriter.Mode mode, List<Locatable> expected){
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File out = createTempFile("out", ".vcf");
         args.addOutput(out);
         intervals.forEach(args::addInterval);
         args.addReference(b37Reference);
         if( mode != null) {
-            args.add(GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, mode);
+            args.add(StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, mode);
         }
 
         runCommandLine(args, VariantEmitter.class.getSimpleName());
         final Pair<VCFHeader, List<VariantContext>> vcfHeaderListPair = VariantContextTestUtils.readEntireVCFIntoMemory(out.toString());
 
-        Assert.assertEquals(vcfHeaderListPair.getRight().size(), variantsIncluded);
+        final List<VariantContext> actual = vcfHeaderListPair.getRight();
+        Assert.assertEquals(actual.size(), expected.size());
+        BaseTest.assertCondition(actual, expected, (left, right) -> {
+            Assert.assertEquals(left.getContig(), right.getContig());
+            Assert.assertEquals(left.getStart(), right.getStart());
+            Assert.assertEquals(left.getEnd(), right.getEnd());
+        } );
+
     }
 }

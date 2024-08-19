@@ -243,7 +243,6 @@ public final class GnarlyGenotyper extends VariantWalker {
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GATKVariantContextUtils.isProperlyPolymorphic(variant)
                 || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0 )
-                // todo this changes is a slight de-optimization since we will now process some sites whihc were previously ignored
             {
             if (keepAllSites) {
                 VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));  //don't fill in QUAL here because there's no alt data

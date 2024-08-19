@@ -21,7 +21,6 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -50,10 +49,6 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
 import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
-
-//TODO:
-//UserException overloads
-//VCF outs
 
 /**
  * Base class for all GATK tools. Tool authors that want to write a "GATK" tool but not use one of
@@ -136,8 +131,7 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "If true, don't emit genotype fields when writing vcf file output.", optional = true)
     public boolean outputSitesOnlyVCFs = false;
 
-    public static final String VARIANT_OUTPUT_INTERVAL_FILTERING_MODE = "variant-output-interval-filtering-mode";
-    @Argument(fullName = VARIANT_OUTPUT_INTERVAL_FILTERING_MODE,
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME,
             doc = "Restrict the output variants to ones that match the specified intervals according to the specified matching mode.",
             optional = true)
     @Advanced
@@ -758,7 +752,7 @@ public abstract class GATKTool extends CommandLineProgram {
         checkToolRequirements();
 
         if (outputVariantIntervalFilteringMode != null && userIntervals == null){
-            throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + VARIANT_OUTPUT_INTERVAL_FILTERING_MODE + " was specified.");
+            throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " was specified.");
         }
 
         initializeProgressMeter(getProgressMeterRecordLabel());

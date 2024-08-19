@@ -15,7 +15,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
@@ -85,7 +84,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 //combine not supported yet, see https://github.com/broadinstitute/gatk/issues/2429 and https://github.com/broadinstitute/gatk/issues/2584
                 //{"combine.single.sample.pipeline.1.vcf", null, Arrays.asList("-V", getTestFile("combine.single.sample.pipeline.2.vcf").toString() , "-V", getTestFile("combine.single.sample.pipeline.3.vcf").toString()), b37_reference_20_21},
 
-                {getTestFile("leadingDeletion.g.vcf"), getTestFile("leadingDeletionRestrictToStartExpected.vcf"), Arrays.asList("-L", "20:69512-69513", "--"+GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b37_reference_20_21},
+                {getTestFile("leadingDeletion.g.vcf"), getTestFile("leadingDeletionRestrictToStartExpected.vcf"), Arrays.asList("-L", "20:69512-69513", "--"+ StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b37_reference_20_21},
                 {getTestFile("leadingDeletion.g.vcf"), getTestFile("leadingDeletionExpected.vcf"), Arrays.asList("-L", "20:69512-69513"), b37_reference_20_21},
                 {getTestFile(BASE_PAIR_GVCF), getTestFile( BASE_PAIR_EXPECTED), NO_EXTRA_ARGS, b37_reference_20_21}, //base pair level gvcf
                 {getTestFile("testUpdatePGT.gvcf"), getTestFile( "testUpdatePGT.gatk3.7_30_ga4f720357.output.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},   //testUpdatePGT
@@ -435,7 +434,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addOutput(output);
         intervals.forEach(args::addInterval);
         args.add(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, true);
-        args.add(GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, IntervalFilteringVcfWriter.Mode.STARTS_IN);  //note that this will restrict calls to just the specified intervals
+        args.add(StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN);  //note that this will restrict calls to just the specified intervals
 
         runAndCheckGenomicsDBOutput(args, expected, output);
 
@@ -572,7 +571,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(getTestFile("leadingDeletion.g.vcf"))
                 .addReference(new File(b37_reference_20_21))
                 .addOutput( createTempFile("tmp",".vcf"))
-                .add(GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, IntervalFilteringVcfWriter.Mode.STARTS_IN);
+                .add(StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN);
 
         Assert.assertThrows(CommandLineException.MissingArgument.class, () -> runCommandLine(args));
         args.add("L", "20:69512-69513");

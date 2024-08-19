@@ -28,7 +28,7 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
         STARTS_IN("starts within any of the given intervals"){
 
             @Override
-            boolean test(OverlapDetector<? extends Locatable> detector, final VariantContext query) {
+            boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 final SimpleInterval startPosition = new SimpleInterval(query.getContig(), query.getStart(), query.getStart());
                 return detector.overlapsAny(startPosition);
             }
@@ -90,12 +90,13 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
          * @param query The variant being tested
          * @return true iff the variant matches the given intervals
          */
-        abstract boolean test(OverlapDetector<? extends Locatable> detector, VariantContext query);
+        abstract boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query);
 
         private Mode(String doc){
             this.doc = doc;
 
         }
+
         @Override
         public String getHelpDoc() {
             return doc;
@@ -111,7 +112,7 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
      * @param intervals the intervals to compare against, note that these are not merged so if they should be merged than the input list should be preprocessed
      * @param mode the matching mode to use
      */
-    public IntervalFilteringVcfWriter(final VariantContextWriter writer, List<SimpleInterval> intervals, Mode mode) {
+    public IntervalFilteringVcfWriter(final VariantContextWriter writer, final List<SimpleInterval> intervals, final Mode mode) {
         Utils.nonNull(writer);
         Utils.nonEmpty(intervals);
         Utils.nonNull(mode);
