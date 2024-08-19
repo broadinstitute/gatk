@@ -123,7 +123,7 @@ import static org.broadinstitute.hellbender.utils.Utils.split;
 public final class VariantsToTable extends VariantWalker {
     public final static String SPLIT_MULTI_ALLELIC_LONG_NAME = "split-multi-allelic";
     public final static String SPLIT_MULTI_ALLELIC_SHORT_NAME = "SMA";
-    public static final String NUMERIC_GT_FULLNAME = "numeric-gt";
+    public static final String NUMERIC_GT_FULLNAME = "use-numeric-gt";
 
     static final Logger logger = LogManager.getLogger(VariantsToTable.class);
 
@@ -404,15 +404,13 @@ public final class VariantsToTable extends VariantWalker {
         for ( final String sample : samples ) {
             final Genotype genotype = vc.getGenotype(sample);
             for ( final String gf : genotypeFieldsToTake ) {
-                if ( vc.hasGenotype(sample) && genotype.hasAnyAttribute(gf) ) {
+                if ( genotype != null && genotype.hasAnyAttribute(gf) ) {
                     if (VCFConstants.GENOTYPE_KEY.equals(gf)) {
-                        if(useNumericGT) {
-                            addFieldValue(VCFEncoder.encodeGtField(vc, genotype), records);
-                        } else {
-                            addFieldValue(genotype.getGenotypeString(true), records);
-                        }
+                        final String gtRepresentation = useNumericGT
+                                ? VCFEncoder.encodeGtField(vc, genotype) : genotype.getGenotypeString(true);
+                        addFieldValue(gtRepresentation, records);
                     } else {
-                        /**
+                        /*
                          * TODO - If gf == "FT" and the GT record is not filtered, Genotype.getAnyAttribute == null. Genotype.hasAnyAttribute should be changed so it
                          * returns false for this condition. Presently, it always returns true. Once this is fixed, then only the "addFieldValue" statement will
                          * remain in the following logic block.
@@ -421,18 +419,19 @@ public final class VariantsToTable extends VariantWalker {
                             addFieldValue(genotype.getAnyAttribute(gf), records);
                         } else {
                             handleMissingData(errorIfMissingData, gf, records, vc);
-                        }                    }
+                        }
+                    }
                 } else {
                     handleMissingData(errorIfMissingData, gf, records, vc);
                 }
             }
 
             for ( final String field : asGenotypeFieldsToTake) {
-                if ( vc.hasGenotype(sample) && genotype.hasAnyAttribute(field) ) {
+                if ( genotype != null && genotype.hasAnyAttribute(field) ) {
                     if (splitMultiAllelic) {
                         if (VCFConstants.GENOTYPE_ALLELE_DEPTHS.equals(field)) {
                             final List<String> altDepths = new ArrayList<>();
-                            int[] allDepths = genotype.getAD();
+                            final int[] allDepths = genotype.getAD();
                             for (int i = 1; i < allDepths.length; i++) {
                                 altDepths.add(allDepths[0] + "," + allDepths[i]);
                             }
@@ -472,8 +471,7 @@ public final class VariantsToTable extends VariantWalker {
             result.get(0).add(prettyPrintObject(val));
         }
         // if this field is a list of the proper size, add the appropriate entry to each record
-        else if ( (val instanceof List) && ((List)val).size() == numResultRecords ) {
-            final List<?> list = (List<?>)val;
+        else if ( (val instanceof List<?> list) && list.size() == numResultRecords ) {
             for ( int i = 0; i < numResultRecords; i++ ) {
                 result.get(i).add(list.get(i).toString());
             }
@@ -494,9 +492,8 @@ public final class VariantsToTable extends VariantWalker {
      * @param alleleCount scalar, R-type or A-type values
      */
     private static void addAlleleSpecificFieldValue(final Object val, final List<List<String>> result, final VCFHeaderLineCount alleleCount) {
-        if (val instanceof List && alleleCount.equals(VCFHeaderLineCount.R)) {
-            final List<?> myList = (List<?>) val;
-            addFieldValue(new ArrayList<>(myList.subList(1, myList.size())), result);
+        if (val instanceof final List<?> list && alleleCount.equals(VCFHeaderLineCount.R)) {
+            addFieldValue(new ArrayList<>(list.subList(1, list.size())), result);
         }
         else {
             addFieldValue(val, result);
@@ -508,8 +505,8 @@ public final class VariantsToTable extends VariantWalker {
             return "";
         }
 
-        if ( val instanceof List ) {
-            return prettyPrintObject(((List) val).toArray());
+        if ( val instanceof List<?> list) {
+            return prettyPrintObject(list.toArray());
         }
 
         if ( !val.getClass().isArray() ) {
