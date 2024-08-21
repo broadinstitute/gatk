@@ -290,7 +290,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1470_HaveExtractCohortToPgenWriteToCOTable
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -300,7 +299,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1470_HaveExtractCohortToPgenWriteToCOTable
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -311,7 +309,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1456_status_writes_bug
-             - gg_VS-1470_HaveExtractCohortToPgenWriteToCOTable
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -432,7 +429,6 @@ workflows:
          - master
          - ah_var_store
          - EchoCallset
-         - gg_VS-1470_HaveExtractCohortToPgenWriteToCOTable
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -442,7 +438,6 @@ workflows:
          - ah_var_store
          - EchoCallset
          - rsa_vs_1441
-         - gg_VS-1470_HaveExtractCohortToPgenWriteToCOTable
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
