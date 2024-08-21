@@ -2,6 +2,8 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
+# A comment!
+
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -217,7 +219,6 @@ workflow GvsExtractCallset {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
 
-
     call ExtractTask {
       input:
         go                                    = select_first([ValidateFilterSetName.done, true]),
@@ -245,7 +246,6 @@ workflow GvsExtractCallset {
         filter_set_name                       = filter_set_name,
         drop_state                            = drop_state,
         output_file                           = vcf_filename + vcf_extension,
-        output_gcs_dir                        = output_gcs_dir,
         max_last_modified_timestamp           = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override          = extract_preemptible_override,
         extract_maxretries_override           = extract_maxretries_override,
@@ -339,7 +339,6 @@ task ExtractTask {
     String? vet_extract_table_version
     String read_project_id
     String output_file
-    String? output_gcs_dir
 
     String cost_observability_tablename = "cost_observability"
 
@@ -459,28 +458,9 @@ task ExtractTask {
           -V ${pre_off_target_vcf}
     fi
 
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+    du -b ~{output_file} | cut -f1 > vcf_bytes.txt
+    du -b ~{output_file}.tbi | cut -f1 > vcf_index_bytes.txt
 
-    OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
-    echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
-
-    OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
-    echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
-
-    if [ -n "${OUTPUT_GCS_DIR}" ]; then
-      gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
-      gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
-      OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_file}"
-      OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{output_file}.tbi"
-    else
-      OUTPUT_FILE_DEST="~{output_file}"
-      OUTPUT_FILE_INDEX_DEST="~{output_file}.tbi"
-    fi
-
-    # Parent Task will collect manifest lines and create a joined file
-    # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-    echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
     docker: gatk_docker
@@ -499,7 +479,6 @@ task ExtractTask {
     Float output_vcf_bytes = read_float("vcf_bytes.txt")
     File output_vcf_index = "~{output_file}.tbi"
     Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
-    String manifest = read_string("manifest.txt")
     File monitoring_log = "monitoring.log"
   }
 }
