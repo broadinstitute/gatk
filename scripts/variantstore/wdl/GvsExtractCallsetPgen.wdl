@@ -441,7 +441,7 @@ task PgenExtractTask {
                 ${FILTERING_ARGS} \
                 --dataset-id ~{dataset_name} \
                 --call-set-identifier ~{call_set_identifier} \
-                --wdl-step GvsExtractCallsetPgenPgen \
+                --wdl-step GvsExtractCallsetPgen \
                 --wdl-call PgenExtractTask \
                 --shard-identifier ~{interval_filename} \
                 ~{cost_observability_line} \

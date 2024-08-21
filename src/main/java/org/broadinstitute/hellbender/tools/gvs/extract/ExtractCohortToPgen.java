@@ -211,7 +211,8 @@ public class ExtractCohortToPgen extends ExtractCohort {
 
     @Override
     public Object onTraversalSuccess() {
-        if(pgenWriter.getDroppedVariantCount() > 0l) {
+        super.onTraversalSuccess();
+        if (pgenWriter.getDroppedVariantCount() > 0l) {
             logger.info(pgenWriter.getDroppedVariantCount() + " variants dropped by writer for exceeding the" +
                     " maximum number of allowed alt alleles.");
         }
