@@ -259,6 +259,17 @@ workflow GvsExtractCallset {
         maximum_alternate_alleles             = maximum_alternate_alleles,
         target_interval_list                  = target_interval_list,
     }
+
+    call MakeManifestEntryAndOptionallyCopyOutputs {
+      input:
+        interval_index = i,
+        output_vcf = ExtractTask.output_vcf,
+        output_vcf_index = ExtractTask.output_vcf_index,
+        output_vcf_bytes = ExtractTask.output_vcf_bytes,
+        output_vcf_index_bytes = ExtractTask.output_vcf_index_bytes,
+        output_gcs_dir = output_gcs_dir,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
   }
 
   call SumBytes {
@@ -269,7 +280,7 @@ workflow GvsExtractCallset {
 
   call CreateManifest {
     input:
-      manifest_lines = ExtractTask.manifest,
+      manifest_lines = MakeManifestEntryAndOptionallyCopyOutputs.manifest,
       output_gcs_dir = output_gcs_dir,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
@@ -490,6 +501,62 @@ task ExtractTask {
     Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
     String manifest = read_string("manifest.txt")
     File monitoring_log = "monitoring.log"
+  }
+}
+
+task MakeManifestEntryAndOptionallyCopyOutputs {
+  input {
+    Int interval_index
+    File output_vcf
+    File output_vcf_index
+    Float output_vcf_bytes
+    Float output_vcf_index_bytes
+    String? output_gcs_dir
+    String cloud_sdk_docker
+  }
+  parameter_meta {
+    output_vcf: {
+      localization_optional: true
+    }
+    output_vcf_index: {
+      localization_optional: true
+    }
+  }
+
+  # Even though we are potentially not localizing these files, we still need their basenames for proper naming.
+  String local_vcf = basename(output_vcf)
+  String local_vcf_index = basename(output_vcf_index)
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    if [ -n "${OUTPUT_GCS_DIR}" ]; then
+      gsutil cp ~{output_vcf} ${OUTPUT_GCS_DIR}/
+      gsutil cp ~{output_vcf_index} ${OUTPUT_GCS_DIR}/
+      OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{local_vcf}"
+      OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{local_vcf_index}"
+    else
+      OUTPUT_FILE_DEST="~{local_vcf}"
+      OUTPUT_FILE_INDEX_DEST="~{local_vcf_index}"
+    fi
+
+    # Parent Task will collect manifest lines and create a joined file
+    # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
+    echo ~{interval_index},${OUTPUT_FILE_DEST},~{output_vcf_bytes},${OUTPUT_FILE_INDEX_DEST},~{output_vcf_index_bytes} >> manifest.txt
+  >>>
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+  output {
+    String manifest = read_string("manifest.txt")
   }
 }
 
