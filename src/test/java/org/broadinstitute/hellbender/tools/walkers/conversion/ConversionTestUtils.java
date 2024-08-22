@@ -21,7 +21,7 @@ public class ConversionTestUtils {
     }
 
     public static String getReferenceDict(){
-        return getTestDataDir()+"/reference.dict";
+        return getTestDataDir()+"/hg38GencodeReference.dict";
     }
 
     public static String getDecoySamplesGeneBed(){
