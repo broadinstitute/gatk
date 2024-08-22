@@ -66,7 +66,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         args.add(new File (params.SD).getAbsolutePath());
         args.add("--" + GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME);
         args.add(params.transcript);
-        args.add("--" + GtfToBed.SORT_BY_BASIC_LONG_NAME);
+        args.add("--" + GtfToBed.USE_BASIC_TRANSCRIPT_LONG_NAME);
         args.add(params.basic);
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         args.add(outputFile.getAbsolutePath());

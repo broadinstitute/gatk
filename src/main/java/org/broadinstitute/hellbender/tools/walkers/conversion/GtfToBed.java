@@ -78,8 +78,8 @@ import java.util.*;
 @DocumentedFeature
 @WorkflowProperties
 public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
-    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-transcript";
-    public static final String SORT_BY_BASIC_LONG_NAME = "sort-basic";
+    public static final String SORT_BY_TRANSCRIPT_LONG_NAME = "sort-by-transcript";
+    public static final String USE_BASIC_TRANSCRIPT_LONG_NAME = "use-basic-transcript";
     public static final String INPUT_LONG_NAME = "gtf-path";
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
@@ -92,7 +92,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     @Argument(fullName = SORT_BY_TRANSCRIPT_LONG_NAME, doc = "Make each row of BED file sorted by transcript", optional = true)
     public boolean sortByTranscript = false;
 
-    @Argument(fullName = SORT_BY_BASIC_LONG_NAME, doc = "Only use basic transcripts")
+    @Argument(fullName = USE_BASIC_TRANSCRIPT_LONG_NAME, doc = "Only use basic transcripts")
     public boolean sortByBasic = false;
 
     //stores either gene or transcript ID and summary information about the feature
