@@ -24,6 +24,7 @@ workflow GvsExtractCallset {
     Int? disk_override
     Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
+    Boolean collect_variant_calling_metrics = false
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
@@ -59,6 +60,9 @@ workflow GvsExtractCallset {
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+
+  File dbsnp_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
+  File dbsnp_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx"
 
   String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
   String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
@@ -217,7 +221,6 @@ workflow GvsExtractCallset {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
 
-
     call ExtractTask {
       input:
         go                                    = select_first([ValidateFilterSetName.done, true]),
@@ -258,6 +261,30 @@ workflow GvsExtractCallset {
         write_cost_to_db                      = write_cost_to_db,
         maximum_alternate_alleles             = maximum_alternate_alleles,
         target_interval_list                  = target_interval_list,
+    }
+
+    if (collect_variant_calling_metrics) {
+      call CollectVariantCallingMetrics as CollectMetricsSharded {
+        input:
+          input_vcf = ExtractTask.output_vcf,
+          input_vcf_index = ExtractTask.output_vcf_index,
+          metrics_filename_prefix = call_set_identifier + "." + i,
+          dbsnp_vcf = dbsnp_vcf,
+          dbsnp_vcf_index = dbsnp_vcf_index,
+          interval_list = SplitIntervals.interval_files[i],
+          ref_dict = reference_dict,
+          gatk_docker = effective_gatk_docker
+      }
+    }
+  }
+
+  if (collect_variant_calling_metrics) {
+    call GatherVariantCallingMetrics {
+      input:
+        input_details = select_all(CollectMetricsSharded.detail_metrics_file),
+        input_summaries = select_all(CollectMetricsSharded.summary_metrics_file),
+        output_prefix = call_set_identifier,
+        gatk_docker = effective_gatk_docker
     }
   }
 
@@ -609,5 +636,148 @@ task GenerateSampleListFile {
     disks: "local-disk 500 HDD"
     preemptible: 3
     cpu: 1
+  }
+}
+
+task CollectVariantCallingMetrics {
+  input {
+    File input_vcf
+    File input_vcf_index
+    File dbsnp_vcf
+    File dbsnp_vcf_index
+    File interval_list
+    File ref_dict
+    String metrics_filename_prefix
+
+    Int memory_mb = 7500
+    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+    String gatk_docker
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+      CollectVariantCallingMetrics \
+      --INPUT ~{input_vcf} \
+      --DBSNP ~{dbsnp_vcf} \
+      --SEQUENCE_DICTIONARY ~{ref_dict} \
+      --OUTPUT ~{metrics_filename_prefix} \
+      --THREAD_COUNT 8 \
+      --TARGET_INTERVALS ~{interval_list}
+  >>>
+
+  output {
+    File detail_metrics_file = "~{metrics_filename_prefix}.variant_calling_detail_metrics"
+    File summary_metrics_file = "~{metrics_filename_prefix}.variant_calling_summary_metrics"
+  }
+
+  runtime {
+    docker: gatk_docker
+    cpu: 2
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 2
+    noAddress: true
+  }
+}
+
+task GatherVariantCallingMetrics {
+
+  input {
+    Array[File] input_details
+    Array[File] input_summaries
+    String output_prefix
+
+    Int memory_mb = 3000
+    Int disk_size_gb = 200
+    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.5.0.0"
+  }
+
+  parameter_meta {
+    input_details: {
+      localization_optional: true
+    }
+    input_summaries: {
+      localization_optional: true
+    }
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    input_details_fofn=~{write_lines(input_details)}
+    input_summaries_fofn=~{write_lines(input_summaries)}
+
+    # Jose says:
+    # Cromwell will fall over if we have it try to localize tens of thousands of files,
+    # so we manually localize files using gsutil.
+    # Using gsutil also lets us parallelize the localization, which (as far as we can tell)
+    # PAPI doesn't do.
+
+    # This is here to deal with the JES bug where commands may be run twice
+    rm -rf metrics
+
+    mkdir metrics
+    RETRY_LIMIT=5
+
+    count=0
+    until cat $input_details_fofn | gsutil -m cp -L cp.log -c -I metrics/; do
+      sleep 1
+      ((count++)) && ((count >= $RETRY_LIMIT)) && break
+    done
+    if [ "$count" -ge "$RETRY_LIMIT" ]; then
+      echo 'Could not copy all the metrics from the cloud' && exit 1
+    fi
+
+    count=0
+    until cat $input_summaries_fofn | gsutil -m cp -L cp.log -c -I metrics/; do
+      sleep 1
+      ((count++)) && ((count >= $RETRY_LIMIT)) && break
+    done
+    if [ "$count" -ge "$RETRY_LIMIT" ]; then
+      echo 'Could not copy all the metrics from the cloud' && exit 1
+    fi
+
+    INPUT=$(cat $input_details_fofn | rev | cut -d '/' -f 1 | rev | sed s/.variant_calling_detail_metrics//g | awk '{printf("--INPUT metrics/%s ", $1)}')
+
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+      AccumulateVariantCallingMetrics \
+      $INPUT \
+      --OUTPUT ~{output_prefix}
+  >>>
+
+  runtime {
+    docker: gatk_docker
+    cpu: 1
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 1
+    noAddress: true
+  }
+
+  output {
+    File detail_metrics_file = "~{output_prefix}.variant_calling_detail_metrics"
+    File summary_metrics_file = "~{output_prefix}.variant_calling_summary_metrics"
   }
 }
