@@ -190,7 +190,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         // get the end value of the gene
         int geneEnd = featureInfoMap.get(gtfFeature.getGeneId()).getEnd();
 
-        // if the transcript start is greater than the gene start
+        // if the transcript end is greater than the gene end
         if (gtfFeature.getEnd() > geneEnd) {
             // set the gene end to be the transcript end
             geneEnd = gtfFeature.getEnd();
@@ -210,7 +210,6 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public Object onTraversalSuccess() {
         // get dictionary
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-
 
         // create linked hash map to store sorted values of idToInfo
         LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedMap(sequenceDictionary);

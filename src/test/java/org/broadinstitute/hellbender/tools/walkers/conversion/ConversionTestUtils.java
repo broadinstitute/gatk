@@ -13,7 +13,7 @@ public class ConversionTestUtils {
     }
 
     public static String getMapk1Gtf(){
-        return getTestDataDir()+"/mapk1.gtf";
+        return GATKBaseTest.largeFileTestDir + "/gtfToBed/mapk1.gtf";
     }
 
     public static String getManyTranscriptsGtf(){
@@ -23,10 +23,6 @@ public class ConversionTestUtils {
     public static String getReferenceDict(){
         return getTestDataDir()+"/reference.dict";
     }
-
-//    public static String getReferenceDict(){
-//        return GATKBaseTest.publicTestDir + "large/Homo_sapiens_assembly38.dict";
-//    }
 
     public static String getDecoySamplesGeneBed(){
         return getTestDataDir() + "/decoySampleGene.bed";
