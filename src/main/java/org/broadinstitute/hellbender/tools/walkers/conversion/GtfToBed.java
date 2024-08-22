@@ -41,7 +41,7 @@ import java.util.*;
  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -gtf-dictionary dictionary.dict \
+ *     -sequence-dictionary dictionary.dict \
 = *    -output output.bed \
  * </pre>
  *
@@ -51,7 +51,7 @@ import java.util.*;
  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -gtf-dictionary dictionary.dict \
+ *     -sequence-dictionary dictionary.dict \
  *     -sort-transcript \
  *     -output output.bed \
  * </pre>
@@ -62,7 +62,7 @@ import java.util.*;
  *  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -gtf-dictionary dictionary.dict \
+ *     -sequence-dictionary dictionary.dict \
  *     -sort-transcript \
  *     -sort-basic \
  *     -output output.bed \
