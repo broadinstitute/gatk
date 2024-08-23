@@ -324,6 +324,8 @@ workflow GvsExtractCallset {
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
     File sample_name_list = GenerateSampleListFile.sample_name_list
+    File? summary_metrics_file = GatherVariantCallingMetrics.summary_metrics_file
+    File? detail_metrics_file = GatherVariantCallingMetrics.detail_metrics_file
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
@@ -677,8 +679,9 @@ task CollectVariantCallingMetrics {
   >>>
 
   output {
-    File detail_metrics_file = "~{metrics_filename_prefix}.variant_calling_detail_metrics"
     File summary_metrics_file = "~{metrics_filename_prefix}.variant_calling_summary_metrics"
+    File detail_metrics_file = "~{metrics_filename_prefix}.variant_calling_detail_metrics"
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
@@ -701,7 +704,7 @@ task GatherVariantCallingMetrics {
 
     Int memory_mb = 3000
     Int disk_size_gb = 200
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.5.0.0"
+    String gatk_docker
   }
 
   parameter_meta {
@@ -777,7 +780,8 @@ task GatherVariantCallingMetrics {
   }
 
   output {
-    File detail_metrics_file = "~{output_prefix}.variant_calling_detail_metrics"
     File summary_metrics_file = "~{output_prefix}.variant_calling_summary_metrics"
+    File detail_metrics_file = "~{output_prefix}.variant_calling_detail_metrics"
+    File monitoring_log = "monitoring.log"
   }
 }
