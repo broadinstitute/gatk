@@ -20,6 +20,7 @@ workflow GvsJointVariantCalling {
         String vcf_index_files_column_name
 
         Boolean bgzip_output_vcfs = false
+        Boolean collect_variant_calling_metrics = false
         String drop_state = "FORTY"
         Boolean use_VQSR = false
         Boolean use_compressed_references = false
@@ -228,6 +229,7 @@ workflow GvsJointVariantCalling {
             do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             bgzip_output_vcfs = bgzip_output_vcfs,
+            collect_variant_calling_metrics = collect_variant_calling_metrics,
             is_wgs = is_wgs,
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,

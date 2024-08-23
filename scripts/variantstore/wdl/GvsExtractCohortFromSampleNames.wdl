@@ -33,6 +33,7 @@ workflow GvsExtractCohortFromSampleNames {
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
     Boolean bgzip_output_vcfs = false
+    Boolean collect_variant_calling_metrics = false
 
     File? interval_list
     Int? extract_preemptible_override
@@ -151,6 +152,7 @@ workflow GvsExtractCohortFromSampleNames {
 
       drop_state = drop_state,
       bgzip_output_vcfs = bgzip_output_vcfs,
+      collect_variant_calling_metrics = collect_variant_calling_metrics,
       extract_preemptible_override = extract_preemptible_override,
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
