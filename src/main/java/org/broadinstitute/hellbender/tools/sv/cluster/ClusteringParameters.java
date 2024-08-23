@@ -57,7 +57,7 @@ public class ClusteringParameters {
     }
 
     public static ClusteringParameters createDepthParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {
-        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, false, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
+        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, true, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
     }
 
     public static ClusteringParameters createMixedParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {

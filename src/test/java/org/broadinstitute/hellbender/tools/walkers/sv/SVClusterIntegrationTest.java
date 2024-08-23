@@ -113,7 +113,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 1)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 0)
@@ -188,7 +188,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -204,7 +204,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(header.getSampleNamesInOrder(), Arrays.asList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
-        Assert.assertEquals(records.size(), 1338);
+        Assert.assertEquals(records.size(), 1344);
 
         // Check for one record
         int expectedRecordsFound = 0;
@@ -255,7 +255,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -279,7 +279,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> testVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final ReferenceSequenceFile referenceSequenceFile = ReferenceUtils.createReferenceReader(new GATKPath(REFERENCE_PATH));
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVClusterEngine engine = SVClusterEngineFactory.createCanonical(
@@ -347,7 +347,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.MAX_CLIQUE)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -414,7 +414,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -478,7 +478,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
