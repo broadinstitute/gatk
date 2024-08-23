@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
  *
  * <p>NOTE: precise implementation of {@link SVClusterLinkage#getMaxClusterableStartingPosition(SVLocatable)}
  * is important for efficiency because it determines when a cluster can be finalized and omitted from further clustering tests.</p>
- *
- * @param <T> class of items to cluster
  */
 public class SVClusterEngine {
 
@@ -41,7 +39,6 @@ public class SVClusterEngine {
     private Map<Integer, Cluster> idToClusterMap; // Active clusters
     private final Map<Integer, SVCallRecord> idToItemMap; // Active items
     protected final CLUSTERING_TYPE clusteringType;
-    private final ItemSortingBuffer buffer;
     private final Comparator<SVCallRecord> itemComparator;
 
     private String currentContig;
@@ -65,28 +62,10 @@ public class SVClusterEngine {
         currentContig = null;
         idToItemMap = new HashMap<>();
         itemComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
-        buffer = new ItemSortingBuffer();
         nextItemId = 0;
         nextClusterId = 0;
         lastStart = 0;
         minActiveStartingPositionItemId = null;
-    }
-
-
-    /**
-     * Flushes all active clusters, adding them to the output buffer. Results from the output buffer are then copied out
-     * and the buffer is cleared. This should be called between contigs to save memory.
-     */
-    public final List<SVCallRecord> forceFlush() {
-        flushClusters();
-        return buffer.forceFlush();
-    }
-
-    /**
-     * Gets any available finalized clusters.
-     */
-    public final List<SVCallRecord> flush() {
-        return buffer.flush();
     }
 
     @VisibleForTesting
@@ -109,25 +88,26 @@ public class SVClusterEngine {
      * Returns true if there are any active or finalized clusters.
      */
     public final boolean isEmpty() {
-        return idToClusterMap.isEmpty() && buffer.isEmpty();
+        return idToClusterMap.isEmpty();
     }
 
     /**
      * Adds and clusters the given item. Note that items must be added in order of increasing start position.
      * @param item item to cluster
      */
-    public final void add(final SVCallRecord item) {
+    public final List<SVCallRecord> add(final SVCallRecord item) {
         // Start a new cluster if on a new contig
         if (!item.getContigA().equals(currentContig)) {
-            flushClusters();
+            final List<SVCallRecord> result = flush();
             currentContig = item.getContigA();
             lastStart = 0;
             seedCluster(registerItem(item));
-            return;
+            return result;
+        } else {
+            final int itemId = registerItem(item);
+            final List<Integer> clusterIdsToProcess = cluster(itemId);
+            return processClusters(clusterIdsToProcess);
         }
-        final int itemId = registerItem(item);
-        final List<Integer> clusterIdsToProcess = cluster(itemId);
-        processClusters(clusterIdsToProcess);
     }
 
     private final int registerItem(final SVCallRecord item) {
@@ -263,12 +243,12 @@ public class SVClusterEngine {
     /**
      * Finalizes a single cluster, removing it from the currently active set and adding it to the output buffer.
      */
-    private final void processCluster(final int clusterIndex) {
+    private final SVCallRecord processCluster(final int clusterIndex) {
         final Cluster cluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
         final List<Integer> clusterItemIds = cluster.getItemIds();
         final OutputCluster outputCluster = new OutputCluster(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList()));
-        buffer.add(collapser.apply(outputCluster));
+        final SVCallRecord result = collapser.apply(outputCluster);
         // Clean up item id map
         if (clusterItemIds.size() == 1) {
             // Singletons won't be present in any other clusters
@@ -289,6 +269,7 @@ public class SVClusterEngine {
         if (clusterItemIds.contains(minActiveStartingPositionItemId)) {
             findAndSetMinActiveStart();
         }
+        return result;
     }
 
     /**
@@ -309,25 +290,29 @@ public class SVClusterEngine {
     /**
      * Finalizes a set of clusters.
      */
-    private final void processClusters(final List<Integer> clusterIdsToProcess) {
+    private final List<SVCallRecord> processClusters(final List<Integer> clusterIdsToProcess) {
+        final List<SVCallRecord> result = new ArrayList<>(clusterIdsToProcess.size());
         for (final Integer clusterId : clusterIdsToProcess) {
-            processCluster(clusterId);
+            result.add(processCluster(clusterId));
         }
+        return result;
     }
 
     /**
      * Finalizes all active clusters and adds them to the output buffer. Also clears the currently active set of clusters
      * and items.
      */
-    private final void flushClusters() {
+    public final List<SVCallRecord> flush() {
         final List<Integer> clustersToFlush = new ArrayList<>(idToClusterMap.keySet());
+        final List<SVCallRecord> result = new ArrayList<>(clustersToFlush.size());
         for (final Integer clusterId : clustersToFlush) {
-            processCluster(clusterId);
+            result.add(processCluster(clusterId));
         }
         idToItemMap.clear();
         minActiveStartingPositionItemId = null;
         nextItemId = 0;
         nextClusterId = 0;
+        return result;
     }
 
     /**
@@ -429,54 +414,6 @@ public class SVClusterEngine {
         @Override
         public int hashCode() {
             return Objects.hash(itemIds);
-        }
-    }
-
-    private final class ItemSortingBuffer {
-        private PriorityQueue<SVCallRecord> buffer;
-
-        public ItemSortingBuffer() {
-            Utils.nonNull(itemComparator);
-            this.buffer = new PriorityQueue<>(itemComparator);
-        }
-
-        public void add(final SVCallRecord record) {
-            buffer.add(record);
-        }
-
-        /**
-         * Returns any records that can be safely flushed based on the current minimum starting position
-         * of items still being actively clustered.
-         */
-        public List<SVCallRecord> flush() {
-            if (buffer.isEmpty()) {
-                return Collections.emptyList();
-            }
-            final SVCallRecord minActiveStartItem = getMinActiveStartingPositionItem();
-            if (minActiveStartItem == null) {
-                forceFlush();
-            }
-            final List<SVCallRecord> out = new ArrayList<>();
-            while (!buffer.isEmpty() && buffer.comparator().compare(buffer.peek(), minActiveStartItem) < 0) {
-                out.add(buffer.poll());
-            }
-            return out;
-        }
-
-        /**
-         * Returns all buffered records, regardless of any active clusters. To be used only when certain that no
-         * active clusters can be clustered with any future inputs.
-         */
-        public List<SVCallRecord> forceFlush() {
-            final List<SVCallRecord> result = new ArrayList<>(buffer.size());
-            while (!buffer.isEmpty()) {
-                result.add(buffer.poll());
-            }
-            return result;
-        }
-
-        public boolean isEmpty() {
-            return buffer.isEmpty();
         }
     }
 }
