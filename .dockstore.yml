@@ -291,6 +291,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1466_RestructureExportVcfForCopyReasons
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -300,6 +301,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1466_RestructureExportVcfForCopyReasons
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -310,6 +312,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1456_status_writes_bug
+             - gg_VS-1466_RestructureExportVcfForCopyReasons
          tags:
              - /.*/
    - name: GvsIngestTieout
