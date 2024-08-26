@@ -51,7 +51,7 @@ import java.util.*;
  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -sequence-dictionary dictionary.dict \
+ *     -R dictionary.dict \
  *     -sort-transcript \
  *     -output output.bed \
  * </pre>
@@ -97,6 +97,9 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
 
     //stores either gene or transcript ID and summary information about the feature
     private final Map<String, GtfInfo> featureInfoMap = new HashMap<>();
+
+    //Sequence dictionary
+    private SAMSequenceDictionary sequenceDictionary = null;
 
     @Override
     protected boolean isAcceptableFeatureType(Class<? extends Feature> featureType) {
@@ -205,12 +208,17 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
         featureInfoMap.put(gtfFeature.getGeneId(), gtfGeneInfo);
     }
 
+    @Override
+    public void onTraversalStart() {
+        sequenceDictionary = getBestAvailableSequenceDictionary();
+        if(sequenceDictionary == null){
+            throw new GATKException("Sequence Dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
+        }
+    }
+
     // runs immediately after it has gone through each line of gtf (apply method)
     @Override
     public Object onTraversalSuccess() {
-        // get dictionary
-        SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-
         // create linked hash map to store sorted values of idToInfo
         LinkedHashMap<String, GtfInfo> karyotypeIdToInfo = getSortedMap(sequenceDictionary);
 

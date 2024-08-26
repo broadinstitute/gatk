@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,6 +25,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final String expectedManyTranscriptsBed = ConversionTestUtils.getManyTranscriptsBed();
     private static final String expectedNotBasicBed = ConversionTestUtils.getNotBasicBed();
     private static final String expectedMouseBed = ConversionTestUtils.getMouseBed();
+
 
     private static class GtfToBedTest {
         final String input;
@@ -74,5 +76,22 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         IntegrationTestSpec.assertEqualTextFiles(new File(params.expected), outputFile);
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testGtfToBedNoSequenceDictionary() {
+        final File outputFile = createTempFile("outputBed", ".bed");
+        final ArrayList<String> args = new ArrayList<>();
+
+        args.add("--" + GtfToBed.INPUT_LONG_NAME);
+        args.add(new File (mapk1).getAbsolutePath());
+        args.add("--" + GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME);
+        args.add(String.valueOf(true));
+        args.add("--" + GtfToBed.USE_BASIC_TRANSCRIPT_LONG_NAME);
+        args.add(String.valueOf(true));
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outputFile.getAbsolutePath());
+
+        runCommandLine(args);
     }
 }
