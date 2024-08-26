@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# A comment?!?
+# A comment
 
 workflow GvsExtractCallset {
   input {
@@ -550,10 +550,7 @@ task CreateManifestAndOptionallyCopyOutputs {
           OUTPUT_FILE_INDEX_DEST=$LOCAL_VCF_INDEX
         fi
 
-        # Parent Task will collect manifest lines and create a joined file
-        # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-        echo ${interval_indices[$i]},${OUTPUT_FILE_DEST},${output_vcf_bytes[$i]},${OUTPUT_FILE_INDEX_DEST},${output_vcf_index_bytes[$i]}
-        echo ${interval_indices[$i]},${OUTPUT_FILE_DEST},${output_vcf_bytes[$i]},${OUTPUT_FILE_INDEX_DEST},${output_vcf_index_bytes[$i]} >> manifest.txt
+        echo ${interval_indices[$i]},${OUTPUT_FILE_DEST},${output_vcf_bytes[$i]},${OUTPUT_FILE_INDEX_DEST},${output_vcf_index_bytes[$i]} >> manifest_lines.txt
 
       done;
 
@@ -565,6 +562,7 @@ task CreateManifestAndOptionallyCopyOutputs {
     fi
   >>>
   output {
+    File manifest_lines = "manifest_lines.txt"
     File manifest = "manifest.txt"
   }
 
