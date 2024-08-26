@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# A comment?
+# A comment??
 
 workflow GvsExtractCallset {
   input {
@@ -533,12 +533,14 @@ task CreateManifestAndOptionallyCopyOutputs {
     echo -n >> manifest_lines.txt
     for (( i=0; i<${#interval_indices[@]}; ++i));
       do
-        echo "Interval " + i
+        echo "Interval " + $i
 
         OUTPUT_VCF=${output_vcfs[$i]}
-        LOCAL_VCF=basename $OUTPUT_VCF
+        LOCAL_VCF=$(basename $OUTPUT_VCF)
         OUTPUT_VCF_INDEX=${output_vcf_indices[$i]}
-        LOCAL_VCF_INDEX=basename $OUTPUT_VCF_INDEX
+        LOCAL_VCF_INDEX=$(basename $OUTPUT_VCF_INDEX)
+
+        echo ${interval_indices[$i]},${OUTPUT_FILE_DEST},${output_vcf_bytes[$i]},${OUTPUT_FILE_INDEX_DEST},${output_vcf_index_bytes[$i]}
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp $OUTPUT_VCF ${OUTPUT_GCS_DIR}/
