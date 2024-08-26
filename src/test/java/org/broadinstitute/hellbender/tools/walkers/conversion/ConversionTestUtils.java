@@ -24,6 +24,14 @@ public class ConversionTestUtils {
         return getTestDataDir()+"/hg38GencodeReference.dict";
     }
 
+    public static String getChr14GeneGtf(){
+        return  GATKBaseTest.largeFileTestDir + "/gtfToBed/ENSG00000215398.12.gtf";
+    }
+
+    public static String getChr14GeneBed(){
+        return getTestDataDir() + "/ENSG00000215398.12.bed";
+    }
+
     public static String getDecoySamplesGeneBed(){
         return getTestDataDir() + "/decoySampleGene.bed";
     }
@@ -58,5 +66,9 @@ public class ConversionTestUtils {
 
     public static String getMouseBed(){
         return getTestDataDir() + "/mouse.bed";
+    }
+
+    public static String getChr14Fasta() {
+        return GATKBaseTest.largeFileTestDir + "/GRCm38_primary_assembly_genome/chr14.GRCm38.primary_assembly.genome.fa.gz";
     }
 }

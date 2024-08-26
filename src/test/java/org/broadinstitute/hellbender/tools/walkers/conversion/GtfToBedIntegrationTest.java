@@ -15,9 +15,11 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final String mapk1 = ConversionTestUtils.getMapk1Gtf();
     private static final String decoys = ConversionTestUtils.getDecoySampleGtf();
     private static final String manyTranscripts = ConversionTestUtils.getManyTranscriptsGtf();
+    private static final String chr14Gene = ConversionTestUtils.getChr14GeneGtf();
     private static final String mouse = ConversionTestUtils.getMouseGtf();
     private static final String mouseDictionary = ConversionTestUtils.getMouseDict();
     private static final String dictionary = ConversionTestUtils.getReferenceDict();
+    private static final String chr14Fasta = ConversionTestUtils.getChr14Fasta();
     private static final String expectedDecoysGeneBed = ConversionTestUtils.getDecoySamplesGeneBed();
     private static final String expectedDecoysTranscriptBed = ConversionTestUtils.getDecoySamplesTranscriptBed();
     private static final String expectedMapk1GeneBed = ConversionTestUtils.getMapk1GeneBed();
@@ -25,7 +27,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
     private static final String expectedManyTranscriptsBed = ConversionTestUtils.getManyTranscriptsBed();
     private static final String expectedNotBasicBed = ConversionTestUtils.getNotBasicBed();
     private static final String expectedMouseBed = ConversionTestUtils.getMouseBed();
-
+    private static final String expectedChr14GeneBed = ConversionTestUtils.getChr14GeneBed();
 
     private static class GtfToBedTest {
         final String input;
@@ -93,5 +95,26 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         args.add(outputFile.getAbsolutePath());
 
         runCommandLine(args);
+    }
+
+    @Test
+    public void testGtfToBedSequenceDictionaryFromReference() throws IOException {
+        final File outputFile = createTempFile("outputBed", ".bed");
+        final ArrayList<String> args = new ArrayList<>();
+
+        args.add("--" + GtfToBed.INPUT_LONG_NAME);
+        args.add(new File (chr14Gene).getAbsolutePath());
+        args.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        args.add(chr14Fasta);
+        args.add("--" + GtfToBed.SORT_BY_TRANSCRIPT_LONG_NAME);
+        args.add(String.valueOf(false));
+        args.add("--" + GtfToBed.USE_BASIC_TRANSCRIPT_LONG_NAME);
+        args.add(String.valueOf(false));
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outputFile.getAbsolutePath());
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(new File(expectedChr14GeneBed), outputFile);
     }
 }

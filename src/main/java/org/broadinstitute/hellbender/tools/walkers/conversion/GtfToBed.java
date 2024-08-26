@@ -51,7 +51,7 @@ import java.util.*;
  * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
- *     -R dictionary.dict \
+ *     -sequence-dictionary dictionary.dict \
  *     -sort-transcript \
  *     -output output.bed \
  * </pre>
@@ -98,7 +98,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     //stores either gene or transcript ID and summary information about the feature
     private final Map<String, GtfInfo> featureInfoMap = new HashMap<>();
 
-    //Sequence dictionary
+    //Sequence Dictionary
     private SAMSequenceDictionary sequenceDictionary = null;
 
     @Override
@@ -210,6 +210,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
 
     @Override
     public void onTraversalStart() {
+        //get sequence dictionary
         sequenceDictionary = getBestAvailableSequenceDictionary();
         if(sequenceDictionary == null){
             throw new GATKException("Sequence Dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
