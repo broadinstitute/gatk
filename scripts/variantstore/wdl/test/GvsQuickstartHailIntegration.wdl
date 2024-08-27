@@ -1,8 +1,8 @@
 version 1.0
 
-import "GvsUtils.wdl" as Utils
-import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
-import "GvsCreateVDS.wdl" as CreateVds
+import "../GvsUtils.wdl" as Utils
+import "../GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
+import "../GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {

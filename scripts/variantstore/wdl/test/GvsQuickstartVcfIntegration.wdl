@@ -1,7 +1,7 @@
 version 1.0
 
-import "GvsUtils.wdl" as Utils
-import "GvsJointVariantCalling.wdl" as JointVariantCalling
+import "../GvsUtils.wdl" as Utils
+import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
     input {

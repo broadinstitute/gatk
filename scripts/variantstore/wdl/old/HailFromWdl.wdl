@@ -63,7 +63,7 @@ version 1.0
 #     In other words, always set `preemptible_tries` to zero (default).
 #
 
-import "GvsUtils.wdl" as Utils
+import "../GvsUtils.wdl" as Utils
 
 struct RuntimeAttr {
     Float? mem_gb
