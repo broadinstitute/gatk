@@ -5,21 +5,17 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
+import picard.vcf.MendelianViolations.FindMendelianViolations;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 
 public final class RefCreator {
@@ -38,6 +34,8 @@ public final class RefCreator {
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
+    private Map<String, BitSet> ploidiesPerChromosome = null;
+
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
@@ -49,6 +47,8 @@ public final class RefCreator {
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
         this.gqStatesToIgnore = gqStatesToIgnore;
+
+        this.ploidiesPerChromosome = new HashMap<>();
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
@@ -76,6 +76,21 @@ public final class RefCreator {
     }
 
     public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
+        // Record ploidy if this is not in a PAR
+        if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
+            // create the bitset for this ploidy if it isn't there
+            if (!ploidiesPerChromosome.containsKey(variant.getContig())) {
+                ploidiesPerChromosome.put(variant.getContig(), new BitSet());
+            }
+
+            // set the bit for this ploidy so we record having seen it
+            BitSet ploidies = ploidiesPerChromosome.get(variant.getContig());
+            int ploidy = variant.getMaxPloidy(1);
+            if (!ploidies.get(ploidy)) {
+                ploidies.set(ploidy);
+            }
+        }
+
         final String variantChr = variant.getContig();
 
         for (GenomeLoc genomeLoc : intervalsToWrite) {
@@ -260,6 +275,10 @@ public final class RefCreator {
         }
 
         return ret;
+    }
+
+    public Map<String, BitSet> getReferencePloidyData() {
+        return ploidiesPerChromosome;
     }
 
     public void commitData() {

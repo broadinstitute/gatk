@@ -28,6 +28,7 @@ workflow GvsAssignIds {
   String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
+  String sample_chromosome_ploidy_schema_json = '[{"name": "sample_Id","type": "INTEGER","mode": "REQUIRED"},{"name": "chromosome","type": "INTEGER","mode": "REQUIRED"},{"name": "ploidy","type": "INTEGER","mode": "REQUIRED"}]'
 
   if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
@@ -68,6 +69,20 @@ workflow GvsAssignIds {
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
+  call GvsCreateTables.CreateTables as CreateSamplePloidyMapTable {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      go = ValidateSamples.done,
+      datatype = "sample_chromosome_ploidy",
+      schema_json = sample_chromosome_ploidy_schema_json,
+      max_table_id = 1,
+      superpartitioned = "false",
+      partitioned = "false",
+      clustering_field = "sample_id",
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 

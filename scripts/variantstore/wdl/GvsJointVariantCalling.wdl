@@ -89,6 +89,7 @@ workflow GvsJointVariantCalling {
     String destination_project = project_id
     String destination_dataset = dataset_name
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
+    String ploidy_table_name = "sample_chromosome_ploidy"
 
     if (false) {
       Int extract_maxretries_override = ""
@@ -231,6 +232,7 @@ workflow GvsJointVariantCalling {
             is_wgs = is_wgs,
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
+            ploidy_table_name = ploidy_table_name,
     }
 
     output {

@@ -35,15 +35,6 @@ import java.util.stream.Stream;
 public class ExtractCohortEngine {
     private final Logger logger;
 
-    // These represent the PARs given for hg38.  They are defined differently for other references, so we'll have to store this in
-    // a better, ref-dependent different manner if/when we get around to supporting other references
-    // See: https://en.wikipedia.org/wiki/Pseudoautosomal_region
-    private final List<LongRange> PARRegions = List.of(
-            new LongRange(23000000010001L, 23000002781479L),    // PAR1, X
-            new LongRange(24000000010001L, 24000002781479L),    // PAR1, Y
-            new LongRange(23000155701383L, 23000156030895L),    // PAR2, X
-            new LongRange(24000056887903L, 24000057217415L));   // PAR2, Y
-
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
     private final List<SimpleInterval> traversalIntervals;
@@ -604,7 +595,7 @@ public class ExtractCohortEngine {
             // If we have looked up the ploidy in our table and it says 1, use a haploid reference
             // Otherwise, if we have a ploidy that is neither 1 nor 2, throw a user exception because we haven't coded for this case
             int ploidy = (samplePloidyMap.containsKey(key) ? samplePloidyMap.get(key) : 2);
-            if (ploidy == 2 || isInPAR(location)) {
+            if (ploidy == 2 || PloidyUtils.isLocationInPAR(location)) {
                 genotypeBuilder.alleles(gtAlleles);
             } else if (ploidy == 1) {
                 genotypeBuilder.alleles(gtHaploidAlleles);
@@ -676,16 +667,6 @@ public class ExtractCohortEngine {
         // This is almost stupidly simple, but we do this in more than one place and need to be consistent about it
         return chromosome+"-"+sampleId;
     }
-
-    private boolean isInPAR(final long location) {
-        for (LongRange region : PARRegions) {
-            if (region.containsLong(location)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
 
     private VariantContext filterSiteByAlleleSpecificVQScore(VariantContext mergedVC,
                                                              Map<Allele, Map<Allele, Double>> scoreMap,

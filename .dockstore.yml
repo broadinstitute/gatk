@@ -251,6 +251,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ah_var_store
          tags:
              - /.*/
    - name: GvsBeta
