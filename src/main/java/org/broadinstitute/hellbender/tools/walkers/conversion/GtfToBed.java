@@ -56,17 +56,28 @@ import java.util.*;
  *     -output output.bed \
  * </pre>
  *
- * <h4>(iii) Convert GTF to BED with transcript level data filtering for only those with the basic tag</h4>
- *  * <p>This mode extracts and converts basic transcript data from the input GTF file to BED format:</p>
- *  *
- *  * <pre>
+ * <h4>(iii) Convert GTF to BED with transcript level data, filtering for only those with the basic tag</h4>
+ * <p>This mode extracts and converts basic transcript data from the input GTF file to BED format:</p>
+ *
+ * <pre>
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
  *     -sequence-dictionary dictionary.dict \
  *     -sort-transcript \
  *     -sort-basic \
  *     -output output.bed \
- *  * </pre>
+ * </pre>
+ *
+ * <h4>(iiii) </h4> Convert GTF to BED with transcript level data using a reference FASTA instead of DICT file.
+ * <p>This mode extracts and converts transcript data from the input GTF file to BED format using a FASTA file:</p>
+ *
+ * <pre>
+ *     java -jar GtfToBed.jar \
+ *     -gtf-path input.gtf \
+ *     -reference ref.fa \
+ *     -sort-transcript \
+ *     -output output.bed \
+ * </pre>
  */
 
 @CommandLineProgramProperties(
@@ -210,7 +221,6 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
 
     @Override
     public void onTraversalStart() {
-        //get sequence dictionary
         sequenceDictionary = getBestAvailableSequenceDictionary();
         if(sequenceDictionary == null){
             throw new GATKException("Sequence Dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
