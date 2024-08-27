@@ -101,7 +101,7 @@ workflows:
              - /.*/
    - name: GvsBenchmarkExtractTask
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsBenchmarkExtractTask.wdl
      filters:
          branches:
              - master
@@ -200,7 +200,7 @@ workflows:
              - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/variant_annotation_table/GvsCreateVATfromVDS.wdl
      filters:
          branches:
              - master
@@ -285,7 +285,7 @@ workflows:
              - /.*/
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartVcfIntegration.wdl
      filters:
          branches:
              - master
@@ -295,7 +295,7 @@ workflows:
              - /.*/
    - name: GvsQuickstartHailIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartHailIntegration.wdl
      filters:
          branches:
              - master
@@ -305,7 +305,7 @@ workflows:
              - /.*/
    - name: GvsQuickstartIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
          branches:
              - master
@@ -316,7 +316,7 @@ workflows:
              - /.*/
    - name: GvsIngestTieout
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
      filters:
          branches:
              - master
@@ -361,7 +361,7 @@ workflows:
              - /.*/
    - name: GvsTieoutVcfMaxAltAlleles
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutVcfMaxAltAlleles.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutVcfMaxAltAlleles.wdl
      filters:
        branches:
          - ah_var_store
@@ -451,7 +451,7 @@ workflows:
          - EchoCallset
    - name: GvsTieoutPgenToVcf
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsTieoutPgenToVcf.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
          - ah_var_store
