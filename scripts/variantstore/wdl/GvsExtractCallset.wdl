@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# A comment
-
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -575,62 +573,6 @@ task CreateManifestAndOptionallyCopyOutputs {
   }
 }
 
-task MakeManifestEntryAndOptionallyCopyOutputs {
-  input {
-    Int interval_index
-    File output_vcf
-    File output_vcf_index
-    Float output_vcf_bytes
-    Float output_vcf_index_bytes
-    String? output_gcs_dir
-    String cloud_sdk_docker
-  }
-  parameter_meta {
-    output_vcf: {
-      localization_optional: true
-    }
-    output_vcf_index: {
-      localization_optional: true
-    }
-  }
-
-  # Even though we are potentially not localizing these files, we still need their basenames for proper naming.
-  String local_vcf = basename(output_vcf)
-  String local_vcf_index = basename(output_vcf_index)
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
-
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-
-    if [ -n "${OUTPUT_GCS_DIR}" ]; then
-      gsutil cp ~{output_vcf} ${OUTPUT_GCS_DIR}/
-      gsutil cp ~{output_vcf_index} ${OUTPUT_GCS_DIR}/
-      OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{local_vcf}"
-      OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{local_vcf_index}"
-    else
-      OUTPUT_FILE_DEST="~{local_vcf}"
-      OUTPUT_FILE_INDEX_DEST="~{local_vcf_index}"
-    fi
-
-    # Parent Task will collect manifest lines and create a joined file
-    # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-    echo ~{interval_index},${OUTPUT_FILE_DEST},~{output_vcf_bytes},${OUTPUT_FILE_INDEX_DEST},~{output_vcf_index_bytes} >> manifest.txt
-  >>>
-  runtime {
-    docker: cloud_sdk_docker
-    memory: "3 GB"
-    disks: "local-disk 500 HDD"
-    preemptible: 3
-    cpu: 1
-  }
-  output {
-    String manifest = read_string("manifest.txt")
-  }
-}
-
 task SumBytes {
   input {
     Array[Float] file_sizes_bytes
@@ -661,45 +603,6 @@ task SumBytes {
 
   output {
     Float total_mb = read_float(stdout())
-  }
-}
-
-task CreateManifest {
-  input {
-      Array[String] manifest_lines
-      String? output_gcs_dir
-      String cloud_sdk_docker
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
-
-    MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
-    echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
-    sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
-
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-
-    if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
-    fi
-  >>>
-  output {
-    File manifest = "manifest.txt"
-  }
-
-  runtime {
-    docker: cloud_sdk_docker
-    memory: "3 GB"
-    disks: "local-disk 500 HDD"
-    preemptible: 3
-    cpu: 1
   }
 }
 
