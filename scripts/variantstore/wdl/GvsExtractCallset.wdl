@@ -258,16 +258,6 @@ workflow GvsExtractCallset {
         target_interval_list                  = target_interval_list,
     }
 
-#    call MakeManifestEntryAndOptionallyCopyOutputs {
-#      input:
-#        interval_index = i,
-#        output_vcf = ExtractTask.output_vcf,
-#        output_vcf_index = ExtractTask.output_vcf_index,
-#        output_vcf_bytes = ExtractTask.output_vcf_bytes,
-#        output_vcf_index_bytes = ExtractTask.output_vcf_index_bytes,
-#        output_gcs_dir = output_gcs_dir,
-#        cloud_sdk_docker = effective_cloud_sdk_docker,
-#    }
   }
 
   call SumBytes {
@@ -286,13 +276,6 @@ workflow GvsExtractCallset {
       output_gcs_dir = output_gcs_dir,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
-
-#  call CreateManifest {
-#    input:
-#      manifest_lines = MakeManifestEntryAndOptionallyCopyOutputs.manifest,
-#      output_gcs_dir = output_gcs_dir,
-#      cloud_sdk_docker = effective_cloud_sdk_docker,
-#  }
 
   call Utils.GetBQTableLastModifiedDatetime {
     input:
@@ -315,8 +298,7 @@ workflow GvsExtractCallset {
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
     Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
-#    File manifest = CreateManifest.manifest
-    File new_manifest = CreateManifestAndOptionallyCopyOutputs.manifest
+    File manifest = CreateManifestAndOptionallyCopyOutputs.manifest
     File sample_name_list = GenerateSampleListFile.sample_name_list
     String recorded_git_hash = effective_git_hash
     Boolean done = true
