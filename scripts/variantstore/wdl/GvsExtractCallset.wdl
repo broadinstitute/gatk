@@ -2,6 +2,8 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
+# It's a comment.
+
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -283,6 +285,7 @@ workflow GvsExtractCallset {
         input_details = select_all(CollectMetricsSharded.detail_metrics_file),
         input_summaries = select_all(CollectMetricsSharded.summary_metrics_file),
         output_prefix = call_set_identifier,
+        output_gcs_dir = output_gcs_dir,
         gatk_docker = effective_gatk_docker
     }
   }
@@ -724,6 +727,7 @@ task GatherVariantCallingMetrics {
     Array[File] input_details
     Array[File] input_summaries
     String output_prefix
+    String? output_gcs_dir
 
     Int memory_mb = 3000
     Int disk_size_gb = 200
@@ -748,6 +752,9 @@ task GatherVariantCallingMetrics {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     bash ~{monitoring_script} > monitoring.log &
 
@@ -790,6 +797,11 @@ task GatherVariantCallingMetrics {
       AccumulateVariantCallingMetrics \
       $INPUT \
       --OUTPUT ~{output_prefix}
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      gsutil cp ~{output_prefix}.variant_calling_summary_metrics ${OUTPUT_GCS_DIR}/
+      gsutil cp ~{output_prefix}.variant_calling_detail_metrics ${OUTPUT_GCS_DIR}/
+    fi
   >>>
 
   runtime {
