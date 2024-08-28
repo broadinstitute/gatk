@@ -248,7 +248,6 @@ workflow GvsExtractCallset {
         filter_set_name                       = filter_set_name,
         drop_state                            = drop_state,
         output_file                           = vcf_filename + vcf_extension,
-        output_gcs_dir                        = output_gcs_dir,
         max_last_modified_timestamp           = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override          = extract_preemptible_override,
         extract_maxretries_override           = extract_maxretries_override,
@@ -294,9 +293,13 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call CreateManifest {
+  call CreateManifestAndOptionallyCopyOutputs {
     input:
-      manifest_lines = ExtractTask.manifest,
+      interval_indices = ExtractTask.interval_number,
+      output_vcfs = ExtractTask.output_vcf,
+      output_vcf_indices = ExtractTask.output_vcf_index,
+      output_vcf_bytes = ExtractTask.output_vcf_bytes,
+      output_vcf_index_bytes = ExtractTask.output_vcf_index_bytes,
       output_gcs_dir = output_gcs_dir,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
@@ -322,7 +325,7 @@ workflow GvsExtractCallset {
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
     Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
-    File manifest = CreateManifest.manifest
+    File manifest = CreateManifestAndOptionallyCopyOutputs.manifest
     File sample_name_list = GenerateSampleListFile.sample_name_list
     File? summary_metrics_file = GatherVariantCallingMetrics.summary_metrics_file
     File? detail_metrics_file = GatherVariantCallingMetrics.detail_metrics_file
@@ -357,7 +360,6 @@ task ExtractTask {
     String? vet_extract_table_version
     String read_project_id
     String output_file
-    String? output_gcs_dir
 
     String cost_observability_tablename = "cost_observability"
 
@@ -477,28 +479,9 @@ task ExtractTask {
           -V ${pre_off_target_vcf}
     fi
 
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+    du -b ~{output_file} | cut -f1 > vcf_bytes.txt
+    du -b ~{output_file}.tbi | cut -f1 > vcf_index_bytes.txt
 
-    OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
-    echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
-
-    OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
-    echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
-
-    if [ -n "${OUTPUT_GCS_DIR}" ]; then
-      gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
-      gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
-      OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_file}"
-      OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{output_file}.tbi"
-    else
-      OUTPUT_FILE_DEST="~{output_file}"
-      OUTPUT_FILE_INDEX_DEST="~{output_file}.tbi"
-    fi
-
-    # Parent Task will collect manifest lines and create a joined file
-    # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-    echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
     docker: gatk_docker
@@ -513,12 +496,91 @@ task ExtractTask {
 
   # files sizes are floats instead of ints because they can be larger
   output {
+    Int interval_number = interval_index
     File output_vcf = "~{output_file}"
     Float output_vcf_bytes = read_float("vcf_bytes.txt")
     File output_vcf_index = "~{output_file}.tbi"
     Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
-    String manifest = read_string("manifest.txt")
     File monitoring_log = "monitoring.log"
+  }
+}
+
+task CreateManifestAndOptionallyCopyOutputs {
+  input {
+    Array[Int] interval_indices
+    Array[File] output_vcfs
+    Array[File] output_vcf_indices
+    Array[Float] output_vcf_bytes
+    Array[Float] output_vcf_index_bytes
+    String? output_gcs_dir
+    String cloud_sdk_docker
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    output_vcfs: {
+      localization_optional: true
+    }
+    output_vcf_indices: {
+      localization_optional: true
+    }
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    declare -a interval_indices=(~{sep=' ' interval_indices})
+    declare -a output_vcfs=(~{sep=' ' output_vcfs})
+    declare -a output_vcf_indices=(~{sep=' ' output_vcf_indices})
+    declare -a output_vcf_bytes=(~{sep=' ' output_vcf_bytes})
+    declare -a output_vcf_index_bytes=(~{sep=' ' output_vcf_index_bytes})
+
+    echo -n >> manifest_lines.txt
+    for (( i=0; i<${#interval_indices[@]}; ++i));
+      do
+        echo "Interval " + $i
+
+        OUTPUT_VCF=${output_vcfs[$i]}
+        LOCAL_VCF=$(basename $OUTPUT_VCF)
+        OUTPUT_VCF_INDEX=${output_vcf_indices[$i]}
+        LOCAL_VCF_INDEX=$(basename $OUTPUT_VCF_INDEX)
+
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+          gsutil cp $OUTPUT_VCF ${OUTPUT_GCS_DIR}/
+          gsutil cp $OUTPUT_VCF_INDEX ${OUTPUT_GCS_DIR}/
+          OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/$LOCAL_VCF"
+          OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/$LOCAL_VCF_INDEX"
+        else
+          OUTPUT_FILE_DEST=$LOCAL_VCF
+          OUTPUT_FILE_INDEX_DEST=$LOCAL_VCF_INDEX
+        fi
+
+        echo ${interval_indices[$i]},${OUTPUT_FILE_DEST},${output_vcf_bytes[$i]},${OUTPUT_FILE_INDEX_DEST},${output_vcf_index_bytes[$i]} >> manifest_lines.txt
+
+      done;
+
+    echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
+    sort -n manifest_lines.txt | cut -d',' -f 2- >> manifest.txt
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+    fi
+  >>>
+  output {
+    File manifest_lines = "manifest_lines.txt"
+    File manifest = "manifest.txt"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }
 
@@ -552,45 +614,6 @@ task SumBytes {
 
   output {
     Float total_mb = read_float(stdout())
-  }
-}
-
-task CreateManifest {
-  input {
-      Array[String] manifest_lines
-      String? output_gcs_dir
-      String cloud_sdk_docker
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
-
-    MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
-    echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
-    sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
-
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-
-    if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
-    fi
-  >>>
-  output {
-    File manifest = "manifest.txt"
-  }
-
-  runtime {
-    docker: cloud_sdk_docker
-    memory: "3 GB"
-    disks: "local-disk 500 HDD"
-    preemptible: 3
-    cpu: 1
   }
 }
 
