@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.conversion;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -80,7 +80,7 @@ public class GtfToBedIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(new File(params.expected), outputFile);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = UserException.class)
     public void testGtfToBedNoSequenceDictionary() {
         final File outputFile = createTempFile("outputBed", ".bed");
         final ArrayList<String> args = new ArrayList<>();

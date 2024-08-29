@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 
@@ -52,7 +53,7 @@ import java.util.*;
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
  *     -sequence-dictionary dictionary.dict \
- *     -sort-transcript \
+ *     -sort-by-transcript \
  *     -output output.bed \
  * </pre>
  *
@@ -63,8 +64,8 @@ import java.util.*;
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
  *     -sequence-dictionary dictionary.dict \
- *     -sort-transcript \
- *     -sort-basic \
+ *     -sort-by-transcript \
+ *     -use-basic-transcript \
  *     -output output.bed \
  * </pre>
  *
@@ -75,7 +76,7 @@ import java.util.*;
  *     java -jar GtfToBed.jar \
  *     -gtf-path input.gtf \
  *     -reference ref.fa \
- *     -sort-transcript \
+ *     -sort-by-transcript \
  *     -output output.bed \
  * </pre>
  */
@@ -223,7 +224,7 @@ public class GtfToBed extends FeatureWalker<GencodeGtfFeature> {
     public void onTraversalStart() {
         sequenceDictionary = getBestAvailableSequenceDictionary();
         if(sequenceDictionary == null){
-            throw new GATKException("Sequence Dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
+            throw new UserException("Sequence Dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
         }
     }
 
