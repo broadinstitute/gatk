@@ -99,13 +99,18 @@ public class FeaturizedReadSets {
         final List<Integer> result = new ArrayList<>();
         result.add(readGroupIndices.get(read.getReadGroup()));  // this is read group metadata rather than part of the tensor
         result.add(read.getMappingQuality());
+
+        // TODO: why not add BQ before and after as well -- especially useful for indels
         result.add(BaseQuality.getBaseQuality(read, vc).orElse(DEFAULT_BASE_QUALITY));
         result.add(read.isFirstOfPair() ? 1 : 0);
         result.add(read.isReverseStrand() ? 1 : 0);
 
         // distances from ends of read
+        // TODO: I'm pretty sure this DOES NOT account for the hard clips due to fitting the read inside the assembly window!!
         final int readPositionOfVariantStart = ReadPosition.getPosition(read, vc).orElse(0);
         result.add(readPositionOfVariantStart);
+
+        // TODO: Likeiwse, this probably doesn't account for read clipping into the assembly window -- both read.getLength() AND readPositionOfVariantStart are suspect!
         result.add(read.getLength() - readPositionOfVariantStart);
 
 
@@ -140,6 +145,9 @@ public class FeaturizedReadSets {
                 result.add(0);
             }
         } else {
+            // TODO: it matters WHERE mismatches occur!
+            // TODO: also, this doesn't account for different amounts of read clipping to fit assembly window.  Maybe
+            // TODO: we should only look within the size of the smallest assemlby window
             byte[] haplotypeBases = haplotype.getBases();
             final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotypeBases, read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
             final GATKRead copy = read.copy();

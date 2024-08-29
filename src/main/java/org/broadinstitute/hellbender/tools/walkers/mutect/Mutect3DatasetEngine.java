@@ -191,9 +191,11 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                 if  (probableArtifact) {
                     if (unmatchedQueue.size() > 0.9 * CAPACITY) { // this should rarely come up
                         labels.add(Label.IGNORE);
-                    } else {
+                    } else if (tumorAF < 0.3) {
                         labels.add(Label.ARTIFACT);
                         unmatchedQueue.addAll(Collections.nCopies(nonArtifactPerArtifact, tumorADs[n + 1]));
+                    } else {    // very high AF could just be a germline variant missing from the truth VCF.  Leave it unlabeled for semisupervised learning to deal with
+                        labels.add(Label.UNLABELED);
                     }
                 } else if (trueVariant && !unmatchedQueue.isEmpty()) {
                     // high AF in tumor and normal, common in population implies germline, which we downsample
