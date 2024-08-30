@@ -205,6 +205,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                     // Note: we used to have "altDownsampleMap.put(altAllele, unmatchedQueue.poll())" here, which forces the alt count distribution of
                     // variants to match that of artifacts.  Due to Permutect's count-agnostic architecture this is
                     // unnecessary, and it gives the model too few high-AF variant examples on which to learn calibration.
+                    unmatchedQueue.poll(); // just to pop off a value
                     altDownsampleMap.put(altAllele, random.nextInt(5, 20));
                 } else if (tumorLods[n] > 4.0 && tumorAF < 0.3) {
                     labels.add(Label.UNLABELED);
