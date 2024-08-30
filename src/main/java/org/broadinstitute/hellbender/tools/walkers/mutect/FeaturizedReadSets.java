@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 
+import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -106,12 +107,14 @@ public class FeaturizedReadSets {
         result.add(read.isReverseStrand() ? 1 : 0);
 
         // distances from ends of read
-        // TODO: I'm pretty sure this DOES NOT account for the hard clips due to fitting the read inside the assembly window!!
+        // this DOES account for the hard clips due to fitting the read inside the assembly window!!
         final int readPositionOfVariantStart = ReadPosition.getPosition(read, vc).orElse(0);
         result.add(readPositionOfVariantStart);
 
-        // TODO: Likeiwse, this probably doesn't account for read clipping into the assembly window -- both read.getLength() AND readPositionOfVariantStart are suspect!
-        result.add(read.getLength() - readPositionOfVariantStart);
+        // read.getLength(), however, does not account for hard clips and we need to add the length of any leading or trailing hard clips in the read's CIGAR
+        final int totalHardClips = read.getCigarElements().stream().filter(el -> el.getOperator() == CigarOperator.HARD_CLIP).mapToInt(el -> el.getLength()).sum();
+        final int actualReadLength = read.getLength() + totalHardClips;
+        result.add(actualReadLength - readPositionOfVariantStart);
 
 
         result.add(Math.abs(read.getFragmentLength()));
