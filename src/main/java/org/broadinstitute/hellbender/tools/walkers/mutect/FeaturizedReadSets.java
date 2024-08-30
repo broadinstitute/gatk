@@ -141,25 +141,23 @@ public class FeaturizedReadSets {
         if (!bestHaplotypes.containsKey(read)) {
             logger.warn(String.format("Best haplotypes don't contain read %s at position %s:%d.", read.getName(),
                     vc.getContig(), vc.getStart()));
-            result.add(3);
-            result.add(2);
+            //result.add(3);
+            //result.add(2);
 
             for (int n = 0; n < NUM_RANGED_FEATURES; n++) {
                 result.add(0);
             }
         } else {
             // TODO: it matters WHERE mismatches occur!
-            // TODO: also, this doesn't account for different amounts of read clipping to fit assembly window.  Maybe
-            // TODO: we should only look within the size of the smallest assemlby window
             byte[] haplotypeBases = haplotype.getBases();
             final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotypeBases, read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
             final GATKRead copy = read.copy();
             copy.setCigar(readToHaplotypeAlignment.getCigar());
-            final int mismatchCount = AlignmentUtils.getMismatchCount(copy, haplotypeBases, readToHaplotypeAlignment.getAlignmentOffset()).numMismatches;
-            result.add(mismatchCount);
+            //final int mismatchCount = AlignmentUtils.getMismatchCount(copy, haplotypeBases, readToHaplotypeAlignment.getAlignmentOffset()).numMismatches;
+            //result.add(mismatchCount);
 
-            final long indelsVsBestHaplotype = readToHaplotypeAlignment.getCigar().getCigarElements().stream().filter(el -> el.getOperator().isIndel()).count();
-            result.add((int) indelsVsBestHaplotype);
+            //final long indelsVsBestHaplotype = readToHaplotypeAlignment.getCigar().getCigarElements().stream().filter(el -> el.getOperator().isIndel()).count();
+            //result.add((int) indelsVsBestHaplotype);
 
             final int readStartInHaplotype = readToHaplotypeAlignment.getAlignmentOffset();
             final AlignmentStateMachine asm = new AlignmentStateMachine(copy);
@@ -170,12 +168,12 @@ public class FeaturizedReadSets {
                 final PileupElement pe = asm.makePileupElement();
                 final int distanceFromVariant = Math.abs(asm.getReadOffset() - readPositionOfVariantStart);
 
-                // pick which array's features we are accounting.  If the ranges are 5, 10, 25, 50 and the distance is, say 8, then the '<= 10' range is relevant
+                // pick which array's features we are accounting.  If the ranges are 5, 10, 20, and the distance is, say 8, then the '<= 10' range is relevant
                 final OptionalInt relevantRange = IntStream.range(0, RANGES.size()).filter(n -> distanceFromVariant <= RANGES.get(n)).findFirst();
                 if (relevantRange.isPresent()) {
                     final int[] featuresToAddTo = rangedFeatures.get(relevantRange.getAsInt());
-                    if (pe.isAfterInsertion()) {
-                        featuresToAddTo[0]++;
+                    if (pe.isBeforeInsertion()) {
+                        featuresToAddTo[0] += pe.getLengthOfImmediatelyFollowingIndel();
                     }
 
                     if (pe.isDeletion()) {
