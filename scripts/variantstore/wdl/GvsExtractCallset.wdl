@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# It's a comment.
-
 workflow GvsExtractCallset {
   input {
     Boolean go = true
