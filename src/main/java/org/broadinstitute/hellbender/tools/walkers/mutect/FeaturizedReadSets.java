@@ -148,7 +148,6 @@ public class FeaturizedReadSets {
                 result.add(0);
             }
         } else {
-            // TODO: it matters WHERE mismatches occur!
             byte[] haplotypeBases = haplotype.getBases();
             final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotypeBases, read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
             final GATKRead copy = read.copy();
