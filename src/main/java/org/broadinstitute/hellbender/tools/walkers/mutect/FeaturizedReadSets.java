@@ -38,7 +38,7 @@ public class FeaturizedReadSets {
 
     private static final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA);
     private static final int FEATURES_PER_RANGE = 5;
-    private static final List<Integer> RANGES = List.of(5, 10, 25, 50);
+    private static final List<Integer> RANGES = List.of(5, 10, 20);
     public static final int NUM_RANGED_FEATURES = FEATURES_PER_RANGE * RANGES.size();
     private static final int VERY_BAD_QUAL_THRESHOLD = 10;
     private static final int BAD_QUAL_THRESHOLD = 20;
