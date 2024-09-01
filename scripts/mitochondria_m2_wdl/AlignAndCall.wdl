@@ -470,7 +470,7 @@ task M2 {
         --max-mnp-distance 0
   >>>
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.2.4.1"])
       memory: machine_mem + " MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -558,7 +558,7 @@ task Filter {
 
   >>>
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.2.4.1"])
       memory: "4 MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -591,7 +591,7 @@ task MergeStats {
     File stats = "raw.combined.stats"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.2.4.1"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -630,7 +630,7 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
     File vcf_for_haplochecker = "splitAndPassOnly.vcf"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.2.4.1"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])

@@ -133,7 +133,7 @@ task RunHappyPlots {
     }
 
     runtime {
-        docker: "rocker/tidyverse"
+        docker: "rocker/tidyverse:4.1"
 
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
