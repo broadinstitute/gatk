@@ -51,8 +51,8 @@ public class Mutect3DatasetEngine implements AutoCloseable {
 
     private final Map<String, Integer> readGroupIndices = new HashMap<>();
 
-    // number of additional variant features for assembly complexity (3), TLOD / tumor depth (1)
-    private static final int NUM_EXTRA_FEATURES = 4;
+    // number of additional variant features for assembly complexity (4), TLOD / tumor depth (1)
+    private static final int NUM_EXTRA_FEATURES = 5;
 
     // threshold of negative log-10 population allele frequency to consider something an artifact for the purposes of training data
     // we want to be really sure we don't get germline variants
