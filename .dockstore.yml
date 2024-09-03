@@ -30,6 +30,17 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: cnv_germline_case_filter_workflow
+     subclass: WDL
+     primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_filter_workflow.wdl
+     testParameterFiles:
+       - /scripts/cnv_cromwell_tests/germline/cnv_germline_case_scattered_workflow.json
+     filters:
+       branches:
+         - master
+         - tm_filtercnvs
+       tags:
+         - /.*/
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
