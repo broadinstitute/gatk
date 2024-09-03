@@ -51,8 +51,8 @@ public class Mutect3DatasetEngine implements AutoCloseable {
 
     private final Map<String, Integer> readGroupIndices = new HashMap<>();
 
-    // number of additional variant features for assembly complexity, reference context
-    private static final int NUM_EXTRA_FEATURES = 9;
+    // number of additional variant features for assembly complexity (3), TLOD / tumor depth (1)
+    private static final int NUM_EXTRA_FEATURES = 4;
 
     // threshold of negative log-10 population allele frequency to consider something an artifact for the purposes of training data
     // we want to be really sure we don't get germline variants
@@ -250,9 +250,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             if (labels.get(n) ==  Label.IGNORE) {
                 continue;
             }
+            final double tlod = vc.getAttributeAsDoubleList("TLOD", 0).get(n);
 
             final String altAllele = vc.getAlternateAllele(n).getBaseString();
-            final List<Double> variantFeatureVector = variantFeatures(n, assemblyComplexity, refBases);
+            final List<Double> variantFeatureVector = variantFeatures(n, assemblyComplexity, tlod, tumorADs[n+1]);
             final List<List<Integer>> tumorAltReads = tumorReadVectorsByAllele.get(n+1);
             final List<List<Integer>> normalAltReads = normalReadVectorsByAllele.get(n+1);
 
@@ -272,7 +273,6 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             // this is approximately the likelihood that these particular reads are alt given sequencing error, excluding
             // the depth C N_alt combinatorial factor that is common to all likelihoods in M3
             // basically, it's the TLOD with a correction for the marginalized flat prior from M2
-            final double tlod = vc.getAttributeAsDoubleList("TLOD", 0).get(n);
             final double seqErrorLogLikelihood = -MathUtils.log10ToLog(tlod) - Math.log(tumorDepth + 1);
             printWriter.printf("%.3f%n", seqErrorLogLikelihood);
 
@@ -292,7 +292,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         return numbers.stream().map(x -> String.format(formatString, decimal ? x.floatValue() : x)).collect(Collectors.joining(separator));
     }
 
-    private List<Double> variantFeatures(final int altAlleleIndex, Triple<int[], int[], double[]> assemblyComplexity, final String refBases) {
+    private List<Double> variantFeatures(final int altAlleleIndex, Triple<int[], int[], double[]> assemblyComplexity, final double tlod, final int tumorAltCount) {
         final int[] haplotypeEquivalenceCounts = assemblyComplexity.getLeft();
         final int haplotypeComplexity = assemblyComplexity.getMiddle()[altAlleleIndex];
         final double haplotypeDominance = assemblyComplexity.getRight()[altAlleleIndex];
@@ -306,46 +306,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         result.add(haplotypeEquivalenceCounts.length < 3 ? 0.0 : haplotypeEquivalenceCounts[2] / total);
         result.add((double) haplotypeComplexity);
         result.add(haplotypeDominance);
-
-        IntStream.range(1, 6).forEach(repeatLength -> result.add((double) countRepeats(refBases.getBytes(), repeatLength)));
+        result.add(tumorAltCount == 0 ? 0.0 : tlod / tumorAltCount);
 
         Utils.validate(result.size() == NUM_EXTRA_FEATURES, "produced a variant feature vector of wrong size");
         return result;
-    }
-
-    // count how many repeats of length k surround the middle base
-    // example: countRepeats(GACTACTACTG,3) = 3
-    private int countRepeats(final byte[] refBases, final int k) {
-        final int N = refBases.length;
-        final int n = (N - 1) / 2;
-        Utils.validateArg(k <= n, "Too few ref bases for given repeat length");
-
-        // extend a repeat forward, to front and then to back(both exclusive)
-        // note that this only extends backward if they match the bases going forward
-        // that is AAAAAGTGTCC(first G in the middle) will get extended forward through
-        // both GTs but won 't be extended back
-        int front = n + k;
-        while (front < N && refBases[front] == refBases[front - k]) {
-            front++;
-        }
-        int back = n - 1;
-        while (back >= 0 && refBases[back] == refBases[back + k]){
-            back--;
-        }
-        final int forwardRepeats = (front - back - 1) / k;
-
-        // same idea but extending backwards first (now back is exclusive and front is inclusive)
-        back = n - k;
-        while (back >= 0 && refBases[back] == refBases[back + k]) {
-            back--;
-        }
-        front = n + 1;
-        while (front < N && refBases[front] == refBases[front - k]) {
-            front++;
-        }
-        final int backwardRepeats = (front - back - 1) / k;
-
-        return FastMath.max(forwardRepeats, backwardRepeats);
     }
 
     private int[] sumADsOverSamples(final VariantContext vc, final Set<String> samples) {
