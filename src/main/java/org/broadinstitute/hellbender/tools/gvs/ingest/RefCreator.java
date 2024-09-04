@@ -77,7 +77,7 @@ public final class RefCreator {
 
     public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
         // Record ploidy if this is not in a PAR
-        if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
+        if (!PloidyUtils.doesVariantOverlapPAR(variant) && variant.isReferenceBlock()) {
             // create the bitset for this ploidy if it isn't there
             if (!ploidiesPerChromosome.containsKey(variant.getContig())) {
                 ploidiesPerChromosome.put(variant.getContig(), new BitSet());
