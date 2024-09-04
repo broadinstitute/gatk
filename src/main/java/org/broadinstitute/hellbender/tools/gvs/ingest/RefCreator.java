@@ -88,8 +88,11 @@ public final class RefCreator {
             int ploidy = variant.getMaxPloidy(1);
             if (!ploidies.get(ploidy)) {
                 ploidies.set(ploidy);
+                logger.info("Recording reference ploidy "+ploidy+" from sample "+sampleId+" at "+variant.getContig()+" "+variant.getStart() +" with gt "+variant.getGenotype(0));
             }
         }
+
+
 
         final String variantChr = variant.getContig();
 

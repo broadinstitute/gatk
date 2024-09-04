@@ -44,7 +44,7 @@ public class SamplePloidyCreator {
         for (final Map.Entry<String, BitSet> ploidyLine : ploidyData.entrySet()) {
             try {
                 // make sure we don't have mixed ploidy in a single chromosome
-                if (ploidyLine.getValue().length() > 1) {
+                if (ploidyLine.getValue().cardinality() > 1) {
                     throw new UserException("Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey());
                 }
 
