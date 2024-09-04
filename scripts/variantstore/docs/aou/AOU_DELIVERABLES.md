@@ -101,11 +101,11 @@ To create a BigQuery table of variant annotations, you may follow the instructio
 [process to create variant annotations table](../../variant_annotations_table/README.md)
 The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
 
-Once the VAT table and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
+Once the VAT table is created and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
 
 - Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
 - Copy the bgzipped, tarred export of the VAT into the pre-delivery bucket.
-- Finally, an email should be sent out notifying the AoU research workbench team of the readiness of the VAT.
+- Send an email should be sent out notifying the AoU research workbench team of the readiness of the VAT.
 - A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
 
 ## Additional Deliverables
