@@ -103,9 +103,10 @@ The pipeline takes in the VDS and outputs a variant annotations table in BigQuer
 
 Once the VAT table and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
 
-- Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team. Check with your product manager for details.
-- Copy the bgzipped, tarred export of the VAT into the pre-delivery bucket. For the Echo release, it was copied to `gs://prod-drc-broad/v8/wgs/vat/aou_srwgs_short_variants_v8r1.vat.bgz.tsv.gz`
-- Finally, an email should be sent out notifying the AoU research workbench team of the readiness of the VAT. For echo, the email had the subject line: `Variant Annotations Table delivered for v8 srWGS joint callset` (it may just be easiest to find that email and modify it accordingly for the release you are working on).
+- Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
+- Copy the bgzipped, tarred export of the VAT into the pre-delivery bucket.
+- Finally, an email should be sent out notifying the AoU research workbench team of the readiness of the VAT.
+- A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
 
 ## Additional Deliverables
 
