@@ -1,6 +1,6 @@
-CRAM File Name: CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram
-CRAM Version: 2.1
-CRAM ID Contents: L1VzZXJzL2FraWV6dW4vSWRlYVA=
+CRAM File Name: CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram
+CRAM Version: 3.0
+CRAM ID Contents: Li4vaHRzamRrL3NyYy90ZXN0L3I=
 
 **********************NO CORRUPT CONTAINERS DETECTED**********************
 Average mismatch rate for presumed good containers: 0.005962
