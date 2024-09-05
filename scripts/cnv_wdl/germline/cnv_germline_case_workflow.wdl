@@ -265,7 +265,7 @@ workflow CNVGermlineCaseWorkflow {
 
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
-        Array[File] read_counts_entity_id = CollectCounts.entity_id
+        Array[String] read_counts_entity_id = CollectCounts.entity_id
         Array[File] read_counts = CollectCounts.counts
         Array[File] sample_contig_ploidy_calls_tars = ScatterPloidyCallsBySample.sample_contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars

@@ -205,7 +205,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
 
     output {
         File preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals[0]
-        Array[File] read_counts_entity_id = flatten(CNVGermlineCaseWorkflow.read_counts_entity_id)
+        Array[String] read_counts_entity_id = flatten(CNVGermlineCaseWorkflow.read_counts_entity_id)
         Array[File] read_counts = flatten(CNVGermlineCaseWorkflow.read_counts)
         Array[File] sample_contig_ploidy_calls_tars = flatten(CNVGermlineCaseWorkflow.sample_contig_ploidy_calls_tars)
         Array[Array[File]] gcnv_calls_tars = flatten(CNVGermlineCaseWorkflow.gcnv_calls_tars)
