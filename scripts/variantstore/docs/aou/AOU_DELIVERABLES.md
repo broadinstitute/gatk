@@ -105,7 +105,7 @@ Once the VAT table is created and a tsv is exported, the AoU research workbench 
 
 - Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
 - Copy the bgzipped, tarred export of the VAT into the pre-delivery bucket.
-- Send an email should be sent out notifying the AoU research workbench team of the readiness of the VAT.
+- Send an email out notifying the AoU research workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
 - A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
 
 ## Additional Deliverables
