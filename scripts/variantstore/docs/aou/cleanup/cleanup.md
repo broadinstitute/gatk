@@ -13,51 +13,38 @@ Reach out to leadership with these numbers for his verdict on whether to keep or
 During the course of creating AoU callsets several large and expensive artifacts are created:
 
 * Pilot workspace / dataset
-    * For the AoU Delta callset the Variants team created an AoU 10K workspace and dataset to pilot the Hail-related
-      processes we were using for the first time. At some point these processes will mature to the point where some or
-      all of the contents of this workspace and dataset should be deleted. This is likely not an issue for discussion
-      with Lee as it is internal to the Variants team's development process, but we should be mindful to clean up the
-      parts of this that we are done using promptly.
+    * for the Delta callset the Variants team created an AoU 10K workspace and dataset to pilot the Hail/VDS creation
+    * these processes will mature to the point where some or all of the contents of this workspace and dataset should be deleted
 * Production BigQuery dataset
-    * The plan from Delta forward is to use the same production BigQuery dataset for all future callsets. This was also
-      the plan historically as well, but in practice that didn't work out for various reasons. For Delta in particular
-      the Variants team was forced to create a new dataset due to the use of drop state NONE for Hail compatibility. If
-      we are forced to create another BigQuery dataset in the future, discuss with Lee to determine what to do with the
-      previous dataset(s). In the AoU Delta timeframe, the Variants team additionally reached out to a contact at VUMC
-      to determine if various datasets from the Alpha / Beta eras were still in use or could possibly be deleted.
+    * for each previous callset, there was (at least) one new dataset created
+    * the dream is to keep the same dataset for multiple callsets and just add new samples, regenerate the filter and create new deliverables, but that has yet to happen because of new features requested for each callset (e.g. update to Dragen version, addition of ploidy data, different requirements to use Hail...etc.)
 * Prepare tables
-    * These tables are used for callset statistics only starting with Delta but were previously used for extract as well
-      in pre-Delta callsets. Per 2023-01-25 meeting with Lee it appears this VET prepare table and associated callset
-      statistics tables can be deleted once the callset statistics have been generated and handed off.
-* Terra workspace
-    * It seems that VAT workflows may generate large amounts of data under the submissions "folder". e.g. ~10 TiB of
-      data under this folder in the AoU 10K workspace (!). At the time of this writing the VAT process is not fully
-      defined so this item may especially benefit from updates.
+    * needed for VCF or PGEN extract
+    * only variant tables are used by `GvsCallsetStatistics.wdl` for callset statistics deliverable
+* Sites-only VCFs
+    * the VAT is created from a sites-only VCF and its creation is the most resource-intensive part of the VAT pipeline
+    * clean up any failed runs once the VAT has been delivered and accepted
 * Avro files (Delta onward)
-    * These are huge, several times larger than the corresponding Hail VDS. It's not clear that there's any point to
-      keeping these files around unless there was a bug in the Hail GVS import code that would require a patch and
-      re-import. Per 2023-01-25 meeting with Lee we have now deleted the Delta versions of these Avro files. Per the
-      preceding comments, going forward these files can be deleted once the Variants team feels reasonably confident
-      that they won't be needed for the current callset any longer.
-* Hail VariantDataset (VDS) (Delta onward)
-    * The Variants team creates a copy of the VDS and then delivers a copy to the AoU preprod datasets bucket. That copy
-      of the VDS seems to stay in the delivery location for at least a few days, but it's not clear if that copy gets
-      cleaned up after AoU later copies the VDS to a production bucket. The Variants team should not rely on this copy
-      of the VDS being available long-term. Per 2023-01-25 meeting with Lee, we have retained the oldest (with AI/AN +
-      controls) and most recent versions (without AI/AN or controls, corrected phasing and GT) of the Delta VDS. This
-      can serve as our team's guidance for how to handle multiple VDS versions going forward, though of course we can
-      always ask Lee for explicit guidance.
+    * huge, several times larger than the corresponding Hail VDS
+    * as long as the VDS has been delivered and accepted, they can be deleted
+* Hail VariantDataset (VDS)
+    * we used to create it in the Terra workspace and then copy it
+    * WDL was updated to create in the "deliverables" GCS bucket so there is only one copy of each one 
+    * clean up any failed runs once the VDS has been delivered and accepted
 * PGEN/VCF Intermediate Files
+    * PGEN: multiple versions of the PGEN files are created by GvsExtractCallsetPgenMerged.wdl because it delivers files split by chromosome
+    * VCF: only one version of the VCF files and indices are created, but check for failed runs
 
 ## Internal sign-off protocol
 
 The Variants team currently has the following VDS internal sign-off protocol:
 
-* Generate a VDS for the candidate callset
-* Run validation on this VDS
-* Run `GvsPrepareRangesCallset` to generate a prepare table of VET data
-* Generate callset statistics for the candidate callset using the prepare VET created in the preceding step
-* Forward VDS and callset statistics to Lee for QA / approval
+1. Generate a VDS for the candidate callset into the "delivery" bucket.
+1. Open up the VDS in a beefy notebook and confirm the "shape" looks right.
+1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data
+1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET created in the preceding step
+1. Copy the output of `GvsCallsetStatistics.wdl` into the "delivery" bucket.
+1. Email the paths to the VDS and callset statistics to Lee/Wail for QA / approval
 
 ## Storage versus regeneration costs
 
