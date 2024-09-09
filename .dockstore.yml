@@ -206,6 +206,7 @@ workflows:
              - master
              - ah_var_store
              - EchoCallset
+             - gg_VS-1422_MergeVATChangesInEchoIntoAhVarStore
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -292,6 +293,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1422_MergeVATChangesInEchoIntoAhVarStore
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -301,6 +303,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1422_MergeVATChangesInEchoIntoAhVarStore
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -311,6 +314,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1456_status_writes_bug
+             - gg_VS-1422_MergeVATChangesInEchoIntoAhVarStore
          tags:
              - /.*/
    - name: GvsIngestTieout
