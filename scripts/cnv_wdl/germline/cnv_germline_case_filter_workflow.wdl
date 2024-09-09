@@ -281,9 +281,11 @@ task FilterVCF {
     String filter_expr = select_first([filter_expression, "(QUAL < 50 and CN>2) or (QUAL < 100 and CN<2)"])
 
     command <<<
+        gunzip ~{vcf_file}
+        vcf_uncompressed=$(echo ~{vcf_file} | sed 's/\.gz$//')
         gatk --java-options "-Xmx4g" VariantFiltration \
             -R ~{ref_fasta} \
-            -V ~{vcf_file} \
+            -V ${vcf_uncompressed} \
             --filter-expression "~{filter_expression}" \
             --filter-name "LowQual" \
             -O ~{samplename}.filtered.genotyped-segments.vcf.gz
