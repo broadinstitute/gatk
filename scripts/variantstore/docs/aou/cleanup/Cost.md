@@ -1,4 +1,4 @@
-# Storage versus regeneration costs
+# Storage vs Regeneration Costs
 
 ## Prepare tables
 
