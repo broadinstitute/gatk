@@ -88,13 +88,26 @@
 1. `GvsCallsetCost` workflow
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
 
+
+## Internal sign-off protocol
+
+The Variants team currently has the following VDS internal sign-off protocol:
+
+1. Generate a VDS for the candidate callset into the "delivery" bucket.
+1. Open up the VDS in a beefy notebook and confirm the "shape" looks right.
+1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data
+1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET created in the preceding step
+1. Copy the output of `GvsCallsetStatistics.wdl` into the "delivery" bucket.
+1. Email the paths to the VDS and callset statistics to Lee/Wail for QA / approval
+
+
 ## Main Deliverables (via email to stakeholders once the above steps are complete)
 
 The Callset Stats and S&P files can be simply `gsutil cp`ed to the AoU delivery bucket since they are so much smaller.
 1. GCS location of the VDS in the AoU delivery bucket
-2. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
-3. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket
-4. GCS location of the TSV output from `GvsCalculatePrecisionAndSensitivity` in the AoU delivery bucket
+1.Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
+1. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket
+1. GCS location of the TSV output from `GvsCalculatePrecisionAndSensitivity` in the AoU delivery bucket
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
