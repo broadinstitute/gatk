@@ -94,7 +94,7 @@
 The Variants team currently has the following VDS internal sign-off protocol:
 
 1. Generate a VDS for the candidate callset into the "delivery" bucket.
-1. Open up the VDS in a [beefy](/scripts/variantstore/docs/vds/cluster/AoU%20VDS%20Cluster%20Configuration.md) notebook and confirm the "shape" looks right.
+1. Open up the VDS in a [beefy](vds/cluster/AoU%20VDS%20Cluster%20Configuration.md) notebook and confirm the "shape" looks right.
 1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data
 1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET created in the preceding step
 1. Copy the output of `GvsCallsetStatistics.wdl` into the "delivery" bucket.
