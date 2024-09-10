@@ -95,17 +95,17 @@ The Variants team currently has the following VDS internal sign-off protocol:
 
 1. Generate a VDS for the candidate callset into the "delivery" bucket.
 1. Open up the VDS in a [beefy](vds/cluster/AoU%20VDS%20Cluster%20Configuration.md) notebook and confirm the "shape" looks right.
-1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data
-1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET created in the preceding step
+1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data.
+1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET table created in the preceding step.
 1. Copy the output of `GvsCallsetStatistics.wdl` into the "delivery" bucket.
-1. Email the paths to the VDS and callset statistics to Lee/Wail for QA / approval
+1. Email the paths to the VDS and callset statistics to Lee/Wail for QA / approval.
 
 
 ## Main Deliverables (via email to stakeholders once the above steps are complete)
 
 The Callset Stats and S&P files can be simply `gsutil cp`ed to the AoU delivery bucket since they are so much smaller.
 1. GCS location of the VDS in the AoU delivery bucket
-1.Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
+1. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
 1. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket
 1. GCS location of the TSV output from `GvsCalculatePrecisionAndSensitivity` in the AoU delivery bucket
 

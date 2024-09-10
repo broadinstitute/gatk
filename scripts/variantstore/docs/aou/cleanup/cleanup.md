@@ -4,9 +4,9 @@
 
 The current Variants policy for AoU callsets is effectively to retain all versions of all artifacts forever. As the  storage costs for these artifacts can be significant (particularly from Delta onward), the Variants team would like to make the cost of retaining artifacts more clear so conscious choices can be made about what to keep and what to delete.
 
-As a general rule, any artifacts that have clearly become obsolete (e.g. VDSes with known issues that have been  superseded by corrected versions, obsolete sets of prepare tables, etc.) should be deleted ASAP. If it's not clear to the Variants team whether an artifact should be cleaned up or not, [we should calculate the monthly cost to preserve the artifact (e.g. the sum of all relevant GCS or BigQuery storage costs) as well as the cost to regenerate the artifact](Cost.md).
+As a general rule, any artifacts that have clearly become obsolete (e.g. VDSes with known issues that have been superseded by corrected versions, obsolete sets of prepare tables, etc.) should be deleted ASAP. If it's not clear to the Variants team whether an artifact should be cleaned up or not, [we should calculate the monthly cost to preserve the artifact (e.g. the sum of all relevant GCS or BigQuery storage costs) as well as the cost to regenerate the artifact](Cost.md).
 
-Reach out to leadership with these numbers for his verdict on whether to keep or delete.
+Reach out to leadership with these numbers for their verdict on whether to keep or delete.
 
 ## Specific AoU GVS Artifacts
 
