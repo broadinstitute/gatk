@@ -200,7 +200,7 @@ workflows:
              - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/variant_annotation_table/GvsCreateVATfromVDS.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/variant-annotations-table/GvsCreateVATfromVDS.wdl
      filters:
          branches:
              - master
@@ -209,7 +209,7 @@ workflows:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATFilesFromBigQuery.wdl
      filters:
          branches:
              - master
@@ -218,9 +218,9 @@ workflows:
              - /.*/
    - name: GvsValidateVat
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl
      testParameterFiles:
-         - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
+         - /scripts/variantstore/variant-annotations-table/GvsValidateVat.example.inputs.json
      filters:
          branches:
              - master

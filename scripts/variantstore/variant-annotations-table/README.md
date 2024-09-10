@@ -5,8 +5,8 @@ The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in
 
 ### VAT WDLs
 
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant_annotations_table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS and then uses that and an ancestry file TSV to build the variant annotations table.
-- [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS and then uses that and an ancestry file TSV to build the variant annotations table.
+- [GvsValidateVAT.wdl](/scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
 ### Run GvsCreateVATfromVDS
 
