@@ -309,6 +309,7 @@ workflow GvsQuickstartIntegration {
         String workspace_bucket = GetToolVersions.workspace_bucket
         String submission_id = GetToolVersions.submission_id
         String extract_output_gcs_dir = "~{workspace_bucket}/output_vcfs/by_submission_id/~{submission_id}/beta"
+        Boolean collect_variant_calling_metrics = true
 
         call Utils.CreateDatasetForTest {
             input:
@@ -342,6 +343,7 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = vcf_files_column_name,
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 extract_output_gcs_dir = extract_output_gcs_dir,
+                collect_variant_calling_metrics = collect_variant_calling_metrics,
         }
 
         if (!QuickstartBeta.used_tighter_gcp_quotas) {
