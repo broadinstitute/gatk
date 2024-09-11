@@ -201,26 +201,26 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None)
             vds.variant_data._filter_partitions(part_range),
         )
 
-    transforms = [
+        transforms = [
             remove_too_many_alt_allele_sites,
-        hard_filter_non_passing_sites,
-        failing_gts_to_no_call,
-    ]
+            hard_filter_non_passing_sites,
+            failing_gts_to_no_call,
+        ]
         transformed_vds=vds_part
-    for transform in transforms:
-        transformed_vds = transform(transformed_vds)
+        for transform in transforms:
+            transformed_vds = transform(transformed_vds)
 
         print(f"densifying dense matrix table index {i}")
-    mt = hl.vds.to_dense_mt(transformed_vds)
+        mt = hl.vds.to_dense_mt(transformed_vds)
 
-    with open(ancestry_file_location, 'r') as ancestry_file:
-        mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
+        with open(ancestry_file_location, 'r') as ancestry_file:
+            mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
         ht = mt.rows()
         ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
         ht.write(ht_paths[i])
 
-    # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
+        # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
 
         # for debugging information -- remove for now to get us through Echo
         # add_variant_tracking_info(mt, sites_only_vcf_path)
