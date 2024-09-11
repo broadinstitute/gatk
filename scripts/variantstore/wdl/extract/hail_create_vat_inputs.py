@@ -261,14 +261,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-    temp_path = args.temp_path if not args.temp_path.endswith('/') else args.temp_path[:-1]
-    time_stamp = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
-    hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
+        temp_path = args.temp_path if not args.temp_path.endswith('/') else args.temp_path[:-1]
+        time_stamp = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+        hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
 
-    vds = hl.vds.read_vds(args.vds_input_path)
-    local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
+        vds = hl.vds.read_vds(args.vds_input_path)
+        local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
-    main(vds, local_ancestry_file, args.sites_only_output_path)
+        main(vds, local_ancestry_file, args.sites_only_output_path)
     except Exception:
       hl.copy_log(args.sites_only_output_path.replace(r".sites-only.vcf", ".log"))
       raise
