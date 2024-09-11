@@ -1059,7 +1059,7 @@ task IndexVcf {
     Int max_heap = memory_mb - 500
 
     String local_file = basename(input_vcf)
-    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+    Boolean is_compressed = (sub(local_file, ".*\\.", "") == "gz") || (sub(local_file, ".*\\.", "") == "bgz")
     String index_extension = if is_compressed then ".tbi" else ".idx"
 
     command <<<
