@@ -17,6 +17,7 @@ public class ClusteringParameters {
 
     // if true, both reciprocal overlap and window criteria must be met
     // if false, reciprocal overlap and/or window criteria must be met
+    // NOTE this is currently set to true in all tools but is being kept for possible future use
     private final boolean requiresOverlapAndProximity;
 
     // returns true if two given records are the correct type of pair for this parameter set
