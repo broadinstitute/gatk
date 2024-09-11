@@ -26,7 +26,7 @@ public class SVClusterEngineTest {
 
     private final SVClusterEngine engine = SVTestUtils.defaultSingleLinkageEngine;
 
-    private static final ClusteringParameters depthOnlyParametersSizeSimilarity = ClusteringParameters.createDepthParameters(0.1, 0.5, 0, 0);
+    private static final ClusteringParameters depthOnlyParametersSizeSimilarity = ClusteringParameters.createDepthParameters(0.1, 0.5, 10000000, 0);
     private static final ClusteringParameters mixedParametersSizeSimilarity = ClusteringParameters.createMixedParameters(0.1, 0.5, 5000, 0);
     private static final ClusteringParameters evidenceParametersSizeSimilarity = ClusteringParameters.createPesrParameters(0.1, 0.5, 5000, 0);
     private final CanonicalSVLinkage<SVCallRecord> linkageSizeSimilarity = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);

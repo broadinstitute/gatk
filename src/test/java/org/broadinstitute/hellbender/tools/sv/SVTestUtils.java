@@ -56,7 +56,7 @@ public class SVTestUtils {
         return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, defaultCollapser::collapse, getNewDefaultLinkage(), hg38Dict);
     }
 
-    public static final ClusteringParameters defaultDepthOnlyParameters = ClusteringParameters.createDepthParameters(0.8, 0, 0, 0);
+    public static final ClusteringParameters defaultDepthOnlyParameters = ClusteringParameters.createDepthParameters(0.8, 0, 10000000, 0);
     public static final ClusteringParameters defaultMixedParameters = ClusteringParameters.createMixedParameters(0.8, 0, 1000, 0);
     public static final ClusteringParameters defaultEvidenceParameters = ClusteringParameters.createPesrParameters(0.5, 0, 500, 0);
 

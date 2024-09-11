@@ -45,7 +45,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
 
     public static final double DEFAULT_RECIPROCAL_OVERLAP_DEPTH_ONLY = 0.8;
     public static final double DEFAULT_SIZE_SIMILARITY_DEPTH_ONLY = 0;
-    public static final int DEFAULT_WINDOW_DEPTH_ONLY = 0;
+    public static final int DEFAULT_WINDOW_DEPTH_ONLY = 10000000;
     public static final double DEFAULT_SAMPLE_OVERLAP_DEPTH_ONLY = 0;
 
     public static final double DEFAULT_RECIPROCAL_OVERLAP_MIXED = 0.8;

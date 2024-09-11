@@ -53,7 +53,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -69,7 +69,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
@@ -180,7 +180,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SIZE_SIMILARITY_NAME, 0)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SIZE_SIMILARITY_NAME, 0)
@@ -197,7 +197,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
@@ -279,7 +279,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
@@ -331,7 +331,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)

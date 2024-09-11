@@ -204,7 +204,7 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
                 .add(JointGermlineCNVSegmentation.MODEL_CALL_INTERVALS_LONG_NAME, getToolTestDataDir() + "intervals.chr22.interval_list")
                 .addInterval("22:22,538,114-23,538,437")
                 .add(JointGermlineCNVSegmentation.CLUSTERING_INTERVAL_OVERLAP_LONG_NAME, 0.8)
-                .add(JointGermlineCNVSegmentation.CLUSTERING_BREAKEND_WINDOW_LONG_NAME, 0);
+                .add(JointGermlineCNVSegmentation.CLUSTERING_BREAKEND_WINDOW_LONG_NAME, 10000000);
 
         inputVcfs.forEach(vcf -> args.addVCF(vcf));
 
