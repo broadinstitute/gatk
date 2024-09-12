@@ -76,10 +76,12 @@ public final class QualByDepth implements InfoFieldAnnotation, StandardAnnotatio
         final double qual;
         if (vc.hasLog10PError()) {
             qual = -10.0 * vc.getLog10PError();
-        } else if (vc.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
-            qual = vc.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
         } else {
-            throw new GATKException("No QUAL or QUAL_approx found in when calculating QD at " + vc.getContig() + ":" + vc.getStart());
+            try {
+                qual = vc.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+            } catch (NumberFormatException e) {
+                throw new GATKException("Error at: " + vc.getContig() + ":" + vc.getStart() + " when parsing " + GATKVCFConstants.RAW_QUAL_APPROX_KEY + ": " + e.getMessage());
+            }
         }
         double QD = qual / depth;
 

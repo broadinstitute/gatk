@@ -361,9 +361,10 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(lociWithHighConfidenceDeNovo, new int[] {10130767, 10197999});
     }
 
+    //GVS vcfs have QUALapprox, but no QUAL. This tests that we can still calculate QD and AS_QD without QUAL (using QUALapprox and AS_QUALapprox)
     @Test
     public void addQdToGvsVcf() {
-        final File inputVCF = getTestFile("gvsOutput.vcf");
+        final File inputVCF = getTestFile("gvsCallsetWithNoQual.vcf");
         final File outputVCF = createTempFile("output", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(inputVCF)
@@ -377,10 +378,13 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         Map<String, String> expectedAnnotations66506 = new HashMap<>();
         Map<String, String> expectedAnnotations66507 = new HashMap<>();
 
+        // bi-allelic site
         expectedAnnotations66506.put("QD", "4.23");
         expectedAnnotations66506.put("AS_QD", "4.23");
+        //make sure that the AS_QUALapprox doesn't change from the input
         expectedAnnotations66506.put("AS_QUALapprox", "0|110");
 
+        //multi-allelic site
         expectedAnnotations66507.put("QD", "6.29");
         expectedAnnotations66507.put("AS_QD", "[9.00, 9.26]");
         expectedAnnotations66507.put("AS_QUALapprox", "0|396|537");
