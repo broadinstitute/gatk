@@ -29,10 +29,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -362,6 +359,42 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         // known possible de novo sites
         Assert.assertEquals(lociWithLowConfidenceDeNovo, new int[] {10088967});
         Assert.assertEquals(lociWithHighConfidenceDeNovo, new int[] {10130767, 10197999});
+    }
+
+    @Test
+    public void addQdToGvsVcf() {
+        final File inputVCF = getTestFile("gvsOutput.vcf");
+        final File outputVCF = createTempFile("output", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addInterval("chr1:66506-66507")
+                .add("A", "QualByDepth")
+                .add("A", "AS_QualByDepth");
+        runCommandLine(args.getArgsList());
+
+        Map<Integer, Map<String, String>> expectedAnnotations = new HashMap<>();
+        Map<String, String> expectedAnnotations66506 = new HashMap<>();
+        Map<String, String> expectedAnnotations66507 = new HashMap<>();
+
+        expectedAnnotations66506.put("QD", "4.23");
+        expectedAnnotations66506.put("AS_QD", "4.23");
+        expectedAnnotations66506.put("AS_QUALapprox", "0|110");
+
+        expectedAnnotations66507.put("QD", "6.29");
+        expectedAnnotations66507.put("AS_QD", "[9.00, 9.26]");
+        expectedAnnotations66507.put("AS_QUALapprox", "0|396|537");
+
+        expectedAnnotations.put(66506, expectedAnnotations66506);
+        expectedAnnotations.put(66507, expectedAnnotations66507);
+
+
+        final List<VariantContext> outputVCs = VariantContextTestUtils.getVariantContexts(outputVCF);
+        for (final VariantContext outputVC : outputVCs) {
+            Assert.assertEquals(outputVC.getAttribute("QD"), expectedAnnotations.get(outputVC.getStart()).get("QD"));
+            Assert.assertEquals(outputVC.getAttribute("AS_QD").toString(), expectedAnnotations.get(outputVC.getStart()).get("AS_QD"));
+            Assert.assertEquals(outputVC.getAttribute("AS_QUALapprox"), expectedAnnotations.get(outputVC.getStart()).get("AS_QUALapprox"));
+        }
     }
 
     private static String keyForVariant( final VariantContext variant ) {

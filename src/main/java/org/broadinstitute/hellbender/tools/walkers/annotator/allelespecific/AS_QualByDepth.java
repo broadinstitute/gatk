@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
@@ -78,7 +79,9 @@ public class AS_QualByDepth implements InfoFieldAnnotation, ReducibleAnnotation,
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods ) {
-        return Collections.emptyMap();
+        // first vc is used for the annotation and the second vc here is used just to get the alleles, so in this case we can pass the same vc for both
+        Map<String, Object> annotation = finalizeRawData(vc, vc);
+        return (annotation == null ? Collections.emptyMap() : Collections.singletonMap(getKeyNames().get(0), annotation.get(getKeyNames().get(0))));
     }
 
     /**

@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -57,7 +58,7 @@ public final class QualByDepth implements InfoFieldAnnotation, StandardAnnotatio
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
-        if ( !vc.hasLog10PError() ) {
+        if ( !(vc.hasLog10PError() || vc.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) ) {
             return Collections.emptyMap();
         }
 
@@ -72,7 +73,14 @@ public final class QualByDepth implements InfoFieldAnnotation, StandardAnnotatio
             return Collections.emptyMap();
         }
 
-        final double qual = -10.0 * vc.getLog10PError();
+        final double qual;
+        if (vc.hasLog10PError()) {
+            qual = -10.0 * vc.getLog10PError();
+        } else if (vc.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
+            qual = vc.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        } else {
+            throw new GATKException("No QUAL or QUAL_approx found in when calculating QD at " + vc.getContig() + ":" + vc.getStart());
+        }
         double QD = qual / depth;
 
         // Hack: see note in the fixTooHighQD method below
