@@ -1354,7 +1354,7 @@ task CopyFile {
     fi
 
     gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
-    echo ${OUTPUT_PATH} > output_file_path.txt
+    echo $OUTPUT_PATH > output_file_path.txt
   >>>
   output {
     String output_file_path = read_string("output_file_path.txt")
