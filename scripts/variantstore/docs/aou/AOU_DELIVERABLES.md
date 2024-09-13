@@ -172,6 +172,7 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - Select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
+    - Set the `extract_maxretries_override` input to 5, `split_intervals_disk_size_override` to 1000, `scatter_count` to 25000, and `y_bed_weight_scaling` to 8 to start; you will likely have to adjust one or more of these values in subsequent attempts.
     - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
     - Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy the output files there yourself once the workflow has finished.
     - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.

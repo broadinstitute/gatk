@@ -140,12 +140,12 @@ workflow GvsExtractCallsetPgen {
 
     Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
                                                                 if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                                                else 500])
+                                                                else 200])
 
     Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
-                                       else if effective_scatter_count <= 100 then 37 + extract_overhead_memory_override_gib
-                                           else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
-                                               else 9 + extract_overhead_memory_override_gib
+                                       else if effective_scatter_count <= 100 then 35 + extract_overhead_memory_override_gib
+                                           else if effective_scatter_count <= 500 then 15 + extract_overhead_memory_override_gib
+                                               else 5 + extract_overhead_memory_override_gib
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
