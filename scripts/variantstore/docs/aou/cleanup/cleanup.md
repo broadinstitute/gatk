@@ -14,7 +14,7 @@ During the course of creating AoU callsets several large and expensive artifacts
 
 * Pilot workspace / dataset
     * for the Delta callset the Variants team created an AoU 10K workspace and dataset to pilot the Hail/VDS creation
-    * these processes will mature to the point where some or all of the contents of this workspace and dataset should be deleted
+    * the dataset, workspace data tables, and submission files have been deleted to save money, but the workspace has been kept around for future testing
 * Production BigQuery dataset
     * for each previous callset, there was (at least) one new dataset created
     * the dream is to keep the same dataset for multiple callsets and just add new samples, regenerate the filter and create new deliverables, but that has yet to happen because of new features requested for each callset (e.g. update to Dragen version, addition of ploidy data, different requirements to use Hail...etc.)
