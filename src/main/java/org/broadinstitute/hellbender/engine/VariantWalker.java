@@ -3,11 +3,13 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 
 import java.util.Spliterator;
 
@@ -30,6 +32,28 @@ public abstract class VariantWalker extends VariantWalkerBase {
     // we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
     private FeatureDataSource<VariantContext> drivingVariants;
     private FeatureInput<VariantContext> drivingVariantsFeatureInput;
+
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME,
+            doc = "Restrict the output variants to ones that match the specified intervals according to the specified matching mode.",
+            optional = true)
+    @Advanced
+    public IntervalFilteringVcfWriter.Mode outputVariantIntervalFilteringMode  = getDefaultVariantOutputFilterMode();
+
+    /**
+     * @return Default interval filtering mode for variant output.  Subclasses may override this to set a different default.
+     */
+    public IntervalFilteringVcfWriter.Mode getDefaultVariantOutputFilterMode(){
+        return IntervalFilteringVcfWriter.Mode.ANYWHERE;
+    }
+
+    @Override
+    public IntervalFilteringVcfWriter.Mode getVariantFilteringOutputModeIfApplicable() {
+        if (outputVariantIntervalFilteringMode != null) {
+            return outputVariantIntervalFilteringMode;
+        } else {
+            return super.getVariantFilteringOutputModeIfApplicable();
+        }
+    }
 
     @Override
     protected SAMSequenceDictionary getSequenceDictionaryForDrivingVariants() { return drivingVariants.getSequenceDictionary(); }

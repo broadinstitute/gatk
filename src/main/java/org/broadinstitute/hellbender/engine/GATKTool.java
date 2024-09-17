@@ -131,13 +131,6 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "If true, don't emit genotype fields when writing vcf file output.", optional = true)
     public boolean outputSitesOnlyVCFs = false;
 
-    @Argument(fullName = StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME,
-            doc = "Restrict the output variants to ones that match the specified intervals according to the specified matching mode.",
-            optional = true)
-    @Advanced
-    public IntervalFilteringVcfWriter.Mode outputVariantIntervalFilteringMode  = getDefaultVariantOutputFilterMode();
-
-
     /**
      * Master sequence dictionary to be used instead of all other dictionaries (if provided).
      */
@@ -429,10 +422,10 @@ public abstract class GATKTool extends CommandLineProgram {
     public String getProgressMeterRecordLabel() { return ProgressMeter.DEFAULT_RECORD_LABEL; }
 
     /**
-     * @return Default interval filtering mode for variant output.  Subclasses may override this to set a different default.
+     * @return null for no output filtering of variants to the variant writer.  Subclasses may override this to enforce other filtering schemes.
      */
-    public IntervalFilteringVcfWriter.Mode getDefaultVariantOutputFilterMode(){
-        return null;
+    public IntervalFilteringVcfWriter.Mode getVariantFilteringOutputModeIfApplicable(){
+        return IntervalFilteringVcfWriter.Mode.ANYWHERE;
     }
 
     protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
@@ -751,7 +744,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         checkToolRequirements();
 
-        if (outputVariantIntervalFilteringMode != null && userIntervals == null){
+        if ((getVariantFilteringOutputModeIfApplicable() != IntervalFilteringVcfWriter.Mode.ANYWHERE ) && userIntervals == null){
             throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " was specified.");
         }
 
@@ -949,11 +942,11 @@ public abstract class GATKTool extends CommandLineProgram {
                     options.toArray(new Options[0]));
         }
 
-        return outputVariantIntervalFilteringMode== null ?
+        return getVariantFilteringOutputModeIfApplicable() == IntervalFilteringVcfWriter.Mode.ANYWHERE ?
                 unfilteredWriter :
                 new IntervalFilteringVcfWriter(unfilteredWriter,
                         intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()),
-                        outputVariantIntervalFilteringMode);
+                        getVariantFilteringOutputModeIfApplicable());
     }
 
     /**

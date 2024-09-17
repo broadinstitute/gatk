@@ -5,6 +5,8 @@ import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -32,6 +34,8 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
                 final SimpleInterval startPosition = new SimpleInterval(query.getContig(), query.getStart(), query.getStart());
                 return detector.overlapsAny(startPosition);
             }
+            @Override
+            String getName() {return "STARTS_IN";}
         },
 
         /**
@@ -43,6 +47,8 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
                 final SimpleInterval endPosition = new SimpleInterval(query.getContig(), query.getEnd(), query.getEnd());
                 return detector.overlapsAny(endPosition);
             }
+            @Override
+            String getName() {return "ENDS_IN";}
         },
 
         /**
@@ -53,12 +59,13 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
             boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 return detector.overlapsAny(query);
             }
+            @Override
+            String getName() {return "OVERLAPS";}
         },
 
-        // TODO finish this exception here...
         /**
          * Matches if the entirety of the query is contained within one of the intervals.  Note that adjacent intervals
-         * may be merged into a single interval depending on the values in
+         * may be merged into a single interval depending specified "--interval-merging-rule".
          */
         CONTAINED("contained completely within a contiguous block of intervals without overlap") {
             @Override
@@ -71,6 +78,8 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
                 }
                 return false;
             }
+            @Override
+            String getName() {return "CONTAINED";}
         },
 
         /**
@@ -81,6 +90,8 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
             boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 return true;
             }
+            @Override
+            String getName() {return "ANYWHERE";}
         };
 
         private final String doc;
@@ -91,6 +102,7 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
          * @return true iff the variant matches the given intervals
          */
         abstract boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query);
+        abstract String getName();
 
         private Mode(String doc){
             this.doc = doc;
@@ -103,9 +115,11 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
         }
     }
 
-    private final VariantContextWriter writer;
+    private final VariantContextWriter underlyingWriter;
     private final OverlapDetector<SimpleInterval> detector;
     private final Mode mode;
+    private static int filteredCount = 0;
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     /**
      * @param writer the writer to wrap
@@ -117,29 +131,32 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
         Utils.nonEmpty(intervals);
         Utils.nonNull(mode);
 
-        this.writer = writer;
+        this.underlyingWriter = writer;
         this.detector = OverlapDetector.create(intervals);
         this.mode = mode;
     }
 
     @Override
     public void writeHeader(final VCFHeader header) {
-        writer.writeHeader(header);
+        underlyingWriter.writeHeader(header);
     }
 
     @Override
     public void setHeader(final VCFHeader header) {
-        writer.setHeader(header);
+        underlyingWriter.setHeader(header);
     }
 
     @Override
     public void close() {
-        writer.close();
+        underlyingWriter.close();
+        if (filteredCount > 0) {
+            logger.info("Removed " + filteredCount + " variants from the output according to '"+mode.getName()+"' variant interval filtering rule.");
+        }
     }
 
     @Override
     public boolean checkError() {
-        return writer.checkError();
+        return underlyingWriter.checkError();
     }
 
     /**
@@ -149,7 +166,9 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
     @Override
     public void add(final VariantContext vc) {
         if(mode.test(detector, vc)) {
-            writer.add(vc);
+            underlyingWriter.add(vc);
+        } else {
+            filteredCount++;
         }
     }
 
