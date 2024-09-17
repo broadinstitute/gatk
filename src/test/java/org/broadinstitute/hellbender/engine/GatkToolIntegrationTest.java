@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.google.errorprone.annotations.Var;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.FileExtensions;
@@ -16,6 +15,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
@@ -137,11 +137,11 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
         public IntervalFilteringVcfWriter.Mode outputVariantIntervalFilteringMode  = IntervalFilteringVcfWriter.Mode.ANYWHERE;
 
         @Override
-        public IntervalFilteringVcfWriter.Mode getVariantFilteringOutputModeIfApplicable() {
+        public IntervalFilteringVcfWriter.Mode getVariantOutputFilteringMode() {
             if (outputVariantIntervalFilteringMode != null) {
                 return outputVariantIntervalFilteringMode;
             } else {
-                return super.getVariantFilteringOutputModeIfApplicable();
+                return super.getVariantOutputFilteringMode();
             }
         }
 
@@ -188,10 +188,10 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
 
                 // Tests specifically aimed at documenting how the --interval-merging-rule argument works in conjunction with the interval filtering
                 {Arrays.asList(chr1IntervalLeft, chr1IntervalRight), new ArrayList<>(), IntervalFilteringVcfWriter.Mode.CONTAINED, List.of(VariantEmitter.INT2)}, // Default is to merge all
-                {Arrays.asList(chr1IntervalLeft, chr1IntervalRight), Arrays.asList("--interval-merging-rule", "ALL"), IntervalFilteringVcfWriter.Mode.CONTAINED, List.of(VariantEmitter.INT2)},
-                {Arrays.asList(chr1IntervalLeft, chr1IntervalRight), Arrays.asList("--interval-merging-rule", "OVERLAPPING_ONLY"), IntervalFilteringVcfWriter.Mode.CONTAINED, new ArrayList<>()},
-                {Arrays.asList(chr1IntervalLeft, chr1IntervalNonAbutting), Arrays.asList("--interval-merging-rule", "OVERLAPPING_ONLY"), IntervalFilteringVcfWriter.Mode.CONTAINED, new ArrayList<>()},
-                {Arrays.asList(chr1IntervalLeft, chr1IntervalNonAbutting), Arrays.asList("--interval-merging-rule", "OVERLAPPING_ONLY", "--interval-padding", "10"), IntervalFilteringVcfWriter.Mode.CONTAINED, List.of(VariantEmitter.INT2)},
+                {Arrays.asList(chr1IntervalLeft, chr1IntervalRight), Arrays.asList("--"+IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, "ALL"), IntervalFilteringVcfWriter.Mode.CONTAINED, List.of(VariantEmitter.INT2)},
+                {Arrays.asList(chr1IntervalLeft, chr1IntervalRight), Arrays.asList("--"+IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, "OVERLAPPING_ONLY"), IntervalFilteringVcfWriter.Mode.CONTAINED, new ArrayList<>()},
+                {Arrays.asList(chr1IntervalLeft, chr1IntervalNonAbutting), Arrays.asList("--"+IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, "OVERLAPPING_ONLY"), IntervalFilteringVcfWriter.Mode.CONTAINED, new ArrayList<>()},
+                {Arrays.asList(chr1IntervalLeft, chr1IntervalNonAbutting), Arrays.asList("--"+IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, "OVERLAPPING_ONLY", "--interval-padding", "10"), IntervalFilteringVcfWriter.Mode.CONTAINED, List.of(VariantEmitter.INT2)},
 
                 // Demonstrating the exact behavior of the starts_in/ends_in modes
                 {Arrays.asList(chr1Interval99), new ArrayList<>(), IntervalFilteringVcfWriter.Mode.STARTS_IN, List.of(VariantEmitter.INT2)},

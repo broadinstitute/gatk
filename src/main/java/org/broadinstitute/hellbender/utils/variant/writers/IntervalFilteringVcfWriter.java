@@ -65,7 +65,7 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
 
         /**
          * Matches if the entirety of the query is contained within one of the intervals.  Note that adjacent intervals
-         * may be merged into a single interval depending specified "--interval-merging-rule".
+         * may be merged into a single interval depending on the specified "--interval-merging-rule".
          */
         CONTAINED("contained completely within a contiguous block of intervals without overlap") {
             @Override
@@ -148,10 +148,10 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
 
     @Override
     public void close() {
-        underlyingWriter.close();
         if (filteredCount > 0) {
             logger.info("Removed " + filteredCount + " variants from the output according to '"+mode.getName()+"' variant interval filtering rule.");
         }
+        underlyingWriter.close();
     }
 
     @Override

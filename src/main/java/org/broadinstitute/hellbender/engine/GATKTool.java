@@ -17,7 +17,6 @@ import java.util.*;
 import java.util.stream.Stream;
 
 
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -424,7 +423,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * @return null for no output filtering of variants to the variant writer.  Subclasses may override this to enforce other filtering schemes.
      */
-    public IntervalFilteringVcfWriter.Mode getVariantFilteringOutputModeIfApplicable(){
+    public IntervalFilteringVcfWriter.Mode getVariantOutputFilteringMode(){
         return IntervalFilteringVcfWriter.Mode.ANYWHERE;
     }
 
@@ -744,8 +743,8 @@ public abstract class GATKTool extends CommandLineProgram {
 
         checkToolRequirements();
 
-        if ((getVariantFilteringOutputModeIfApplicable() != IntervalFilteringVcfWriter.Mode.ANYWHERE ) && userIntervals == null){
-            throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " was specified.");
+        if ((getVariantOutputFilteringMode() != IntervalFilteringVcfWriter.Mode.ANYWHERE ) && userIntervals == null){
+            throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " was specified or if the tool uses interval filtering.");
         }
 
         initializeProgressMeter(getProgressMeterRecordLabel());
@@ -942,11 +941,11 @@ public abstract class GATKTool extends CommandLineProgram {
                     options.toArray(new Options[0]));
         }
 
-        return getVariantFilteringOutputModeIfApplicable() == IntervalFilteringVcfWriter.Mode.ANYWHERE ?
+        return getVariantOutputFilteringMode() == IntervalFilteringVcfWriter.Mode.ANYWHERE ?
                 unfilteredWriter :
                 new IntervalFilteringVcfWriter(unfilteredWriter,
                         intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()),
-                        getVariantFilteringOutputModeIfApplicable());
+                        getVariantOutputFilteringMode());
     }
 
     /**
