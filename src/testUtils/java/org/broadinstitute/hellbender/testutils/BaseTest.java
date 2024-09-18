@@ -514,9 +514,9 @@ public abstract class BaseTest {
         Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual + ".");
     }
 
-    public static <T> void assertCondition(Iterable<T> actual, Iterable<T> expected, BiConsumer<T,T> assertion){
-        final Iterator<T> iterActual = actual.iterator();
-        final Iterator<T> iterExpected = expected.iterator();
+    public static <T> void assertCondition(Iterable<? extends T> actual, Iterable<? extends T> expected, BiConsumer<T,T> assertion){
+        final Iterator<? extends T> iterActual = actual.iterator();
+        final Iterator<? extends T> iterExpected = expected.iterator();
         while(iterActual.hasNext() && iterExpected.hasNext()){
             assertion.accept(iterActual.next(), iterExpected.next());
         }
