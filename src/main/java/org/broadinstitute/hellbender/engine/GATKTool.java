@@ -421,7 +421,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public String getProgressMeterRecordLabel() { return ProgressMeter.DEFAULT_RECORD_LABEL; }
 
     /**
-     * @return null for no output filtering of variants to the variant writer.  Subclasses may override this to enforce other filtering schemes.
+     * @return default value does no filtering. Override to change how variants are filtered against the intervals for your tools.
      */
     public IntervalFilteringVcfWriter.Mode getVariantOutputFilteringMode(){
         return IntervalFilteringVcfWriter.Mode.ANYWHERE;

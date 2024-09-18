@@ -112,18 +112,12 @@ public abstract class VariantWalkerBase extends WalkerBase {
      */
     public abstract VCFHeader getHeaderForVariants();
 
-    /**
-     * @return Default interval filtering mode for variant output.  Subclasses may override this to set a different default.
-     */
-    public IntervalFilteringVcfWriter.Mode getDefaultVariantOutputFilterMode(){
-        return IntervalFilteringVcfWriter.Mode.ANYWHERE;
-    }
-
     @Override
     public IntervalFilteringVcfWriter.Mode getVariantOutputFilteringMode() {
         if (userOutputVariantIntervalFilteringMode != null) {
             return userOutputVariantIntervalFilteringMode;
         } else {
+            // Use whatever is the default provided by GATKTool
             return super.getVariantOutputFilteringMode();
         }
     }
