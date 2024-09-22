@@ -1,5 +1,5 @@
 package org.broadinstitute.hellbender.utils.recalibration;
-
+// tsato: consider renaming Event to Error, so ErrorType
 public enum EventType {
     BASE_SUBSTITUTION("M", "Base Substitution"),
     BASE_INSERTION("I", "Base Insertion"),

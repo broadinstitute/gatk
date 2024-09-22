@@ -25,6 +25,12 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
 
     private final Map<Class<? extends Covariate>, Integer> indexByClass;
 
+    public static final int READ_GROUP_COVARIATE_DEFAULT_INDEX = 0;
+    public static final int BASE_QUALITY_COVARIATE_DEFAULT_INDEX = 1;
+    public static final int CONTEXT_COVARIATE_DEFAULT_INDEX = 2;
+    public static final int CYCLE_COVARIATE_DEFAULT_INDEX = 3;
+    public static final int NUM_REQUIRED_COVARITES = 2;
+
     /**
      * Creates a new list of standard BQSR covariates and initializes each covariate.
      */
@@ -36,9 +42,9 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
 
         additionalCovariates = Collections.unmodifiableList(Arrays.asList(contextCovariate, cycleCovariate));
         allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate));
-
+        // tsato: use the above new constants to make the list
         //precompute for faster lookup (shows up on profile)
-        indexByClass = new LinkedHashMap<>();
+        indexByClass = new LinkedHashMap<>(); // tsato: or we could do this too...
         for(int i = 0; i < allCovariates.size(); i++){
             indexByClass.put(allCovariates.get(i).getClass(), i);
         }
@@ -48,7 +54,7 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * Creates a new list of standard BQSR covariates and initializes each covariate.
      */
     public StandardCovariateList(final RecalibrationArgumentCollection rac, final SAMFileHeader header){
-        this(rac, ReadGroupCovariate.getReadGroupIDs(header));
+        this(rac, ReadGroupCovariate.getReadGroupIDs(header)); // tsato: but how does ApplyBQSR get the list of covariates?
     }
 
     /**
@@ -125,12 +131,13 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
     /**
      * For each covariate compute the values for all positions in this read and
      * record the values in the provided storage object.
-      */
-    public void recordAllValuesInStorage(final GATKRead read, final SAMFileHeader header, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
+     */
+    // tsato: consider renaming this method
+    public void populateTable(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix perReadCovariateMatrix, final boolean recordIndelValues) {
         for (int i = 0, n = allCovariates.size(); i < n; i++) {
             final Covariate cov = allCovariates.get(i);
-            resultsStorage.setCovariateIndex(i);
-            cov.recordValues(read, header, resultsStorage, recordIndelValues);
+            perReadCovariateMatrix.setCovariateIndex(i);
+            cov.recordValues(read, header, perReadCovariateMatrix, recordIndelValues);
         }
     }
 

@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Random;
 
-public final class ReadCovariatesUnitTest extends GATKBaseTest {
+public final class PerReadCovariateMatrixUnitTest extends GATKBaseTest {
 
     @Test
     public void testCovariateGeneration() {
@@ -47,7 +47,7 @@ public final class ReadCovariatesUnitTest extends GATKBaseTest {
                 final byte[] mQuals = read.getBaseQualities();
                 final byte[] iQuals = ReadUtils.getBaseInsertionQualities(read);
                 final byte[] dQuals = ReadUtils.getBaseDeletionQualities(read);
-                ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariates, true, keyCache);
+                PerReadCovariateMatrix rc = RecalUtils.computeCovariates(read, header, covariates, true, keyCache);
 
                 // check that the length is correct
                 Assert.assertEquals(rc.getMismatchesKeySet().length, length);

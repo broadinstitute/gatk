@@ -41,7 +41,7 @@ public final class ReadGroupCovariateUnitTest {
         final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
         final SAMFileHeader headerWithGroups = ArtificialReadUtils.createArtificialSamHeaderWithGroups(1, 0, 100, 2);
         final List<String> rgs = Arrays.asList("rg1", "rg2");
-        Assert.assertEquals(ReadGroupCovariate.getReadGroupIDs(headerWithGroups), headerWithGroups.getReadGroups().stream().map(rg -> ReadGroupCovariate.getID(rg)).collect(Collectors.toList()));
+        Assert.assertEquals(ReadGroupCovariate.getReadGroupIDs(headerWithGroups), headerWithGroups.getReadGroups().stream().map(rg -> ReadGroupCovariate.getReadGroupIdentifier(rg)).collect(Collectors.toList()));
     }
 
     @Test(expectedExceptions = IllegalStateException.class)
@@ -74,9 +74,9 @@ public final class ReadGroupCovariateUnitTest {
         GATKRead read = ArtificialReadUtils.createRandomRead(header, 10);
         read.setReadGroup(rg.getReadGroupId());
 
-        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
-        covariate.recordValues(read, header, readCovariates, true);
-        verifyCovariateArray(readCovariates.getMismatchesKeySet(), expected, covariate);
+        PerReadCovariateMatrix perReadCovariateMatrix = new PerReadCovariateMatrix(read.getLength(), 1, new CovariateKeyCache());
+        covariate.recordValues(read, header, perReadCovariateMatrix, true);
+        verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), expected, covariate);
 
     }
 

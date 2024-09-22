@@ -130,7 +130,6 @@ public final class RecalibrationArgumentCollection implements Serializable {
     @Argument(fullName="default-base-qualities", doc = "Assign a default base quality", optional = true)
     public byte defaultBaseQualities = -1;
 
-
     /////////////////////////////
     // Debugging-only Arguments
     /////////////////////////////

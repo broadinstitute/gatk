@@ -28,4 +28,12 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
      */
     @Argument(fullName="use-original-qualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
     public Boolean useOriginalBaseQualities = false;
+
+    /**
+     * If a read group was not found in the recalibration table (e.g. if all reads in the read group were filtered
+     * at the recalibration step), leave the reads as is
+     */
+    // tsato: how will it interact with e.g. quantization...
+    @Argument(fullName="hohoho", doc = "yoyo", optional = true)
+    public boolean allowReadGroupsNotInRecalTable = false;
 }

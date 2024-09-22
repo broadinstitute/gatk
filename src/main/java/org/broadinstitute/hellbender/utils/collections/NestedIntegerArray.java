@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+// tsato: roughly this is a multidimensional array of objects of type T (which is often RecalDatum). (then why does Leaf contain the data?)
 public final class NestedIntegerArray<T extends Serializable> implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -110,7 +110,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      */
     @SuppressWarnings("unchecked")
     public T get2Keys(final int key0, final int key1) {
-        if ( key0 >= dimensions[0] || key1 >= dimensions[1] ) {
+        if ( key0 >= dimensions[0] || key1 >= dimensions[1] ) { // tsato: why are 0 and 1 hardcoded?
             return null;
         }
         return leaf(key1, nextDimension(key0, data));
@@ -189,6 +189,10 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
         }
     }
 
+    /**
+     * tsato: goddamnit adam document code
+     * @param <T>
+     */
     public static class Leaf<T> {
         public final int[] keys;
         public final T value;

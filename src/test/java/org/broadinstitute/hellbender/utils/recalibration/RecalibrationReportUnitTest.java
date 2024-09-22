@@ -181,7 +181,7 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
 
         final int expectedKeys = expectedNumberOfKeys(length, RAC.INDELS_CONTEXT_SIZE, RAC.MISMATCHES_CONTEXT_SIZE);
         int nKeys = 0;  // keep track of how many keys were produced
-        final ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariateList, true, new CovariateKeyCache());
+        final PerReadCovariateMatrix rc = RecalUtils.computeCovariates(read, header, covariateList, true, new CovariateKeyCache());
 
         final RecalibrationTables recalibrationTables = new RecalibrationTables(covariateList);
         final NestedIntegerArray<RecalDatum> rgTable = recalibrationTables.getReadGroupTable();

@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.PerReadCovariateMatrix;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
@@ -32,7 +32,7 @@ import java.util.*;
 public final class RecalUtils {
     public static final String ARGUMENT_REPORT_TABLE_TITLE = "Arguments";
     public static final String QUANTIZED_REPORT_TABLE_TITLE = "Quantized";
-    public static final String READGROUP_REPORT_TABLE_TITLE = "RecalTable0";
+    public static final String READGROUP_REPORT_TABLE_TITLE = "RecalTable0"; // tsato: huh...why not use these names....
     public static final String QUALITY_SCORE_REPORT_TABLE_TITLE = "RecalTable1";
     public static final String ALL_COVARIATES_REPORT_TABLE_TITLE = "RecalTable2";
 
@@ -50,11 +50,13 @@ public final class RecalUtils {
     public static final String NUMBER_OBSERVATIONS_COLUMN_NAME = "Observations";
     public static final String NUMBER_ERRORS_COLUMN_NAME = "Errors";
 
+    public static final int NUM_REQUIRED_COVARIATES = 2;
+
     private static boolean warnUserNullPlatform = false;
 
     private static final String SCRIPT_FILE = "BQSR.R";
     public static final int EMPIRICAL_QUAL_DECIMAL_PLACES = 4;
-    public static final int EMPIRICAL_Q_REPORTED_DECIMAL_PLACES = 4;
+    public static final int EMPIRICAL_Q_REPORTED_DECIMAL_PLACES = 4; // tsato: "estimated" q reported...we need to rename.
     public static final int NUMBER_ERRORS_DECIMAL_PLACES = 2;
 
     private static final Pair<String, String> covariateValue     = new MutablePair<>(RecalUtils.COVARIATE_VALUE_COLUMN_NAME, "%s");
@@ -417,7 +419,7 @@ public final class RecalUtils {
         out.println(Utils.join(",", header));
     }
 
-    /*
+    /**
      * Return an initialized nested integer array with appropriate dimensions for use with the delta tables
      *
      * @param recalibrationTables     the recal tables
@@ -462,7 +464,7 @@ public final class RecalUtils {
     /**
      * Updates the current RecalDatum element in the delta table.
      *
-     * If it doesn't have an element yet, it creates an RecalDatum element and adds it to the delta table.
+     * If it doesn't have an element yet, it creates an RecalDatum element and adds it to the delta table. // tsato: what is a delta table?
      *
      * @param deltaTable the delta table
      * @param deltaKey the key to the table
@@ -481,13 +483,13 @@ public final class RecalUtils {
 
     /**
      * Section of code shared between the two recalibration walkers which uses the command line arguments to adjust attributes of the read such as quals or platform string
-     *
+     * tsato: ???
      * @param read The read to adjust
      * @param RAC  The list of shared command line arguments
      */
-    public static void parsePlatformForRead(final GATKRead read, final SAMFileHeader header, final RecalibrationArgumentCollection RAC) {
+    public static void updatePlatformForRead(final GATKRead read, final SAMFileHeader header, final RecalibrationArgumentCollection RAC) {
         final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
-
+        // tsato: what is this about? step through it
         if (RAC.FORCE_PLATFORM != null && (readGroup.getPlatform() == null || !readGroup.getPlatform().equals(RAC.FORCE_PLATFORM))) {
             readGroup.setPlatform(RAC.FORCE_PLATFORM);
         }
@@ -522,10 +524,11 @@ public final class RecalUtils {
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static ReadCovariates computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
-        final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), covariates.size(), keyCache);
-        computeCovariates(read, header, covariates, readCovariates, recordIndelValues);
-        return readCovariates;
+    public static PerReadCovariateMatrix computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
+        final PerReadCovariateMatrix covariateTable = new PerReadCovariateMatrix(read.getLength(), covariates.size(), keyCache); // tsato: maybe rename ReadCovariates => ReadCovariateData
+        covariates.populateTable(read, header, covariateTable, recordIndelValues);
+        // computeCovariates(read, header, covariates, readCovariates, recordIndelValues);
+        return covariateTable;
     }
 
     /**
@@ -542,9 +545,10 @@ public final class RecalUtils {
      * @param resultsStorage      The object to store the covariate values
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      */
-    public static void computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
-        covariates.recordAllValuesInStorage(read, header, resultsStorage, recordIndelValues);
-    }
+    // tsato: unnecessary layer, but move the doc
+//    public static void computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
+//        covariates.recordAllValuesInStorage(read, header, resultsStorage, recordIndelValues);
+//    }
 
     /**
      * Combines the recalibration data for table1 and table2 into table1
@@ -581,10 +585,10 @@ public final class RecalUtils {
      * @param isError error value for this event
      * @param key0, key1 location in table of our item
      */
-    public static void incrementDatumOrPutIfNecessary2keys( final NestedIntegerArray<RecalDatum> table,
-                                                            final byte qual,
-                                                            final double isError,
-                                                            final int key0, final int key1) {
+    public static void incrementDatum2keys(final NestedIntegerArray<RecalDatum> table,
+                                           final byte qual,
+                                           final double isError,
+                                           final int key0, final int key1) {
         final RecalDatum existingDatum = table.get2Keys(key0, key1);
 
         if ( existingDatum == null ) {
@@ -607,10 +611,10 @@ public final class RecalUtils {
      * @param isError error value for this event
      * @param key0, key1, key2 location in table of our item
      */
-    public static void incrementDatumOrPutIfNecessary3keys( final NestedIntegerArray<RecalDatum> table,
-                                                            final byte qual,
-                                                            final double isError,
-                                                            final int key0, final int key1, final int key2) {
+    public static void incrementDatum3keys(final NestedIntegerArray<RecalDatum> table,
+                                           final byte qual,
+                                           final double isError,
+                                           final int key0, final int key1, final int key2) {
         final RecalDatum existingDatum = table.get3Keys(key0, key1, key2);
 
         if ( existingDatum == null ) {
@@ -633,11 +637,11 @@ public final class RecalUtils {
      * @param isError error value for this event
      * @param key0, key1, key2, key3 location in table of our item
      */
-    public static void incrementDatumOrPutIfNecessary4keys( final NestedIntegerArray<RecalDatum> table,
-                                                            final byte qual,
-                                                            final double isError,
-                                                            final int key0,  final int key1, final int key2, final int key3) {
-        final RecalDatum existingDatum = table.get4Keys(key0, key1, key2, key3);
+    public static void incrementDatum4keys(final NestedIntegerArray<RecalDatum> table,
+                                           final byte qual,
+                                           final double isError,
+                                           final int key0, final int key1, final int key2, final int key3) {
+        final RecalDatum existingDatum = table.get4Keys(key0, key1, key2, key3); // tsato: is the final key really always event index?
 
         if ( existingDatum == null ) {
             // No existing item, put a new one

@@ -21,10 +21,10 @@ public final class CycleCovariate implements Covariate {
 
     // Used to pick out the covariate's value from attributes of the read
     @Override
-    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values, final boolean recordIndelValues) {
+    public void recordValues(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix values, final boolean recordIndelValues) {
         final int readLength = read.getLength();
         //Note: duplicate the loop to void checking recordIndelValues on every iteration
-        if (recordIndelValues) {
+        if (recordIndelValues) { // tsato: interesting, look at this later
             for (int i = 0; i < readLength; i++) {
                 final int substitutionKey = cycleKey(i, read, false, MAXIMUM_CYCLE_VALUE);
                 final int indelKey = cycleKey(i, read, true, MAXIMUM_CYCLE_VALUE);

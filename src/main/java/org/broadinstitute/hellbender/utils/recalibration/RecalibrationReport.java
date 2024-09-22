@@ -289,7 +289,7 @@ public final class RecalibrationReport {
                 (Double) reportTable.get(row, RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME) : // we get it if we are in the read group table
                 decodeByte(reportTable.get(row, RecalUtils.QUALITY_SCORE_COLUMN_NAME)); // or we use the reported quality if we are in any other table
 
-        final RecalDatum datum = new RecalDatum(nObservations, nErrors, (byte)1);
+        final RecalDatum datum = new RecalDatum(nObservations, nErrors, (byte)1); // tsato: why 1? just a place holder,
         datum.setEstimatedQReported(estimatedQReported);
         //datum.setEmpiricalQuality(empiricalQuality); // don't set the value here because we will want to recompute with a different conditional Q score prior value
         return datum;

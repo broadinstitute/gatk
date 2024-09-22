@@ -6,15 +6,18 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 /**
- * The object temporarily held by a read that describes all of its covariates.
+ * The object temporarily held by a read that holds the matrix (table) of type { read offset } x { covariates },
+ * where covariates are encoded as the integer key.
+ *
  */
-public final class ReadCovariates {
-    private static final Logger logger = LogManager.getLogger(ReadCovariates.class);
+public final class PerReadCovariateMatrix {
+    private static final Logger logger = LogManager.getLogger(PerReadCovariateMatrix.class);
 
     /**
-     * Our keys, indexed by event type x read length x covariate
+     * Our [keys], indexed by { event type } x { read position (or cycle) } x { covariate }
+     * For instance, { covariate } is by default 4-dimensional (read group, base quality, context, cycle).
      */
-    private final int[][][] keys;
+    private final int[][][] covariates; //  tsato: these are not keys. these are covariates.
 
     /**
      * The index of the current covariate, used by addCovariate
@@ -26,15 +29,15 @@ public final class ReadCovariates {
      * The cache allows us to avoid the expense of recreating these arrays for every read.  The LRU
      * keeps the total number of cached arrays to less than LRU_CACHE_SIZE.
      */
-    public ReadCovariates(final int readLength, final int numberOfCovariates, final CovariateKeyCache keysCache) {
+    public PerReadCovariateMatrix(final int readLength, final int numberOfCovariates, final CovariateKeyCache keysCache) {
         Utils.nonNull(keysCache);
         final int[][][] cachedKeys = keysCache.get(readLength);
         if ( cachedKeys == null ) {
             if ( logger.isDebugEnabled() ) logger.debug("Keys cache miss for length " + readLength + " cache size " + keysCache.size());
-            keys = new int[EventType.values().length][readLength][numberOfCovariates];
-            keysCache.put(readLength, keys);
+            covariates = new int[EventType.values().length][readLength][numberOfCovariates];
+            keysCache.put(readLength, covariates);
         } else {
-            keys = cachedKeys;
+            covariates = cachedKeys;
         }
     }
 
@@ -53,12 +56,12 @@ public final class ReadCovariates {
      * @param insertion the insertion key value
      * @param deletion the deletion key value
      * @param readOffset the read offset, must be >= 0 and <= the read length used to create this ReadCovariates
-     */
+     */ // tsato: this is the only place where "keys" array gets updated.
     public void addCovariate(final int mismatch, final int insertion, final int deletion, final int readOffset) {
-        keys[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch;
-        keys[EventType.BASE_INSERTION.ordinal()][readOffset][currentCovariateIndex] = insertion;
-        keys[EventType.BASE_DELETION.ordinal()][readOffset][currentCovariateIndex] = deletion;
-    }
+        covariates[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch;
+        covariates[EventType.BASE_INSERTION.ordinal()][readOffset][currentCovariateIndex] = insertion;
+        covariates[EventType.BASE_DELETION.ordinal()][readOffset][currentCovariateIndex] = deletion;
+    } // tsato: rename to: populateAtReadOffset
 
     /**
      * Get the keys for all covariates at read position for error model
@@ -68,11 +71,11 @@ public final class ReadCovariates {
      * @return
      */
     public int[] getKeySet(final int readPosition, final EventType errorModel) {
-        return keys[errorModel.ordinal()][readPosition];
+        return covariates[errorModel.ordinal()][readPosition];
     }
-
+    // tsato: this keySet language needs to go. "getTableForErrorType". Must replace all "getKey"
     public int[][] getKeySet(final EventType errorModel) {
-        return keys[errorModel.ordinal()];
+        return covariates[errorModel.ordinal()];
     }
 
     // ----------------------------------------------------------------------
