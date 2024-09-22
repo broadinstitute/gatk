@@ -363,7 +363,7 @@ public final class QualityUtils {
      *             routines may use this functionality (BaseRecalibrator, for example)
      * @param maxQual the maximum quality score, must be less < 255
      * @return the bounded quality score
-     */
+     */ // tsato: this converting to byte should be unnecessary?
     public static byte boundQual(final int qual, final byte maxQual) {
         return (byte) (Math.max(Math.min(qual, maxQual & 0xFF), 1) & 0xFF);
     }
