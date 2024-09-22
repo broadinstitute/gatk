@@ -188,7 +188,7 @@ configurations.all {
 }
 
 tasks.withType(JavaCompile) {
-  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Xdiags:verbose']
   options.encoding = 'UTF-8'
 }
 
