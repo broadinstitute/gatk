@@ -362,25 +362,13 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
 
         private FlowBasedRead spanningRead(final GATKRead read) {
 
-            // access origin arrays
-            final byte[] bases = read.getBasesNoCopy();
-            final byte[] quals = read.getBaseQualitiesNoCopy();
-            final byte[] tp = read.getAttributeAsByteArray("tp");
-            final String t0 = read.getAttributeAsString("t0");
-
-            // trim
-            final byte[] trimmed_bases = Arrays.copyOfRange(bases, fromBaseIndex, toBaseIndex + 1);
-            final byte[] trimmed_quals = Arrays.copyOfRange(quals, fromBaseIndex, toBaseIndex + 1);
-            final byte[] trimmed_tp = Arrays.copyOfRange(tp, fromBaseIndex, toBaseIndex + 1);
-            final String trimmed_t0 = t0 != null ? t0.substring(fromBaseIndex, toBaseIndex + 1) : null;
-
             // build read
             final SAMRecord samRecord = new SAMRecord(getHeaderForReads());
-            samRecord.setReadBases(trimmed_bases);
-            samRecord.setBaseQualities(trimmed_quals);
-            samRecord.setAttribute("tp", trimmed_tp);
-            if ( trimmed_t0 != null ) {
-                samRecord.setAttribute("t0", trimmed_t0);
+            samRecord.setReadBases(Arrays.copyOfRange(read.getBasesNoCopy(), fromBaseIndex, toBaseIndex + 1));
+            samRecord.setBaseQualities(Arrays.copyOfRange(read.getBaseQualitiesNoCopy(), fromBaseIndex, toBaseIndex + 1));
+            samRecord.setAttribute("tp", Arrays.copyOfRange(read.getAttributeAsByteArray("tp"), fromBaseIndex, toBaseIndex + 1));
+            if ( read.hasAttribute("t0") ) {
+                samRecord.setAttribute("t0", read.getAttributeAsString("t0").substring(fromBaseIndex, toBaseIndex + 1));
             }
             samRecord.setAttribute("RG", read.getAttributeAsString("RG"));
             samRecord.setCigarString("" + (toBaseIndex - fromBaseIndex + 1) + "M");
