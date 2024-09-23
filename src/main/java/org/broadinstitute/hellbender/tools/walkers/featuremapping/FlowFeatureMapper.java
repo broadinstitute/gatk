@@ -899,14 +899,16 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         final byte[] trimmed_bases = Arrays.copyOfRange(bases, trimInfo.trimFrom, trimInfo.trimTo + 1);
         final byte[] trimmed_quals = Arrays.copyOfRange(quals, trimInfo.trimFrom, trimInfo.trimTo + 1);
         final byte[] trimmed_tp = Arrays.copyOfRange(tp, trimInfo.trimFrom, trimInfo.trimTo + 1);
-        final String trimmed_t0 = t0.substring(trimInfo.trimFrom, trimInfo.trimTo + 1);
+        final String trimmed_t0 = t0 != null ? t0.substring(trimInfo.trimFrom, trimInfo.trimTo + 1) : null;
 
         // build read
         final SAMRecord samRecord = new SAMRecord(getHeaderForReads());
         samRecord.setReadBases(trimmed_bases);
         samRecord.setBaseQualities(trimmed_quals);
         samRecord.setAttribute("tp", trimmed_tp);
-        samRecord.setAttribute("t0", trimmed_t0);
+        if ( trimmed_t0 != null ) {
+            samRecord.setAttribute("t0", trimmed_t0);
+        }
         samRecord.setAttribute("RG", read.getAttributeAsString("RG"));
         samRecord.setCigarString("" + (trimInfo.trimTo - trimInfo.trimFrom + 1) + "M");
         final GATKRead gatkRead = new SAMRecordToGATKReadAdapter(samRecord);
