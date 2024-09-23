@@ -221,7 +221,7 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testNmEditDistance() throws IOException {
+    public void testLevenshteinEditDistance() throws IOException {
 
         final File outputDir = createTempDir("testFlowFeatureMapperTest");
         final File expectedFile = new File(testDir + "/snv_feature_mapper_nm_edit_disance_output.vcf");
@@ -239,7 +239,7 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
                 "--snv-identical-bases", "10",
                 "--debug-negatives", "false",
                 "--debug-read-name", "150451-BC94-0645901755",
-                "--nm-edit-distance"
+                "--levenshtein-edit-distance"
         };
 
         // run the tool

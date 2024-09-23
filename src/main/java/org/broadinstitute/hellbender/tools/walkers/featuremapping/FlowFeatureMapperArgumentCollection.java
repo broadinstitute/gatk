@@ -98,8 +98,8 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     /**
      *  edit distance should come from computed NM
      **/
-    @Argument(fullName = "nm-edit-distance", doc = "edit distance should come from computed NM ?", optional = true)
-    public boolean nmEditDistance = false;
+    @Argument(fullName = "levenshtein-edit-distance", doc = "edit distance should come from a Levenshtein edit distance instead of NM ?", optional = true)
+    public boolean levenshteinEditDistance = false;
 
     /**
      *  debug negatives?

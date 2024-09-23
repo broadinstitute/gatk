@@ -823,7 +823,7 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         vcb.attribute(VCF_FC2, fr.featuresOnRead);
         vcb.attribute(VCF_LENGTH, fr.read.getLength());
         if ( !fmArgs.noEditDistance) {
-            if (fmArgs.nmEditDistance) {
+            if ( !fmArgs.levenshteinEditDistance ) {
                 int nmScore = SequenceUtil.calculateSamNmTag(fr.read.convertToSAMRecord(getHeaderForReads()), fr.referenceContext.getBases(new SimpleInterval(fr.read)), fr.read.getStart() - 1);
                 vcb.attribute(VCF_EDIST, nmScore);
             } else if (fr.refEditDistance != null) {
