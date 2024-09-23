@@ -822,14 +822,12 @@ public final class FlowFeatureMapper extends ThreadedReadWalker {
         vcb.attribute(VCF_FC1, fr.nonIdentMBasesOnRead);
         vcb.attribute(VCF_FC2, fr.featuresOnRead);
         vcb.attribute(VCF_LENGTH, fr.read.getLength());
-        if ( !fmArgs.noEditDistance) {
-            if ( !fmArgs.levenshteinEditDistance ) {
-                int nmScore = SequenceUtil.calculateSamNmTag(fr.read.convertToSAMRecord(getHeaderForReads()), fr.referenceContext.getBases(new SimpleInterval(fr.read)), fr.read.getStart() - 1);
-                vcb.attribute(VCF_EDIST, nmScore);
-            } else if (fr.refEditDistance != null) {
-                int editDisance = fr.refEditDistance.get(); // this actually computes the distance
-                vcb.attribute(VCF_EDIST, editDisance);
-            }
+        if ( !fmArgs.levenshteinEditDistance ) {
+            int nmScore = SequenceUtil.calculateSamNmTag(fr.read.convertToSAMRecord(getHeaderForReads()), fr.referenceContext.getBases(new SimpleInterval(fr.read)), fr.read.getStart() - 1);
+            vcb.attribute(VCF_EDIST, nmScore);
+        } else if (fr.refEditDistance != null) {
+            int editDisance = fr.refEditDistance.get(); // this actually computes the distance
+            vcb.attribute(VCF_EDIST, editDisance);
         }
         vcb.attribute(VCF_INDEX, fr.index);
 
