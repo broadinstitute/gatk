@@ -314,7 +314,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Override
     protected String[] customCommandLineValidation() {
         if (MTAC.mitochondria) {
-            //TODO check the OA argument, that might be the only thing that doesn't work
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),
                     MTAC.getMitochondriaModeNameValuePairs(),
