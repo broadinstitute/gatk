@@ -7,9 +7,11 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -284,17 +286,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     }
 
     @Override
-    public Collection<Annotation> makeVariantAnnotations(){
-        final Collection<Annotation> annotations = super.makeVariantAnnotations();
-
-        if (MTAC.mitochondria) {
-            annotations.add(new OriginalAlignment());
-        }
-
-        return annotations;
-    }
-
-    @Override
     public Object onTraversalSuccess() {
         m2Engine.writeExtraOutputs(new File(outputVCF + DEFAULT_STATS_EXTENSION));
 
@@ -322,6 +313,12 @@ public final class Mutect2 extends AssemblyRegionWalker {
      */
     @Override
     protected String[] customCommandLineValidation() {
+        if (MTAC.mitochondria) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    MTAC.getMitochondriaModeNameValuePairs(),
+                    M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME);
+        }
         if (MTAC.flowMode != M2ArgumentCollection.FlowMode.NONE) {
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),

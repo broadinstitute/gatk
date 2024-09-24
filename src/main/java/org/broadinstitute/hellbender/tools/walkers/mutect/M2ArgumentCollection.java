@@ -6,8 +6,13 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.DeprecatedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -95,18 +100,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         return new MutectReadThreadingAssemblerArgumentCollection();
     }
 
-    @Override
-    public ReadThreadingAssembler createReadThreadingAssembler(){
-        if(mitochondria ) {
-            assemblerArgs.recoverAllDanglingBranches = true;
-            if (assemblerArgs.pruningLogOddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
-                assemblerArgs.pruningLogOddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
-            }
-        }
-
-        return super.createReadThreadingAssembler();
-    }
-
     @ArgumentCollection
     public CollectF1R2CountsArgumentCollection f1r2Args = new CollectF1R2CountsArgumentCollection();
 
@@ -164,8 +157,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     public double getDefaultAlleleFrequency() {
         return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
-                (mitochondria ? DEFAULT_AF_FOR_MITO_CALLING:
-                (normalSamples.isEmpty() ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING));
+                (normalSamples.isEmpty() ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
     }
 
     /**
@@ -175,6 +167,20 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc="Mitochondria mode sets emission and initial LODs to 0.")
     public Boolean mitochondria = false;
+
+    /**
+     * List of arguments to be set when a user specifies mitochondria mode. Each argument will be displayed in the help message.
+     */
+    public String[] getMitochondriaModeNameValuePairs() {
+        return new String[]{
+                DEFAULT_AF_LONG_NAME, String.valueOf(DEFAULT_AF_FOR_MITO_CALLING),
+                EMISSION_LOD_LONG_NAME, String.valueOf(DEFAULT_MITO_EMISSION_LOD),
+                INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME, String.valueOf(DEFAULT_MITO_INITIAL_LOG_10_ODDS),
+                ReadThreadingAssemblerArgumentCollection.RECOVER_ALL_DANGLING_BRANCHES_LONG_NAME, "true",
+                ReadThreadingAssemblerArgumentCollection.PRUNING_LOD_THRESHOLD_LONG_NAME, String.valueOf(DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD),
+                StandardArgumentDefinitions.ANNOTATION_LONG_NAME, "OriginalAlignment"
+        };
+    }
 
     /**
      * If true, collect Mutect3 data for learning; otherwise collect data for generating calls with a pre-trained model
@@ -250,7 +256,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {
             return MathUtils.log10ToLog(DEFAULT_GVCF_LOG_10_ODDS);
         }
-        return MathUtils.log10ToLog(mitochondria && emissionLog10Odds == DEFAULT_EMISSION_LOG_10_ODDS ? DEFAULT_MITO_EMISSION_LOD : emissionLog10Odds);
+        return MathUtils.log10ToLog(emissionLog10Odds);
     }
 
     /**
@@ -263,7 +269,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {
             return MathUtils.log10ToLog(DEFAULT_GVCF_LOG_10_ODDS);
         }
-        return MathUtils.log10ToLog(mitochondria && initialLog10Odds == DEFAULT_INITIAL_LOG_10_ODDS ? DEFAULT_MITO_INITIAL_LOG_10_ODDS : initialLog10Odds);
+        return MathUtils.log10ToLog(initialLog10Odds);
     }
 
 
