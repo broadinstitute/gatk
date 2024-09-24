@@ -39,9 +39,7 @@ workflow GvsBulkIngestGenomes {
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
         String drop_state = "NONE"
 
-        # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,
-        # so if specifying `load_data_batch_size`, adjust preemptible and maxretries accordingly. Or just take the defaults, as those should work fine in most cases.
-        Int? load_data_batch_size
+        Int? load_data_scatter_width
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
@@ -131,11 +129,7 @@ workflow GvsBulkIngestGenomes {
             input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
             input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
             interval_list = interval_list,
-
-            # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
-            # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
-            # those should work fine in most cases.
-            load_data_batch_size = load_data_batch_size,
+            load_data_scatter_width = load_data_scatter_width,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
             basic_docker = effective_basic_docker,
