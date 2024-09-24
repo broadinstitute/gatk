@@ -272,24 +272,17 @@ task FilterVCF {
     input {
         String samplename
         File vcf_file
-        String filter_expression = "(QUAL < 50 and CN>2) or (QUAL < 100 and CN<2)"
-        String ref_fasta
+        String filter_expression = "(FMT/CN>2 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400)"
         String gatk_docker
         String filter_name = "LowQual"
     }
 
-    parameter_meta {
-        vcf_file: {
-                      localization_optional: true
-                  }
-    }
     command <<<
-        gatk --java-options "-Xmx4g" VariantFiltration \
-            -R ~{ref_fasta} \
-            -V ~{vcf_file} \
-            --filter-expression "~{filter_expression}" \
-            --filter-name "~{filter_name}" \
-            -O ~{samplename}.filtered.genotyped-segments.vcf.gz
+    	bcftools filter \
+    		-e '~{filter_expression}' \
+    		--soft-filter ~{filter_name} \
+    		-o ~{samplename}.filtered.genotyped-segments.vcf.gz \
+    		~{vcf_file}
     >>>
 
     output {
