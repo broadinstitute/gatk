@@ -223,7 +223,6 @@ scatter (vcf in CNVGermlineCaseWorkflow.genotyped_segments_vcfs) {
                 samplename = ExtractSamplename.samplename,
                 vcf_file = vcf,
                 filter_expression = filter_expression,
-                ref_fasta = ref_fasta,
                 gatk_docker = gatk_docker
         }
     }
