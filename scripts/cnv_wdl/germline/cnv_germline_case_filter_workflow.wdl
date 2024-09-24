@@ -278,11 +278,11 @@ task FilterVCF {
     }
 
     command <<<
-		bcftools filter \
-		-e '~{filter_expression}' \
-		--soft-filter ~{filter_name} \
-		-o ~{samplename}.filtered.genotyped-segments.vcf.gz \
-		~{vcf_file}
+        bcftools filter \
+            -e '~{filter_expression}' \
+            --soft-filter ~{filter_name} \
+            -o ~{samplename}.filtered.genotyped-segments.vcf.gz \
+            ~{vcf_file}
     >>>
 
     output {
