@@ -132,6 +132,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         new SimpleInterval("chr20", 17970001, 17980000),
         new SimpleInterval("chr20", 17980001, 17981445)
     ));
+    private static final ArrayList<SimpleInterval> INCLUDES_NON_IMPORTED_INTERVALS = new ArrayList<SimpleInterval>(Arrays.asList(
+        new SimpleInterval("chr2", 1, 100),
+        new SimpleInterval("chr20", 17960187, 17981445),
+        new SimpleInterval("chr22", 1, 100)
+    ));
     private static final ArrayList<SimpleInterval> MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS =
         new ArrayList<SimpleInterval>(Arrays.asList(
             new SimpleInterval("chr20", 17960187, 17969999),
@@ -224,6 +229,13 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGenomicsDBImportFileInputsWithMultipleIntervals() throws IOException {
         testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsIncludeNonImportedIntervals() throws IOException {
+      final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+      writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1, false, false, false, 0, true);
+      checkGenomicsDBAgainstExpected(workspace, INCLUDES_NON_IMPORTED_INTERVALS, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
     }
 
     @Test
