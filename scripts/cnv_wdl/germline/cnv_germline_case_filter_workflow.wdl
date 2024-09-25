@@ -289,7 +289,7 @@ task FilterVCF {
     }
 
     runtime {
-        docker: gatk_docker #"biocontainers/bcftools:v1.10.2-1-deb_cv1"
+        docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
         memory: "8G"
         cpu: 2
     }
