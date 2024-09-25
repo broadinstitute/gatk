@@ -141,7 +141,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     @Argument(fullName = "ignore-gq0", optional = true)
     private boolean ignoreGq0 = false;
 
-    @Argument(fullName = "ignore-multi-allelics", optional = true, doc="Ignore sites where the AC length in the actual matches the actual number of alleles, but doesn't match the expected VC.")
+    @Argument(fullName = "ignore-some-multi-allelics", optional = true, doc="Ignore sites where the AC length in the actual matches the actual number of alleles, but doesn't match the expected VC.")
     private boolean ignoreSomeMultiAllelics = false;
 
     @Advanced
@@ -568,13 +568,15 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                         }
                     }
                     //we've already gotten rid of stars... I think -- do we have to sort the alts?  Maybe...  I should be using my own AlleleSpecificAnnotationData!!!
-                    int iterationEnd = ignoreNonRefData && actualAlts.contains(Allele.NON_REF_ALLELE) ? expectedAlts.size()-1 : expectedAlts.size();  //exclusive
-                    //special case non-allele length RAW annotations
-                    if (key.equals(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)) {
+                    final int iterationEnd;
+                    if (key.equals(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)) { //special case non-allele length RAW annotations
                         iterationEnd = 3;
-                    }
-                    if (key.equals(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
+                    } else if (key.equals(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
                         iterationEnd = 2;
+                    } else if (ignoreNonRefData && actualAlts.contains(Allele.NON_REF_ALLELE)) { //exclusive
+                        iterationEnd = expectedAlts.size()-1;
+                    } else {
+                        iterationEnd = expectedAlts.size();
                     }
                     for (int i = 0; i < iterationEnd; i++) {
                         if (i >= actualList.size() || i >= expectedList.size()) {
@@ -590,7 +592,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                 throw makeVariantExceptionFromDifference(key, Double.toString(actualPerAlleleValue), Double.toString(expectedPerAlleleValue));
                             }
                         }
-                        if (key.contains("AS_") && key.contains("RankSum") && !key.contains("RAW")) {
+                        if (key.startsWith("AS_") && key.contains("RankSum") && !key.contains("RAW")) {
                             final double actualPerAlleleValue, expectedPerAlleleValue;
                             if ((!((String) actualList.get(i)).isEmpty() && ((String) actualList.get(i)).equals("NaN"))) {
                                 actualPerAlleleValue = Double.parseDouble(actualList.get(i).toString());
@@ -606,7 +608,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                     logger.warn("GATK version-specific NaN versus empty AS_RAW annotation discrepancy");
                                 }
                             }
-                        } else if (key.contains("AS_") && key.contains("RAW") && key.contains("RankSum")) {
+                        } else if (key.startsWith("AS_") && key.contains("RAW") && key.contains("RankSum")) {
                             if (((String) actualList.get(i)).isEmpty() && ((String) expectedList.get(i)).isEmpty()) {
                                 continue;
                             }
