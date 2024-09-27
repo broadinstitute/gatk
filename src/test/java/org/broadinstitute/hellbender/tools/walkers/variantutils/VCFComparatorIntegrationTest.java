@@ -20,21 +20,21 @@ public class VCFComparatorIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "getTestVcfs")
     public Object[][] getTestVcfs() {
-        return new Object[][] {
-                { " -L chr1:186475", "expected_warning_as_vqslod.txt" },
-                { " -L chr1:186475 --ignore-attribute AS_VQSLOD", "empty_file.txt" },
-                { " -L chr1:187471 --ignore-attribute AS_VQSLOD", "expected_warning_filter.txt" },
-                { " -L chr1:186475-945669 " + DEFAULT_WARP_SETTINGS, "empty_file.txt" },
-                { " -L chr1:945670 " + DEFAULT_WARP_SETTINGS, "qual_diff_warning.txt"}, // different QUAL values
-                { " -L chr1:945670 --qual-change-allowed 0.1 --ignore-attribute AS_VQSLOD", "empty_file.txt"},
-                { " -L chr1:186475 --mute-acceptable-diffs", "empty_file.txt" } // low quality site is muted even though the AS_VQSLOD is different
+        return new Object[][]{
+                {" -L chr1:186475", "expected_warning_as_vqslod.txt"},
+                {" -L chr1:186475 --ignore-attribute AS_VQSLOD", "empty_file.txt"},
+                {" -L chr1:187471 --ignore-attribute AS_VQSLOD", "expected_warning_filter.txt"},
+                {" -L chr1:186475-945669 " + DEFAULT_WARP_SETTINGS, "empty_file.txt"},
+                {" -L chr1:945670 " + DEFAULT_WARP_SETTINGS, "qual_diff_warning.txt"}, // different QUAL values
+                {" -L chr1:945670 --qual-change-allowed 0.1 --ignore-attribute AS_VQSLOD", "empty_file.txt"},
+                {" -L chr1:186475 --mute-acceptable-diffs", "empty_file.txt"} // low quality site is muted even though the AS_VQSLOD is different
         };
     }
 
     @Test(dataProvider = "getTestVcfs")
     public void testAnnotationDifferences(String args, String expectedWarnings) throws IOException {
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                        " -R " + hg38Reference +
+                " -R " + hg38Reference +
                         " -V:actual " + TEST_DATA_DIRECTORY + "actual.vcf" +
                         " -V:expected " + TEST_DATA_DIRECTORY + "expected.vcf" +
                         " --output-warnings %s" +
@@ -66,13 +66,16 @@ public class VCFComparatorIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "getTestGvcfs")
     public Object[][] getTestGvcfs() {
-        return new Object[][] {
-                { " -L chr1:864084-864610", "empty_file.txt" }, //matching ref blocks
-                { " -L chr1:54682-347969", "ref_block_warning.txt"}, // non-matching ref block
-                { " -L chr1:792417", "tree_score_warning.txt"}, // variant site
-                { " -L chr1:792417 --ignore-non-ref-data --" +
+        return new Object[][]{
+                {" -L chr1:864084-864610", "empty_file.txt"}, //matching ref blocks
+                {" -L chr1:54682-347969", "ref_block_warning.txt"}, // non-matching ref block
+                {" -L chr1:792417", "tree_score_warning.txt"}, // variant site
+                {" -L chr1:792417 --ignore-non-ref-data --" +
                         ReblockGVCF.ANNOTATIONS_TO_KEEP_LONG_NAME + " TREE_SCORE", "tree_score_warning.txt"}, // when non-ref data is dropped non-GATK annotations can be dropped
-                { " -L chr1:792417 --ignore-attribute TREE_SCORE", "empty_file.txt"}
+                {" -L chr1:792417 --ignore-attribute TREE_SCORE --ignore-non-ref-data", "empty_file.txt"}, // check that RAW_MQandDP matches with and without --ignore-non-ref-data
+                {" -L chr1:792417 --ignore-attribute TREE_SCORE", "empty_file.txt"},
+                {" -L chr1:950542", "depth_warning.txt"},
+                {" -L chr1:950542 --ignore-gq0", "empty_file.txt"}
         };
     }
 
