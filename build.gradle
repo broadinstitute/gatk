@@ -11,7 +11,7 @@ plugins {
     id "application"    // provides installDist
     id 'maven-publish'
     id 'signing'
-    id "jacoco"
+//    id "jacoco"
     id "de.undercouch.download" version "5.4.0" //used for downloading GSA lib
     id "com.github.johnrengelman.shadow" version "8.1.1"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
@@ -625,18 +625,19 @@ task bundle(type: Zip) {
     }
 }
 
-jacocoTestReport {
-    dependsOn test
-
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports after running tests."
-    getAdditionalSourceDirs().from(sourceSets.main.allJava.srcDirs)
-
-    reports {
-        xml.required = true
-        html.required = true
-    }
-}
+//jacocoTestReport {
+//    dependsOn test
+//
+//    group = "Reporting"
+//    description = "Generate Jacoco coverage reports after running tests."
+//    getAdditionalSourceDirs().from(sourceSets.main.allJava.srcDirs)
+//
+//    reports {
+//        xml.required = true
+//        html.required = true
+//    }
+//}
+//}
 
 task condaStandardEnvironmentDefinition(type: Copy) {
     from "scripts"
