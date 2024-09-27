@@ -639,6 +639,10 @@ task bundle(type: Zip) {
 //}
 //}
 
+task jacocoTestReport {
+    dependsOn test
+}
+
 task condaStandardEnvironmentDefinition(type: Copy) {
     from "scripts"
     into buildDir

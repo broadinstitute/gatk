@@ -172,3 +172,6 @@ task testOnPackagedReleaseJar(type: Test){
 //        html.required = true
 //    }
 //}
+task jacocoTestReportOnPackagedReleaseJar {
+    dependsOn testOnPackagedReleaseJar
+}
