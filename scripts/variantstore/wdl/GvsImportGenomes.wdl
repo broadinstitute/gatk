@@ -29,7 +29,7 @@ workflow GvsImportGenomes {
     # without going over
     Int beta_customer_max_scatter = 200
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    Int? load_data_batch_size
+    Int? load_data_scatter_width
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     # At least one of these "load" inputs must be true
@@ -76,17 +76,17 @@ workflow GvsImportGenomes {
     }
   }
 
-  if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
+  if ((num_samples > max_auto_batch_size) && !(defined(load_data_scatter_width))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
       input:
-        message = "Importing " + num_samples + " samples but 'load_data_batch_size' is not explicitly specified; the limit for auto batch-sizing is " + max_auto_batch_size + " for " + genome_type + " samples.",
+        message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for auto batch-sizing is " + max_auto_batch_size + " for " + genome_type + " samples.",
         basic_docker = effective_basic_docker,
     }
   }
 
   # At least 1, per limits above not more than 20.
   # But if it's a beta customer, use the number computed above
-  Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
+  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then select_first([num_samples / load_data_scatter_width])
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
                                            else if num_samples < 5001 then (num_samples / (max_scatter_for_user * 2))
