@@ -2,8 +2,10 @@ version 1.0
 
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
-import "GvsJointVariantCalling.wdl" as JointVariantCalling
-import "GvsUtils.wdl" as Utils
+import "../GvsJointVariantCalling.wdl" as JointVariantCalling
+import "../GvsUtils.wdl" as Utils
+
+# comment
 
 workflow GvsQuickstartIntegration {
     input {

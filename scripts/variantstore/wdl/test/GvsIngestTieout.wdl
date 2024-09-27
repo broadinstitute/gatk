@@ -1,8 +1,8 @@
 version 1.0
 
-import "GvsAssignIds.wdl" as GvsAssignIds
-import "GvsImportGenomes.wdl" as GvsImportGenomes
-import "GvsUtils.wdl" as Utils
+import "../GvsAssignIds.wdl" as GvsAssignIds
+import "../GvsImportGenomes.wdl" as GvsImportGenomes
+import "../GvsUtils.wdl" as Utils
 
 workflow GvsIngestTieout {
     input {

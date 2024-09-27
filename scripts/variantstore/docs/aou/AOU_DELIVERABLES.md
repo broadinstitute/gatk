@@ -111,7 +111,7 @@ The Callset Stats and S&P files can be simply `gsutil cp`ed to the AoU delivery 
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
-[process to create variant annotations table](../../variant_annotations_table/README.md)
+[process to create variant annotations table](../../variant-annotations-table/README.md)
 The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
 
 Once the VAT table is created and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
