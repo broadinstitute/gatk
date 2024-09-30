@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsUtils.wdl" as Utils
+import "../GvsUtils.wdl" as Utils
 
 workflow ImportArrayManifest {
 

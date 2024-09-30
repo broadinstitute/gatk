@@ -6,7 +6,7 @@
   - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
   - There is a quota that needs to be upgraded for the process of Bulk Ingest.
     When we ingest data, we use the Write API, which is part of BQ’s Storage API. Since we are hitting this API with so much data all at once, we want to increase our CreateWriteStream quota. Follow the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md).
-    Once that quota has been increased, the `load_data_batch` value needs to be updated based on calculations in the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md) doc. Even if no increased quota is granted, this doc goes over how to choose the value for this param.
+    Once that quota has been increased, the `load_data_scatter_width` value needs to be updated based on that new quota (for information on what we did for Echo, see the "Calculate Quota To be Requested" section in the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md) doc).
   - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
     - Update the .dockstore.yml file on that feature branch to add the feature branch for all the WDLs that will be loaded into the workspace in the next step.
 - Once the requested workspace has been created and permissioned, populate with the following WDLs:
@@ -88,17 +88,30 @@
 1. `GvsCallsetCost` workflow
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
 
+
+## Internal sign-off protocol
+
+The Variants team currently has the following VDS internal sign-off protocol:
+
+1. Generate a VDS for the candidate callset into the "delivery" bucket.
+1. Open up the VDS in a [beefy](vds/cluster/AoU%20VDS%20Cluster%20Configuration.md) notebook and confirm the "shape" looks right.
+1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data.
+1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET table created in the preceding step.
+1. Copy the output of `GvsCallsetStatistics.wdl` into the "delivery" bucket.
+1. Email the paths to the VDS and callset statistics to Lee/Wail for QA / approval.
+
+
 ## Main Deliverables (via email to stakeholders once the above steps are complete)
 
 The Callset Stats and S&P files can be simply `gsutil cp`ed to the AoU delivery bucket since they are so much smaller.
 1. GCS location of the VDS in the AoU delivery bucket
-2. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
-3. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket
-4. GCS location of the TSV output from `GvsCalculatePrecisionAndSensitivity` in the AoU delivery bucket
+1. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
+1. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket
+1. GCS location of the TSV output from `GvsCalculatePrecisionAndSensitivity` in the AoU delivery bucket
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
-[process to create variant annotations table](../../variant_annotations_table/README.md)
+[process to create variant annotations table](../../variant-annotations-table/README.md)
 The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
 
 Once the VAT table is created and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
@@ -159,6 +172,7 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - Select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
+    - Set the `extract_maxretries_override` input to 5, `split_intervals_disk_size_override` to 1000, `scatter_count` to 25000, and `y_bed_weight_scaling` to 8 to start; you will likely have to adjust one or more of these values in subsequent attempts.
     - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
     - Be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy the output files there yourself once the workflow has finished.
     - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
