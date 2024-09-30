@@ -36,7 +36,7 @@ RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev z
 
 ARG ARROW_VERSION=16.1.0
 RUN cd / && \
-    curl -O https://dlcdn.apache.org/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
+    curl -O https://archive.apache.org/dist/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
     tar xfz apache-arrow-$ARROW_VERSION.tar.gz
 
 # Pyarrow build instructions from https://arrow.apache.org/docs/developers/python.html#python-development
