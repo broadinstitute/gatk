@@ -11,7 +11,6 @@ workflow GvsCreateVATfromVDS {
         String filter_set_name
         File? sites_only_vcf
         File? sites_only_vcf_index
-        String? hail_generate_sites_only_script_path
         File? vds_path
         String output_path
 
@@ -50,18 +49,16 @@ workflow GvsCreateVATfromVDS {
             help: "name of the filter set used to generate the callset in GVS"
         }
         sites_only_vcf: {
-            help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped. If defined, 'vds_path' and 'hail_generate_sites_only_script_path' must NOT be defined."
-        }
-        hail_generate_sites_only_script_path: {
-            help: "Optional hail_create_vat_inputs.py script in GCS that was created by the GvsExtractAvroFilesForHail WDL. If defined, 'vds_path' must also be defined and 'sites_only_vcf' must NOT be defined"
+            help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped. If defined, then 'vds_path' must NOT be defined."
         }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
         }
         vds_path: {
-            help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, 'hail_create_vat_inputs_script' must also be defined and 'sites_only_vcf' must NOT be defined"
+            help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
         }
     }
+
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -93,23 +90,23 @@ workflow GvsCreateVATfromVDS {
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
 
-    if ((defined(sites_only_vcf)) && (defined(vds_path) || defined(hail_generate_sites_only_script_path))) {
+    if ((defined(sites_only_vcf)) && (defined(vds_path))) {
         call Utils.TerminateWorkflow as IfSitesOnlyVcfSetDontSetCreateParameters {
             input:
-                message = "Error: If 'sites_only_vcf' is set as an input, you may not set 'vds_path' and 'hail_generate_sites_only_script_path'",
+                message = "Error: If 'sites_only_vcf' is set as an input, you may not set 'vds_path'",
                 basic_docker = effective_basic_docker,
         }
     }
 
-    if (!defined(sites_only_vcf) && ((!defined(vds_path) || !defined(hail_generate_sites_only_script_path)))) {
+    if (!defined(sites_only_vcf) && (!defined(vds_path))) {
         call Utils.TerminateWorkflow as MustSetSitesOnlyVcfCreationParameters {
             input:
-                message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path' and 'hail_generate_sites_only_script_path'",
+                message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path'",
                 basic_docker = effective_basic_docker,
         }
     }
 
-    if (defined(sites_only_vcf) || (defined(vds_path) && defined(hail_generate_sites_only_script_path))) {
+    if (defined(sites_only_vcf) || (defined(vds_path))) {
         if (!defined(split_intervals_scatter_count)) {
             call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
                 input:
@@ -146,7 +143,6 @@ workflow GvsCreateVATfromVDS {
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
                     hail_wheel = hail_wheel,
-                    hail_generate_sites_only_script_path = select_first([hail_generate_sites_only_script_path]),
                     ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
                     workspace_bucket = GetToolVersions.workspace_bucket,
                     region = region,
@@ -315,7 +311,6 @@ task GenerateSitesOnlyVcf {
         Boolean leave_cluster_running_at_end
         String hail_version
         File? hail_wheel
-        String hail_generate_sites_only_script_path
         String ancestry_file_path
         String? hail_temp_path
         Int? cluster_max_idle_minutes
@@ -349,7 +344,7 @@ task GenerateSitesOnlyVcf {
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
-        sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf"
+        sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf.bgz"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
         if [[ -z "~{hail_temp_path}" ]]
@@ -369,13 +364,10 @@ task GenerateSitesOnlyVcf {
         }
         FIN
 
-        # Run the hail python script to make a VDS
-        gsutil cp ~{hail_generate_sites_only_script_path} /app/
-
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 /app/run_in_hail_cluster.py \
-            --script-path /app/~{basename(hail_generate_sites_only_script_path)} \
+            --script-path /app/hail_create_vat_inputs.py \
             --secondary-script-path-list /app/create_vat_inputs.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
@@ -709,10 +701,10 @@ task AnnotateVCF {
 
     runtime {
         docker: variants_nirvana_docker
-        memory: "64 GB"
+        memory: "128 GB"
         cpu: "4"
-        preemptible: 3
-        maxRetries: 2
+        preemptible: 1
+        maxRetries: 1
         disks: "local-disk 2000 HDD"
     }
 
@@ -758,8 +750,8 @@ task PrepVtAnnotationJson {
 
     runtime {
         docker: variants_docker
-        memory: "7 GB"
-        preemptible: 3
+        memory: "16 GB"
+        preemptible: 2
         cpu: "1"
         disks: "local-disk 500 HDD"
     }
@@ -896,8 +888,11 @@ task BigQueryLoadJson {
             echo "Dropping and recreating the vat table ~{dataset_name}.~{vat_table_name}"
             bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table_name}
         fi
-        bq --apilog=false mk --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
+
+        CLUSTERING_STRING="--clustering_fields=contig"
+        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
         echo "Loading data into it"
+
 
         # Now we run a giant query in BQ to get this all in the right table and join the genes properly
         # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards

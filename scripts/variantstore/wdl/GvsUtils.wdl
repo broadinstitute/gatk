@@ -72,7 +72,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-08-15-alpine-254df9be288d"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-09-30-alpine-27b8708f5808"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024_08_19-gatkbase-cd5b6b7821b2"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -1059,7 +1059,7 @@ task IndexVcf {
     Int max_heap = memory_mb - 500
 
     String local_file = basename(input_vcf)
-    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+    Boolean is_compressed = (sub(local_file, ".*\\.", "") == "gz") || (sub(local_file, ".*\\.", "") == "bgz")
     String index_extension = if is_compressed then ".tbi" else ".idx"
 
     command <<<
@@ -1354,7 +1354,7 @@ task CopyFile {
     fi
 
     gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
-    echo ${OUTPUT_PATH} > output_file_path.txt
+    echo $OUTPUT_PATH > output_file_path.txt
   >>>
   output {
     String output_file_path = read_string("output_file_path.txt")
