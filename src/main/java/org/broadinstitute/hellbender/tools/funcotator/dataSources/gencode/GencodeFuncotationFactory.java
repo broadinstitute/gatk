@@ -911,7 +911,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 extraBases = new String(referenceContext.getBases(
                         new SimpleInterval(
                                 contig,
-                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd(),
+                                fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd() + 1,
                                 fivePrimeUtrs.get(fivePrimeUtrs.size() - 1).getEnd() + numExtraBases)
                 ));
             }
