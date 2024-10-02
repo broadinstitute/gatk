@@ -77,17 +77,17 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
                 final Set<String> samples = new HashSet<>(SVUtils.hashMapCapacity(genotypesA.size() + genotypesB.size()));
                 samples.addAll(genotypesA.getSampleNames());
                 samples.addAll(genotypesB.getSampleNames());
+                if (samples.isEmpty()) {
+                    // Empty case considered perfect overlap
+                    return true;
+                }
                 int numMatches = 0;
                 for (final String sample : samples) {
                     final Genotype genotypeA = genotypesA.get(sample);
                     final Genotype genotypeB = genotypesB.get(sample);
                     // If one sample doesn't exist in the other set, assume reference copy state
-                    final int cnA = genotypeA == null ?
-                            VariantContextGetters.getAttributeAsInt(genotypeB, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0)
-                            : VariantContextGetters.getAttributeAsInt(genotypeA, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
-                    final int cnB = genotypeB == null ?
-                            VariantContextGetters.getAttributeAsInt(genotypeA, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0)
-                            : VariantContextGetters.getAttributeAsInt(genotypeB, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
+                    final int cnA = getCopyState(genotypeA, genotypeB);
+                    final int cnB = getCopyState(genotypeB, genotypeA);
                     if (cnA == cnB) {
                         numMatches++;
                     }
@@ -105,4 +105,20 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
         }
     }
 
+    /**
+     * Tries to get the best copy state from the genotype. If the genotype is null, uses ploidy from a "backup"
+     * genotype as the default. If we have no clue, just return 0.
+     */
+    private static int getCopyState(final Genotype genotype, final Genotype matchedSampleGenotype) {
+        if (genotype == null) {
+            if (matchedSampleGenotype != null) {
+                return VariantContextGetters.getAttributeAsInt(matchedSampleGenotype, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
+            } else {
+                return 0;
+            }
+        } else {
+            return VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT,
+                    VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, 0));
+        }
+    }
 }

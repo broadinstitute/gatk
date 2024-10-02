@@ -105,6 +105,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SampleDB sampleDB;
     private boolean isMultiSampleInput = false;
     private ReferenceSequenceFile reference;
+    private Collection<SVCallRecord> defragmentBuffer;
+    private Collection<SVCallRecord> outputBuffer;
     private final Set<String> allosomalContigs = new LinkedHashSet<>(Arrays.asList("X","Y","chrX","chrY"));
 
     class CopyNumberAndEndRecord {
@@ -132,6 +134,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     public static final String MODEL_CALL_INTERVALS_LONG_NAME = "model-call-intervals";
     public static final String BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME = "breakpoint-summary-strategy";
     public static final String ALT_ALLELE_SUMMARY_STRATEGY_LONG_NAME = "alt-allele-summary-strategy";
+    public static final String FLAG_FIELD_LOGIC_LONG_NAME = "flag-field-logic";
 
     @Argument(fullName = MIN_QUALITY_LONG_NAME, doc = "Minimum QS score to combine a variant segment", optional = true)
     private int minQS = 20;
@@ -200,6 +203,13 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     // Cannot require sample overlap when clustering across samples
     private static final double CLUSTER_SAMPLE_OVERLAP_FRACTION = 0;
 
+    @Argument(fullName = SVClusterWalker.MAX_RECORDS_IN_RAM_LONG_NAME,
+            doc = "When writing VCF files that need to be sorted, this will specify the number of records stored in " +
+                    "RAM before spilling to disk. Increasing this number reduces the number of file handles needed to sort a " +
+                    "VCF file, and increases the amount of RAM needed.",
+            optional=true)
+    public int maxRecordsInRam = 10000;
+
     @Override
     public void onTraversalStart() {
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
@@ -223,6 +233,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy,
                 dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
 
+        defragmentBuffer = new ArrayList<>();
+        outputBuffer = new ArrayList<>();
         vcfWriter = getVCFWriter();
 
         if (getSamplesForVariants().size() != 1) {
@@ -285,12 +297,36 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             final SVCallRecord record = createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS, allosomalContigs, refAutosomalCopyNumber, sampleDB);
             if (record != null) {
                 if (!isMultiSampleInput) {
-                    defragmenter.add(record);
+                    bufferDefragmenterOutput(defragmenter.add(record));
                 } else {
-                    clusterEngine.add(record);
+                    bufferClusterOutput(clusterEngine.add(record));
                 }
             }
         }
+    }
+
+    private void bufferDefragmenterOutput(final List<SVCallRecord> records) {
+        defragmentBuffer.addAll(records);
+    }
+
+    private List<SVCallRecord> flushDefragmenterBuffer() {
+        final List<SVCallRecord> result = defragmentBuffer.stream()
+                .sorted(Comparator.comparingInt(SVCallRecord::getPositionA))
+                .collect(Collectors.toUnmodifiableList());
+        defragmentBuffer = new ArrayList<>();
+        return result;
+    }
+
+    private void bufferClusterOutput(final List<SVCallRecord> records) {
+        outputBuffer.addAll(records);
+    }
+
+    private List<SVCallRecord> flushClusterBuffer() {
+        final List<SVCallRecord> result = outputBuffer.stream()
+                .sorted(Comparator.comparingInt(SVCallRecord::getPositionA))
+                .collect(Collectors.toUnmodifiableList());
+        outputBuffer = new ArrayList<>();
+        return result;
     }
 
     @Override
@@ -305,11 +341,16 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
      * new contig.
      */
     private void processClusters() {
-        final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlush();
-        defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
+        bufferDefragmenterOutput(defragmenter.flush());
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlush();
-        write(clusteredCalls);
+        bufferClusterOutput(
+                flushDefragmenterBuffer().stream()
+                        .map(clusterEngine::add)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList())
+        );
+        bufferClusterOutput(clusterEngine.flush());
+        write(flushClusterBuffer());
     }
 
     private VariantContext buildAndSanitizeRecord(final SVCallRecord record) {
