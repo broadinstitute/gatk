@@ -26,18 +26,20 @@ import org.broadinstitute.hellbender.tools.sv.stratify.SVStatificationEngine;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngineArgumentsCollection;
 import org.broadinstitute.hellbender.utils.*;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * <p>Stratifies structural variants into separate groups according to the following customizable criteria:
+ * <p>Stratifies structural variants into mutually exclusive groups according to the following customizable criteria:
  * <ul>
  *     <li>SV type</li>
  *     <li>Size range</li>
  *     <li>Reference context</li>
  * </ul>
- * Users should provide a stratification configuration .tsv file (tab-delimited table) with the following column
+ * Records are annotated with their respective strata names in the {@link GATKSVVCFConstants#STRATUM_INFO_KEY} INFO
+ * field. Users must provide a stratification configuration .tsv file (tab-delimited table) with the following column
  * header on the first line:
  * <ol>
  *     <li>NAME</li>
@@ -103,13 +105,13 @@ import java.util.stream.Collectors;
  *
  * <p>By default, each stratification group must be mutually exclusive, meaning that any given SV can only belong to
  * one group. An error is thrown if the tool encounters a variant that meets the criteria for more than one group.
- * This restriction can be overridden with the {@link SVStratify#ALLOW_MULTIPLE_MATCHES_LONG_NAME} argument.
- * Furthermore, SVs that do not fall into any of the groups will be assigned to the
- * {@link SVStratify#DEFAULT_STRATUM} group.</p>
+ * This restriction can be overridden with the {@link SVStratify#ALLOW_MULTIPLE_MATCHES_LONG_NAME} argument, in which
+ * case the record will be written out multiple times: once for each matching stratification group with the corresponding
+ * {@link GATKSVVCFConstants#STRATUM_INFO_KEY} value. Furthermore, SVs that do not match any of the groups will be
+ * annotated with the {@link SVStratify#DEFAULT_STRATUM} group.</p>
  *
- * <p>The tool generates a set of VCFs as output, with each VCF containing the records of each group. In addition,
- * records are annotated with their respective strata names in the {@link GATKSVVCFConstants#STRATUM_INFO_KEY} INFO
- * field.</p>
+ * <p>If using {@link #SPLIT_OUTPUT_LONG_NAME} then the tool generates a set of VCFs as output with each VCF containing
+ * the records of each group.</p>
  *
  * <p>This tool accepts multiple VCF inputs with no restrictions on site or sample overlap.</p>
  *
@@ -131,16 +133,30 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *     <li>
- *         Set of stratified VCFs
+ *         Annotated VCF(s)
  *     </li>
  * </ul>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage example, generating stratified VCFs:</h3>
  *
  * <pre>
- *     gatk GroupedSVCluster \
+ *     gatk SVStratify \
  *       -V variants.vcf.gz \
- *       -O out \
+ *       --split-output \
+ *       -O ./ \
+ *       --output-prefix out \
+ *       --sequence-dictionary reference.dict \
+ *       --context-name RM \
+ *       --context-intervals repeatmasker.bed \
+ *       --stratify-config strata.tsv
+ * </pre>
+ *
+ * <h3>Usage example, a single annotated VCF:</h3>
+ *
+ * <pre>
+ *     gatk SVStratify \
+ *       -V variants.vcf.gz \
+ *       -O out.vcf.gz \
  *       --sequence-dictionary reference.dict \
  *       --context-name RM \
  *       --context-intervals repeatmasker.bed \
@@ -150,8 +166,8 @@ import java.util.stream.Collectors;
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Splits VCFs by SV type, size, and reference context",
-        oneLineSummary = "Splits VCFs by SV type, size, and reference context",
+        summary = "Annotates variants by SV type, size, and reference context",
+        oneLineSummary = "Annotates variants by SV type, size, and reference context",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -159,20 +175,22 @@ import java.util.stream.Collectors;
 public final class SVStratify extends MultiVariantWalker {
 
     public static final String ALLOW_MULTIPLE_MATCHES_LONG_NAME = "allow-multiple-matches";
+    public static final String SPLIT_OUTPUT_LONG_NAME = "split-output";
 
     // Default output group name for unmatched records
     public static final String DEFAULT_STRATUM = "default";
 
     @Argument(
-            doc = "Output directory",
+            doc = "Output path. Must be a directory if using --" + SPLIT_OUTPUT_LONG_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private GATKPath outputPath;
 
     @Argument(
-            doc = "Prefix for output filenames",
-            fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME
+            doc = "Prefix for output filenames, only if using --" + SPLIT_OUTPUT_LONG_NAME,
+            fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME,
+            optional = true
     )
     private String outputPrefix;
 
@@ -184,6 +202,14 @@ public final class SVStratify extends MultiVariantWalker {
             fullName = ALLOW_MULTIPLE_MATCHES_LONG_NAME
     )
     private boolean allowMultipleMatches = false;
+
+    @Argument(
+            doc = "Split output into multiple VCFs, one per stratification group. If used, then --" +
+                    StandardArgumentDefinitions.OUTPUT_LONG_NAME + " must be the output directory and  --" +
+                    CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME + " must be provided.",
+            fullName = SPLIT_OUTPUT_LONG_NAME
+    )
+    private boolean splitOutput = false;
 
     protected SAMSequenceDictionary dictionary;
     protected Map<String, VariantContextWriter> writers;
@@ -203,9 +229,7 @@ public final class SVStratify extends MultiVariantWalker {
         initializeWriters();
     }
 
-    protected void createGroupWriter(final String name) {
-        final String filename = outputPrefix + "." + name + ".vcf.gz";
-        final Path path = outputPath.toPath().resolve(filename);
+    protected void createGroupWriter(final String name, final Path path) {
         final VariantContextWriter writer = createVCFWriter(path);
         final VCFHeader header = new VCFHeader(getHeaderForVariants());
         addStratifyMetadata(header);
@@ -221,11 +245,22 @@ public final class SVStratify extends MultiVariantWalker {
                 VCFHeaderLineType.String, "Stratum ID"));
     }
 
+    protected Path generateGroupOutputPath(final String name) {
+        final String filename = outputPrefix + "." + name + ".vcf.gz";
+        return outputPath.toPath().resolve(filename);
+    }
+
     protected void initializeWriters() {
         writers = new HashMap<>();
-        createGroupWriter(DEFAULT_STRATUM);
-        for (final SVStatificationEngine.Stratum s : engine.getStrata()) {
-            createGroupWriter(s.getName());
+        if (splitOutput) {
+            Utils.validateArg(outputPrefix != null, "Argument --" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME + " required if using --" + SPLIT_OUTPUT_LONG_NAME);
+            Utils.validateArg(new File(outputPath.toString()).isDirectory(), "Argument --" + StandardArgumentDefinitions.OUTPUT_LONG_NAME + " must be a directory if using " + SPLIT_OUTPUT_LONG_NAME);
+            createGroupWriter(DEFAULT_STRATUM, generateGroupOutputPath(DEFAULT_STRATUM));
+            for (final SVStatificationEngine.Stratum s : engine.getStrata()) {
+                createGroupWriter(s.getName(), generateGroupOutputPath(s.getName()));
+            }
+        } else {
+            createGroupWriter(DEFAULT_STRATUM, outputPath.toPath());
         }
     }
 
@@ -284,7 +319,11 @@ public final class SVStratify extends MultiVariantWalker {
                 throw new GATKException("Record " + record.getId() + " matched multiple groups: " + matchesString + ". Bypass this error using the --" + ALLOW_MULTIPLE_MATCHES_LONG_NAME + " argument");
             }
             for (final SVStatificationEngine.Stratum stratum : stratifications) {
-                writers.get(stratum.getName()).add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, stratum.getName()).make());
+                final VariantContextWriter writer = splitOutput ? writers.get(stratum.getName()) : writers.get(DEFAULT_STRATUM);
+                if (writer == null) {
+                    throw new GATKException("Writer not found for group: " + stratum.getName());
+                }
+                writer.add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, stratum.getName()).make());
             }
         }
     }

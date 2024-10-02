@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
@@ -20,6 +21,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class SVStratifyIntegrationTest extends CommandLineProgramTest {
 
@@ -37,6 +39,7 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
+                .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
@@ -88,6 +91,39 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(totalRecords, numInputRecords);
     }
 
+    @Test
+    public void testBwaMeltCohortSingleOutput() {
+        final File outputDir = createTempDir("stratify");
+        final File outputFile = outputDir.toPath().resolve("out.vcf.gz").toFile();
+        final String inputVcfPath = getToolTestDataDir() + "bwa_melt.chr22.vcf.gz";
+        final String configFile = getToolTestDataDir() + "test_config.tsv";
+
+        final String segdupFile = getToolTestDataDir() + "hg38.SegDup.chr22.bed";
+        final String segdupName = "SD";
+        final String repeatmaskerFile = getToolTestDataDir() + "hg38.RM.chr22_subsampled.bed";
+        final String repeatmaskerName = "RM";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(outputFile)
+                .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
+                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath);
+
+        runCommandLine(args, SVStratify.class.getSimpleName());
+
+        final List<File> outputFiles = Lists.newArrayList(outputDir.listFiles()).stream().filter(VcfUtils::isVariantFile).collect(Collectors.toUnmodifiableList());
+        Assert.assertEquals(outputFiles.size(), 1);
+        Assert.assertEquals(outputFiles.get(0).getAbsolutePath(), outputFile.getAbsolutePath());
+        final Pair<VCFHeader, List<VariantContext>> inputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(inputVcfPath);
+        final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        Assert.assertEquals(outputVcf.getRight().size(), inputVcf.getRight().size());
+    }
+
     @Test(expectedExceptions = GATKException.class)
     public void testBwaMeltCohortRedundant() {
         final File outputDir = createTempDir("stratify");
@@ -102,6 +138,7 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
+                .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
@@ -128,6 +165,7 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
+                .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
@@ -155,6 +193,7 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
+                .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
                 .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
