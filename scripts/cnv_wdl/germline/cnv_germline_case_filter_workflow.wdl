@@ -298,6 +298,7 @@ task ExtractPoNFreq {
     command <<<
         python << "EOF"
         import pandas as pd
+        import numpy as np
 
         intervals = pd.read_csv("~{intervals}", sep="\t", comment="@", names = ["contig","start","end","dummy1","dummy2"])
 
