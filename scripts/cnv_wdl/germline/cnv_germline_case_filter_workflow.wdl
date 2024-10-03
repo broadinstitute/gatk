@@ -4,8 +4,8 @@ import "cnv_germline_case_workflow.wdl" as GermlineCNVCaseWorkflow
 
 workflow SingleSampleGCNVAndFilterVCFs {
     input {
-        String? filter_expression #= "QUAL < 50"  # Example filter criteria
-
+        Array[String]? filter_expressions #= "QUAL < 50"  # Example filter criteria
+        Array[String]? filter_names
 
         ##################################
         ##for case mode
@@ -237,7 +237,8 @@ workflow SingleSampleGCNVAndFilterVCFs {
         input:
             samplename = ExtractSamplename.samplename,
             vcf_file = vcf,
-            filter_expression = filter_expression,
+            filter_expressions = filter_expressions,
+            filter_names = filter_names,
             gatk_docker = gatk_docker
     }
 
