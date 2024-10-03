@@ -331,7 +331,7 @@ task ExtractPoNFreq {
         df = df.sort_values(["contig","start_exon_idx","end_exon_idx"])
 
         vcfs = ["~{sep='","' panel_vcfs}"]
-        df_panel = pd.concat([read_panel_vcf_to_df(vcf) for vcf in vcfs])
+        df_panel = pd.concat([read_vcf_to_df(vcf) for vcf in vcfs])
         add_exon_idxs(df_panel, intervals)
         df_panel = df_panel.sort_values(["contig","start_exon_idx","end_exon_idx"])
 
@@ -365,18 +365,18 @@ task ExtractPoNFreq {
             df.loc[df_mask & (df.start_panel_idx !=
                                          df.end_panel_idx), "PANEL_COUNT"] = panel_counts
 
-            n_panel_samples = len(set(df_panel.sample_name))
-            contigs = set(df.contig)
-            svtypes = set(df.svtype)
-            for contig in contigs:
-                for svtype in svtypes:
-                    annotate_with_panel_count(df_panel, df, svtype, contig)
+        n_panel_samples = len(set(df_panel.sample_name))
+        contigs = set(df.contig)
+        svtypes = set(df.svtype)
+        for contig in contigs:
+            for svtype in svtypes:
+                annotate_with_panel_count(df_panel, df, svtype, contig)
 
-            df.loc[:,"PANEL_FRAC"]=(df.PANEL_COUNT/n_panel_samples)
+        df.loc[:,"PANEL_FRAC"]=(df.PANEL_COUNT/n_panel_samples)
 
-            df_annotations = df[["contig","start","PANEL_FRAC","PANEL_COUNT"]].copy()
-            df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"})
-            df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False)
+        df_annotations = df[["contig","start","PANEL_FRAC","PANEL_COUNT"]].copy()
+        df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"})
+        df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False)
 
 
         EOF
