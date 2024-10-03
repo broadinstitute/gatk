@@ -429,17 +429,22 @@ task FilterVCF {
     input {
         String samplename
         File vcf_file
-        String filter_expression = "(FMT/CN>2 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400) | (INFO/PANEL_COUNT>1)"
+        Array[String] filter_expressions = ["(FMT/CN>2 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400)","INFO/PANEL_COUNT>1"]
         String gatk_docker
-        String filter_name = "LowQual"
+        Array[String] filter_names = ["LowQual","PanelCount"]
     }
 
     command <<<
-        bcftools filter \
-            -e '~{filter_expression}' \
-            --soft-filter ~{filter_name} \
-            -Oz -o ~{samplename}.filtered.genotyped-segments.vcf.gz \
-            ~{vcf_file}
+        cp ~{vcf_file} tmp.vcf.gz
+        filters=('~{sep="' '" filter_expressions}')
+        fitler_names=(~{sep=" " filter_names}
+
+        for i in ${!filters[@]}; do
+            eval bcftools filter -m + -e \'${filters[$i]}\' --soft-filter ${filter_names[$i]} -Oz -o tmp_out.vcf.gz tmp.vcf.gz
+            mv tmp_out.vcf.gz tmp.vcf.gz
+        done
+
+        mv tmp.vcf.gz ~{samplename}.filtered.genotyped-segments.vcf.gz
 
         bcftools index -t ~{samplename}.filtered.genotyped-segments.vcf.gz
 
