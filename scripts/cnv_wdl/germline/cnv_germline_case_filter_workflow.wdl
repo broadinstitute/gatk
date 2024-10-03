@@ -235,7 +235,7 @@ workflow SingleSampleGCNVAndFilterVCFs {
     call FilterVCF{
         input:
             samplename = ExtractSamplename.samplename,
-            vcf_file = vcf,
+            vcf_file = AnnotateWithPoNFreq.output_vcf,
             filter_expressions = filter_expressions,
             filter_names = filter_names,
             gatk_docker = gatk_docker
@@ -373,7 +373,7 @@ task ExtractPoNFreq {
 
             df.loc[:,"PANEL_FRAC"]=(df.PANEL_COUNT/n_panel_samples)
 
-            df_annotations = df[["contig","start","PANEL_FRAC","PANEL_COUNT]].copy()
+            df_annotations = df[["contig","start","PANEL_FRAC","PANEL_COUNT"]].copy()
             df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"})
             df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False)
 
@@ -439,7 +439,8 @@ task FilterVCF {
         filters=('~{sep="' '" filter_expressions}')
         fitler_names=(~{sep=" " filter_names}
 
-        for i in ${!filters[@]}; do
+        for i in ${!filters[@]}
+        do
             eval bcftools filter -m + -e \'${filters[$i]}\' --soft-filter ${filter_names[$i]} -Oz -o tmp_out.vcf.gz tmp.vcf.gz
             mv tmp_out.vcf.gz tmp.vcf.gz
         done
