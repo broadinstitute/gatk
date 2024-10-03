@@ -24,7 +24,6 @@ workflow SingleSampleGCNVAndFilterVCFs {
         File ref_fasta_fai
         File ref_fasta
         String gatk_docker
-        Int num_samples_per_scatter_block
 
         ##################################
         #### optional basic arguments ####
