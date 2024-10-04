@@ -350,7 +350,7 @@ task ExtractPoNFreq {
                                                                  df_slice.end_exon_idx, "right")
 
             df.loc[df_mask & (df.start_panel_idx ==
-                                         df.end_panel_idx), "panel_count"] = 0
+                                         df.end_panel_idx), "PANEL_COUNT"] = 0
             panel_counts=[]
             for i, r in df.loc[df_mask & (df.start_panel_idx !=
                                          df.end_panel_idx)].iterrows():
