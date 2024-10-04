@@ -376,7 +376,7 @@ task ExtractPoNFreq {
 
         df_annotations = df[["contig","start","PANEL_FRAC","PANEL_COUNT"]].copy()
         df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"})
-        df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False)
+        df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False, sep="\t")
 
 
         EOF
@@ -408,7 +408,7 @@ task AnnotateWithPoNFreq {
     String output_basename = basename(vcf)
     command <<<
         bgzip ~{annotations}
-        tabix -s1 -b2 -e2 ~{annotations}.gz
+        tabix -s1 -b2 -e2 --skip-lines 1 ~{annotations}.gz
 
         bcftools annotate -a ~{annotations}.gz -c CHROM,POS,PANEL_FREQ,PANEL_COUNT -o  ~{output_basename}.vcf.gz ~{vcf}
 
