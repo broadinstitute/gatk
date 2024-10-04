@@ -441,11 +441,11 @@ task FilterVCF {
         set -euo pipefail
         cp ~{vcf_file} tmp.vcf.gz
         filters=('~{sep="' '" filter_expressions}')
-        fitler_names=(~{sep=" " filter_names})
+        filter_names=(~{sep=" " filter_names})
 
         for i in ${!filters[@]}
         do
-            eval bcftools filter -m + -e \'${filters[$i]}\' --soft-filter ${filter_names[$i]} -Oz -o tmp_out.vcf.gz tmp.vcf.gz
+            eval bcftools filter -m + -e \'${filters[$i]}\' --soft-filter ${filter_names[$i]} -o tmp_out.vcf.gz tmp.vcf.gz
             mv tmp_out.vcf.gz tmp.vcf.gz
         done
 
