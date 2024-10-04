@@ -359,7 +359,7 @@ task ExtractPoNFreq {
                                            np.maximum(r.start_exon_idx,overlapping_panel_events.start_exon_idx))
                 overlapping_panel_fracs = overlapping_exon_lengths/(r.end_exon_idx - r.start_exon_idx)
                 overlapping_panel_events = overlapping_panel_events.loc[overlapping_panel_fracs>=0.5]
-                panel_count =  len(set(overlapping_panel_events.sample_name))
+                panel_count =  len(set(overlapping_panel_events.sample_path))
                 panel_counts.append(panel_count)
 
             df.loc[df_mask & (df.start_panel_idx !=
