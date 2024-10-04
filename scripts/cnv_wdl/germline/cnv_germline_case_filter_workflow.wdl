@@ -432,7 +432,7 @@ task FilterVCF {
     input {
         String samplename
         File vcf_file
-        Array[String] filter_expressions = ['(GT=="alt" | GT=="mis") & ((FMT/CN>1 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400))',"INFO/PANEL_COUNT>1"]
+        Array[String] filter_expressions = ['(GT=="alt" | GT=="mis") & ((FMT/CN>1 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400))','(GT=="alt" | GT=="mis") & (INFO/PANEL_COUNT>1)']
         String gatk_docker
         Array[String] filter_names = ["LowQual","PanelCount"]
     }
@@ -440,7 +440,7 @@ task FilterVCF {
     command <<<
         cp ~{vcf_file} tmp.vcf.gz
         filters=('~{sep="' '" filter_expressions}')
-        fitler_names=(~{sep=" " filter_names}
+        fitler_names=(~{sep=" " filter_names})
 
         for i in ${!filters[@]}
         do
