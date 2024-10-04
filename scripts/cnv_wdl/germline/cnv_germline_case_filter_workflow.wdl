@@ -444,7 +444,7 @@ task FilterVCF {
 
         for i in ${!filters[@]}
         do
-            eval bcftools filter -m + -e \'${filters[$i]}\' --soft-filter ${filter_names[$i]} -Oz -o tmp_out.vcf.gz tmp.vcf.gz
+            eval bcftools filter -m + -e \'${filters[$i]}\' --soft-filter ${filter_names[$i]} -o tmp_out.vcf.gz tmp.vcf.gz
             mv tmp_out.vcf.gz tmp.vcf.gz
         done
 
@@ -462,7 +462,7 @@ task FilterVCF {
     }
 
     runtime {
-        docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
+        docker: "us.gcr.io/broad-dsde-methods/bcftools:v1.0"
         memory: "8G"
         cpu: 2
     }
