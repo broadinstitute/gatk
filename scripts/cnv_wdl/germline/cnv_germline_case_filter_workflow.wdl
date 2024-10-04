@@ -410,8 +410,9 @@ task AnnotateWithPoNFreq {
     command <<<
         bgzip ~{annotations}
         tabix -s1 -b2 -e2 --skip-lines 1 ~{annotations}.gz
-
-        bcftools annotate -a ~{annotations}.gz -c CHROM,POS,PANEL_FREQ,PANEL_COUNT -o  ~{output_basename}.vcf.gz ~{vcf}
+        echo '##INFO=<ID=PANEL_FREQ,Number=1,Type=Float,Description="Frequency in panel">' > header_lines.txt
+        echo '##INFO=<ID=PANEL_COUNT,Number=1,Type=Float,Description="Count in panel">' >> header_lines.txt
+        bcftools annotate -a ~{annotations}.gz -c CHROM,POS,PANEL_FREQ,PANEL_COUNT -h header_lines.txt -o  ~{output_basename}.vcf.gz ~{vcf}
 
     >>>
 
@@ -431,7 +432,7 @@ task FilterVCF {
     input {
         String samplename
         File vcf_file
-        Array[String] filter_expressions = ["(FMT/CN>2 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400)","INFO/PANEL_COUNT>1"]
+        Array[String] filter_expressions = ['(GT=="alt" | GT=="mis") & ((FMT/CN>1 & QUAL<50) | (FMT/CN==1 & QUAL<100 ) | (FMT/CN==0 & QUAL<400))',"INFO/PANEL_COUNT>1"]
         String gatk_docker
         Array[String] filter_names = ["LowQual","PanelCount"]
     }
