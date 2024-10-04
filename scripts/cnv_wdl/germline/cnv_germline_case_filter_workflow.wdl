@@ -365,7 +365,7 @@ task ExtractPoNFreq {
             df.loc[df_mask & (df.start_panel_idx !=
                                          df.end_panel_idx), "PANEL_COUNT"] = panel_counts
 
-        n_panel_samples = len(set(df_panel.sample_name))
+        n_panel_samples = len(set(df_panel.sample_path))
         contigs = set(df.contig)
         svtypes = set(df.svtype)
         for contig in contigs:
