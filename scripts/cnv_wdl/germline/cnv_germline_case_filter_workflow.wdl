@@ -372,7 +372,7 @@ task ExtractPoNFreq {
             for svtype in svtypes:
                 annotate_with_panel_count(df_panel, df, svtype, contig)
 
-        df.loc[:,"PANEL_FRAC"]=(df.PANEL_COUNT/n_panel_samples)
+        df.loc[:,"PANEL_FREQ"]=(df.PANEL_COUNT/n_panel_samples)
 
         df_annotations = df[["contig","start","PANEL_FREQ","PANEL_COUNT"]].copy()
         df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"}, axis=1)
