@@ -241,7 +241,12 @@ workflow SingleSampleGCNVAndFilterVCFs {
             gatk_docker = gatk_docker
     }
 
-
+    call QCFilteredVCF {
+        input:
+            filtered_vcf = FilterVCF.filtered_vcf,
+            max_events = maximum_number_events_per_sample,
+            max_pass_events = maximum_number_pass_events_per_sample
+    }
 
     output {
         File filtered_vcf = FilterVCF.filtered_vcf
@@ -258,8 +263,8 @@ workflow SingleSampleGCNVAndFilterVCFs {
         File genotyped_intervals_vcf_indexes = CNVGermlineCaseWorkflow.genotyped_intervals_vcf_indexes[0]
         File genotyped_segments_vcfs = CNVGermlineCaseWorkflow.genotyped_segments_vcfs[0]
         File genotyped_segments_vcf_indexes = CNVGermlineCaseWorkflow.genotyped_segments_vcf_indexes[0]
-        File qc_status_files = CNVGermlineCaseWorkflow.qc_status_files[0]
-        String qc_status_strings = CNVGermlineCaseWorkflow.qc_status_strings[0]
+        String qc_status_string = QCFilteredVCF.qc_status
+        Boolean qc_passed = (QCFilteredVCF.qc_status == "PASS")
         File denoised_copy_ratios = CNVGermlineCaseWorkflow.denoised_copy_ratios[0]
     }
 }
@@ -460,6 +465,46 @@ task FilterVCF {
         File filtered_vcf = samplename + ".filtered.genotyped-segments.vcf.gz"
         File filtered_vcf_index = samplename + ".filtered.genotyped-segments.vcf.gz.tbi"
         File filtered_vcf_md5sum = samplename + ".filtered.genotyped-segments.vcf.gz.md5sum"
+    }
+
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/bcftools:v1.3"
+        memory: "8G"
+        cpu: 2
+    }
+}
+
+task QCFilteredVCF {
+    input {
+        File filtered_vcf
+        Int max_events
+        Int max_pass_events
+    }
+
+    command <<<
+        set -euo pipefail
+
+        n_total_events=$(bcftools view --no-header -e '(GT=="hom")' ~{filtered_vcf} | wc -l)
+        n_pass_events=$(bcftools view --no-header -e '(GT=="hom") || (FILTER!~"PASS")' ~{filtered_vcf} | wc -l)
+
+        if [ $n_total_events -le ~{max_events} ]; then
+            if [ $n_pass_events -le ~{max_pass_events} ]; then
+                echo "PASS" > qc_status.txt
+            else
+                echo "EXCESSIVE_NUMBER_OF_PASS_EVENTS" > qc_status.txt
+            fi
+        else
+            echo "EXCESSIVE_NUMBER_OF_EVENTS" > qc_status.txt
+        fi
+
+        echo $n_total_events > n_total_events.txt
+        echo $n_pass_events > n_pass_events.txt
+    >>>
+
+    output {
+        String qc_status = read_string("qc_status.txt")
+        Int n_total_events = read_int("n_total_events.txt")
+        Int n_pass_events = read_int("n_pass_events.txt")
     }
 
     runtime {
