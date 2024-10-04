@@ -375,8 +375,9 @@ task ExtractPoNFreq {
         df.loc[:,"PANEL_FRAC"]=(df.PANEL_COUNT/n_panel_samples)
 
         df_annotations = df[["contig","start","PANEL_FRAC","PANEL_COUNT"]].copy()
-        df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"})
-        df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False, sep="\t")
+        df_annotations = df_annotations.rename({"contig":"CHROM","start":"POS"}, axis=1)
+        df_annotations = df_annotations.as_type({"PANEL_COUNT":int})
+        df_annotations.to_csv("~{basename_out}.annotations.tsv", index = False, sep="\t", float_format="%g")
 
 
         EOF
