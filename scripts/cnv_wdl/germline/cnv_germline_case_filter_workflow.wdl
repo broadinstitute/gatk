@@ -462,7 +462,7 @@ task FilterVCF {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/bcftools:v1.0"
+        docker: "us.gcr.io/broad-dsde-methods/bcftools:v1.3"
         memory: "8G"
         cpu: 2
     }
