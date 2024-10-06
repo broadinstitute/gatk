@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
  */
 public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollection {
     private static final long serialVersionUID = 1L;
+    public static final String ALLOW_MISSING_READ_GROUPS_LONG_NAME = "allow-missing-read-group";
 
     /**
      * This flag tells GATK not to modify quality scores less than this value. Instead they will be written out
@@ -30,10 +31,10 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
     public Boolean useOriginalBaseQualities = false;
 
     /**
-     * If a read group was not found in the recalibration table (e.g. if all reads in the read group were filtered
-     * at the recalibration step), leave the reads as is
-     */
-    // tsato: how will it interact with e.g. quantization...
-    @Argument(fullName="hohoho", doc = "yoyo", optional = true)
-    public boolean allowReadGroupsNotInRecalTable = false;
+     * If set to true, do not throw an error when encountering a read with read group not in the recalibration table.
+     * We simply copy over the (quantized) base qualities as the recalibrated base qualities.
+     */ // tsato: should this be in the *unique* ApplyBQSRArgumentCollection?
+    @Argument(fullName = ALLOW_MISSING_READ_GROUPS_LONG_NAME, doc = "", optional = true)
+    public boolean allowMissingReadGroups = false;
+
 }

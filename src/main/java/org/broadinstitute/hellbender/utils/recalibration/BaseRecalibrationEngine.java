@@ -187,7 +187,7 @@ public final class BaseRecalibrationEngine implements Serializable {
                 byReadGroupTable.put(new RecalDatum(qualDatum), rgKey, eventIndex);
             } else {
                 // combine the qual datum with the existing datum in the byReadGroup table
-                rgDatum.combine(qualDatum); // tsato: why???
+                    rgDatum.combine(qualDatum); // tsato: why???
             } // tsato: can numObservations ever be 0 or is there a pseudocount?
         }
     }
