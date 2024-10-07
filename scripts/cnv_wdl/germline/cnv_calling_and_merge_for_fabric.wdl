@@ -90,7 +90,7 @@ task MergeVcfs {
     command <<<
         set -euo pipefail
 
-        if [ "~{output_basename} != "output_cnv_basename" ]; then
+        if [ "~{output_basename}" != "~{output_cnv_basename}" ]; then
             echo "input vcf names do not agree"
             exit 1
         fi
