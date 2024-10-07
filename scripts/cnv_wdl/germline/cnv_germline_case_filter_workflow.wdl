@@ -276,6 +276,7 @@ task ExtractSamplename {
         String gatk_docker
     }
     command <<<
+        set -euo pipefail
         echo ~{vcf_filename} | sed -E 's/genotyped-segments-(.*)\.cram\.vcf\.gz/\1/' > output.txt
         >>>
     output {
@@ -301,6 +302,7 @@ task ExtractPoNFreq {
     String basename_out = basename(vcf, ".vcf.gz")
 
     command <<<
+        set -euo pipefail
         python << "EOF"
         import pandas as pd
         import numpy as np
@@ -413,6 +415,7 @@ task AnnotateWithPoNFreq {
 
     String output_basename = basename(vcf)
     command <<<
+        set -euo pipefail
         bgzip ~{annotations}
         tabix -s1 -b2 -e2 --skip-lines 1 ~{annotations}.gz
         echo '##INFO=<ID=PANEL_FREQ,Number=1,Type=Float,Description="Frequency in panel">' > header_lines.txt
