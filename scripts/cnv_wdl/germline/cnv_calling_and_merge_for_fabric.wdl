@@ -80,7 +80,7 @@ task MergeVcfs {
         File cnv_vcf
         File short_variant_vcf
 
-        File gatk_docker
+        String gatk_docker
         Int mem_gb=4
         Int disk_size_gb = 100
     }
