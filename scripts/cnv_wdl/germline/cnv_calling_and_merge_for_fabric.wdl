@@ -1,6 +1,6 @@
 version 1.0
 
-import "cnv_germline_case_filter_workflow.wdl" as cnv_case_and_fileter
+import "cnv_germline_case_filter_workflow.wdl" as cnv_case_and_filter
 workflow CNVCallingAndMergeForFabric {
     input {
         File normal_bam
@@ -28,14 +28,14 @@ workflow CNVCallingAndMergeForFabric {
         Int padding
     }
 
-    call cnv_case_and_fileter.SingleSampleGCNVAndFilterVCFs {
+    call cnv_case_and_filter.SingleSampleGCNVAndFilterVCFs {
         input:
-            normal_bams = normal_bam,
+            normal_bam = normal_bam,
             normal_bai = normal_bai,
             contig_ploidy_model_tar = contig_ploidy_model_tar,
             filtered_intervals = filtered_intervals,
             gcnv_model_tars = gcnv_model_tars,
-            gcnv_pamel_genotyped_segments = gcnv_panel_genotyped_segments,
+            pon_genotyped_segments_vcfs = gcnv_panel_genotyped_segments,
             gatk_docker = gatk_docker,
             intervals = intervals,
             maximum_number_events_per_sample = maximum_number_events_per_sample,

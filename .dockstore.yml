@@ -41,6 +41,14 @@ workflows:
          - tm_filtercnvs
        tags:
          - /.*/
+   - name: cnv_calling_and_merge_for_fabric
+     subclass: WDL
+     primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_calling_and_merge_for_fabric.wdl
+     filters:
+       branches:
+         - tm_filtercnvs
+       tags:
+         - /.*/
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
