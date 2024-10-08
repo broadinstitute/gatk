@@ -158,6 +158,17 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - EchoCallset
+         - vs_1334_vcf_max_alt_alleles_echo_callset
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
