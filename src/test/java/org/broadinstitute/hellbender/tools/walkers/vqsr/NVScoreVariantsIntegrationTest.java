@@ -5,11 +5,13 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.stream.Collectors;
@@ -38,6 +40,8 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21);
 
         runCommandLine(argsBuilder);
+
+        dumpRawFile(tempVcf.getAbsolutePath(), "test1DModel");
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY, EPSILON_FOR_1D);
     }
 
@@ -63,6 +67,8 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
                 .add("tensor-type", NVScoreVariants.TensorType.read_tensor.name());
 
         runCommandLine(argsBuilder);
+
+        dumpRawFile(tempVcf.getAbsolutePath(), "test2DModel");
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY, EPSILON_FOR_2D);
     }
 
@@ -103,5 +109,19 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
                 "There were " + annotationMismatchCount + " sites where the annotations didn't match.");
 
         Assert.assertTrue(!expectedVi.hasNext() && !actualVi.hasNext());
+    }
+
+    private void dumpRawFile(final String file, final String testName) {
+        try (final XReadLines reader = new XReadLines(new File(file))){
+            System.err.println("**************************************");
+            System.err.println(testName + ": contents of " + file);
+            System.err.println("**************************************");
+            for (final String line : reader) {
+                System.err.println(line);
+            }
+            System.err.println("**************************************");
+        } catch ( IOException e ) {
+            Assert.fail("Error reading contents of " + file, e);
+        }
     }
 }
