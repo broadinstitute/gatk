@@ -4,7 +4,7 @@ import argparse
 import torch
 import sys
 import pytorch_lightning as pl
-from pytorch_lightning.utilities import seed
+from lightning_fabric.utilities import seed
 from torch.utils.data import DataLoader
 from scorevariants.dataset import ReferenceDataset
 from scorevariants.readers import TensorReader, ReferenceTensorReader
