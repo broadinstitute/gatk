@@ -298,6 +298,7 @@ public class ExtractCohortEngine {
 
         if (samplePloidyTableRef != null) {
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(samplePloidyTableRef, ploidyTableRestriction, projectID)) {
+                logger.info("Found ploidy lookup table.  Reading it into memory");
                 for (final GenericRecord queryRow : reader) {
                     // the key will be a basic joining of chromosome (represented as a location) with sample name
                     String chromosome = queryRow.get(SchemaUtils.CHROMOSOME).toString();
@@ -306,6 +307,7 @@ public class ExtractCohortEngine {
                     samplePloidyMap.put(makePloidyLookupKey(chromosome, sampleId), ploidy);
                 }
                 processBytesScanned(reader);
+                logger.info("Finished reading ploidy table into memory. "+samplePloidyMap.size()+" entries read.");
             }
         }
 
@@ -618,7 +620,26 @@ public class ExtractCohortEngine {
         for (int sampleId = samplesNotEncountered.nextSetBit(0); sampleId >= 0; sampleId = samplesNotEncountered.nextSetBit(sampleId + 1)) {
             genotypeBuilder.reset(false);
             genotypeBuilder.name(sampleIdToName.get((long) sampleId));
-            genotypeBuilder.alleles(gtAlleles);
+
+            long chromAsPosition = location - SchemaUtils.decodePosition(location);
+            String key = makePloidyLookupKey(Long.toString(chromAsPosition), Integer.toString(sampleId));
+
+            // Logic for determining the correct ploidy for reference data
+            // If we have no info in the table, the ploidy is explicitly 2, OR we are in a PAR, use diploid reference.
+            // If we have looked up the ploidy in our table and it says 1, use a haploid reference
+            // Otherwise, if we have a ploidy that is neither 1 nor 2, throw a user exception because we haven't coded for this case
+            if (!samplePloidyMap.containsKey(key)) {
+                logger.info("Sample ploidy information not found for key "+key+"--defaulting to 2");
+            }
+            int ploidy = (samplePloidyMap.containsKey(key) ? samplePloidyMap.get(key) : 2);
+            if (ploidy == 2 || PloidyUtils.isLocationInPAR(location)) {
+                genotypeBuilder.alleles(gtAlleles);
+            } else if (ploidy == 1) {
+                genotypeBuilder.alleles(gtHaploidAlleles);
+            } else {
+                throw new UserException("GVS cannot currently handle extracting with a ploidy of "+ploidy+" as seen at "+SchemaUtils.decodeContig(location)+": "+SchemaUtils.decodePosition(location)+".");
+            }
+//            genotypeBuilder.alleles(gtAlleles);
             genotypeBuilder.GQ(inferredReferenceState.getReferenceGQ());
             genotypes.add(genotypeBuilder.make());
         }

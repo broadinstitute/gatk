@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
-import picard.vcf.MendelianViolations.FindMendelianViolations;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +34,10 @@ public final class RefCreator {
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
     private Map<String, BitSet> ploidiesPerChromosome = null;
+    private Map<String, Map<Integer, Long>> ploidiesCountPerChromosome = null;
+
+    // for easily calculating percentages later
+    private long totalRefEntries = 0L;
 
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
@@ -49,6 +52,7 @@ public final class RefCreator {
         this.gqStatesToIgnore = gqStatesToIgnore;
 
         this.ploidiesPerChromosome = new HashMap<>();
+        this.ploidiesCountPerChromosome = new HashMap<>();
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
@@ -76,24 +80,6 @@ public final class RefCreator {
     }
 
     public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
-        // Record ploidy if this is not in a PAR
-        if (!PloidyUtils.doesVariantOverlapPAR(variant) && variant.isReferenceBlock()) {
-            // create the bitset for this ploidy if it isn't there
-            if (!ploidiesPerChromosome.containsKey(variant.getContig())) {
-                ploidiesPerChromosome.put(variant.getContig(), new BitSet());
-            }
-
-            // set the bit for this ploidy so we record having seen it
-            BitSet ploidies = ploidiesPerChromosome.get(variant.getContig());
-            int ploidy = variant.getMaxPloidy(1);
-            if (!ploidies.get(ploidy)) {
-                ploidies.set(ploidy);
-                logger.info("Recording reference ploidy "+ploidy+" from sample "+sampleId+" at "+variant.getContig()+" "+variant.getStart() +" with gt "+variant.getGenotype(0));
-            }
-        }
-
-
-
         final String variantChr = variant.getContig();
 
         for (GenomeLoc genomeLoc : intervalsToWrite) {
@@ -118,6 +104,31 @@ public final class RefCreator {
                 // if we are writing ref ranges, and this is a reference block, write it!
                 if (writeReferenceRanges) {
                     if (variant.isReferenceBlock()) {
+
+                        // Record reference ploidy if this is not in a PAR
+                        if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
+                            // create the bitset for this ploidy if it isn't there
+                            if (!ploidiesCountPerChromosome.containsKey(variant.getContig())) {
+                                ploidiesCountPerChromosome.put(variant.getContig(), new HashMap<>());
+                            }
+                            // set the bit for this ploidy so we record having seen it
+                            Map<Integer, Long> ploidyCounts = ploidiesCountPerChromosome.get(variant.getContig());
+
+                            int ploidy = variant.getMaxPloidy(1);
+
+                            Long currentCount = 0L;
+                            if (ploidyCounts.containsKey(ploidy)) {
+                                currentCount = ploidyCounts.get(ploidy);
+                            }
+
+                            // increment counts for this one and put it back
+                            ++currentCount;
+                            ploidyCounts.put(ploidy, currentCount);
+
+                            ++totalRefEntries;
+                        }
+
+
                         // break up reference blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
                         int localStart = start;
                         while ( localStart <= end ) {
@@ -280,8 +291,12 @@ public final class RefCreator {
         return ret;
     }
 
-    public Map<String, BitSet> getReferencePloidyData() {
-        return ploidiesPerChromosome;
+    public Map<String, Map<Integer, Long>> getReferencePloidyData() {
+        return ploidiesCountPerChromosome;
+    }
+
+    public long getTotalRefEntries() {
+        return totalRefEntries;
     }
 
     public void commitData() {

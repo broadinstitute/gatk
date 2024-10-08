@@ -390,7 +390,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // later separate their creation, throwing the ploidy stuff explicity behind a flag
             if (samplePloidyCreator != null) {
                 try {
-                    samplePloidyCreator.apply(refCreator.getReferencePloidyData());
+                    samplePloidyCreator.apply(refCreator.getReferencePloidyData(), refCreator.getTotalRefEntries());
                 } catch (IOException ioe) {
                     throw new GATKException("Error writing ploidy data", ioe);
                 }
