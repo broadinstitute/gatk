@@ -115,6 +115,9 @@ workflow GvsQuickstartHailIntegration {
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
             use_VQSR = !use_VETS,
+            # In EchoCallset: "Quick fix to integration test in EchoCallset"
+#             avro_path = GvsExtractAvroFilesForHail.avro_path,
+#             vds_destination_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
             avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             cluster_prefix = "vds-cluster",
@@ -131,6 +134,8 @@ workflow GvsQuickstartHailIntegration {
         input:
             go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
+            # In EchoCallset: "Quick fix to integration test in EchoCallset"
+#            vds_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
             vds_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
@@ -144,6 +149,8 @@ workflow GvsQuickstartHailIntegration {
         Array[File] output_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes
         Float total_vcfs_size_mb = GvsQuickstartVcfIntegration.total_vcfs_size_mb
         File manifest = GvsQuickstartVcfIntegration.manifest
+        # In EchoCallset: "Quick fix to integration test in EchoCallset"
+#        String vds_output_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds"
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
         String recorded_git_hash = effective_git_hash
         Boolean done = true
