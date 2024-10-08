@@ -2,6 +2,7 @@ import argparse
 import sys
 import re
 import os
+from google.cloud import storage
 
 MaxCpu = -100.0
 MaxMem = -100.0
@@ -10,16 +11,41 @@ MaxDisk = -100.0
 MaxDiskPct = -100.0
 
 
-def parse_monitoring_log_files(mlog_files, output_file):
+def parse_monitoring_log_files(file_input, fofn_input, output_file):
     with open(output_file, 'w') as output:
         header = f"Total Mem\tMax Mem Used\tMax Mem Used (%)\tTotal Disk\tMax Disk Used\tMax Disk Used (" \
                  f"%)\tTask\tShard\tFile\n"
         output.write(header)
 
-        for mlog_file in mlog_files:
-            if not os.path.exists(mlog_file):
-                eprint(f"ERROR: File {mlog_file} does not exist")
-            parse_monitoring_log_file(mlog_file, output)
+        if file_input:
+            for mlog_file in file_input:
+                if not os.path.exists(mlog_file):
+                    eprint(f"ERROR: Log file {mlog_file} does not exist.")
+                parse_monitoring_log_file(mlog_file, output)
+        else:
+            if not os.path.exists(fofn_input):
+                eprint(f"ERROR: FOFN file {fofn_input} does not exist.")
+            client = storage.Client()
+            with open(fofn_input) as input:
+                for path in input:
+                    gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<blob_name>.*)$")
+                    match = gcs_re.match(path)
+                    if not match:
+                        raise ValueError(f"'{path}' does not look like a GCS path")
+
+                    if not os.path.exists("temp"):
+                        os.makedirs("temp")
+                    bucket_name, blob_name = match.groups()
+                    bucket = client.get_bucket(bucket_name)
+                    blob = bucket.get_blob(blob_name)
+                    converted_path = "temp/" + blob_name.replace('/', '_')[-100:]
+                    blob.download_to_filename(converted_path)
+                    parse_monitoring_log_file(converted_path, output)
+#                     os.remove(converted_path)
+                input.close()
+
+
+
 
 
 def parse_monitoring_log_file(mlog_file, output):
@@ -182,9 +208,13 @@ def eprint(*the_args, **kwargs):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='A tool to summarize the output of multiple monitoring logs')
-
-    parser.add_argument('--input', nargs='+', help='Monitoring log file(s)', required=True)
     parser.add_argument('--output', type=str, help='Output Monitoring log summary file', required=True)
-    args = parser.parse_args()
 
-    parse_monitoring_log_files(args.input, args.output)
+    file_args = parser.add_mutually_exclusive_group(required=True)
+    file_args.add_argument('--file_input', nargs='+',
+                                  help='Monitoring log file(s); script will fail if you pass too many.')
+    file_args.add_argument('--fofn_input', type=str,
+                           help='GCS path to a monitoring log FOFN, 1 GCS log path per line.')
+
+    args = parser.parse_args()
+    parse_monitoring_log_files(args.file_input, args.fofn_input, args.output)

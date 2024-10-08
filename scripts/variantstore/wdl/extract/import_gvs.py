@@ -22,7 +22,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            intermediate_resume_point=int,
            skip_final_merge=bool,
            ref_block_max_length=int,
-           use_classic_vqsr=bool
+           use_vqsr=bool
            )
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
@@ -39,7 +39,7 @@ def import_gvs(refs: 'List[List[str]]',
                intermediate_resume_point=0,
                skip_final_merge=False,
                ref_block_max_length: 'int' = 1000,
-               use_classic_vqsr=False
+               use_vqsr=False
                ):
     """Import a collection of Avro files exported from GVS.
 
@@ -132,8 +132,8 @@ def import_gvs(refs: 'List[List[str]]',
         Skip final merge if true.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
-    use_classic_vqsr : :class:`bool`
-        Expect input Avro files to have been generated from VQSR 'Classic' data
+    use_vqsr : :class:`bool`
+        Expect input Avro files to have been generated from VQSR (NOT VETS) data
 
     Script workflow:
     ---------------
@@ -200,8 +200,8 @@ def import_gvs(refs: 'List[List[str]]',
         vqsr = vqsr.key_by('locus')
         vqsr.write(vqsr_path, overwrite=True)
 
-    if use_classic_vqsr:
-        info('vqsr_classic: Loading tranche data')
+    if use_vqsr:
+        info('vqsr: Loading tranche data')
         tranche = hl.import_avro(vqsr_tranche_data)
 
     n_samples = 0
@@ -339,7 +339,7 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
-        if use_classic_vqsr:
+        if use_vqsr:
             vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
                                      truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
                                      truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)

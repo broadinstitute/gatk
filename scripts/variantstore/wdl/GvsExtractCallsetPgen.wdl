@@ -37,6 +37,8 @@ workflow GvsExtractCallsetPgen {
         # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
         Int? scatter_count
         Int? extract_memory_override_gib
+        # The amount of memory on the extract VM *not* allocated to the GATK process.
+        Int extract_overhead_memory_override_gib = 3
         Int? disk_override
         # If true, the output files will be named with a zero-padded interval number prefix
         # If false, the output files will be named with a non-zero-padded interval number suffix
@@ -138,12 +140,12 @@ workflow GvsExtractCallsetPgen {
 
     Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override,
                                                                 if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                                                else 500])
+                                                                else 200])
 
     Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
-                                       else if effective_scatter_count <= 100 then 40
-                                           else if effective_scatter_count <= 500 then 20
-                                               else 12
+                                       else if effective_scatter_count <= 100 then 35 + extract_overhead_memory_override_gib
+                                           else if effective_scatter_count <= 500 then 15 + extract_overhead_memory_override_gib
+                                               else 5 + extract_overhead_memory_override_gib
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
         File? none = ""
@@ -158,13 +160,11 @@ workflow GvsExtractCallsetPgen {
             interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
-            output_gcs_dir = output_gcs_dir,
             split_intervals_extra_args = split_intervals_extra_args,
             split_intervals_disk_size_override = effective_split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
-            output_gcs_dir = output_gcs_dir,
           }
 
     call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
@@ -184,7 +184,7 @@ workflow GvsExtractCallsetPgen {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call Utils.IsVQSRLite {
+        call Utils.IsVETS {
             input:
                 project_id = query_project,
                 fq_filter_set_info_table = "~{fq_filter_set_info_table}",
@@ -193,9 +193,9 @@ workflow GvsExtractCallsetPgen {
         }
     }
 
-    # If we're not using the VQSR filters, set it to Lite (really shouldn't matter one way or the other)
+    # If we're not using the VQSR filters, set it to VETS (really shouldn't matter one way or the other)
     # Otherwise use the auto-derived flag.
-    Boolean use_VQSR_lite = select_first([IsVQSRLite.is_vqsr_lite, true])
+    Boolean use_VETS = select_first([IsVETS.is_vets, true])
 
     call Utils.GetBQTablesMaxLastModifiedTimestamp {
         input:
@@ -226,7 +226,7 @@ workflow GvsExtractCallsetPgen {
                 max_alt_alleles                    = max_alt_alleles,
                 lenient_ploidy_validation          = lenient_ploidy_validation,
                 preserve_phasing                   = preserve_phasing,
-                use_VQSR_lite                      = use_VQSR_lite,
+                use_VETS                           = use_VETS,
                 gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
                 reference                          = reference,
@@ -244,7 +244,7 @@ workflow GvsExtractCallsetPgen {
                 do_not_filter_override             = do_not_filter_override,
                 fq_filter_set_info_table           = fq_filter_set_info_table,
                 fq_filter_set_site_table           = fq_filter_set_site_table,
-                fq_filter_set_tranches_table       = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
+                fq_filter_set_tranches_table       = if (use_VETS) then none else fq_filter_set_tranches_table,
                 filter_set_name                    = filter_set_name,
                 drop_state                         = drop_state,
                 output_pgen_basename               = pgen_basename,
@@ -254,6 +254,7 @@ workflow GvsExtractCallsetPgen {
                 extract_maxretries_override        = extract_maxretries_override,
                 disk_override                      = disk_override,
                 memory_gib                         = effective_extract_memory_gib,
+                overhead_memory_gib                = extract_overhead_memory_override_gib,
                 emit_pls                           = emit_pls,
                 emit_ads                           = emit_ads,
                 write_cost_to_db                   = write_cost_to_db,
@@ -297,6 +298,7 @@ workflow GvsExtractCallsetPgen {
         Array[File] output_pgens = PgenExtractTask.output_pgen
         Array[File] output_pvars = PgenExtractTask.output_pvar
         Array[File] output_psams = PgenExtractTask.output_psam
+        Array[File] monitoring_logs = PgenExtractTask.monitoring_log
         File output_pgen_interval_files = SplitIntervalsTarred.interval_files_tar
         Array[String] output_pgen_interval_filenames = SplitIntervalsTarred.interval_filenames
         Float total_pgens_size_mb = SumBytes.total_mb
@@ -325,7 +327,7 @@ task PgenExtractTask {
         # If true, preserves phasing in the output PGEN files if phasing is present in the source genotypes
         Boolean preserve_phasing = false
 
-        Boolean use_VQSR_lite
+        Boolean use_VETS
 
         File reference
         File reference_index
@@ -365,6 +367,7 @@ task PgenExtractTask {
         Int? extract_maxretries_override
         Int? disk_override
         Int memory_gib
+        Int overhead_memory_gib
 
         Int? local_sort_max_records_in_ram = 10000000
 
@@ -391,7 +394,7 @@ task PgenExtractTask {
 
         if [ ~{do_not_filter_override} = true ]; then
             FILTERING_ARGS=''
-        elif [ ~{use_VQSR_lite} = false ]; then
+        elif [ ~{use_VETS} = false ]; then
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
             --filter-set-site-table ~{fq_filter_set_site_table}
             --tranches-table ~{fq_filter_set_tranches_table}
@@ -412,7 +415,7 @@ task PgenExtractTask {
         # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
         if [[ ${MEM_UNIT} == "GB" ]]
         then
-            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+            memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
         else
             echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
             exit 1
@@ -433,12 +436,12 @@ task PgenExtractTask {
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
                 ~{true='--emit-ads' false='' emit_ads} \
-                ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+                ~{true='' false='--use-vqsr-scoring' use_VETS} \
                 --convert-filtered-genotypes-to-no-calls \
                 ${FILTERING_ARGS} \
                 --dataset-id ~{dataset_name} \
                 --call-set-identifier ~{call_set_identifier} \
-                --wdl-step GvsExtractCallsetPgenPgen \
+                --wdl-step GvsExtractCallsetPgen \
                 --wdl-call PgenExtractTask \
                 --shard-identifier ~{interval_filename} \
                 ~{cost_observability_line} \

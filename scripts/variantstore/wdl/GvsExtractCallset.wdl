@@ -19,9 +19,12 @@ workflow GvsExtractCallset {
     # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
     Int? extract_memory_override_gib
+    # The amount of memory on the extract VM *not* allocated to the GATK process.
+    Int extract_overhead_memory_override_gib = 3
     Int? disk_override
     Boolean bgzip_output_vcfs = false
     Boolean zero_pad_output_vcf_filenames = true
+    Boolean collect_variant_calling_metrics = false
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
@@ -57,6 +60,9 @@ workflow GvsExtractCallset {
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+
+  File dbsnp_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
+  File dbsnp_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx"
 
   String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
   String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
@@ -138,9 +144,9 @@ workflow GvsExtractCallset {
                                                                   else 500])
 
   Int effective_extract_memory_gib = if defined(extract_memory_override_gib) then select_first([extract_memory_override_gib])
-                                     else if effective_scatter_count <= 100 then 40
-                                          else if effective_scatter_count <= 500 then 20
-                                               else 12
+                                     else if effective_scatter_count <= 100 then 37 + extract_overhead_memory_override_gib
+                                          else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
+                                               else 9 + extract_overhead_memory_override_gib
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
@@ -180,7 +186,7 @@ workflow GvsExtractCallset {
         cloud_sdk_docker = effective_cloud_sdk_docker,
       }
 
-    call Utils.IsVQSRLite {
+    call Utils.IsVETS {
       input:
         project_id = query_project,
         fq_filter_set_info_table = "~{fq_filter_set_info_table}",
@@ -189,9 +195,9 @@ workflow GvsExtractCallset {
     }
   }
 
-  # If we're not using the VQSR filters, set it to Lite (really shouldn't matter one way or the other)
+  # If we're not using the VQSR filters, set it to VETS (really shouldn't matter one way or the other)
   # Otherwise use the auto-derived flag.
-  Boolean use_VQSR_lite = select_first([IsVQSRLite.is_vqsr_lite, true])
+  Boolean use_VETS = select_first([IsVETS.is_vets, true])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:
@@ -215,13 +221,12 @@ workflow GvsExtractCallset {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
 
-
     call ExtractTask {
       input:
         go                                    = select_first([ValidateFilterSetName.done, true]),
         dataset_name                          = dataset_name,
         call_set_identifier                   = call_set_identifier,
-        use_VQSR_lite                         = use_VQSR_lite,
+        use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
         reference                             = reference,
@@ -239,22 +244,47 @@ workflow GvsExtractCallset {
         fq_filter_set_info_table              = fq_filter_set_info_table,
         fq_filter_set_site_table              = fq_filter_set_site_table,
         fq_ploidy_mapping_table               = fq_ploidy_mapping_table,
-        fq_filter_set_tranches_table          = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
+        fq_filter_set_tranches_table          = if (use_VETS) then none else fq_filter_set_tranches_table,
         filter_set_name                       = filter_set_name,
         drop_state                            = drop_state,
         output_file                           = vcf_filename + vcf_extension,
-        output_gcs_dir                        = output_gcs_dir,
         max_last_modified_timestamp           = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override          = extract_preemptible_override,
         extract_maxretries_override           = extract_maxretries_override,
         disk_override                         = disk_override,
         memory_gib                            = effective_extract_memory_gib,
+        overhead_memory_gib                   = extract_overhead_memory_override_gib,
         emit_pls                              = emit_pls,
         emit_ads                              = emit_ads,
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
         maximum_alternate_alleles             = maximum_alternate_alleles,
         target_interval_list                  = target_interval_list,
+    }
+
+    if (collect_variant_calling_metrics) {
+      call CollectVariantCallingMetrics as CollectMetricsSharded {
+        input:
+          input_vcf = ExtractTask.output_vcf,
+          input_vcf_index = ExtractTask.output_vcf_index,
+          metrics_filename_prefix = call_set_identifier + "." + i,
+          dbsnp_vcf = dbsnp_vcf,
+          dbsnp_vcf_index = dbsnp_vcf_index,
+          interval_list = SplitIntervals.interval_files[i],
+          ref_dict = reference_dict,
+          gatk_docker = effective_gatk_docker
+      }
+    }
+  }
+
+  if (collect_variant_calling_metrics) {
+    call GatherVariantCallingMetrics {
+      input:
+        input_details = select_all(CollectMetricsSharded.detail_metrics_file),
+        input_summaries = select_all(CollectMetricsSharded.summary_metrics_file),
+        output_prefix = call_set_identifier,
+        output_gcs_dir = output_gcs_dir,
+        gatk_docker = effective_gatk_docker
     }
   }
 
@@ -264,9 +294,13 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call CreateManifest {
+  call CreateManifestAndOptionallyCopyOutputs {
     input:
-      manifest_lines = ExtractTask.manifest,
+      interval_indices = ExtractTask.interval_number,
+      output_vcfs = ExtractTask.output_vcf,
+      output_vcf_indices = ExtractTask.output_vcf_index,
+      output_vcf_bytes = ExtractTask.output_vcf_bytes,
+      output_vcf_index_bytes = ExtractTask.output_vcf_index_bytes,
       output_gcs_dir = output_gcs_dir,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
@@ -292,8 +326,10 @@ workflow GvsExtractCallset {
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
     Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
-    File manifest = CreateManifest.manifest
+    File manifest = CreateManifestAndOptionallyCopyOutputs.manifest
     File sample_name_list = GenerateSampleListFile.sample_name_list
+    File? summary_metrics_file = GatherVariantCallingMetrics.summary_metrics_file
+    File? detail_metrics_file = GatherVariantCallingMetrics.detail_metrics_file
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
@@ -306,7 +342,7 @@ task ExtractTask {
     String dataset_name
     String call_set_identifier
 
-    Boolean use_VQSR_lite
+    Boolean use_VETS
 
     File reference
     File reference_index
@@ -325,7 +361,6 @@ task ExtractTask {
     String? vet_extract_table_version
     String read_project_id
     String output_file
-    String? output_gcs_dir
 
     String cost_observability_tablename = "cost_observability"
 
@@ -347,6 +382,7 @@ task ExtractTask {
     Int? extract_maxretries_override
     Int? disk_override
     Int memory_gib
+    Int overhead_memory_gib
 
     Int? local_sort_max_records_in_ram = 10000000
     Int? maximum_alternate_alleles
@@ -378,7 +414,7 @@ task ExtractTask {
 
     if [ ~{do_not_filter_override} = true ]; then
       FILTERING_ARGS=''
-    elif [ ~{use_VQSR_lite} = false ]; then
+    elif [ ~{use_VETS} = false ]; then
       FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
         --filter-set-site-table ~{fq_filter_set_site_table}
         --tranches-table ~{fq_filter_set_tranches_table}
@@ -394,7 +430,7 @@ task ExtractTask {
     # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
     if [[ ${MEM_UNIT} == "GB" ]]
     then
-        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - 3) * 1000))")
+        memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
     else
         echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
         exit 1
@@ -415,7 +451,7 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='' false='--use-vqsr-scoring' use_VQSR_lite} \
+        ~{true='' false='--use-vqsr-scoring' use_VETS} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
         ${FILTERING_ARGS} \
@@ -444,28 +480,9 @@ task ExtractTask {
           -V ${pre_off_target_vcf}
     fi
 
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+    du -b ~{output_file} | cut -f1 > vcf_bytes.txt
+    du -b ~{output_file}.tbi | cut -f1 > vcf_index_bytes.txt
 
-    OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
-    echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
-
-    OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
-    echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
-
-    if [ -n "${OUTPUT_GCS_DIR}" ]; then
-      gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
-      gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
-      OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_file}"
-      OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{output_file}.tbi"
-    else
-      OUTPUT_FILE_DEST="~{output_file}"
-      OUTPUT_FILE_INDEX_DEST="~{output_file}.tbi"
-    fi
-
-    # Parent Task will collect manifest lines and create a joined file
-    # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-    echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
     docker: gatk_docker
@@ -480,12 +497,91 @@ task ExtractTask {
 
   # files sizes are floats instead of ints because they can be larger
   output {
+    Int interval_number = interval_index
     File output_vcf = "~{output_file}"
     Float output_vcf_bytes = read_float("vcf_bytes.txt")
     File output_vcf_index = "~{output_file}.tbi"
     Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
-    String manifest = read_string("manifest.txt")
     File monitoring_log = "monitoring.log"
+  }
+}
+
+task CreateManifestAndOptionallyCopyOutputs {
+  input {
+    Array[Int] interval_indices
+    Array[File] output_vcfs
+    Array[File] output_vcf_indices
+    Array[Float] output_vcf_bytes
+    Array[Float] output_vcf_index_bytes
+    String? output_gcs_dir
+    String cloud_sdk_docker
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    output_vcfs: {
+      localization_optional: true
+    }
+    output_vcf_indices: {
+      localization_optional: true
+    }
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    declare -a interval_indices=(~{sep=' ' interval_indices})
+    declare -a output_vcfs=(~{sep=' ' output_vcfs})
+    declare -a output_vcf_indices=(~{sep=' ' output_vcf_indices})
+    declare -a output_vcf_bytes=(~{sep=' ' output_vcf_bytes})
+    declare -a output_vcf_index_bytes=(~{sep=' ' output_vcf_index_bytes})
+
+    echo -n >> manifest_lines.txt
+    for (( i=0; i<${#interval_indices[@]}; ++i));
+      do
+        echo "Interval " + $i
+
+        OUTPUT_VCF=${output_vcfs[$i]}
+        LOCAL_VCF=$(basename $OUTPUT_VCF)
+        OUTPUT_VCF_INDEX=${output_vcf_indices[$i]}
+        LOCAL_VCF_INDEX=$(basename $OUTPUT_VCF_INDEX)
+
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+          gsutil cp $OUTPUT_VCF ${OUTPUT_GCS_DIR}/
+          gsutil cp $OUTPUT_VCF_INDEX ${OUTPUT_GCS_DIR}/
+          OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/$LOCAL_VCF"
+          OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/$LOCAL_VCF_INDEX"
+        else
+          OUTPUT_FILE_DEST=$LOCAL_VCF
+          OUTPUT_FILE_INDEX_DEST=$LOCAL_VCF_INDEX
+        fi
+
+        echo ${interval_indices[$i]},${OUTPUT_FILE_DEST},${output_vcf_bytes[$i]},${OUTPUT_FILE_INDEX_DEST},${output_vcf_index_bytes[$i]} >> manifest_lines.txt
+
+      done;
+
+    echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
+    sort -n manifest_lines.txt | cut -d',' -f 2- >> manifest.txt
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+    fi
+  >>>
+  output {
+    File manifest_lines = "manifest_lines.txt"
+    File manifest = "manifest.txt"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }
 
@@ -519,45 +615,6 @@ task SumBytes {
 
   output {
     Float total_mb = read_float(stdout())
-  }
-}
-
-task CreateManifest {
-  input {
-      Array[String] manifest_lines
-      String? output_gcs_dir
-      String cloud_sdk_docker
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
-
-    MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
-    echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
-    sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
-
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-
-    if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
-    fi
-  >>>
-  output {
-    File manifest = "manifest.txt"
-  }
-
-  runtime {
-    docker: cloud_sdk_docker
-    memory: "3 GB"
-    disks: "local-disk 500 HDD"
-    preemptible: 3
-    cpu: 1
   }
 }
 
@@ -605,5 +662,159 @@ task GenerateSampleListFile {
     disks: "local-disk 500 HDD"
     preemptible: 3
     cpu: 1
+  }
+}
+
+task CollectVariantCallingMetrics {
+  input {
+    File input_vcf
+    File input_vcf_index
+    File dbsnp_vcf
+    File dbsnp_vcf_index
+    File interval_list
+    File ref_dict
+    String metrics_filename_prefix
+
+    Int memory_mb = 7500
+    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+    String gatk_docker
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+      CollectVariantCallingMetrics \
+      --INPUT ~{input_vcf} \
+      --DBSNP ~{dbsnp_vcf} \
+      --SEQUENCE_DICTIONARY ~{ref_dict} \
+      --OUTPUT ~{metrics_filename_prefix} \
+      --THREAD_COUNT 8 \
+      --TARGET_INTERVALS ~{interval_list}
+  >>>
+
+  output {
+    File summary_metrics_file = "~{metrics_filename_prefix}.variant_calling_summary_metrics"
+    File detail_metrics_file = "~{metrics_filename_prefix}.variant_calling_detail_metrics"
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: gatk_docker
+    cpu: 2
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 2
+    noAddress: true
+  }
+}
+
+task GatherVariantCallingMetrics {
+
+  input {
+    Array[File] input_details
+    Array[File] input_summaries
+    String output_prefix
+    String? output_gcs_dir
+
+    Int memory_mb = 3000
+    Int disk_size_gb = 200
+    String gatk_docker
+  }
+
+  parameter_meta {
+    input_details: {
+      localization_optional: true
+    }
+    input_summaries: {
+      localization_optional: true
+    }
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    input_details_fofn=~{write_lines(input_details)}
+    input_summaries_fofn=~{write_lines(input_summaries)}
+
+    # Jose says:
+    # Cromwell will fall over if we have it try to localize tens of thousands of files,
+    # so we manually localize files using gsutil.
+    # Using gsutil also lets us parallelize the localization, which (as far as we can tell)
+    # PAPI doesn't do.
+
+    # This is here to deal with the JES bug where commands may be run twice
+    rm -rf metrics
+
+    mkdir metrics
+    RETRY_LIMIT=5
+
+    count=0
+    until cat $input_details_fofn | gsutil -m cp -L cp.log -c -I metrics/; do
+      sleep 1
+      ((count++)) && ((count >= $RETRY_LIMIT)) && break
+    done
+    if [ "$count" -ge "$RETRY_LIMIT" ]; then
+      echo 'Could not copy all the metrics from the cloud' && exit 1
+    fi
+
+    count=0
+    until cat $input_summaries_fofn | gsutil -m cp -L cp.log -c -I metrics/; do
+      sleep 1
+      ((count++)) && ((count >= $RETRY_LIMIT)) && break
+    done
+    if [ "$count" -ge "$RETRY_LIMIT" ]; then
+      echo 'Could not copy all the metrics from the cloud' && exit 1
+    fi
+
+    INPUT=$(cat $input_details_fofn | rev | cut -d '/' -f 1 | rev | sed s/.variant_calling_detail_metrics//g | awk '{printf("--INPUT metrics/%s ", $1)}')
+
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+      AccumulateVariantCallingMetrics \
+      $INPUT \
+      --OUTPUT ~{output_prefix}
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      gsutil cp ~{output_prefix}.variant_calling_summary_metrics ${OUTPUT_GCS_DIR}/
+      gsutil cp ~{output_prefix}.variant_calling_detail_metrics ${OUTPUT_GCS_DIR}/
+    fi
+  >>>
+
+  runtime {
+    docker: gatk_docker
+    cpu: 1
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 1
+    noAddress: true
+  }
+
+  output {
+    File summary_metrics_file = "~{output_prefix}.variant_calling_summary_metrics"
+    File detail_metrics_file = "~{output_prefix}.variant_calling_detail_metrics"
+    File monitoring_log = "monitoring.log"
   }
 }

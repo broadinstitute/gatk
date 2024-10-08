@@ -1,14 +1,14 @@
 version 1.0
 
-import "GvsUtils.wdl" as Utils
-import "GvsJointVariantCalling.wdl" as JointVariantCalling
+import "../GvsUtils.wdl" as Utils
+import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
         String expected_output_prefix
-        Boolean use_VQSR_lite = true
+        Boolean use_VETS = true
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
@@ -86,13 +86,13 @@ workflow GvsQuickstartVcfIntegration {
             dataset_name = CreateDatasetForTest.dataset_name,
             project_id = project_id,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
-            use_classic_VQSR = !use_VQSR_lite,
+            use_VQSR = !use_VETS,
             use_compressed_references = use_compressed_references,
             load_vcf_headers = load_vcf_headers,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",
-            # optionally turn off filtering (VQSR Classic is not deterministic)
+            # optionally turn off filtering (VQSR is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
@@ -118,8 +118,8 @@ workflow GvsQuickstartVcfIntegration {
             extract_output_gcs_dir = extract_output_gcs_dir,
     }
 
-    # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
-    if (extract_do_not_filter_override || use_VQSR_lite) {
+    # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)
+    if (extract_do_not_filter_override || use_VETS) {
         String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:

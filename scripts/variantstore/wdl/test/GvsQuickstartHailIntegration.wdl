@@ -1,8 +1,8 @@
 version 1.0
 
-import "GvsUtils.wdl" as Utils
-import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
-import "GvsCreateVDS.wdl" as CreateVds
+import "../GvsUtils.wdl" as Utils
+import "../GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
+import "../GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
@@ -11,7 +11,7 @@ workflow GvsQuickstartHailIntegration {
         String? git_hash
         Boolean is_wgs
         File? interval_list
-        Boolean use_VQSR_lite = true
+        Boolean use_VETS = true
         Boolean use_compressed_references = false
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
@@ -67,7 +67,7 @@ workflow GvsQuickstartHailIntegration {
             git_branch_or_tag = git_branch_or_tag,
             git_hash = git_hash,
             drop_state = "ZERO",
-            use_VQSR_lite = use_VQSR_lite,
+            use_VETS = use_VETS,
             use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
             load_vcf_headers = true,
@@ -100,7 +100,7 @@ workflow GvsQuickstartHailIntegration {
             git_branch_or_tag = git_branch_or_tag,
             git_hash = git_hash,
             project_id = project_id,
-            use_VQSR_lite = use_VQSR_lite,
+            use_VETS = use_VETS,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
@@ -114,7 +114,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
-            use_classic_VQSR = !use_VQSR_lite,
+            use_VQSR = !use_VETS,
             avro_path = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             cluster_prefix = "vds-cluster",

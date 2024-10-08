@@ -68,13 +68,13 @@ task GetToolVersions {
     String git_hash = read_string("git_hash.txt")
     String hail_version = "0.2.126"
     String basic_docker = "ubuntu:22.04"
-    String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
+    String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-07-16-alpine-0b965b8d2679"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-09-30-alpine-27b8708f5808"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024-07-23-gatkbase-abbe96265d5f"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024_08_19-gatkbase-cd5b6b7821b2"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -857,7 +857,7 @@ task ValidateFilterSetName {
     }
 }
 
-task IsVQSRLite {
+task IsVETS {
   input {
     String project_id
     String fq_filter_set_info_table
@@ -871,7 +871,7 @@ task IsVQSRLite {
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
 
-  String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
+  String is_vets_file = "is_vets_file.txt"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -887,27 +887,27 @@ task IsVQSRLite {
           AND calibration_sensitivity IS NOT NULL;
     EXCEPTION WHEN ERROR THEN
        SELECT "0" AS counted ;
-    END' | tail -1 > lite_count_file.txt
-    LITE_COUNT=`cat lite_count_file.txt`
+    END' | tail -1 > vets_count_file.txt
+    VETS_COUNT=`cat vets_count_file.txt`
 
 
     # bq query --max_rows check: ok one row
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
       'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
-      AND vqslod IS NOT NULL' | tail -1 > classic_count_file.txt
-    CLASSIC_COUNT=`cat classic_count_file.txt`
+      AND vqslod IS NOT NULL' | tail -1 > vqsr_count_file.txt
+    VQSR_COUNT=`cat vqsr_count_file.txt`
 
-    if [[ $LITE_COUNT != "0" ]]; then
-      echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
-      if [[ $CLASSIC_COUNT != "0" ]]; then
-        echo "Found $CLASSIC_COUNT rows with vqslod defined"
+    if [[ $VETS_COUNT != "0" ]]; then
+      echo "Found $VETS_COUNT rows with calibration_sensitivity defined"
+      if [[ $VQSR_COUNT != "0" ]]; then
+        echo "Found $VQSR_COUNT rows with vqslod defined"
         echo "ERROR - can't have both defined for a filter_set"
         exit 1
       fi
-      echo "true" > ~{is_vqsr_lite_file}
-    elif [[ $CLASSIC_COUNT != "0" ]]; then
-      echo "Found $CLASSIC_COUNT rows with vqslod defined"
-      echo "false" > ~{is_vqsr_lite_file}
+      echo "true" > ~{is_vets_file}
+    elif [[ $VQSR_COUNT != "0" ]]; then
+      echo "Found $VQSR_COUNT rows with vqslod defined"
+      echo "false" > ~{is_vets_file}
     else
       echo "Found NO rows with either calibration_sensitivity or vqslod defined"
       exit 1
@@ -915,7 +915,7 @@ task IsVQSRLite {
 
   >>>
   output {
-    Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
+    Boolean is_vets = read_boolean(is_vets_file)
   }
 
   runtime {
@@ -1059,7 +1059,7 @@ task IndexVcf {
     Int max_heap = memory_mb - 500
 
     String local_file = basename(input_vcf)
-    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+    Boolean is_compressed = (sub(local_file, ".*\\.", "") == "gz") || (sub(local_file, ".*\\.", "") == "bgz")
     String index_extension = if is_compressed then ".tbi" else ".idx"
 
     command <<<
@@ -1190,50 +1190,47 @@ task MergeTsvs {
 }
 
 task SummarizeTaskMonitorLogs {
-  input {
-    Array[File] inputs
-    String variants_docker
-  }
+    input {
+        Array[File] inputs
+        String variants_docker
+        File log_fofn = write_lines(inputs)
+        }
+    parameter_meta {
+        inputs: {
+            localization_optional: true
+        }
+    }
 
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
-    INPUTS="~{sep=" " inputs}"
-    if [[ -z "$INPUTS" ]]; then
-      echo "No monitoring log files found" > monitoring_summary.txt
-    else
-      python3 /app/summarize_task_monitor_logs.py \
-        --input $INPUTS \
-        --output monitoring_summary.txt
-    fi
+        python3 /app/summarize_task_monitor_logs.py --fofn_input ~{log_fofn} \
+            --output monitoring_summary.txt
+    >>>
 
-  >>>
-
-  # ------------------------------------------------
-  # Runtime settings:
-  runtime {
-    docker: variants_docker
-    memory: "1 GB"
-    preemptible: 3
-    cpu: "1"
-    disks: "local-disk 100 HDD"
-  }
-  output {
-    File monitoring_summary = "monitoring_summary.txt"
-  }
+    runtime {
+        docker: variants_docker
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    output {
+        File monitoring_summary = "monitoring_summary.txt"
+    }
 }
 
-# Note - this task should probably live in GvsCreateFilterSet, but I moved it here when I was refactoring VQSR Classic out of
+# Note - this task should probably live in GvsCreateFilterSet, but I moved it here when I was refactoring VQSR out of
 # GvsCreateFilterSet (in order to avoid a circular dependency)
-# When VQSR Classic is removed, consider putting this task back in GvsCreateFilterSet
+# When VQSR is removed entirely, consider putting this task back in GvsCreateFilterSet
 task PopulateFilterSetInfo {
   input {
     String filter_set_name
     String filter_schema
     String fq_filter_set_info_destination_table
-    Boolean useClassic = false
+    Boolean useVQSR = false
 
     File snp_recal_file
     File snp_recal_file_index
@@ -1274,7 +1271,7 @@ task PopulateFilterSetInfo {
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
         -mode SNP \
-        --classic ~{useClassic} \
+        --use-vqsr ~{useVQSR} \
         -V ~{snp_recal_file} \
         -O ~{filter_set_name}.snps.recal.tsv
 
@@ -1284,7 +1281,7 @@ task PopulateFilterSetInfo {
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
         -mode INDEL \
-        --classic ~{useClassic} \
+        --use-vqsr ~{useVQSR} \
         -V ~{indel_recal_file} \
         -O ~{filter_set_name}.indels.recal.tsv
 
@@ -1357,7 +1354,7 @@ task CopyFile {
     fi
 
     gsutil cp ~{input_file} ${OUTPUT_GCS_DIR}/
-    echo ${OUTPUT_PATH} > output_file_path.txt
+    echo $OUTPUT_PATH > output_file_path.txt
   >>>
   output {
     String output_file_path = read_string("output_file_path.txt")
