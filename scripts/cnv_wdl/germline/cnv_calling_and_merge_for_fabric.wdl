@@ -52,10 +52,14 @@ workflow CNVCallingAndMergeForFabric {
     }
 
     if (SingleSampleGCNVAndFilterVCFs.qc_passed) {
+        call ReformatGCNVForFabric {
+            input:
+                cnv_vcf = SingleSampleGCNVAndFilterVCFs.filtered_vcf
+        }
 
         call MergeVcfs {
             input:
-                cnv_vcf = SingleSampleGCNVAndFilterVCFs.filtered_vcf,
+                cnv_vcf = ReformatGCNVForFabric.reformatted_vcf,
                 short_variant_vcf = short_variant_vcf,
                 gatk_docker = gatk_docker
         }
@@ -72,6 +76,44 @@ workflow CNVCallingAndMergeForFabric {
 
         Boolean qc_passed = SingleSampleGCNVAndFilterVCFs.qc_passed
 
+    }
+}
+
+#Fabric doesn't seem to like ./. genotypes on
+task ReformatGCNVForFabric {
+    input {
+        File cnv_vcf
+        Int disk_size_gb = 20
+        Int mem_gb = 4
+    }
+
+    File output_basename = basename(cnv_vcf, ".filtered.genotyped-segments.vcf.gz")
+
+    command <<<
+        set -euo pipefail
+
+        python << CODE
+        from pysam import VariantFile
+
+        with VariantFile("~{cnv_vcf}") as cnv_vcf_in:
+            with VariantFile("~{output_basename}.reformatted_for_fabric.vcf.gz",'w', header = cnv_vcf_in.header) as cnv_vcf_out:
+                for rec in cnv_vcf_in.fetch():
+                    if len(rec.alleles) > 1 and rec.alleles[1] == "<DUP>" and rec.samples[0].alleles == (None, None):
+                        rec.samples[0].alleles = ('<DUP>', '<DUP>')
+                    cnv_vcf_out.write(rec)
+        CODE
+    >>>
+
+    runtime {
+            docker: "us.gcr.io/broad-dsde-methods/python-data-slim"
+            preemptible: 3
+            cpu: 2
+            disks: "local-disk " + disk_size_gb + " HDD"
+            memory: mem_gb + " GB"
+        }
+
+    output {
+        File reformatted_vcf = "~{output_basename}.reformatted_for_fabric.vcf.gz"
     }
 }
 
