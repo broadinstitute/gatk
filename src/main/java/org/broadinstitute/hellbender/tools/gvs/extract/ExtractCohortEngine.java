@@ -628,9 +628,6 @@ public class ExtractCohortEngine {
             // If we have no info in the table, the ploidy is explicitly 2, OR we are in a PAR, use diploid reference.
             // If we have looked up the ploidy in our table and it says 1, use a haploid reference
             // Otherwise, if we have a ploidy that is neither 1 nor 2, throw a user exception because we haven't coded for this case
-            if (!samplePloidyMap.containsKey(key)) {
-                logger.info("Sample ploidy information not found for key "+key+"--defaulting to 2");
-            }
             int ploidy = (samplePloidyMap.containsKey(key) ? samplePloidyMap.get(key) : 2);
             if (ploidy == 2 || PloidyUtils.isLocationInPAR(location)) {
                 genotypeBuilder.alleles(gtAlleles);
