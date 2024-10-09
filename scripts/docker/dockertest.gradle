@@ -8,7 +8,7 @@ buildscript {
 
 plugins {
     id "java"           // set up default java compile and test tasks
-    id "jacoco"
+//    id "jacoco"
 }
 
 repositories {
@@ -113,9 +113,9 @@ def getJVMArgs(runtimeAddOpens, testAddOpens) {
 
 test {
     jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
-    jacoco {
-        jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
-    }
+//    jacoco {
+//        jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
+//    }
 }
 
 task testOnPackagedReleaseJar(type: Test){
@@ -153,22 +153,25 @@ task testOnPackagedReleaseJar(type: Test){
 
 // Task intended to collect coverage data from testOnPackagedReleaseJar executed inside the docker image
 // the classpath for these tests is set at execution time for testOnPackagedReleaseJar
-task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
-    String sourceFiles = "$System.env.SOURCE_DIR"
-    String testClassesUnpacked = "$System.env.CP_DIR"
-
+//task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
+//    String sourceFiles = "$System.env.SOURCE_DIR"
+//    String testClassesUnpacked = "$System.env.CP_DIR"
+//
+//    dependsOn testOnPackagedReleaseJar
+//    executionData testOnPackagedReleaseJar
+//    additionalSourceDirs.setFrom(sourceSets.main.allJava.srcDirs)
+//
+//    sourceDirectories.setFrom(sourceFiles)
+//    classDirectories.setFrom(testClassesUnpacked)
+//
+//    group = "Reporting"
+//    description = "Generate Jacoco coverage reports after running tests inside the docker image."
+//
+//    reports {
+//        xml.required = true
+//        html.required = true
+//    }
+//}
+task jacocoTestReportOnPackagedReleaseJar {
     dependsOn testOnPackagedReleaseJar
-    executionData testOnPackagedReleaseJar
-    additionalSourceDirs.setFrom(sourceSets.main.allJava.srcDirs)
-
-    sourceDirectories.setFrom(sourceFiles)
-    classDirectories.setFrom(testClassesUnpacked)
-
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports after running tests inside the docker image."
-
-    reports {
-        xml.required = true
-        html.required = true
-    }
 }
