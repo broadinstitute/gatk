@@ -53,7 +53,7 @@ def main():
     else:
         sys.exit('Unknown tensor type!')
     model = get_model(args, model_file)
-    trainer = pl.Trainer.from_argparse_args(args, gradient_clip_val=1.0)
+    trainer = pl.Trainer(gradient_clip_val=1.0)
 
     test_dataset = ReferenceDataset(tensor_reader)
     test_loader = DataLoader(test_dataset, batch_size=64)
