@@ -174,6 +174,11 @@ public class VariantAnnotator extends VariantWalker {
     @Argument(fullName = AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME,  doc = "Minimum base quality required to confidently assign a read to an allele", optional = true)
     public byte minBaseQualityScore = 10;
 
+    @Override
+    public boolean useReadCaching() {
+        return true;
+    }
+
     public List<ReadFilter> getDefaultReadFilters() {
         return Lists.newArrayList( new WellformedReadFilter(),
                 ReadFilterLibrary.NOT_DUPLICATE,

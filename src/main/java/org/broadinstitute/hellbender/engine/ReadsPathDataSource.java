@@ -12,8 +12,11 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.cache.LocatableCache;
+import org.broadinstitute.hellbender.engine.cache.SideReadInputCacheStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -86,6 +89,11 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * Used to create a merged Sam header when we're dealing with multiple readers. Null if we only have a single reader.
      */
     private final SamFileHeaderMerger headerMerger;
+
+    /**
+     * Used to cache reads around the current query interval if read caching is enabled.
+     */
+    private LocatableCache<GATKRead> queryCache;
 
     /**
      * Are indices available for all files?
@@ -270,6 +278,25 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      */
     public boolean indicesAvailable() {
         return indicesAvailable;
+    }
+
+    @Override
+    public void enableReadCaching(int lookAheadBases) {
+        Utils.validate(queryCache == null, "Can't reset the cache/window look ahead size");
+        this.queryCache = new LocatableCache<>(
+                getName(),
+                new SideReadInputCacheStrategy<>(
+                        lookAheadBases,
+                        (Locatable newCacheInterval) -> prepareIteratorsForTraversal(Arrays.asList(new SimpleInterval(newCacheInterval)), false)
+                )
+        );
+    }
+
+    public String getName() {
+        final int DISPLAY_NAME_THRESHOLD = 3; // don't try to display more than this many paths
+        return backingPaths.values().stream().limit(DISPLAY_NAME_THRESHOLD)
+                .map(p -> p.toString())
+                .collect(Collectors.joining("Reads: ",",", backingPaths.values().size() > DISPLAY_NAME_THRESHOLD ? "..." : ""));
     }
 
     /**
