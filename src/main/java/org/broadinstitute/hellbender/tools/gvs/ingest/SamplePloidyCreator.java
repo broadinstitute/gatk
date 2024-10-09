@@ -43,18 +43,6 @@ public class SamplePloidyCreator {
 
 
     public void apply(Map<String, Map<Integer, Long>> ploidyData, long totalRefEntries) throws IOException {
-//        for (final Map.Entry<String, BitSet> ploidyLine : ploidyData.entrySet()) {
-//            try {
-//                // make sure we don't have mixed ploidy in a single chromosome
-//                if (ploidyLine.getValue().cardinality() > 1) {
-//                    throw new UserException("Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey());
-//                }
-//
-//                samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), ploidyLine.getValue().nextSetBit(0)));
-//            } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
-//                throw new IOException("BQ exception", ex);
-//            }
-//        }
         for (final Map.Entry<String, Map<Integer, Long>> ploidyLine : ploidyData.entrySet()) {
             try {
                 Map<Integer, Long> ploidiesWithCounts = ploidyLine.getValue();
@@ -91,13 +79,14 @@ public class SamplePloidyCreator {
                     }
                 }
 
-                // first, see if the second best ploidy is for greater than 5% of the sample (this is likely way too generous).
+
+                // Decide which ploidy to keep
+                // First, see if the second best ploidy is for greater than 5% of the sample (this is likely way too generous).
                 // If so, there may be a deeper error going on and we should just quit
-                // decide which ploidy to keep
                 if (secondHighestPercentage > 0.05) {
                     throw new UserException("Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", with second ploidy of "+secondBestPloidy+" detected in "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total) of samples");
                 }
-                // it's a small enough number to just note and move on with
+                // It's a small enough number to just note and move on with
                 logger.warn("WARNING: Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", but second ploidy of "+secondBestPloidy+" detected in only "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total)of samples. Going with dominant ploidy of "+bestPloidy);
 
                 samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), bestPloidy));
