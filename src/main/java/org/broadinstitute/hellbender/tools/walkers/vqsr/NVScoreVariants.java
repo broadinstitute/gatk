@@ -24,14 +24,14 @@ import java.util.List;
  * It contains both a 1D model that uses only the reference sequence and variant annotations,
  * and a 2D model that uses reads in addition to the reference sequence and variant annotations.
  *
- * Running this tool currently requires activating a custom conda environment, stored in
- * scripts/nvscorevariants_environment.yml. To do this, run these commands:
+ * The scores for each variant record will be placed in an INFO field annotation named CNN_1D
+ * (if using the 1D model) or CNN_2D (if using the 2D model). These scores represent the
+ * log odds of being a true variant versus being false under the trained convolutional neural
+ * network.
  *
- * <pre>
- *     conda env create -f scripts/nvscorevariants_environment.yml
- *     conda activate scorevariants
- *     pip install build/gatkPythonPackageArchive.zip  (created via ./gradlew pythonPackageArchive)
- * </pre>
+ * The provided models were trained on short-read human sequencing data, and will likely not perform
+ * well for other kinds of sequencing data, or for non-human data. A companion training tool for
+ * NVScoreVariants will be released in the future to support users who need to train their own models.
  *
  * Example command for running with the 1D model:
  *

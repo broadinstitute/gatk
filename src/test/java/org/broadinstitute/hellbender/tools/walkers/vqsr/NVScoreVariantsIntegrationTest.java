@@ -5,14 +5,11 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.stream.Collectors;
 
@@ -24,11 +21,6 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
     private static final double EPSILON_FOR_1D = 0.01;
     private static final double EPSILON_FOR_2D = 0.01;
 
-    // This test for the 1D model PASSES when run locally in the scripts/nvscorevariants_environment.yml
-    // conda environment, but cannot be enabled until that conda environment is incorporated into
-    // the main GATK conda environment.
-
-    //TODO: make sure this is disabled before merging if we haven't updated the python environment
     @Test(groups = {"python"})
     public void test1DModel() {
         final File tempVcf = createTempFile("test1DModel", ".vcf");
@@ -37,23 +29,13 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getAbsolutePath())
-                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21);
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
 
         runCommandLine(argsBuilder);
 
-        dumpRawFile(tempVcf.getAbsolutePath(), "test1DModel");
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY, EPSILON_FOR_1D);
     }
 
-    // This test for the 2D model FAILS when run locally in the scripts/nvscorevariants_environment.yml
-    // conda environment, despite the much higher epsilon of 0.5.
-    //
-    // ex:
-    // scores at 20:299585 differed by 0.6680000000000001 ( expected: -2.056, actual:-1.388), which is greater than the allowed tolerance of 0.5
-    //
-    // This test also cannot be enabled until the nvscorevariants conda environment is incorporated into
-    // the main GATK conda environment.
-    //TODO: make sure this is disabled before merging if we haven't updated the python environment
     @Test(groups = {"python"})
     public void test2DModel() {
         final File tempVcf = createTempFile("test2DModel", ".vcf");
@@ -62,13 +44,12 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getAbsolutePath())
-                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference)
                 .add(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
                 .add("tensor-type", NVScoreVariants.TensorType.read_tensor.name());
 
         runCommandLine(argsBuilder);
 
-        dumpRawFile(tempVcf.getAbsolutePath(), "test2DModel");
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY, EPSILON_FOR_2D);
     }
 
@@ -106,22 +87,8 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
             failed = true;
         }
         Assert.assertFalse(failed, "Test failed with " + mismatchCount + " significant differences out of " + totalCount +".\n" +
-                "There were " + annotationMismatchCount + " sites where the annotations didn't match.");
+                "There were " + annotationMismatchCount + " sites where the score annotations were present in one file but not the other.");
 
         Assert.assertTrue(!expectedVi.hasNext() && !actualVi.hasNext());
-    }
-
-    private void dumpRawFile(final String file, final String testName) {
-        try (final XReadLines reader = new XReadLines(new File(file))){
-            System.err.println("**************************************");
-            System.err.println(testName + ": contents of " + file);
-            System.err.println("**************************************");
-            for (final String line : reader) {
-                System.err.println(line);
-            }
-            System.err.println("**************************************");
-        } catch ( IOException e ) {
-            Assert.fail("Error reading contents of " + file, e);
-        }
     }
 }
