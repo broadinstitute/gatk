@@ -109,6 +109,7 @@ workflow GvsValidateVDS {
 
 task ValidateVds {
     input {
+        Boolean go = true
         File run_in_hail_cluster_script
         File vds_validation_script
         String prefix
