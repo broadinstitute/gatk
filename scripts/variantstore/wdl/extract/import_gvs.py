@@ -312,18 +312,30 @@ def import_gvs(refs: 'List[List[str]]',
     info(f'import_gvs: using target_records (records per partition) of {target_records} for VDS merge')
 
     interval_tmp = os.path.join(tmp_dir, 'interval_checkpoint.ht')
+    if hl.hadoop_exists(interval_tmp):
+        info(f'import_gvs: interval checkpoint table "{interval_tmp}" already exists, deleting')
+        hl.current_backend().fs.rmtree(interval_tmp)
+
     target_final_intervals, _ = calculate_new_intervals(first_ref_mt, target_records, interval_tmp)
 
     with hl._with_flags(no_whole_stage_codegen='1'):
 
         merge_tmp = os.path.join(tmp_dir, 'merge_tmp.vds')
-        info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
-        combiner = hl.vds.new_combiner(output_path=merge_tmp,
-                                       vds_paths=vds_paths,
-                                       target_records=target_records,
-                                       temp_path=tmp_dir,
-                                       use_genome_default_intervals=True)
-        combiner.run()
+        from hail.vds import VariantDataset
+        ref_success_path = os.path.join(VariantDataset._reference_path(merge_tmp), '_SUCCESS')
+        var_success_path = os.path.join(VariantDataset._variants_path(merge_tmp), '_SUCCESS')
+        if hl.hadoop_exists(ref_success_path) and hl.hadoop_exists(var_success_path):
+            info(f'import_gvs: Hail VDS combiner is done. Skipping it')
+        else:
+            info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
+            combiner = hl.vds.new_combiner(output_path=merge_tmp,
+                                           vds_paths=vds_paths,
+                                           target_records=target_records,
+                                           branch_factor=52,  # Echo has 104 intermediate VDSes so 2 equal sized groups
+                                           temp_path=tmp_dir,
+                                           use_genome_default_intervals=True)
+            combiner.run()
+
         combined = hl.vds.read_vds(merge_tmp, intervals=target_final_intervals)
 
         rd = combined.reference_data
@@ -407,8 +419,6 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
+        vd = vd.rename({'as_vqsr': 'as_vets'})
 
-        hl.vds.VariantDataset(
-            reference_data=rd,
-            variant_data=vd,
-        ).write(final_path, overwrite=True)
+        vd.write(os.path.join(final_path, 'variant_data'), overwrite=True)
