@@ -915,7 +915,7 @@ def execWDLValidation = { validateWDL ->
     }
 }
 
-task gatkValidateScriptsWdl() {
+task gatkValidateScriptsWdl(dependsOn: [shadowJar]) {
     doFirst {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
