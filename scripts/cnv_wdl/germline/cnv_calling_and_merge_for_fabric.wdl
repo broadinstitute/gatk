@@ -98,8 +98,11 @@ task ReformatGCNVForFabric {
         with VariantFile("~{cnv_vcf}") as cnv_vcf_in:
             with VariantFile("~{output_basename}.reformatted_for_fabric.vcf.gz",'w', header = cnv_vcf_in.header) as cnv_vcf_out:
                 for rec in cnv_vcf_in.fetch():
-                    if len(rec.alleles) > 1 and rec.alleles[1] == "<DUP>" and rec.samples[0].alleles == (None, None):
-                        rec.samples[0].alleles = ('<DUP>', '<DUP>')
+                    if rec.alts and rec.alts[0] == "<DUP>":
+                        for rec_sample in rec.samples.values():
+                            if rec_sample.alleles == (None, None):
+                                rec_sample.allele_indices = (None, 1)
+                    rec.info['SVLEN']=rec.stop-rec.pos
                     cnv_vcf_out.write(rec)
         CODE
     >>>
