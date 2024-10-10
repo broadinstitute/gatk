@@ -107,7 +107,7 @@ task ReformatGCNVForFabric {
                             cn = rec_sample['CN']
                             if cn not in cn_allele_idx_dict:
                                 cn_allele_idx_dict[cn] = len(cn_allele_idx_dict) + 1
-                                rec.alleles = ('N',) + ('<CNV>',) * len(cn_allele_idx_dict)
+                                rec.alleles = ('N',) + ('<DUP>',) * len(cn_allele_idx_dict)
                                 rec.info["CN"] = rec.info.get("CN", ()) + (cn - (ploidy - 1),)
                             rec_sample.allele_indices = (None,)*(ploidy - 1) + (cn_allele_idx_dict[cn],)
                     cnv_vcf_out.write(rec)
@@ -138,7 +138,7 @@ task MergeVcfs {
     }
 
     String output_basename = basename(short_variant_vcf, ".hard-filtered.vcf.gz")
-    String output_cnv_basename = basename(cnv_vcf, ".filtered.genotyped-segments.vcf.gz")
+    String output_cnv_basename = basename(cnv_vcf, ".reformatted_for_fabric.vcf.gz")
     command <<<
         set -euo pipefail
 
