@@ -920,9 +920,10 @@ task gatkValidateScriptsWdl() {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
         logger.info('Checking the environment.')
-        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
-            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
-        }
+        throw new GradleException("Hello")
+//        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+//            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+//        }
     }
 
     doLast {
