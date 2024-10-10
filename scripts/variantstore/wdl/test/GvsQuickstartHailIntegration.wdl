@@ -125,6 +125,7 @@ workflow GvsQuickstartHailIntegration {
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             cluster_max_age_minutes = 120,
             cluster_max_idle_minutes = 60,
+            leave_cluster_running_at_end = false,
     }
 
     call TieOutVds {
