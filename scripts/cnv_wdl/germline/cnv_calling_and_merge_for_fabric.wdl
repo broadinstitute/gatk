@@ -87,7 +87,7 @@ task ReformatGCNVForFabric {
         Int mem_gb = 4
     }
 
-    File output_basename = basename(cnv_vcf, ".filtered.genotyped-segments.vcf.gz")
+    String output_basename = basename(cnv_vcf, ".filtered.genotyped-segments.vcf.gz")
 
     command <<<
         set -euo pipefail
@@ -96,13 +96,20 @@ task ReformatGCNVForFabric {
         from pysam import VariantFile
 
         with VariantFile("~{cnv_vcf}") as cnv_vcf_in:
-            with VariantFile("~{output_basename}.reformatted_for_fabric.vcf.gz",'w', header = cnv_vcf_in.header) as cnv_vcf_out:
+            header_out = cnv_vcf_in.header
+            header_out.info.add("CN", "A", "Integer", "Copy number associated with <CNV> alleles")
+            with VariantFile("~{output_basename}.reformatted_for_fabric.vcf.gz",'w', header = header_out) as cnv_vcf_out:
                 for rec in cnv_vcf_in.fetch():
+                    cn_allele_idx_dict = dict()
                     if rec.alts and rec.alts[0] == "<DUP>":
                         for rec_sample in rec.samples.values():
-                            if rec_sample.alleles == (None, None):
-                                rec_sample.allele_indices = (None, 1)
-                    rec.info['SVLEN']=rec.stop-rec.pos
+                            ploidy = len(rec_sample.alleles)
+                            cn = rec_sample['CN']
+                            if cn not in cn_allele_idx_dict:
+                                cn_allele_idx_dict[cn] = len(cn_allele_idx_dict) + 1
+                                rec.alleles = ('N',) + ('<CNV>',) * len(cn_allele_idx_dict)
+                                rec.info["CN"] = rec.info.get("CN", ()) + (cn - (ploidy - 1),)
+                            rec_sample.allele_indices = (None,)*(ploidy - 1) + (cn_allele_idx_dict[cn],)
                     cnv_vcf_out.write(rec)
         CODE
     >>>
