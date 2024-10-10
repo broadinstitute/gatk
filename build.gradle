@@ -927,16 +927,17 @@ task gatkValidateScriptsWdl() {
 
     doLast {
         // Run the womtool validator on all WDL files in the 'scripts' directory
-        println "Directory is \"$buildDir\""
-        throw new GradleException("Hello")
+        println "Build Directory is \"$buildDir\""
 
         final File wdlFolder = new File(buildDir, "scripts")
         def wdlFiles = fileTree(dir: wdlFolder).filter {
             f -> f.getAbsolutePath().endsWith(".wdl")
         }
+        println "wdlFiles is \"$wdlFiles\""
         final womtoolLocation = System.getenv('WOMTOOL_JAR')
         wdlFiles.any() { wdlFile ->
             final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+            println "command is \"$validateWDLCommand\""
             execWDLValidation(validateWDLCommand)
         }
     }
