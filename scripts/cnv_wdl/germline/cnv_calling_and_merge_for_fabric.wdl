@@ -115,7 +115,7 @@ task ReformatGCNVForFabric {
     >>>
 
     runtime {
-            docker: "us.gcr.io/broad-dsde-methods/python-data-slim"
+            docker: "us.gcr.io/broad-dsde-methods/pysam:v1.1"
             preemptible: 3
             cpu: 2
             disks: "local-disk " + disk_size_gb + " HDD"
