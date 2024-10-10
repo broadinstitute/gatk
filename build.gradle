@@ -915,7 +915,7 @@ def execWDLValidation = { validateWDL ->
     }
 }
 
-task gatkValidateScriptsWdl(dependsOn: [shadowJar]) {
+task gatkValidateScriptsWdl() {
     doFirst {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
@@ -929,7 +929,7 @@ task gatkValidateScriptsWdl(dependsOn: [shadowJar]) {
         // Run the womtool validator on all WDL files in the 'scripts' directory
         println "Build Directory is \"$buildDir\""
 
-        final File wdlFolder = new File(buildDir, "scripts")
+        final File wdlFolder = new File("/home/runner/work/gatk/", "scripts")
         def wdlFiles = fileTree(dir: wdlFolder).filter {
             f -> f.getAbsolutePath().endsWith(".wdl")
         }
