@@ -182,7 +182,7 @@ public final class SVCleanPt1a extends VariantWalker {
                 .map(genotype -> {
                     GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
                     processEVGenotype(genotype, genotypeBuilder);
-                    processSVTypeGenotype(variant, genotype, genotypeBuilder);
+                    // processSVTypeGenotype(variant, genotype, genotypeBuilder);
                     processAllosomesGenotype(variant, genotype, genotypeBuilder);
                     return genotypeBuilder.make();
                 })
@@ -190,7 +190,7 @@ public final class SVCleanPt1a extends VariantWalker {
     }
 
     private void processVariant(VariantContext variant, VariantContextBuilder builder) {
-        processSVType(variant, builder);
+        // processSVType(variant, builder);
         processVarGQ(variant, builder);
         processMultiallelic(builder);
         processUnresolved(variant, builder);
