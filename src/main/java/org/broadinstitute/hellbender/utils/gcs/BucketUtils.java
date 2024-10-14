@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
-import com.google.cloud.hadoop.gcsio.GoogleCloudStorageFileSystem;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.HttpMethod;
 import com.google.cloud.storage.Storage;
@@ -46,7 +45,7 @@ import java.util.function.Function;
  * Utilities for dealing with google buckets.
  */
 public final class BucketUtils {
-    public static final String GCS_PREFIX = GoogleCloudStorageFileSystem.SCHEME + "://";
+    public static final String GCS_PREFIX = CloudStorageFileSystem.URI_SCHEME + "://";
     public static final String HTTP_PREFIX = HttpFileSystemProvider.SCHEME + "://";
     public static final String HTTPS_PREFIX = HttpsFileSystemProvider.SCHEME +"://";
     public static final String HDFS_SCHEME = "hdfs";
@@ -74,7 +73,7 @@ public final class BucketUtils {
      */
     public static boolean isGcsUrl(final GATKPath pathSpec) {
         Utils.nonNull(pathSpec);
-        return pathSpec.getScheme().equals(GoogleCloudStorageFileSystem.SCHEME);
+        return pathSpec.getScheme().equals(CloudStorageFileSystem.URI_SCHEME);
     }
 
     /**
@@ -97,7 +96,7 @@ public final class BucketUtils {
 
     private static boolean isEligibleForPrefetching(final String scheme){
         return scheme != null
-                && (scheme.equals(GoogleCloudStorageFileSystem.SCHEME)
+                && (scheme.equals(CloudStorageFileSystem.URI_SCHEME)
                 || scheme.equals(HttpFileSystemProvider.SCHEME)
                 || scheme.equals(HttpsFileSystemProvider.SCHEME));
     }
