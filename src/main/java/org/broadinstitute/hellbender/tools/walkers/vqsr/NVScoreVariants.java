@@ -98,8 +98,8 @@ public class NVScoreVariants extends CommandLineProgram {
     private File tmpFile;
 
 
-     @Argument(fullName = "accelerator", doc = "Type of hardware accelerator to use (gpu, cpu, tpu, etc)", optional = true)
-     private String accelerator = null;
+     @Argument(fullName = "accelerator", doc = "Type of hardware accelerator to use (auto, cpu, cuda, mps, tpu, etc)", optional = true)
+     private String accelerator = "auto";
 
     @Argument(fullName = "devices", doc = "Number of accelerators to use, if not specified it will be treated as 'auto'", optional = true)
     private Integer devices = null;
