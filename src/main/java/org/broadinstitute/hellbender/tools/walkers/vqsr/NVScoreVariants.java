@@ -89,7 +89,7 @@ public class NVScoreVariants extends CommandLineProgram {
     private TensorType tensorType = TensorType.reference;
 
     @Argument(fullName = "batch-size", doc = "Batch size", optional = true)
-    private int batchSize = 32;
+    private int batchSize = 64;
 
     @Argument(fullName = "random-seed", doc = "Seed to initialize the random number generator")
     private int randomSeed = 724;
@@ -97,12 +97,13 @@ public class NVScoreVariants extends CommandLineProgram {
     @Argument(fullName = "tmp-file", doc = "The temporary VCF-like file where variants scores will be written", optional = true)
     private File tmpFile;
 
-    // TODO: this argument does not appear to be hooked up in the underlying Python script,
-    // TODO: so we won't expose it in this tool until it is:
-    //
-    // @Argument(fullName = "num-gpus", doc = "Number of GPUs", optional = true)
-    // private int numGPUs;
-    
+
+     @Argument(fullName = "accelerator", doc = "Type of hardware accelerator to use (gpu, cpu, tpu, etc)", optional = true)
+     private String accelerator = null;
+
+    @Argument(fullName = "devices", doc = "Number of accelerators to use, if not specified it will be treated as 'auto'", optional = true)
+    private Integer devices = null;
+
     @Override
     protected void onStartup() {
         PythonScriptExecutor.checkPythonEnvironmentForPackage(NV_SCORE_VARIANTS_PACKAGE);
@@ -128,6 +129,14 @@ public class NVScoreVariants extends CommandLineProgram {
             "--tmp-file", tmpFile.getAbsolutePath(),
             "--model-directory", extractedModelDirectory.getAbsolutePath()
         ));
+
+        if (accelerator != null) {
+            arguments.addAll(List.of("--accelerator",accelerator));
+        }
+
+        if ( devices != null ) {
+            arguments.addAll(List.of("--devices", Integer.toString(devices)));
+        }
 
         if ( tensorType == TensorType.reference && bam != null ) {
             throw new UserException.BadInput("--" + StandardArgumentDefinitions.INPUT_LONG_NAME +

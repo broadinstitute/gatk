@@ -28,11 +28,13 @@ def get_args():
     parser.add_argument('--ref-file', required=True, help='Reference sequence file to creat datasets')
     parser.add_argument('--input-file', help='BAM file containing reads to creat datasets')
     parser.add_argument('--tensor-type', default='reference', help='Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.')
-    parser.add_argument('--batch-size', type=int, default=32, help='Batch size')
+    parser.add_argument('--batch-size', type=int, default=64, help='Batch size')
     parser.add_argument('--seed', type=int, default=724, help='Seed to initialize the random number generator')
     parser.add_argument('--tmp-file', default='tmp.txt', help='The temporary VCF-like file where variants scores will be written')
     parser.add_argument('--output-file', required=True, help='Output VCF file')
-    parser.add_argument('--gpus', type=int, nargs='+', help='Number of GPUs (int) or which GPUs (list)')
+    parser.add_argument('--devices', type=int, default=None, help='Number of GPUs (int) or other accelerator to use')
+    parser.add_argument('--accelerator', default=None, help='Type of hardware accelerator to use (gpu, cpu, tpu, etc)')
+
     parser.add_argument('--model-directory', default='models', help='Directory containing model files')
     args = parser.parse_args()
     return args
@@ -53,10 +55,10 @@ def main():
     else:
         sys.exit('Unknown tensor type!')
     model = get_model(args, model_file)
-    trainer = pl.Trainer(gradient_clip_val=1.0)
+    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=args.accelerator, devices=args.devices)
 
     test_dataset = ReferenceDataset(tensor_reader)
-    test_loader = DataLoader(test_dataset, batch_size=64)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size)
 
     trainer.test(model, test_loader)
     create_output_vcf(args.vcf_file, args.tmp_file, args.output_file, label)
