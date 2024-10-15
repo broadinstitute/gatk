@@ -7,11 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
@@ -42,6 +38,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -171,6 +168,16 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
+    /**
+     * This option can only be activated if intervals are specified.
+     */
+    @Deprecated
+    @Argument(fullName= ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
+            doc="Restrict variant output to sites that start within provided intervals",
+            optional=true,
+            mutex = {StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME})
+    private boolean onlyOutputCallsStartingInIntervals = false;
+
     @Argument(fullName = FORCE_OUTPUT_INTERVALS_NAME,
             suppressFileExpansion = true, doc = "sites at which to output genotypes even if non-variant in samples", optional = true)
     protected final List<String> forceOutputIntervalStrings = new ArrayList<>();
@@ -251,6 +258,11 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         if (somaticInput) {
             logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
+        }
+
+        if (onlyOutputCallsStartingInIntervals) {
+            logger.warn("The --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " option is deprecated. Please use '--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " STARTS_IN' for an equivalent filtering.");
+            this.userOutputVariantIntervalFilteringMode = IntervalFilteringVcfWriter.Mode.STARTS_IN;
         }
 
         forceOutputIntervalsPresent = !forceOutputIntervalStrings.isEmpty();
