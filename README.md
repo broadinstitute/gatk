@@ -79,16 +79,16 @@ releases of the toolkit.
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 * Python Dependencies:<a name="python"></a>
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      Python environment and dependencies required by GATK tools that have a Python dependency. This environment also 
-      includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
-      requires hardware with AVX support for tools that depend on TensorFlow. The GATK Docker image 
-      comes with the ```gatk``` environment pre-configured.
+      Python environment and dependencies required by Python-based GATK tools. This environment also 
+      includes the R dependencies used for plotting in some of the tools. The GATK Docker image 
+      comes with the ```gatk``` conda environment pre-configured and activated.
     * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed. We recommend installing
           ```Miniconda3-py310_23.10.0-1``` from [the miniconda download page](https://repo.anaconda.com/miniconda/), selecting the Linux or
           MacOS version of the installer as appropriate.
             * This is the same version of ```miniconda``` used by the official GATK docker image.
+            * If you use a different version, you may run into issues.
             * If you have an ARM-based Mac, you must select the `MacOSX-x86_64` installer, not the `MacOSX-arm64` installer,
               and rely on Mac OS's built-in x86 emulation.
         * Set up miniconda:
