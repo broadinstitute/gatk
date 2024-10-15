@@ -81,13 +81,29 @@ releases of the toolkit.
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
       Python environment and dependencies required by GATK tools that have a Python dependency. This environment also 
       includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
-      requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
+      requires hardware with AVX support for tools that depend on TensorFlow. The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
-      	* At this time, the only supported platforms are 64-bit Linux distributions. The required Conda environment is not
-	  currently supported on OS X/macOS. 
     * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
-        * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
+        * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed. We recommend installing
+          ```Miniconda3-py310_23.10.0-1``` from [the miniconda download page](https://repo.anaconda.com/miniconda/), selecting the Linux or
+          MacOS version of the installer as appropriate.
+            * This is the same version of ```miniconda``` used by the official GATK docker image.
+            * If you have an ARM-based Mac, you must select the `MacOSX-x86_64` installer, not the `MacOSX-arm64` installer,
+              and rely on Mac OS's built-in x86 emulation.
+        * Set up miniconda:
+            * Install miniconda to a location on your PATH such as ```/opt/miniconda```, and then restart your shell: 
+              ```
+              bash Miniconda3-py310_23.10.0-1-[YOUR_OS].sh -p /opt/miniconda -b
+              ```
+            * Disable conda auto-updates, which can cause compatibility issues with GATK: 
+              ```
+              conda config --set auto_update_conda false
+              ```
+            * Enable the (much) faster ```libmamba``` solver to greatly speed up creation of the conda environment: 
+              ```
+              conda config --set solver libmamba
+              ```
         * To "create" the conda environment:
             * If running from a zip or tar distribution, run the command ```conda env create -f gatkcondaenv.yml``` to
               create the ```gatk``` environment.
