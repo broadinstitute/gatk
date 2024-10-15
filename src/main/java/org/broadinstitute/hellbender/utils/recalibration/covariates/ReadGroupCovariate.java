@@ -17,6 +17,8 @@ public final class ReadGroupCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
     private boolean allowReadGroupsNotInRecalTable; // tsato: rename
 
+    public static final int MISSING_READ_GROUP_KEY = -1;
+
     //Note: these maps are initialized and made umodifiable at construction so the whole covariate is an immutable object once it's constructed.
 
     /*
@@ -96,10 +98,10 @@ public final class ReadGroupCovariate implements Covariate {
      *         but the parameter is set. (REWORD)
      */
     private int keyForReadGroup(final String readGroupId) {
-        if (readGroupLookupTable.containsKey(readGroupId)) {
+        if (readGroupLookupTable.containsKey(readGroupId)) { // tsato: should I also check "allowMissingReadGroup" here? Add it as an instance variable for this class...
             return readGroupLookupTable.get(readGroupId);
         } else { // tsato: perhaps we can return -1, and error
-            return -1; // tsato: but we shouldn't return -1 when calling recalibration engine....ok with apply bqsr...caller should throw error as needed
+            return MISSING_READ_GROUP_KEY; // tsato: but we shouldn't return -1 when calling recalibration engine....ok with apply bqsr...caller should throw error as needed
         }
 //        } else {
 //            throw new GATKException("The covariates table is missing " + RecalUtils.READGROUP_COLUMN_NAME + " " + readGroupId + " in " + RecalUtils.READGROUP_REPORT_TABLE_TITLE);

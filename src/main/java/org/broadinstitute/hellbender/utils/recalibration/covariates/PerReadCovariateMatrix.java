@@ -6,15 +6,18 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 /**
- * The object temporarily held by a read that holds the matrix (table) of type { read offset } x { covariates },
- * where covariates are encoded as the integer key.
+ * The object that holds BQSR covarites for a read as a matrix (table) of shape ( read length ) x ( num covariates ).
+ * The covariates are encoded as their integer keys.
  *
+ * Even though it's not a matrix in the linear algebra sense, we call it a matrix rather than table to
+ * differentiate it from the recal table in BQSR.
  */
 public final class PerReadCovariateMatrix {
     private static final Logger logger = LogManager.getLogger(PerReadCovariateMatrix.class);
 
     /**
-     * Our [keys], indexed by { event type } x { read position (or cycle) } x { covariate }
+     * This is where we store the pre-read covariates, also indexed by (event type) and (read position).
+     * Thus the array has shape { event type } x { read position (aka cycle) } x { covariate }.
      * For instance, { covariate } is by default 4-dimensional (read group, base quality, context, cycle).
      */
     private final int[][][] covariates; //  tsato: these are not keys. these are covariates.
@@ -58,8 +61,8 @@ public final class PerReadCovariateMatrix {
      * @param readOffset the read offset, must be >= 0 and <= the read length used to create this ReadCovariates
      */ // tsato: this is the only place where "keys" array gets updated.
     public void addCovariate(final int mismatch, final int insertion, final int deletion, final int readOffset) {
-        covariates[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch;
-        covariates[EventType.BASE_INSERTION.ordinal()][readOffset][currentCovariateIndex] = insertion;
+        covariates[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch; // tsato: mismatchCovaraiteKey is better.
+        covariates[EventType.BASE_INSERTION.ordinal()][readOffset][currentCovariateIndex] = insertion; // tsato: currentCovariateIndex?
         covariates[EventType.BASE_DELETION.ordinal()][readOffset][currentCovariateIndex] = deletion;
     } // tsato: rename to: populateAtReadOffset
 

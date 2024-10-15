@@ -133,11 +133,11 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * record the values in the provided storage object.
      */
     // tsato: consider renaming this method
-    public void populateTable(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix perReadCovariateMatrix, final boolean recordIndelValues) {
+    public void populatePerReadCovariateMatrix(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix perReadCovariateMatrix, final boolean recordIndelValues) {
         for (int i = 0, n = allCovariates.size(); i < n; i++) {
             final Covariate cov = allCovariates.get(i);
-            perReadCovariateMatrix.setCovariateIndex(i);
-            cov.recordValues(read, header, perReadCovariateMatrix, recordIndelValues);
+            perReadCovariateMatrix.setCovariateIndex(i); // tsato: this is less than ideal...but ok.
+            cov.recordValues(read, header, perReadCovariateMatrix, recordIndelValues); // tsato: "cov" should already know which index it belongs to.
         }
     }
 

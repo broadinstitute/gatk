@@ -255,7 +255,7 @@ public final class RecalUtils {
 
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getEmpiricalQuality());
                 if (recalibrationTables.isReadGroupTable(table)) {
-                    reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getEstimatedQReported()); // we only add the estimated Q reported in the RG table
+                    reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getReportedQuality()); // we only add the estimated Q reported in the RG table
                 }
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getNumObservations());
                 reportTable.set(rowIndex, columnNames.get(columnIndex).getLeft(), datum.getNumMismatches());
@@ -526,7 +526,7 @@ public final class RecalUtils {
      */
     public static PerReadCovariateMatrix computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
         final PerReadCovariateMatrix covariateTable = new PerReadCovariateMatrix(read.getLength(), covariates.size(), keyCache); // tsato: maybe rename ReadCovariates => ReadCovariateData
-        covariates.populateTable(read, header, covariateTable, recordIndelValues);
+        covariates.populatePerReadCovariateMatrix(read, header, covariateTable, recordIndelValues);
         // computeCovariates(read, header, covariates, readCovariates, recordIndelValues);
         return covariateTable;
     }

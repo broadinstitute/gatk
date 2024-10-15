@@ -382,8 +382,4 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         //output has a GATK ApplyBQSR in headers
         Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK ApplyBQSR"));
     }
-
-    public void testMissingReadGroup2(){
-        int d = 3;
-    }
 }

@@ -203,7 +203,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             for (final NestedIntegerArray.Leaf<RecalDatum> leaf : rt.getTable(i).getAllLeaves()) {
                 leaf.value.setNumMismatches(MathUtils.roundToNDecimalPlaces(leaf.value.getNumMismatches(), RecalUtils.NUMBER_ERRORS_DECIMAL_PLACES));
                 // leaf.value.setEmpiricalQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getEmpiricalQuality(), RecalUtils.EMPIRICAL_QUAL_DECIMAL_PLACES)); // tsato: now an integer
-                leaf.value.setEstimatedQReported(MathUtils.roundToNDecimalPlaces(leaf.value.getEstimatedQReported(), RecalUtils.EMPIRICAL_Q_REPORTED_DECIMAL_PLACES));
+                leaf.value.setReportedQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getReportedQuality(), RecalUtils.EMPIRICAL_Q_REPORTED_DECIMAL_PLACES));
             }
         }
     }
