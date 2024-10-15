@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -103,12 +104,8 @@ public class NVScoreVariants extends CommandLineProgram {
     @Argument(fullName = "tmp-file", doc = "The temporary VCF-like file where variants scores will be written", optional = true)
     private File tmpFile;
 
-
-     @Argument(fullName = "accelerator", doc = "Type of hardware accelerator to use (auto, cpu, cuda, mps, tpu, etc)", optional = true)
-     private String accelerator = "auto";
-
-    @Argument(fullName = "devices", doc = "Number of accelerators to use, if not specified it will be treated as 'auto'", optional = true)
-    private Integer devices = null;
+    @Argument(fullName = "accelerator", doc = "Type of hardware accelerator to use (auto, cpu, cuda, mps, tpu, etc)", optional = true)
+    private String accelerator = "auto";
 
     @Override
     protected void onStartup() {
@@ -138,10 +135,6 @@ public class NVScoreVariants extends CommandLineProgram {
 
         if (accelerator != null) {
             arguments.addAll(List.of("--accelerator",accelerator));
-        }
-
-        if ( devices != null ) {
-            arguments.addAll(List.of("--devices", Integer.toString(devices)));
         }
 
         if ( tensorType == TensorType.reference && bam != null ) {

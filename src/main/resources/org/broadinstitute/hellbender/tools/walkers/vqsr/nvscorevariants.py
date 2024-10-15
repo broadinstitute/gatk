@@ -32,7 +32,6 @@ def get_args():
     parser.add_argument('--seed', type=int, default=724, help='Seed to initialize the random number generator')
     parser.add_argument('--tmp-file', default='tmp.txt', help='The temporary VCF-like file where variants scores will be written')
     parser.add_argument('--output-file', required=True, help='Output VCF file')
-    parser.add_argument('--devices', default="auto", help='Number of GPUs (int) or other accelerator to use')
     parser.add_argument('--accelerator', default='auto', help='Type of hardware accelerator to use (auto, cpu, cuda, mps, tpu, etc)')
 
     parser.add_argument('--model-directory', default='models', help='Directory containing model files')
@@ -55,7 +54,7 @@ def main():
     else:
         sys.exit('Unknown tensor type!')
     model = get_model(args, model_file)
-    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=args.accelerator, devices=args.devices)
+    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=args.accelerator)
 
     test_dataset = ReferenceDataset(tensor_reader)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size)
