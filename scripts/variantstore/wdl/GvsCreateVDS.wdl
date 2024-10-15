@@ -131,10 +131,10 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call ValidateVDS.ValidateVds {
+    call ValidateVDS.GvsValidateVDS as ValidateVds {
         input:
             go = CreateVds.done,
-            prefix = cluster_prefix,
+            cluster_prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,

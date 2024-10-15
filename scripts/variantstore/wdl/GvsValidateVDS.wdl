@@ -6,6 +6,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsValidateVDS {
     input {
+        Boolean go = true
         String vds_path
 
         String cluster_prefix = "vds-cluster"
@@ -102,7 +103,7 @@ workflow GvsValidateVDS {
     }
 
     output {
-        String validate_cluster_name = ValidateVds.cluster_name
+        String cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
 }
