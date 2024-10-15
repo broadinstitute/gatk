@@ -52,6 +52,12 @@ import java.util.List;
  *     -I src/test/resources/large/VQSR/g94982_contig_20_start_bamout.bam \
  *     -O output.vcf
  * </pre>
+ *
+ * <b><i>The PyTorch Python code that this tool relies upon was contributed by engineers at
+ * <a href="https://github.com/NVIDIA-Genomics-Research">NVIDIA Genomics Research</a>.
+ * We would like to give particular thanks to Babak Zamirai of NVIDIA, who authored
+ * the tool, as well as to Ankit Sethia, Mehrzad Samadi, and George Vacek (also of NVIDIA),
+ * without whom this project would not have been possible.</i></b>
  */
 @CommandLineProgramProperties(
     summary = "Annotate a VCF with scores from a PyTorch-based Convolutional Neural Network (CNN)",
