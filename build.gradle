@@ -692,6 +692,13 @@ task localDevCondaEnv(type: Exec) {
     commandLine "conda", "env", "create", "--yes", "-f", gatkCondaYML
 }
 
+task localDevCondaUpdate(type: Exec) {
+    dependsOn 'condaEnvironmentDefinition'
+    inputs.file("$buildDir/$pythonPackageArchiveName")
+    workingDir "$buildDir"
+    commandLine "conda", "env", "update", "-f", gatkCondaYML
+}
+
 task javadocJar(type: Jar, dependsOn: javadoc) {
     archiveClassifier = 'javadoc'
     from "$docBuildDir/javadoc"
