@@ -110,35 +110,35 @@ workflow GvsQuickstartHailIntegration {
             variants_docker = effective_variants_docker,
     }
 
-    call CreateVds.GvsCreateVDS {
-        input:
-            git_branch_or_tag = git_branch_or_tag,
-            hail_version = effective_hail_version,
-            use_VQSR = !use_VETS,
-            avro_path = GvsExtractAvroFilesForHail.avro_path,
-            vds_destination_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
-            cluster_prefix = "vds-cluster",
-            gcs_subnetwork_name = "subnetwork",
-            region = "us-central1",
-            basic_docker = effective_basic_docker,
-            variants_docker = effective_variants_docker,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            cluster_max_age_minutes = 120,
-            cluster_max_idle_minutes = 60,
-            leave_cluster_running_at_end = false,
-    }
-
-    call TieOutVds {
-        input:
-            go = GvsCreateVDS.done,
-            git_branch_or_tag = git_branch_or_tag,
-            vds_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
-            tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
-            tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
-            tieout_vcf_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            hail_version = effective_hail_version,
-    }
+#    call CreateVds.GvsCreateVDS {
+#        input:
+#            git_branch_or_tag = git_branch_or_tag,
+#            hail_version = effective_hail_version,
+#            use_VQSR = !use_VETS,
+#            avro_path = GvsExtractAvroFilesForHail.avro_path,
+#            vds_destination_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
+#            cluster_prefix = "vds-cluster",
+#            gcs_subnetwork_name = "subnetwork",
+#            region = "us-central1",
+#            basic_docker = effective_basic_docker,
+#            variants_docker = effective_variants_docker,
+#            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+#            cluster_max_age_minutes = 120,
+#            cluster_max_idle_minutes = 60,
+#            leave_cluster_running_at_end = false,
+#    }
+#
+#    call TieOutVds {
+#        input:
+#            go = GvsCreateVDS.done,
+#            git_branch_or_tag = git_branch_or_tag,
+#            vds_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
+#            tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
+#            tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
+#            tieout_vcf_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
+#            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+#            hail_version = effective_hail_version,
+#    }
 
     output {
         Array[File] output_vcfs = GvsQuickstartVcfIntegration.output_vcfs
