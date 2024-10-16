@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -37,10 +38,9 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-
 @CommandLineProgramProperties(
-        summary = "Clean and format structural variant VCFs",
-        oneLineSummary = "Clean and format structural variant VCFs",
+        summary = "Clean and format structural variant VCFs (Step 1a)",
+        oneLineSummary = "Clean and format structural variant VCFs (Step 1a)",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -103,13 +103,13 @@ public final class SVCleanPt1a extends VariantWalker {
     )
     private GATKPath outputRevisedEventsList;
 
-    private VariantContextWriter vcfWriter = null;
-    private BufferedWriter samplesWriter = null;
-    private BufferedWriter revisedEventsWriter = null;
+    private VariantContextWriter vcfWriter;
+    private BufferedWriter samplesWriter;
+    private BufferedWriter revisedEventsWriter;
 
-    private Map<String, Integer> sampleSexMap = null;
-    private Set<String> failSet = null;
-    private Set<String> passSet = null;
+    private Map<String, Integer> sampleSexMap;
+    private Set<String> failSet;
+    private Set<String> passSet;
     private Set<String> writtenRevisedEvents = new HashSet<>();
 
     private static final int MIN_ALLOSOME_EVENT_SIZE = 5000;
@@ -117,7 +117,7 @@ public final class SVCleanPt1a extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        // Read supporting files into appropriate structures
+        // Read supporting files
         sampleSexMap = readPedFile(pedFile);
         failSet = readLastColumn(failList);
         passSet = readLastColumn(passList);
@@ -147,7 +147,7 @@ public final class SVCleanPt1a extends VariantWalker {
             revisedEventsWriter = new BufferedWriter(new FileWriter(outputRevisedEventsList.toPath().toFile()));
             writeSamples();
         } catch (IOException e) {
-            throw new RuntimeException("Can't create output file", e);
+            throw new RuntimeException("Error creating output file", e);
         }
     }
 
@@ -156,6 +156,7 @@ public final class SVCleanPt1a extends VariantWalker {
         if (vcfWriter != null) {
             vcfWriter.close();
         }
+
         try {
             if (samplesWriter != null) {
                 samplesWriter.close();
@@ -302,7 +303,7 @@ public final class SVCleanPt1a extends VariantWalker {
                 return i;
             }
         }
-        throw new RuntimeException("Median calculation failed");
+        throw new RuntimeException("Error calculating median");
     }
 
     private void processSVType(VariantContext variant, VariantContextBuilder builder) {
@@ -356,7 +357,7 @@ public final class SVCleanPt1a extends VariantWalker {
                     })
                     .collect(Collectors.toSet());
         } catch (IOException e) {
-            throw new RuntimeException("Can't read variant list file: " + filePath, e);
+            throw new RuntimeException("Error reading variant list file: " + filePath, e);
         }
     }
 
@@ -374,7 +375,7 @@ public final class SVCleanPt1a extends VariantWalker {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Error reading PED file: " + pedFile, e);
+            throw new RuntimeException("Error reading PED file", e);
         }
         return sampleSexMap;
     }

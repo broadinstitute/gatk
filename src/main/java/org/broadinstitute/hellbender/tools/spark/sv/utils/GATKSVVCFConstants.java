@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static java.util.Map.entry;
 
+
 public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
@@ -149,7 +150,7 @@ public final class GATKSVVCFConstants {
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
 
-    // CleanPt1
+    // CleanPt1a
     public static final String EV = "EV";
     public static final List<String> evValues = Arrays.asList(
             null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
@@ -163,8 +164,12 @@ public final class GATKSVVCFConstants {
     public static final String END = "END";
     public static final String RD_CN = "RD_CN";
 
-    // CleanPt2
-
+    // CleanPt1b
+    public static final String GT = "GT";
+    public static final String GQ = "GQ";
+    public static final String RD_GQ = "RD_GQ";
+    public static final String CNVS_DEFAULT_FILE = "multi.cnvs.txt";
+    public static final String BLANK_SAMPLES = "blanksample";
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
