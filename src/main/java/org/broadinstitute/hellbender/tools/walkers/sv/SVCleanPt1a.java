@@ -154,7 +154,7 @@ public final class SVCleanPt1a extends VariantWalker {
     private Map<String, Integer> sampleSexMap;
     private Set<String> failSet;
     private Set<String> passSet;
-    private Set<String> writtenRevisedEvents = new HashSet<>();
+    private final Set<String> writtenRevisedEvents = new HashSet<>();
 
     private static final int MIN_ALLOSOME_EVENT_SIZE = 5000;
 
