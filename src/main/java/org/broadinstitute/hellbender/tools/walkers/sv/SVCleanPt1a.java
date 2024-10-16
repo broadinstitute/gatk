@@ -38,9 +38,53 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+/**
+ * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>
+ *         VCF containing structural variant (SV) records from the GATK-SV pipeline.
+ *     </li>
+ *     <li>
+ *         TODO
+ *     </li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>
+ *         Annotated VCF.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>
+ *     gatk SVCleanPt1a \
+ *       -V structural.vcf.gz \
+ *       -O cleansed.vcf.gz
+ *       --ped-file pedigree.ped
+ *       --chrX chrX
+ *       --chrY chrY
+ *       --fail-list background_fail.txt
+ *       --pass-list bothsides_pass.txt
+ *       --sample-list sample_list.txt
+ *       --revised-list revised_list.txt
+ * </pre>
+ *
+ * <h3>Cleaning Steps</h3>
+ * <ol>
+ *     <li>
+ *         Adds new FILTER and INFO tags to header.
+ *     </li>
+ *     <li>
+ *         TODO
+ *     </li>
+ * </ol>
+ */
 @CommandLineProgramProperties(
-        summary = "Clean and format structural variant VCFs (Step 1a)",
-        oneLineSummary = "Clean and format structural variant VCFs (Step 1a)",
+        summary = "Clean and format structural variant VCFs per Step 1a",
+        oneLineSummary = "Clean and format structural variant VCFs per Step 1a",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -125,7 +169,7 @@ public final class SVCleanPt1a extends VariantWalker {
         // Create header without the 'UNRESOLVED' INFO line
         final VCFHeader header = getHeaderForVariants();
         Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
-        for (VCFHeaderLine line : header.getMetaDataInInputOrder()) {
+        for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
             if (!(line instanceof VCFInfoHeaderLine) || !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.UNRESOLVED)) {
                 newHeaderLines.add(line);
             }
@@ -143,9 +187,14 @@ public final class SVCleanPt1a extends VariantWalker {
 
         // Create output writers
         try {
-            samplesWriter = new BufferedWriter(new FileWriter(outputSamplesList.toPath().toFile()));
             revisedEventsWriter = new BufferedWriter(new FileWriter(outputRevisedEventsList.toPath().toFile()));
-            writeSamples();
+            samplesWriter = new BufferedWriter(new FileWriter(outputSamplesList.toPath().toFile()));
+
+            for (final String sample : header.getGenotypeSamples()) {
+                samplesWriter.write(sample);
+                samplesWriter.newLine();
+            }
+            samplesWriter.flush();
         } catch (IOException e) {
             throw new RuntimeException("Error creating output file", e);
         }
@@ -153,11 +202,11 @@ public final class SVCleanPt1a extends VariantWalker {
 
     @Override
     public void closeTool() {
-        if (vcfWriter != null) {
-            vcfWriter.close();
-        }
-
         try {
+            if (vcfWriter != null) {
+                vcfWriter.close();
+            }
+
             if (samplesWriter != null) {
                 samplesWriter.close();
             }
@@ -172,7 +221,7 @@ public final class SVCleanPt1a extends VariantWalker {
     @Override
     public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         VariantContextBuilder variantBuilder = new VariantContextBuilder(variant);
-        List<Genotype> processedGenotypes = processGenotypes(variant);
+        final List<Genotype> processedGenotypes = processGenotypes(variant);
         variantBuilder.genotypes(processedGenotypes);
         processVariant(variant, variantBuilder);
         vcfWriter.add(variantBuilder.make());
@@ -202,38 +251,33 @@ public final class SVCleanPt1a extends VariantWalker {
     private void processEVGenotype(Genotype genotype, GenotypeBuilder genotypeBuilder) {
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)) {
             String evAttribute = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.EV);
-            try {
-                int evIndex = Integer.parseInt(evAttribute);
-                if (evIndex >= 0 && evIndex < GATKSVVCFConstants.evValues.size()) {
-                    genotypeBuilder.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.evValues.get(evIndex));
-                }
-            } catch (NumberFormatException e) {
-                throw new RuntimeException("Invalid EV attribute for genotype: " + genotype.getSampleName(), e);
+            final int evIndex = Integer.parseInt(evAttribute);
+            if (evIndex >= 0 && evIndex < GATKSVVCFConstants.evValues.size()) {
+                genotypeBuilder.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.evValues.get(evIndex));
             }
         }
     }
 
     private void processSVTypeGenotype(VariantContext variant, Genotype genotype, GenotypeBuilder genotypeBuilder) {
-        String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
         if (svType != null && variant.getAlleles().stream().noneMatch(allele -> allele.getDisplayString().contains(GATKSVVCFConstants.ME))) {
-            Allele refAllele = variant.getReference();
-            Allele altAllele = Allele.create("<" + svType + ">", false);
-            List<Allele> newGenotypeAlleles = genotype.getAlleles().stream()
-                    .map(allele -> allele.isReference() ? refAllele : altAllele)
-                    .collect(Collectors.toList());
+            List<Allele> newGenotypeAlleles = Arrays.asList(
+                    variant.getReference(),
+                    Allele.create("<" + svType + ">", false)
+            );
             genotypeBuilder.alleles(newGenotypeAlleles);
         }
     }
 
     private void processAllosomesGenotype(VariantContext variant, Genotype genotype, GenotypeBuilder genotypeBuilder) {
-        String chromosome = variant.getContig();
+        final String chromosome = variant.getContig();
         if (chromosome.equals(chrX) || chromosome.equals(chrY)) {
-            boolean isY = chromosome.equals(chrY);
-            String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+            final boolean isY = chromosome.equals(chrY);
+            final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
             if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) &&
                     (variant.getEnd() - variant.getStart() >= MIN_ALLOSOME_EVENT_SIZE)) {
-                String sampleName = genotype.getSampleName();
-                int sex = sampleSexMap.get(sampleName);
+                final String sampleName = genotype.getSampleName();
+                final int sex = sampleSexMap.get(sampleName);
                 if (sex == 1 && isRevisableEvent(variant, isY)) { // Male
                     writeRevisedEvents(variant);
                     adjustMaleGenotype(genotype, genotypeBuilder, svType);
@@ -248,11 +292,11 @@ public final class SVCleanPt1a extends VariantWalker {
 
     private void adjustMaleGenotype(Genotype genotype, GenotypeBuilder genotypeBuilder, String svType) {
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-            int rdCN = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
+            final int rdCN = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
             genotypeBuilder.attribute(GATKSVVCFConstants.RD_CN, rdCN + 1);
-            Allele refAllele = genotype.getAllele(0);
-            Allele altAllele = genotype.getAllele(1);
 
+            final Allele refAllele = genotype.getAllele(0);
+            final Allele altAllele = genotype.getAllele(1);
             if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)) {
                 if (rdCN >= 1) genotypeBuilder.alleles(Arrays.asList(refAllele, refAllele));
                 else if (rdCN == 0) genotypeBuilder.alleles(Arrays.asList(refAllele, altAllele));
@@ -265,18 +309,18 @@ public final class SVCleanPt1a extends VariantWalker {
     }
 
     private boolean isRevisableEvent(VariantContext variant, boolean isY) {
-        List<Genotype> genotypes = variant.getGenotypes();
+        final List<Genotype> genotypes = variant.getGenotypes();
         int[] maleCounts = new int[4];
         int[] femaleCounts = new int[4];
-        for (Genotype genotype : genotypes) {
-            String sampleName = genotype.getSampleName();
-            Integer sex = sampleSexMap.get(sampleName);
+        for (final Genotype genotype : genotypes) {
+            final String sampleName = genotype.getSampleName();
+            final Integer sex = sampleSexMap.get(sampleName);
             if (sex == null) continue;
 
             int rdCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, -1);
             if (rdCN == -1) continue;
 
-            int rdCNVal = Math.min(rdCN, 3);
+            final int rdCNVal = Math.min(rdCN, 3);
             if (sex == 1) {
                 maleCounts[rdCNVal]++;
             } else if (sex == 2) {
@@ -284,16 +328,16 @@ public final class SVCleanPt1a extends VariantWalker {
             }
         }
 
-        double maleMedian = calcMedian(maleCounts);
-        double femaleMedian = calcMedian(femaleCounts);
+        final double maleMedian = calcMedian(maleCounts);
+        final double femaleMedian = calcMedian(femaleCounts);
         return maleMedian == 1.0 && (isY ? femaleMedian == 0.0 : femaleMedian == 2.0);
     }
 
     private double calcMedian(int[] counts) {
-        int total = Arrays.stream(counts).sum();
+        final int total = Arrays.stream(counts).sum();
         if (total == 0) return Double.NaN;
 
-        double target = total / 2.0;
+        final double target = total / 2.0;
         int runningTotal = 0;
         for (int i = 0; i < 4; i++) {
             runningTotal += counts[i];
@@ -307,10 +351,10 @@ public final class SVCleanPt1a extends VariantWalker {
     }
 
     private void processSVType(VariantContext variant, VariantContextBuilder builder) {
-        String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
         if (svType != null && variant.getAlleles().stream().noneMatch(allele -> allele.getDisplayString().contains(GATKSVVCFConstants.ME))) {
-            Allele refAllele = variant.getReference();
-            Allele altAllele = Allele.create("<" + svType + ">", false);
+            final Allele refAllele = variant.getReference();
+            final Allele altAllele = Allele.create("<" + svType + ">", false);
             List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
             builder.alleles(newAlleles);
         }
@@ -318,7 +362,7 @@ public final class SVCleanPt1a extends VariantWalker {
 
     private void processVarGQ(VariantContext variant, VariantContextBuilder builder) {
         if (variant.hasAttribute(GATKSVVCFConstants.VAR_GQ)) {
-            double varGQ = variant.getAttributeAsDouble(GATKSVVCFConstants.VAR_GQ, 0);
+            final double varGQ = variant.getAttributeAsDouble(GATKSVVCFConstants.VAR_GQ, 0);
             builder.rmAttribute(GATKSVVCFConstants.VAR_GQ);
             builder.log10PError(varGQ / -10.0);
         }
@@ -367,10 +411,10 @@ public final class SVCleanPt1a extends VariantWalker {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("#")) continue;
-                String[] fields = line.split("\t");
+                final String[] fields = line.split("\t");
                 if (fields.length >= 5) {
-                    String sampleName = fields[1];
-                    int sex = Integer.parseInt(fields[4]);
+                    final String sampleName = fields[1];
+                    final int sex = Integer.parseInt(fields[4]);
                     sampleSexMap.put(sampleName, sex);
                 }
             }
@@ -381,7 +425,7 @@ public final class SVCleanPt1a extends VariantWalker {
     }
 
     private void writeRevisedEvents(VariantContext variant) {
-        String variantId = variant.getID();
+        final String variantId = variant.getID();
         if (!writtenRevisedEvents.contains(variantId)) {
             try {
                 revisedEventsWriter.write(variantId);
@@ -390,19 +434,6 @@ public final class SVCleanPt1a extends VariantWalker {
             } catch (IOException e) {
                 throw new RuntimeException("Error writing to revised events output file", e);
             }
-        }
-    }
-
-    private void writeSamples() {
-        VCFHeader header = getHeaderForVariants();
-        try {
-            for (String sample : header.getGenotypeSamples()) {
-                samplesWriter.write(sample);
-                samplesWriter.newLine();
-            }
-            samplesWriter.flush();
-        }  catch (IOException e) {
-            throw new RuntimeException("Error writing to samples output file", e);
         }
     }
 }
