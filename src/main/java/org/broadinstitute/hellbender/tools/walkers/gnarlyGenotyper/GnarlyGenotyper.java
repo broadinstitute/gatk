@@ -112,7 +112,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     /**
      * This option can only be activated if intervals are specified.
      */
-    @Deprecated
+    @DeprecatedFeature
+    @Advanced
     @Argument(fullName= GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
             doc="Restrict variant output to sites that start within provided intervals",
             optional=true,
@@ -184,7 +185,7 @@ public final class GnarlyGenotyper extends VariantWalker {
             logger.warn("The --" + GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " option is deprecated. Please use '--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " STARTS_IN' for an equivalent filtering.");
             this.userOutputVariantIntervalFilteringMode = IntervalFilteringVcfWriter.Mode.STARTS_IN;
         }
-        
+
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());

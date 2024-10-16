@@ -171,7 +171,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /**
      * This option can only be activated if intervals are specified.
      */
-    @Deprecated
+    @DeprecatedFeature
+    @Advanced
     @Argument(fullName= ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
             doc="Restrict variant output to sites that start within provided intervals",
             optional=true,
