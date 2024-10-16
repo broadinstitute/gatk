@@ -98,7 +98,7 @@ public class NVScoreVariants extends CommandLineProgram {
     @Argument(fullName = "batch-size", doc = "Batch size", optional = true)
     private int batchSize = 64;
 
-    @Argument(fullName = "random-seed", doc = "Seed to initialize the random number generator")
+    @Argument(fullName = "random-seed", doc = "Seed to initialize the random number generator", optional = true)
     private int randomSeed = 724;
 
     @Argument(fullName = "tmp-file", doc = "The temporary VCF-like file where variants scores will be written", optional = true)
