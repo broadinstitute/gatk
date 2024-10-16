@@ -34,9 +34,47 @@ import java.util.HashMap;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+/**
+ * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>
+ *         VCF containing structural variant (SV) records from the GATK-SV pipeline.
+ *     </li>
+ *     <li>
+ *         TODO
+ *     </li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>
+ *         Annotated VCF.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>
+ *     gatk SVCleanPt1b \
+ *       -V structural.vcf.gz \
+ *       -O cleansed.vcf.gz
+ *       --bed-file overlap.bed
+ * </pre>
+ *
+ * <h3>Cleaning Steps</h3>
+ * <ol>
+ *     <li>
+ *         Calculates new copy numbers for variant genotypes that match an overlapping variant.
+ *     </li>
+ *     <li>
+ *         TODO
+ *     </li>
+ * </ol>
+ */
 @CommandLineProgramProperties(
-        summary = "Clean and format structural variant VCFs (Step 1b)",
-        oneLineSummary = "Clean and format structural variant VCFs (Step 1b)",
+        summary = "Clean and format structural variant VCFs per Step 1b",
+        oneLineSummary = "Clean and format structural variant VCFs per Step 1b",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -145,23 +183,23 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     }
 
     private boolean shouldProcessCnvs(VariantContext variant) {
-        String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
-        boolean isLarge = variant.getEnd() - variant.getStart() >= 1000;
+        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+        final boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
+        final boolean isLarge = variant.getEnd() - variant.getStart() >= 1000;
         return isDelDup && isLarge;
     }
 
     private void initializeRdCn(VariantContext variant) {
         // Initialize data structures
-        String variantId = variant.getID();
-        Set<String> samples = revisedEventsFiltered.get(variantId);
+        final String variantId = variant.getID();
+        final Set<String> samples = revisedEventsFiltered.get(variantId);
         Map<String, Integer> variantRdCn = new HashMap<>();
 
         // Initialize revisedRdCn value for each variant
-        for (String sampleName : samples) {
-            Genotype genotype = variant.getGenotype(sampleName);
+        for (final String sampleName : samples) {
+            final Genotype genotype = variant.getGenotype(sampleName);
             if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+                final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
                 variantRdCn.put(sampleName, Integer.parseInt(rdCn));
             }
         }
@@ -170,20 +208,20 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
 
     private void processVariant(VariantContextBuilder builder, VariantContext variant) {
         // Initialize data structures
-        String variantId = variant.getID();
-        Map<String, Pair<String, String>> variantEvents = revisedEventsAll.get(variantId);
+        final String variantId = variant.getID();
+        final Map<String, Pair<String, String>> variantEvents = revisedEventsAll.get(variantId);
         List<Genotype> newGenotypes = new ArrayList<>();
 
         // Create updated genotypes
         for (String sample : variant.getSampleNamesOrderedByName()) {
-            Genotype oldGenotype = variant.getGenotype(sample);
-            Pair<String, String> event = variantEvents.get(sample);
+            final Genotype oldGenotype = variant.getGenotype(sample);
+            final Pair<String, String> event = variantEvents.get(sample);
 
             if (event != null) {
-                String widerVariantId = event.getLeft();
-                String widerSvType = event.getRight();
-                int currentRdCn = revisedRdCn.get(variantId).getOrDefault(sample, 0);
-                int widerRdCn = revisedRdCn.getOrDefault(widerVariantId, new HashMap<>()).getOrDefault(sample, 0);
+                final String widerVariantId = event.getLeft();
+                final String widerSvType = event.getRight();
+                final int currentRdCn = revisedRdCn.get(variantId).getOrDefault(sample, 0);
+                final int widerRdCn = revisedRdCn.getOrDefault(widerVariantId, new HashMap<>()).getOrDefault(sample, 0);
                 if (!revisedEventsFiltered.getOrDefault(widerVariantId, new HashSet<>()).contains(sample)) {
                     System.err.println(sample + " " + widerVariantId);
                 }
@@ -211,12 +249,12 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     }
 
     private void processCnvs(VariantContext variant) {
-        boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
+        final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         for (String sample : variant.getSampleNamesOrderedByName()) {
-            Genotype genotype = variant.getGenotype(sample);
+            final Genotype genotype = variant.getGenotype(sample);
             if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
-                int rdCn = Integer.parseInt(rdCnString);
+                final String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+                final int rdCn = Integer.parseInt(rdCnString);
                 if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {
                     multiCnvs.add(variant.getID());
                     break;
@@ -226,10 +264,11 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     }
 
     private void processBedFile() {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(bedFile.toPath()))))) {
+        try {
             String line;
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(bedFile.toPath()))));
             while ((line = reader.readLine()) != null) {
-                String[] fields = line.split("\t");
+                final String[] fields = line.split("\t");
                 if (fields.length < 12) continue;
 
                 String[] wider = Integer.parseInt(fields[2]) - Integer.parseInt(fields[1]) >= Integer.parseInt(fields[8]) - Integer.parseInt(fields[7])
