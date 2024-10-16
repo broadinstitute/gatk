@@ -49,6 +49,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter.Mode.STARTS_IN;
+
 /**
  * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
  *
@@ -174,7 +176,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @DeprecatedFeature
     @Advanced
     @Argument(fullName= ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
-            doc="Restrict variant output to sites that start within provided intervals",
+            doc="Restrict variant output to sites that start within provided intervals, equivalent to '--"+StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME+" STARTS_IN'",
             optional=true,
             mutex = {StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME})
     private boolean onlyOutputCallsStartingInIntervals = false;
@@ -263,7 +265,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         if (onlyOutputCallsStartingInIntervals) {
             logger.warn("The --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " option is deprecated. Please use '--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " STARTS_IN' for an equivalent filtering.");
-            this.userOutputVariantIntervalFilteringMode = IntervalFilteringVcfWriter.Mode.STARTS_IN;
+            this.userOutputVariantIntervalFilteringMode = STARTS_IN;
         }
 
         forceOutputIntervalsPresent = !forceOutputIntervalStrings.isEmpty();

@@ -115,7 +115,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     @DeprecatedFeature
     @Advanced
     @Argument(fullName= GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
-            doc="Restrict variant output to sites that start within provided intervals",
+            doc="Restrict variant output to sites that start within provided intervals, equivalent to '--"+StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME+" STARTS_IN'",
             optional=true,
             mutex = {StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME})
     private boolean onlyOutputCallsStartingInIntervals = false;
