@@ -310,8 +310,8 @@ public final class SVCleanPt1a extends VariantWalker {
 
     private boolean isRevisableEvent(VariantContext variant, boolean isY) {
         final List<Genotype> genotypes = variant.getGenotypes();
-        int[] maleCounts = new int[4];
-        int[] femaleCounts = new int[4];
+        final int[] maleCounts = new int[4];
+        final int[] femaleCounts = new int[4];
         for (final Genotype genotype : genotypes) {
             final String sampleName = genotype.getSampleName();
             final Integer sex = sampleSexMap.get(sampleName);
