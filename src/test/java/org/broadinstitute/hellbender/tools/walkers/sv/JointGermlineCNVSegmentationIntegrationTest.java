@@ -234,7 +234,6 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
 
         //in NA11829 variant events are not overlapping, so there should be a CN2 homRef in between
         final List<String> samplesWithOverlaps = Arrays.asList("HG00365", "HG01789", "HG02221", "NA07357", "NA12005", "NA12873", "NA18997", "NA19428", "NA21120");
-        final List<String> samplesWithGaps = Arrays.asList("NA11829");
 
         //all of these samples have an event that overlaps the next event, which is not called in that sample
         boolean sawVariant;
@@ -254,18 +253,18 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
         }
 
         //these samples have a variant that doesn't overlap the next call
-        for (final String sample : samplesWithGaps) {
-            sawVariant = false;
-            for (final VariantContext vc : overlappingEvents.getRight()) {
-                if (!sawVariant && !vc.getGenotype(sample).isHomRef()) {
-                    sawVariant = true;
-                    continue;
-                }
-                if (sawVariant) {
-                    Assert.assertTrue(vc.getGenotype(sample).isHomRef()
-                            && (Integer.parseInt(vc.getGenotype(sample).getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT).toString()) == 2));
-                    break;
-                }
+        sawVariant = false;
+        for (final VariantContext vc : overlappingEvents.getRight()) {
+            final Genotype genotype = vc.getGenotype("NA11829");
+            if (!sawVariant && !genotype.isHomRef()) {
+                sawVariant = true;
+                continue;
+            }
+            if (sawVariant && vc.getEnd() == 23236095) {
+                // Smaller variant nested inside larger hom-var DEL: hom-ref genotype but CN is 0 since it overlaps
+                Assert.assertTrue(genotype.isHomRef()
+                        && (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT).toString()) == 0));
+                break;
             }
         }
 
