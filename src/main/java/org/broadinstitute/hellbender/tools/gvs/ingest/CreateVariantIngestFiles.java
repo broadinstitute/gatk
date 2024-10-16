@@ -519,7 +519,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
             samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
         }
-        
+
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
