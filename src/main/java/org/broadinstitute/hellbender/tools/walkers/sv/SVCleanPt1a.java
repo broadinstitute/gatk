@@ -317,7 +317,7 @@ public final class SVCleanPt1a extends VariantWalker {
             final Integer sex = sampleSexMap.get(sampleName);
             if (sex == null) continue;
 
-            int rdCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, -1);
+            final int rdCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, -1);
             if (rdCN == -1) continue;
 
             final int rdCNVal = Math.min(rdCN, 3);
