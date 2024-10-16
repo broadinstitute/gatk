@@ -219,7 +219,7 @@ public final class SVCleanPt1a extends VariantWalker {
     }
 
     @Override
-    public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         VariantContextBuilder variantBuilder = new VariantContextBuilder(variant);
         final List<Genotype> processedGenotypes = processGenotypes(variant);
         variantBuilder.genotypes(processedGenotypes);
