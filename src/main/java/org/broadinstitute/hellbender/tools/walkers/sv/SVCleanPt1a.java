@@ -168,7 +168,7 @@ public final class SVCleanPt1a extends VariantWalker {
 
         // Create header without the 'UNRESOLVED' INFO line
         final VCFHeader header = getHeaderForVariants();
-        Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
+        final Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
         for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
             if (!(line instanceof VCFInfoHeaderLine) || !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.UNRESOLVED)) {
                 newHeaderLines.add(line);
