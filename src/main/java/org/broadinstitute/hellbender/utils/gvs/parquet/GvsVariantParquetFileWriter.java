@@ -4,6 +4,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
@@ -12,61 +13,29 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
-public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
-
-//    GvsVariantParquetFileWriter(
-//            OutputFile file,
-//            ParquetFileWriter.Mode mode,
-//            GVSVariantWriteSupport writeSupport,
-//            CompressionCodecName compressionCodecName,
-//            long rowGroupSize,
-//            boolean validating,
-//            Configuration conf,
-//            int maxPaddingSize,
-//            ParquetProperties encodingProps,
-//            FileEncryptionProperties encryptionProperties) throws IOException {
-//        super(file, mode, writeSupport, compressionCodecName, rowGroupSize, validating, conf, maxPaddingSize, encodingProps, encryptionProperties);
-//    }
-
+public class GvsVariantParquetFileWriter {
     /**
-     * This is very deprecated, and we'll need to figure out how to do this from a builder once it works!
-     * @param file
-     * @param schema
-     * @param enableDictionary
-     * @param codecName
-     * @throws IOException
+     * Let the top-level class simply create and delegate to the actual writer, so users of it
+     * don't have to worry about details like builders and obscure arguments
      */
+    private ParquetWriter<JSONObject> parquetWriterImpl;
+
     public GvsVariantParquetFileWriter(
             Path file,
             MessageType schema,
-            boolean enableDictionary,
             CompressionCodecName codecName
     ) throws IOException {
-        super(file, new GvsVariantWriteSupport(schema), codecName, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE, enableDictionary, false);
+        GvsVariantParquetFileWriter.Builder builder = new Builder(file);
+        this.parquetWriterImpl = builder.withType(schema)
+                .withCompressionCodec(codecName).build();
     }
 
-    GvsVariantParquetFileWriter(
-            Path file,
-            GvsVariantWriteSupport writeSupport,
-            CompressionCodecName compressionCodecName,
-            int blockSize,
-            int pageSize,
-            boolean enableDictionary,
-            boolean enableValidation,
-            ParquetProperties.WriterVersion writerVersion,
-            Configuration conf)
-            throws IOException {
-        super(
-                file,
-                writeSupport,
-                compressionCodecName,
-                blockSize,
-                pageSize,
-                pageSize,
-                enableDictionary,
-                enableValidation,
-                writerVersion,
-                conf);
+    public void write(JSONObject object) throws IOException {
+        this.parquetWriterImpl.write(object);
+    }
+
+    public void close() throws IOException {
+        this.parquetWriterImpl.close();
     }
 
     public static class Builder extends ParquetWriter.Builder<JSONObject, Builder> {
@@ -76,51 +45,18 @@ public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
             super(file);
         }
 
-        private Builder(OutputFile file) {
-            super(file);
-        }
-
         public Builder withType(MessageType type) {
             this.schema = type;
             return this;
         }
-
         @Override
         protected Builder self() {
             return this;
         }
 
-//        @Override
-//        protected GVSVariantWriteSupport getWriteSupport(Configuration conf) {
-//            return getWriteSupport((Configuration) null);
-//        }
-
         @Override
-        protected GvsVariantWriteSupport getWriteSupport(Configuration conf) {
+        protected WriteSupport<JSONObject> getWriteSupport(Configuration configuration) {
             return new GvsVariantWriteSupport(schema);
         }
-
-//        @Override
-//        public Builder withExtraMetaData(Map<String, String> extraMetaData) {
-//            return super.withExtraMetaData(extraMetaData);
-//        }
-
-
-
     }
-
 }
-
-/*
-public class GvsVariantParquetFileWriter extends ParquetWriter<JSONObject> {
-    @SuppressWarnings("deprecation")
-    public GvsVariantParquetFileWriter(
-            Path file,
-            MessageType schema,
-            boolean enableDictionary,
-            CompressionCodecName codecName
-    ) throws IOException {
-        // update this to the new constructor soon
-        super(file, new GVSVariantWriteSupport(schema), codecName, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE, enableDictionary, false);
-    }
-}*/

@@ -188,9 +188,7 @@ configurations.all {
 }
 
 tasks.withType(JavaCompile) {
-//    Changing this right now just for getting around deprecation
-//    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
-    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Xdiags:verbose']
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
     options.encoding = 'UTF-8'
 }
 
