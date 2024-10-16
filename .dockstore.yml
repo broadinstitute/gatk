@@ -165,7 +165,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -433,7 +432,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -441,8 +439,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
-         - rsa_vs_1441
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -450,11 +446,9 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
          - ah_var_store
-         - EchoCallset

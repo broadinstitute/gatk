@@ -331,7 +331,7 @@ def import_gvs(refs: 'List[List[str]]',
             combiner = hl.vds.new_combiner(output_path=merge_tmp,
                                            vds_paths=vds_paths,
                                            target_records=target_records,
-                                           branch_factor=52,  # Echo has 104 intermediate VDSes so 2 equal sized groups
+                                           branch_factor=52,  # Note that this value (52) was hard coded for Echo so it wouldn't crash. See VS-1501 for further discussion.
                                            temp_path=tmp_dir,
                                            use_genome_default_intervals=True)
             combiner.run()
@@ -419,6 +419,8 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
-        vd = vd.rename({'as_vqsr': 'as_vets'})
-
-        vd.write(os.path.join(final_path, 'variant_data'), overwrite=True)
+        vd = vd.rename({'as_vqsr': 'as_vets'})  # TODO - this should go (along with all VQSR usages).
+        hl.vds.VariantDataset(
+            reference_data=rd,
+            variant_data=vd,
+        ).write(final_path, overwrite=True)
