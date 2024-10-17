@@ -110,13 +110,15 @@ workflow GvsQuickstartHailIntegration {
             variants_docker = effective_variants_docker,
     }
 
+    String vds_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds"
+
     call CreateVds.GvsCreateVDS {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
             use_VQSR = !use_VETS,
             avro_path = GvsExtractAvroFilesForHail.avro_path,
-            vds_destination_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
+            vds_destination_path = vds_path,
             cluster_prefix = "vds-cluster",
             gcs_subnetwork_name = "subnetwork",
             region = "us-central1",
@@ -132,7 +134,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
-            vds_path = GvsExtractAvroFilesForHail.avro_path + "/gvs_export.vds",
+            vds_path = vds_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
             tieout_vcf_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
