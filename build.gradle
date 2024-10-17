@@ -40,7 +40,7 @@ startScripts {
 }
 
 tasks.register('downloadGsaLibFile', Download) {
-    src 'http://cran.r-project.org/src/contrib/gsalib_2.2.1.tar.gz'
+    src 'https://cran.r-project.org/src/contrib/gsalib_2.2.1.tar.gz'
     dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
     overwrite false
 }
@@ -94,7 +94,7 @@ def checkForLFSStubFiles(targetFolder) {
     }
     def targetFiles = fileTree(dir: targetFolder)
     return targetFiles.any() { f ->
-        final byte[] actualBytes = readBytesFromFile(f, lfsStubFileHeader.length());
+        final byte[] actualBytes = readBytesFromFile(f, lfsStubFileHeader.length())
         return new String(actualBytes, "UTF-8") == lfsStubFileHeader
     }
 }
@@ -107,7 +107,7 @@ def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessag
             def retCode = gitLFSExecCommand.execute().waitFor()
             if (retCode.intValue() != 0) {
                 throw new GradleException("Execution of \"$gitLFSExecCommand\" failed with exit code: $retCode. " +
-                        " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage");
+                        " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage")
             }
             return retCode
         } catch (IOException e) {
@@ -440,9 +440,9 @@ run {
 test {
     // transform the list test configuration --add-opens (which must include both the runtime and test args) into
     // command line argument format
-    final testJVMAddOpens = new ArrayList<>();
-    testJVMAddOpens.addAll(runtimeAddOpens);
-    testJVMAddOpens.addAll(testAddOpens);
+    final testJVMAddOpens = new ArrayList<>()
+    testJVMAddOpens.addAll(runtimeAddOpens)
+    testJVMAddOpens.addAll(testAddOpens)
     final testConfigurationJVMArgs = testJVMAddOpens.stream()
             .flatMap(openSpec -> ['--add-opens', openSpec].stream())
             .toList()
@@ -642,9 +642,9 @@ tasks.register('bundle', Zip) {
 //}
 //}
 
-task jacocoTestReport {
-    dependsOn test
-}
+//tasks.register('jacocoTestReport') {
+//    dependsOn test
+//}
 
 tasks.register('condaStandardEnvironmentDefinition', Copy) {
     from "scripts"
@@ -704,7 +704,8 @@ tasks.register('localDevCondaUpdate',  Exec) {
     commandLine "conda", "env", "update", "-f", gatkCondaYML
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
+tasks.register('javadocJar', Jar) {
+    dependsOn javadoc
     archiveClassifier = 'javadoc'
     from "$docBuildDir/javadoc"
 }
@@ -766,7 +767,7 @@ tasks.register('gatkDoc', Javadoc) {
         if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
             throw new GradleException(String.format("Failure creating folder (%s) for GATK doc output in task (%s)",
                     gatkDocDir.getAbsolutePath(),
-                    it.name));
+                    it.name))
         }
         copy {
             from('src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates')
@@ -791,7 +792,7 @@ tasks.register('gatkDoc', Javadoc) {
     outputs.dir(gatkDocDir)
     options.destinationDirectory(gatkDocDir)
 
-    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates");
+    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates")
     if (project.hasProperty('phpDoc')) {
         // use -PphpDoc to generate .php file extensions, otherwise rely on default of .html
         final String phpExtension = "php"
@@ -811,7 +812,7 @@ tasks.register('gatkTabComplete', Javadoc) {
         if (!tabCompletionDir.exists() && !tabCompletionDir.mkdirs()) {
             throw new GradleException(String.format("Failure creating folder (%s) for GATK tab completion output in task (%s)",
                     tabCompletionDir.getAbsolutePath(),
-                    it.name));
+                    it.name))
         }
     }
     // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
@@ -872,7 +873,7 @@ tasks.register('gatkWDLGen', Javadoc) {
         if (!gatkWDLDir.exists() && !gatkWDLDir.mkdirs()) {
             throw new GradleException(String.format("Failure creating folder (%s) for GATK WDL output in task (%s)",
                     gatkWDLDir.getAbsolutePath(),
-                    it.name));
+                    it.name))
         }
         copy {
             from('src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates/common.html')
@@ -894,7 +895,7 @@ tasks.register('gatkWDLGen', Javadoc) {
     outputs.dir(gatkWDLDir)
     options.destinationDirectory(gatkWDLDir)
 
-    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates");
+    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates")
     options.addStringOption("output-file-extension", "wdl")
     options.addStringOption("index-file-extension", "html")
 
@@ -915,7 +916,7 @@ def execWDLValidation = { validateWDL ->
         }
         return retCode
     } catch (IOException e) {
-        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.", e)
     }
 }
 
@@ -1030,7 +1031,7 @@ signing {
 def basePomConfiguration = {
     packaging = 'jar'
     description = 'Development on GATK 4'
-    url = 'http://github.com/broadinstitute/gatk'
+    url = 'https://github.com/broadinstitute/gatk'
 
     scm {
         url = 'scm:git@github.com:broadinstitute/gatk.git'
