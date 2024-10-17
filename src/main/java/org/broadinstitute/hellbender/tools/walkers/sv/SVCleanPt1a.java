@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -136,19 +137,12 @@ public final class SVCleanPt1a extends VariantWalker {
     private GATKPath outputVcf;
 
     @Argument(
-            fullName = OUTPUT_SAMPLES_LIST_LONG_NAME,
-            doc="Output list of samples"
-    )
-    private GATKPath outputSamplesList;
-
-    @Argument(
             fullName = OUTPUT_REVISED_EVENTS_LIST_LONG_NAME,
             doc="Output list of revised genotyped events"
     )
     private GATKPath outputRevisedEventsList;
 
     private VariantContextWriter vcfWriter;
-    private BufferedWriter samplesWriter;
     private BufferedWriter revisedEventsWriter;
 
     private Map<String, Integer> sampleSexMap;
@@ -188,13 +182,6 @@ public final class SVCleanPt1a extends VariantWalker {
         // Create output writers
         try {
             revisedEventsWriter = new BufferedWriter(new FileWriter(outputRevisedEventsList.toPath().toFile()));
-            samplesWriter = new BufferedWriter(new FileWriter(outputSamplesList.toPath().toFile()));
-
-            for (final String sample : header.getGenotypeSamples()) {
-                samplesWriter.write(sample);
-                samplesWriter.newLine();
-            }
-            samplesWriter.flush();
         } catch (IOException e) {
             throw new RuntimeException("Error creating output file", e);
         }
@@ -205,10 +192,6 @@ public final class SVCleanPt1a extends VariantWalker {
         try {
             if (vcfWriter != null) {
                 vcfWriter.close();
-            }
-
-            if (samplesWriter != null) {
-                samplesWriter.close();
             }
             if (revisedEventsWriter != null) {
                 revisedEventsWriter.close();
@@ -227,19 +210,19 @@ public final class SVCleanPt1a extends VariantWalker {
         vcfWriter.add(variantBuilder.make());
     }
 
-    private List<Genotype> processGenotypes(VariantContext variant) {
+    private List<Genotype> processGenotypes(final VariantContext variant) {
         return variant.getGenotypes().stream()
                 .map(genotype -> {
                     GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
                     processEVGenotype(genotype, genotypeBuilder);
-                    // processSVTypeGenotype(variant, genotype, genotypeBuilder);
+                    // processSVTypeGenotype(variant, genotypeBuilder);
                     processAllosomesGenotype(variant, genotype, genotypeBuilder);
                     return genotypeBuilder.make();
                 })
                 .collect(Collectors.toList());
     }
 
-    private void processVariant(VariantContext variant, VariantContextBuilder builder) {
+    private void processVariant(final VariantContext variant, final VariantContextBuilder builder) {
         // processSVType(variant, builder);
         processVarGQ(variant, builder);
         processMultiallelic(builder);
@@ -248,7 +231,7 @@ public final class SVCleanPt1a extends VariantWalker {
         processBothsidesSupportEvents(variant, builder);
     }
 
-    private void processEVGenotype(Genotype genotype, GenotypeBuilder genotypeBuilder) {
+    private void processEVGenotype(final Genotype genotype, final GenotypeBuilder genotypeBuilder) {
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)) {
             String evAttribute = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.EV);
             final int evIndex = Integer.parseInt(evAttribute);
@@ -258,7 +241,7 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private void processSVTypeGenotype(VariantContext variant, Genotype genotype, GenotypeBuilder genotypeBuilder) {
+    private void processSVTypeGenotype(final VariantContext variant, final GenotypeBuilder genotypeBuilder) {
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
         if (svType != null && variant.getAlleles().stream().noneMatch(allele -> allele.getDisplayString().contains(GATKSVVCFConstants.ME))) {
             List<Allele> newGenotypeAlleles = Arrays.asList(
@@ -318,9 +301,9 @@ public final class SVCleanPt1a extends VariantWalker {
             if (sex == null) continue;
 
             final int rdCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, -1);
-            if (rdCN == -1) continue;
-
             final int rdCNVal = Math.min(rdCN, 3);
+            if (rdCNVal == -1) continue;
+
             if (sex == 1) {
                 maleCounts[rdCNVal]++;
             } else if (sex == 2) {
@@ -328,23 +311,23 @@ public final class SVCleanPt1a extends VariantWalker {
             }
         }
 
-        final double maleMedian = calcMedian(maleCounts);
-        final double femaleMedian = calcMedian(femaleCounts);
-        return maleMedian == 1.0 && (isY ? femaleMedian == 0.0 : femaleMedian == 2.0);
+        final int maleMedian = calcMedianDistribution(maleCounts);
+        final int femaleMedian = calcMedianDistribution(femaleCounts);
+        return maleMedian == 2 && (isY ? femaleMedian == 0 : femaleMedian == 4);
     }
 
-    private double calcMedian(int[] counts) {
+    private int calcMedianDistribution(int[] counts) {
         final int total = Arrays.stream(counts).sum();
-        if (total == 0) return Double.NaN;
+        if (total == 0) return -1;
 
-        final double target = total / 2.0;
+        final int target = total / 2;
         int runningTotal = 0;
         for (int i = 0; i < 4; i++) {
             runningTotal += counts[i];
             if (runningTotal == target) {
-                return i + 0.5;
+                return i * 2 + 1;
             } else if (runningTotal > target) {
-                return i;
+                return i * 2;
             }
         }
         throw new RuntimeException("Error calculating median");
