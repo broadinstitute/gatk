@@ -38,6 +38,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 import org.reflections.Reflections;
 
 import java.util.*;
@@ -108,6 +109,17 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Argument(fullName = "keep-all-sites", doc="Retain low quality and non-variant sites, applying appropriate filters", optional=true)
     private boolean keepAllSites = false;
 
+    /**
+     * This option can only be activated if intervals are specified.
+     */
+    @DeprecatedFeature
+    @Advanced
+    @Argument(fullName= GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
+            doc="Restrict variant output to sites that start within provided intervals, equivalent to '--"+StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME+" STARTS_IN'",
+            optional=true,
+            mutex = {StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME})
+    private boolean onlyOutputCallsStartingInIntervals = false;
+
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             doc = "Boolean flag to read in all data in between intervals.  Improves performance reading from GenomicsDB " +
@@ -168,6 +180,12 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+
+        if (onlyOutputCallsStartingInIntervals) {
+            logger.warn("The --" + GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " option is deprecated. Please use '--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " STARTS_IN' for an equivalent filtering.");
+            this.userOutputVariantIntervalFilteringMode = IntervalFilteringVcfWriter.Mode.STARTS_IN;
+        }
+
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
