@@ -41,7 +41,8 @@ import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import scala.Serializable;
+// import scala.Serializable;
+import java.io.Serializable;
 
 import java.io.IOException;
 import java.nio.file.Paths;

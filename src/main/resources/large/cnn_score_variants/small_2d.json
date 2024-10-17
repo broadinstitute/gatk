@@ -1,3 +1,1 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e38e09cfe7b7ffbc80dce4972bc9c382148520147d46738a3f6f3235b2d876c6
-size 758
+{"id": "nova_hiseq_mix_small_tf", "output_labels": {"NOT_SNP": 0, "NOT_INDEL": 1, "SNP": 2, "INDEL": 3}, "architecture": "small_2d.hd5", "input_symbols": {"A": 0, "C": 1, "G": 2, "T": 3, "*": 4}, "input_tensor_map_name": "read_tensor", "input_tensor_map": {"read_A": 0, "read_C": 1, "read_G": 2, "read_T": 3, "read_*": 4, "reference_A": 5, "reference_C": 6, "reference_G": 7, "reference_T": 8, "reference_*": 9, "flag_bit_4": 10, "flag_bit_5": 11, "flag_bit_6": 12, "flag_bit_7": 13, "mapping_quality": 14}, "window_size": 128, "read_limit": 128, "input_annotations": ["MQ", "DP", "SOR", "FS", "QD", "MQRankSum", "ReadPosRankSum"], "input_annotation_set": "best_practices", "data_dir": "/tensors/g94794_wgs1_hg38_full_channels_last/", "channels_last": true}
