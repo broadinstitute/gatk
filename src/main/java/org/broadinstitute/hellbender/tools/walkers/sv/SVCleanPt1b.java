@@ -79,7 +79,7 @@ import org.apache.commons.lang3.tuple.Pair;
 )
 @BetaFeature
 @DocumentedFeature
-public class SVCleanPt1b extends TwoPassVariantWalker {
+public class SVCleanPt1b extends MultiplePassVariantWalker {
     public static final String BED_FILE_LONG_NAME = "bed-file";
     public static final String CNV_FILE_LONG_NAME = "cnv-file";
 
@@ -106,10 +106,20 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     private VariantContextWriter vcfWriter;
     private BufferedWriter cnvsWriter;
 
-    private Set<String> multiCnvs = new HashSet<>();
-    private Map<String, Map<String, Pair<String, String>>> revisedEventsAll = new HashMap<>();
-    private Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
-    private Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
+    final private Set<String> multiCnvs = new HashSet<>();
+    final private Map<String, Map<String, Pair<String, String>>> revisedEventsAll = new HashMap<>();
+    final private Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
+    final private Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
+
+    @Override
+    protected int numberOfPasses() {
+        return 3;
+    }
+
+    @Override
+    protected void afterNthPass(int n) {
+        return;
+    }
 
     @Override
     public void onTraversalStart() {
@@ -129,10 +139,10 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
                 cnvsWriter.write(variantId);
                 cnvsWriter.newLine();
             }
+            return null;
         } catch (IOException e) {
             throw new RuntimeException("Error creating CNVs file", e);
         }
-        return null;
     }
 
     @Override
@@ -141,7 +151,6 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
             if (vcfWriter != null) {
                 vcfWriter.close();
             }
-
             if (cnvsWriter != null) {
                 cnvsWriter.close();
             }
@@ -151,19 +160,31 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     }
 
     @Override
-    public void firstPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    protected void nthPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext, int n) {
+        switch(n) {
+            case 1:
+                firstPassApply(variant, readsContext, referenceContext, featureContext);
+                break;
+            case 2:
+                secondPassApply(variant, readsContext, referenceContext, featureContext);
+                break;
+            case 3:
+                thirdPassApply(variant, readsContext, referenceContext, featureContext);
+                break;
+        }
+    }
+
+    public void firstPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        return;
+    }
+
+    public void secondPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         if (shouldInitializeRdCn(variant)) {
             initializeRdCn(variant);
         }
     }
 
-    @Override
-    public void afterFirstPass() {
-        return;
-    }
-
-    @Override
-    public void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public void thirdPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         VariantContextBuilder builder = new VariantContextBuilder(variant);
         if (shouldProcessVariant(variant)) {
             processVariant(builder, variant);
@@ -174,43 +195,41 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
         vcfWriter.add(builder.make());
     }
 
-    private boolean shouldInitializeRdCn(VariantContext variant) {
+    private boolean shouldInitializeRdCn(final VariantContext variant) {
         return revisedEventsFiltered.containsKey(variant.getID());
     }
 
-    private boolean shouldProcessVariant(VariantContext variant) {
+    private boolean shouldProcessVariant(final VariantContext variant) {
         return revisedEventsAll.containsKey(variant.getID());
     }
 
-    private boolean shouldProcessCnvs(VariantContext variant) {
+    private boolean shouldProcessCnvs(final VariantContext variant) {
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         final boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         final boolean isLarge = variant.getEnd() - variant.getStart() >= 1000;
         return isDelDup && isLarge;
     }
 
-    private void initializeRdCn(VariantContext variant) {
+    private void initializeRdCn(final VariantContext variant) {
         // Initialize data structures
         final String variantId = variant.getID();
         final Set<String> samples = revisedEventsFiltered.get(variantId);
-        Map<String, Integer> variantRdCn = new HashMap<>();
+        final Map<String, Integer> variantRdCn = new HashMap<>();
 
         // Initialize revisedRdCn value for each variant
         for (final String sampleName : samples) {
             final Genotype genotype = variant.getGenotype(sampleName);
-            if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
-                variantRdCn.put(sampleName, Integer.parseInt(rdCn));
-            }
+            final int rdCn = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+            variantRdCn.put(sampleName, rdCn);
         }
         revisedRdCn.put(variantId, variantRdCn);
     }
 
-    private void processVariant(VariantContextBuilder builder, VariantContext variant) {
+    private void processVariant(final VariantContextBuilder builder, final VariantContext variant) {
         // Initialize data structures
         final String variantId = variant.getID();
         final Map<String, Pair<String, String>> variantEvents = revisedEventsAll.get(variantId);
-        List<Genotype> newGenotypes = new ArrayList<>();
+        final List<Genotype> newGenotypes = new ArrayList<>();
 
         // Create updated genotypes
         for (String sample : variant.getSampleNamesOrderedByName()) {
@@ -234,7 +253,7 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
                 }
 
                 if (newVal != -1) {
-                    GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
+                    final GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
                     gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
                     gb.GQ(Integer.parseInt((String) oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ)));
                     newGenotypes.add(gb.make());
@@ -252,13 +271,10 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
         final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         for (String sample : variant.getSampleNamesOrderedByName()) {
             final Genotype genotype = variant.getGenotype(sample);
-            if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                final String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
-                final int rdCn = Integer.parseInt(rdCnString);
-                if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {
-                    multiCnvs.add(variant.getID());
-                    break;
-                }
+            final int rdCn = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+            if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {
+                multiCnvs.add(variant.getID());
+                break;
             }
         }
     }
@@ -266,15 +282,15 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     private void processBedFile() {
         try {
             String line;
-            BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(bedFile.toPath()))));
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(bedFile.toPath()))));
             while ((line = reader.readLine()) != null) {
                 final String[] fields = line.split("\t");
                 if (fields.length < 12) continue;
 
-                String[] wider = Integer.parseInt(fields[2]) - Integer.parseInt(fields[1]) >= Integer.parseInt(fields[8]) - Integer.parseInt(fields[7])
+                final String[] wider = Integer.parseInt(fields[2]) - Integer.parseInt(fields[1]) >= Integer.parseInt(fields[8]) - Integer.parseInt(fields[7])
                         ? Arrays.copyOfRange(fields, 0, 6)
                         : Arrays.copyOfRange(fields, 6, 12);
-                String[] narrower = Integer.parseInt(fields[2]) - Integer.parseInt(fields[1]) >= Integer.parseInt(fields[8]) - Integer.parseInt(fields[7])
+                final String[] narrower = Integer.parseInt(fields[2]) - Integer.parseInt(fields[1]) >= Integer.parseInt(fields[8]) - Integer.parseInt(fields[7])
                         ? Arrays.copyOfRange(fields, 6, 12)
                         : Arrays.copyOfRange(fields, 0, 6);
                 if (wider[5].equals(GATKSVVCFConstants.BLANK_SAMPLES)) continue;
@@ -292,13 +308,14 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
                     }
                 }
             }
+            reader.close();
 
-            for (Map.Entry<String, Map<String, Pair<String, String>>> entry : revisedEventsAll.entrySet()) {
-                for (Map.Entry<String, Pair<String, String>> innerEntry : entry.getValue().entrySet()) {
-                    String sampleName = innerEntry.getKey();
-                    String variantId = entry.getKey();
-                    String widerVariantId = innerEntry.getValue().getLeft();
-                    String svType = innerEntry.getValue().getRight();
+            for (final Map.Entry<String, Map<String, Pair<String, String>>> entry : revisedEventsAll.entrySet()) {
+                for (final Map.Entry<String, Pair<String, String>> innerEntry : entry.getValue().entrySet()) {
+                    final String sampleName = innerEntry.getKey();
+                    final String variantId = entry.getKey();
+                    final String widerVariantId = innerEntry.getValue().getLeft();
+                    final String svType = innerEntry.getValue().getRight();
                     if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)) {
                         revisedEventsFiltered.computeIfAbsent(variantId, k -> new HashSet<>()).add(sampleName);
                         revisedEventsFiltered.computeIfAbsent(widerVariantId, k -> new HashSet<>()).add(sampleName);
@@ -311,13 +328,13 @@ public class SVCleanPt1b extends TwoPassVariantWalker {
     }
 
     private double getCoverage(String[] wider, String[] narrower) {
-        int nStart = Integer.parseInt(narrower[1]);
-        int nStop = Integer.parseInt(narrower[2]);
-        int wStart = Integer.parseInt(wider[1]);
-        int wStop = Integer.parseInt(wider[2]);
+        final int nStart = Integer.parseInt(narrower[1]);
+        final int nStop = Integer.parseInt(narrower[2]);
+        final int wStart = Integer.parseInt(wider[1]);
+        final int wStop = Integer.parseInt(wider[2]);
 
         if (wStart <= nStop && nStart <= wStop) {
-            int intersectionSize = Math.min(nStop, wStop) - Math.max(nStart, wStart);
+            final int intersectionSize = Math.min(nStop, wStop) - Math.max(nStart, wStart);
             return (double) intersectionSize / (nStop - nStart);
         }
         return 0.0;

@@ -155,18 +155,16 @@ public final class GATKSVVCFConstants {
     public static final List<String> evValues = Arrays.asList(
             null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
     );
-    public static final String ME = ":ME";
+    public static final String ME = "ME";
     public static final String VAR_GQ = "varGQ";
     public static final String MULTIALLELIC = "MULTIALLELIC";
     public static final String UNRESOLVED = "UNRESOLVED";
     public static final String HIGH_SR_BACKGROUND = "HIGH_SR_BACKGROUND";
     public static final String BOTHSIDES_SUPPORT = "BOTHSIDES_SUPPORT";
-    public static final String END = "END";
+    public static final String REVISED_EVENT = "REVISED_EVENT";
     public static final String RD_CN = "RD_CN";
 
     // CleanPt1b
-    public static final String GT = "GT";
-    public static final String GQ = "GQ";
     public static final String RD_GQ = "RD_GQ";
     public static final String CNVS_DEFAULT_FILE = "multi.cnvs.txt";
     public static final String BLANK_SAMPLES = "blanksample";

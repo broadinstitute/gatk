@@ -20,13 +20,16 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -38,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -96,26 +100,21 @@ public final class SVCleanPt1a extends VariantWalker {
     public static final String CHRY_LONG_NAME = "chrY";
     public static final String FAIL_LIST_LONG_NAME = "fail-list";
     public static final String PASS_LIST_LONG_NAME = "pass-list";
-    public static final String OUTPUT_SAMPLES_LIST_LONG_NAME = "sample-list";
     public static final String OUTPUT_REVISED_EVENTS_LIST_LONG_NAME = "revised-list";
 
     @Argument(
-            fullName = PED_FILE_LONG_NAME,
-            doc = "Sample PED file"
-    )
-    private GATKPath pedFile;
-
-    @Argument(
             fullName = CHRX_LONG_NAME,
-            doc = "chrX column name"
+            doc = "chrX column name",
+            optional = true
     )
-    private String chrX;
+    private String chrX = "chrX";
 
     @Argument(
             fullName = CHRY_LONG_NAME,
-            doc = "chrY column name"
+            doc = "chrY column name",
+            optional = true
     )
-    private String chrY;
+    private String chrY = "chrY";
 
     @Argument(
             fullName = FAIL_LIST_LONG_NAME,
@@ -136,19 +135,11 @@ public final class SVCleanPt1a extends VariantWalker {
     )
     private GATKPath outputVcf;
 
-    @Argument(
-            fullName = OUTPUT_REVISED_EVENTS_LIST_LONG_NAME,
-            doc="Output list of revised genotyped events"
-    )
-    private GATKPath outputRevisedEventsList;
-
     private VariantContextWriter vcfWriter;
-    private BufferedWriter revisedEventsWriter;
 
-    private Map<String, Integer> sampleSexMap;
     private Set<String> failSet;
     private Set<String> passSet;
-    private final Set<String> writtenRevisedEvents = new HashSet<>();
+    private final Set<String> revisedSet = new HashSet<>();
 
     private static final int MIN_ALLOSOME_EVENT_SIZE = 5000;
 
@@ -156,7 +147,6 @@ public final class SVCleanPt1a extends VariantWalker {
     @Override
     public void onTraversalStart() {
         // Read supporting files
-        sampleSexMap = readPedFile(pedFile);
         failSet = readLastColumn(failList);
         passSet = readLastColumn(passList);
 
@@ -174,30 +164,17 @@ public final class SVCleanPt1a extends VariantWalker {
         newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HIGH_SR_BACKGROUND, 0, VCFHeaderLineType.Flag, "High number of SR splits in background samples indicating messy region"));
         newHeader.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.UNRESOLVED, "Variant is unresolved"));
         newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BOTHSIDES_SUPPORT, 0, VCFHeaderLineType.Flag, "Variant has read-level support for both sides of breakpoint"));
+        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.REVISED_EVENT, 0, VCFHeaderLineType.Flag, "Variant has been revised due to a copy number mismatch"));
 
         // Write header
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(newHeader);
-
-        // Create output writers
-        try {
-            revisedEventsWriter = new BufferedWriter(new FileWriter(outputRevisedEventsList.toPath().toFile()));
-        } catch (IOException e) {
-            throw new RuntimeException("Error creating output file", e);
-        }
     }
 
     @Override
     public void closeTool() {
-        try {
-            if (vcfWriter != null) {
-                vcfWriter.close();
-            }
-            if (revisedEventsWriter != null) {
-                revisedEventsWriter.close();
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error closing output file", e);
+        if (vcfWriter != null) {
+            vcfWriter.close();
         }
     }
 
@@ -229,6 +206,7 @@ public final class SVCleanPt1a extends VariantWalker {
         processUnresolved(variant, builder);
         processNoisyEvents(variant, builder);
         processBothsidesSupportEvents(variant, builder);
+        processAllosomes(variant, builder);
     }
 
     private void processEVGenotype(final Genotype genotype, final GenotypeBuilder genotypeBuilder) {
@@ -243,7 +221,11 @@ public final class SVCleanPt1a extends VariantWalker {
 
     private void processSVTypeGenotype(final VariantContext variant, final GenotypeBuilder genotypeBuilder) {
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
-        if (svType != null && variant.getAlleles().stream().noneMatch(allele -> allele.getDisplayString().contains(GATKSVVCFConstants.ME))) {
+        boolean hasMobileElement = variant.getAlleles().stream()
+                .map(allele -> GATKSVVariantContextUtils.getSymbolicAlleleSymbols(allele))
+                .flatMap(Arrays::stream)
+                .anyMatch(symbol -> symbol.equals(GATKSVVCFConstants.ME));
+        if (svType != null && !hasMobileElement) {
             List<Allele> newGenotypeAlleles = Arrays.asList(
                     variant.getReference(),
                     Allele.create("<" + svType + ">", false)
@@ -252,17 +234,18 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private void processAllosomesGenotype(VariantContext variant, Genotype genotype, GenotypeBuilder genotypeBuilder) {
+    private void processAllosomesGenotype(final VariantContext variant, final Genotype genotype, final GenotypeBuilder genotypeBuilder) {
         final String chromosome = variant.getContig();
         if (chromosome.equals(chrX) || chromosome.equals(chrY)) {
-            final boolean isY = chromosome.equals(chrY);
             final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
             if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) &&
                     (variant.getEnd() - variant.getStart() >= MIN_ALLOSOME_EVENT_SIZE)) {
-                final String sampleName = genotype.getSampleName();
-                final int sex = sampleSexMap.get(sampleName);
-                if (sex == 1 && isRevisableEvent(variant, isY)) { // Male
-                    writeRevisedEvents(variant);
+                final boolean isY = chromosome.equals(chrY);
+                final int chrCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+                final int sex = chrCN == 1 ? 1 : 2;
+
+                if (sex == 1 && isRevisableEvent(variant, isY, sex)) { // Male
+                    revisedSet.add(variant.getID());
                     adjustMaleGenotype(genotype, genotypeBuilder, svType);
                 } else if (sex == 2 && isY) { // Female
                     genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
@@ -273,7 +256,7 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private void adjustMaleGenotype(Genotype genotype, GenotypeBuilder genotypeBuilder, String svType) {
+    private void adjustMaleGenotype(final Genotype genotype, final GenotypeBuilder genotypeBuilder, final String svType) {
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
             final int rdCN = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
             genotypeBuilder.attribute(GATKSVVCFConstants.RD_CN, rdCN + 1);
@@ -291,15 +274,11 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private boolean isRevisableEvent(VariantContext variant, boolean isY) {
+    private boolean isRevisableEvent(final VariantContext variant, final boolean isY, final int sex) {
         final List<Genotype> genotypes = variant.getGenotypes();
         final int[] maleCounts = new int[4];
         final int[] femaleCounts = new int[4];
         for (final Genotype genotype : genotypes) {
-            final String sampleName = genotype.getSampleName();
-            final Integer sex = sampleSexMap.get(sampleName);
-            if (sex == null) continue;
-
             final int rdCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, -1);
             final int rdCNVal = Math.min(rdCN, 3);
             if (rdCNVal == -1) continue;
@@ -316,7 +295,7 @@ public final class SVCleanPt1a extends VariantWalker {
         return maleMedian == 2 && (isY ? femaleMedian == 0 : femaleMedian == 4);
     }
 
-    private int calcMedianDistribution(int[] counts) {
+    private int calcMedianDistribution(final int[] counts) {
         final int total = Arrays.stream(counts).sum();
         if (total == 0) return -1;
 
@@ -333,7 +312,7 @@ public final class SVCleanPt1a extends VariantWalker {
         throw new RuntimeException("Error calculating median");
     }
 
-    private void processSVType(VariantContext variant, VariantContextBuilder builder) {
+    private void processSVType(final VariantContext variant, final VariantContextBuilder builder) {
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
         if (svType != null && variant.getAlleles().stream().noneMatch(allele -> allele.getDisplayString().contains(GATKSVVCFConstants.ME))) {
             final Allele refAllele = variant.getReference();
@@ -343,7 +322,7 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private void processVarGQ(VariantContext variant, VariantContextBuilder builder) {
+    private void processVarGQ(final VariantContext variant, final VariantContextBuilder builder) {
         if (variant.hasAttribute(GATKSVVCFConstants.VAR_GQ)) {
             final double varGQ = variant.getAttributeAsDouble(GATKSVVCFConstants.VAR_GQ, 0);
             builder.rmAttribute(GATKSVVCFConstants.VAR_GQ);
@@ -351,72 +330,49 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private void processMultiallelic(VariantContextBuilder builder) {
+    private void processMultiallelic(final VariantContextBuilder builder) {
         builder.rmAttribute(GATKSVVCFConstants.MULTIALLELIC);
     }
 
-    private void processUnresolved(VariantContext variant, VariantContextBuilder builder) {
+    private void processUnresolved(final VariantContext variant, final VariantContextBuilder builder) {
         if (variant.hasAttribute(GATKSVVCFConstants.UNRESOLVED)) {
             builder.rmAttribute(GATKSVVCFConstants.UNRESOLVED);
             builder.filter(GATKSVVCFConstants.UNRESOLVED);
         }
     }
 
-    private void processNoisyEvents(VariantContext variant, VariantContextBuilder builder) {
+    private void processNoisyEvents(final VariantContext variant, final VariantContextBuilder builder) {
         if (failSet.contains(variant.getID())) {
             builder.attribute(GATKSVVCFConstants.HIGH_SR_BACKGROUND, true);
         }
     }
 
-    private void processBothsidesSupportEvents(VariantContext variant, VariantContextBuilder builder) {
+    private void processBothsidesSupportEvents(final VariantContext variant, final VariantContextBuilder builder) {
         if (passSet.contains(variant.getID())) {
             builder.attribute(GATKSVVCFConstants.BOTHSIDES_SUPPORT, true);
         }
     }
 
-    private Set<String> readLastColumn(GATKPath filePath) {
+    private void processAllosomes(final VariantContext variant, final VariantContextBuilder builder) {
+        if (revisedSet.contains(variant.getID())) {
+            builder.attribute(GATKSVVCFConstants.REVISED_EVENT, true);
+        }
+    }
+
+    private Set<String> readLastColumn(final GATKPath filePath) {
         try {
-            return Files.lines(Paths.get(filePath.toString()))
-                    .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
-                    .map(line -> {
-                        int lastTabIndex = line.lastIndexOf('\t');
-                        return lastTabIndex != -1 ? line.substring(lastTabIndex + 1).trim() : line.trim();
-                    })
-                    .collect(Collectors.toSet());
+            final Path path = filePath.toPath();
+            final TableReader<String> reader = TableUtils.reader(path, (columns, exceptionFactory) ->
+                    (dataline) -> {
+                        return dataline.get(columns.columnCount() - 1);
+                    }
+            );
+
+            Set<String> result = reader.stream().collect(Collectors.toSet());
+            reader.close();
+            return result;
         } catch (IOException e) {
             throw new RuntimeException("Error reading variant list file: " + filePath, e);
-        }
-    }
-
-    private Map<String, Integer> readPedFile(GATKPath pedFile) {
-        Map<String, Integer> sampleSexMap = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(pedFile.toPath().toFile()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("#")) continue;
-                final String[] fields = line.split("\t");
-                if (fields.length >= 5) {
-                    final String sampleName = fields[1];
-                    final int sex = Integer.parseInt(fields[4]);
-                    sampleSexMap.put(sampleName, sex);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error reading PED file", e);
-        }
-        return sampleSexMap;
-    }
-
-    private void writeRevisedEvents(VariantContext variant) {
-        final String variantId = variant.getID();
-        if (!writtenRevisedEvents.contains(variantId)) {
-            try {
-                revisedEventsWriter.write(variantId);
-                revisedEventsWriter.newLine();
-                writtenRevisedEvents.add(variantId);
-            } catch (IOException e) {
-                throw new RuntimeException("Error writing to revised events output file", e);
-            }
         }
     }
 }
