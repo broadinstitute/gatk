@@ -49,11 +49,10 @@ def main(vds):
         filtered_rd = vds.reference_data.filter_rows(vds.reference_data.locus.contig == chromosome_to_validate)
         filtered_vds = hl.vds.VariantDataset(filtered_rd, filtered_vd)
         print(f"Validating VDS chromosome {chromosome_to_validate}...")
-        check_samples_match(filtered_vds)
         check_ref_blocks(filtered_vds)
-        filtered_vds.validate()
         print(f"Hail VDS validation successful for chromosome {chromosome_to_validate}")
 
+    check_samples_match(vds)
     vds.validate()
     print('Full VDS validation successful')
 
