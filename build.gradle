@@ -642,9 +642,10 @@ tasks.register('bundle', Zip) {
 //}
 //}
 
-//tasks.register('jacocoTestReport') {
-//    dependsOn test
-//}
+//This is a stub, so we don't have to change our github action targets while we've disabled jacoco
+tasks.register('jacocoTestReport') {
+    dependsOn test
+}
 
 tasks.register('condaStandardEnvironmentDefinition', Copy) {
     from "scripts"
