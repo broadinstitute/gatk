@@ -1,26 +1,24 @@
 version 1.0
 
-# This WDL will create a VDS in Hail running in a Dataproc cluster.
+# This WDL will validate a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
-import "GvsValidateVDS.wdl" as ValidateVDS
 
 
-workflow GvsCreateVDS {
+workflow GvsValidateVDS {
     input {
-        String avro_path
-        String vds_destination_path
+        Boolean go = true
+        String vds_path
 
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String? hail_temp_path
-        Int? intermediate_resume_point
         String region = "us-central1"
 
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
-        Boolean use_VQSR = false
+        Boolean use_classic_VQSR = false
 
         String? git_branch_or_tag
         String? hail_version
@@ -33,11 +31,8 @@ workflow GvsCreateVDS {
     }
 
     parameter_meta {
-        avro_path : {
-            help: "Input location for the avro files"
-        }
-        vds_destination_path: {
-            help: "Location for the final created VDS"
+        vds_path: {
+            help: "Location of the VDS to be validated"
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
@@ -47,9 +42,6 @@ workflow GvsCreateVDS {
         }
         hail_temp_path: {
             help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
-        }
-        intermediate_resume_point: {
-            help: "Index at which to resume creating intermediate VDSes."
         }
         region: {
             help: "us-central1"
@@ -86,97 +78,59 @@ workflow GvsCreateVDS {
 
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
-        call Utils.TerminateWorkflow as NeedHailTempPath {
-            input:
-                message = "GvsCreateVDS called with an intermediate resume point but no specified hail temp path from which to resume",
-                basic_docker = effective_basic_docker,
-        }
-    }
-
-    if (!defined(intermediate_resume_point) && defined(hail_temp_path)) {
-        call Utils.TerminateWorkflow as NeedIntermediateResumePoint {
-            input:
-                message = "GvsCreateVDS called with no intermediate resume point but a specified hail temp path, which isn't a known use case",
-                basic_docker = effective_basic_docker,
-        }
-    }
-
     call GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
     }
 
-    call CreateVds {
+    call ValidateVds {
         input:
+            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            vds_validation_script = GetHailScripts.vds_validation_script,
             prefix = cluster_prefix,
-            vds_path = vds_destination_path,
-            avro_path = avro_path,
-            use_VQSR = use_VQSR,
+            vds_path = vds_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
-            hail_temp_path = hail_temp_path,
-            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            gvs_import_script = GetHailScripts.gvs_import_script,
-            hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
-            intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
-    }
-
-    call ValidateVDS.GvsValidateVDS as ValidateVds {
-        input:
-            go = CreateVds.done,
-            cluster_prefix = cluster_prefix,
-            vds_path = vds_destination_path,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            workspace_project = effective_google_project,
-            region = region,
-            workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
     }
 
     output {
-        String create_cluster_name = CreateVds.cluster_name
-        String validate_cluster_name = ValidateVds.cluster_name
+        String cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
 }
 
-task CreateVds {
+task ValidateVds {
     input {
+        Boolean go = true
+        File run_in_hail_cluster_script
+        File vds_validation_script
         String prefix
         String vds_path
-        String avro_path
-        Boolean use_VQSR
-        Boolean leave_cluster_running_at_end
-        File hail_gvs_import_script
-        File gvs_import_script
-        File run_in_hail_cluster_script
         String? hail_version
         File? hail_wheel
-        String? hail_temp_path
-        Int? intermediate_resume_point
-        Int? cluster_max_idle_minutes
-        Int? cluster_max_age_minutes
-        Float? master_memory_fraction
-
         String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
-
         String cloud_sdk_slim_docker
+        Boolean leave_cluster_running_at_end
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Float? master_memory_fraction
+    }
+
+    meta {
+        # should always be run
+        volatile: true
     }
 
     command <<<
@@ -202,45 +156,19 @@ task CreateVds {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
-
-        if [[ -z "~{hail_temp_path}" ]]
-        then
-            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
-        else
-            hail_temp_path="~{hail_temp_path}"
-        fi
-
-        # Set up the autoscaling policy
-        cat > auto-scale-policy.yaml <<FIN
-        workerConfig:
-            minInstances: 2
-            maxInstances: 2
-        secondaryWorkerConfig:
-            maxInstances: 500
-        basicAlgorithm:
-            cooldownPeriod: 120s
-            yarnConfig:
-                scaleUpFactor: 1.0
-                scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 120s
-        FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
+        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
             "vds-path": "~{vds_path}",
-            "temp-path": "${hail_temp_path}",
-            "avro-path": "~{avro_path}"
-            ~{', "intermediate-resume-point": ' + intermediate_resume_point}
-            ~{true=', "use-vqsr": ""' false='' use_VQSR}
+            "temp-path": "${hail_temp_path}"
         }
         FIN
 
-        # Run the hail python script to make a VDS
+        # Run the hail python script to validate a VDS
         python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{hail_gvs_import_script} \
-            --secondary-script-path-list ~{gvs_import_script} \
+            --script-path ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -261,10 +189,8 @@ task CreateVds {
         docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
-
     output {
         String cluster_name = read_string("cluster_name.txt")
-        Boolean done = true
     }
 }
 
@@ -289,8 +215,7 @@ task GetHailScripts {
     >>>
     output {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
-        File hail_gvs_import_script = "app/hail_gvs_import.py"
-        File gvs_import_script = "app/import_gvs.py"
+        File vds_validation_script = "app/vds_validation.py"
     }
     runtime {
         docker: variants_docker

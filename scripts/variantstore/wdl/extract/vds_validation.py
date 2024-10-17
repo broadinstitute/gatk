@@ -1,6 +1,6 @@
 import argparse
 import hail as hl
-
+import itertools
 
 ###
 # VDS validation:
@@ -42,18 +42,25 @@ def check_densify_small_region(vds):
 
 
 def main(vds):
-    check_samples_match(vds)
-    check_ref_blocks(vds)
     check_densify_small_region(vds)
-    vds.validate(); print('Hail VDS validation successful')
+    chrs = [f'chr{c}' for c in itertools.chain(range(1, 23), ['X', 'Y', 'M'])]
+    for chromosome_to_validate in chrs:
+        filtered_vd = vds.variant_data.filter_rows(vds.variant_data.locus.contig == chromosome_to_validate)
+        filtered_rd = vds.reference_data.filter_rows(vds.reference_data.locus.contig == chromosome_to_validate)
+        filtered_vds = hl.vds.VariantDataset(filtered_rd, filtered_vd)
+        print(f"Validating VDS chromosome {chromosome_to_validate}...")
+        check_ref_blocks(filtered_vds)
+        print(f"Hail VDS validation successful for chromosome {chromosome_to_validate}")
 
+    check_samples_match(vds)
+    vds.validate()
+    print('Full VDS validation successful')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
-    parser.add_argument('--vds-path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@",
-						required=True)
-    parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
+    parser.add_argument('--vds-path', type=str, help='Input VDS Path', required=True)
+    parser.add_argument('--temp-path', type=str, help='Path to temporary directory',
                         required=True)
 
     args = parser.parse_args()

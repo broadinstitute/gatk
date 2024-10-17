@@ -111,7 +111,7 @@ workflow GvsCreateFilterSet {
         intervals                  = SplitIntervals.interval_files[i],
         fq_alt_allele_table        = fq_alt_allele_table,
         alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
-        excess_alleles_threshold   = 1000000,
+        excess_alleles_threshold   = 100,
         output_file                = "${filter_set_name}_${i}.vcf.gz",
         project_id                 = project_id,
         dataset_id                 = dataset_name,

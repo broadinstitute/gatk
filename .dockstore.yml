@@ -158,6 +158,15 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -290,6 +299,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1288_PullEchoCallsetChangesIntoAhVarStore
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -299,6 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1288_PullEchoCallsetChangesIntoAhVarStore
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -309,6 +320,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1456_status_writes_bug
+             - gg_VS-1288_PullEchoCallsetChangesIntoAhVarStore
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -420,7 +432,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -428,8 +439,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
-         - rsa_vs_1441
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -437,11 +446,9 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
          - ah_var_store
-         - EchoCallset
