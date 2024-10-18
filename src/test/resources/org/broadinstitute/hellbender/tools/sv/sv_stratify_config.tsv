@@ -1,0 +1,8 @@
+NAME	SVTYPE	MIN_SIZE	MAX_SIZE	CONTEXT
+INS_context1	INS	-1	-1	context1
+DEL_50_5k_both	DEL	50	5000	context1,context2
+DEL_5k_50k_context1	DEL	5000	50000	context1
+DUP_lt5kb_context1	DUP	-1	5000	context1
+INV_gt1kb	INV	1000	-1	NULL
+BND_context1	BND	-1	-1	context1
+CTX_context1	CTX	-1	-1	context1
