@@ -329,6 +329,7 @@ final public class DataSourceUtils {
      *                                                            ignored for those that don't.
      * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @param spliceSiteWindowSize The number of bases on either side of a splice site for a variant to be a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} variant.
+     * @param preferMANETranscriptsWhereApplicable If this is set, in GencodeFunctationFactory, we will only emit MANE transcripts if any are availible for a given variant, otherwise behaves as normal.
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
@@ -340,7 +341,8 @@ final public class DataSourceUtils {
                                                                                                         final FlankSettings flankSettings,
                                                                                                         final boolean doAttemptSegmentFuncotationForTranscriptDatasources,
                                                                                                         final int minBasesForValidSegment,
-                                                                                                        final int spliceSiteWindowSize) {
+                                                                                                        final int spliceSiteWindowSize,
+                                                                                                        final boolean preferMANETranscriptsWhereApplicable) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -379,7 +381,7 @@ final public class DataSourceUtils {
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment, spliceSiteWindowSize);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment, spliceSiteWindowSize, preferMANETranscriptsWhereApplicable);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
@@ -596,7 +598,8 @@ final public class DataSourceUtils {
                                                                      final FlankSettings flankSettings,
                                                                      final boolean isSegmentFuncotationEnabled,
                                                                      final int minBasesForValidSegment,
-                                                                     final int spliceSiteWindowSize) {
+                                                                     final int spliceSiteWindowSize,
+                                                                     final boolean onlyUseMANETranscriptsWhenApplicable) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -626,7 +629,8 @@ final public class DataSourceUtils {
                 ncbiBuildVersion,
                 isSegmentFuncotationEnabled,
                 minBasesForValidSegment,
-                spliceSiteWindowSize
+                spliceSiteWindowSize,
+                onlyUseMANETranscriptsWhenApplicable
             );
     }
 
