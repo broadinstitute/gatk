@@ -167,7 +167,6 @@ public final class GATKSVVCFConstants {
     // CleanPt1b
     public static final String RD_GQ = "RD_GQ";
     public static final String CNVS_DEFAULT_FILE = "multi.cnvs.txt";
-    public static final String BLANK_SAMPLES = "blanksample";
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
