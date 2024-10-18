@@ -12,11 +12,10 @@ plugins {
     id 'maven-publish'
     id 'signing'
 //    id "jacoco"
-    id "de.undercouch.download" version "5.4.0" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "8.1.1"    //used to build the shadow and sparkJars
-    id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
-    id 'com.palantir.git-version' version '0.5.1' //version helper
-    id 'org.sonatype.gradle.plugins.scan' version '2.6.1' // scans for security vulnerabilities in our dependencies
+    id "de.undercouch.download" version "5.6.0" //used for downloading GSA lib
+    id "com.gradleup.shadow" version "8.3.3"    //used to build the shadow and sparkJars
+    id 'com.palantir.git-version' version '3.1.0' //version helper
+    id 'org.sonatype.gradle.plugins.scan' version '2.8.3' // scans for security vulnerabilities in our dependencies
 }
 
 
