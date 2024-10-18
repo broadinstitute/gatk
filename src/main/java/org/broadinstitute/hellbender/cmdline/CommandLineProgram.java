@@ -166,43 +166,11 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
         // set the temp directory as a java property, checking for existence and read/write access
         final Path p = tmpDir.toPath();
-        Path tempFilePath = null;
         try {
             p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
 
             // Warn if there's anything that prevents execution in the tmp dir because some tools need that
-            // This test relies on the file system supporting posix file permissions
-            if(p.getFileSystem().supportedFileAttributeViews().contains("posix")) {
-                // Write an empty file to the tempdir
-                tempFilePath = Files.createTempFile(p, "gatk_exec_test", null);
-                // Add execute permissions
-                final Set<PosixFilePermission> executePermissions = EnumSet.of(
-                        PosixFilePermission.OWNER_EXECUTE,
-                        PosixFilePermission.GROUP_EXECUTE,
-                        PosixFilePermission.OTHERS_EXECUTE
-                );
-                final Set<PosixFilePermission> newPermissions = Files.getPosixFilePermissions(tempFilePath);
-                newPermissions.addAll(executePermissions);
-                try{
-                    Files.setPosixFilePermissions(tempFilePath, newPermissions);
-                    if(!Files.isExecutable(tempFilePath)) {
-                        logger.warn(
-                            "User has permissions to create executable files within the configured temporary directory, " +
-                                "but cannot execute those files. It is possible the directory has been mounted using the " +
-                                "'noexec' flag. This can cause issues for some GATK tools. You can specify a different " +
-                                "directory using --tmp-dir"
-                        );
-                    }
-                }
-                catch(IOException e) {
-                    logger.warn(
-                        "Cannot create executable files within the configured temporary directory. It is possible " +
-                            "this user does not have the proper permissions to execute files within this directory. " +
-                            "This can cause issues for some GATK tools. You can specify a different directory using " +
-                            "--tmp-dir"
-                    );
-                }
-            }
+            tryToWriteAnExecutableFileAndWarnOnFailure(p);
 
             System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
         } catch (final AccessDeniedException | NoSuchFileException e) {
@@ -213,16 +181,6 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         } catch (final IOException e) {
             // other exceptions with the tmp directory
             throw new UserException.BadTempDir(p, e.getMessage(), e);
-        }
-        finally {
-            // Make sure we clean up the test file
-            try {
-                if (tempFilePath != null)
-                    Files.deleteIfExists(tempFilePath);
-            }
-            catch(Exception e) {
-                logger.warn("Failed to delete temp file for testing temp dir", e);
-            }
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
@@ -540,5 +498,50 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     /** A shim to make use of try-with-resources for tool shutdown**/ 
     protected interface AutoCloseableNoCheckedExceptions extends AutoCloseable{
         @Override void close();
+    }
+
+    private void tryToWriteAnExecutableFileAndWarnOnFailure(final Path p) {
+        Path tempFilePath = null;
+        try {
+            // This test relies on the file system supporting posix file permissions
+            if(p.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+                // Write an empty file to the tempdir
+                tempFilePath = Files.createTempFile(p, "gatk_exec_test", null);
+                // Add execute permissions
+                final Set<PosixFilePermission> executePermissions = EnumSet.of(
+                        PosixFilePermission.OWNER_EXECUTE,
+                        PosixFilePermission.GROUP_EXECUTE,
+                        PosixFilePermission.OTHERS_EXECUTE
+                );
+                final Set<PosixFilePermission> newPermissions = Files.getPosixFilePermissions(tempFilePath);
+                newPermissions.addAll(executePermissions);
+
+                Files.setPosixFilePermissions(tempFilePath, newPermissions);
+                if(!Files.isExecutable(tempFilePath)) {
+                    logger.warn(
+                        "User has permissions to create executable files within the configured temporary directory, " +
+                            "but cannot execute those files. It is possible the directory has been mounted using the " +
+                            "'noexec' flag. This can cause issues for some GATK tools. You can specify a different " +
+                            "directory using --tmp-dir"
+                    );
+                }
+            }
+        } catch(Exception e) {
+            logger.warn(
+                "Cannot create executable files within the configured temporary directory. It is possible " +
+                    "this user does not have the proper permissions to execute files within this directory. " +
+                    "This can cause issues for some GATK tools. You can specify a different directory using " +
+                    "--tmp-dir"
+            );
+            logger.debug(e);
+        } finally {
+            // Make sure we clean up the test file
+            try {
+                Files.deleteIfExists(tempFilePath);
+            } catch(Exception e) {
+                logger.warn("Failed to delete temp file for testing temp dir", e);
+            }
+        }
+        
     }
 }
