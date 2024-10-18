@@ -91,7 +91,7 @@ import java.util.stream.IntStream;
  *   --expression foo.FILTER
  * </pre>
  *
- * <h3>Caveat</h3>
+ * <h3>Caveats</h3>
  * <p>This tool outputs no annotations by default, all annotations/groups must be specified explicitly. This tool acceps VCF format files only. Using GVCF files as input may result in unexpected behavior. </p>
  *
  * <h3>Special note on RankSumTestAnnotations</h3>
