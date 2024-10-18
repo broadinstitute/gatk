@@ -50,62 +50,52 @@ import java.util.stream.Collectors;
  * <h3>Output</h3>
  * <ul>
  *     <li>
- *         Annotated VCF.
+ *         Cleansed VCF.
  *     </li>
  * </ul>
  *
  * <h3>Usage Example</h3>
  * <pre>
  *     gatk SVCleanPt1a \
- *       -V structural.vcf.gz \
- *       -O cleansed.vcf.gz
- *       --ped-file pedigree.ped
- *       --chrX chrX
- *       --chrY chrY
+ *       -V input.vcf.gz \
+ *       -O output.vcf.gz
  *       --fail-list background_fail.txt
  *       --pass-list bothsides_pass.txt
- *       --sample-list sample_list.txt
- *       --revised-list revised_list.txt
  * </pre>
  *
  * <h3>Cleaning Steps</h3>
  * <ol>
- *     <li>
- *         Adds new FILTER and INFO tags to header.
- *     </li>
  *     <li>
  *         TODO
  *     </li>
  * </ol>
  */
 @CommandLineProgramProperties(
-        summary = "Clean and format structural variant VCFs per Step 1a",
-        oneLineSummary = "Clean and format structural variant VCFs per Step 1a",
+        summary = "Clean and format structural variant VCFs",
+        oneLineSummary = "Clean and format structural variant VCFs",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
 @DocumentedFeature
 public final class SVCleanPt1a extends VariantWalker {
-    public static final String PED_FILE_LONG_NAME = "ped-file";
     public static final String CHRX_LONG_NAME = "chrX";
     public static final String CHRY_LONG_NAME = "chrY";
     public static final String FAIL_LIST_LONG_NAME = "fail-list";
     public static final String PASS_LIST_LONG_NAME = "pass-list";
-    public static final String OUTPUT_REVISED_EVENTS_LIST_LONG_NAME = "revised-list";
 
     @Argument(
             fullName = CHRX_LONG_NAME,
             doc = "chrX column name",
             optional = true
     )
-    private String chrX = "chrX";
+    private final String chrX = "chrX";
 
     @Argument(
             fullName = CHRY_LONG_NAME,
             doc = "chrY column name",
             optional = true
     )
-    private String chrY = "chrY";
+    private final String chrY = "chrY";
 
     @Argument(
             fullName = FAIL_LIST_LONG_NAME,
@@ -232,8 +222,7 @@ public final class SVCleanPt1a extends VariantWalker {
             if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) &&
                     (variant.getEnd() - variant.getStart() >= MIN_ALLOSOME_EVENT_SIZE)) {
                 final boolean isY = chromosome.equals(chrY);
-                final int chrCN = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
-                final int sex = chrCN == 1 ? 1 : 2;
+                final int sex = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
 
                 if (sex == 1 && isRevisableEvent(variant, isY, sex)) { // Male
                     revisedSet.add(variant.getID());
