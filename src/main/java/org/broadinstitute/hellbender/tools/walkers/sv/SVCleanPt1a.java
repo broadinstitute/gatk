@@ -24,24 +24,15 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.HashSet;
-import java.util.HashMap;
 import java.util.stream.Collectors;
-import java.util.function.Function;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
