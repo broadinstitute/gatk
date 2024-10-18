@@ -3,9 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.Allele;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import static java.util.Map.entry;
+
 
 public final class GATKSVVCFConstants {
 
@@ -146,6 +149,24 @@ public final class GATKSVVCFConstants {
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
+
+    // CleanPt1a
+    public static final String EV = "EV";
+    public static final List<String> evValues = Arrays.asList(
+            null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
+    );
+    public static final String ME = "ME";
+    public static final String VAR_GQ = "varGQ";
+    public static final String MULTIALLELIC = "MULTIALLELIC";
+    public static final String UNRESOLVED = "UNRESOLVED";
+    public static final String HIGH_SR_BACKGROUND = "HIGH_SR_BACKGROUND";
+    public static final String BOTHSIDES_SUPPORT = "BOTHSIDES_SUPPORT";
+    public static final String REVISED_EVENT = "REVISED_EVENT";
+    public static final String RD_CN = "RD_CN";
+
+    // CleanPt1b
+    public static final String RD_GQ = "RD_GQ";
+    public static final String CNVS_DEFAULT_FILE = "multi.cnvs.txt";
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
