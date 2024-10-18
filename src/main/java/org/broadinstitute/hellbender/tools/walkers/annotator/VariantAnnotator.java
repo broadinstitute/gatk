@@ -92,7 +92,7 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <h3>Caveat</h3>
- * <p>This tool outputs no annotations by default, all annotations/groups must be specified explicitly. </p>
+ * <p>This tool outputs no annotations by default, all annotations/groups must be specified explicitly. This tool acceps VCF format files only. Using GVCF files as input may result in unexpected behavior. </p>
  *
  * <h3>Special note on RankSumTestAnnotations</h3>
  * <p>RankSumAnnotations produced by this tool are not the same as those produced by the HaplotypeCaller. Without the
