@@ -140,7 +140,8 @@ import java.util.*;
  * <h3>Additional notes</h3>
  * <ul>
  *     <li>This tool only accepts a single input variant file unlike earlier version of GATK, which accepted multiple
- *     input variant files. Please do not provide non-genotyped GVCF files as input as it will not work properly with this tool.</li>
+ *     input variant files. </li>
+ *     <li>The input VCF must be genotyped, raw GVCF files will not work correctly.</li>
  *     <li>SNPs and indels must be recalibrated in separate runs, but it is not necessary to separate them into different
  * files. See the tutorial linked above for an example workflow. Note that mixed records are treated as indels.</li>
  *     <li></li>
