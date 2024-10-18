@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
-import java.util.Comparator;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -47,23 +46,19 @@ import org.apache.commons.lang3.tuple.Pair;
  * <h3>Output</h3>
  * <ul>
  *     <li>
- *         Annotated VCF.
+ *         Cleansed VCF.
  *     </li>
  * </ul>
  *
  * <h3>Usage Example</h3>
  * <pre>
  *     gatk SVCleanPt1b \
- *       -V structural.vcf.gz \
- *       -O cleansed.vcf.gz
- *       --bed-file overlap.bed
+ *       -V input.vcf.gz \
+ *       -O output.vcf.gz
  * </pre>
  *
  * <h3>Cleaning Steps</h3>
  * <ol>
- *     <li>
- *         Calculates new copy numbers for variant genotypes that match an overlapping variant.
- *     </li>
  *     <li>
  *         TODO
  *     </li>
@@ -84,7 +79,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
             doc = "Output CNVs file name",
             optional = true
     )
-    private GATKPath outputCnvs = new GATKPath(GATKSVVCFConstants.CNVS_DEFAULT_FILE);
+    private final GATKPath outputCnvs = new GATKPath(GATKSVVCFConstants.CNVS_DEFAULT_FILE);
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -96,7 +91,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     private VariantContextWriter vcfWriter;
     private BufferedWriter cnvsWriter;
 
-    private List<VariantContext> overlappingVariantsBuffer = new ArrayList<>();
+    private final List<VariantContext> overlappingVariantsBuffer = new ArrayList<>();
     final private Set<String> multiCnvs = new HashSet<>();
     final private Map<String, Map<String, Pair<String, String>>> revisedEventsAll = new HashMap<>();
     final private Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
@@ -105,11 +100,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     @Override
     protected int numberOfPasses() {
         return 3;
-    }
-
-    @Override
-    public void onTraversalStart() {
-        return;
     }
 
     @Override
@@ -144,13 +134,13 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     protected void nthPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext, int n) {
         switch (n) {
             case 0:
-                firstPassApply(variant, readsContext, referenceContext, featureContext);
+                firstPassApply(variant);
                 break;
             case 1:
-                secondPassApply(variant, readsContext, referenceContext, featureContext);
+                secondPassApply(variant);
                 break;
             case 2:
-                thirdPassApply(variant, readsContext, referenceContext, featureContext);
+                thirdPassApply(variant);
                 break;
         }
     }
@@ -168,7 +158,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         }
     }
 
-    public void firstPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    public void firstPassApply(final VariantContext variant) {
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         final boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         final boolean isLarge = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) >= 5000;
@@ -183,13 +173,13 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         }
     }
 
-    public void secondPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    public void secondPassApply(final VariantContext variant) {
         if (revisedEventsFiltered.containsKey(variant.getID())) {
             initializeRdCn(variant);
         }
     }
 
-    public void thirdPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    public void thirdPassApply(final VariantContext variant) {
         VariantContextBuilder builder = new VariantContextBuilder(variant);
         if (revisedEventsAll.containsKey(variant.getID())) {
             processVariant(builder, variant);
