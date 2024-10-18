@@ -124,7 +124,8 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 new FlankSettings(0, 0),
                 false,
                 FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT,
-                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE
+                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE,
+                false
         );
 
         // Sort the datasources to ensure the same order every time:

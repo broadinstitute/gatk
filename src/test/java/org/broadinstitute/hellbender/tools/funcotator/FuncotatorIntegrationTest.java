@@ -33,6 +33,8 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.validation.constraints.AssertFalse;
+import javax.validation.constraints.AssertTrue;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -80,6 +82,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // TODO: Get rid of this variable and use the general data sources path (issue #5350 - https://github.com/broadinstitute/gatk/issues/5350):
     private static final String DS_PIK3CA_DIR            = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca" + File.separator;
+    private static final String DS_PIK3CA_DIR_v43_MANE   = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca_v43Annotations" + File.separator;
 
     private static final String  MEDIUM_DATASOURCES_DIR     = largeFileTestDir + "funcotator" + File.separator + "funcotator_dataSources" + File.separator;
 
@@ -104,7 +107,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final List<String> VCF_FIELDS_GENCODE_28_DS = Arrays.asList("Gencode_28_hugoSymbol","Gencode_28_ncbiBuild","Gencode_28_chromosome","Gencode_28_start","Gencode_28_end","Gencode_28_variantClassification","Gencode_28_variantType","Gencode_28_refAllele","Gencode_28_tumorSeqAllele1","Gencode_28_tumorSeqAllele2","Gencode_28_genomeChange","Gencode_28_annotationTranscript","Gencode_28_transcriptStrand","Gencode_28_transcriptExon","Gencode_28_transcriptPos","Gencode_28_cDnaChange","Gencode_28_codonChange","Gencode_28_proteinChange","Gencode_28_gcContent","Gencode_28_referenceContext","Gencode_28_otherTranscripts");//,"Achilles_Top_Genes","CGC_Name","CGC_GeneID","CGC_Chr","CGC_Chr_Band","CGC_Cancer_Somatic_Mut","CGC_Cancer_Germline_Mut","CGC_Tumour_Types__(Somatic_Mutations)","CGC_Tumour_Types_(Germline_Mutations)","CGC_Cancer_Syndrome","CGC_Tissue_Type","CGC_Cancer_Molecular_Genetics","CGC_Mutation_Type","CGC_Translocation_Partner","CGC_Other_Germline_Mut","CGC_Other_Syndrome/Disease","ClinVar_HGMD_ID","ClinVar_SYM","ClinVar_TYPE","ClinVar_ASSEMBLY","ClinVar_rs","Cosmic_overlapping_mutations","CosmicFusion_fusion_genes","CosmicFusion_fusion_id","CosmicTissue_total_alterations_in_gene","CosmicTissue_tissue_types_affected","DNARepairGenes_Activity_linked_to_OMIM","DNARepairGenes_Chromosome_location_linked_to_NCBI_MapView","DNARepairGenes_Accession_number_linked_to_NCBI_Entrez","Familial_Cancer_Genes_Syndrome","Familial_Cancer_Genes_Synonym","Familial_Cancer_Genes_Reference","Gencode_XHGNC_hgnc_id","Gencode_XRefSeq_mRNA_id","Gencode_XRefSeq_prot_acc","HGNC_HGNC_ID","HGNC_Approved_Name","HGNC_Status","HGNC_Locus_Type","HGNC_Locus_Group","HGNC_Previous_Symbols","HGNC_Previous_Name","HGNC_Synonyms","HGNC_Name_Synonyms","HGNC_Chromosome","HGNC_Date_Modified","HGNC_Date_Symbol_Changed","HGNC_Date_Name_Changed","HGNC_Accession_Numbers","HGNC_Enzyme_IDs","HGNC_Entrez_Gene_ID","HGNC_Ensembl_Gene_ID","HGNC_Pubmed_IDs","HGNC_RefSeq_IDs","HGNC_Gene_Family_ID","HGNC_Gene_Family_Name","HGNC_CCDS_IDs","HGNC_Vega_ID","HGNC_Entrez_Gene_ID(supplied_by_NCBI)","HGNC_OMIM_ID(supplied_by_OMIM)","HGNC_RefSeq(supplied_by_NCBI)","HGNC_UniProt_ID(supplied_by_UniProt)","HGNC_Ensembl_ID(supplied_by_Ensembl)","HGNC_UCSC_ID(supplied_by_UCSC)","Oreganno_Build","Oreganno_ID","Oreganno_Values","Simple_Uniprot_uniprot_entry_name","Simple_Uniprot_DrugBank","Simple_Uniprot_alt_uniprot_accessions","Simple_Uniprot_uniprot_accession","Simple_Uniprot_GO_Biological_Process","Simple_Uniprot_GO_Cellular_Component","Simple_Uniprot_GO_Molecular_Function","dbSNP_ASP","dbSNP_ASS","dbSNP_CAF","dbSNP_CDA","dbSNP_CFL","dbSNP_COMMON","dbSNP_DSS","dbSNP_G5","dbSNP_G5A","dbSNP_GENEINFO","dbSNP_GNO","dbSNP_HD","dbSNP_INT","dbSNP_KGPhase1","dbSNP_KGPhase3","dbSNP_LSD","dbSNP_MTP","dbSNP_MUT","dbSNP_NOC","dbSNP_NOV","dbSNP_NSF","dbSNP_NSM","dbSNP_NSN","dbSNP_OM","dbSNP_OTH","dbSNP_PM","dbSNP_PMC","dbSNP_R3","dbSNP_R5","dbSNP_REF","dbSNP_RS","dbSNP_RSPOS","dbSNP_RV","dbSNP_S3D","dbSNP_SAO","dbSNP_SLO","dbSNP_SSR","dbSNP_SYN","dbSNP_TOPMED","dbSNP_TPA","dbSNP_U3","dbSNP_U5","dbSNP_VC","dbSNP_VLD","dbSNP_VP","dbSNP_WGT","dbSNP_WTD","dbSNP_dbSNPBuildID");
     private static final List<String> MAF_FIELDS_GENCODE_DS = Arrays.asList(MafOutputRendererConstants.FieldName_Hugo_Symbol, MafOutputRendererConstants.FieldName_NCBI_Build, MafOutputRendererConstants.FieldName_Chromosome,
             MafOutputRendererConstants.FieldName_Start_Position, MafOutputRendererConstants.FieldName_End_Position, MafOutputRendererConstants.FieldName_Variant_Classification,  MafOutputRendererConstants.FieldName_Variant_Type,
-            MafOutputRendererConstants.FieldName_Reference_Allele, MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.FieldName_Genome_Change, MafOutputRendererConstants.FieldName_Annotation_Transcript, MafOutputRendererConstants.FieldName_Transcript_Strand, MafOutputRendererConstants.FieldName_Transcript_Exon, MafOutputRendererConstants.FieldName_Transcript_Position, MafOutputRendererConstants.FieldName_cDNA_Change, MafOutputRendererConstants.FieldName_Codon_Change, MafOutputRendererConstants.FieldName_Protein_Change, MafOutputRendererConstants.FieldName_gc_content, MafOutputRendererConstants.FieldName_ref_context, MafOutputRendererConstants.FieldName_Other_Transcripts);
+            MafOutputRendererConstants.FieldName_Reference_Allele, MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.FieldName_Genome_Change,
+            MafOutputRendererConstants.FieldName_Annotation_Transcript, MafOutputRendererConstants.FieldName_Transcript_Strand, MafOutputRendererConstants.FieldName_Transcript_Exon, MafOutputRendererConstants.FieldName_Transcript_Position,
+            MafOutputRendererConstants.FieldName_cDNA_Change, MafOutputRendererConstants.FieldName_Codon_Change, MafOutputRendererConstants.FieldName_Protein_Change, MafOutputRendererConstants.FieldName_gc_content,
+            MafOutputRendererConstants.FieldName_ref_context, MafOutputRendererConstants.FieldName_Other_Transcripts);
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
@@ -949,6 +955,77 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(variantContexts.stream()
                 .filter(vc -> StringUtils.contains(vc.getAttributeAsString("FUNCOTATION", ""), "MedGen"))
                 .count(), NUM_CLINVAR_HITS);
+    }
+
+    @Test
+    public void testMANESelectAnnotationDifferencesAndGencodeV43() {
+        // Clinvar datasource did  go through one round of preprocessing to make contig names "1" --> "chr1" (for example).  This is an issue with ClinVar, not GATK.
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
+        final File outputFileMANESelectMode = getOutputFile(outputFormatType);
+        final File outputFileDefaultMode = getOutputFile(outputFormatType);
+
+        // Run the tool twice with FuncotatorArgumentDefinitions.PREFER_MANE_TRANSCRIPT_MODE on and off and compare the results
+        final ArgumentsBuilder arguments1 = createBaselineArgumentsForFuncotator(
+                PIK3CA_VCF_HG38,
+                outputFileMANESelectMode,
+                hg38Chr3Ref,
+                DS_PIK3CA_DIR_v43_MANE,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                outputFormatType,
+                false);
+        arguments1.add(FuncotatorArgumentDefinitions.PREFER_MANE_TRANSCRIPT_MODE, "true");
+        arguments1.add("intervals", "chr3:179148357-179235107");
+        runCommandLine(arguments1);
+
+        final ArgumentsBuilder arguments2 = createBaselineArgumentsForFuncotator(
+                PIK3CA_VCF_HG38,
+                outputFileDefaultMode,
+                hg38Chr3Ref,
+                DS_PIK3CA_DIR_v43_MANE,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                outputFormatType,
+                false);
+        arguments2.add("intervals", "chr3:179148357-179235107");
+        runCommandLine(arguments2);
+
+        // Assert that we NEVER seen the lower priority transcript when we are in MANE select mode
+        final FeatureDataSource<VariantContext> featureDataSourceMANE = new FeatureDataSource<>(outputFileMANESelectMode);
+        final FeatureDataSource<VariantContext> featureDataSourceDefault = new FeatureDataSource<>(outputFileMANESelectMode);
+        boolean hasSeenENST00000435560 = false;
+        for (final VariantContext vc : featureDataSourceMANE) {
+            if (vc.getAttributeAsString("FUNCOTATION",null) != null) {
+                final String funcotationMANE = vc.getAttributeAsString("FUNCOTATION", "");
+                Assert.assertFalse(funcotationMANE.contains("ENST00000263967.4")); // this transcript is MANE_SELECT not MANE_PLUS_CLINICAL so should never be selected for these variants
+                Assert.assertTrue(funcotationMANE.contains("ENST00000643187.1") || funcotationMANE.contains("ENST00000435560.1"));
+                if (funcotationMANE.contains("ENST00000435560.1")) {
+                    hasSeenENST00000435560 = true;
+                }
+            }
+        }
+        Assert.assertTrue(hasSeenENST00000435560); // ENST00000435560.1 is a basic annotation with no MANE_SELECT transcripts overlapping it, so it should still be emitted
+        hasSeenENST00000435560 = false;
+        // Assert that we see a mix of transcripts when we are in MANE select mode
+        boolean hasSeenMANESelect = false;
+        boolean hasSeenMANEPlusClinical = false;
+        for (final VariantContext vc : featureDataSourceDefault) {
+            if (vc.getAttributeAsString("FUNCOTATION", null) != null) {
+                final String funcotationDefault = vc.getAttributeAsString("FUNCOTATION", "");
+                if (funcotationDefault.contains("ENST00000643187.1")) {
+                    hasSeenMANESelect = true;
+                }
+                if (funcotationDefault.contains("ENST00000643187.1")) {
+                    hasSeenMANEPlusClinical = true;
+                }
+                if (funcotationDefault.contains("ENST00000435560.1")) {
+                    hasSeenENST00000435560 = true;
+                }
+            }
+        }
+
+        // assert that we have seen both versions of the transcript in the default case
+        Assert.assertTrue(hasSeenENST00000435560); // ENST00000435560.1 is a basic annotation with no MANE_SELECT transcripts overlapping it, so it should still be emitted
+        Assert.assertTrue(hasSeenMANESelect);
+        Assert.assertTrue(hasSeenMANEPlusClinical);
     }
 
     //Test for https://github.com/broadinstitute/gatk/issues/6173
