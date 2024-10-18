@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
-import org.broadinstitute.barclay.argparser.Advanced;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -65,7 +62,7 @@ import java.util.List;
     oneLineSummary = "Annotate a VCF with scores from a PyTorch-based Convolutional Neural Network (CNN)",
     programGroup = VariantFilteringProgramGroup.class
 )
-@ExperimentalFeature
+@BetaFeature
 public class NVScoreVariants extends CommandLineProgram {
 
     public static final String NV_SCORE_VARIANTS_PACKAGE = "scorevariants";
