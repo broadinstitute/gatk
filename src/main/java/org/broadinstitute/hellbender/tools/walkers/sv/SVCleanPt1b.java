@@ -65,8 +65,8 @@ import org.apache.commons.lang3.tuple.Pair;
  * </ol>
  */
 @CommandLineProgramProperties(
-        summary = "Clean and format structural variant VCFs per Step 1b",
-        oneLineSummary = "Clean and format structural variant VCFs per Step 1b",
+        summary = "Clean and format SV VCF",
+        oneLineSummary = "Clean and format SV VCF",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -142,6 +142,8 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
             case 2:
                 thirdPassApply(variant);
                 break;
+            default:
+                throw new IllegalArgumentException("Invalid pass number: " + n);
         }
     }
 

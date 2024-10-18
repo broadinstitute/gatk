@@ -71,8 +71,8 @@ import java.util.stream.Collectors;
  * </ol>
  */
 @CommandLineProgramProperties(
-        summary = "Clean and format structural variant VCFs",
-        oneLineSummary = "Clean and format structural variant VCFs",
+        summary = "Clean and format SV VCF",
+        oneLineSummary = "Clean and format SV VCF",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
