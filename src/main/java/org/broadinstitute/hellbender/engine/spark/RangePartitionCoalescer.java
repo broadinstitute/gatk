@@ -4,7 +4,8 @@ import org.apache.spark.Partition;
 import org.apache.spark.rdd.PartitionCoalescer;
 import org.apache.spark.rdd.PartitionGroup;
 import org.apache.spark.rdd.RDD;
-import scala.collection.JavaConversions;
+// import scala.collection.JavaConversions;
+import scala.jdk.javaapi.CollectionConverters;
 import scala.collection.Seq;
 
 import java.io.Serializable;
@@ -14,7 +15,7 @@ import java.util.List;
 /**
  * A {@link PartitionCoalescer} that allows a range of partitions to be coalesced into groups.
  */
-class RangePartitionCoalescer implements PartitionCoalescer, Serializable, scala.Serializable {
+class RangePartitionCoalescer implements PartitionCoalescer, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -45,7 +46,8 @@ class RangePartitionCoalescer implements PartitionCoalescer, Serializable, scala
             PartitionGroup group = new PartitionGroup(preferredLocation);
             List<Partition> partitionsInGroup =
                     partitions.subList(i, maxEndPartitionIndexes.get(i) + 1);
-            group.partitions().append(JavaConversions.asScalaBuffer(partitionsInGroup));
+            // group.partitions().append(CollectionConverters.asScala(partitionsInGroup).toSeq());
+            group.partitions().addAll(CollectionConverters.asScala(partitionsInGroup).toList());
             groups[i] = group;
         }
         return groups;

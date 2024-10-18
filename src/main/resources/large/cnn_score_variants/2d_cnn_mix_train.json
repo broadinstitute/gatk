@@ -1,3 +1,1 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:4ed7feb0343e9ac03135b1456b2c8d2edab1b359c4950908c4d44152c0634a89
-size 732
+{"input_tensor_map": {"read_T": 3, "flag_bit_5": 11, "reference_T": 8, "flag_bit_7": 13, "flag_bit_6": 12, "mapping_quality": 14, "read_G": 2, "read_C": 1, "read_A": 0, "reference_*": 9, "reference_G": 7, "flag_bit_4": 10, "reference_A": 5, "read_*": 4, "reference_C": 6}, "data_dir": "/dsde/data/deep/vqsr/tensors/mix_big_ref_read_anno/", "input_tensor_map_name": "read_tensor", "input_annotations": ["MQ", "DP", "SOR", "FS", "QD", "MQRankSum", "ReadPosRankSum"], "input_annotation_set": "gatk", "output_labels": {"NOT_SNP": 0, "INDEL": 3, "SNP": 2, "NOT_INDEL": 1}, "window_size": 128, "architecture": "2d_cnn_mix_train.hd5", "read_limit": 128, "input_symbols": {"A": 0, "C": 1, "*": 4, "T": 3, "G": 2}, "id": "2d_cnn_mix_train"}

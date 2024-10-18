@@ -1,3 +1,1 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:eda2517817b23238c2b28f69a1fa39e9b85b45985854f0a5d5508280e76da39e
-size 519
+{"input_tensor_map": {"A": 0, "C": 1, "T": 3, "G": 2}, "data_dir": "/dsde/data/deep/vqsr/tensors/mix_1d/", "input_tensor_map_name": "reference", "input_annotations": ["MQ", "DP", "SOR", "FS", "QD", "MQRankSum", "ReadPosRankSum"], "input_annotation_set": "annotations", "output_labels": {"NOT_SNP": 0, "INDEL": 3, "SNP": 2, "NOT_INDEL": 1}, "window_size": 128, "architecture": "1d_cnn_mix_train_full_bn.hd5", "read_limit": 128, "input_symbols": {"A": 0, "C": 1, "*": 4, "T": 3, "G": 2}, "id": "1d_cnn_mix_train_full_bn"}

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.logging;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.Supplier;
+import java.util.function.Supplier;
 
 /**
  * A logger wrapper class which only outputs the first warning provided to it
