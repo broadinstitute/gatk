@@ -255,7 +255,7 @@ dependencies {
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
-    implementation 'com.google.cloud.bigdataoss:gcs-connector:3.0.2'
+    implementation 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
 
     implementation platform('org.apache.logging.log4j:log4j-bom:' + log4j2Version)
     implementation 'org.apache.logging.log4j:log4j-api'
