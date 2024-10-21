@@ -83,7 +83,6 @@ workflow GvsQuickstartIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VETS = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "vets_hail",
                 use_default_dockers = use_default_dockers,
