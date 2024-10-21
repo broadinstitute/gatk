@@ -12,7 +12,6 @@ workflow GvsExtractAvroFilesForHail {
         String dataset_name
         String filter_set_name
         String call_set_identifier
-        Boolean use_VETS = true
         Int scatter_width = 10
         String? basic_docker
         String? cloud_sdk_docker
@@ -43,14 +42,6 @@ workflow GvsExtractAvroFilesForHail {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    call Utils.IsVETS {
-        input:
-            project_id = project_id,
-            fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
-            filter_set_name = filter_set_name,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
     call OutputPath {
         input:
             go = ValidateFilterSetName.done,
@@ -74,7 +65,6 @@ workflow GvsExtractAvroFilesForHail {
             filter_set_name = filter_set_name,
             avro_sibling = OutputPath.out,
             call_set_identifier = call_set_identifier,
-            is_vets = IsVETS.is_vets,
             variants_docker = effective_variants_docker,
     }
 
@@ -192,7 +182,7 @@ task ExtractFromSampleInfoTable {
 
 task ExtractFromFilterTables {
     meta {
-        description: "Extracts from the tables: filter_set_sites, filter_set_info, and filter_set_tranches (if using VQSR)"
+        description: "Extracts from the tables: filter_set_sites and filter_set_info"
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
@@ -203,11 +193,10 @@ task ExtractFromFilterTables {
         String filter_set_name
         String avro_sibling
         String call_set_identifier
-        Boolean is_vets = true
         String variants_docker
     }
 
-    String vqs_score_field = if (is_vets == true) then 'calibration_sensitivity' else 'vqslod'
+    String vets_score_field = 'calibration_sensitivity'
 
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -222,8 +211,8 @@ task ExtractFromFilterTables {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT location, type as model, ref, alt, ~{vqs_score_field}, yng_status
+            uri='${avro_prefix}/vets_filtering_data/vets_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            SELECT location, type as model, ref, alt, ~{vets_score_field}, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
@@ -237,16 +226,6 @@ task ExtractFromFilterTables {
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id=~{project_id}
-
-        if [ ~{is_vets} = false ]; then
-            python3 /app/run_avro_query.py --sql "
-                EXPORT DATA OPTIONS(
-                uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT model, truth_sensitivity, min_vqslod, filter_name
-                FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
-                WHERE filter_set_name = '~{filter_set_name}'
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id=~{project_id}
-        fi
     >>>
 
     output {

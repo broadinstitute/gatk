@@ -11,7 +11,6 @@ workflow GvsQuickstartHailIntegration {
         String? git_hash
         Boolean is_wgs
         File? interval_list
-        Boolean use_VETS = true
         Boolean use_compressed_references = false
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
@@ -116,7 +115,6 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
-            use_VQSR = !use_VETS,
             avro_path = GvsExtractAvroFilesForHail.avro_path,
             vds_destination_path = vds_path,
             cluster_prefix = "vds-cluster",

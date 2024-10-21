@@ -11,8 +11,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            vets=sequenceof(sequenceof(str)),
            sample_mapping=sequenceof(str),
            site_filtering_data=sequenceof(str),
-           vqsr_filtering_data=sequenceof(str),
-           vqsr_tranche_data=sequenceof(str),
+           vets_filtering_data=sequenceof(str),
            final_path=str,
            tmp_dir=str,
            truth_sensitivity_snp_threshold=float,
@@ -21,15 +20,13 @@ from hail.typecheck import typecheck, sequenceof, numeric
            partitions_per_sample=numeric,
            intermediate_resume_point=int,
            skip_final_merge=bool,
-           ref_block_max_length=int,
-           use_vqsr=bool
+           ref_block_max_length=int
            )
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
                sample_mapping: 'List[str]',
                site_filtering_data: 'List[str]',
-               vqsr_filtering_data: 'List[str]',
-               vqsr_tranche_data: 'List[str]',
+               vets_filtering_data: 'List[str]',
                final_path: 'str',
                tmp_dir: 'str',
                truth_sensitivity_snp_threshold: 'float' = 0.997,
@@ -38,8 +35,7 @@ def import_gvs(refs: 'List[List[str]]',
                partitions_per_sample=0.35,
                intermediate_resume_point=0,
                skip_final_merge=False,
-               ref_block_max_length: 'int' = 1000,
-               use_vqsr=False
+               ref_block_max_length: 'int' = 1000
                ):
     """Import a collection of Avro files exported from GVS.
 
@@ -70,13 +66,11 @@ def import_gvs(refs: 'List[List[str]]',
       - `site_filtering_data` -- The site filters are converted from a comma-delimited string
         to a `set<str>` value in Hail. This set contains all unique filters applied, and is
         an empty set for loci with no record in the input site filtering table.
-      - `vqsr_filtering_data` -- The VQSR data records information specific to a
+      - `vets_filtering_data` -- The VETS data records information specific to a
         (locus, alternate allele) pair. This data is read in as a dictionary in the row
         scope of the resulting variant table, where keys of the dictionary are an alternate
-        allele string, where the dictionary values are the full records from the input VQSR
+        allele string, where the dictionary values are the full records from the input VETS
         filtering table, minus the `ref` and `alt` fields.
-      - `vqsr_tranche_data` -- The VQSR tranche data is recorded as an array of records in the
-        globals of the resulting variant data table.
 
     Execution notes
     ---------------
@@ -110,18 +104,16 @@ def import_gvs(refs: 'List[List[str]]',
         Paths to sample mapping Avro files.
     site_filtering_data : List[str]
         Paths to site filtering files.
-    vqsr_filtering_data : List[str]
-        Paths to VQSR filtering files.
-    vqsr_tranche_data : List[str]
-        Paths to VQSR tranche files.
+    vets_filtering_data : List[str]
+        Paths to VETS filtering files.
     final_path : :class:`str`
         Desired path to final VariantDataset on disk.
     tmp_dir : :class:`str`
         Path to network-visible temporary directory/bucket for intermediate file storage.
     truth_sensitivity_snp_threshold : :class:`float`
-        VQSR sensitivity threshold for SNPs.
+        VETS sensitivity threshold for SNPs.
     truth_sensitivity_indel_threshold : :class:`float`
-        VQSR sensitivity threshold for Indels.
+        VETS sensitivity threshold for Indels.
     reference_genome : :class:`str` or :class:`.ReferenceGenome`
         Name or object referring to reference genome.
     partitions_per_sample : :class:`int` or :class:`float`
@@ -132,15 +124,13 @@ def import_gvs(refs: 'List[List[str]]',
         Skip final merge if true.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
-    use_vqsr : :class:`bool`
-        Expect input Avro files to have been generated from VQSR (NOT VETS) data
 
     Script workflow:
     ---------------
-    * Load VQSR data into table.
+    * Load VETS data into table.
     * Convert each 4k sample group into a VDS.
     * Run the combiner on the VDSes (which does a hierarchical merge).
-    * Annotate with VQSR / filter.
+    * Annotate with VETS / filter.
     * Compute FT genotype annotation.
     * Remove phase on LGT.
     * Add GT (computed from LGT).
@@ -178,10 +168,10 @@ def import_gvs(refs: 'List[List[str]]',
         return hl.rbind(sdict, lambda sdict: ids.map(lambda x: sdict.get(x)))
 
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
-    vqsr_path = os.path.join(tmp_dir, 'vqsr.ht')
+    vets_path = os.path.join(tmp_dir, 'vets.ht')
 
     if intermediate_resume_point > 0:
-        info('import_gvs: skipping site and VQSR filter import')
+        info('import_gvs: skipping site and VETS filter import')
     else:
         info('import_gvs: Importing and writing site filters to temporary storage')
         site = hl.import_avro(site_filtering_data)
@@ -192,17 +182,13 @@ def import_gvs(refs: 'List[List[str]]',
         site = site.key_by('locus')
         site.write(site_path, overwrite=True)
 
-        info('import_gvs: Importing and writing VQSR filter data to temporary storage')
-        vqsr = hl.import_avro(vqsr_filtering_data)
-        vqsr = vqsr.transmute(
-            locus=translate_locus(vqsr.location)
+        info('import_gvs: Importing and writing VETS filter data to temporary storage')
+        vets = hl.import_avro(vets_filtering_data)
+        vets = vets.transmute(
+            locus=translate_locus(vets.location)
         )
-        vqsr = vqsr.key_by('locus')
-        vqsr.write(vqsr_path, overwrite=True)
-
-    if use_vqsr:
-        info('vqsr: Loading tranche data')
-        tranche = hl.import_avro(vqsr_tranche_data)
+        vets = vets.key_by('locus')
+        vets.write(vets_path, overwrite=True)
 
     n_samples = 0
 
@@ -341,62 +327,32 @@ def import_gvs(refs: 'List[List[str]]',
         rd = combined.reference_data
         vd = combined.variant_data
 
-        # read site and vqsr data with same intervals for efficient joins
+        # read site and vets data with same intervals for efficient joins
         site = hl.read_table(site_path, _intervals=target_final_intervals)
-        vqsr = hl.read_table(vqsr_path, _intervals=target_final_intervals)
+        vets = hl.read_table(vets_path, _intervals=target_final_intervals)
 
         vd = vd.annotate_rows(filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr)))
 
-        # vqsr ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
-        vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
+        # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
+        vd = vd.annotate_rows(as_vets = hl.dict(vets.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
-        if use_vqsr:
-            vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
-                                     truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
-
-            sorted_tranche_data = hl.sorted(vd.tranche_data, key=lambda x: x.truth_sensitivity)
-            vd = vd.annotate_globals(snp_vqslod_threshold=
-                                     sorted_tranche_data.filter(lambda x: (x.model == 'SNP') & (
-                                             x.truth_sensitivity >= truth_sensitivity_snp_threshold))
-                                     .head().min_vqslod
-                                     ,
-                                     indel_vqslod_threshold=sorted_tranche_data.filter(lambda x: (x.model == 'INDEL') & (
-                                             x.truth_sensitivity >= truth_sensitivity_indel_threshold))
-                                     .head().min_vqslod
-                                     )
-
-            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
-            vd = vd.annotate_rows(
-                allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-                allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-                allele_is_snp=is_snp,
-                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                       f=lambda is_snp, alt:
-                                       hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
-                                                   hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
-                                                   True))
-            )
-        else:
-            vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
-            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
-            vd = vd.annotate_rows(
-                allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-                allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-                allele_is_snp=is_snp,
-                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                       f=lambda is_snp, alt:
-                                       hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
-                                                   hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
-                                                   True))
-            )
-        vd = vd.annotate_rows(as_vqsr=vd.as_vqsr.map_values(lambda value: value.drop('yng_status')))
+        vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                                 truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+        is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
+        vd = vd.annotate_rows(
+            allele_NO=vd.alleles[1:].map(
+                lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'N', False)),
+            allele_YES=vd.alleles[1:].map(
+                lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'Y', True)),
+            allele_is_snp=is_snp,
+            allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
+                                   f=lambda is_snp, alt:
+                                   hl.coalesce(vd.as_vets.get(alt).calibration_sensitivity <=
+                                               hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
+                                               True))
+        )
+        vd = vd.annotate_rows(as_vets=vd.as_vets.map_values(lambda value: value.drop('yng_status')))
 
         lgt = vd.LGT
         la = vd.LA
@@ -419,7 +375,6 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
-        vd = vd.rename({'as_vqsr': 'as_vets'})  # TODO - this should go (along with all VQSR usages).
         hl.vds.VariantDataset(
             reference_data=rd,
             variant_data=vd,
