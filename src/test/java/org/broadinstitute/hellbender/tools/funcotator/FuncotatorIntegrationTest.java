@@ -82,7 +82,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // TODO: Get rid of this variable and use the general data sources path (issue #5350 - https://github.com/broadinstitute/gatk/issues/5350):
     private static final String DS_PIK3CA_DIR            = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca" + File.separator;
-    private static final String DS_PIK3CA_DIR_v43_MANE   = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca_v43Annotations" + File.separator;
+    private static final String DS_PIK3CA_DIR_v43_MANE   = largeFileTestDir + "funcotator" + File.separator + "ds_pik3ca_v43_WITH_MANE_SELECT_PLUS_CLINICAL_ANNOTATIONS_FOR_TEST" + File.separator;
 
     private static final String  MEDIUM_DATASOURCES_DIR     = largeFileTestDir + "funcotator" + File.separator + "funcotator_dataSources" + File.separator;
 
@@ -989,43 +989,43 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments2);
 
         // Assert that we NEVER seen the lower priority transcript when we are in MANE select mode
-        final FeatureDataSource<VariantContext> featureDataSourceMANE = new FeatureDataSource<>(outputFileMANESelectMode);
-        final FeatureDataSource<VariantContext> featureDataSourceDefault = new FeatureDataSource<>(outputFileMANESelectMode);
-        boolean hasSeenENST00000435560 = false;
-        for (final VariantContext vc : featureDataSourceMANE) {
-            if (vc.getAttributeAsString("FUNCOTATION",null) != null) {
-                final String funcotationMANE = vc.getAttributeAsString("FUNCOTATION", "");
-                Assert.assertFalse(funcotationMANE.contains("ENST00000263967.4")); // this transcript is MANE_SELECT not MANE_PLUS_CLINICAL so should never be selected for these variants
-                Assert.assertTrue(funcotationMANE.contains("ENST00000643187.1") || funcotationMANE.contains("ENST00000435560.1"));
-                if (funcotationMANE.contains("ENST00000435560.1")) {
-                    hasSeenENST00000435560 = true;
+        try (final FeatureDataSource<VariantContext> featureDataSourceMANE = new FeatureDataSource<>(outputFileMANESelectMode);
+             final FeatureDataSource<VariantContext> featureDataSourceDefault = new FeatureDataSource<>(outputFileDefaultMode)) {
+            boolean hasSeenENST00000435560 = false;
+            for (final VariantContext vc : featureDataSourceMANE) {
+                if (vc.getAttributeAsString("FUNCOTATION", null) != null) {
+                    final String funcotationMANE = vc.getAttributeAsString("FUNCOTATION", "");
+                    Assert.assertFalse(funcotationMANE.contains("ENST00000263967.4")); // this transcript is MANE_SELECT not MANE_PLUS_CLINICAL so should never be selected for these variants
+                    Assert.assertTrue(funcotationMANE.contains("ENST00000643187.1") || funcotationMANE.contains("ENST00000435560.1"));
+                    if (funcotationMANE.contains("ENST00000435560.1")) {
+                        hasSeenENST00000435560 = true;
+                    }
                 }
             }
-        }
-        Assert.assertTrue(hasSeenENST00000435560); // ENST00000435560.1 is a basic annotation with no MANE_SELECT transcripts overlapping it, so it should still be emitted
-        hasSeenENST00000435560 = false;
-        // Assert that we see a mix of transcripts when we are in MANE select mode
-        boolean hasSeenMANESelect = false;
-        boolean hasSeenMANEPlusClinical = false;
-        for (final VariantContext vc : featureDataSourceDefault) {
-            if (vc.getAttributeAsString("FUNCOTATION", null) != null) {
-                final String funcotationDefault = vc.getAttributeAsString("FUNCOTATION", "");
-                if (funcotationDefault.contains("ENST00000643187.1")) {
-                    hasSeenMANESelect = true;
-                }
-                if (funcotationDefault.contains("ENST00000643187.1")) {
-                    hasSeenMANEPlusClinical = true;
-                }
-                if (funcotationDefault.contains("ENST00000435560.1")) {
-                    hasSeenENST00000435560 = true;
+            Assert.assertTrue(hasSeenENST00000435560); // ENST00000435560.1 is a basic annotation with no MANE_SELECT transcripts overlapping it, so it should still be emitted
+            hasSeenENST00000435560 = false;
+            // Assert that we see a mix of transcripts when we are in MANE select mode
+            boolean hasSeenMANESelect = false;
+            boolean hasSeenMANEPlusClinical = false;
+            for (final VariantContext vc : featureDataSourceDefault) {
+                if (vc.getAttributeAsString("FUNCOTATION", null) != null) {
+                    final String funcotationDefault = vc.getAttributeAsString("FUNCOTATION", "");
+                    if (funcotationDefault.contains("ENST00000643187.1")) {
+                        hasSeenMANESelect = true;
+                    }
+                    if (funcotationDefault.contains("ENST00000643187.1")) {
+                        hasSeenMANEPlusClinical = true;
+                    }
+                    if (funcotationDefault.contains("ENST00000435560.1")) {
+                        hasSeenENST00000435560 = true;
+                    }
                 }
             }
+            // assert that we have seen both versions of the transcript in the default case
+            Assert.assertTrue(hasSeenENST00000435560); // ENST00000435560.1 is a basic annotation with no MANE_SELECT transcripts overlapping it, so it should still be emitted
+            Assert.assertTrue(hasSeenMANESelect);
+            Assert.assertTrue(hasSeenMANEPlusClinical);
         }
-
-        // assert that we have seen both versions of the transcript in the default case
-        Assert.assertTrue(hasSeenENST00000435560); // ENST00000435560.1 is a basic annotation with no MANE_SELECT transcripts overlapping it, so it should still be emitted
-        Assert.assertTrue(hasSeenMANESelect);
-        Assert.assertTrue(hasSeenMANEPlusClinical);
     }
 
     //Test for https://github.com/broadinstitute/gatk/issues/6173

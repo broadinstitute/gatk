@@ -410,16 +410,16 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideTestForMANESelectMode() {
-        GencodeGtfTranscriptFeature NONBASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, false);
-        GencodeGtfTranscriptFeature BASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, false);
-        GencodeGtfTranscriptFeature BASIC_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, false);
-        GencodeGtfTranscriptFeature BASIC_MANESELECT_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, true, false);
-        GencodeGtfTranscriptFeature BASIC_MANESELECT_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, true, false);
-        GencodeGtfTranscriptFeature BASIC_MANEPLUSCLINICAL_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, true);
-        GencodeGtfTranscriptFeature BASIC_MANEPLUSCLINICAL_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, true);
-        GencodeGtfTranscriptFeature BASIC_MANESELECT_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, true, true);
-        GencodeGtfTranscriptFeature NONBASIC_MANESELECT = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, true, false);
-        GencodeGtfTranscriptFeature NONBASIC_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, true);
+        final GencodeGtfTranscriptFeature NONBASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, false);
+        final GencodeGtfTranscriptFeature BASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, false);
+        final GencodeGtfTranscriptFeature BASIC_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, false);
+        final GencodeGtfTranscriptFeature BASIC_MANESELECT_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, true, false);
+        final GencodeGtfTranscriptFeature BASIC_MANESELECT_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, true, false);
+        final GencodeGtfTranscriptFeature BASIC_MANEPLUSCLINICAL_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, true);
+        final GencodeGtfTranscriptFeature BASIC_MANEPLUSCLINICAL_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, true);
+        final GencodeGtfTranscriptFeature BASIC_MANESELECT_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, true, true);
+        final GencodeGtfTranscriptFeature NONBASIC_MANESELECT = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, true, false);
+        final GencodeGtfTranscriptFeature NONBASIC_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, true);
 
         return new Object[][]{
                 // trivial cases where only one transcript is present
@@ -1350,10 +1350,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test ( dataProvider = "provideTestForMANESelectMode" )
     void testMANESelectTranscriptSelectionCriteria(final List<GencodeGtfTranscriptFeature> inputTranscripts, final List<GencodeGtfTranscriptFeature> expectedTranscripts) {
-        final List<GencodeGtfTranscriptFeature> selectedTranscript = GencodeFuncotationFactory.retreiveMANESelectModeTranscriptsCriteria(inputTranscripts);
-        Assert.assertEquals(selectedTranscript.size(), expectedTranscripts.size());
-        for (GencodeGtfTranscriptFeature expectedTranscript : expectedTranscripts) {
-            Assert.assertTrue(selectedTranscript.contains(expectedTranscript));
+        final List<GencodeGtfTranscriptFeature> selectedTranscripts = GencodeFuncotationFactory.retreiveMANESelectModeTranscriptsCriteria(inputTranscripts);
+        Assert.assertEquals(selectedTranscripts.size(), expectedTranscripts.size());
+        for (int i = 0; i < selectedTranscripts.size(); i++) {
+            Assert.assertEquals(selectedTranscripts.get(i), expectedTranscripts.get(i));
         }
     }
 
