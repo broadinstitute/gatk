@@ -84,7 +84,7 @@ public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.PREFER_MANE_TRANSCRIPT_MODE,
             optional = true,
-            doc = "If this flag is set, Funcotator will only consider 'MANE_Plus_Clinical' followed by 'MANE_select' transcripts if one is present for a given variant. If neither tag is present it use the default behavior."
+            doc = "If this flag is set, Funcotator will prefer 'MANE_Plus_Clinical' followed by 'MANE_select' transcripts (including those not tagged 'basic') if one is present for a given variant. If neither tag is present it use the default behavior (only base transcripts)."
     )
     public boolean MANETranscriptMode = false;
 

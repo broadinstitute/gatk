@@ -245,7 +245,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * If this is true, only MANE transcripts will be used for funcotation creation when at least one is present.
      */
-    private boolean onlyUseMANETranscripts;
+    private boolean preferMANETranscripts;
 
     //==================================================================================================================
     // Constructors:
@@ -436,7 +436,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Initialize overrides / defaults:
         initializeAnnotationOverrides( annotationOverrides );
 
-        this.onlyUseMANETranscripts = preferMANETranscriptsWhereApplicable; //todo preferMANETranscriptsWhereApplicable;
+        this.preferMANETranscripts = preferMANETranscriptsWhereApplicable;
     }
 
     private Path localizeGencodeTranscriptFastaFile( final Path gencodeTranscriptFastaFilePath ) {
@@ -631,11 +631,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * If MANE_Plus_Clinical transcripts are avalible, only return them, followed by MANE_Select transcripts, followed by all transcripts.
+     * If MANE_Plus_Clinical transcripts are avalible, only return them, followed by MANE_Select transcripts, followed by only the basic transcripts if none were MANE_Plus_Clinical or MANE_Select.
      * @param transcripts of gencode transcripts to possibly filter
      * @return
      */
-    private List<GencodeGtfTranscriptFeature> filterToMANETranscripts(final List<GencodeGtfTranscriptFeature> transcripts) {
+    @VisibleForTesting
+    static List<GencodeGtfTranscriptFeature> retreiveMANESelectModeTranscriptsCriteria(final List<GencodeGtfTranscriptFeature> transcripts) {
         final List<GencodeGtfTranscriptFeature> plusClincal = transcripts.stream()
                 .filter(g -> hasTag(g, MANE_PLUS_CLINICAL)).toList();
         if (plusClincal.size() > 0) {
@@ -649,7 +650,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             return maneSelectTranscripts;
         }
 
-        return transcripts;
+        return transcripts.stream().filter(GencodeFuncotationFactory::isBasic).collect(Collectors.toList());
     }
 
     /**
@@ -886,16 +887,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Only get basic transcripts if we're using data from Gencode:
         if ( gtfFeature.getGtfSourceFileType().equals(GencodeGtfCodec.GTF_FILE_TYPE_STRING) ) {
-            transcriptList = retrieveBasicTranscripts(gtfFeature);
-        }
-        else {
+            if (preferMANETranscripts) {
+                // Filter out the non-MANE_Select/Mane_Plus_Clinical transcripts if we're only using MANE transcripts:
+                transcriptList = retreiveMANESelectModeTranscriptsCriteria(gtfFeature.getTranscripts());
+            } else {
+                transcriptList = retrieveBasicTranscripts(gtfFeature);
+            }
+        } else {
             transcriptList = gtfFeature.getTranscripts();
         }
 
-        // Filter out the non-MANE_Select/Mane_Plus_Clinical transcripts if we're only using MANE transcripts:
-        if (onlyUseMANETranscripts) {
-            transcriptList = filterToMANETranscripts(transcriptList);
-        }
 
         return createFuncotationsHelper(variant, altAllele, reference, transcriptList);
     }
