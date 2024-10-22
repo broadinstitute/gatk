@@ -168,7 +168,7 @@ def import_gvs(refs: 'List[List[str]]',
         return hl.rbind(sdict, lambda sdict: ids.map(lambda x: sdict.get(x)))
 
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
-    vets_path = os.path.join(tmp_dir, 'vets.ht')
+    vets_filter_path = os.path.join(tmp_dir, 'vets_filters.ht')
 
     if intermediate_resume_point > 0:
         info('import_gvs: skipping site and VETS filter import')
@@ -183,12 +183,12 @@ def import_gvs(refs: 'List[List[str]]',
         site.write(site_path, overwrite=True)
 
         info('import_gvs: Importing and writing VETS filter data to temporary storage')
-        vets = hl.import_avro(vets_filtering_data)
-        vets = vets.transmute(
-            locus=translate_locus(vets.location)
+        vets_filter = hl.import_avro(vets_filtering_data)
+        vets_filter = vets_filter.transmute(
+            locus=translate_locus(vets_filter.location)
         )
-        vets = vets.key_by('locus')
-        vets.write(vets_path, overwrite=True)
+        vets_filter = vets_filter.key_by('locus')
+        vets_filter.write(vets_filter_path, overwrite=True)
 
     n_samples = 0
 
@@ -329,12 +329,12 @@ def import_gvs(refs: 'List[List[str]]',
 
         # read site and vets data with same intervals for efficient joins
         site = hl.read_table(site_path, _intervals=target_final_intervals)
-        vets = hl.read_table(vets_path, _intervals=target_final_intervals)
+        vets_filter = hl.read_table(vets_filter_path, _intervals=target_final_intervals)
 
         vd = vd.annotate_rows(filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr)))
 
         # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
-        vd = vd.annotate_rows(as_vets = hl.dict(vets.index(vd.locus, all_matches=True)
+        vd = vd.annotate_rows(as_vets = hl.dict(vets_filter.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
         vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,

@@ -196,8 +196,6 @@ task ExtractFromFilterTables {
         String variants_docker
     }
 
-    String vets_score_field = 'calibration_sensitivity'
-
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
@@ -212,7 +210,7 @@ task ExtractFromFilterTables {
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vets_filtering_data/vets_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT location, type as model, ref, alt, ~{vets_score_field}, yng_status
+            SELECT location, type as model, ref, alt, calibration_sensitivity, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
