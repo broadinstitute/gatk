@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.samtools.util.OverlapDetector;
 
 import org.broadinstitute.barclay.argparser.Argument;
@@ -21,9 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import java.util.Arrays;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashSet;
@@ -109,7 +104,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
 
     @Override
     protected int numberOfPasses() {
-        return 3;
+        return 2;
     }
 
     @Override
@@ -149,15 +144,17 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
 
     @Override
     protected void nthPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext, int n) {
+        // Skip if not expected SVTYPE or below SVLEN threshold
+        if (!isDelDup(variant) || !isLargeVariant(variant, MIN_VARIANT_SIZE)) {
+            return;
+        }
+
         switch (n) {
             case 0:
                 firstPassApply(variant);
                 break;
             case 1:
                 secondPassApply(variant);
-                break;
-            case 2:
-                thirdPassApply(variant);
                 break;
             default:
                 throw new IllegalArgumentException("Invalid pass number: " + n);
@@ -170,12 +167,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
     }
 
     private void firstPassApply(VariantContext variant) {
-        // Skip if not expected SVTYPE or SVLEN
-        if (!isDelDup(variant) || !isLargeVariant(variant, MIN_VARIANT_SIZE)) {
-            return;
-        }
-
-        // Flag sample as having abnormal copy number if it passes various conditions
+        // Flag sample as having an abnormal copy number if it passes certain conditions
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
             Integer rdCn = genotype.hasExtendedAttribute("RD_CN") ? Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString()) : null;
@@ -194,90 +186,27 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
     }
 
     private void secondPassApply(VariantContext variant) {
-        // Skip if not expected SVTYPE or SVLEN
-        if (!isDelDup(variant) || !isLargeVariant(variant, MIN_VARIANT_SIZE)) {
-            return;
-        }
-
-        // Adjust copy numbers for overlapping variants
+        // Check if copy number needs to be adjusted for samples within overlapping variants
         Set<VariantContext> overlappingVariants = overlapDetector.getOverlaps(variant);
         for (VariantContext otherVariant : overlappingVariants) {
             if (!variant.getID().equals(otherVariant.getID())) {
-                adjustCopyNumbers(variant, otherVariant);
+                adjustCopyNumber(variant, otherVariant);
             }
         }
     }
 
-    private void thirdPassApply(VariantContext variant) {
-        VariantContextBuilder builder = new VariantContextBuilder(variant);
-        String variantID = variant.getID();
-        Map<String, Integer> revisedRdCnForVariant = revisedCopyNumbers.getOrDefault(variantID, Collections.emptyMap());
-        List<Genotype> newGenotypes = new ArrayList<>();
-
-        // Build the set of alleles for the variant
-        List<Allele> variantAlleles = new ArrayList<>(variant.getAlleles());
-        boolean variantAllelesModified = false;
-
-        for (Genotype genotype : variant.getGenotypes()) {
-            String sample = genotype.getSampleName();
-            Integer revisedRdCn = revisedRdCnForVariant.get(sample);
-            if (revisedRdCn != null) {
-                // Create a new genotype with the revised RD_CN
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                gb.attribute("RD_CN", revisedRdCn);
-
-                // Adjust GT and alleles if necessary
-                if (revisedRdCn == 2) {
-                    gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
-                    gb.GQ(99);
-                } else {
-                    // Heterozygous or other genotype
-                    Allele altAllele;
-                    if (variant.getAlternateAlleles().isEmpty()) {
-                        // Need to create ALT allele
-                        String svType = variant.getAttributeAsString("SVTYPE", null);
-                        if (svType == null) {
-                            throw new IllegalArgumentException("SVTYPE is missing for variant " + variantID);
-                        }
-                        altAllele = Allele.create("<" + svType + ">", false);
-                        variantAlleles.add(altAllele);
-                        variantAllelesModified = true;
-                    } else {
-                        altAllele = variant.getAlternateAllele(0);
-                    }
-                    gb.alleles(Arrays.asList(variant.getReference(), altAllele));
-                }
-
-                newGenotypes.add(gb.make());
-            } else {
-                newGenotypes.add(genotype);
-            }
-        }
-
-        // Update the variant's alleles if modified
-        if (variantAllelesModified) {
-            builder.alleles(variantAlleles);
-        }
-
-        builder.genotypes(newGenotypes);
-        VariantContext updatedVariant = builder.make();
-        identifyMultiallelicCnvs(updatedVariant);
-    }
-
-    private void adjustCopyNumbers(VariantContext v1, VariantContext v2) {
-        // Define data structures to store metadata
+    private void adjustCopyNumber(VariantContext v1, VariantContext v2) {
+        // Track metadata through data structures
         String variantId1 = v1.getID();
         String variantId2 = v2.getID();
         Map<String, Integer> variantRdCn1 = getRdCnForVariant(v1);
         Map<String, Integer> variantRdCn2 = getRdCnForVariant(v2);
         Map<String, Set<String>> variantSupport1 = getSupportForVariant(v1);
         Map<String, Set<String>> variantSupport2 = getSupportForVariant(v2);
-        Map<String, Genotype> variantGt1 = getGTForVariant(v1);
-        Map<String, Genotype> variantGt2 = getGTForVariant(v2);
         String svtype1 = v1.getAttributeAsString("SVTYPE", "");
         String svtype2 = v2.getAttributeAsString("SVTYPE", "");
 
-        // Calculate overlap
+        // Calculate overlap metadata
         int length1 = v1.getEnd() - v1.getStart();
         int length2 = v2.getEnd() - v2.getStart();
         int lengthOverlap = Math.min(v2.getEnd(), v1.getEnd()) - Math.max(v1.getStart(), v2.getStart());
@@ -302,8 +231,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             // Initialize fields for evaluation
             Set<String> support1 = variantSupport1.get(sample);
             Set<String> support2 = variantSupport2.get(sample);
-            Genotype genotype1 = variantGt1.get(sample);
-            Genotype genotype2 = variantGt2.get(sample);
+            Genotype genotype2 = v2.getGenotype(sample);
 
             // Condition 1: Smaller depth call is being driven by a larger call
             if (support1.contains("RD") && support1.size() > 1 && support2.equals(Collections.singleton("RD"))
@@ -389,15 +317,6 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
         return supportMap;
     }
 
-    private Map<String, Genotype> getGTForVariant(VariantContext variant) {
-        Map<String, Genotype> gtMap = new HashMap<>();
-        for (String sample : variant.getSampleNames()) {
-            Genotype genotype = variant.getGenotype(sample);
-            gtMap.put(sample, genotype);
-        }
-        return gtMap;
-    }
-
     private Map<String, Integer> getRdCnForVariant(VariantContext variant) {
         Map<String, Integer> rdCnMap = new HashMap<>();
         for (String sample : variant.getSampleNames()) {
@@ -416,24 +335,6 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
         revisedCopyNumbers.computeIfAbsent(variantId, k -> new HashMap<>()).put(sample, val);
         if (val == 2) {
             revisedComplete.add(id);
-        }
-    }
-
-    private void identifyMultiallelicCnvs(VariantContext variant) {
-        if (isDelDup(variant) &&  isLargeVariant(variant, MIN_VARIANT_SIZE)) {
-            for (Genotype genotype : variant.getGenotypes()) {
-                Integer rdCn = genotype.hasExtendedAttribute("RD_CN") ? Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString()) : null;
-                if (rdCn != null) {
-                    String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-                    if (svType.equals("DEL") && rdCn > 3) {
-                        multiallelicCnvs.add(variant.getID());
-                        break;
-                    } else if (svType.equals("DUP") && (rdCn < 1 || rdCn > 4)) {
-                        multiallelicCnvs.add(variant.getID());
-                        break;
-                    }
-                }
-            }
         }
     }
 }
