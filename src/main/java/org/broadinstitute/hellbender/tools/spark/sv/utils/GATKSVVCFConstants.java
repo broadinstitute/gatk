@@ -152,7 +152,7 @@ public final class GATKSVVCFConstants {
 
     // CleanPt1a
     public static final String EV = "EV";
-    public static final List<String> evValues = Arrays.asList(
+    public static final List<String> EV_VALUES = Arrays.asList(
             null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
     );
     public static final String ME = "ME";
