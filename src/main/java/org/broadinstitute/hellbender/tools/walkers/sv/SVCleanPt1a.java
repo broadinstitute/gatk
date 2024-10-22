@@ -194,8 +194,8 @@ public final class SVCleanPt1a extends VariantWalker {
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)) {
             String evAttribute = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.EV);
             final int evIndex = Integer.parseInt(evAttribute);
-            if (evIndex >= 0 && evIndex < GATKSVVCFConstants.evValues.size()) {
-                genotypeBuilder.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.evValues.get(evIndex));
+            if (evIndex >= 0 && evIndex < GATKSVVCFConstants.EV_VALUES.size()) {
+                genotypeBuilder.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.EV_VALUES.get(evIndex));
             }
         }
     }

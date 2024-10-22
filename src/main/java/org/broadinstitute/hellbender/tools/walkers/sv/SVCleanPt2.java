@@ -18,11 +18,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -97,8 +99,8 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
 
     private final Map<String, Set<String>> abnormalRdCn = new HashMap<>();
     private OverlapDetector<VariantContext> overlapDetector = new OverlapDetector<>(0, 0);
-    private final Map<String, Map<String, Integer>> revisedCopyNumbers = new HashMap<>(); // STATUS: To Be Verified
-    private final Set<String> revisedComplete = new HashSet<>(); // STATUS:  To Be Verified
+    private final Map<String, Map<String, Integer>> revisedCopyNumbers = new HashMap<>();
+    private final Set<String> revisedComplete = new HashSet<>();
 
     private static final int MIN_VARIANT_SIZE = 5000;
 
@@ -122,11 +124,17 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
     @Override
     public Object onTraversalSuccess() {
         try {
-            for (Map.Entry<String, Map<String, Integer>> entry : revisedCopyNumbers.entrySet()) {
-                String variantID = entry.getKey();
-                for (Map.Entry<String, Integer> sampleEntry : entry.getValue().entrySet()) {
-                    String sample = sampleEntry.getKey();
-                    int rdCn = sampleEntry.getValue();
+            List<String> variantIDs = new ArrayList<>(revisedCopyNumbers.keySet());
+            Collections.sort(variantIDs);
+
+            for (String variantID : variantIDs) {
+                Map<String, Integer> sampleMap = revisedCopyNumbers.get(variantID);
+
+                List<String> samples = new ArrayList<>(sampleMap.keySet());
+                Collections.sort(samples);
+
+                for (String sample : samples) {
+                    int rdCn = sampleMap.get(sample);
                     revisedCnWriter.write(variantID + "\t" + sample + "\t" + rdCn);
                     revisedCnWriter.newLine();
                 }
@@ -176,7 +184,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             }
 
             String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-            if ((svType.equals("DEL") && rdCn < 2) || (svType.equals("DUP") && rdCn > 2)) {
+            if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) && rdCn < 2) || (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) && rdCn > 2)) {
                 abnormalRdCn.computeIfAbsent(variant.getID(), k -> new HashSet<>()).add(sample);
             }
         }
@@ -234,7 +242,8 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             Genotype genotype2 = v2.getGenotype(sample);
 
             // Condition 1: Smaller depth call is being driven by a larger call
-            if (support1.contains("RD") && support1.size() > 1 && support2.equals(Collections.singleton("RD"))
+            if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support1.size() > 1
+                    && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && overlap2 > 0.5 && !multiallelicCnvs.contains(variantId1)) {
                 if (rdCn1 == 0) {
                     makeRevision(id2, rdCn2 + 2);
@@ -248,7 +257,8 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             }
 
             // Condition 2: Smaller CNV is driven by a larger CNV genotype
-            else if (support1.equals(Collections.singleton("RD")) && support2.contains("RD") && support2.size() > 1
+            else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
+                    && support2.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support2.size() > 1
                     && overlap1 > 0.5 && overlap2 > 0.5 && !multiallelicCnvs.contains(variantId2) && !genotype2.isHomRef()) {
                 if (rdCn2 == 0) {
                     makeRevision(id1, rdCn1 + 2);
@@ -262,7 +272,8 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             }
 
             // Condition 3: Depth-only calls where smaller call is driven by a larger call
-            else if (support1.equals(Collections.singleton("RD")) && support2.equals(Collections.singleton("RD"))
+            else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
+                    && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && overlap2 > 0.5 && !multiallelicCnvs.contains(variantId1) && svtype1.equals(svtype2)) {
                 if (rdCn1 == 0 && !rdCn1.equals(rdCn2)) {
                     makeRevision(id2, rdCn2 + 2);
@@ -278,7 +289,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             }
 
             // Condition 4: Any other time a larger call drives a smaller call
-            else if (support1.contains("RD") && overlap2 > 0.5 && !multiallelicCnvs.contains(variantId1)
+            else if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && overlap2 > 0.5 && !multiallelicCnvs.contains(variantId1)
                     && length2 > MIN_VARIANT_SIZE) {
                 if (rdCn1 == 0) {
                     makeRevision(id2, rdCn2 + 2);
@@ -295,11 +306,11 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
 
     private boolean isDelDup(VariantContext variant) {
         String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        return svType.equals("DEL") || svType.equals("DUP");
+        return svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP);
     }
 
     private boolean isLargeVariant(VariantContext variant, int minSize) {
-        int variantLength = Math.abs(variant.getAttributeAsInt("SVLEN", 0));
+        int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
         return variantLength >= minSize;
     }
 
@@ -307,7 +318,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
         Map<String, Set<String>> supportMap = new HashMap<>();
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
-            String supportStr = genotype.hasExtendedAttribute("EV") ? genotype.getExtendedAttribute("EV").toString() : "";
+            String supportStr = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV) ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString() : "";
             Set<String> supportSet = new HashSet<>();
             if (!supportStr.isEmpty()) {
                 supportSet.addAll(Arrays.asList(supportStr.split(",")));
@@ -321,8 +332,8 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
         Map<String, Integer> rdCnMap = new HashMap<>();
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
-            if (genotype.hasExtendedAttribute("RD_CN")) {
-                rdCnMap.put(sample, Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString()));
+            if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
+                rdCnMap.put(sample, Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
             }
         }
         return rdCnMap;
