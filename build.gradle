@@ -72,6 +72,7 @@ final guavaVersion = System.getProperty('guava.version', '32.1.3-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.24.1')
 final testNGVersion = System.getProperty('testNGVersion', '7.7.0')
 final googleCloudNioVersion = System.getProperty('googleCloudNioVersion','0.127.8')
+final gklVersion = System.getProperty('gklVersion', '0.8.11')
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -170,7 +171,7 @@ configurations.configureEach {
     configurations*.exclude group: 'junit', module: 'junit'
 
     //this is excluded and replaced below with a dependency on bcprof-jdk18on which fixes known vulnerabilities
-    configurations*.exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
+    //configurations*.exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -263,7 +264,7 @@ dependencies {
     // include the apache commons-logging bridge that matches the log4j version we use so
     // messages that originate with dependencies that use commons-logging (such as jexl)
     // are routed to log4j
-    implementation 'org.apache.logging.log4j:log4j-jcl:'
+    implementation 'org.apache.logging.log4j:log4j-jcl'
     // these two annotation dependencies
     // are needed because log4j-core isn't meant to be included
     // at compile time so it doesn't include its own annotations
@@ -332,7 +333,7 @@ dependencies {
     implementation 'com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives'
     implementation 'com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives'
 
-    implementation 'com.intel.gkl:gkl:0.8.11'
+    implementation 'com.intel.gkl:gkl:' + gklVersion
 
     implementation 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     implementation 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
@@ -356,7 +357,7 @@ dependencies {
         implementation 'dnsjava:dnsjava:3.6.0'
         implementation 'org.apache.commons:commons-compress:1.26.0'
         implementation 'org.apache.ivy:ivy:2.5.2'
-        implementation 'org.apache.commons:commons-text:1.10.0'
+        implementation 'org.apache.commons:commons-text:1.10.0' because 'of https://nvd.nist.gov/vuln/detail/CVE-2022-42889'
         implementation 'ch.qos.logback:logback-classic:1.4.14'
         implementation 'ch.qos.logback:logback-core:1.4.14'
         implementation 'org.apache.avro:avro:1.12.0'
@@ -372,11 +373,6 @@ dependencies {
         implementation 'org.xerial.snappy:snappy-java:1.1.10.4'
     }
 
-    //this is a replacement for the transitive dependency bcprov-jdk15on:1.70.0 which
-    //is excluded for security purposes
-    //this causes this to act as direct dependency of ours but we don't actually rely on it except as a transitive
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
-
     //use netty bom to enforce same netty version
     //this upgrades all transitive netty dependencies without adding a direct dependency on netty
     implementation platform('io.netty:netty-bom:4.1.114.Final')
@@ -387,6 +383,11 @@ dependencies {
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
+    //this is a replacement for the transitive dependency of minicluster: bcprov-jdk15on:1.70.0
+    // which is excluded for security purposes
+    //this causes this to act as direct dependency of ours but we don't actually rely on it except as a transitive
+    testUtilsImplementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'  //
+
 
     testImplementation sourceSets.testUtils.output
 
