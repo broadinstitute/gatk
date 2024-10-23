@@ -130,9 +130,9 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int nErrors = calculateIsSNPOrIndel(read, refDS, isSNP, isInsertion, isDeletion);
 
         // note for efficiency reasons we don't compute the BAQ array unless we actually have
-        // some error to marginalize over.  For ILMN data ~85% of reads have no error (tsato: update this number?)
+        // some error to marginalize over.  For ILMN data ~85% of reads have no error
         final byte[] baqArray = (nErrors == 0 || !recalArgs.enableBAQ) ? flatBAQArray(read) : calculateBAQArray(read, refDS);
-        // tsato: by default, baqArray is the array of constant value 64 i.e. [64, 64, .... , 64]
+        // by default, baqArray is the array of constant value 64 i.e. [64, 64, .... , 64]
         if( baqArray != null ) { // some reads just can't be BAQ'ed
             final PerReadCovariateMatrix covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates, true, keyCache);
             final boolean[] skip = calculateSkipArray(read, knownSites); // skip known sites of variation as well as low quality and non-regular bases
@@ -163,6 +163,8 @@ public final class BaseRecalibrationEngine implements Serializable {
         finalized = true;
     }
 
+
+    // START PROOFREAD here 10/19
     /**
      * Populate the read group table, whose elements at this point have been null.
      *

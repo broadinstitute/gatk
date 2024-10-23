@@ -162,12 +162,12 @@ public final class RecalDatum implements Serializable {
      * Each datum (either for read group covariate, or special covariate) has a way to compute
      * the empirical quality. (tsato: reword)
      *
-     * @param conditionalPrior
+     * @param priorQualityScore
      * @return
      */
-    public double getEmpiricalQuality(final double conditionalPrior) {
+    public double getEmpiricalQuality(final double priorQualityScore) {
         if (empiricalQuality == UNINITIALIZED_EMPIRICAL_QUALITY) {
-            calcEmpiricalQuality(conditionalPrior);
+            calcEmpiricalQuality(priorQualityScore);
         }
         return empiricalQuality;
     }
@@ -256,12 +256,12 @@ public final class RecalDatum implements Serializable {
     /**
      * Calculate and cache the empirical quality score from mismatches and observations (expensive operation)
      */
-    private void calcEmpiricalQuality(final double conditionalPrior) {
+    private void calcEmpiricalQuality(final double priorQualityScore) {
         // smoothing is one error and one non-error observation
         final long mismatches = (long)(getNumMismatches() + 0.5) + SMOOTHING_CONSTANT; // tsato: why add 0.5? can I get rid of it?
         final long observations = getNumObservations() + SMOOTHING_CONSTANT + SMOOTHING_CONSTANT;
 
-        final int empiricalQual = bayesianEstimateOfEmpiricalQuality(observations, mismatches, conditionalPrior);
+        final int empiricalQual = bayesianEstimateOfEmpiricalQuality(observations, mismatches, priorQualityScore);
 
         empiricalQuality = Math.min(empiricalQual, MAX_RECALIBRATED_Q_SCORE);
     }
@@ -288,15 +288,15 @@ public final class RecalDatum implements Serializable {
      *
      * @param nObservations
      * @param nErrors
-     * @param reportedQuality
+     * @param priorMeanQualityScore
      *
      * @return phredScale quality score that maximizes the posterior probability.
      */
-    public static int bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double reportedQuality) {
+    public static int bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double priorMeanQualityScore) { // tsato: reportedQuality -> priorQuality?
         final int numQualityScoreBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1);
         // tsato: this kind of search would not be necessary in the simple beta-binomial model
         final double[] logPosteriors = new IndexRange(0, numQualityScoreBins).mapToDouble(q ->
-            getLogPrior(q, reportedQuality) + getLogBinomialLikelihood(q, nObservations, nErrors));
+            getLogPrior(q, priorMeanQualityScore) + getLogBinomialLikelihood(q, nObservations, nErrors));
         return MathUtils.maxElementIndex(logPosteriors);
     }
 
@@ -322,8 +322,8 @@ public final class RecalDatum implements Serializable {
      *
      */
     @VisibleForTesting
-    protected static double getLogPrior(final double qualityScore, final double reportedQualityScore) { // tsato: David's change is to go from log10 to log
-        final int difference = Math.min(Math.abs((int) (qualityScore - reportedQualityScore)), MAX_GATK_USABLE_Q_SCORE); // tsato: why cast to integer here...
+    protected static double getLogPrior(final double qualityScore, final double priorQualityScore) { // tsato: David's change is to go from log10 to log
+        final int difference = Math.min(Math.abs((int) (qualityScore - priorQualityScore)), MAX_GATK_USABLE_Q_SCORE); // tsato: why cast to integer here...
         return logPriorCache[difference];
     }
 

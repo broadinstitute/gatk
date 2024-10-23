@@ -43,7 +43,7 @@ import java.io.Serializable;
    insertion). q[i] gives the phred scaled posterior probability of
    state[i] being wrong.
 
-   For details see Heng Li's BAQ paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3072548/
+   See Heng Li's BAQ paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3072548/
  */
 public final class BAQ implements Serializable {
     private static final long serialVersionUID = 1L;

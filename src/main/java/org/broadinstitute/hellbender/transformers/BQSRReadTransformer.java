@@ -233,12 +233,10 @@ public final class BQSRReadTransformer implements ReadTransformer {
             // TODO: Avoid using this "estimated" reported quality, and remove it.
             final double priorQualityScore = constantQualityScorePrior > 0.0 ? constantQualityScorePrior : readGroupDatum.getReportedQuality();
             final double rawRecalibratedQualityScore = hierarchicalBayesianQualityEstimate(priorQualityScore, readGroupDatum, qualityScoreDatum, recalDatumsForSpecialCovariates);
-            final byte recalibratedQualityScore = quantizedQuals.get(getBoundedIntegerQual(rawRecalibratedQualityScore));
+            final byte quantizedQualityScore = quantizedQuals.get(getBoundedIntegerQual(rawRecalibratedQualityScore));
 
-            // Bin to static quals if requested.
-            // TODO: as written the code quantizes *twice* if the static binning is enabled (first time to the dynamic bin), which should be fixed
-            // recalibratedQuals[offset] = staticQuantizedMapping == null ? recalibratedQualityScore : staticQuantizedMapping[getBoundedIntegerQual(rawRecalibratedQualityScore)];
-            recalibratedQuals[offset] = staticQuantizedMapping == null ? recalibratedQualityScore : staticQuantizedMapping[recalibratedQualityScore];
+            // TODO: as written the code quantizes *twice* if the static binning is enabled (first time to the dynamic bin). It should be quantized once.
+            recalibratedQuals[offset] = staticQuantizedMapping == null ? quantizedQualityScore : staticQuantizedMapping[quantizedQualityScore];
         }
 
         read.setBaseQualities(recalibratedQuals);
@@ -251,48 +249,48 @@ public final class BQSRReadTransformer implements ReadTransformer {
     }
 
 
-    // PROOF READING START HERE (10/13/24)
+
 
     /**
      * Quality score recalibration algorithm works as follows:
      * - Start with the (approximate, or "estimated") reported quality score. (Approximation occurs when marginalizing/collapsing
-     * over the reported quality for reach read group).
-     * - Compute (retrieve?) the empirical quality score for the read group, usgetBoundedIntegerQualing the reported score as delta (this redundant?)
-     * -
+     * over the reported qualities for each read group).
+     * - Compute (retrieve?) the empirical quality score using the per-read group datum (i.e. counts). Call it y_1.
+     * - Use y_1 just computed as the prior for the empirical quality score for the datum for the 2-tuple ( read group, quality score). Call it y_2.
+     * - Use y_2 as the prior to compute the empirical quality for the 3-tuple ( read-group, quality-score, special covariate ). Call it y_3 for the context covariate.
+     *     Similarly define y_4 for the cycle covariate. Let d_3 = y_3 - y_2, d_4 = y_4 - y_2.
+     * - (final recalibrated score) = y_2 + d_3 + d_4 = y_3 + y_4 - y_2.
      *
-     *
-     *
-     * @param priorReportedQuality the reported quality score (i.e. in log space) for the read group. This value has type
-     *                                    double because of the "combine" (or collapse) operation that converts the quality score table to
-     *                                    the read group table.
+     * @param priorQualityScore the prior quality score (in log space). It is either the "estimated" or collapsed reported quality score
+     *                          for the read group, or the constant prior if given. This value has type double because of the "combine" (or collapse) operation
+     *                          that collapses the quality scores represented within the same read group.
      * @param readGroupDatum the RecalDatum object for a particular read group at hand. May be null. (tsato: can it be null?)
      * @param qualityScoreDatum the RecalDatum object for a particular (read group, reported quality) tuple at hand. May be null.
-     * @param specialCovariates the array of RecalDatum objects for the non-required covariates (cycle and context covariates by default).
+     * @param specialCovariateDatums the array of RecalDatum objects for the non-required covariates (cycle and context covariates by default).
      * @return
      */
-    public static double hierarchicalBayesianQualityEstimate(final double priorReportedQuality,
+    public static double hierarchicalBayesianQualityEstimate(final double priorQualityScore,
                                                              final RecalDatum readGroupDatum,
                                                              final RecalDatum qualityScoreDatum,
-                                                             final RecalDatum... specialCovariates) {
-        // tsato: global in this context means, "across reported qualities"
-        // tsato: delta refers to (empirical quality) - (reported quality)
-        final double empiricalQualityForReadGroup = readGroupDatum == null ? priorReportedQuality : readGroupDatum.getEmpiricalQuality(priorReportedQuality);
-        // tsato: feeding an argument to "getEmpiricalQuality()" here is misleading because the argument will be ignored anyway
-        final double posteriorEmpiricalQualityForReportedQuality = qualityScoreDatum == null ? empiricalQualityForReadGroup
-                : qualityScoreDatum.getEmpiricalQuality(empiricalQualityForReadGroup); // tsato: this is problematic if the prior is ignored, which I believe it is now.
+                                                             final RecalDatum... specialCovariateDatums) {
+        final double empiricalQualityForReadGroup = readGroupDatum == null ? priorQualityScore : readGroupDatum.getEmpiricalQuality(priorQualityScore);
+        // TODO: the prior is ignored if the estimatedQuality for the datum has already been computed and cached.
+        final double posteriorEmpiricalQualityForReportedQuality = qualityScoreDatum == null ? empiricalQualityForReadGroup :
+                qualityScoreDatum.getEmpiricalQuality(empiricalQualityForReadGroup);
 
-        double deltaQCovariates = 0.0;
-        // tsato: at this point we stop being 'iterative' i.e. the special covariates are treated differently.
-        for( final RecalDatum empiricalQualCov : specialCovariates ) {
-            if (empiricalQualCov != null) {
-                // tsato: again, if we ignore the prior...
-                deltaQCovariates += empiricalQualCov.getEmpiricalQuality(posteriorEmpiricalQualityForReportedQuality) - posteriorEmpiricalQualityForReportedQuality;
+        //
+        double deltaSpecialCovariates = 0.0;
+        // At this point we stop being iterative; the special covariates (context and cycle by default) are treated differently.
+        for( final RecalDatum specialCovariateDatum : specialCovariateDatums ) {
+            if (specialCovariateDatum != null) {
+                // TODO: address the ignored prior
+                deltaSpecialCovariates += specialCovariateDatum.getEmpiricalQuality(posteriorEmpiricalQualityForReportedQuality) - posteriorEmpiricalQualityForReportedQuality;
             }
         }
 
-        return posteriorEmpiricalQualityForReportedQuality + deltaQCovariates;
+        return posteriorEmpiricalQualityForReportedQuality + deltaSpecialCovariates;
     }
-
+    
     /**
      * Constructs an array that maps particular quantized values to a rounded value in staticQuantizedQuals
      *
@@ -331,11 +329,9 @@ public final class BQSRReadTransformer implements ReadTransformer {
             return mapping;
         }
 
-        // tsato: this implementation appears to be correct, but highly unreadable and prone to error.
-        // better to compare to every quantized score, and take the minimum distance....isn't it.
         final int firstQual = QualityUtils.MIN_USABLE_Q_SCORE;
         int previousQual = firstQual;
-        double previousProb = QualityUtils.qualToProb(previousQual); // tsato: note this is 1 - (error probability)
+        double previousProb = QualityUtils.qualToProb(previousQual); // this is 1 - (error probability)
         for (final int nextQual : staticQuantizedQuals) {
             final double nextProb = QualityUtils.qualToProb(nextQual);
 
@@ -344,10 +340,8 @@ public final class BQSRReadTransformer implements ReadTransformer {
                     mapping[i] = (byte) previousQual;
                 } else {
                     final double iProb = QualityUtils.qualToProb(i);
-                    double diff1 = iProb - previousProb;
-                    double diff2 = nextProb - iProb;
 
-                    if (iProb - previousProb > nextProb - iProb) { // tsato: don't we need abs...
+                    if (iProb - previousProb > nextProb - iProb) {
                         mapping[i] = (byte) nextQual;
                     } else {
                         mapping[i] = (byte) previousQual;
