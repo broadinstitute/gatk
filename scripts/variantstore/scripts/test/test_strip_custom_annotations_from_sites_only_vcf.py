@@ -5,7 +5,7 @@ from strip_custom_annotations_from_sites_only_vcf import parse_annot_header
 class TestStripCustomAnnotationsFromSitesOnlyVcf(unittest.TestCase):
 
     def test_parse_annot_header(self):
-        input_custom_annotations_tsv = 'strip_custom_annotations_from_sites_only_vcf_test_files/custom_annotations_template.tsv'
+        input_custom_annotations_tsv = 'test/strip_custom_annotations_from_sites_only_vcf_test_files/custom_annotations_template.tsv'
 
         with open(input_custom_annotations_tsv) as x: expected_header = x.read()
         with open(input_custom_annotations_tsv) as tsv:

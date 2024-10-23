@@ -10,12 +10,12 @@ class TestScaleXYBedValues(unittest.TestCase):
 
         for x, y in [(10, 10), (1, 10), (10, 1)]:
             with tempfile.NamedTemporaryFile() as actual_output_bed:
-                scale_xy_bed_values('scale_xy_bed_values_test_files/intervals_downsampled_5.bed',
+                scale_xy_bed_values('test/scale_xy_bed_values_test_files/intervals_downsampled_5.bed',
                                     actual_output_bed.name,
                                     x,
                                     y)
 
-                expected_output_bed = f'scale_xy_bed_values_test_files/intervals_downsampled_5_scaled_{x}_{y}.bed'
+                expected_output_bed = f'test/scale_xy_bed_values_test_files/intervals_downsampled_5_scaled_{x}_{y}.bed'
                 self.assertTrue(filecmp.cmp(expected_output_bed,
                                             actual_output_bed.name,
                                             shallow=False), f'fail on X scaling {x} and Y scaling {y}')

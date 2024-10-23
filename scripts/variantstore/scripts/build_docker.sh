@@ -40,7 +40,7 @@ docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 # Run unit tests before pushing.
 set +o errexit
 fail=0
-for test in test_*.py
+for test in test/test_*.py
 do
     docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
     if [ $? -ne 0 ]; then
