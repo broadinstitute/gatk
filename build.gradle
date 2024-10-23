@@ -319,7 +319,7 @@ dependencies {
     implementation 'de.javakaffee:kryo-serializers:0.45'
     implementation ('com.esotericsoftware:kryo'){
         version {
-            strictly '4.+' // we're not compatible with kryo 5+
+            strictly '[4,5)' // we're not compatible with kryo 5+
         }
     }
 
