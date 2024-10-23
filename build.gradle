@@ -369,7 +369,6 @@ dependencies {
         implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.25'
         implementation 'com.squareup.okio:okio:3.9.1'
         implementation 'org.codehaus.jettison:jettison:1.5.4'
-        implementation 'org.eclipse.jetty:jetty-http:9.4.56.v20240826'
         implementation 'org.xerial.snappy:snappy-java:1.1.10.4'
     }
 
@@ -377,6 +376,7 @@ dependencies {
     //this upgrades all transitive netty dependencies without adding a direct dependency on netty
     implementation platform('io.netty:netty-bom:4.1.114.Final')
 
+    implementation platform('org.eclipse.jetty:jetty-bom:9.4.56.v20240826')
     /************************************************************************************************/
 
 
