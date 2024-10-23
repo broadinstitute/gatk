@@ -178,8 +178,8 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
         // Flag sample as having an abnormal copy number if it passes certain conditions
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
-            Integer rdCn = genotype.hasExtendedAttribute("RD_CN") ? Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString()) : null;
-            if (!sampleWhitelist.contains(sample) || !genotype.isCalled() || rdCn == null || rdCn == 2) {
+            int rdCn = Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString());
+            if (!sampleWhitelist.contains(sample) || !genotype.isCalled() || rdCn == 2) {
                 continue;
             }
 
@@ -230,9 +230,9 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             // Validate baseline filters
             String id1 = variantId1 + "@" + sample;
             String id2 = variantId2 + "@" + sample;
-            Integer rdCn1 = revisedCopyNumbers.getOrDefault(variantId1, Collections.emptyMap()).getOrDefault(sample, variantRdCn1.get(sample));
-            Integer rdCn2 = revisedCopyNumbers.getOrDefault(variantId2, Collections.emptyMap()).getOrDefault(sample, variantRdCn2.get(sample));
-            if (revisedComplete.contains(id1) || rdCn1 == null || rdCn2 == null) {
+            int rdCn1 = revisedCopyNumbers.getOrDefault(variantId1, Collections.emptyMap()).getOrDefault(sample, variantRdCn1.get(sample));
+            int rdCn2 = revisedCopyNumbers.getOrDefault(variantId2, Collections.emptyMap()).getOrDefault(sample, variantRdCn2.get(sample));
+            if (revisedComplete.contains(id1)) {
                 continue;
             }
 
@@ -275,7 +275,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && overlap2 > 0.5 && !multiallelicCnvs.contains(variantId1) && svtype1.equals(svtype2)) {
-                if (rdCn1 == 0 && !rdCn1.equals(rdCn2)) {
+                if (rdCn1 == 0 && rdCn1 != rdCn2) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1 && rdCn1 > rdCn2) {
                     makeRevision(id2, 1);
