@@ -794,7 +794,8 @@ public class Funcotator extends VariantWalker {
                 new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize),
                 false,
                 funcotatorArgs.minNumBasesForValidSegment,
-                funcotatorArgs.spliceSiteWindow
+                funcotatorArgs.spliceSiteWindow,
+                funcotatorArgs.MANETranscriptMode
         );
 
         logger.info("Initializing Funcotator Engine...");

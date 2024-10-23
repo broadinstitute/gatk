@@ -36,6 +36,8 @@ public class FuncotatorArgumentDefinitions {
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
 
+    public static final String PREFER_MANE_TRANSCRIPT_MODE = "prefer-mane-transcripts";
+
     /**
      * Do not give this a static default value or the integration tests will get hosed.
      */
