@@ -69,10 +69,10 @@ final genomicsdbVersion = System.getProperty('genomicsdb.version','1.5.4')
 final bigQueryVersion = System.getProperty('bigQuery.version', '2.35.0')
 final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.47.0')
 final guavaVersion = System.getProperty('guava.version', '32.1.3-jre')
-final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
-final testNGVersion = '7.7.0'
-
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.127.8'
+final log4j2Version = System.getProperty('log4j2Version', '2.24.1')
+final testNGVersion = System.getProperty('testNGVersion', '7.7.0')
+final googleCloudNioVersion = System.getProperty('googleCloudNioVersion','0.127.8')
+final gklVersion = System.getProperty('gklVersion', '0.8.11')
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -166,27 +166,12 @@ if (versionOverridden) {
 }
 
 configurations.configureEach {
-    resolutionStrategy {
-        // the snapshot folder contains a dev version of guava, we don't want to use that.
-        force 'com.google.guava:guava:' + guavaVersion
-        // force the htsjdk version so we don't get a different one transitively
-        force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.25.5'
-        // force testng dependency so we don't pick up a different version via GenomicsDB
-        force 'org.testng:testng:' + testNGVersion
-        force 'org.broadinstitute:barclay:' + barclayVersion
-        force 'com.twitter:chill_2.12:0.10.0'
-        force 'org.apache.commons:commons-math3:3.5'
-
-        // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
-        // via Picard, etc.
-        force googleCloudNioDependency
-
-        force 'com.esotericsoftware:kryo:4.0.0'
-    }
     configurations*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     configurations*.exclude group: 'com.google.guava', module: 'guava-jdk5'
     configurations*.exclude group: 'junit', module: 'junit'
+
+    //this is excluded and replaced below with a dependency on bcprof-jdk18on which fixes known vulnerabilities
+    //configurations*.exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -221,13 +206,13 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.12'
+        exclude module: 'spark-core_2.13'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.12.15'
+        exclude module: 'spark-mllib_2.13.15'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
@@ -235,23 +220,33 @@ configurations {
 
 dependencies {
 
-    implementation ('org.freemarker:freemarker:2.3.30')
-    implementation 'org.broadinstitute:barclay:' + barclayVersion
+    implementation 'org.freemarker:freemarker:2.3.30'
+    implementation ('org.broadinstitute:barclay'){
+        version {
+            strictly barclayVersion
+        }
+    }
     // Library for configuration:
     implementation 'org.aeonbits.owner:owner:1.0.9'
 
     implementation 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
-    implementation ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
-        exclude module: 'log4j-api'
-        exclude module: 'log4j-core'
-        exclude module: 'htsjdk'
-        exclude module: 'protobuf-java'
-    }
+
+    implementation 'org.genomicsdb:genomicsdb:' + genomicsdbVersion
     implementation 'com.opencsv:opencsv:3.4'
     implementation 'com.google.guava:guava:' + guavaVersion
-    implementation 'com.github.samtools:htsjdk:'+ htsjdkVersion
-    implementation(googleCloudNioDependency)
+
+    implementation ('com.github.samtools:htsjdk'){
+        version {
+            strictly htsjdkVersion
+        }
+    }
+
+    implementation ('com.google.cloud:google-cloud-nio'){
+        version {
+            strictly googleCloudNioVersion
+        }
+    }
 
     implementation 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
     implementation 'com.google.cloud:google-cloud-bigquerystorage:' + bigQueryStorageVersion
@@ -263,27 +258,32 @@ dependencies {
     // should we want to)
     implementation 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
 
-    implementation 'org.apache.logging.log4j:log4j-api:' + log4j2Version
-    implementation 'org.apache.logging.log4j:log4j-core:' + log4j2Version
+    implementation platform('org.apache.logging.log4j:log4j-bom:' + log4j2Version)
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
     // include the apache commons-logging bridge that matches the log4j version we use so
     // messages that originate with dependencies that use commons-logging (such as jexl)
     // are routed to log4j
-    implementation 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
+    implementation 'org.apache.logging.log4j:log4j-jcl'
+    // these two annotation dependencies
+    // are needed because log4j-core isn't meant to be included
+    // at compile time so it doesn't include its own annotations
+    // https://github.com/apache/logging-log4j2/issues/3110
+    implementation 'biz.aQute.bnd:biz.aQute.bnd.annotation'
+    implementation 'org.osgi:org.osgi.annotation.bundle'
+
 
     implementation 'org.apache.commons:commons-lang3:3.14.0'
-    implementation 'org.apache.commons:commons-math3:3.6.1'
+    implementation('org.apache.commons:commons-math3'){
+        version {
+            strictly '3.5' // changing this breaks ModelSegmentsIntegrationTests, they're quite brittle
+        }
+        because "updating this breaks ModelSegmentsIntegrationTests, they're quite brittle"
+    }
     implementation 'org.hipparchus:hipparchus-stat:2.0'
     implementation 'org.apache.commons:commons-collections4:4.4'
     implementation 'org.apache.commons:commons-vfs2:2.9.0'
     implementation 'org.apache.commons:commons-configuration2:2.10.1'
-    constraints {
-        implementation('org.apache.commons:commons-text') {
-            version {
-                strictly '1.10.0'
-            }
-            because 'previous versions have a nasty vulnerability: https://nvd.nist.gov/vuln/detail/CVE-2022-42889'
-        }
-    }
 
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
     implementation 'commons-beanutils:commons-beanutils:1.9.4'
@@ -296,12 +296,11 @@ dependencies {
     implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
     implementation 'org.ojalgo:ojalgo:44.0.0'
-    implementation ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
+    implementation('org.ojalgo:ojalgo-commons-math3:1.0.0'){
         exclude group: 'org.apache.commons'
     }
 
-    // TODO: migrate to mllib_2.12.15?
-    implementation ('org.apache.spark:spark-mllib_2.12:' + sparkVersion) {
+    implementation ('org.apache.spark:spark-mllib_2.13:' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -312,28 +311,29 @@ dependencies {
     implementation 'org.jgrapht:jgrapht-core:1.1.0'
     implementation 'org.jgrapht:jgrapht-io:1.1.0'
 
-    implementation('org.disq-bio:disq:' + disqVersion)
-    implementation('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
-    implementation('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
+    implementation 'org.disq-bio:disq:' + disqVersion
+    implementation 'org.apache.hadoop:hadoop-client:' + hadoopVersion // should be a 'provided' dependency
+    implementation 'com.github.jsr203hadoop:jsr203hadoop:1.0.3'
 
-    implementation('org.apache.orc:orc:1.6.5')
-    implementation('de.javakaffee:kryo-serializers:0.45') {
-        exclude module: 'kryo' // use Spark's version
+    implementation 'org.apache.orc:orc:1.6.5'
+    implementation 'de.javakaffee:kryo-serializers:0.45'
+    implementation ('com.esotericsoftware:kryo'){
+        version {
+            strictly '4.+' // we're not compatible with kryo 5+
+        }
     }
 
     // Dependency change for including MLLib
-    implementation('org.objenesis:objenesis:1.2')
-    testImplementation('org.objenesis:objenesis:2.1')
+    implementation 'org.objenesis:objenesis:1.2'
+    testImplementation 'org.objenesis:objenesis:2.1'
 
     // Comment the next lines to disable native code proxies in Spark MLLib
-    implementation('com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives')
-    implementation('com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives')
-    implementation('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
-    implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
+    implementation 'com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives'
+    implementation 'com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives'
+    implementation 'com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives'
+    implementation 'com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives'
 
-    implementation('com.intel.gkl:gkl:0.8.11') {
-        exclude module: 'htsjdk'
-    }
+    implementation 'com.intel.gkl:gkl:' + gklVersion
 
     implementation 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     implementation 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
@@ -344,12 +344,50 @@ dependencies {
     implementation 'org.xerial:sqlite-jdbc:3.44.1.0'
 
     // natural sort
-    implementation('net.grey-panther:natural-comparator:1.1')
-    implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
+    implementation 'net.grey-panther:natural-comparator:1.1'
+    implementation 'com.fasterxml.jackson.module:jackson-module-scala_2.13:2.9.8'
+
+    /*********  Update transitive dependencies that have known vulnerabilities in this section *******/
+    constraints {
+        // all of these constraints are here to force upgrades from lower versions of these libraries which are included
+        // as transitive dependencies
+        // once the libraries that make use of these move forward we can remove these constraints
+
+        implementation 'com.google.protobuf:protobuf-java:3.25.5'
+        implementation 'dnsjava:dnsjava:3.6.0'
+        implementation 'org.apache.commons:commons-compress:1.26.0'
+        implementation 'org.apache.ivy:ivy:2.5.2'
+        implementation 'org.apache.commons:commons-text:1.10.0' because 'of https://nvd.nist.gov/vuln/detail/CVE-2022-42889'
+        implementation 'ch.qos.logback:logback-classic:1.4.14'
+        implementation 'ch.qos.logback:logback-core:1.4.14'
+        implementation 'org.apache.avro:avro:1.12.0'
+        implementation 'io.airlift:aircompressor:0.27'
+        implementation 'org.scala-lang:scala-library:2.13.14'
+        implementation 'com.nimbusds:nimbus-jose-jwt:9.41.2'
+        implementation 'org.codehaus.janino:janino:3.1.12'
+        implementation 'org.apache.zookeeper:zookeeper:3.9.2'
+        implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.25'
+        implementation 'com.squareup.okio:okio:3.9.1'
+        implementation 'org.codehaus.jettison:jettison:1.5.4'
+        implementation 'org.eclipse.jetty:jetty-http:9.4.56.v20240826'
+        implementation 'org.xerial.snappy:snappy-java:1.1.10.4'
+    }
+
+    //use netty bom to enforce same netty version
+    //this upgrades all transitive netty dependencies without adding a direct dependency on netty
+    implementation platform('io.netty:netty-bom:4.1.114.Final')
+
+    /************************************************************************************************/
+
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
+    //this is a replacement for the transitive dependency of minicluster: bcprov-jdk15on:1.70.0
+    // which is excluded for security purposes
+    //this causes this to act as direct dependency of ours but we don't actually rely on it except as a transitive
+    testUtilsImplementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'  //
+
 
     testImplementation sourceSets.testUtils.output
 
