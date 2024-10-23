@@ -5,7 +5,7 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
 
-# Why is this comment still here??
+# Why is this comment still here?? Huh?
 
 workflow GvsQuickstartIntegration {
     input {
