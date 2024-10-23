@@ -44,7 +44,7 @@ Row fields:
             AF: array<float64>,
             AN: int32,
             AS_QUALapprox: str,
-            AS_VQSLOD: array<str>,
+            AS_CALIBRATION_SENSITIVITY: array<str>,
             AS_YNG: array<str>,
             QUALapprox: int32
         }
@@ -53,9 +53,9 @@ Row fields:
         locus: locus<GRCh38>,
         alleles: array<str>,
         filters: set<str>,
-        as_vqsr: dict<str, struct {
+        as_vets: dict<str, struct {
             model: str,
-            vqslod: float64,
+            calibration_sensitivity: float64,
             yng_status: str
         }>
     }
