@@ -168,6 +168,12 @@ public final class GATKSVVCFConstants {
     public static final String RD_GQ = "RD_GQ";
     public static final String CNVS_DEFAULT_FILE = "multi.cnvs.txt";
 
+    // CleanPt4
+    public static final String PE_GT = "PE_GT";
+    public static final String SR_GT = "SR_GT";
+    public static final String PE_GQ = "PE_GQ";
+    public static final String SR_GQ = "SR_GQ";
+
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
 
