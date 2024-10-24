@@ -11,7 +11,7 @@ from importlib import reload
 
 from create_vt_bqloadjson_from_annotations import make_annotation_json, make_annotated_json_row
 
-dir='variant_annotation_table_test_files/'
+dir= 'test/variant_annotation_table_test_files/'
 
 with open(dir + 'vat_expected_pathogenic.json') as vat_expected_pathogenic, open(dir + 'vat_test_pathogenic.json') as vat_test_pathogenic:
     cysticFibrosisExpectedVAT = json.load(vat_expected_pathogenic)

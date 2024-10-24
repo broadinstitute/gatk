@@ -4,7 +4,7 @@ import unittest
 
 from curate_input_array_files import curate_input_arrays, read_single_column_file
 
-dir='curate_input_array_test_files/'
+dir= 'test/curate_input_array_test_files/'
 
 class TestCurateInputArrays(unittest.TestCase):
     def test_curate_input_array_files_success(self):

@@ -9,7 +9,7 @@ from importlib import reload
 
 from create_genes_bqloadjson_from_annotations import make_annotation_json
 
-dir='variant_annotation_table_test_files/'
+dir= 'test/variant_annotation_table_test_files/'
 
 class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
     def test_normal(self):

@@ -3,7 +3,7 @@ import hail as hl
 from typing import Union
 from datetime import datetime
 
-import create_vat_inputs
+from scripts.variantstore.scripts import create_vat_inputs
 
 
 ###

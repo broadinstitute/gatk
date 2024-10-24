@@ -7,18 +7,18 @@ class TestSummarizeTaskMonitorLogs(unittest.TestCase):
     def test_parse_monitoring_log_files(self):
         import tempfile
 
-        input_files = ['summarize_task_monitor_logs_test_files/call-ScoreVariantAnnotationsINDELs/shard-34/monitoring'
+        input_files = ['test/summarize_task_monitor_logs_test_files/call-ScoreVariantAnnotationsINDELs/shard-34/monitoring'
                        '.log',
-                       'summarize_task_monitor_logs_test_files/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring'
+                       'test/summarize_task_monitor_logs_test_files/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring'
                        '.log',
-                       'summarize_task_monitor_logs_test_files/call-IndelsVariantRecalibrator/monitoring.log',
-                       'summarize_task_monitor_logs_test_files/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log',
-                       'summarize_task_monitor_logs_test_files/call-MergeVCFs/cacheCopy/monitoring.log',
-                       'summarize_task_monitor_logs_test_files/call-SamplesTableDatetimeCheck/monitoring.log']
+                       'test/summarize_task_monitor_logs_test_files/call-IndelsVariantRecalibrator/monitoring.log',
+                       'test/summarize_task_monitor_logs_test_files/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log',
+                       'test/summarize_task_monitor_logs_test_files/call-MergeVCFs/cacheCopy/monitoring.log',
+                       'test/summarize_task_monitor_logs_test_files/call-SamplesTableDatetimeCheck/monitoring.log']
         with tempfile.NamedTemporaryFile() as actual_output_file:
             parse_monitoring_log_files(input_files, '', actual_output_file.name)
 
-            expected_output_file = 'summarize_task_monitor_logs_test_files/expected_monitoring_summary_file.txt'
+            expected_output_file = 'test/summarize_task_monitor_logs_test_files/expected_monitoring_summary_file.txt'
             with open(actual_output_file.name, 'r') as actual, open(expected_output_file, 'r') as expected:
                 while True:
                     actual_line = actual.readline().rstrip()
