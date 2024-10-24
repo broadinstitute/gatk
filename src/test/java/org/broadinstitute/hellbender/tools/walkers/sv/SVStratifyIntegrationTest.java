@@ -41,10 +41,10 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
                 .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
                 .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath);
@@ -106,10 +106,10 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(outputFile)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
                 .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath);
@@ -140,10 +140,10 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
                 .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
                 .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath);
@@ -167,10 +167,10 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
                 .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
                 .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath)
@@ -179,7 +179,7 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args, SVStratify.class.getSimpleName());
     }
 
-    @Test(expectedExceptions = {GATKException.class, IllegalArgumentException.class})
+    @Test(expectedExceptions = {GATKException.class})
     public void testBwaMeltCohortDuplicateContextName() {
         final File outputDir = createTempDir("stratify");
         final String inputVcfPath = getToolTestDataDir() + "bwa_melt.chr22.vcf.gz";
@@ -195,10 +195,10 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test")
                 .add(SVStratify.SPLIT_OUTPUT_LONG_NAME, true)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
                 .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath);

@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>SV type</li>
  *     <li>Size range</li>
- *     <li>Reference context</li>
+ *     <li>Reference track overlap</li>
  * </ul>
  * The first step is to define these groups in a stratification configuration TSV file. Please see the
  * {@link SVStratify} tool for a description of the stratification method and expected table format.
@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  * </p>
  *
  * <p>The remaining columns define the clustering parameters for the group. See {@link SVCluster} for more information
- * on the different parameters. Note, unlike {@link SVCluster} that distinct parameter sets for depth-only,
+ * on the different parameters. Note that, unlike {@link SVCluster}, distinct parameter sets for depth-only,
  * PESR, and "mixed" clustering cannot be defined for this tool. Instead, the same parameters are applied to
  * all three cases.</p>
  *
@@ -114,8 +114,8 @@ import java.util.stream.Collectors;
  *       -R reference.fasta \
  *       -V variants.vcf.gz \
  *       -O clustered.vcf.gz \
- *       --context-name repeatmasker \
- *       --context-intervals repeatmasker.bed \
+ *       --track-name repeatmasker \
+ *       --track-intervals repeatmasker.bed \
  *       --stratify-config strata.tsv \
  *       --clustering-config cluster.tsv
  * </pre>
@@ -124,7 +124,7 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(
         summary = "Clusters structural variants within independent stratification groups",
-        oneLineSummary = "Clusters structural variants within independent stratification groups",
+        oneLineSummary = "Clusters structural variants grouping by type, size, and track overlap",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -220,7 +220,9 @@ public final class GroupedSVCluster extends SVClusterWalker {
         if (stratifications.size() > 1) {
             // don't allow more than one match since it would proliferate variants
             final String matchesString = String.join(", ", stratifications.stream().map(SVStatificationEngine.Stratum::getName).collect(Collectors.toList()));
-            throw new GATKException("Record " + record.getId() + " matched multiple groups: " + matchesString);
+            throw new GATKException("Record " + record.getId() + " matched multiple groups: " + matchesString +
+                    ". Groups must be mutually exclusive. Please modify the group configurations and/or tracks so that " +
+                    "no variant can match more than one group.");
         } else if (stratifications.isEmpty()) {
             // no match, don't cluster
             record.getAttributes().put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, Collections.singletonList(record.getId()));
@@ -236,6 +238,6 @@ public final class GroupedSVCluster extends SVClusterWalker {
     }
 
     private void clusterAndWrite(final SVCallRecord record, final SVClusterEngine clusterEngine) {
-        clusterEngine.add(record).stream().forEach(this::write);
+        clusterEngine.addAndFlush(record).stream().forEach(this::write);
     }
 }

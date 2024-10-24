@@ -96,7 +96,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * clustering, but any associated annotation fields will be set to null in the output.
      */
     @Argument(
-            doc = "Fast mode. Drops hom-ref and no-call genotype fields and emits them as no-calls.",
+            doc = "Fast mode. Drops hom-ref and missing genotype fields and emits them as missing.",
             fullName = FAST_MODE_LONG_NAME,
             optional = true
     )

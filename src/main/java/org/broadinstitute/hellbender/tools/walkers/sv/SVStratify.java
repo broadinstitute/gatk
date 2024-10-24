@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>SV type</li>
  *     <li>Size range</li>
- *     <li>Reference context</li>
+ *     <li>Reference track overlap</li>
  * </ul>
  * Records are annotated with their respective strata names in the {@link GATKSVVCFConstants#STRATUM_INFO_KEY} INFO
  * field. Users must provide a stratification configuration .tsv file (tab-delimited table) with the following column
@@ -46,13 +46,13 @@ import java.util.stream.Collectors;
  *     <li>SVTYPE</li>
  *     <li>MIN_SIZE</li>
  *     <li>MAX_SIZE</li>
- *     <li>CONTEXT</li>
+ *     <li>TRACKS</li>
  * </ol>
  * </p>
  * <p>For example:</p>
  * <table border="1">
  *   <tr>
- *      <td>NAME</td><td>SVTYPE</td><td>MIN_SIZE</td><td>MAX_SIZE</td><td>CONTEXT</td>
+ *      <td>NAME</td><td>SVTYPE</td><td>MIN_SIZE</td><td>MAX_SIZE</td><td>TRACKS</td>
  *   </tr>
  *   <tr>
  *      <td>DEL_large_SD</td><td>DEL</td><td>5000</td><td>-1</td><td>SD</td>
@@ -72,32 +72,32 @@ import java.util.stream.Collectors;
  * </table>
  * <p>
  * The "NAME" column is an arbitrary identifier, "SVTYPE" is the class of variant (DEL, DUP, INS, etc.), MIN_SIZE in an
- * inclusive size lower-bound, MAX_SIZE is an exclusive size upper-bound, and CONTEXT is a comma-delimited list of
- * reference contexts defined using the {@link SVStratificationEngineArgumentsCollection#contextFileList} and
- * {@link SVStratificationEngineArgumentsCollection#contextNameList} parameters. For example,
+ * inclusive size lower-bound, MAX_SIZE is an exclusive size upper-bound, and TRACKS is a comma-delimited list of
+ * reference tracks defined using the {@link SVStratificationEngineArgumentsCollection#trackFileList} and
+ * {@link SVStratificationEngineArgumentsCollection#trackNameList} parameters. For example,
  * </p>
  * <pre>
  *     gatk GroupedSVCluster \
- *       --context-name RM \
- *       --context-intervals repeatmasker.bed \
- *       --context-name SD \
- *       --context-intervals segmental_duplications.bed \
- *       --context-name SR \
- *       --context-intervals simple_repeats.bed \
+ *       --track-name RM \
+ *       --track-intervals repeatmasker.bed \
+ *       --track-name SD \
+ *       --track-intervals segmental_duplications.bed \
+ *       --track-name SR \
+ *       --track-intervals simple_repeats.bed \
  *       ...
  * </pre>
  * <p>
- * The MIN_SIZE, MAX_SIZE, and CONTEXT columns may contain null values {"-1", "", "NULL", "NA"}. Null MIN_SIZE and
- * MAX_SIZE correspond to negative and positive infinity, respectively, and a null CONTEXT value means that variants
- * will not be matched based on context. Variants with undefined SVLEN will only match if both MIN_SIZE and MAX_SIZE
+ * The MIN_SIZE, MAX_SIZE, and TRACKS columns may contain null values {"-1", "", "NULL", "NA"}. Null MIN_SIZE and
+ * MAX_SIZE correspond to negative and positive infinity, respectively, and a null TRACKS value means that variants
+ * will not be matched based on track. Variants with undefined SVLEN will only match if both MIN_SIZE and MAX_SIZE
  * are null.
  * </p>
  *
  * <p>The {@link SVStratificationEngineArgumentsCollection#overlapFraction},
  * {@link SVStratificationEngineArgumentsCollection#numBreakpointOverlaps}, and
  * {@link SVStratificationEngineArgumentsCollection#numBreakpointOverlapsInterchrom} can be used to modify the overlap
- * criteria for assigning variants to each group based on overlap with the given reference context intervals. By
- * default, only one endpoint of the variant needs to lie in a context interval in order to match. INS variants are
+ * criteria for assigning variants to each group based on overlap with the given reference track intervals. By
+ * default, only one endpoint of the variant needs to lie in a track interval in order to match. INS variants are
  * treated as single points and only {@link SVStratificationEngineArgumentsCollection#numBreakpointOverlaps} is used,
  * ignoring {@link SVStratificationEngineArgumentsCollection#overlapFraction}. Similarly, CTX and BND variant
  * overlap is only defined by {@link SVStratificationEngineArgumentsCollection#numBreakpointOverlapsInterchrom}.
@@ -146,8 +146,8 @@ import java.util.stream.Collectors;
  *       -O ./ \
  *       --output-prefix out \
  *       --sequence-dictionary reference.dict \
- *       --context-name RM \
- *       --context-intervals repeatmasker.bed \
+ *       --track-name RM \
+ *       --track-intervals repeatmasker.bed \
  *       --stratify-config strata.tsv
  * </pre>
  *
@@ -158,16 +158,16 @@ import java.util.stream.Collectors;
  *       -V variants.vcf.gz \
  *       -O out.vcf.gz \
  *       --sequence-dictionary reference.dict \
- *       --context-name RM \
- *       --context-intervals repeatmasker.bed \
+ *       --track-name RM \
+ *       --track-intervals repeatmasker.bed \
  *       --stratify-config strata.tsv
  * </pre>
  *
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Annotates variants by SV type, size, and reference context",
-        oneLineSummary = "Annotates variants by SV type, size, and reference context",
+        summary = "Annotates variants by SV type, size, and reference tracks",
+        oneLineSummary = "Annotates variants by SV type, size, and reference tracks",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
@@ -269,12 +269,12 @@ public final class SVStratify extends MultiVariantWalker {
      */
     public static SVStatificationEngine loadStratificationConfig(final SVStratificationEngineArgumentsCollection args,
                                                                  final SAMSequenceDictionary dictionary) {
-        Utils.validateArg(args.contextNameList.size() == args.contextFileList.size(), "Arguments --" +
-                SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME + " and --" + SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME +
+        Utils.validateArg(args.trackNameList.size() == args.trackFileList.size(), "Arguments --" +
+                SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME + " and --" + SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME +
                 " must be specified the same number of times.");
         final Map<String, List<Locatable>> map = new HashMap<>();
-        final Iterator<String> nameIterator = args.contextNameList.iterator();
-        final Iterator<GATKPath> pathIterator = args.contextFileList.iterator();
+        final Iterator<String> nameIterator = args.trackNameList.iterator();
+        final Iterator<GATKPath> pathIterator = args.trackFileList.iterator();
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
         while (nameIterator.hasNext() && pathIterator.hasNext()) {
             final String name = nameIterator.next();
@@ -282,7 +282,7 @@ public final class SVStratify extends MultiVariantWalker {
             final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(path.toString()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
             final List<Locatable> intervals = Collections.unmodifiableList(genomeLocs.toList());
             if (map.containsKey(name)) {
-                throw new UserException.BadInput("Duplicate context name was specified: " + name);
+                throw new UserException.BadInput("Duplicate track name was specified: " + name);
             }
             map.put(name, intervals);
         }

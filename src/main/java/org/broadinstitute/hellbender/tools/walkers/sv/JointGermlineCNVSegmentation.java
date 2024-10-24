@@ -297,9 +297,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             final SVCallRecord record = createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS, allosomalContigs, refAutosomalCopyNumber, sampleDB);
             if (record != null) {
                 if (!isMultiSampleInput) {
-                    bufferDefragmenterOutput(defragmenter.add(record));
+                    bufferDefragmenterOutput(defragmenter.addAndFlush(record));
                 } else {
-                    bufferClusterOutput(clusterEngine.add(record));
+                    bufferClusterOutput(clusterEngine.addAndFlush(record));
                 }
             }
         }
@@ -345,7 +345,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         //Jack and Isaac cluster first and then defragment
         bufferClusterOutput(
                 flushDefragmenterBuffer().stream()
-                        .map(clusterEngine::add)
+                        .map(clusterEngine::addAndFlush)
                         .flatMap(List::stream)
                         .collect(Collectors.toList())
         );

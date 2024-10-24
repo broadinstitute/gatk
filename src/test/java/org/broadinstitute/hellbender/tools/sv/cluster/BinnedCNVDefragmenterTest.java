@@ -97,9 +97,9 @@ public class BinnedCNVDefragmenterTest {
         //single-sample merge case, ignoring sample sets
         final SVClusterEngine temp1 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, 0.8, SVTestUtils.targetIntervals);
         final List<SVCallRecord> output1 = new ArrayList<>();
-        output1.addAll(temp1.add(SVTestUtils.call1));
+        output1.addAll(temp1.addAndFlush(SVTestUtils.call1));
         //force new cluster by adding a non-overlapping event
-        output1.addAll(temp1.add(SVTestUtils.call3));
+        output1.addAll(temp1.addAndFlush(SVTestUtils.call3));
         output1.addAll(temp1.flush()); //flushes all clusters
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
@@ -107,10 +107,10 @@ public class BinnedCNVDefragmenterTest {
 
         final SVClusterEngine temp2 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, 0.8, SVTestUtils.targetIntervals);
         final List<SVCallRecord> output2 = new ArrayList<>();
-        output2.addAll(temp2.add(SVTestUtils.call1));
-        output2.addAll(temp2.add(SVTestUtils.call2));  //should overlap after padding
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call1));
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call2));  //should overlap after padding
         //force new cluster by adding a call on another contig
-        output2.addAll(temp2.add(SVTestUtils.call4_chr10));
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call4_chr10));
         output2.addAll(temp2.flush());
         Assert.assertEquals(output2.size(), 2);
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
@@ -120,8 +120,8 @@ public class BinnedCNVDefragmenterTest {
         //cohort case, checking sample set overlap
         final SVClusterEngine temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP);
         final List<SVCallRecord> output3 = new ArrayList<>();
-        output3.addAll(temp3.add(SVTestUtils.call1));
-        output3.addAll(temp3.add(SVTestUtils.sameBoundsSampleMismatch));
+        output3.addAll(temp3.addAndFlush(SVTestUtils.call1));
+        output3.addAll(temp3.addAndFlush(SVTestUtils.sameBoundsSampleMismatch));
         output3.addAll(temp3.flush());
         Assert.assertEquals(output3.size(), 2);
     }

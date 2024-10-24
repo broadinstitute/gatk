@@ -107,18 +107,18 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
 
     /**
      * Tries to get the best copy state from the genotype. If the genotype is null, uses ploidy from a "backup"
-     * genotype as the default. If we have no clue, just return 0.
+     * genotype as the default. If we have no clue, just return -1 as a null default.
      */
     private static int getCopyState(final Genotype genotype, final Genotype matchedSampleGenotype) {
         if (genotype == null) {
             if (matchedSampleGenotype != null) {
-                return VariantContextGetters.getAttributeAsInt(matchedSampleGenotype, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
+                return VariantContextGetters.getAttributeAsInt(matchedSampleGenotype, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1);
             } else {
-                return 0;
+                throw new IllegalArgumentException("Both genotypes are null");
             }
         } else {
             return VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT,
-                    VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, 0));
+                    VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, -1));
         }
     }
 }

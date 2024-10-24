@@ -212,6 +212,6 @@ public final class SVCluster extends SVClusterWalker {
 
     @Override
     public void applyRecord(final SVCallRecord record) {
-        clusterEngine.add(record).stream().forEach(this::write);
+        clusterEngine.addAndFlush(record).stream().forEach(this::write);
     }
 }

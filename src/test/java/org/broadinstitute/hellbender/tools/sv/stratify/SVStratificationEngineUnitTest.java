@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
-import org.broadinstitute.hellbender.tools.sv.stratify.SVStatificationEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -34,16 +33,16 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test
     public void testAddContext() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
-        Assert.assertNotNull(engine.getContextIntervals(CONTEXT_1_NAME));
-        Assert.assertNull(engine.getContextIntervals(CONTEXT_2_NAME));
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        Assert.assertNotNull(engine.getTrackIntervals(CONTEXT_1_NAME));
+        Assert.assertNull(engine.getTrackIntervals(CONTEXT_2_NAME));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testAddDuplicateContext() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_2_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_2_INTERVALS);
     }
 
     @Test
@@ -55,7 +54,7 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test
     public void testAddStratification() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         engine.addStratification("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 50, 500, Collections.singleton(CONTEXT_1_NAME));
         final Collection<SVStatificationEngine.Stratum> stratificationCollection = engine.getStrata();
         Assert.assertNotNull(stratificationCollection);
@@ -67,8 +66,8 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(stratification.getMinSize().intValue(), 50);
         Assert.assertNotNull(stratification.getMaxSize());
         Assert.assertEquals(stratification.getMaxSize().intValue(), 500);
-        Assert.assertEquals(stratification.getContextNames().size(), 1);
-        Assert.assertEquals(stratification.getContextNames().get(0), CONTEXT_1_NAME);
+        Assert.assertEquals(stratification.getTrackNames().size(), 1);
+        Assert.assertEquals(stratification.getTrackNames().get(0), CONTEXT_1_NAME);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -108,7 +107,7 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         map.put(CONTEXT_2_NAME, CONTEXT_2_INTERVALS);
         final SVStatificationEngine engine = SVStatificationEngine.create(map, CONFIG_FILE_PATH, SVTestUtils.hg38Dict);
         Assert.assertNotNull(engine);
-        Assert.assertNotNull(engine.getContextIntervals(CONTEXT_1_NAME));
+        Assert.assertNotNull(engine.getTrackIntervals(CONTEXT_1_NAME));
         Assert.assertEquals(engine.getStrata().size(), 7);
     }
 
@@ -217,8 +216,8 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = GATKException.class)
     public void testGetMatchVariantsCpx() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
-        engine.addContext("context3", Lists.newArrayList(new SimpleInterval("chr1", 1500, 2500)));
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack("context3", Lists.newArrayList(new SimpleInterval("chr1", 1500, 2500)));
         engine.addStratification("strat1", GATKSVVCFConstants.StructuralVariantAnnotationType.CPX, 50, 500, Collections.singleton("context1"));
         engine.addStratification("strat2", GATKSVVCFConstants.StructuralVariantAnnotationType.CPX, 50, 500, Collections.singleton("context3"));
         final SVCallRecord record = SVTestUtils.newCallRecordWithCoordinatesAndType("record", "chr1", 1800, "chr1", 2100, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX);
@@ -229,8 +228,8 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test
     public void testGetMatchVariantsMultiple() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
-        engine.addContext("context3", Lists.newArrayList(new SimpleInterval("chr1", 1500, 2500)));
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack("context3", Lists.newArrayList(new SimpleInterval("chr1", 1500, 2500)));
         engine.addStratification("strat1", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 50, 500, Collections.singleton("context1"));
         engine.addStratification("strat2", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 50, 500, Collections.singleton("context3"));
         final SVCallRecord record = SVTestUtils.newCallRecordWithCoordinatesAndType("record", "chr1", 1800, "chr1", 2100, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
@@ -243,7 +242,7 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test
     public void testGetMatchVariantsNullContexts() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         engine.addStratification("strat1", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 50, 500, Collections.emptySet());
         final SVCallRecord record = SVTestUtils.newCallRecordWithCoordinatesAndType("record", "chr2", 1800, "chr2", 2100, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
         final Collection<SVStatificationEngine.Stratum> result = engine.getMatches(record, 0.5, 0, 2);
@@ -266,7 +265,7 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test
     public void testTestAddStratificationInnerClass() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         final SVStatificationEngine.Stratum stratification = engine.new Stratum("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 50, 500, Collections.singleton(CONTEXT_1_NAME));
         engine.addStratification(stratification);
         final Collection<SVStatificationEngine.Stratum> stratificationCollection = engine.getStrata();
@@ -279,8 +278,8 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(stratificationOut.getMinSize().intValue(), 50);
         Assert.assertNotNull(stratificationOut.getMaxSize());
         Assert.assertEquals(stratificationOut.getMaxSize().intValue(), 500);
-        Assert.assertEquals(stratificationOut.getContextNames().size(), 1);
-        Assert.assertEquals(stratificationOut.getContextNames().get(0), CONTEXT_1_NAME);
+        Assert.assertEquals(stratificationOut.getTrackNames().size(), 1);
+        Assert.assertEquals(stratificationOut.getTrackNames().get(0), CONTEXT_1_NAME);
     }
 
     @Test
@@ -426,14 +425,14 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
                                       final double overlapFraction, final int numBreakpointOverlaps,
                                       final boolean expected) {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         final SVStatificationEngine.Stratum strat = engine.new Stratum(
                 "strat",
                 GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                 null, null,
                 Collections.singleton(CONTEXT_1_NAME)
         );
-        Assert.assertEquals(strat.matchesContext(SVTestUtils.newCallRecordWithCoordinatesAndType("record", chrom, start, chrom, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
+        Assert.assertEquals(strat.matchesTracks(SVTestUtils.newCallRecordWithCoordinatesAndType("record", chrom, start, chrom, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
                 overlapFraction, numBreakpointOverlaps, 1), expected);
     }
 
@@ -452,14 +451,14 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
                                       final double overlapFraction, final int numBreakpointOverlaps,
                                       final boolean expected) {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         final SVStatificationEngine.Stratum strat = engine.new Stratum(
                 "strat",
                 GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                 null, null,
                 Collections.singleton(CONTEXT_1_NAME)
         );
-        Assert.assertEquals(strat.matchesContext(SVTestUtils.newCallRecordInsertionWithLengthAndCoordinates(chrom, start, length),
+        Assert.assertEquals(strat.matchesTracks(SVTestUtils.newCallRecordInsertionWithLengthAndCoordinates(chrom, start, length),
                 overlapFraction, numBreakpointOverlaps, 1), expected);
     }
 
@@ -483,14 +482,14 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     public void testMatchesContextBnd(final String chromA, final int posA, final String chromB, final int posB,
                                       final int numBreakpointOverlapsInterchrom, final boolean expected) {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         final SVStatificationEngine.Stratum strat = engine.new Stratum(
                 "strat",
                 GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                 null, null,
                 Collections.singleton(CONTEXT_1_NAME)
         );
-        Assert.assertEquals(strat.matchesContext(SVTestUtils.newCallRecordWithCoordinatesAndType("record", chromA, posA, chromB, posB, GATKSVVCFConstants.StructuralVariantAnnotationType.BND),
+        Assert.assertEquals(strat.matchesTracks(SVTestUtils.newCallRecordWithCoordinatesAndType("record", chromA, posA, chromB, posB, GATKSVVCFConstants.StructuralVariantAnnotationType.BND),
                 0.5, 2, numBreakpointOverlapsInterchrom), expected);
     }
 
@@ -516,14 +515,14 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test(dataProvider = "testCountAnyContextOverlapData")
     public void testCountAnyContextOverlap(final String chrom, final int start, final int end, final int expected) {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         final SVStatificationEngine.Stratum strat = engine.new Stratum(
                 "strat",
                 GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                 null, null,
                 Collections.singleton(CONTEXT_1_NAME)
         );
-        Assert.assertEquals(strat.countAnyContextOverlap(new SimpleInterval(chrom, start, end)), expected);
+        Assert.assertEquals(strat.countAnyTrackOverlap(new SimpleInterval(chrom, start, end)), expected);
     }
 
     @DataProvider(name="testIsMutuallyExclusiveData")
@@ -538,15 +537,15 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     @Test
     public void testGetters() {
         final SVStatificationEngine engine = makeDefaultEngine();
-        engine.addContext(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
         final SVStatificationEngine.Stratum strat = engine.new Stratum(
                 "strat",
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 50, 500,
                 Collections.singleton(CONTEXT_1_NAME)
         );
-        Assert.assertEquals(strat.getContextNames().size(), 1);
-        Assert.assertEquals(strat.getContextNames().get(0), CONTEXT_1_NAME);
+        Assert.assertEquals(strat.getTrackNames().size(), 1);
+        Assert.assertEquals(strat.getTrackNames().get(0), CONTEXT_1_NAME);
         Assert.assertEquals(strat.getSvType(), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
         Assert.assertEquals(strat.getMinSize(), Integer.valueOf(50));
         Assert.assertEquals(strat.getMaxSize(), Integer.valueOf(500));

@@ -53,7 +53,7 @@ public class SVClusterEngineTest {
 
     @BeforeTest
     public void initializeClusterEngine() {
-        engine.add(SVTestUtils.call1);
+        engine.addAndFlush(SVTestUtils.call1);
         linkageSizeSimilarity.setDepthOnlyParams(depthOnlyParametersSizeSimilarity);
         linkageSizeSimilarity.setMixedParams(mixedParametersSizeSimilarity);
         linkageSizeSimilarity.setEvidenceParams(evidenceParametersSizeSimilarity);
@@ -708,9 +708,9 @@ public class SVClusterEngineTest {
                 positionB3 - positionA3 + 1, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final List<SVCallRecord> output = new ArrayList<>();
-        output.addAll(engine.add(call1));
-        output.addAll(engine.add(call2));
-        output.addAll(engine.add(call3));
+        output.addAll(engine.addAndFlush(call1));
+        output.addAll(engine.addAndFlush(call2));
+        output.addAll(engine.addAndFlush(call3));
         output.addAll(engine.flush());
         Assert.assertEquals(output.size(), result);
     }
@@ -721,10 +721,10 @@ public class SVClusterEngineTest {
         final SVClusterEngine temp1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         Assert.assertTrue(temp1.isEmpty());
         final List<SVCallRecord> output1 = new ArrayList<>();
-        output1.addAll(temp1.add(SVTestUtils.call1));
+        output1.addAll(temp1.addAndFlush(SVTestUtils.call1));
         Assert.assertFalse(temp1.isEmpty());
         //force new cluster by adding a non-overlapping event
-        output1.addAll(temp1.add(SVTestUtils.call3));
+        output1.addAll(temp1.addAndFlush(SVTestUtils.call3));
         output1.addAll(temp1.flush()); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
         Assert.assertEquals(output1.size(), 2);
@@ -733,10 +733,10 @@ public class SVClusterEngineTest {
 
         final SVClusterEngine temp2 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final List<SVCallRecord> output2 = new ArrayList<>();
-        output2.addAll(temp2.add(SVTestUtils.call1));
-        output2.addAll(temp2.add(SVTestUtils.overlapsCall1));
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call1));
+        output2.addAll(temp2.addAndFlush(SVTestUtils.overlapsCall1));
         //force new cluster by adding a call on another contig
-        output2.addAll(temp2.add(SVTestUtils.call4_chr10));
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call4_chr10));
         output2.addAll(temp2.flush());
         Assert.assertEquals(output2.size(), 2);
         //median of two items ends up being the second item here
@@ -747,8 +747,8 @@ public class SVClusterEngineTest {
         //checking insensitivity to sample set overlap
         final SVClusterEngine temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final List<SVCallRecord> output3 = new ArrayList<>();
-        output3.addAll(temp3.add(SVTestUtils.call1));
-        output3.addAll(temp3.add(SVTestUtils.sameBoundsSampleMismatch));
+        output3.addAll(temp3.addAndFlush(SVTestUtils.call1));
+        output3.addAll(temp3.addAndFlush(SVTestUtils.sameBoundsSampleMismatch));
         output3.addAll(temp3.flush());
         Assert.assertEquals(output3.size(), 1);
         Assert.assertEquals(output3.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
@@ -766,7 +766,7 @@ public class SVClusterEngineTest {
         for (int i = 0; i < numRecords; i++) {
             final int start = 1000 + 10 * i;
             final int end = start + length - 1;
-            result.addAll(engine.add(SVTestUtils.newPESRCallRecordWithIntervalAndType(start, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)));
+            result.addAll(engine.addAndFlush(SVTestUtils.newPESRCallRecordWithIntervalAndType(start, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)));
         }
         result.addAll(engine.flush());
         Assert.assertEquals(result.size(), 50);
@@ -884,7 +884,7 @@ public class SVClusterEngineTest {
         final List<SVCallRecord> output = new ArrayList<>(
             records.stream()
                     .sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict))
-                    .map(engine::add)
+                    .map(engine::addAndFlush)
                     .flatMap(List::stream)
                     .collect(Collectors.toUnmodifiableList())
         );

@@ -738,6 +738,11 @@ public class CanonicalSVCollapser {
                         .thenComparing(idComparator)).get();
     }
 
+    /***
+     * This class is for comparing evidence types for the purposes of breakpoint refinement. It prioritizes as follows:
+     * SR < PE < all other types. Note that SR is the "best" evidence but corresponds to the "least" value when sorting
+     * in ascending order.
+     */
     protected static class BreakpointEvidenceComparator implements Comparator<SVCallRecord> {
         @Override
         public int compare(final SVCallRecord a, final SVCallRecord b) {

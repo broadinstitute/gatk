@@ -95,7 +95,7 @@ public class SVClusterEngine {
      * Adds and clusters the given item. Note that items must be added in order of increasing start position.
      * @param item item to cluster
      */
-    public final List<SVCallRecord> add(final SVCallRecord item) {
+    public final List<SVCallRecord> addAndFlush(final SVCallRecord item) {
         // Start a new cluster if on a new contig
         if (!item.getContigA().equals(currentContig)) {
             final List<SVCallRecord> result = flush();

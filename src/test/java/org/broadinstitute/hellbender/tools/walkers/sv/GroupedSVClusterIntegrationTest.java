@@ -39,10 +39,10 @@ public class GroupedSVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
                 .add(GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME, clusteringConfigFile)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, stratifyConfigFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, segdupName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_NAME_FILE_LONG_NAME, repeatmaskerName)
-                .add(SVStratificationEngineArgumentsCollection.CONTEXT_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
                 .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
                 .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, GATKBaseTest.hg38Reference);
 

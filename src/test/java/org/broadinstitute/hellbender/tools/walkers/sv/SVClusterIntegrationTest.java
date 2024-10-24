@@ -300,7 +300,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                     .flatMap(vcfFilename -> VariantContextTestUtils.readEntireVCFIntoMemory(getToolTestDataDir() + vcfFilename).getValue().stream())
                     .sorted(IntervalUtils.getDictionaryOrderComparator(referenceSequenceFile.getSequenceDictionary()))
                     .map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict))
-                    .map(engine::add)
+                    .map(engine::addAndFlush)
                     .flatMap(List::stream)
                     .collect(Collectors.toList())
         );
