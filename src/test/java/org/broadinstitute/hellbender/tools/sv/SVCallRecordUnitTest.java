@@ -76,7 +76,7 @@ public class SVCallRecordUnitTest {
     @Test(dataProvider="testCreateInvalidCoordinatesData", expectedExceptions = { IllegalArgumentException.class })
     public void testCreateInvalidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
         new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
-                null, Collections.emptyList(), null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+                null, Collections.emptyList(), null, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.fail("Expected exception not thrown");
     }
@@ -93,14 +93,14 @@ public class SVCallRecordUnitTest {
     @Test(dataProvider="testCreateValidCoordinatesData")
     public void testCreateValidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
         new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
-                null, Collections.emptyList(), null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+                null, Collections.emptyList(), null, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
     }
 
     @Test
     public void testGetters() {
         final SVCallRecord record = new SVCallRecord("var1", "chr1", 100, true, "chr1", 200, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                GATKSVVCFConstants.ComplexVariantSubtype.dDUP, Lists.newArrayList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:100-200", SVTestUtils.hg38Dict)), null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP, Lists.newArrayList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:100-200", SVTestUtils.hg38Dict)), null, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 GenotypesContext.create(GenotypeBuilder.create("sample1", Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL))),
                 Collections.singletonMap("TEST_KEY", "TEST_VALUE"), Collections.singleton("TEST_FILTER"), Double.valueOf(30), SVTestUtils.hg38Dict);
         Assert.assertEquals(record.getId(), "var1");
