@@ -166,9 +166,10 @@ public final class GATKSVVCFConstants {
 
     // CleanPt1b
     public static final String RD_GQ = "RD_GQ";
-    public static final String CNVS_DEFAULT_FILE = "multi.cnvs.txt";
+    public static final String MULTI_CNV = "MULTI_CNV";
 
     // CleanPt4
+    public static final String MULTI_GENO = "MULTI_GENO"; // TODO: Delete?
     public static final String PE_GT = "PE_GT";
     public static final String SR_GT = "SR_GT";
     public static final String PE_GQ = "PE_GQ";

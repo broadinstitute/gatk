@@ -63,7 +63,7 @@ import java.util.stream.Collectors;
  *       --pass-list bothsides_pass.txt
  * </pre>
  *
- * <h3>Cleaning Steps</h3>
+ * <h3>Processing Steps</h3>
  * <ol>
  *     <li>
  *         TODO
@@ -142,8 +142,8 @@ public final class SVCleanPt1a extends VariantWalker {
 
         // Add new header lines
         VCFHeader newHeader = new VCFHeader(newHeaderLines, header.getGenotypeSamples());
-        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HIGH_SR_BACKGROUND, 0, VCFHeaderLineType.Flag, "High number of SR splits in background samples indicating messy region"));
         newHeader.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.UNRESOLVED, "Variant is unresolved"));
+        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HIGH_SR_BACKGROUND, 0, VCFHeaderLineType.Flag, "High number of SR splits in background samples indicating messy region"));
         newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BOTHSIDES_SUPPORT, 0, VCFHeaderLineType.Flag, "Variant has read-level support for both sides of breakpoint"));
         newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.REVISED_EVENT, 0, VCFHeaderLineType.Flag, "Variant has been revised due to a copy number mismatch"));
 
@@ -203,7 +203,7 @@ public final class SVCleanPt1a extends VariantWalker {
     private void processSVTypeGenotype(final VariantContext variant, final GenotypeBuilder genotypeBuilder) {
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
         boolean hasMobileElement = variant.getAlleles().stream()
-                .map(allele -> GATKSVVariantContextUtils.getSymbolicAlleleSymbols(allele))
+                .map(GATKSVVariantContextUtils::getSymbolicAlleleSymbols)
                 .flatMap(Arrays::stream)
                 .anyMatch(symbol -> symbol.equals(GATKSVVCFConstants.ME));
         if (svType != null && !hasMobileElement) {
@@ -343,9 +343,7 @@ public final class SVCleanPt1a extends VariantWalker {
         try {
             final Path path = filePath.toPath();
             final TableReader<String> reader = TableUtils.reader(path, (columns, exceptionFactory) ->
-                    (dataline) -> {
-                        return dataline.get(columns.columnCount() - 1);
-                    }
+                    (dataline) -> dataline.get(columns.columnCount() - 1)
             );
 
             Set<String> result = reader.stream().collect(Collectors.toSet());
