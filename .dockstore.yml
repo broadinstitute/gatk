@@ -126,7 +126,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1441
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -152,6 +151,15 @@ workflows:
    - name: GvsCreateVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsValidateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
      filters:
        branches:
          - master
@@ -184,7 +192,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1218
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -421,7 +428,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
    - name: GvsExtractCallsetPgenMerged
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
@@ -429,8 +435,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
-         - rsa_vs_1441
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -438,11 +442,9 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - EchoCallset
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
      filters:
        branches:
          - ah_var_store
-         - EchoCallset
