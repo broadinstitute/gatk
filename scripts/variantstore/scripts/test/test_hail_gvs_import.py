@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.variantstore.scripts.hail_gvs_import import gcs_generate_avro_args
+from hail_gvs_import import gcs_generate_avro_args
 from unittest.mock import MagicMock
 
 

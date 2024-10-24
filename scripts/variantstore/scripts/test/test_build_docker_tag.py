@@ -1,6 +1,6 @@
 import re
 import unittest
-from scripts.variantstore.scripts.build_docker_tag import build_tag, build_argument_parser
+from build_docker_tag import build_tag, build_argument_parser
 
 
 class TestBuildDockerTag(unittest.TestCase):
