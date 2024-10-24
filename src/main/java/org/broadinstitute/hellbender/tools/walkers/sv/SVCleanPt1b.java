@@ -6,6 +6,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -14,10 +17,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +56,7 @@ import org.apache.commons.lang3.tuple.Pair;
  *       -O output.vcf.gz
  * </pre>
  *
- * <h3>Cleaning Steps</h3>
+ * <h3>Processing Steps</h3>
  * <ol>
  *     <li>
  *         TODO
@@ -72,15 +71,6 @@ import org.apache.commons.lang3.tuple.Pair;
 @BetaFeature
 @DocumentedFeature
 public class SVCleanPt1b extends MultiplePassVariantWalker {
-    public static final String CNV_FILE_LONG_NAME = "cnv-file";
-
-    @Argument(
-            fullName = CNV_FILE_LONG_NAME,
-            doc = "Output CNVs file name",
-            optional = true
-    )
-    private final GATKPath outputCnvs = new GATKPath(GATKSVVCFConstants.CNVS_DEFAULT_FILE);
-
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -89,10 +79,8 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     private GATKPath outputVcf;
 
     private VariantContextWriter vcfWriter;
-    private BufferedWriter cnvsWriter;
 
     private final List<VariantContext> overlappingVariantsBuffer = new ArrayList<>();
-    final private Set<String> multiCnvs = new HashSet<>();
     final private Map<String, Map<String, Pair<String, String>>> revisedEventsAll = new HashMap<>();
     final private Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
     final private Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
@@ -103,35 +91,14 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     @Override
-    public Object onTraversalSuccess() {
-        try {
-            cnvsWriter = new BufferedWriter(new FileWriter(outputCnvs.toPath().toFile()));
-            for (String variantId : multiCnvs) {
-                cnvsWriter.write(variantId);
-                cnvsWriter.newLine();
-            }
-            return null;
-        } catch (IOException e) {
-            throw new RuntimeException("Error creating CNVs file", e);
-        }
-    }
-
-    @Override
     public void closeTool() {
-        try {
-            if (vcfWriter != null) {
-                vcfWriter.close();
-            }
-            if (cnvsWriter != null) {
-                cnvsWriter.close();
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error closing output file", e);
+        if (vcfWriter != null) {
+            vcfWriter.close();
         }
     }
 
     @Override
-    protected void nthPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext, int n) {
+    protected void nthPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext, final int n) {
         switch (n) {
             case 0:
                 firstPassApply(variant);
@@ -148,14 +115,16 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     @Override
-    protected void afterNthPass(int n) {
+    protected void afterNthPass(final int n) {
         switch (n) {
             case 0:
                 processCollectedVariants();
                 break;
             case 1:
                 vcfWriter = createVCFWriter(outputVcf);
-                vcfWriter.writeHeader(getHeaderForVariants());
+                final VCFHeader header = getHeaderForVariants();
+                header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MULTI_CNV, 0, VCFHeaderLineType.Flag, "Variant is a multiallelic CNV"));
+                vcfWriter.writeHeader(header);
                 break;
         }
     }
@@ -191,12 +160,12 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         final boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         final boolean isLarge = variant.getEnd() - variant.getStart() >= 1000;
         if (isDelDup && isLarge) {
-            processCnvs(variant);
+            processCnvs(builder, variant);
         }
         vcfWriter.add(builder.make());
     }
 
-    private void processOverlap(VariantContext v1, VariantContext v2) {
+    private void processOverlap(final VariantContext v1, final VariantContext v2) {
         // Get overlap data
         VariantContext wider;
         VariantContext narrower;
@@ -311,24 +280,24 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         builder.genotypes(newGenotypes);
     }
 
-    private void processCnvs(VariantContext variant) {
+    private void processCnvs(final VariantContextBuilder builder, final VariantContext variant) {
         final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         for (String sample : variant.getSampleNamesOrderedByName()) {
             final Genotype genotype = variant.getGenotype(sample);
             final String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
             final int rdCn = Integer.parseInt(rdCnString);
             if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {
-                multiCnvs.add(variant.getID());
+                builder.attribute(GATKSVVCFConstants.MULTI_CNV, true);
                 break;
             }
         }
     }
 
-    private boolean overlaps(VariantContext v1, VariantContext v2) {
+    private boolean overlaps(final VariantContext v1, final VariantContext v2) {
         return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
     }
 
-    private Set<String> getNonReferenceSamples(VariantContext variant) {
+    private Set<String> getNonReferenceSamples(final VariantContext variant) {
         Set<String> samples = new HashSet<>();
         for (String sampleName : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sampleName);
@@ -339,7 +308,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         return samples;
     }
 
-    private double getCoverage(VariantContext wider, VariantContext narrower) {
+    private double getCoverage(final VariantContext wider, final VariantContext narrower) {
         int nStart = narrower.getStart();
         int nStop = narrower.getEnd();
         int wStart = wider.getStart();

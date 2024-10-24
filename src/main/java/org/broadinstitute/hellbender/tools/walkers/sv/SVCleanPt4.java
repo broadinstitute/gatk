@@ -6,10 +6,15 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 
+import htsjdk.variant.vcf.VCFFilterHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -18,18 +23,13 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Collections;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -56,10 +56,9 @@ import java.util.zip.GZIPOutputStream;
  *     gatk SVCleanPt4 \
  *       -V input.vcf.gz \
  *       --revised-cn-list revised.txt \
- * 	     --output-prefix result
  * </pre>
  *
- * <h3>Cleaning Steps</h3>
+ * <h3>Processing Steps</h3>
  * <ol>
  *     <li>
  *         TODO
@@ -75,7 +74,6 @@ import java.util.zip.GZIPOutputStream;
 @DocumentedFeature
 public class SVCleanPt4 extends VariantWalker {
     public static final String REVISED_CN_LIST_LONG_NAME = "revised-cn-list";
-    public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
 
     @Argument(
             fullName = REVISED_CN_LIST_LONG_NAME,
@@ -84,16 +82,16 @@ public class SVCleanPt4 extends VariantWalker {
     private GATKPath cnReviseList;
 
     @Argument(
-            fullName = OUTPUT_PREFIX_LONG_NAME,
-            doc = "Prefix for output files"
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Output VCF name"
     )
-    private String outputPrefix;
+    private GATKPath outputVcf;
 
     private VariantContextWriter vcfWriter;
     private BufferedWriter multiGenoWriter;
 
     private Map<String, Map<String, Integer>> revisedCopyNumbers;
-    private final Set<String> multiGenoIds = new HashSet<>();
 
     private double recordStart;
     private double recordEnd;
@@ -112,11 +110,11 @@ public class SVCleanPt4 extends VariantWalker {
         int batchNum = Math.max(Integer.parseInt(batchTokens[0]), 1);
         int totalBatch = Math.max(Integer.parseInt(batchTokens[1]), 1);
 
-        // Get variant count
+        // Get VCF length (note: didn't seem to warrant
         long totalNumVariants = 0;
         String inputVcfPath = getDrivingVariantsFeatureInput().getFeaturePath();
         try (FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(inputVcfPath)) {
-            for (VariantContext vc : dataSource) {
+            for (VariantContext ignored : dataSource) {
                 totalNumVariants++;
             }
         }
@@ -128,30 +126,12 @@ public class SVCleanPt4 extends VariantWalker {
         maxVF = Math.max((int) (getHeaderForVariants().getGenotypeSamples().size() * 0.01), 2);
         recordIdx = 0;
 
-        // Create output writers
-        try {
-            vcfWriter = createVCFWriter(Paths.get(outputPrefix + ".revised_vcf_lines.txt"));
-            vcfWriter.writeHeader(getHeaderForVariants());
-
-            multiGenoWriter = Files.newBufferedWriter(Paths.get(outputPrefix + ".multi_geno_ids.txt"));
-        } catch (IOException e) {
-            throw new RuntimeException("Error creating output file", e);
-        }
-    }
-
-    @Override
-    public Object onTraversalSuccess() {
-        try {
-            List<String> variantIDs = new ArrayList<>(multiGenoIds);
-            Collections.sort(variantIDs);
-            for (String variantID : variantIDs) {
-                multiGenoWriter.write(variantID);
-                multiGenoWriter.newLine();
-            }
-            return null;
-        } catch (IOException e) {
-            throw new RuntimeException("Error writing to output file ", e);
-        }
+        // Create output writer
+        vcfWriter = createVCFWriter(outputVcf);
+        final VCFHeader header = getHeaderForVariants();
+        header.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.UNRESOLVED, "Variant is unresolved"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HIGH_SR_BACKGROUND, 0, VCFHeaderLineType.Flag, "High number of SR splits in background samples indicating messy region"));
+        vcfWriter.writeHeader(header);
     }
 
     public void closeTool() {
@@ -168,10 +148,12 @@ public class SVCleanPt4 extends VariantWalker {
     }
 
     @Override
-    public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         // Initialize data structures
+        boolean isRevisedEvent = false;
+        boolean isMultiGeno = false;
         recordIdx++;
-        VariantContextBuilder variantBuilder = new VariantContextBuilder(variant);
+        VariantContextBuilder builder = new VariantContextBuilder(variant);
         List<Genotype> genotypes = variant.getGenotypes();
 
         // Modify genotypes if variant appears in revise list
@@ -189,8 +171,8 @@ public class SVCleanPt4 extends VariantWalker {
                     newGenotypes.add(genotype);
                 }
             }
-            variantBuilder.genotypes(newGenotypes);
-            vcfWriter.add(variantBuilder.make());
+            builder.genotypes(newGenotypes);
+            isRevisedEvent = true;
         }
 
         // Identify multiple genotypes if within recordStart and recordEnd
@@ -201,7 +183,7 @@ public class SVCleanPt4 extends VariantWalker {
                         Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.PE_GT).toString()) : null;
                 Integer srGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.SR_GT) ?
                         Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.SR_GT).toString()) : null;
-                Integer gt = null;
+                int gt;
                 if (peGt == null) {
                     continue;
                 } else if (srGt == null) {
@@ -226,12 +208,21 @@ public class SVCleanPt4 extends VariantWalker {
                 }
             }
             if (numGtOver2 > maxVF) {
-                multiGenoIds.add(variant.getID());
+                isMultiGeno = true;
             }
         }
+
+        if (isRevisedEvent) {
+            if (isMultiGeno) {
+                builder.attribute(GATKSVVCFConstants.MULTI_GENO, true);
+            }
+            vcfWriter.add(builder.make());
+        }
+
+        // TODO: Sex Revisions
     }
 
-    private Integer getIntegerAttribute(Genotype genotype, String attributeName) {
+    private Integer getIntegerAttribute(final Genotype genotype, final String attributeName) {
         if (genotype.hasExtendedAttribute(attributeName)) {
             Object attr = genotype.getExtendedAttribute(attributeName);
             if (attr instanceof Integer) {
