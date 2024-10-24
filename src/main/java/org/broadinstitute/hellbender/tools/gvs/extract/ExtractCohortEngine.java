@@ -636,7 +636,6 @@ public class ExtractCohortEngine {
             } else {
                 throw new UserException("GVS cannot currently handle extracting with a ploidy of "+ploidy+" as seen at "+SchemaUtils.decodeContig(location)+": "+SchemaUtils.decodePosition(location)+".");
             }
-//            genotypeBuilder.alleles(gtAlleles);
             genotypeBuilder.GQ(inferredReferenceState.getReferenceGQ());
             genotypes.add(genotypeBuilder.make());
         }

@@ -37,7 +37,7 @@ public class SamplePloidyCreator {
             }
             samplePloidyBQJsonWriter = new PendingBQWriter(projectId, datasetName, SAMPLE_PLOIDY_TABLE_NAME);
         } catch (Exception e) {
-            throw new UserException("Could not create VCF Header Scratch Table Writer", e);
+            throw new UserException("Could not create Sample Ploidy Table Writer", e);
         }
     }
 
@@ -48,7 +48,7 @@ public class SamplePloidyCreator {
                 Map<Integer, Long> ploidiesWithCounts = ploidyLine.getValue();
                 // This is the happy path we'll normally follow--no mixed ploidy detected
                 if (ploidiesWithCounts.size() == 1) {
-                    // we know there's only one item here, so we can just sent that off
+                    // we know there's only one item here, so we can just send that off
                     samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), ploidiesWithCounts.keySet().iterator().next()));
                     continue;
                 }

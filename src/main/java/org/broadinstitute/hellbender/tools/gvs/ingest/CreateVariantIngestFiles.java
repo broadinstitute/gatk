@@ -290,7 +290,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableReferenceRanges && !refRangesRowsExist) {
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
 
-            // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypea
+            // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
             // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
             samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName);
         }
