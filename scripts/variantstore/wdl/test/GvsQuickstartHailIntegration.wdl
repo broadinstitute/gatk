@@ -231,7 +231,7 @@ task TieOutVds {
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 
-        python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf~{tieout_vcf_suffix}
+        python3 /app/hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf~{tieout_vcf_suffix}
 
         pip install pytest
         ln -s ${WORK}/joined.mt .
