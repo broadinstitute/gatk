@@ -298,7 +298,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -318,6 +317,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1456_status_writes_bug
+             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
          tags:
              - /.*/
    - name: GvsIngestTieout
