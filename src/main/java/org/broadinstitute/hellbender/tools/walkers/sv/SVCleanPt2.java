@@ -74,7 +74,7 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
 
     @Argument(
             fullName = SAMPLE_LIST_LONG_NAME,
-            doc = "Samples to include"
+            doc = "File with samples to include"
     )
     private GATKPath sampleListPath;
 
