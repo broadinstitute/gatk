@@ -99,13 +99,13 @@ public final class SVCleanPt1a extends VariantWalker {
 
     @Argument(
             fullName = FAIL_LIST_LONG_NAME,
-            doc = "List of complex variants failing the background test"
+            doc = "File with complex variants failing the background test"
     )
     private GATKPath failList;
 
     @Argument(
             fullName = PASS_LIST_LONG_NAME,
-            doc = "List of complex variants passing both sides"
+            doc = "Fail with complex variants passing both sides"
     )
     private GATKPath passList;
 
@@ -124,7 +124,6 @@ public final class SVCleanPt1a extends VariantWalker {
 
     private static final int MIN_ALLOSOME_EVENT_SIZE = 5000;
 
-
     @Override
     public void onTraversalStart() {
         // Read supporting files
@@ -135,7 +134,10 @@ public final class SVCleanPt1a extends VariantWalker {
         final VCFHeader header = getHeaderForVariants();
         final Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
         for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
-            if (!(line instanceof VCFInfoHeaderLine) || !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.UNRESOLVED)) {
+            if (!(line instanceof VCFInfoHeaderLine)
+                    || (!((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.UNRESOLVED)
+                        && !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.MULTIALLELIC)
+                        && !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.VAR_GQ))) {
                 newHeaderLines.add(line);
             }
         }
@@ -161,11 +163,11 @@ public final class SVCleanPt1a extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        VariantContextBuilder variantBuilder = new VariantContextBuilder(variant);
+        VariantContextBuilder builder = new VariantContextBuilder(variant);
         final List<Genotype> processedGenotypes = processGenotypes(variant);
-        variantBuilder.genotypes(processedGenotypes);
-        processVariant(variant, variantBuilder);
-        vcfWriter.add(variantBuilder.make());
+        builder.genotypes(processedGenotypes);
+        processVariant(variant, builder);
+        vcfWriter.add(builder.make());
     }
 
     private List<Genotype> processGenotypes(final VariantContext variant) {
@@ -173,7 +175,6 @@ public final class SVCleanPt1a extends VariantWalker {
                 .map(genotype -> {
                     GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
                     processEVGenotype(genotype, genotypeBuilder);
-                    // processSVTypeGenotype(variant, genotypeBuilder);
                     processAllosomesGenotype(variant, genotype, genotypeBuilder);
                     return genotypeBuilder.make();
                 })
@@ -181,9 +182,8 @@ public final class SVCleanPt1a extends VariantWalker {
     }
 
     private void processVariant(final VariantContext variant, final VariantContextBuilder builder) {
-        // processSVType(variant, builder);
         processVarGQ(variant, builder);
-        processMultiallelic(builder);
+        processMultiallelic(variant, builder);
         processUnresolved(variant, builder);
         processNoisyEvents(variant, builder);
         processBothsidesSupportEvents(variant, builder);
@@ -197,21 +197,6 @@ public final class SVCleanPt1a extends VariantWalker {
             if (evIndex >= 0 && evIndex < GATKSVVCFConstants.EV_VALUES.size()) {
                 genotypeBuilder.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.EV_VALUES.get(evIndex));
             }
-        }
-    }
-
-    private void processSVTypeGenotype(final VariantContext variant, final GenotypeBuilder genotypeBuilder) {
-        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
-        boolean hasMobileElement = variant.getAlleles().stream()
-                .map(GATKSVVariantContextUtils::getSymbolicAlleleSymbols)
-                .flatMap(Arrays::stream)
-                .anyMatch(symbol -> symbol.equals(GATKSVVCFConstants.ME));
-        if (svType != null && !hasMobileElement) {
-            List<Allele> newGenotypeAlleles = Arrays.asList(
-                    variant.getReference(),
-                    Allele.create("<" + svType + ">", false)
-            );
-            genotypeBuilder.alleles(newGenotypeAlleles);
         }
     }
 
@@ -292,16 +277,6 @@ public final class SVCleanPt1a extends VariantWalker {
         throw new RuntimeException("Error calculating median");
     }
 
-    private void processSVType(final VariantContext variant, final VariantContextBuilder builder) {
-        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
-        if (svType != null && variant.getAlleles().stream().noneMatch(allele -> allele.getDisplayString().contains(GATKSVVCFConstants.ME))) {
-            final Allele refAllele = variant.getReference();
-            final Allele altAllele = Allele.create("<" + svType + ">", false);
-            List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
-            builder.alleles(newAlleles);
-        }
-    }
-
     private void processVarGQ(final VariantContext variant, final VariantContextBuilder builder) {
         if (variant.hasAttribute(GATKSVVCFConstants.VAR_GQ)) {
             final double varGQ = variant.getAttributeAsDouble(GATKSVVCFConstants.VAR_GQ, 0);
@@ -310,8 +285,10 @@ public final class SVCleanPt1a extends VariantWalker {
         }
     }
 
-    private void processMultiallelic(final VariantContextBuilder builder) {
-        builder.rmAttribute(GATKSVVCFConstants.MULTIALLELIC);
+    private void processMultiallelic(final VariantContext variant, final VariantContextBuilder builder) {
+        if (variant.hasAttribute(GATKSVVCFConstants.MULTIALLELIC)) {
+            builder.rmAttribute(GATKSVVCFConstants.MULTIALLELIC);
+        }
     }
 
     private void processUnresolved(final VariantContext variant, final VariantContextBuilder builder) {

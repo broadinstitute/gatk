@@ -169,11 +169,14 @@ public final class GATKSVVCFConstants {
     public static final String MULTI_CNV = "MULTI_CNV";
 
     // CleanPt4
-    public static final String MULTI_GENO = "MULTI_GENO"; // TODO: Delete?
+    public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
+    public static final String GT = "GT";
+    public static final String GQ = "GQ";
     public static final String PE_GT = "PE_GT";
     public static final String SR_GT = "SR_GT";
     public static final String PE_GQ = "PE_GQ";
     public static final String SR_GQ = "SR_GQ";
+    public static final String CNV = "CNV";
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
