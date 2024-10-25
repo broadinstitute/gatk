@@ -35,6 +35,7 @@ workflow GvsExtractCohortFromSampleNames {
     Boolean bgzip_output_vcfs = false
     Boolean collect_variant_calling_metrics = false
 
+    String? ploidy_table_name
     File? interval_list
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -144,6 +145,7 @@ workflow GvsExtractCohortFromSampleNames {
       cohort_project_id = destination_project_id,
       cohort_dataset_name = destination_dataset_name,
       extract_table_prefix = cohort_table_prefix,
+      ploidy_table_name = ploidy_table_name,
 
       scatter_count = effective_scatter_count,
       filter_set_name = filter_set_name,
