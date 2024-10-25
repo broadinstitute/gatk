@@ -241,6 +241,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - update_subcohort_for_ploidy
          tags:
              - /.*/
    - name: GvsWithdrawSamples
