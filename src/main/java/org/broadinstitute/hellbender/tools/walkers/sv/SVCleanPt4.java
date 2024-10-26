@@ -16,8 +16,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -49,9 +47,7 @@ import java.util.*;
  *
  * <h3>Usage Example</h3>
  * <pre>
- *     gatk SVCleanPt4 \
- *       -V input.vcf.gz \
- *       --revised-cn-list revised.txt \
+ *     TODO
  * </pre>
  *
  * <h3>Processing Steps</h3>
