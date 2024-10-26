@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -56,11 +55,7 @@ import java.util.stream.Collectors;
  *
  * <h3>Usage Example</h3>
  * <pre>
- *     gatk SVCleanPt1a \
- *       -V input.vcf.gz \
- *       -O output.vcf.gz
- *       --fail-list background_fail.txt
- *       --pass-list bothsides_pass.txt
+ *     TODO
  * </pre>
  *
  * <h3>Processing Steps</h3>

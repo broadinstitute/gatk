@@ -51,9 +51,7 @@ import org.apache.commons.lang3.tuple.Pair;
  *
  * <h3>Usage Example</h3>
  * <pre>
- *     gatk SVCleanPt1b \
- *       -V input.vcf.gz \
- *       -O output.vcf.gz
+ *     TODO
  * </pre>
  *
  * <h3>Processing Steps</h3>

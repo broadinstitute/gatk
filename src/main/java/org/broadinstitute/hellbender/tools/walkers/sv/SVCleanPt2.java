@@ -48,10 +48,7 @@ import java.util.Collections;
  *
  * <h3>Usage Example</h3>
  * <pre>
- *     gatk SVCleanPt2 \
- *       -V input.vcf.gz \
- *       --sample-list samples.txt \
- * 	     --output-prefix result
+ *     TODO
  * </pre>
  *
  * <h3>Processing Steps</h3>
