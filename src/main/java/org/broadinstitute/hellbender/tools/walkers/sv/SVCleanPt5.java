@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.samtools.util.OverlapDetector;
 
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -48,11 +49,7 @@ import java.util.Collections;
  *
  * <h3>Usage Example</h3>
  * <pre>
- *     gatk SVCleanPt5 \
- *       -V input.vcf.gz \
- *       --sample-list samples.txt \
- * 	     --multi-cnv-list multi.cnvs.txt
- * 	     --output-prefix result
+ *     TODO
  * </pre>
  *
  * <h3>Processing Steps</h3>
@@ -69,7 +66,8 @@ import java.util.Collections;
 )
 @BetaFeature
 @DocumentedFeature
-public class SVCleanPt5 extends MultiplePassVariantWalker { // MultiVariantWalker?
+public class SVCleanPt5 extends MultiplePassVariantWalker {
+
     @Override
     protected int numberOfPasses() {
         return 2;
@@ -77,70 +75,24 @@ public class SVCleanPt5 extends MultiplePassVariantWalker { // MultiVariantWalke
 
     @Override
     public void onTraversalStart() {
-        /*
-        try {
-            revisedCnWriter = Files.newBufferedWriter(Paths.get(outputPrefix + ".txt"));
-
-            sampleWhitelist = new HashSet<>(Files.readAllLines(sampleListPath.toPath()));
-            multiallelicCnvs = new HashSet<>(Files.readAllLines(multiCnvPath.toPath()));
-        } catch (IOException e) {
-            throw new RuntimeException("Error reading input file", e);
-        }
-         */
         return;
     }
 
     @Override
     public Object onTraversalSuccess() {
-        /*
-        try {
-            List<String> variantIDs = new ArrayList<>(revisedCopyNumbers.keySet());
-            Collections.sort(variantIDs);
-
-            for (String variantID : variantIDs) {
-                Map<String, Integer> sampleMap = revisedCopyNumbers.get(variantID);
-
-                List<String> samples = new ArrayList<>(sampleMap.keySet());
-                Collections.sort(samples);
-
-                for (String sample : samples) {
-                    int rdCn = sampleMap.get(sample);
-                    revisedCnWriter.write(variantID + "\t" + sample + "\t" + rdCn);
-                    revisedCnWriter.newLine();
-                }
-            }
-
-            if (revisedCnWriter != null) {
-                revisedCnWriter.close();
-            }
-
-            return null;
-        } catch (IOException e) {
-            throw new RuntimeException("Error writing multiallelic CNVs", e);
-        }
-         */
         return null;
     }
 
     @Override
-    protected void nthPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext, int n) {
-        /*
-        switch (n) {
-            case 0:
-                firstPassApply(variant);
-                break;
-            case 1:
-                secondPassApply(variant);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid pass number: " + n);
-        }
-         */
+    public void closeTool() {
         return;
     }
 
     @Override
-    protected void afterNthPass(int n) {
+    public void nthPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext, int n) {
         return;
     }
+
+    @Override
+    protected void afterNthPass(final int n) {}
 }

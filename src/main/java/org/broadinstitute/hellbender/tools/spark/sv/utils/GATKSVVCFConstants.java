@@ -5,8 +5,9 @@ import htsjdk.variant.variantcontext.Allele;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Map;
-
 import static java.util.Map.entry;
 
 
@@ -170,6 +171,7 @@ public final class GATKSVVCFConstants {
 
     // CleanPt4
     public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
+    public static final String NO_CALLED_SAMPLES = "NO_CALLED_SAMPLES";
     public static final String GT = "GT";
     public static final String GQ = "GQ";
     public static final String PE_GT = "PE_GT";
@@ -177,6 +179,12 @@ public final class GATKSVVCFConstants {
     public static final String PE_GQ = "PE_GQ";
     public static final String SR_GQ = "SR_GQ";
     public static final String CNV = "CNV";
+    public static final Set<List<Integer>> BIALLELIC_GTS = new HashSet<>(Arrays.asList(
+            Arrays.asList(0, 0),
+            Arrays.asList(1, 1),
+            Arrays.asList(0, 1),
+            Arrays.asList(null, null)
+    ));
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
