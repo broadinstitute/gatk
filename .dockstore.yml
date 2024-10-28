@@ -207,7 +207,7 @@ workflows:
              - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/variant-annotations-table/GvsCreateVATfromVDS.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl
      filters:
          branches:
              - master
