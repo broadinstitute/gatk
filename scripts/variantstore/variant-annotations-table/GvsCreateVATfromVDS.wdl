@@ -3,6 +3,8 @@ version 1.0
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
+# It's a comment
+
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
