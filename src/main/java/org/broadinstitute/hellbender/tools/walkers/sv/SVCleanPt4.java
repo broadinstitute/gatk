@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 
 import htsjdk.variant.vcf.*;
@@ -16,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,7 +20,15 @@ import java.io.IOException;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -68,7 +73,6 @@ public class SVCleanPt4 extends VariantWalker {
     public static final String REVISED_CN_LIST_LONG_NAME = "revised-cn-list";
     public static final String OUTLIERS_LIST_LONG_NAME = "outliers-list";
     public static final String OUTPUT_MULTIALLELIC_VCF_LONG_NAME = "output-multiallelic-vcf";
-    public static final String OUTPUT_NO_CALLS_VCF_LONG_NAME = "output-no-calls-vcf";
 
     @Argument(
             fullName = REVISED_CN_LIST_LONG_NAME,
@@ -96,17 +100,10 @@ public class SVCleanPt4 extends VariantWalker {
             doc = "Output multiallelic VCF name"
     )
     private GATKPath outputVcfMultiallelic;
-
-    @Argument(
-            fullName = OUTPUT_NO_CALLS_VCF_LONG_NAME,
-            doc = "Output no sample calls VCF name"
-    )
-    private GATKPath outputVcfNoCalls;
     */
 
     private VariantContextWriter vcfWriter;
     private VariantContextWriter vcfWriterMultiallelic;
-    private VariantContextWriter vcfWriterNoCalls;
 
     private Map<String, Map<String, Integer>> revisedCopyNumbers;
     private Set<String> outlierSamples;
@@ -158,17 +155,17 @@ public class SVCleanPt4 extends VariantWalker {
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Predicted copy state"));
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, 1, VCFHeaderLineType.Integer, "Read-depth genotype quality"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PESR_GT_OVERDISPERSION, 0, VCFHeaderLineType.Flag, "High PESR dispersion count"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.NO_CALLED_SAMPLES, 0, VCFHeaderLineType.Flag, "No samples called"));
         vcfWriter.writeHeader(header);
 
         // Create supporting output VCFs
         /*
         vcfWriterMultiallelic = createVCFWriter(outputVcfMultiallelic);
         vcfWriterMultiallelic.writeHeader(header);
-        vcfWriterNoCalls = createVCFWriter(outputVcfNoCalls);
-        vcfWriterNoCalls.writeHeader(header);
         */
     }
 
+    @Override
     public void closeTool() {
         if (vcfWriter != null) {
             vcfWriter.close();
@@ -176,10 +173,6 @@ public class SVCleanPt4 extends VariantWalker {
 
         if (vcfWriterMultiallelic != null) {
             vcfWriterMultiallelic.close();
-        }
-
-        if (vcfWriterNoCalls != null) {
-            vcfWriterNoCalls.close();
         }
     }
 
@@ -202,6 +195,7 @@ public class SVCleanPt4 extends VariantWalker {
         genotypes = processLargeDeletions(variant, builder, genotypes);
         genotypes = processLargeDuplications(variant, builder, genotypes);
         genotypes = processRevisedSex(variant, genotypes);
+        processNoCalls(variant, builder, genotypes);
 
         // Build genotypes
         builder.genotypes(genotypes);
@@ -284,7 +278,7 @@ public class SVCleanPt4 extends VariantWalker {
         }
 
         boolean gt5kbFilter = false;
-        if (!genotypes.stream().allMatch(g -> g.getAlleles().size() > 2)) { // TODO: Verify logic for allele count > 2
+        if (genotypes.stream().anyMatch(g -> !isBiallelic(g))) {
             gt5kbFilter = true;
         } else if (variant.getEnd() - variant.getStart() >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
             gt5kbFilter = true;
@@ -407,6 +401,46 @@ public class SVCleanPt4 extends VariantWalker {
             }
         }
         return updatedGenotypes;
+    }
+
+    public void processNoCalls(final VariantContext variant, final VariantContextBuilder builder, final List<Genotype> genotypes) {
+        boolean hasCalledSample = false;
+
+        for (Genotype genotype : genotypes) {
+            if (!isNoCallGt(genotype.getAlleles())) {
+                hasCalledSample = true;
+                break;
+            }
+        }
+
+        if (!hasCalledSample && builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
+            for (Genotype genotype : genotypes) {
+                Integer cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.CNV, 2).toString());
+                if (cn != null && cn != 2) {
+
+                    hasCalledSample = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasCalledSample) {
+            builder.attribute(GATKSVVCFConstants.NO_CALLED_SAMPLES, true);
+        }
+    }
+
+    private boolean isBiallelic(Genotype genotype) {
+        List<Integer> gt = genotype.getAlleles().stream()
+                .map(allele -> allele.isNoCall() ? null : allele.getDisplayString().equals("1") ? 1 : 0)
+                .toList();
+        return GATKSVVCFConstants.BIALLELIC_GTS.contains(gt);
+    }
+
+    private boolean isNoCallGt(List<Allele> alleles) {
+        if (alleles.size() == 1 && alleles.get(0).isReference()) return true;
+        if (alleles.size() == 2 && alleles.get(0).isReference() && alleles.get(1).isReference()) return true;
+        if (alleles.size() == 1 && alleles.get(0).isNoCall()) return true;
+        return false;
     }
 
     private Map<String, Map<String, Integer>> readRevisedEvents(final GATKPath filePath) {
