@@ -24,7 +24,7 @@ public final class CycleCovariate implements Covariate {
     public void recordValues(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix values, final boolean recordIndelValues) {
         final int readLength = read.getLength();
         //Note: duplicate the loop to void checking recordIndelValues on every iteration
-        if (recordIndelValues) { // tsato: interesting, look at this later
+        if (recordIndelValues) {
             for (int i = 0; i < readLength; i++) {
                 final int substitutionKey = cycleKey(i, read, false, MAXIMUM_CYCLE_VALUE);
                 final int indelKey = cycleKey(i, read, true, MAXIMUM_CYCLE_VALUE);

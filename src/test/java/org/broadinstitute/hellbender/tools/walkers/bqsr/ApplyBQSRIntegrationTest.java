@@ -63,12 +63,12 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         return ApplyBQSR.class.getSimpleName();
     }
 
-    final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-    final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
-    final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.bam";
-    final String hiSeqCram = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.cram";
-    final String hiSeqBamAligned = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
-    final String hiSeqCramAligned = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.cram";
+    private final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
+    private final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+    private final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.bam";
+    private final String hiSeqCram = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.cram";
+    private final String hiSeqBamAligned = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
+    private final String hiSeqCramAligned = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.cram";
 
     @DataProvider(name = "ApplyBQSRTest")
     public Object[][] createABQSRTestData() {
@@ -191,14 +191,11 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testMissingReadGroup() {
-        // tsato: fix this
-        final String bqsrTestDir = getTestDataDir() + "/BQSR/";
-        final String inputBam = bqsrTestDir + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
+        // TODO: there are two copies of this file (one under Validation and one under BQSR) in the repo; conslidate.
+        final String inputBam = resourceDir + WGS_B37_CH20_1M_1M1K_BAM;
+        final String knownSites = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
-        final String knownSites = bqsrTestDir + "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
-
-        // not sure where I got this but it works
-
+        // Base Recalibrator //
         final ArgumentsBuilder argsForGATKRecalibrator = new ArgumentsBuilder();
         final File recalTableOutput = createTempFile();
         final String readGroupToFilterOut = "20FUKAAXX100202.1";
@@ -208,10 +205,10 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         argsForGATKRecalibrator.add(ReadFilterArgumentDefinitions.READ_GROUP_BLACK_LIST_LONG_NAME, "PU:" + readGroupToFilterOut);
         argsForGATKRecalibrator.add(BaseRecalibrator.KNOWN_SITES_ARG_FULL_NAME,  knownSites);
         argsForGATKRecalibrator.addReference(GCS_b37_CHR20_21_REFERENCE);
-        final String USE_ORIGINAL_QUALITIES_LONG_NAME = "use-original-qualities"; // tsato: to be moved to a central location
-        argsForGATKRecalibrator.add(USE_ORIGINAL_QUALITIES_LONG_NAME, true);
+        argsForGATKRecalibrator.add(ApplyBQSRArgumentCollection.USE_ORIGINAL_QUALITIES_LONG_NAME, true);
         runCommandLine(argsForGATKRecalibrator, BaseRecalibrator.class.getSimpleName());
 
+        // Apply BQSR //
         final ArgumentsBuilder argsForApplyBQSR = new ArgumentsBuilder();
         final File recalibratedBam = createTempFile("missingReadGroupTest", ".bam");
         argsForApplyBQSR.addInput(inputBam);
@@ -223,41 +220,38 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         argsForApplyBQSR.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 20);
         argsForApplyBQSR.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 30);
         argsForApplyBQSR.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 40);
-        argsForApplyBQSR.add(USE_ORIGINAL_QUALITIES_LONG_NAME, true);
+        argsForApplyBQSR.add(ApplyBQSRArgumentCollection.USE_ORIGINAL_QUALITIES_LONG_NAME, true);
 
         runCommandLine(argsForApplyBQSR, ApplyBQSR.class.getSimpleName());
 
+        // Validation //
         final ReadsPathDataSource originalReads = new ReadsPathDataSource(Path.of(inputBam));
         final Iterator<GATKRead> originalReadsIterator = originalReads.iterator();
 
         final ReadsPathDataSource recalibratedReads = new ReadsPathDataSource(recalibratedBam.toPath());
         final Iterator<GATKRead> recalibratedReadsIterator = recalibratedReads.iterator();
 
-        int numOriginalReads = 0;
-        int numRecalibratedReads = 0;
-
         // Counts the number of times (new qual) != (old qual) to detect the pathological case where none of the bases is recalibrated.
         int numDifferingQualBases = 0;
 
         while (recalibratedReadsIterator.hasNext()) {
             final GATKRead originalRead = originalReadsIterator.next();
-            numOriginalReads++;
-
             final GATKRead recalibratedRead = recalibratedReadsIterator.next();
-            numRecalibratedReads++;
 
             Assert.assertEquals(originalRead.getReadGroup(), recalibratedRead.getReadGroup());
             final SAMFileHeader originalBamHeader = originalReads.getHeader();
 
             final byte[] newQuals = recalibratedRead.getBaseQualities();
             final byte[] oldQuals = ReadUtils.getOriginalBaseQualities(originalRead);
+
             if (ReadUtils.getPlatformUnit(originalRead, originalBamHeader).equals(readGroupToFilterOut)) {
-                // tsato: or should I check the whole read?
-                final Random random = new Random();
-                final int numSamples = 5;
-                final int[] randomIndices = IntStream.range(0, numSamples).map(i -> random.nextInt(newQuals.length)).toArray();
+                // These are the read groups that are not in teh recal table.
+                // final Random random = new Random();
+                // final int numSamples = 5;
+                // final int[] randomIndices = IntStream.range(0, numSamples).map(i -> random.nextInt(newQuals.length)).toArray();
                 final List<Byte> possibleQuals = Arrays.asList((byte) 2, (byte) 6, (byte) 10, (byte) 20, (byte) 30, (byte) 40);
-                for (int i : randomIndices){
+                // for (int i : randomIndices){
+                for (int i = 0; i < originalRead.getLength(); i++){
                     final byte newQual = newQuals[i];
                     final byte oldQual = oldQuals[i];
                     final int diff = Math.abs(newQual - oldQual);
@@ -269,11 +263,10 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
                         numDifferingQualBases++;
                     }
                 }
-            } else {
-                int d = 3;
             }
         }
 
+        Assert.assertTrue(numDifferingQualBases > 0, "No recalibration was done");
         Assert.assertFalse(originalReadsIterator.hasNext(), "the original and recalibrated bam must have the same number of reads");
     }
 

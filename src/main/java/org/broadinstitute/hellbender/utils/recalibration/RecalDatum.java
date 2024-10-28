@@ -16,7 +16,6 @@ import java.io.Serializable;
  *
  * for a given set of covariates.
  *
- * This tuple will constitute a row
  */
 public final class RecalDatum implements Serializable {
     public static final byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
@@ -25,18 +24,18 @@ public final class RecalDatum implements Serializable {
     private static final double MULTIPLIER = 100000.0;  //See discussion in numMismatches about what the multiplier is.
 
     /**
-     * Estimated reported quality score based on combined data's individual q-reporteds and number of observations
-     * The estimating occurs when collapsing counts across different reported qualities. TODO: this estimating can probably be eliminated. Investigate.
+     * Estimated reported quality score based on combined data's individual q-reporteds and number of observations.
+     * The estimating occurs when collapsing counts across different reported qualities.
+     * TODO: investigate whether this estimated reported quality score can be eliminated.
      *
      */
-    private double reportedQuality; // tsato: estimated by Illumina? Should be renamed to OriginalQuality
-    // tsato: This column only occurs in ReadGroupTable ..... so consider inheriting RecalDatum.
-    // tsato: once estimating is eliminated, change type to int
+    private double reportedQuality;
 
     /**
-     * The empirical quality for datums that have been collapsed together (by read group and reported quality, for example)
-     */ // tsato: defaults to the "QualityScore"
-    private int empiricalQuality; // tsato: seems like it should have type integers
+     * The empirical quality for datums that have been collapsed together (by read group and reported quality, for example).
+     */
+    private int empiricalQuality; // tsato: seems like it should have type integers (or byte?)
+    // TODO: this should probably be a byte
 
     /**
      * Number of bases seen in total
@@ -69,19 +68,19 @@ public final class RecalDatum implements Serializable {
     /**
      * Create a new RecalDatum with given observation and mismatch counts, and an reported quality
      *
-     * @param _numObservations    observations
-     * @param _numMismatches      mismatches
-     * @param reportedQuality     Qreported ???
+     * @param numObservations
+     * @param numMismatches
+     * @param reportedQuality
      */
-    public RecalDatum(final long _numObservations, final double _numMismatches, final byte reportedQuality) {
-        if ( _numObservations < 0 ) throw new IllegalArgumentException("numObservations < 0");
-        if ( _numMismatches < 0.0 ) throw new IllegalArgumentException("numMismatches < 0");
+    public RecalDatum(final long numObservations, final double numMismatches, final byte reportedQuality) {
+        if ( numObservations < 0 ) throw new IllegalArgumentException("numObservations < 0");
+        if ( numMismatches < 0.0 ) throw new IllegalArgumentException("numMismatches < 0");
         if ( reportedQuality < 0 ) throw new IllegalArgumentException("reportedQuality < 0");
 
-        numObservations = _numObservations;
-        numMismatches = (_numMismatches*MULTIPLIER);
-        this.reportedQuality = reportedQuality; // tsato: estimated is very confusing here
-        empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
+        this.numObservations = numObservations;
+        this.numMismatches = (numMismatches*MULTIPLIER);
+        this.reportedQuality = reportedQuality;
+        this.empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
     /**
@@ -97,14 +96,22 @@ public final class RecalDatum implements Serializable {
 
     /**
      * Add in all of the data from other into this object, updating the reported quality from the expected
-     * error rate implied by the two reported qualities
+     * error rate implied by the two reported qualities.
+     *
+     * For example (the only example?), this method is called when collapsing the counts across reported quality scores within
+     * the same read group.
      *
      * @param other  RecalDatum to combine
      */
     public void combine(final RecalDatum other) { // tsato: when is data combined?
-        final double sumErrors = this.calcExpectedErrors() + other.calcExpectedErrors(); // tsato: ok I think I get it now but why would we combine different quals?
+        // increment the counts
         increment(other.getNumObservations(), other.getNumMismatches()); // tsato: very questionable here for combining, but it seems that the only time we combine is GatherBQSRTables (confirm)
-        reportedQuality = -10 * Math.log10(sumErrors / getNumObservations()); // tsato: aren't we mixing up estimatedQReported with EmpiricalQuality here?
+
+        // this is the *expected* (or theoretical) number of errors given the reported qualities and the number of observations.
+        final double expectedNumErrors = this.calcExpectedErrors() + other.calcExpectedErrors();
+        // we use the theoretical count above to compute the "estimated" reported quality
+        // after combining two datums with different reported qualities.
+        reportedQuality = -10 * Math.log10(expectedNumErrors / getNumObservations());
         empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
@@ -117,10 +124,10 @@ public final class RecalDatum implements Serializable {
         empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
-    public final double getReportedQuality() {
+    public double getReportedQuality() {
         return reportedQuality;
     }
-    public final byte getEstimatedQReportedAsByte() {
+    public byte getReportedQualityAsByte() {
         return (byte)(int)(Math.round(getReportedQuality()));
     }
 
@@ -145,7 +152,7 @@ public final class RecalDatum implements Serializable {
             return doubleMismatches / doubleObservations;
         }
     }
-
+    // tsato: int-double
     public void setEmpiricalQuality(final int empiricalQuality) {
         if ( empiricalQuality < 0 ) throw new IllegalArgumentException("empiricalQuality < 0");
         if ( Double.isInfinite(empiricalQuality) ) throw new IllegalArgumentException("empiricalQuality is infinite");
@@ -159,11 +166,7 @@ public final class RecalDatum implements Serializable {
     }
 
     /**
-     * Each datum (either for read group covariate, or special covariate) has a way to compute
-     * the empirical quality. (tsato: reword)
-     *
-     * @param priorQualityScore
-     * @return
+     * Compute the empirical base quality (roughly (num errors)/(num observations)) from the counts stored in this datum.
      */
     public double getEmpiricalQuality(final double priorQualityScore) {
         if (empiricalQuality == UNINITIALIZED_EMPIRICAL_QUALITY) {
@@ -197,43 +200,43 @@ public final class RecalDatum implements Serializable {
     //
     //---------------------------------------------------------------------------------------------------------------
 
-    public final long getNumObservations() {
+    public long getNumObservations() {
         return numObservations;
     }
 
-    public final void setNumObservations(final long numObservations) {
+    public void setNumObservations(final long numObservations) {
         if ( numObservations < 0 ) throw new IllegalArgumentException("numObservations < 0");
         this.numObservations = numObservations;
         empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
-    public final double getNumMismatches() {
+    public double getNumMismatches() {
         return numMismatches/MULTIPLIER;
     }
 
-    public final void setNumMismatches(final double numMismatches) {
+    public void setNumMismatches(final double numMismatches) {
         if ( numMismatches < 0 ) throw new IllegalArgumentException("numMismatches < 0");
         this.numMismatches = (numMismatches*MULTIPLIER);
         empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
-    public final void incrementNumObservations(final long by) {
+    public void incrementNumObservations(final long by) {
         numObservations += by;
         empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
-    public final void incrementNumMismatches(final double by) {
+    public void incrementNumMismatches(final double by) {
         numMismatches += (by*MULTIPLIER);
         empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY; // tsato: ditto below
     }
 
-    public final void increment(final long incObservations, final double incMismatches) {
+    public void increment(final long incObservations, final double incMismatches) {
         numObservations += incObservations;
-        numMismatches += (incMismatches*MULTIPLIER); // tsato: Multiplier used to avoid underflow, or something like that.
-        empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY; // tsato: why not just delete this?
+        numMismatches += (incMismatches*MULTIPLIER); // the multiplier used to avoid underflow, or something like that.
+        empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
-    public final void increment(final boolean isError) {
+    public void increment(final boolean isError) {
         increment(1, isError ? 1.0 : 0.0);
     }
 
@@ -258,9 +261,9 @@ public final class RecalDatum implements Serializable {
      */
     private void calcEmpiricalQuality(final double priorQualityScore) {
         // smoothing is one error and one non-error observation
-        final long mismatches = (long)(getNumMismatches() + 0.5) + SMOOTHING_CONSTANT; // tsato: why add 0.5? can I get rid of it?
+        final long mismatches = (long)(getNumMismatches() + 0.5) + SMOOTHING_CONSTANT; // TODO: why add 0.5?
         final long observations = getNumObservations() + SMOOTHING_CONSTANT + SMOOTHING_CONSTANT;
-
+        // tsato: int-double
         final int empiricalQual = bayesianEstimateOfEmpiricalQuality(observations, mismatches, priorQualityScore);
 
         empiricalQuality = Math.min(empiricalQual, MAX_RECALIBRATED_Q_SCORE);
@@ -284,17 +287,17 @@ public final class RecalDatum implements Serializable {
      *
      * P(theta|theta_rep) ~ Gaussian(theta | theta_rep, 0.5)
      *
-     * tsato: why not just use beta for prior?
+     * TODO: use beta prior to do away with the search.
      *
-     * @param nObservations
-     * @param nErrors
-     * @param priorMeanQualityScore
+     * @param nObservations n in the model above.
+     * @param nErrors the observed number of sequencing errors.
+     * @param priorMeanQualityScore the prior quality score, often the reported quality score.
      *
      * @return phredScale quality score that maximizes the posterior probability.
-     */
+     */ // tsato: int-double
     public static int bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double priorMeanQualityScore) { // tsato: reportedQuality -> priorQuality?
         final int numQualityScoreBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1);
-        // tsato: this kind of search would not be necessary in the simple beta-binomial model
+
         final double[] logPosteriors = new IndexRange(0, numQualityScoreBins).mapToDouble(q ->
             getLogPrior(q, priorMeanQualityScore) + getLogBinomialLikelihood(q, nObservations, nErrors));
         return MathUtils.maxElementIndex(logPosteriors);
@@ -306,10 +309,10 @@ public final class RecalDatum implements Serializable {
      */
     public static final byte MAX_GATK_USABLE_Q_SCORE = 40;
     private static final double[] logPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
-    static { // tsato: huh...difference in log space is modeled as a Gaussian distribution...
-        // normal distribution describing P(empiricalQuality - reportedQuality).  Its mean is zero because a priori we expect // tsato: this is David's comment
+    static {
+        // normal distribution describing P(empiricalQuality - reportedQuality).  Its mean is zero because a priori we expect
         // no systematic bias in the reported quality score
-        final double mean = 0.0; // tsato: perhaps more natural to set the mean to be reported quality, rather than modeling the difference
+        final double mean = 0.0;
         final double sigma = 0.5;   // with these parameters, deltas can shift at most ~20 Q points
         final NormalDistribution gaussian = new NormalDistribution(null, mean, sigma);
 
@@ -318,12 +321,9 @@ public final class RecalDatum implements Serializable {
         }
     }
 
-    /**
-     *
-     */
     @VisibleForTesting
-    protected static double getLogPrior(final double qualityScore, final double priorQualityScore) { // tsato: David's change is to go from log10 to log
-        final int difference = Math.min(Math.abs((int) (qualityScore - priorQualityScore)), MAX_GATK_USABLE_Q_SCORE); // tsato: why cast to integer here...
+    protected static double getLogPrior(final double qualityScore, final double priorQualityScore) {
+        final int difference = Math.min(Math.abs((int) (qualityScore - priorQualityScore)), MAX_GATK_USABLE_Q_SCORE);
         return logPriorCache[difference];
     }
 

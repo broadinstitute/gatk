@@ -40,19 +40,19 @@ public final class CycleCovariateUnitTest extends GATKBaseTest {
 
         PerReadCovariateMatrix perReadCovariateMatrix = new PerReadCovariateMatrix(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, perReadCovariateMatrix, true);
-        verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), 1, (short) 1);
+        verifyCovariateArray(perReadCovariateMatrix.getMismatchMatrix(), 1, (short) 1);
 
         read.setIsReverseStrand(true);
         covariate.recordValues(read, header, perReadCovariateMatrix, true);
-        verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), readLength, -1);
+        verifyCovariateArray(perReadCovariateMatrix.getMismatchMatrix(), readLength, -1);
 
         read.setIsSecondOfPair();
         covariate.recordValues(read, header, perReadCovariateMatrix, true);
-        verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), -readLength, 1);
+        verifyCovariateArray(perReadCovariateMatrix.getMismatchMatrix(), -readLength, 1);
 
         read.setIsReverseStrand(false);
         covariate.recordValues(read, header, perReadCovariateMatrix, true);
-        verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), -1, -1);
+        verifyCovariateArray(perReadCovariateMatrix.getMismatchMatrix(), -1, -1);
     }
 
     private void verifyCovariateArray(int[][] values, int init, int increment) {

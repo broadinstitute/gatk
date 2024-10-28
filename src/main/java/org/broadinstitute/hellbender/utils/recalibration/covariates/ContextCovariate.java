@@ -15,13 +15,13 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
 /**
- * The reference (?) or read (?) context for {@code } bases preceding and including the base in question.
+ * The read bases preceding and including the base in question (as opposed to reference bases).
  */
 public final class ContextCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(ContextCovariate.class);
 
-    private final int mismatchesContextSize;
+    private final int mismatchesContextSize; // TODO: rename "mismatch" here
     private final int indelsContextSize;
 
     private final int mismatchesKeyMask;
@@ -36,7 +36,6 @@ public final class ContextCovariate implements Covariate {
     private static final int MAX_DNA_CONTEXT = 13;
     private final byte lowQualTail;
 
-    //
     public static final int UNKNOWN_OR_ERROR_CONTEXT_CODE = -1;
 
     public ContextCovariate(final RecalibrationArgumentCollection RAC){
@@ -72,7 +71,6 @@ public final class ContextCovariate implements Covariate {
         // Note: we're using a non-standard library here because boxing came up on profiling as taking 20% of time in applyBQSR.
         // IntList avoids boxing
         // This list has the same length as the read and contains the n-base context at each position.
-        // tsato: why call it mismatch keys?
         final IntList nBasePairContextAtEachCycle = getReadContextAtEachPosition(strandedClippedBases, mismatchesContextSize, mismatchesKeyMask);
 
         final int readLengthAfterClipping = strandedClippedBases.length;

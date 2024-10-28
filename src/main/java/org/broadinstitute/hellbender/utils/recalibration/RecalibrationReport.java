@@ -63,7 +63,7 @@ public final class RecalibrationReport {
 
         recalibrationTables = new RecalibrationTables(covariates, allReadGroups.size());
 
-        initializeReadGroupCovariates(allReadGroups); // tsato: suspect this does nothing
+        initializeReadGroupCovariates(allReadGroups);
 
         parseReadGroupTable(report.getTable(RecalUtils.READGROUP_REPORT_TABLE_TITLE), recalibrationTables.getReadGroupTable());
 
@@ -189,7 +189,7 @@ public final class RecalibrationReport {
      */
     private void initializeReadGroupCovariates(final SortedSet<String> allReadGroups) {
         for (final String readGroup: allReadGroups) {
-            covariates.getReadGroupCovariate().keyFromValue(readGroup); // tsato: ??? does this do anything by side effect?
+            covariates.getReadGroupCovariate().keyFromValue(readGroup);
         }
     }
 
@@ -289,7 +289,7 @@ public final class RecalibrationReport {
                 (Double) reportTable.get(row, RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME) : // we get it if we are in the read group table
                 decodeByte(reportTable.get(row, RecalUtils.QUALITY_SCORE_COLUMN_NAME)); // or we use the reported quality if we are in any other table
 
-        final RecalDatum datum = new RecalDatum(nObservations, nErrors, (byte)1); // tsato: why 1? just a place holder,
+        final RecalDatum datum = new RecalDatum(nObservations, nErrors, (byte)1);
         datum.setReportedQuality(estimatedQReported);
         //datum.setEmpiricalQuality(empiricalQuality); // don't set the value here because we will want to recompute with a different conditional Q score prior value
         return datum;

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.recalibration.covariates;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
  */
 public final class ReadGroupCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
-    private boolean allowReadGroupsNotInRecalTable; // tsato: rename
 
     public static final int MISSING_READ_GROUP_KEY = -1;
 
@@ -31,18 +29,16 @@ public final class ReadGroupCovariate implements Covariate {
      */
     private final Map<Integer, String> readGroupReverseLookupTable;
 
-    public ReadGroupCovariate(final RecalibrationArgumentCollection RAC, final List<String> readGroups){
+    public ReadGroupCovariate(final List<String> readGroups){
         final Map<String, Integer> rgLookupTable = new LinkedHashMap<>();
         final Map<Integer, String> rgReverseLookupTable = new LinkedHashMap<>(); // tsato: this should be an array
-        // allowReadGroupsNotInRecalTable = RAC.allowReadGroupsNotInRecalTable; // tsato: or should I just keep all of RAC...
-        allowReadGroupsNotInRecalTable = false;
 
-                readGroups.forEach(
-                readGroupId -> {
-                    if (!rgLookupTable.containsKey(readGroupId)) { // tsato: nextid can be 0
-                        final int nextId = rgLookupTable.size(); // tsato: ok I guess this works too...
-                        rgLookupTable.put(readGroupId, nextId); // tsato: setting the breakpoint here to see if the first id is 0
-                        rgReverseLookupTable.put(nextId, readGroupId);
+        readGroups.forEach(
+                rg -> {
+                    if (!rgLookupTable.containsKey(rg)) {
+                        final int nextId = rgLookupTable.size();
+                        rgLookupTable.put(rg, nextId); // read group index starts at 0 TODO: refactor to use a for loop
+                        rgReverseLookupTable.put(nextId, rg);
                     }
                 }
         );
@@ -51,18 +47,16 @@ public final class ReadGroupCovariate implements Covariate {
     }
 
     @Override
-    public void recordValues(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix covariateTable, final boolean recordIndelValues) {
+    public void recordValues(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix perReadCovariateMatrix, final boolean recordIndelValues) {
         final SAMReadGroupRecord rg = ReadUtils.getSAMReadGroupRecord(read, header);
-        final String readGroupId = getReadGroupIdentifier(rg); // tsato: really this is a read group "name". ID is also standard.
+        final String readGroupIdentifier = getReadGroupIdentifier(rg); // note that the identifier by default is PU, not the ID.
 
-        final int key = keyForReadGroup(readGroupId); // tsato: key = index, rename it.
-        // tsato: I guess the ReadGroupCovariate instance can now whether it's called by ... recalibrate or apply
-        // tsato: by the way, BaseRecalibrator should be called, CollectBQSRData or something, then ApplyBQSR.
-        Utils.validate(key >= -1, "key must be -1 or a nonnegative integer but is " + key); // tsato: can it be 0...
+        final int key = keyForReadGroup(readGroupIdentifier); // tsato: key/index, be consistent
+        Utils.validate(key >= -1, "key must be a nonnegative integer or the error code -1, but is " + key);
 
         final int readLength = read.getLength();
         for (int i = 0; i < readLength; i++) {
-            covariateTable.addCovariate(key, key, key, i); // tsato: (mismatch, insertion, deletion) for the first three args
+            perReadCovariateMatrix.addCovariate(key, key, key, i); // (mismatch, insertion, deletion) for the first three args
         }
     }
 
@@ -78,7 +72,6 @@ public final class ReadGroupCovariate implements Covariate {
         return pu == null ? rg.getId() : pu;
     }
 
-
     @Override
     public String formatKey(final int key) {
         Utils.validate(readGroupReverseLookupTable.containsKey(key), () -> "missing key " + key);
@@ -90,22 +83,22 @@ public final class ReadGroupCovariate implements Covariate {
         return keyForReadGroup((String) value);
     }
 
-
     /**
+     * Given the identifier (PU) for the read group, return that integer code (key) that represents it
+     * in the perReadCovariateMatrix.
      *
-     * @param readGroupId
-     * @return The index if the read group exists. -1 if the read group does not exist in the recal table,
-     *         but the parameter is set. (REWORD)
+     * @param readGroupIdentifier PU by default, read group ID if PU not available.
+     * @return The integer code/key if the read group exists. -1 if the read group does not exist in the recal table.
      */
-    private int keyForReadGroup(final String readGroupId) {
-        if (readGroupLookupTable.containsKey(readGroupId)) { // tsato: should I also check "allowMissingReadGroup" here? Add it as an instance variable for this class...
-            return readGroupLookupTable.get(readGroupId);
-        } else { // tsato: perhaps we can return -1, and error
-            return MISSING_READ_GROUP_KEY; // tsato: but we shouldn't return -1 when calling recalibration engine....ok with apply bqsr...caller should throw error as needed
+    private int keyForReadGroup(final String readGroupIdentifier) {
+        if (readGroupLookupTable.containsKey(readGroupIdentifier)) {
+            return readGroupLookupTable.get(readGroupIdentifier);
+        } else {
+            // ApplyBQSR is responsible for handling this error code appropriately; if --allow-missing-reads is set to false,
+            // which is the default, it will throw an error.
+            // TODO: throw an error here if this part is reached from BaseRecalibrator
+            return MISSING_READ_GROUP_KEY;
         }
-//        } else {
-//            throw new GATKException("The covariates table is missing " + RecalUtils.READGROUP_COLUMN_NAME + " " + readGroupId + " in " + RecalUtils.READGROUP_REPORT_TABLE_TITLE);
-//        }
     }
 
     @Override

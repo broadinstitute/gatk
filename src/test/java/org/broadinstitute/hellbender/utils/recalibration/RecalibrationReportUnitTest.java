@@ -191,7 +191,7 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
 
             for (EventType errorMode : EventType.values()) {
 
-                final int[] covariates = rc.getKeySet(offset, errorMode);
+                final int[] covariates = rc.getCovariatesAtOffset(offset, errorMode);
                 final int randomMax = errorMode == EventType.BASE_SUBSTITUTION ? 10000 : 100000;
 
                 rgTable.put(createRandomRecalDatum(randomMax, 10), covariates[0], errorMode.ordinal());

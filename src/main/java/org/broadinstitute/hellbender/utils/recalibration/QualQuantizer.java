@@ -106,7 +106,7 @@ public final class QualQuantizer {
         final long nObservations, nErrors;
         final Set<QualInterval> subIntervals;
 
-        /** for debugging / visualization.  When was this interval created? */ // tsato: ???
+        /** for debugging / visualization.  When was this interval created? */
         int mergeOrder;
 
         protected QualInterval(final int qStart, final int qEnd, final long nObservations, final long nErrors, final int level) {
@@ -216,7 +216,7 @@ public final class QualQuantizer {
          *
          * If the globalErrorRate is e, this value is:
          *
-         * sum_i |log10(e_i) - log10(e)| * nObservations_i (tsato: is this ok? same as if done in probability space?)
+         * sum_i |log10(e_i) - log10(e)| * nObservations_i
          *
          * each the index i applies to all leaves of the tree accessible from this interval
          * (found recursively from subIntervals as necessary)
@@ -264,7 +264,7 @@ public final class QualQuantizer {
             final long nObs = nObservationsPerQual.get(qStart);
             final double errorRate = QualityUtils.qualToErrorProb((byte)qStart);
             final double nErrors = nObs * errorRate;
-            final QualInterval qi = new QualInterval(qStart, qStart, nObs, (int) Math.floor(nErrors), 0, (byte)qStart); // tsato: level?
+            final QualInterval qi = new QualInterval(qStart, qStart, nObs, (int) Math.floor(nErrors), 0, (byte)qStart);
             intervals.add(qi);
         }
 
@@ -300,7 +300,7 @@ public final class QualQuantizer {
             lastMergeOrder = Math.max(Math.max(lastMergeOrder, left.mergeOrder), right.mergeOrder);
             if ( minMerge == null || (merged.getPenalty() < minMerge.getPenalty() ) ) {
                 if ( logger.isDebugEnabled() ) logger.debug("  Updating merge " + minMerge);
-                minMerge = merged; // tsato: we merge two bins that results in the lowest "penalty"
+                minMerge = merged; // merge two bins that when merged incur the lowest "penalty"
             }
         }
 

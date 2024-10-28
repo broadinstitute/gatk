@@ -50,7 +50,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
         this.qualDimension = covariates.getQualityScoreCovariate().maximumKeyValue() + 1;
         this.numReadGroups = numReadGroups;
 
-        // two special (required) tables: read group table and (reported) quality score table
+        // two special (i.e. required) tables: read group table and reported quality score table
         this.readGroupTable = new NestedIntegerArray<>(numReadGroups, eventDimension);
         allTables.add(readGroupTable);
         covariateToTable.put(covariates.getReadGroupCovariate(), readGroupTable);
@@ -62,7 +62,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
         tableToCovariate.put(qualityScoreTable, covariates.getQualityScoreCovariate());
 
         //Non-special tables
-        for (Covariate cov : covariates.getAdditionalCovariates()){ // tsato: for additional
+        for (Covariate cov : covariates.getAdditionalCovariates()){
             final NestedIntegerArray<RecalDatum> table = new NestedIntegerArray<>(numReadGroups, qualDimension, cov.maximumKeyValue() + 1, eventDimension);
             additionalTables.add(table);
             allTables.add(table);
@@ -128,7 +128,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
      * @return a newly allocated, empty read group x quality score table
      */
     public NestedIntegerArray<RecalDatum> makeQualityScoreTable() {
-        return new NestedIntegerArray<>(numReadGroups, qualDimension, eventDimension); // tsato: max qual set to be 93....
+        return new NestedIntegerArray<>(numReadGroups, qualDimension, eventDimension);
     }
 
     /**

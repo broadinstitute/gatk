@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.CycleCovariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.PerReadCovariateMatrix;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadGroupCovariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
@@ -164,7 +163,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         read.clearAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES);
 
         // this array has shape ( read length ) x ( num covariates ). The covariates are encoded as integers.
-        final int[][] covariatesForRead = perReadCovariateMatrix.getKeySet(EventType.BASE_SUBSTITUTION);
+        final int[][] covariatesForRead = perReadCovariateMatrix.getMatrixForErrorModel(EventType.BASE_SUBSTITUTION);
 
         final int rgKey = covariates.getReadGroupCovariate().keyFromValue(ReadGroupCovariate.getReadGroupIdentifier(readGroup));
 

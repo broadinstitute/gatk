@@ -35,16 +35,15 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * Creates a new list of standard BQSR covariates and initializes each covariate.
      */
     public StandardCovariateList(final RecalibrationArgumentCollection rac, final List<String> allReadGroups) {
-        readGroupCovariate = new ReadGroupCovariate(rac, allReadGroups);
+        readGroupCovariate = new ReadGroupCovariate(allReadGroups);
         qualityScoreCovariate = new QualityScoreCovariate(rac);
         final ContextCovariate contextCovariate = new ContextCovariate(rac);
         final CycleCovariate cycleCovariate = new CycleCovariate(rac);
 
         additionalCovariates = Collections.unmodifiableList(Arrays.asList(contextCovariate, cycleCovariate));
         allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate));
-        // tsato: use the above new constants to make the list
         //precompute for faster lookup (shows up on profile)
-        indexByClass = new LinkedHashMap<>(); // tsato: or we could do this too...
+        indexByClass = new LinkedHashMap<>();
         for(int i = 0; i < allCovariates.size(); i++){
             indexByClass.put(allCovariates.get(i).getClass(), i);
         }
@@ -132,12 +131,11 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * For each covariate compute the values for all positions in this read and
      * record the values in the provided storage object.
      */
-    // tsato: consider renaming this method
     public void populatePerReadCovariateMatrix(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix perReadCovariateMatrix, final boolean recordIndelValues) {
         for (int i = 0, n = allCovariates.size(); i < n; i++) {
             final Covariate cov = allCovariates.get(i);
-            perReadCovariateMatrix.setCovariateIndex(i); // tsato: this is less than ideal...but ok.
-            cov.recordValues(read, header, perReadCovariateMatrix, recordIndelValues); // tsato: "cov" should already know which index it belongs to.
+            perReadCovariateMatrix.setCovariateIndex(i); // TODO: avoid this pattern. "cov" should already know which index it belongs to.
+            cov.recordValues(read, header, perReadCovariateMatrix, recordIndelValues);
         }
     }
 

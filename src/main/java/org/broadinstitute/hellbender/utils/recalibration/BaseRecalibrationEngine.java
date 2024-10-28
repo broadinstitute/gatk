@@ -164,23 +164,31 @@ public final class BaseRecalibrationEngine implements Serializable {
     }
 
 
-    // START PROOFREAD here 10/19
     /**
-     * Populate the read group table, whose elements at this point have been null.
+     * Populate the read group table, whose elements have been null up to this point,
+     * by collapsing (marginalizing) the datum table index by both the read group and the reported quality score
+     * over the reported quality score.
      *
      * Called once after all calls to updateDataForRead have been issued.
      *
+     * @param byQualTable the RecalDatum table indexed by (read group, reported quality score)
+     * @param byReadGroupTable the empty RecalDatum table to be populated by this method.
      *
-     *
+     * TODO: this method should take a qual table and return a read group table.
      */
     public static void collapseQualityScoreTableToReadGroupTable(final NestedIntegerArray<RecalDatum> byQualTable,
                                                                  final NestedIntegerArray<RecalDatum> byReadGroupTable) {
-        // tsato: RG table (num read groups) x (num error modes), Qual table: (num read groups) x (num possible qualities) x (num error modes)
+        // the read group table has shape: (num read groups) x (num error modes)
+        // the qual table has shape:       (num read groups) x (num reported qualities) x (num error modes)
 
         // iterate over all values in the qual table
+
+        final int readGroupIndex = 0;
+        final int errorModeIndex = 2;
+
         for ( final NestedIntegerArray.Leaf<RecalDatum> leaf : byQualTable.getAllLeaves() ) {
-            final int rgKey = leaf.keys[0]; // tsato: ??? What are these indices?
-            final int eventIndex = leaf.keys[2];
+            final int rgKey = leaf.keys[readGroupIndex]; // tsato: ??? What are these indices?
+            final int eventIndex = leaf.keys[errorModeIndex];
             final RecalDatum rgDatum = byReadGroupTable.get(rgKey, eventIndex);
             final RecalDatum qualDatum = leaf.value;
 
@@ -189,23 +197,21 @@ public final class BaseRecalibrationEngine implements Serializable {
                 byReadGroupTable.put(new RecalDatum(qualDatum), rgKey, eventIndex);
             } else {
                 // combine the qual datum with the existing datum in the byReadGroup table
-                    rgDatum.combine(qualDatum); // tsato: why???
-            } // tsato: can numObservations ever be 0 or is there a pseudocount?
+                rgDatum.combine(qualDatum);
+            }
         }
     }
 
     /**
      * To replicate the results of BQSR whether or not we save tables to disk (which we need in Spark),
      * we need to trim the numbers to a few decimal placed (that's what writing and reading does).
-     *
-     * @param rt
      */
     public static void roundTableValues(final RecalibrationTables rt) {
         for (int i = 0; i < rt.numTables(); i++) {
             for (final NestedIntegerArray.Leaf<RecalDatum> leaf : rt.getTable(i).getAllLeaves()) {
                 leaf.value.setNumMismatches(MathUtils.roundToNDecimalPlaces(leaf.value.getNumMismatches(), RecalUtils.NUMBER_ERRORS_DECIMAL_PLACES));
                 // leaf.value.setEmpiricalQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getEmpiricalQuality(), RecalUtils.EMPIRICAL_QUAL_DECIMAL_PLACES)); // tsato: now an integer
-                leaf.value.setReportedQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getReportedQuality(), RecalUtils.EMPIRICAL_Q_REPORTED_DECIMAL_PLACES));
+                leaf.value.setReportedQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getReportedQuality(), RecalUtils.REPORTED_QUALITY_DECIMAL_PLACES));
             }
         }
     }
@@ -242,8 +248,8 @@ public final class BaseRecalibrationEngine implements Serializable {
     /**
      * Update the recalibration statistics using the information in recalInfo.
      *
-     * Implementation detail: we only update the quality score table and the optional tables.
-     * At the end of the iteration, we collapse the reduce (or collapse, or marginalize) score table to get the read group table.
+     * Implementation detail: we only populate the quality score table and the optional tables.
+     * The read group table will be populated later by collapsing the quality score table.
      *
      * @param recalInfo data structure holding information about the recalibration values for a single read
      */
@@ -255,27 +261,27 @@ public final class BaseRecalibrationEngine implements Serializable {
         final NestedIntegerArray<RecalDatum> qualityScoreTable = recalTables.getQualityScoreTable();
 
         final int nCovariates = covariates.size();
-        final int nSpecialCovariates = covariates.numberOfSpecialCovariates();
         final int readLength = read.getLength();
         for( int offset = 0; offset < readLength; offset++ ) {
             if( ! recalInfo.skip(offset) ) {
                 for (int idx = 0; idx < cachedEventTypes.length; idx++) { //Note: we loop explicitly over cached values for speed
                     final EventType eventType = cachedEventTypes[idx];
-                    final int[] covariatesAtOffset = perReadCovariateMatrix.getKeySet(offset, eventType);
+                    final int[] covariatesAtOffset = perReadCovariateMatrix.getCovariatesAtOffset(offset, eventType);
                     final int eventIndex = eventType.ordinal();
                     final byte qual = recalInfo.getQual(eventType, offset);
                     final double isError = recalInfo.getErrorFraction(eventType, offset);
 
                     final int readGroup = covariatesAtOffset[StandardCovariateList.READ_GROUP_COVARIATE_DEFAULT_INDEX];
                     final int baseQuality = covariatesAtOffset[StandardCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
-                    // tsato: can remove "putIfNecessary..." part, just an implementation detail.
+
                     RecalUtils.incrementDatum3keys(qualityScoreTable, qual, isError, readGroup, baseQuality, eventIndex);
-                    // tsato: the starding index is wrong and will break if we add more special covariates etc.
+
                     for (int i = RecalUtils.NUM_REQUIRED_COVARIATES; i < nCovariates; i++) {
-                        final int keyi = covariatesAtOffset[i];
-                        if (keyi >= 0) { // tsato: in theory unnecessary to keep two tables, we can collapse this "finer" table to get the former
-                            RecalUtils.incrementDatum4keys(recalTables.getTable(i), qual, isError, readGroup, baseQuality, keyi, eventIndex);
-                        } // i see, this order of keys should be ok, have different tables when referencing 3keys above vs 4 keys.
+                        final int specialCovariate = covariatesAtOffset[i];
+                        if (specialCovariate >= 0) {
+                            RecalUtils.incrementDatum4keys(recalTables.getTable(i), qual, isError,
+                                    readGroup, baseQuality, specialCovariate, eventIndex);
+                        }
                     }
                 }
             }
@@ -324,12 +330,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         return read;
     }
 
-    /**
-     * // tsato: add docs here
-     * @param read
-     * @param knownSites
-     * @return
-     */
+    // TODO: add docs
     private boolean[] calculateSkipArray( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] skip = new boolean[readLength];
@@ -340,7 +341,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         return skip;
     }
 
-    // Add docs
+    // TODO: add docs
     private static boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
@@ -394,7 +395,7 @@ public final class BaseRecalibrationEngine implements Serializable {
                 case X:
                     for (int i = 0; i < elementLength; i++) {
                         int snpInt = (BaseUtils.basesAreEqual(read.getBase(readPos), refBases[refPos]) ? 0 : 1);
-                        snp[readPos] = snpInt; // tsato: why not use i for the index...
+                        snp[readPos] = snpInt;
                         nEvents += snpInt;
                         readPos++;
                         refPos++;
@@ -431,7 +432,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             }
         }
         // we don't sum those as we go because they might set the same place to 1 twice
-        nEvents += MathUtils.sum(isDel) + MathUtils.sum(isIns); // tsato: snp is already counted in nEvents
+        nEvents += MathUtils.sum(isDel) + MathUtils.sum(isIns);
         return nEvents;
     }
 
@@ -441,7 +442,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             indel[index] = 1;
         }
     }
-    // tsato: need to look into this, and tests need to be added? What is a fractional error?
+
     public static double[] calculateFractionalErrorArray( final int[] errorArray, final byte[] baqArray ) {
         if ( errorArray.length != baqArray.length ) {
             throw new GATKException("Array length mismatch detected. Malformed read?");
@@ -454,7 +455,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         int blockStartIndex = BLOCK_START_UNSET;
         int i;
         for( i = 0; i < fractionalErrors.length; i++ ) {
-            if( baqArray[i] == NO_BAQ_UNCERTAINTY ) { // tsato: the code path we care about
+            if( baqArray[i] == NO_BAQ_UNCERTAINTY ) {
                 if( !inBlock ) {
                     fractionalErrors[i] = errorArray[i];
                 } else {
@@ -505,7 +506,7 @@ public final class BaseRecalibrationEngine implements Serializable {
      * Compute an actual BAQ array for read, based on its quals and the reference sequence
      * @param read the read to BAQ
      * @return a non-null BAQ tag array for read
-     */ // tsato: see https://github.com/broadgsa/gatk-protected/blob/master/doc_archive/deprecated/Per-base_alignment_qualities_(BAQ)_in_the_GATK.md
+     */
     private byte[] calculateBAQArray( final GATKRead read, final ReferenceDataSource refDS ) {
         baq.baqRead(read, refDS, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
         return BAQ.getBAQTag(read);

@@ -20,7 +20,7 @@ public final class PerReadCovariateMatrix {
      * Thus the array has shape { event type } x { read position (aka cycle) } x { covariate }.
      * For instance, { covariate } is by default 4-dimensional (read group, base quality, context, cycle).
      */
-    private final int[][][] covariates; //  tsato: these are not keys. these are covariates.
+    private final int[][][] covariates;
 
     /**
      * The index of the current covariate, used by addCovariate
@@ -59,12 +59,12 @@ public final class PerReadCovariateMatrix {
      * @param insertion the insertion key value
      * @param deletion the deletion key value
      * @param readOffset the read offset, must be >= 0 and <= the read length used to create this ReadCovariates
-     */ // tsato: this is the only place where "keys" array gets updated.
+     */
     public void addCovariate(final int mismatch, final int insertion, final int deletion, final int readOffset) {
-        covariates[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch; // tsato: mismatchCovaraiteKey is better.
-        covariates[EventType.BASE_INSERTION.ordinal()][readOffset][currentCovariateIndex] = insertion; // tsato: currentCovariateIndex?
+        covariates[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch;
+        covariates[EventType.BASE_INSERTION.ordinal()][readOffset][currentCovariateIndex] = insertion;
         covariates[EventType.BASE_DELETION.ordinal()][readOffset][currentCovariateIndex] = deletion;
-    } // tsato: rename to: populateAtReadOffset
+    }
 
     /**
      * Get the keys for all covariates at read position for error model
@@ -73,11 +73,11 @@ public final class PerReadCovariateMatrix {
      * @param errorModel
      * @return
      */
-    public int[] getKeySet(final int readPosition, final EventType errorModel) {
+    public int[] getCovariatesAtOffset(final int readPosition, final EventType errorModel) {
         return covariates[errorModel.ordinal()][readPosition];
     }
     // tsato: this keySet language needs to go. "getTableForErrorType". Must replace all "getKey"
-    public int[][] getKeySet(final EventType errorModel) {
+    public int[][] getMatrixForErrorModel(final EventType errorModel) {
         return covariates[errorModel.ordinal()];
     }
 
@@ -87,19 +87,19 @@ public final class PerReadCovariateMatrix {
     //
     // ----------------------------------------------------------------------
 
-    protected int[][] getMismatchesKeySet() { return getKeySet(EventType.BASE_SUBSTITUTION); }
-    protected int[][] getInsertionsKeySet() { return getKeySet(EventType.BASE_INSERTION); }
-    protected int[][] getDeletionsKeySet() { return getKeySet(EventType.BASE_DELETION); }
+    protected int[][] getMismatchMatrix() { return getMatrixForErrorModel(EventType.BASE_SUBSTITUTION); }
+    protected int[][] getInsertionMatrix() { return getMatrixForErrorModel(EventType.BASE_INSERTION); }
+    protected int[][] getDeletionMatrix() { return getMatrixForErrorModel(EventType.BASE_DELETION); }
 
-    protected int[] getMismatchesKeySet(final int readPosition) {
-        return getKeySet(readPosition, EventType.BASE_SUBSTITUTION);
+    protected int[] getMismatchCovariatesAtOffset(final int readPosition) {
+        return getCovariatesAtOffset(readPosition, EventType.BASE_SUBSTITUTION);
     }
 
-    protected int[] getInsertionsKeySet(final int readPosition) {
-        return getKeySet(readPosition, EventType.BASE_INSERTION);
+    protected int[] getInsertionCovariatesAtOffset(final int readPosition) {
+        return getCovariatesAtOffset(readPosition, EventType.BASE_INSERTION);
     }
 
-    protected int[] getDeletionsKeySet(final int readPosition) {
-        return getKeySet(readPosition, EventType.BASE_DELETION);
+    protected int[] getDeletionCovariatesAtOffset(final int readPosition) {
+        return getCovariatesAtOffset(readPosition, EventType.BASE_DELETION);
     }
 }

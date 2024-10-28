@@ -32,7 +32,7 @@ import java.util.*;
 public final class RecalUtils {
     public static final String ARGUMENT_REPORT_TABLE_TITLE = "Arguments";
     public static final String QUANTIZED_REPORT_TABLE_TITLE = "Quantized";
-    public static final String READGROUP_REPORT_TABLE_TITLE = "RecalTable0"; // tsato: huh...why not use these names....
+    public static final String READGROUP_REPORT_TABLE_TITLE = "RecalTable0"; // TODO: make them more descriptive
     public static final String QUALITY_SCORE_REPORT_TABLE_TITLE = "RecalTable1";
     public static final String ALL_COVARIATES_REPORT_TABLE_TITLE = "RecalTable2";
 
@@ -43,7 +43,7 @@ public final class RecalUtils {
     public static final String READGROUP_COLUMN_NAME = "ReadGroup";
     public static final String EVENT_TYPE_COLUMN_NAME = "EventType";
     public static final String EMPIRICAL_QUALITY_COLUMN_NAME = "EmpiricalQuality";
-    public static final String ESTIMATED_Q_REPORTED_COLUMN_NAME = "EstimatedQReported";
+    public static final String ESTIMATED_Q_REPORTED_COLUMN_NAME = "EstimatedQReported"; // TODO: either remove or rename to "reported quality"
     public static final String QUALITY_SCORE_COLUMN_NAME = "QualityScore";
     public static final String COVARIATE_VALUE_COLUMN_NAME = "CovariateValue";
     public static final String COVARIATE_NAME_COLUMN_NAME = "CovariateName";
@@ -56,14 +56,14 @@ public final class RecalUtils {
 
     private static final String SCRIPT_FILE = "BQSR.R";
     public static final int EMPIRICAL_QUAL_DECIMAL_PLACES = 4;
-    public static final int EMPIRICAL_Q_REPORTED_DECIMAL_PLACES = 4; // tsato: "estimated" q reported...we need to rename.
+    public static final int REPORTED_QUALITY_DECIMAL_PLACES = 4; // tsato: "estimated" q reported...we need to rename (DONE)
     public static final int NUMBER_ERRORS_DECIMAL_PLACES = 2;
 
     private static final Pair<String, String> covariateValue     = new MutablePair<>(RecalUtils.COVARIATE_VALUE_COLUMN_NAME, "%s");
     private static final Pair<String, String> covariateName      = new MutablePair<>(RecalUtils.COVARIATE_NAME_COLUMN_NAME, "%s");
     private static final Pair<String, String> eventType          = new MutablePair<>(RecalUtils.EVENT_TYPE_COLUMN_NAME, "%s");
     private static final Pair<String, String> empiricalQuality   = new MutablePair<>(RecalUtils.EMPIRICAL_QUALITY_COLUMN_NAME, "%." + EMPIRICAL_QUAL_DECIMAL_PLACES + 'f');
-    private static final Pair<String, String> estimatedQReported = new MutablePair<>(RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME, "%." + EMPIRICAL_Q_REPORTED_DECIMAL_PLACES + 'f');
+    private static final Pair<String, String> estimatedQReported = new MutablePair<>(RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME, "%." + REPORTED_QUALITY_DECIMAL_PLACES + 'f');
     private static final Pair<String, String> nObservations      = new MutablePair<>(RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME, "%d");
     private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%." + NUMBER_ERRORS_DECIMAL_PLACES+ 'f');
 
@@ -464,7 +464,7 @@ public final class RecalUtils {
     /**
      * Updates the current RecalDatum element in the delta table.
      *
-     * If it doesn't have an element yet, it creates an RecalDatum element and adds it to the delta table. // tsato: what is a delta table?
+     * If it doesn't have an element yet, it creates an RecalDatum element and adds it to the delta table.
      *
      * @param deltaTable the delta table
      * @param deltaKey the key to the table
@@ -483,13 +483,13 @@ public final class RecalUtils {
 
     /**
      * Section of code shared between the two recalibration walkers which uses the command line arguments to adjust attributes of the read such as quals or platform string
-     * tsato: ???
+     *
      * @param read The read to adjust
      * @param RAC  The list of shared command line arguments
      */
     public static void updatePlatformForRead(final GATKRead read, final SAMFileHeader header, final RecalibrationArgumentCollection RAC) {
         final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
-        // tsato: what is this about? step through it
+
         if (RAC.FORCE_PLATFORM != null && (readGroup.getPlatform() == null || !readGroup.getPlatform().equals(RAC.FORCE_PLATFORM))) {
             readGroup.setPlatform(RAC.FORCE_PLATFORM);
         }
@@ -516,39 +516,20 @@ public final class RecalUtils {
      *
      * It populates an array of covariate values where result[i][j] is the covariate
      * value for the ith position in the read and the jth covariate in
-     * reqeustedCovariates list.
+     * requested Covariates list.
      *
      * @param read                The read for which to compute covariate values.
      * @param header              SAM header for the read
      * @param covariates The list of requested covariates.
      * @param recordIndelValues   should we compute covariates for indel BQSR?
+     *
      * @return a matrix with all the covariates calculated for every base in the read
      */
     public static PerReadCovariateMatrix computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
-        final PerReadCovariateMatrix covariateTable = new PerReadCovariateMatrix(read.getLength(), covariates.size(), keyCache); // tsato: maybe rename ReadCovariates => ReadCovariateData
+        final PerReadCovariateMatrix covariateTable = new PerReadCovariateMatrix(read.getLength(), covariates.size(), keyCache);
         covariates.populatePerReadCovariateMatrix(read, header, covariateTable, recordIndelValues);
-        // computeCovariates(read, header, covariates, readCovariates, recordIndelValues);
         return covariateTable;
     }
-
-    /**
-     * Computes all requested covariates for every offset in the given read
-     * by calling covariate.getValues(..).
-     *
-     * It populates an array of covariate values where result[i][j] is the covariate
-     * value for the ith position in the read and the jth covariate in
-     * covariates list.
-     *
-     * @param read                The read for which to compute covariate values.
-     * @param header              SAM header for the read
-     * @param covariates          The list of covariates.
-     * @param resultsStorage      The object to store the covariate values
-     * @param recordIndelValues   should we compute covariates for indel BQSR?
-     */
-    // tsato: unnecessary layer, but move the doc
-//    public static void computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
-//        covariates.recordAllValuesInStorage(read, header, resultsStorage, recordIndelValues);
-//    }
 
     /**
      * Combines the recalibration data for table1 and table2 into table1
@@ -641,7 +622,7 @@ public final class RecalUtils {
                                            final byte qual,
                                            final double isError,
                                            final int key0, final int key1, final int key2, final int key3) {
-        final RecalDatum existingDatum = table.get4Keys(key0, key1, key2, key3); // tsato: is the final key really always event index?
+        final RecalDatum existingDatum = table.get4Keys(key0, key1, key2, key3);
 
         if ( existingDatum == null ) {
             // No existing item, put a new one

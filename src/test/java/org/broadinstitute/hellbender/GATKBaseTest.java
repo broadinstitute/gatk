@@ -92,6 +92,8 @@ public abstract class GATKBaseTest extends BaseTest {
     // Variants from a DBSNP 138 VCF form the first 65Mb of chr1
     public static final String dbsnp_138_b37_1_65M_vcf = largeFileTestDir + "dbsnp_138.b37.1.1-65M.vcf";
 
+    public static final String BQSR_TEST_RESOURCE_DIR = toolsTestDir + "BQSR/";
+    // TODO: change these file names to an actual path, which makes clear where they live.
     public static final String WGS_B37_CH20_1M_1M1K_BAM = "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
     public static final String DBSNP_138_B37_CH20_1M_1M1K_VCF = "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
 

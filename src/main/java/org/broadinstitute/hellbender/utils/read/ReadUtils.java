@@ -508,7 +508,7 @@ public final class ReadUtils {
      *
      * 1) Our read is in the reverse strand :
      *
-     *     <----------------------| * // tsato: why draw it like this? Why not draw the mate start to be inside the reverse read?
+     *     <----------------------| *
      *   |--------------------->
      *
      *   in these cases, the adaptor boundary is at the mate start (minus one)

@@ -74,7 +74,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
         Assert.assertEquals(datum.getNumMismatches(), cfg.exError, 1E-6);
         Assert.assertEquals(datum.getNumObservations(), cfg.exTotal, 1E-6);
         if ( cfg.getReportedQual() != -1 )
-            Assert.assertEquals(datum.getEstimatedQReportedAsByte(), cfg.getReportedQual());
+            Assert.assertEquals(datum.getReportedQualityAsByte(), cfg.getReportedQual());
         assertEqualsDoubleSmart(datum.getEmpiricalErrorRate(), cfg.getErrorRate());
 
         final double e = datum.getEmpiricalQuality();
@@ -102,7 +102,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
 
         datum.setReportedQuality(10.1);
         Assert.assertEquals(datum.getReportedQuality(), 10.1);
-        Assert.assertEquals(datum.getEstimatedQReportedAsByte(), 10);
+        Assert.assertEquals(datum.getReportedQualityAsByte(), 10);
 
         datum = cfg.makeRecalDatum();
         cfg.exTotal = 100000;

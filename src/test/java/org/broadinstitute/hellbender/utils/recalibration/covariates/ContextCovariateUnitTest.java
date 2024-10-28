@@ -45,9 +45,9 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
             final PerReadCovariateMatrix perReadCovariateMatrix = new PerReadCovariateMatrix(read.getLength(), 1, new CovariateKeyCache());
             covariate.recordValues(read, header, perReadCovariateMatrix, true);
 
-            verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
-            verifyCovariateArray(perReadCovariateMatrix.getInsertionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
-            verifyCovariateArray(perReadCovariateMatrix.getDeletionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+            verifyCovariateArray(perReadCovariateMatrix.getMismatchMatrix(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+            verifyCovariateArray(perReadCovariateMatrix.getInsertionMatrix(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+            verifyCovariateArray(perReadCovariateMatrix.getDeletionMatrix(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
         }
     }
 
@@ -96,9 +96,9 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
         final PerReadCovariateMatrix perReadCovariateMatrix = new PerReadCovariateMatrix(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, perReadCovariateMatrix, true);
 
-        verifyCovariateArray(perReadCovariateMatrix.getMismatchesKeySet(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
-        verifyCovariateArray(perReadCovariateMatrix.getInsertionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
-        verifyCovariateArray(perReadCovariateMatrix.getDeletionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+        verifyCovariateArray(perReadCovariateMatrix.getMismatchMatrix(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+        verifyCovariateArray(perReadCovariateMatrix.getInsertionMatrix(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+        verifyCovariateArray(perReadCovariateMatrix.getDeletionMatrix(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
     }
 
     @DataProvider(name = "strandedBytes")
