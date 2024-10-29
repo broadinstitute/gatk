@@ -812,7 +812,7 @@ task IsUsingCompressedReferences {
       SELECT
         column_name
       FROM
-        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        `~{dest_project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
       WHERE
         table_name = "ref_ranges_001"
       AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
