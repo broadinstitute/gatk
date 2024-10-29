@@ -798,7 +798,8 @@ task IsVQSRLite {
 
 task IsUsingCompressedReferences {
   input {
-    String project_id
+    String query_project_id
+    String dest_project_id
     String dataset_name
     String cloud_sdk_docker
   }
@@ -811,7 +812,7 @@ task IsUsingCompressedReferences {
       SELECT
         column_name
       FROM
-        `~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
       WHERE
         table_name = "ref_ranges_001"
       AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
