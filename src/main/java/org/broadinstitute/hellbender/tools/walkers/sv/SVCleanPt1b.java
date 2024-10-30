@@ -83,6 +83,9 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     final private Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
     final private Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
 
+    private static final int MIN_VARIANT_SIZE_CNV = 1000;
+    private static final int MIN_VARIANT_SIZE = 5000;
+
     @Override
     protected int numberOfPasses() {
         return 3;
@@ -128,24 +131,37 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     public void firstPassApply(final VariantContext variant) {
-        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        final boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
-        final boolean isLarge = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) >= 5000;
-        if (isDelDup && isLarge) {
-            overlappingVariantsBuffer.removeIf(vc -> vc.getEnd() < variant.getStart());
-            for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
-                if (overlaps(bufferedVariant, variant)) {
-                    processOverlap(bufferedVariant, variant);
-                }
-            }
-            overlappingVariantsBuffer.add(variant);
+        if (!isDelDup(variant) || !isLarge(variant, MIN_VARIANT_SIZE)) {
+            return;
         }
+
+        // Process overlaps with variants in the buffer
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
+        for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
+            if (overlaps(bufferedVariant, variant)) {
+                processOverlap(bufferedVariant, variant);
+            }
+        }
+        overlappingVariantsBuffer.add(variant);
     }
 
     public void secondPassApply(final VariantContext variant) {
-        if (revisedEventsFiltered.containsKey(variant.getID())) {
-            initializeRdCn(variant);
+        if (!revisedEventsFiltered.containsKey(variant.getID())) {
+            return;
         }
+
+        // Initialize data structures
+        final String variantId = variant.getID();
+        final Set<String> samples = revisedEventsFiltered.get(variantId);
+        final Map<String, Integer> variantRdCn = new HashMap<>();
+
+        // Initialize revisedRdCn value for each variant
+        for (final String sampleName : samples) {
+            final Genotype genotype = variant.getGenotype(sampleName);
+            final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+            variantRdCn.put(sampleName, Integer.parseInt(rdCn));
+        }
+        revisedRdCn.put(variantId, variantRdCn);
     }
 
     public void thirdPassApply(final VariantContext variant) {
@@ -153,11 +169,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         if (revisedEventsAll.containsKey(variant.getID())) {
             processVariant(builder, variant);
         }
-
-        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        final boolean isDelDup = svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
-        final boolean isLarge = variant.getEnd() - variant.getStart() >= 1000;
-        if (isDelDup && isLarge) {
+        if (isDelDup(variant) && isLarge(variant, MIN_VARIANT_SIZE_CNV)) {
             processCnvs(builder, variant);
         }
         vcfWriter.add(builder.make());
@@ -221,21 +233,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         }
     }
 
-    private void initializeRdCn(final VariantContext variant) {
-        // Initialize data structures
-        final String variantId = variant.getID();
-        final Set<String> samples = revisedEventsFiltered.get(variantId);
-        final Map<String, Integer> variantRdCn = new HashMap<>();
-
-        // Initialize revisedRdCn value for each variant
-        for (final String sampleName : samples) {
-            final Genotype genotype = variant.getGenotype(sampleName);
-            final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
-            variantRdCn.put(sampleName, Integer.parseInt(rdCn));
-        }
-        revisedRdCn.put(variantId, variantRdCn);
-    }
-
     private void processVariant(final VariantContextBuilder builder, final VariantContext variant) {
         // Initialize data structures
         final String variantId = variant.getID();
@@ -264,6 +261,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
                 }
 
                 if (newVal != -1) {
+                    System.out.println(variantId);
                     final GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
                     gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
                     gb.GQ(Integer.parseInt((String) oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ)));
@@ -289,6 +287,16 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
                 break;
             }
         }
+    }
+
+    private boolean isDelDup(final VariantContext variant) {
+        String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+        return svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP);
+    }
+
+    private boolean isLarge(final VariantContext variant, final int minSize) {
+        int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        return variantLength >= minSize;
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {

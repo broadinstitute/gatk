@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
+
 import static java.util.Map.entry;
 
 
@@ -171,7 +172,6 @@ public final class GATKSVVCFConstants {
 
     // CleanPt4
     public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
-    public static final String NO_CALLED_SAMPLES = "NO_CALLED_SAMPLES";
     public static final String GT = "GT";
     public static final String GQ = "GQ";
     public static final String PE_GT = "PE_GT";
