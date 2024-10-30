@@ -125,7 +125,7 @@ public final class SVCleanPt1a extends VariantWalker {
         failSet = readLastColumn(failList);
         passSet = readLastColumn(passList);
 
-        // Create header without the 'UNRESOLVED' INFO line
+        // Filter specific header lines
         final VCFHeader header = getHeaderForVariants();
         final Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
         for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {

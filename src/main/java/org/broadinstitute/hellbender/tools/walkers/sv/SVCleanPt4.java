@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.BufferedReader;
@@ -21,13 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashSet;
-import java.util.HashMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -148,15 +143,27 @@ public class SVCleanPt4 extends VariantWalker {
         maxVF = Math.max((int) ((getHeaderForVariants().getGenotypeSamples().size() - outlierSamples.size()) * 0.01), 2);
         recordIdx = 0;
 
-        // Create primary output VCF
-        vcfWriter = createVCFWriter(outputVcf);
+        // Filter specific header lines
         final VCFHeader header = getHeaderForVariants();
-        header.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.MULTIALLELIC, "Multiallelic site"));
-        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Predicted copy state"));
-        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, 1, VCFHeaderLineType.Integer, "Read-depth genotype quality"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PESR_GT_OVERDISPERSION, 0, VCFHeaderLineType.Flag, "High PESR dispersion count"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.NO_CALLED_SAMPLES, 0, VCFHeaderLineType.Flag, "No samples called"));
-        vcfWriter.writeHeader(header);
+        final Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
+        for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
+            if (!(line instanceof VCFInfoHeaderLine)
+                    || (!((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.MULTI_CNV)
+                    && !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.REVISED_EVENT))) {
+                newHeaderLines.add(line);
+            }
+        }
+
+        // Add new header lines
+        VCFHeader newHeader = new VCFHeader(newHeaderLines, header.getGenotypeSamples());
+        newHeader.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.MULTIALLELIC, "Multiallelic site"));
+        newHeader.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Predicted copy state"));
+        newHeader.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, 1, VCFHeaderLineType.Integer, "Read-depth genotype quality"));
+        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PESR_GT_OVERDISPERSION, 0, VCFHeaderLineType.Flag, "High PESR dispersion count"));
+
+        // Write header
+        vcfWriter = createVCFWriter(outputVcf);
+        vcfWriter.writeHeader(newHeader);
 
         // Create supporting output VCFs
         /*
@@ -182,7 +189,7 @@ public class SVCleanPt4 extends VariantWalker {
         recordIdx++;
         VariantContextBuilder builder = new VariantContextBuilder(variant);
 
-        // Exit if outside batch range // TODO: Does this have to move to after processRevisedCn?
+        // Exit if outside batch range
         if (recordIdx < recordStart || recordIdx >= recordEnd) {
             vcfWriter.add(builder.make());
             return;
@@ -195,11 +202,13 @@ public class SVCleanPt4 extends VariantWalker {
         genotypes = processLargeDeletions(variant, builder, genotypes);
         genotypes = processLargeDuplications(variant, builder, genotypes);
         genotypes = processRevisedSex(variant, genotypes);
-        processNoCalls(variant, builder, genotypes);
+        processInfoFields(builder);
 
         // Build genotypes
-        builder.genotypes(genotypes);
-        vcfWriter.add(builder.make());
+        if (isCalled(variant, builder, genotypes)) {
+            builder.genotypes(genotypes);
+            vcfWriter.add(builder.make());
+        }
     }
 
     private List<Genotype> processRevisedCn(final VariantContext variant, final List<Genotype> genotypes) {
@@ -403,30 +412,33 @@ public class SVCleanPt4 extends VariantWalker {
         return updatedGenotypes;
     }
 
-    public void processNoCalls(final VariantContext variant, final VariantContextBuilder builder, final List<Genotype> genotypes) {
-        boolean hasCalledSample = false;
+    private void processInfoFields(final VariantContextBuilder builder) {
+        Map<String, Object> attributes = builder.getAttributes();
+        if (attributes.containsKey(GATKSVVCFConstants.MULTI_CNV)) {
+            builder.rmAttribute(GATKSVVCFConstants.MULTI_CNV);
+        }
+        if (attributes.containsKey(GATKSVVCFConstants.REVISED_EVENT)) {
+            builder.rmAttribute(GATKSVVCFConstants.REVISED_EVENT);
+        }
+    }
 
+    public boolean isCalled(final VariantContext variant, final VariantContextBuilder builder, final List<Genotype> genotypes) {
         for (Genotype genotype : genotypes) {
             if (!isNoCallGt(genotype.getAlleles())) {
-                hasCalledSample = true;
-                break;
+                return true;
             }
         }
 
-        if (!hasCalledSample && builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
+        if (builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
             for (Genotype genotype : genotypes) {
                 Integer cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.CNV, 2).toString());
                 if (cn != null && cn != 2) {
-
-                    hasCalledSample = true;
-                    break;
+                    return true;
                 }
             }
         }
 
-        if (!hasCalledSample) {
-            builder.attribute(GATKSVVCFConstants.NO_CALLED_SAMPLES, true);
-        }
+        return false;
     }
 
     private boolean isBiallelic(Genotype genotype) {

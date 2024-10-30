@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.samtools.util.OverlapDetector;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -65,7 +64,7 @@ import java.util.Collections;
 )
 @BetaFeature
 @DocumentedFeature
-public class SVCleanPt2 extends MultiplePassVariantWalker {
+public class SVCleanPt2 extends VariantWalker {
     public static final String SAMPLE_LIST_LONG_NAME = "sample-list";
     public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
 
@@ -86,16 +85,11 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
     private Set<String> sampleWhitelist;
 
     private final Map<String, Set<String>> abnormalRdCn = new HashMap<>();
-    private final OverlapDetector<VariantContext> overlapDetector = new OverlapDetector<>(0, 0);
+    private final List<VariantContext> overlappingVariantsBuffer = new ArrayList<>();
     private final Map<String, Map<String, Integer>> revisedCopyNumbers = new HashMap<>();
     private final Set<String> revisedComplete = new HashSet<>();
 
     private static final int MIN_VARIANT_SIZE = 5000;
-
-    @Override
-    protected int numberOfPasses() {
-        return 2;
-    }
 
     @Override
     public void onTraversalStart() {
@@ -138,28 +132,12 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
     }
 
     @Override
-    protected void nthPassApply(final VariantContext variant, final ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext, int n) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         // Skip if not expected SVTYPE or below SVLEN threshold
-        if (!isDelDup(variant) || !isLargeVariant(variant, MIN_VARIANT_SIZE)) {
+        if (!isDelDup(variant) || !isLarge(variant, MIN_VARIANT_SIZE)) {
             return;
         }
 
-        switch (n) {
-            case 0:
-                firstPassApply(variant);
-                break;
-            case 1:
-                secondPassApply(variant);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid pass number: " + n);
-        }
-    }
-
-    @Override
-    protected void afterNthPass(final int n) {}
-
-    private void firstPassApply(final VariantContext variant) {
         // Flag sample as having an abnormal copy number if it passes certain conditions
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
@@ -174,18 +152,15 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
             }
         }
 
-        // Add variant to overlap detector
-        overlapDetector.addLhs(variant, variant);
-    }
-
-    private void secondPassApply(final VariantContext variant) {
-        // Check if copy number needs to be adjusted for samples within overlapping variants
-        Set<VariantContext> overlappingVariants = overlapDetector.getOverlaps(variant);
-        for (VariantContext otherVariant : overlappingVariants) {
-            if (!variant.getID().equals(otherVariant.getID())) {
-                adjustCopyNumber(variant, otherVariant);
+        // Process overlaps with variants in the buffer
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
+        for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
+            if (overlaps(variant, bufferedVariant)) {
+                adjustCopyNumber(bufferedVariant, variant);
+                adjustCopyNumber(variant, bufferedVariant);
             }
         }
+        overlappingVariantsBuffer.add(variant);
     }
 
     private void adjustCopyNumber(final VariantContext v1, final VariantContext v2) {
@@ -288,12 +263,16 @@ public class SVCleanPt2 extends MultiplePassVariantWalker {
         }
     }
 
+    private boolean overlaps(final VariantContext v1, final VariantContext v2) {
+        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
+    }
+
     private boolean isDelDup(final VariantContext variant) {
         String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         return svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP);
     }
 
-    private boolean isLargeVariant(final VariantContext variant, final int minSize) {
+    private boolean isLarge(final VariantContext variant, final int minSize) {
         int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
         return variantLength >= minSize;
     }
