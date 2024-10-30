@@ -27,13 +27,13 @@ def check_ref_blocks(vds):
 
 	LEN = rd.END - rd.locus_start + 1
 
-    print('checking that: no reference blocks have GQ=0')
-    assert rd.aggregate_entries(hl.agg.all(hl.all(rd.GQ > 0)))
+	print('checking that: no reference blocks have GQ=0')
+	assert rd.aggregate_entries(hl.agg.all(hl.all(rd.GQ > 0)))
 
-    print('checking that: all ref blocks have END after start')
-    assert rd.aggregate_entries(hl.agg.all(hl.all(LEN >= 0)))
+	print('checking that: all ref blocks have END after start')
+	assert rd.aggregate_entries(hl.agg.all(hl.all(LEN >= 0)))
 
-    print('checking that: all ref blocks are max 1000 bases long')
+	print('checking that: all ref blocks are max 1000 bases long')
 	assert rd.aggregate_entries(hl.agg.all(hl.all(LEN <= rd.ref_block_max_length)))
 
 #	assert rd.aggregate_entries(hl.agg.all(hl.all(rd.GQ > 0, LEN >= 0, LEN <= rd.ref_block_max_length)))
