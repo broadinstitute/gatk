@@ -808,7 +808,7 @@ task IsUsingCompressedReferences {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+    bq --apilog=false query --project_id=~{query_project_id} --format=csv --use_legacy_sql=false '
       SELECT
         column_name
       FROM
