@@ -5,10 +5,10 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -79,9 +79,9 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     private VariantContextWriter vcfWriter;
 
     private final List<VariantContext> overlappingVariantsBuffer = new ArrayList<>();
-    final private Map<String, Map<String, Pair<String, String>>> revisedEventsAll = new HashMap<>();
-    final private Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
-    final private Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
+    private final Map<String, Map<String, Pair<String, String>>> revisedEventsAll = new HashMap<>();
+    private final Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
+    private final Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
 
     private static final int MIN_VARIANT_SIZE_CNV = 1000;
     private static final int MIN_VARIANT_SIZE = 5000;

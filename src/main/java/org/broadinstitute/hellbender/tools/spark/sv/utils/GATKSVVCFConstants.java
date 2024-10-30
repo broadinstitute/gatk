@@ -152,7 +152,7 @@ public final class GATKSVVCFConstants {
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
 
-    // CleanPt1a
+    // SVCleanPt1a
     public static final String EV = "EV";
     public static final List<String> EV_VALUES = Arrays.asList(
             null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
@@ -166,24 +166,34 @@ public final class GATKSVVCFConstants {
     public static final String REVISED_EVENT = "REVISED_EVENT";
     public static final String RD_CN = "RD_CN";
 
-    // CleanPt1b
+    // SVCleanPt1b
     public static final String RD_GQ = "RD_GQ";
     public static final String MULTI_CNV = "MULTI_CNV";
 
-    // CleanPt4
+    // SVCleanPt4
     public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
-    public static final String GT = "GT";
-    public static final String GQ = "GQ";
     public static final String PE_GT = "PE_GT";
     public static final String SR_GT = "SR_GT";
     public static final String PE_GQ = "PE_GQ";
     public static final String SR_GQ = "SR_GQ";
     public static final String CNV = "CNV";
+
+    // SVCleanPt5
+    public static final String UNR = "UNR";
+    public static final String EVENT = "EVENT";
     public static final Set<List<Integer>> BIALLELIC_GTS = new HashSet<>(Arrays.asList(
             Arrays.asList(0, 0),
             Arrays.asList(1, 1),
             Arrays.asList(0, 1),
             Arrays.asList(null, null)
+    ));
+    public static final Set<String> FILTER_VCF_LINES = new HashSet<>(Arrays.asList(
+            "CIPOS", "CIEND", "RMSSTD", "source", "bcftools", "GATKCommandLine", "#CHROM"
+    ));
+
+    public static final Set<String> FILTER_VCF_INFO_LINES = new HashSet<>(Arrays.asList(
+        GATKSVVCFConstants.UNRESOLVED, GATKSVVCFConstants.MULTIALLELIC, GATKSVVCFConstants.VAR_GQ,
+            GATKSVVCFConstants.MULTI_CNV, GATKSVVCFConstants.REVISED_EVENT, GATKSVVCFConstants.EVENT
     ));
 
     // Clustering
