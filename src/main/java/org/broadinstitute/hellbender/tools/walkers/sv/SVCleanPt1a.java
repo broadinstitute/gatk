@@ -125,28 +125,16 @@ public final class SVCleanPt1a extends VariantWalker {
         failSet = readLastColumn(failList);
         passSet = readLastColumn(passList);
 
-        // Filter specific header lines
-        final VCFHeader header = getHeaderForVariants();
-        final Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
-        for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
-            if (!(line instanceof VCFInfoHeaderLine)
-                    || (!((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.UNRESOLVED)
-                        && !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.MULTIALLELIC)
-                        && !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.VAR_GQ))) {
-                newHeaderLines.add(line);
-            }
-        }
-
         // Add new header lines
-        VCFHeader newHeader = new VCFHeader(newHeaderLines, header.getGenotypeSamples());
-        newHeader.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.UNRESOLVED, "Variant is unresolved"));
-        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HIGH_SR_BACKGROUND, 0, VCFHeaderLineType.Flag, "High number of SR splits in background samples indicating messy region"));
-        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BOTHSIDES_SUPPORT, 0, VCFHeaderLineType.Flag, "Variant has read-level support for both sides of breakpoint"));
-        newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.REVISED_EVENT, 0, VCFHeaderLineType.Flag, "Variant has been revised due to a copy number mismatch"));
+        VCFHeader header = getHeaderForVariants();
+        header.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.UNRESOLVED, "Variant is unresolved"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HIGH_SR_BACKGROUND, 0, VCFHeaderLineType.Flag, "High number of SR splits in background samples indicating messy region"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BOTHSIDES_SUPPORT, 0, VCFHeaderLineType.Flag, "Variant has read-level support for both sides of breakpoint"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.REVISED_EVENT, 0, VCFHeaderLineType.Flag, "Variant has been revised due to a copy number mismatch"));
 
         // Write header
         vcfWriter = createVCFWriter(outputVcf);
-        vcfWriter.writeHeader(newHeader);
+        vcfWriter.writeHeader(header);
     }
 
     @Override

@@ -12,18 +12,19 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-
 import java.nio.file.Files;
-import java.nio.file.Paths;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.HashMap;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -67,7 +68,6 @@ import java.util.stream.Collectors;
 public class SVCleanPt4 extends VariantWalker {
     public static final String REVISED_CN_LIST_LONG_NAME = "revised-cn-list";
     public static final String OUTLIERS_LIST_LONG_NAME = "outliers-list";
-    public static final String OUTPUT_MULTIALLELIC_VCF_LONG_NAME = "output-multiallelic-vcf";
 
     @Argument(
             fullName = REVISED_CN_LIST_LONG_NAME,
@@ -89,16 +89,7 @@ public class SVCleanPt4 extends VariantWalker {
     )
     private GATKPath outputVcf;
 
-    /*
-    @Argument(
-            fullName = OUTPUT_MULTIALLELIC_VCF_LONG_NAME,
-            doc = "Output multiallelic VCF name"
-    )
-    private GATKPath outputVcfMultiallelic;
-    */
-
     private VariantContextWriter vcfWriter;
-    private VariantContextWriter vcfWriterMultiallelic;
 
     private Map<String, Map<String, Integer>> revisedCopyNumbers;
     private Set<String> outlierSamples;
@@ -145,13 +136,16 @@ public class SVCleanPt4 extends VariantWalker {
 
         // Filter specific header lines
         final VCFHeader header = getHeaderForVariants();
-        final Set<VCFHeaderLine> newHeaderLines = new LinkedHashSet<>();
+        final Set<VCFHeaderLine> newHeaderLines = new HashSet<>();
         for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
-            if (!(line instanceof VCFInfoHeaderLine)
-                    || (!((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.MULTI_CNV)
-                    && !((VCFInfoHeaderLine) line).getID().equals(GATKSVVCFConstants.REVISED_EVENT))) {
-                newHeaderLines.add(line);
+            if (line instanceof VCFInfoHeaderLine) {
+                String id = ((VCFInfoHeaderLine) line).getID();
+                if (id.equals(GATKSVVCFConstants.MULTI_CNV) ||
+                        id.equals(GATKSVVCFConstants.REVISED_EVENT)) {
+                    continue;
+                }
             }
+            newHeaderLines.add(line);
         }
 
         // Add new header lines
@@ -164,22 +158,12 @@ public class SVCleanPt4 extends VariantWalker {
         // Write header
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(newHeader);
-
-        // Create supporting output VCFs
-        /*
-        vcfWriterMultiallelic = createVCFWriter(outputVcfMultiallelic);
-        vcfWriterMultiallelic.writeHeader(header);
-        */
     }
 
     @Override
     public void closeTool() {
         if (vcfWriter != null) {
             vcfWriter.close();
-        }
-
-        if (vcfWriterMultiallelic != null) {
-            vcfWriterMultiallelic.close();
         }
     }
 
@@ -205,7 +189,7 @@ public class SVCleanPt4 extends VariantWalker {
         processInfoFields(builder);
 
         // Build genotypes
-        if (isCalled(variant, builder, genotypes)) {
+        if (isCalled(builder, genotypes)) {
             builder.genotypes(genotypes);
             vcfWriter.add(builder.make());
         }
@@ -422,7 +406,7 @@ public class SVCleanPt4 extends VariantWalker {
         }
     }
 
-    public boolean isCalled(final VariantContext variant, final VariantContextBuilder builder, final List<Genotype> genotypes) {
+    public boolean isCalled(final VariantContextBuilder builder, final List<Genotype> genotypes) {
         for (Genotype genotype : genotypes) {
             if (!isNoCallGt(genotype.getAlleles())) {
                 return true;
@@ -450,8 +434,8 @@ public class SVCleanPt4 extends VariantWalker {
 
     private boolean isNoCallGt(List<Allele> alleles) {
         if (alleles.size() == 1 && alleles.get(0).isReference()) return true;
-        if (alleles.size() == 2 && alleles.get(0).isReference() && alleles.get(1).isReference()) return true;
-        if (alleles.size() == 1 && alleles.get(0).isNoCall()) return true;
+        else if (alleles.size() == 2 && alleles.get(0).isReference() && alleles.get(1).isReference()) return true;
+        else if (alleles.size() == 1 && alleles.get(0).isNoCall()) return true;
         return false;
     }
 
