@@ -241,6 +241,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1513_dont_be_ridiculous
          tags:
              - /.*/
    - name: GvsWithdrawSamples
