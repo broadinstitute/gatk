@@ -263,7 +263,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
         if len(partition_samples) > 0:
             subs = {}
-            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS) \n WITH \n"
+            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, SAFE_CAST(CALL_PS AS INT64) AS CALL_PS) \n WITH \n"
             fq_vet_table = f"{fq_ranges_dataset}.{VET_TABLE_PREFIX}{i:03}"
             j = 1
 
