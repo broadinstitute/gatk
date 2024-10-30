@@ -315,7 +315,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1456_status_writes_bug
+             - gvs_integration-yyu-aou-test
          tags:
              - /.*/
    - name: GvsIngestTieout
