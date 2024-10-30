@@ -18,7 +18,6 @@ workflow GvsValidateVDS {
         Int? cluster_max_age_minutes
         Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
-        Boolean use_classic_VQSR = false
 
         String? git_branch_or_tag
         String? hail_version

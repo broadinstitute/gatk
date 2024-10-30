@@ -5,7 +5,7 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
 
-# A comment.
+# C'est une comment.
 
 workflow GvsQuickstartIntegration {
     input {
@@ -83,7 +83,6 @@ workflow GvsQuickstartIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
-                use_VETS = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "vets_hail",
                 use_default_dockers = use_default_dockers,
@@ -107,46 +106,11 @@ workflow GvsQuickstartIntegration {
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
-        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRIntegration {
-            input:
-                git_branch_or_tag = git_branch_or_tag,
-                git_hash = GetToolVersions.git_hash,
-                use_VETS = false,
-                extract_do_not_filter_override = false,
-                dataset_suffix = "vqsr_hail",
-                use_default_dockers = use_default_dockers,
-                gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
-                is_wgs = true,
-                interval_list = FilterIntervalListChromosomes.out,
-                expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
-                sample_set_name = wgs_sample_set_name,
-                basic_docker = effective_basic_docker,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
-                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-                variants_docker = effective_variants_docker,
-                gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
-                hail_version = effective_hail_version,
-                maximum_alternate_alleles = maximum_alternate_alleles,
-        }
 
         if (GvsQuickstartHailVETSIntegration.used_tighter_gcp_quotas) {
             call Utils.TerminateWorkflow as HailVETSQuotaFail {
                 input:
                     message = "GvsQuickstartHailVETSIntegration should not have used tighter GCP quotas but did!",
-                    basic_docker = effective_basic_docker,
-            }
-        }
-
-        if (GvsQuickstartHailVQSRIntegration.used_tighter_gcp_quotas) {
-            call Utils.TerminateWorkflow as HailVQSRQuotaFail {
-                input:
-                    message = "GvsQuickstartHailVQSRIntegration should not have used tighter GCP quotas but did!",
                     basic_docker = effective_basic_docker,
             }
         }

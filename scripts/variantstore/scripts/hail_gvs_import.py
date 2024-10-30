@@ -14,7 +14,7 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path, use_vqsr, intermediate_resume_point):
+def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume_point):
     import hail as hl
     import import_gvs
     from hail.utils.java import Env
@@ -37,8 +37,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_vqsr, intermedi
             refs=argsfn('refs'),
             sample_mapping=argsfn('sample_mapping'),
             site_filtering_data=argsfn('site_filtering_data'),
-            vqsr_filtering_data=argsfn('vqsr_filtering_data'),
-            vqsr_tranche_data=argsfn('vqsr_tranche_data'),
+            vets_filtering_data=argsfn('vets_filtering_data'),
             reference_genome=rg38,
             final_path=vds_path,
             tmp_dir=f'{temp_path}/hail_tmp_create_vds',
@@ -47,7 +46,6 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_vqsr, intermedi
             # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
             # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
             # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-            use_vqsr=use_vqsr,
             intermediate_resume_point=intermediate_resume_point
         )
     finally:
@@ -68,8 +66,7 @@ def gcs_generate_avro_args(bucket, blob_prefix, key):
     * refs (list of lists, one outer list per GVS superpartition of 4000 samples max)
     * sample_mapping (list)
     * site_filtering_data (list)
-    * vqsr_filtering_data (list)
-    * vqsr_tranche_data (list)
+    * vets_filtering_data (list)
     """
 
     keyed_prefix = f"{blob_prefix}/{key}/"
@@ -142,8 +139,6 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
                         required=False)
-    parser.add_argument("--use-vqsr", action="store_true",
-                        help="If set, expect that the input GVS Avro files were generated using VQSR")
     parser.add_argument('--intermediate-resume-point', type=int, required=False, default=0,
                         help='Intermediate VDS index at which to resume')
 
@@ -152,7 +147,6 @@ if __name__ == '__main__':
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
-    use_vqsr =  args.use_vqsr
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
 
@@ -163,7 +157,7 @@ if __name__ == '__main__':
         def arguments(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(arguments, vds_path, 'gs://hail-common/references', temp_path, use_vqsr,
+        create_vds(arguments, vds_path, 'gs://hail-common/references', temp_path,
                    args.intermediate_resume_point)
 
     elif all(is_not_gcs):
@@ -176,7 +170,7 @@ if __name__ == '__main__':
         def arguments(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(arguments, vds_path, references_path, temp_path, use_vqsr,
+        create_vds(arguments, vds_path, references_path, temp_path,
                    args.intermediate_resume_point)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")
