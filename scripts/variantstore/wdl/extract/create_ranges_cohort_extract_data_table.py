@@ -254,7 +254,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
     # split file into files with x lines and then run
     def get_ref_subselect(fq_vet_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS FROM \n" \
+        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, SAFE_CAST(CALL_PS AS INT64) AS CALL_PS) FROM \n" \
               f" `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
