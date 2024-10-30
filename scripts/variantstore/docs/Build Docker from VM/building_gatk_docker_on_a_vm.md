@@ -47,16 +47,29 @@ cd gatk
 # Log in to Google Cloud
 gcloud init
 
-# Configure the credential helper for GCR
-gcloud auth configure-docker
+FULL_IMAGE_ID=$(cat /tmp/idfile.txt)
+
+# Take the slice of this full Docker image ID that corresponds with the output of `docker images`:
+IMAGE_ID=${FULL_IMAGE_ID:7:12}
+
+# The GATK Docker image is based on gatkbase.
+IMAGE_TYPE="gatkbase"
+TAG=$(python3 ./scripts/variantstore/wdl/extract/build_docker_tag.py --image-id "${IMAGE_ID}" --image-type "${IMAGE_TYPE}")
+
+BASE_REPO="broad-dsde-methods/gvs"
+REPO_WITH_TAG="${BASE_REPO}/gatk:${TAG}"
+docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
+
+# Configure the credential helper for GAR
+gcloud auth configure-docker us-central1-docker.pkg.dev
 
 # Tag and push
-today="$(date -Idate | sed 's/-/_/g')"
-git_hash="$(git rev-parse --short HEAD)"
-DOCKER_TAG="us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_${today}_${git_hash}"
-DOCKER_IMAGE_ID=$(docker images | head -n 2 | tail -n 1 | awk '{print $3}')
-docker tag $DOCKER_IMAGE_ID $DOCKER_TAG
-docker push $DOCKER_TAG
+GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
+docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
+
+docker push "${GAR_TAG}"
+
+echo "Docker image pushed to \"${GAR_TAG}\""
 ```
 
 Don't forget to shut down (and possibly delete) your VM once you're done!

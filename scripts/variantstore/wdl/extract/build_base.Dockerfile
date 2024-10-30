@@ -34,9 +34,9 @@ RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev z
 # including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
 # produced by the build stage without having to install development tools or clean up after a build.
 
-ARG ARROW_VERSION=12.0.1
+ARG ARROW_VERSION=16.1.0
 RUN cd / && \
-    curl -O https://dlcdn.apache.org/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
+    curl -O https://archive.apache.org/dist/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
     tar xfz apache-arrow-$ARROW_VERSION.tar.gz
 
 # Pyarrow build instructions from https://arrow.apache.org/docs/developers/python.html#python-development
@@ -79,3 +79,20 @@ RUN mkdir /bcftools bcftools-build && \
     ./configure --prefix /bcftools && \
     make && \
     make install
+
+# Build vcf-tools following this example:
+# https://github.com/overcookedfrog/vcftools/blob/master/Dockerfile
+ARG VCFTOOLS_VERSION=0.1.16
+RUN mkdir /vcftools vcftools-build && \
+    cd vcftools-build && \
+    curl -L -O https://github.com/vcftools/vcftools/releases/download/v$VCFTOOLS_VERSION/vcftools-$VCFTOOLS_VERSION.tar.gz && \
+    tar zxf vcftools-$VCFTOOLS_VERSION.tar.gz && \
+    cd vcftools-$VCFTOOLS_VERSION && \
+    ./configure --prefix=/vcftools && \
+    make && \
+    make install
+
+ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
+
+
+

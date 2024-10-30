@@ -16,6 +16,11 @@ def vcf_mt(vcf_paths):
     # Setting array_elements_required to false is done as a workaround because Hail has a hard time with unconventional fields with empty values e.g. AS_YNG=.,.,.
     # Avoiding explicitly acknowledging the use of missing elements in arrays requires Hail to make a decision in several ambiguous cases
     mt = hl.import_vcf(vcf_paths, force_bgz=True, reference_genome='GRCh38', array_elements_required=False).key_rows_by('locus')
+
+    # The 'Number' attribute of the 'FT' format specifier has changed from '1' to '.', causing the Hail VCF import logic
+    # to change its datatype representation of 'FT' from 'string' to 'array<string>'. Below is some Hail logic to unwrap
+    # any non-missing arrays, which in current GVS practice always have a single element.
+    mt = mt.annotate_entries(FT=hl.or_missing(hl.is_defined(mt.FT), mt.FT[0]))
     return mt
 
 

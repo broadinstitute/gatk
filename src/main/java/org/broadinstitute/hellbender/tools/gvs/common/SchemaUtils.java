@@ -44,6 +44,9 @@ public class SchemaUtils {
     public static final String SUM_AD = "SUM_AD";
     public static final String RAW_AD = "RAW_AD";
     public static final String CALL_PL = GENOTYPE_FIELD_PREFIX + "PL";
+    public static final String CALL_PGT = GENOTYPE_FIELD_PREFIX + "PGT";
+    public static final String CALL_PID = GENOTYPE_FIELD_PREFIX + "PID";
+    public static final String CALL_PS = GENOTYPE_FIELD_PREFIX + "PS";
 
     //Filtering table
     public static final String FILTER_SET_NAME = "filter_set_name";
@@ -58,16 +61,31 @@ public class SchemaUtils {
     public static final String TRANCHE_FILTER_NAME = "filter_name";
     public static final String TRANCHE_MODEL = "model";
 
+    //Ploidy table
+    public static final String CHROMOSOME = "chromosome";
+    public static final String SAMPLE_ID = "sample_id";
+    public static final String GENOTYPE = "genotype";
+    public static final String PLOIDY = "ploidy";
+
     // Site filtering table
     public static final String FILTERS = "filters";
     public static final List<String> FILTER_SET_SITE_FIELDS = Arrays.asList(FILTER_SET_NAME,LOCATION_FIELD_NAME,FILTERS);
 
-    public static final List<String> EXTRACT_VET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, AS_QUALapprox, QUALapprox, CALL_PL, CALL_AD);
+    public static final List<String> EXTRACT_VET_V1_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME,
+            REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, AS_QUALapprox, QUALapprox, CALL_PL, CALL_AD);
+
+    public static final List<String> EXTRACT_VET_V2_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME,
+            REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, AS_QUALapprox, QUALapprox, CALL_PL, CALL_AD,
+            CALL_PGT, CALL_PID, CALL_PS);
+
+
+    public static final List<String> SAMPLE_PLOIDY_FIELDS = Arrays.asList(CHROMOSOME, SAMPLE_ID, GENOTYPE, PLOIDY);
+
     public static final List<String> EXTRACT_REF_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, LENGTH_FIELD_NAME, STATE_FIELD_NAME);
 
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
-    public static final List<String> VQSLITE_YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALIBRATION_SENSITIVITY, SCORE, YNG_STATUS);
+    public static final List<String> VETS_YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALIBRATION_SENSITIVITY, SCORE, YNG_STATUS);
     public static final List<String> TRANCHE_FIELDS = Arrays.asList(TARGET_TRUTH_SENSITIVITY, MIN_VQSLOD, TRANCHE_FILTER_NAME, TRANCHE_MODEL);
 
     public static final List<String> ALT_ALLELE_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, "allele", ALT_ALLELE_FIELD_NAME, "allele_pos", CALL_GT, AS_RAW_MQ, RAW_MQ, AS_RAW_MQRankSum, "raw_mqranksum_x_10", AS_QUALapprox, "qual", AS_RAW_ReadPosRankSum, "raw_readposranksum_x_10", AS_SB_TABLE, "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS", CALL_AD, "ref_ad", "ad");

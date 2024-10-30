@@ -1,8 +1,8 @@
 import os
-from typing import List
+from typing import List, Tuple, Any
 
 import hail as hl
-from hail.vds.combiner.combine import merge_alleles
+from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
 from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, sequenceof, numeric
 
@@ -22,7 +22,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            intermediate_resume_point=int,
            skip_final_merge=bool,
            ref_block_max_length=int,
-           use_classic_vqsr=bool
+           use_vqsr=bool
            )
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
@@ -39,7 +39,7 @@ def import_gvs(refs: 'List[List[str]]',
                intermediate_resume_point=0,
                skip_final_merge=False,
                ref_block_max_length: 'int' = 1000,
-               use_classic_vqsr=False
+               use_vqsr=False
                ):
     """Import a collection of Avro files exported from GVS.
 
@@ -132,8 +132,8 @@ def import_gvs(refs: 'List[List[str]]',
         Skip final merge if true.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
-    use_classic_vqsr : :class:`bool`
-        Expect input Avro files to have been generated from VQSR 'Classic' data
+    use_vqsr : :class:`bool`
+        Expect input Avro files to have been generated from VQSR (NOT VETS) data
 
     Script workflow:
     ---------------
@@ -177,11 +177,6 @@ def import_gvs(refs: 'List[List[str]]',
         sdict = hl.dict(arr.map(lambda x: (x.sample_id, x.drop('sample_id', *drop))))
         return hl.rbind(sdict, lambda sdict: ids.map(lambda x: sdict.get(x)))
 
-    info('import_gvs: Importing and collecting sample mapping lookup table')
-
-    samp = hl.import_avro(sample_mapping)
-    sample_mapping_dict = samp.aggregate(hl.dict(hl.agg.collect((samp.sample_id, samp.sample_name))))
-
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
     vqsr_path = os.path.join(tmp_dir, 'vqsr.ht')
 
@@ -205,14 +200,18 @@ def import_gvs(refs: 'List[List[str]]',
         vqsr = vqsr.key_by('locus')
         vqsr.write(vqsr_path, overwrite=True)
 
-    if use_classic_vqsr:
-        info('vqsr_classic: Loading tranche data')
+    if use_vqsr:
+        info('vqsr: Loading tranche data')
         tranche = hl.import_avro(vqsr_tranche_data)
 
     n_samples = 0
 
     with hl._with_flags(use_new_shuffle='1'):
         for idx in range(len(refs)):
+            sample_mapping_group = sample_mapping[idx]
+            assert os.path.basename(sample_mapping_group) == f'000000000000.{(idx+1):03}.avro', (
+                sample_mapping_group, os.path.basename(sample_mapping_group), f'000000000000.{(idx+1):03}.avro'
+            )
             ref_group = refs[idx]
             var_group = vets[idx]
             path = os.path.join(tmp_dir, f'sample_group_{idx+1}.vds')
@@ -224,18 +223,34 @@ def import_gvs(refs: 'List[List[str]]',
                 continue
 
             info(f'import_gvs: scanning group {idx+1}/{len(refs)}...')
-            ref_ht = hl.import_avro(ref_group)
+            info('import_gvs: collecting sample IDs...')
+            # We must assign each sample id to a unique, within-group index before we execute the
+            # per group import. Rather than scan the entire ref or var table to find all sample ids,
+            # GVS generates for us one (sample_id, sample_name) Avro per group. Note that, in
+            # theory, a sample nominally in this group *could* have zero variants and/or zero
+            # reference blocks.
+            sample_ht = hl.import_avro([sample_mapping_group])
+            sample_ht_fields = set(sample_ht.row.keys())
+            assert {'sample_id', 'sample_name'}.issubset(sample_ht_fields), sample_ht.row
 
-            # Note -- availability of sample IDs statically would make import more efficient
-            info(f'import_gvs: collecting sample IDs...')
-            sample_ids = sorted(list(ref_ht.aggregate(hl.agg.collect_as_set(ref_ht.sample_id))))
-            samples = [sample_mapping_dict[s] for s in sample_ids]
-            samples_lit = hl.literal(samples, hl.tarray(hl.tstr))
+            sample_ids, sample_names = sample_ht.aggregate((
+                hl.agg.collect(sample_ht.sample_id),
+                hl.agg.collect(sample_ht.sample_name),
+            ))
+
+            non_str_name: List[Tuple[Any, str, str]] = []
+            for sample_id, sample_name in zip(sample_ids, sample_names):
+                if not isinstance(sample_name, str):
+                    non_str_name += (sample_id, sample_name)
+            assert len(non_str_name) == 0, non_str_name
+
+            sample_names_lit = hl.literal(sample_names, hl.tarray(hl.tstr))
             sample_ids_lit = hl.literal(sample_ids, hl.tarray(hl.tint32))
+
             n_new_samples = len(sample_ids)
             n_samples += n_new_samples
-            assert n_new_samples == len(samples), (n_new_samples, len(samples))
 
+            ref_ht = hl.import_avro(ref_group)
             new_loc = translate_locus(ref_ht.location)
 
             # transform fields to Hail expectations (locus object, GQ int32, end as absolute instead of relative
@@ -246,15 +261,14 @@ def import_gvs(refs: 'List[List[str]]',
             ref_ht = ref_ht.group_by(ref_ht.locus).aggregate(data_per_sample=hl.agg.collect(ref_ht.row.drop('locus')))
             ref_ht = ref_ht.transmute(entries=convert_array_with_id_keys_to_dense_array(ref_ht.data_per_sample, sample_ids_lit))
 
-            # vds column keys assume string sample IDs
-            ref_ht = ref_ht.annotate_globals(col_data=samples_lit.map(lambda s: hl.struct(s=s)),
+            ref_ht = ref_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)),
                                              ref_block_max_length=ref_block_max_length)
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
 
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
                                       local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
-                                      LGT=hl.parse_call(hl.coalesce(var_ht.PGT, var_ht.GT)),
+                                      LGT=hl.parse_call(var_ht.GT),
                                       LAD=var_ht.AD.split(',').map(lambda x: hl.int32(x)),
                                       GQ=hl.int32(var_ht.GQ),
                                       RGQ=hl.int32(var_ht.RGQ))
@@ -275,7 +289,7 @@ def import_gvs(refs: 'List[List[str]]',
                 local_allele_lookup=local_allele_lookup)
 
             var_ht = var_ht.transmute(entries=convert_array_with_id_keys_to_dense_array(var_ht.data_per_sample, sample_ids_lit))
-            var_ht = var_ht.annotate_globals(col_data=samples_lit.map(lambda s: hl.struct(s=hl.str(s))))
+            var_ht = var_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)))
             var_mt = var_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
 
             # replace 'local_alleles' strings with indices using our global lookup table
@@ -297,19 +311,31 @@ def import_gvs(refs: 'List[List[str]]',
     target_records = first_ref_mt.count_rows() // total_partitions
     info(f'import_gvs: using target_records (records per partition) of {target_records} for VDS merge')
 
-    target_final_intervals = first_ref_mt._calculate_new_partitions(total_partitions)
+    interval_tmp = os.path.join(tmp_dir, 'interval_checkpoint.ht')
+    if hl.hadoop_exists(interval_tmp):
+        info(f'import_gvs: interval checkpoint table "{interval_tmp}" already exists, deleting')
+        hl.current_backend().fs.rmtree(interval_tmp)
+
+    target_final_intervals, _ = calculate_new_intervals(first_ref_mt, target_records, interval_tmp)
 
     with hl._with_flags(no_whole_stage_codegen='1'):
 
         merge_tmp = os.path.join(tmp_dir, 'merge_tmp.vds')
-        hl.current_backend().fs.rmtree(merge_tmp)
-        info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
-        combiner = hl.vds.new_combiner(output_path=merge_tmp,
-                                       vds_paths=vds_paths,
-                                       target_records=target_records,
-                                       temp_path=tmp_dir,
-                                       use_genome_default_intervals=True)
-        combiner.run()
+        from hail.vds import VariantDataset
+        ref_success_path = os.path.join(VariantDataset._reference_path(merge_tmp), '_SUCCESS')
+        var_success_path = os.path.join(VariantDataset._variants_path(merge_tmp), '_SUCCESS')
+        if hl.hadoop_exists(ref_success_path) and hl.hadoop_exists(var_success_path):
+            info(f'import_gvs: Hail VDS combiner is done. Skipping it')
+        else:
+            info(f'import_gvs: calling Hail VDS combiner for merging {len(vds_paths)} intermediates')
+            combiner = hl.vds.new_combiner(output_path=merge_tmp,
+                                           vds_paths=vds_paths,
+                                           target_records=target_records,
+                                           branch_factor=52,  # Note that this value (52) was hard coded for Echo so it wouldn't crash. See VS-1501 for further discussion.
+                                           temp_path=tmp_dir,
+                                           use_genome_default_intervals=True)
+            combiner.run()
+
         combined = hl.vds.read_vds(merge_tmp, intervals=target_final_intervals)
 
         rd = combined.reference_data
@@ -325,7 +351,7 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
-        if use_classic_vqsr:
+        if use_vqsr:
             vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
                                      truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
                                      truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
@@ -349,10 +375,10 @@ def import_gvs(refs: 'List[List[str]]',
                     lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
                 allele_is_snp=is_snp,
                 allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                        f=lambda is_snp, alt:
-                                        hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
-                                                    hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
-                                                    True))
+                                       f=lambda is_snp, alt:
+                                       hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
+                                                   hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
+                                                   True))
             )
         else:
             vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
@@ -365,11 +391,12 @@ def import_gvs(refs: 'List[List[str]]',
                     lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
                 allele_is_snp=is_snp,
                 allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                      f=lambda is_snp, alt:
-                                      hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
-                                                  hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
-                                                  True))
+                                       f=lambda is_snp, alt:
+                                       hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
+                                                   hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
+                                                   True))
             )
+        vd = vd.annotate_rows(as_vqsr=vd.as_vqsr.map_values(lambda value: value.drop('yng_status')))
 
         lgt = vd.LGT
         la = vd.LA
@@ -392,17 +419,7 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
-
-        # Clean up any completely empty phasing fields.
-        ps_all_missing, pid_all_missing = vd.aggregate_entries((
-            hl.agg.all(hl.is_missing(vd.PS)),
-            hl.agg.all(hl.is_missing(vd.PID))
-        ))
-        if ps_all_missing:
-            vd = vd.drop('PS')
-        if pid_all_missing:
-            vd = vd.drop('PID')
-
+        vd = vd.rename({'as_vqsr': 'as_vets'})  # TODO - this should go (along with all VQSR usages).
         hl.vds.VariantDataset(
             reference_data=rd,
             variant_data=vd,

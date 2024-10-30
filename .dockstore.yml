@@ -101,7 +101,7 @@ workflows:
              - /.*/
    - name: GvsBenchmarkExtractTask
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsBenchmarkExtractTask.wdl
      filters:
          branches:
              - master
@@ -146,12 +146,20 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCreateVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsValidateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
      filters:
        branches:
          - master
@@ -165,7 +173,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1124
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -175,6 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -184,7 +192,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1060_phasing_into_vds
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -196,12 +203,11 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/variant-annotations-table/GvsCreateVATfromVDS.wdl
      filters:
          branches:
              - master
@@ -210,7 +216,7 @@ workflows:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATFilesFromBigQuery.wdl
      filters:
          branches:
              - master
@@ -219,9 +225,9 @@ workflows:
              - /.*/
    - name: GvsValidateVat
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl
      testParameterFiles:
-         - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
+         - /scripts/variantstore/variant-annotations-table/GvsValidateVat.example.inputs.json
      filters:
          branches:
              - master
@@ -235,7 +241,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1124
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -264,7 +269,6 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
-             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
@@ -274,7 +278,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - bulk_ingest_staging
          tags:
              - /.*/
    - name: GvsCalculatePrecisionAndSensitivity
@@ -284,11 +287,12 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1460_intersect_target_truth_ps
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartVcfIntegration.wdl
      filters:
          branches:
              - master
@@ -297,27 +301,26 @@ workflows:
              - /.*/
    - name: GvsQuickstartHailIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartHailIntegration.wdl
      filters:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1102-add-vds-wdl-to-integration-tests
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
          branches:
              - master
              - ah_var_store
-             - vs_1138_compressed_reference_smarts
+             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsIngestTieout
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
      filters:
          branches:
              - master
@@ -340,7 +343,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCallsetStatistics
@@ -352,15 +354,24 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: HailFromWdl
+   - name: GvsFindHailCruft
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsFindHailCruft.wdl
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
+             - ah_var_store
          tags:
              - /.*/
+   - name: GvsTieoutVcfMaxAltAlleles
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutVcfMaxAltAlleles.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - master
+       tags:
+         - /.*/
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -409,3 +420,30 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallsetPgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: MergePgenHierarchicalWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsTieoutPgenToVcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
+     filters:
+       branches:
+         - ah_var_store

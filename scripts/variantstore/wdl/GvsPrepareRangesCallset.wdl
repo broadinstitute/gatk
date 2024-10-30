@@ -14,6 +14,7 @@ workflow GvsPrepareCallset {
     String call_set_identifier
 
     String extract_table_prefix = call_set_identifier
+    Boolean enable_extract_table_ttl = true
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
@@ -27,6 +28,7 @@ workflow GvsPrepareCallset {
     String? variants_docker
     String? git_branch_or_tag
     String? git_hash
+    File? interval_list
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -45,11 +47,19 @@ workflow GvsPrepareCallset {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
+  call Utils.GetBQTableLastModifiedDatetime as RefTableDatetimeCheck {
+    input:
+      project_id = project_id,
+      fq_table = "~{project_id}.~{dataset_name}.ref_ranges_001",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call Utils.IsUsingCompressedReferences {
     input:
       query_project_id = query_project,
       dest_project_id =  destination_project,
       dataset_name = dataset_name,
+      ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -70,6 +80,8 @@ workflow GvsPrepareCallset {
       write_cost_to_db                = write_cost_to_db,
       variants_docker                 = effective_variants_docker,
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
+      enable_extract_table_ttl        = enable_extract_table_ttl,
+      interval_list                   = interval_list,
   }
 
   output {
@@ -97,6 +109,8 @@ task PrepareRangesCallsetTask {
     Boolean write_cost_to_db
     Boolean use_compressed_references
     String variants_docker
+    Boolean enable_extract_table_ttl
+    File? interval_list
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -115,7 +129,9 @@ task PrepareRangesCallsetTask {
   }
 
   command <<<
-      set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
       echo ~{sample_list_param}
 
@@ -137,7 +153,9 @@ task PrepareRangesCallsetTask {
           --ttl ~{temp_table_ttl_in_hours} \
           ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
           ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db} \
-          ~{true="--use_compressed_references True" false='' use_compressed_references}
+          ~{true="--use_compressed_references True" false='' use_compressed_references} \
+          ~{true="--enable_extract_table_ttl True" false='' enable_extract_table_ttl} \
+          ~{"--interval_list " + interval_list}
 
   >>>
   output {

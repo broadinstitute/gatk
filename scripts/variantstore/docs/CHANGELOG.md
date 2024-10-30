@@ -1,5 +1,61 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.0 - 2024-07-25
+
+### Added
+
+- Blended Genome Exome (BGE) support added.
+- `OUTSIDE_OF_TARGETS` genotype filter support added for Exomes and BGEs for a specified target interval list.
+
+### Changed
+
+- As a consequence of the `OUTSIDE_OF_TARGETS` change for Exomes and BGEs described above, the VCF header line for *all* GVS-produced VCFs (including WGS) has changed slightly. In particular the `Number` attribute of the `FORMAT` record for the `FT` genotype-level filter now has a value of `.` rather than `1`, and the `Description` attribute for it now has a value of `Genotype-level filter`.
+
+### Fixed
+
+- Fixed an edge case where untimely VM preemption could cause sample load status to not be recorded correctly.
+
+## 0.5.5 - 2024-06-24
+
+### Changed
+
+- Inputs `vcf_files_column_name`, `vcf_index_files_column_name`, `sample_id_column_name`, and `extract_output_gcs_dir` are no longer optional.
+- high_CALIBRATION_SENSITIVITY_SNP and high_CALIBRATION_SENSITIVITY_INDEL were moved from the ##FILTER entry in the header to a ##COMMENT. No change to behavior or vcf content outside of header. 
+- Reduced the number of sharded vcfs coming out of beta workflow for smaller callsets. Documentation on details coming soon. 
+- Bug fix to correctly handle samples with chromosomes with differing ploidy for DRAGEN 3.7.8 data.
+
+
+## 0.5.4 - 2024-03-18
+
+### Changed
+
+VCF files generated using the Extract workflow (`GvsExtractCallset`) no longer contain the INFO field `AS_YNG`. AS_YNG contained the allele-specific YNG field (Yay/Nay/Gray). Yay meant that allele is known good (in the VQSR/VETS training set), Nay is known bad and Gray means it's not in the training set, so use the VQSR/VETS score to determine whether to filter the genotype. Although `AS_YNG` is no longer included in the VCF explicitly, it is implicitly used to filter genotypes.
+
+## 0.5.3 - 2024-02-20
+
+### Changed
+
+Updated the representation of sample load states in the `sample_load_status` table from using `STARTED` and `FINISHED`
+to using `HEADERS_LOADED`, `REFERENCES_LOADED` and `VARIANTS_LOADED`. The new status reading/writing code is backward
+compatible with the old `STARTED` and `FINISHED` states if those have already been used within a callset. The new statuses
+should allow for faster recovery if an ingest task or workflow is preempted or aborted and then restarted.
+
+## 0.5.2 - 2024-01-17
+
+### Changed
+
+- Updated release process to version `GvsExtractCohortFromSampleNames` in addition to `GvsBeta`.
+
+### Fixed
+
+- `OutOfMemoryExceptions` conditions with default settings in `ExtractTask` addressed, memory override now passed through correctly.
+
+## 0.5.1 - 2024-01-04
+
+### Changed
+
+- Modified GvsPrepareRangesCallset.wdl and GvsExtractCohortFromSampleNames.wdl to make the tables created as part of preparing the callset to *by default* have a time-to-live of 14 days.
+
 ## 0.5.0 - 2023-10-26
 
 ### Changed

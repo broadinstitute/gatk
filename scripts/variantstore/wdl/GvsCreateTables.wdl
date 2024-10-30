@@ -16,7 +16,6 @@ workflow CreateBQTables {
     String? cloud_sdk_docker
   }
 
-  String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String ref_ranges_compressed_schema_json = '[{"name": "packed_ref_data","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}]'
   String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PS", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
@@ -37,6 +36,7 @@ workflow CreateBQTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = true,
       datatype = "vet",
       max_table_id = max_table_id,
       schema_json = vet_schema_json,
@@ -50,6 +50,7 @@ workflow CreateBQTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = true,
       datatype = "ref_ranges",
       max_table_id = max_table_id,
       schema_json = ref_ranges_schema_used,
@@ -60,8 +61,8 @@ workflow CreateBQTables {
   }
 
   output {
-    String vetDone = CreateVetTables.done
-    String refDone = CreateRefRangesTables.done
+    Boolean vetDone = CreateVetTables.done
+    Boolean refDone = CreateRefRangesTables.done
     String recorded_git_hash = effective_git_hash
   }
 }
@@ -72,6 +73,7 @@ task CreateTables {
   input {
     String project_id
     String dataset_name
+    Boolean go
     String datatype
     Int max_table_id
     String schema_json
@@ -81,12 +83,14 @@ task CreateTables {
     String clustering_field = "location"
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # set to volatile because if the table already exists, this will not remake it
+    volatile: true
   }
 
   command <<<
-    set -x
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -125,7 +129,7 @@ task CreateTables {
   >>>
 
   output {
-    String done = "true"
+    Boolean done = true
   }
 
   runtime {

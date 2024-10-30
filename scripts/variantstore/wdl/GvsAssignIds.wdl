@@ -15,7 +15,8 @@ workflow GvsAssignIds {
     File external_sample_names
     Boolean samples_are_controls = false
 
-    Boolean process_vcf_headers = false
+    Boolean load_vet_and_ref_ranges
+    Boolean load_vcf_headers
 
     Boolean use_compressed_references = false
     String? cloud_sdk_docker
@@ -38,10 +39,17 @@ workflow GvsAssignIds {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
+  call ValidateSamples {
+    input:
+      sample_names_file = external_sample_names,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
       max_table_id = 1,
@@ -54,6 +62,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       datatype = "sample_load_status",
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
@@ -61,11 +70,13 @@ workflow GvsAssignIds {
       partitioned = "false",
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
-  if (process_vcf_headers) {
+
+  if (load_vcf_headers) {
     call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "vcf_header_lines_scratch",
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
@@ -78,6 +89,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "vcf_header_lines",
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
@@ -90,6 +102,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        go = ValidateSamples.done,
         datatype = "sample_vcf_header",
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
@@ -103,6 +116,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = ValidateSamples.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -117,15 +131,17 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
-    input:
-      project_id = project_id,
-      git_branch_or_tag = git_branch_or_tag,
-      git_hash = effective_git_hash,
-      dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      use_compressed_references = use_compressed_references,
+  if (load_vet_and_ref_ranges) {
+    call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
+      input:
+        project_id = project_id,
+        git_branch_or_tag = git_branch_or_tag,
+        git_hash = effective_git_hash,
+        dataset_name = dataset_name,
+        max_table_id = AssignIds.max_table_id,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        use_compressed_references = use_compressed_references,
+    }
   }
 
   output {
@@ -143,7 +159,7 @@ task AssignIds {
     String sample_info_table
     File sample_names
     Boolean samples_are_controls
-    String table_creation_done
+    Boolean table_creation_done
     String cloud_sdk_docker
   }
   meta {
@@ -159,6 +175,7 @@ task AssignIds {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
     num_samples=$(wc -l < ~{sample_names})
 
     # make sure that sample names were actually passed, fail if empty
@@ -186,19 +203,23 @@ task AssignIds {
     bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock ~{sample_names} "sample_name:STRING"
 
     # add sample_name to sample_info_table
+    # bq query --max_rows check: ok insert
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
       'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name, is_control) select sample_name, ~{samples_are_controls} from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`)'
 
     # get the current maximum id, or 0 if there are none
+    # bq query --max_rows check: ok single row
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} 'SELECT IFNULL(MAX(sample_id),0) FROM `~{dataset_name}.~{sample_info_table}`' > maxid
     offset=$(tail -1 maxid)
 
     # perform actual id assignment
+    # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} --parameter=offset:INTEGER:$offset \
       'UPDATE `~{dataset_name}.~{sample_info_table}` m SET m.sample_id = id_assign.id FROM (SELECT sample_name, @offset + ROW_NUMBER() OVER(order by sample_name) as id FROM `~{dataset_name}.~{sample_info_table}` WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;'
 
     # retrieve the list of assigned ids and samples to update the datamodel
     echo "entity:sample_id,gvs_id" > update.tsv
+    # bq query --max_rows check: ok num samples explicit
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples --parameter=offset:INTEGER:$offset \
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
@@ -230,6 +251,7 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
+    Boolean go
     String cloud_sdk_docker
   }
 
@@ -247,7 +269,9 @@ task CreateCostObservabilityTable {
     # not volatile: true, always run this when asked
   }
   command <<<
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     TABLE="~{dataset_name}.cost_observability"
@@ -273,3 +297,43 @@ task CreateCostObservabilityTable {
   }
 }
 
+task ValidateSamples {
+  input {
+    File sample_names_file
+    String cloud_sdk_docker
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    if [[ ! -s ~{sample_names_file} ]]
+    then
+      echo "ERROR: The input file ~{sample_names_file} is empty"
+      exit 1;
+    fi
+
+    sort ~{sample_names_file} | uniq -d > output.txt
+    if [[ -s output.txt ]]
+    then
+      echo "ERROR: The input file ~{sample_names_file} contains the following duplicate entries:"
+      cat output.txt
+      exit 1;
+    fi
+
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    cpu: "1"
+    preemptible: 1
+    maxRetries: 0
+    disks: "local-disk 100 HDD"
+  }
+
+  output {
+    Boolean done = true
+  }
+}

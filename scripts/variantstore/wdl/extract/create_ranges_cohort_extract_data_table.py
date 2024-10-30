@@ -2,6 +2,7 @@
 import uuid
 import datetime
 import argparse
+import pybedtools
 import re
 
 from google.cloud import bigquery
@@ -18,8 +19,6 @@ REF_TABLE_PREFIX = "ref_ranges_"
 VET_TABLE_PREFIX = "vet_"
 SAMPLES_PER_PARTITION = 4000
 
-FINAL_TABLE_TTL = ""
-# FINAL_TABLE_TTL = " OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 72 HOUR)) "
 
 # temp-table-uuid
 output_table_prefix = str(uuid.uuid4()).split("-")[0]
@@ -53,6 +52,8 @@ AS (
         intToState(superpackEntry & 0xF))
 );
 """
+
+CHROM_MAP = {'chr1': '1', 'chr2': '2', 'chr3': '3', 'chr4': '4', 'chr5': '6', 'chr6': '6', 'chr7': '7', 'chr8': '8', 'chr9': '9', 'chr10': '10', 'chr11': '11', 'chr12': '12', 'chr13': '13', 'chr14': '14', 'chr15': '15', 'chr16': '16', 'chr17': '17', 'chr18': '18', 'chr19': '19', 'chr20': '20', 'chr21': '21', 'chr22': '22', 'chrX': '23', 'chrY': '24', 'chrM': '25'}
 
 
 def get_partition_range(i):
@@ -111,17 +112,20 @@ def get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_
 
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                 fq_sample_mapping_table, honor_withdrawn):
+                                 fq_sample_mapping_table, honor_withdrawn, enable_extract_table_ttl):
+    ttl = ""
+    if enable_extract_table_ttl:
+        ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
-
-    CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (
+    CREATE OR REPLACE TABLE `{fq_destination_table_samples}` 
+    {ttl}
+    AS (
         SELECT m.sample_id, m.sample_name, m.is_loaded, {"m.withdrawn," if honor_withdrawn else "NULL as withdrawn,"} m.is_control FROM `{fq_sample_name_table}` s JOIN
         `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) WHERE
              m.is_loaded IS TRUE AND m.is_control = {control_samples}
              {"AND m.withdrawn IS NULL" if honor_withdrawn else ""}
     )
-
     """
     print(sql)
 
@@ -130,8 +134,23 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
-def create_final_extract_vet_table(fq_destination_table_vet_data):
-    # first, create the table structure
+def get_location_filters_from_interval_list(interval_list):
+    interval_test = pybedtools.BedTool(interval_list)
+    # check to make sure there aren't too many locations to build a SQL query from
+    if len(interval_test) > 5000:
+        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+        return ""
+
+    location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
+            AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
+                            for interval in interval_test]
+    return "WHERE (" + " OR ".join(location_clause_list) + ")"
+
+
+def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl):
+    ttl = ""
+    if enable_extract_table_ttl:
+        ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
 
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_vet_data}` 
@@ -145,19 +164,25 @@ def create_final_extract_vet_table(fq_destination_table_vet_data):
               call_AD       STRING,
               AS_QUALapprox STRING,
               QUALapprox    STRING,
-              call_PL       STRING	
+              call_PL       STRING,
+              call_PGT      STRING,
+              call_PID      STRING,
+              call_PS       INT64	
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
-          {FINAL_TABLE_TTL}        
+          {ttl}        
         """
     print(sql)
     query_return = utils.execute_with_retry(client, "create final export vet table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 
-def create_final_extract_ref_table(fq_destination_table_ref_data):
-    # first, create the table structure
+def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl):
+    ttl = ""
+    if enable_extract_table_ttl:
+        ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
+
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_ref_data}` 
         (
@@ -168,13 +193,18 @@ def create_final_extract_ref_table(fq_destination_table_ref_data):
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
-          {FINAL_TABLE_TTL}        
+          {ttl}        
         """
     print(sql)
     query_return = utils.execute_with_retry(client, "create final export ref table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
-def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references):
+def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references, interval_list):
+    location_string = ""
+    if interval_list:
+        location_string = get_location_filters_from_interval_list(interval_list)
+
+    # split file into files with x lines and then run
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT location, sample_id, length, state FROM \n" \
@@ -208,7 +238,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 
             sql = helper_function_definitions + insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
-                  f" (SELECT * FROM q_all)"
+                  f" (SELECT * FROM q_all {location_string})"
             print(sql)
             print(f"{fq_ref_table} query is {utils.utf8len(sql) / (1024 * 1024)} MB in length")
             query_return = utils.execute_with_retry(client, "populate destination table with reference data", sql)
@@ -216,10 +246,15 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
     return
 
 
-def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids):
+def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids, interval_list):
+    location_string = ""
+    if interval_list:
+        location_string = get_location_filters_from_interval_list(interval_list)
+
+    # split file into files with x lines and then run
     def get_ref_subselect(fq_vet_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
+        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS FROM \n" \
               f" `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
@@ -228,7 +263,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
         if len(partition_samples) > 0:
             subs = {}
-            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL) \n WITH \n"
+            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS) \n WITH \n"
             fq_vet_table = f"{fq_ranges_dataset}.{VET_TABLE_PREFIX}{i:03}"
             j = 1
 
@@ -239,7 +274,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
             sql = insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
-                  f" (SELECT * FROM q_all)"
+                  f" (SELECT * FROM q_all {location_string})"
             print(sql)
             print(f"{fq_vet_table} query is {utils.utf8len(sql) / (1024 * 1024)} MB in length")
             query_return = utils.execute_with_retry(client, "populate destination table with variant data", sql)
@@ -262,7 +297,9 @@ def make_extract_table(call_set_identifier,
                        temp_table_ttl_hours,
                        only_output_vet_tables,
                        write_cost_to_db,
-                       use_compressed_references):
+                       use_compressed_references,
+                       enable_extract_table_ttl,
+                       interval_list):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -323,18 +360,18 @@ def make_extract_table(call_set_identifier,
         # samples with a null `withdrawn` date in the cohort.
         if not only_output_vet_tables:
             create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                     fq_sample_mapping_table, honor_withdrawn=not sample_names_to_extract)
+                                     fq_sample_mapping_table, not sample_names_to_extract, enable_extract_table_ttl)
 
         # pull the sample ids back down
         sample_ids = get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table)
 
         # create and populate the tables for extract data
         if not only_output_vet_tables:
-            create_final_extract_ref_table(fq_destination_table_ref_data)
-            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references)
+            create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl)
+            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references, interval_list)
 
-        create_final_extract_vet_table(fq_destination_table_vet_data)
-        populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
+        create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl)
+        populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids, interval_list)
 
     finally:
         utils.write_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges',
@@ -361,17 +398,22 @@ if __name__ == '__main__':
     parser.add_argument('--query_labels', type=str, action='append',
                         help='Labels to put on the BQ query that will show up in the billing. Ex: --query_labels key1=value1 --query_labels key2=value2',
                         required=False)
-    parser.add_argument('--fq_sample_mapping_table', type=str, help='Mapping table from sample_id to sample_name',
-                        required=True)
-    parser.add_argument('--max_tables',type=int, help='Maximum number of vet/ref ranges tables to consider', required=False,
-                        default=250)
-    parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
+    parser.add_argument('--fq_sample_mapping_table', type=str,
+                        help='Mapping table from sample_id to sample_name', required=True)
+    parser.add_argument('--max_tables',type=int,
+                        help='Maximum number of vet/ref ranges tables to consider', required=False, default=250)
+    parser.add_argument('--ttl', type=int,
+                        help='Temp table TTL in hours', required=False, default=72)
     parser.add_argument('--only_output_vet_tables', type=bool,
-                      help='Only create __VET_DATA table, skip __REF_DATA and __SAMPLES tables', required=False, default=False)
+                        help='Only create __VET_DATA table, skip __REF_DATA and __SAMPLES tables', required=False, default=False)
     parser.add_argument('--write_cost_to_db', type=bool,
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
     parser.add_argument('--use_compressed_references', type=bool,
                         help='Expect compressed reference data and expand the fields', required=False, default=False)
+    parser.add_argument('--enable_extract_table_ttl', type=bool,
+                        help='Add a TTL to the extract tables', required=False, default=False)
+    parser.add_argument('--interval_list', type=str,
+                        help='interval list or BAM file to limit the locations', required=False)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -398,4 +440,6 @@ if __name__ == '__main__':
                        args.ttl,
                        args.only_output_vet_tables,
                        args.write_cost_to_db,
-                       args.use_compressed_references)
+                       args.use_compressed_references,
+                       args.enable_extract_table_ttl,
+                       args.interval_list)
