@@ -92,6 +92,14 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     @Override
+    public void onTraversalStart() {
+        vcfWriter = createVCFWriter(outputVcf);
+        final VCFHeader header = getHeaderForVariants();
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MULTI_CNV, 0, VCFHeaderLineType.Flag, "Variant is a multiallelic CNV"));
+        vcfWriter.writeHeader(header);
+    }
+
+    @Override
     public void closeTool() {
         if (vcfWriter != null) {
             vcfWriter.close();
@@ -120,12 +128,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         switch (n) {
             case 0:
                 processCollectedVariants();
-                break;
-            case 1:
-                vcfWriter = createVCFWriter(outputVcf);
-                final VCFHeader header = getHeaderForVariants();
-                header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MULTI_CNV, 0, VCFHeaderLineType.Flag, "Variant is a multiallelic CNV"));
-                vcfWriter.writeHeader(header);
                 break;
         }
     }
