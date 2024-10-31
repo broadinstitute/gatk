@@ -249,9 +249,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
                 final String widerSvType = event.getRight();
                 final int currentRdCn = revisedRdCn.get(variantId).getOrDefault(sample, 0);
                 final int widerRdCn = revisedRdCn.getOrDefault(widerVariantId, new HashMap<>()).getOrDefault(sample, 0);
-                if (!revisedEventsFiltered.getOrDefault(widerVariantId, new HashSet<>()).contains(sample)) {
-                    System.err.println(sample + " " + widerVariantId);
-                }
 
                 int newVal = -1;
                 if (widerSvType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) && currentRdCn == 2 && widerRdCn == 3) {
@@ -261,7 +258,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
                 }
 
                 if (newVal != -1) {
-                    System.out.println(variantId);
                     final GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
                     gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
                     gb.GQ(Integer.parseInt((String) oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ)));
