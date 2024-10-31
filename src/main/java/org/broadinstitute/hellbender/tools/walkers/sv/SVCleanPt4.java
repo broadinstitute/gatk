@@ -141,7 +141,8 @@ public class SVCleanPt4 extends VariantWalker {
             if (line instanceof VCFInfoHeaderLine) {
                 String id = ((VCFInfoHeaderLine) line).getID();
                 if (id.equals(GATKSVVCFConstants.MULTI_CNV) ||
-                        id.equals(GATKSVVCFConstants.REVISED_EVENT)) {
+                        id.equals(GATKSVVCFConstants.REVISED_EVENT) ||
+                        id.equals(GATKSVVCFConstants.EV)) {
                     continue;
                 }
             }
@@ -153,6 +154,7 @@ public class SVCleanPt4 extends VariantWalker {
         newHeader.addMetaDataLine(new VCFFilterHeaderLine(GATKSVVCFConstants.MULTIALLELIC, "Multiallelic site"));
         newHeader.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Predicted copy state"));
         newHeader.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, 1, VCFHeaderLineType.Integer, "Read-depth genotype quality"));
+        newHeader.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.EV, 0, VCFHeaderLineType.String, "Classes of evidence supporting final genotype"));
         newHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PESR_GT_OVERDISPERSION, 0, VCFHeaderLineType.Flag, "High PESR dispersion count"));
 
         // Write header
