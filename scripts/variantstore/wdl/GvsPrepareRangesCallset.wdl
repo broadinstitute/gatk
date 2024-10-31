@@ -56,7 +56,8 @@ workflow GvsPrepareCallset {
 
   call Utils.IsUsingCompressedReferences {
     input:
-      project_id = query_project,
+      query_project_id = query_project,
+      dest_project_id =  destination_project,
       dataset_name = dataset_name,
       ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,

@@ -9,7 +9,7 @@ def write_chr_vcf(mt, chrom, full_path, metadata, tabix=True):
     hl.export_vcf(mt, full_path, tabix=tabix, metadata=metadata)
 
 
-def make_dense_mt(vds, max_alt_alleles=None, is_keep_as_vqsr_fields=False):
+def make_dense_mt(vds, max_alt_alleles=None, is_keep_as_vets_fields=False):
     """
     Given a VDS, follow a standard method to densify into a MatrixTable.
     This process includes:
@@ -23,7 +23,7 @@ def make_dense_mt(vds, max_alt_alleles=None, is_keep_as_vqsr_fields=False):
     :param vds: input VDS as a gs URL
     :param max_alt_alleles (None):  Drop any variant sites that have the number of alt alleles exceeding this value.
         Specify None to not prune any variant sites by this criteria.
-    :param is_keep_as_vqsr_fields (False):  If True, keep the AS_VQSR fields, but move the fields to the info field.
+    :param is_keep_as_vets_fields (False):  If True, keep the AS_VETS fields, but move the fields to the info field.
     :return: a dense MatrixTable
     """
     vd_gt = vds.variant_data
@@ -61,9 +61,9 @@ def make_dense_mt(vds, max_alt_alleles=None, is_keep_as_vqsr_fields=False):
                                                              AN=d_callset.variant_qc.AN,
                                                              homozygote_count=d_callset.variant_qc.homozygote_count))
 
-    if is_keep_as_vqsr_fields and ('as_vqsr' in d_callset.row):
-        d_callset = d_callset.annotate_rows(info = d_callset.info.annotate(AS_VQSLOD = d_callset.as_vqsr.values().vqslod,
-                                         AS_YNG = d_callset.as_vqsr.values().yng_status))
+    if is_keep_as_vets_fields and ('as_vets' in d_callset.row):
+        d_callset = d_callset.annotate_rows(info = d_callset.info.annotate(AS_CALIBRATION_SENSITIVITY = d_callset.as_vets.values().calibration_sensitivity,
+                                         AS_YNG = d_callset.as_vets.values().yng_status))
 
     # Drop duplicate nested fields that are already in INFO field rendered by call_stats()
     d_callset = d_callset.annotate_rows(variant_qc = d_callset.variant_qc.drop("AC", "AF", "AN", "homozygote_count"))
@@ -72,7 +72,7 @@ def make_dense_mt(vds, max_alt_alleles=None, is_keep_as_vqsr_fields=False):
     #  'LGT', 'LA' have already been removed
     # Please note that this cell is specific to AoU VDS and fields specified here may not exist in test data.
     # This will not fail if a field is missing.
-    fields_to_drop = ['as_vqsr', 'LAD',
+    fields_to_drop = ['as_vets', 'LAD',
                 'tranche_data', 'truth_sensitivity_snp_threshold',
              'truth_sensitivity_indel_threshold','snp_vqslod_threshold','indel_vqslod_threshold']
     d_callset = d_callset.drop(*(f for f in fields_to_drop if f in d_callset.entry or f in d_callset.row or f in d_callset.col))

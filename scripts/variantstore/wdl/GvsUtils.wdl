@@ -72,7 +72,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-10-17-alpine-6dd528be8d8d"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2024-10-22-alpine-e7443149b8db"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2024-10-24-gatkbase-b29b46ab0443"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -929,7 +929,8 @@ task IsVETS {
 
 task IsUsingCompressedReferences {
   input {
-    String project_id
+    String query_project_id
+    String dest_project_id
     String dataset_name
     String ref_table_timestamp
     String cloud_sdk_docker
@@ -940,11 +941,11 @@ task IsUsingCompressedReferences {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # bq query --max_rows check: ok one row
-    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+    bq --apilog=false query --project_id=~{query_project_id} --format=csv --use_legacy_sql=false '
       SELECT
         column_name
       FROM
-        `~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        `~{dest_project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
       WHERE
         table_name = "ref_ranges_001"
       AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
