@@ -175,7 +175,6 @@ public class SVCleanPt4 extends VariantWalker {
 
         // Exit if outside batch range
         if (recordIdx < recordStart || recordIdx >= recordEnd) {
-            vcfWriter.add(builder.make());
             return;
         }
 
