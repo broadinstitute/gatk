@@ -143,7 +143,6 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
 
     public void secondPassApply(final VariantContext variant) {
         if (filteredVariantIds.contains(variant.getID())) {
-            System.out.println(variant.getID());
             return;
         }
 

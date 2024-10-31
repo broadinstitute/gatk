@@ -7,7 +7,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
@@ -23,6 +22,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -77,6 +78,7 @@ public final class SVCleanPt1a extends VariantWalker {
     public static final String CHRY_LONG_NAME = "chr-Y";
     public static final String FAIL_LIST_LONG_NAME = "fail-list";
     public static final String PASS_LIST_LONG_NAME = "pass-list";
+    public static final String OUTPUT_SAMPLES_LIST_LONG_NAME = "output-samples-list";
 
     @Argument(
             fullName = CHRX_LONG_NAME,
@@ -94,15 +96,21 @@ public final class SVCleanPt1a extends VariantWalker {
 
     @Argument(
             fullName = FAIL_LIST_LONG_NAME,
-            doc = "File with complex variants failing the background test"
+            doc = "File with variants failing the background test"
     )
     private GATKPath failList;
 
     @Argument(
             fullName = PASS_LIST_LONG_NAME,
-            doc = "Fail with complex variants passing both sides"
+            doc = "File with variants passing both sides"
     )
     private GATKPath passList;
+
+    @Argument(
+            fullName = OUTPUT_SAMPLES_LIST_LONG_NAME,
+            doc = "Output file with samples"
+    )
+    private GATKPath outputSamplesList;
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -112,6 +120,7 @@ public final class SVCleanPt1a extends VariantWalker {
     private GATKPath outputVcf;
 
     private VariantContextWriter vcfWriter;
+    private BufferedWriter samplesWriter = null;
 
     private Set<String> failSet;
     private Set<String> passSet;
@@ -135,6 +144,18 @@ public final class SVCleanPt1a extends VariantWalker {
         // Write header
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(header);
+
+        // Write samples list
+        try {
+            samplesWriter = new BufferedWriter(new FileWriter(outputSamplesList.toPath().toFile()));
+            for (String sample : header.getGenotypeSamples()) {
+                samplesWriter.write(sample);
+                samplesWriter.newLine();
+            }
+            samplesWriter.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("Can't create output file", e);
+        }
     }
 
     @Override
