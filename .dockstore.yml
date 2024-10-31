@@ -173,6 +173,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1491_cmrg
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -434,6 +435,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1491_cmrg
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
