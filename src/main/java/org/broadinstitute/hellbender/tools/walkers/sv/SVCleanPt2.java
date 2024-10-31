@@ -66,7 +66,7 @@ import java.util.Collections;
 @DocumentedFeature
 public class SVCleanPt2 extends VariantWalker {
     public static final String SAMPLE_LIST_LONG_NAME = "sample-list";
-    public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
+    public static final String OUTPUT_REVISED_LIST_LONG_NAME = "output-revised-list";
 
     @Argument(
             fullName = SAMPLE_LIST_LONG_NAME,
@@ -75,10 +75,10 @@ public class SVCleanPt2 extends VariantWalker {
     private GATKPath sampleListPath;
 
     @Argument(
-            fullName = OUTPUT_PREFIX_LONG_NAME,
+            fullName = OUTPUT_REVISED_LIST_LONG_NAME,
             doc = "Prefix for output files"
     )
-    private GATKPath outputPrefix;
+    private GATKPath outputRevisedList;
 
     private BufferedWriter revisedCnWriter;
 
@@ -94,7 +94,7 @@ public class SVCleanPt2 extends VariantWalker {
     @Override
     public void onTraversalStart() {
         try {
-            revisedCnWriter = Files.newBufferedWriter(Paths.get(outputPrefix.toString() + ".txt"));
+            revisedCnWriter = Files.newBufferedWriter(Paths.get(outputRevisedList.toString()));
 
             sampleWhitelist = new HashSet<>(Files.readAllLines(sampleListPath.toPath()));
         } catch (IOException e) {
