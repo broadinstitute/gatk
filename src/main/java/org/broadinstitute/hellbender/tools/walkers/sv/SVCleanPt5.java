@@ -87,6 +87,10 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
                 if (GATKSVVCFConstants.FILTER_VCF_INFO_LINES.contains(((VCFInfoHeaderLine) line).getID())) {
                     continue;
                 }
+            } else if (line instanceof VCFFormatHeaderLine) {
+                if (((VCFFormatHeaderLine) line).getID().equals(GATKSVVCFConstants.EV)) {
+                    continue;
+                }
             } else if (line instanceof VCFAltHeaderLine) {
                 if (((VCFAltHeaderLine) line).getID().equals(GATKSVVCFConstants.UNR)) {
                     continue;
@@ -98,8 +102,11 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
             newHeaderLines.add(line);
         }
 
-        // Write header
+        // Add new header lines
         VCFHeader newHeader = new VCFHeader(newHeaderLines, header.getGenotypeSamples());
+        newHeader.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.EV, 1, VCFHeaderLineType.String, "Classes of evidence supporting final genotype"));
+
+        // Write header
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(newHeader);
     }
