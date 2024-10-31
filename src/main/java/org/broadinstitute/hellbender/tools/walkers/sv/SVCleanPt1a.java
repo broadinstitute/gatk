@@ -73,8 +73,8 @@ import java.util.stream.Collectors;
 @BetaFeature
 @DocumentedFeature
 public final class SVCleanPt1a extends VariantWalker {
-    public static final String CHRX_LONG_NAME = "chrX";
-    public static final String CHRY_LONG_NAME = "chrY";
+    public static final String CHRX_LONG_NAME = "chr-X";
+    public static final String CHRY_LONG_NAME = "chr-Y";
     public static final String FAIL_LIST_LONG_NAME = "fail-list";
     public static final String PASS_LIST_LONG_NAME = "pass-list";
 
