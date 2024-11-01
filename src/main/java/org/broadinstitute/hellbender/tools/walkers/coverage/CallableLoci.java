@@ -113,33 +113,33 @@ public class CallableLoci extends LocusWalker {
             optional = false)
     private File summaryFile;
 
-    @Argument(fullName = "maxLowMAPQ", shortName = "mlmq", 
+    @Argument(fullName = "max-low-mapq", shortName = "mlmq", 
             doc = "Maximum value for MAPQ to be considered a problematic mapped read")
     private byte maxLowMAPQ = 1;
 
-    @Argument(fullName = "minMappingQuality", shortName = "mmq", 
+    @Argument(fullName = "min-mapping-quality", shortName = "mmq", 
             doc = "Minimum mapping quality of reads to count towards depth")
     private byte minMappingQuality = 10;
 
-    @Argument(fullName = "minBaseQuality", shortName = "mbq", 
+    @Argument(fullName = "min-base-quality", shortName = "mbq", 
             doc = "Minimum quality of bases to count towards depth")
     private byte minBaseQuality = 20;
 
     @Advanced
-    @Argument(fullName = "minDepth", shortName = "minDepth", 
+    @Argument(fullName = "min-depth", shortName = "min-depth", 
             doc = "Minimum QC+ read depth before a locus is considered callable")
     private int minDepth = 4;
 
-    @Argument(fullName = "maxDepth", shortName = "maxDepth", 
+    @Argument(fullName = "max-depth", shortName = "max-depth", 
             doc = "Maximum read depth before a locus is considered poorly mapped")
     private int maxDepth = -1;
 
     @Advanced
-    @Argument(fullName = "minDepthForLowMAPQ", shortName = "mdflmq", 
+    @Argument(fullName = "min-depth-for-low-mapq", shortName = "mdflmq", 
             doc = "Minimum read depth before a locus is considered a potential candidate for poorly mapped")
     private int minDepthLowMAPQ = 10;
 
-    @Argument(fullName = "maxFractionOfReadsWithLowMAPQ", shortName = "frlmq", 
+    @Argument(fullName = "max-fraction-of-reads-with-low-mapq", shortName = "frlmq", 
             doc = "If the fraction of reads at a base with low mapping quality exceeds this value, the site may be poorly mapped")
     private double maxLowMAPQFraction = 0.1;
 
