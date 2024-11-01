@@ -5,7 +5,7 @@ import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -65,7 +65,7 @@ public class FuncotatorReferenceTestUtils {
         Utils.nonNull(fastaTarGz);
         Utils.nonNull(destDir);
         String result = null;
-        try (final ArchiveInputStream i = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(fastaTarGz)))) {
+        try (final ArchiveInputStream<?> i = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(fastaTarGz)))) {
             ArchiveEntry entry = null;
             while ((entry = i.getNextEntry()) != null) {
                 if (!i.canReadEntryData(entry)) {
