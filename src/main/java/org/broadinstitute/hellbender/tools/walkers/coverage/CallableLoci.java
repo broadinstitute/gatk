@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 
 
 import java.io.File;
@@ -108,41 +109,77 @@ public class CallableLoci extends LocusWalker {
             doc = "Output file (BED or per-base format)")
     private File outputFile = null;
 
+    /**
+     * Callable loci summary counts will be written to this file.
+     */
     @Argument(fullName = "summary", 
             doc = "Name of file for output summary", 
             optional = false)
     private File summaryFile;
 
+    /**
+     * The gap between this value and mmq are reads that are not sufficiently well mapped for calling but
+     * aren't indicative of mapping problems.  For example, if maxLowMAPQ = 1 and mmq = 20, then reads with
+     * MAPQ == 0 are poorly mapped, MAPQ >= 20 are considered as contributing to calling, where
+     * reads with MAPQ >= 1 and < 20 are not bad in and of themselves but aren't sufficiently good to contribute to
+     * calling.  In effect this reads are invisible, driving the base to the NO_ or LOW_COVERAGE states
+     */
     @Argument(fullName = "max-low-mapq", shortName = "mlmq", 
             doc = "Maximum value for MAPQ to be considered a problematic mapped read")
     private byte maxLowMAPQ = 1;
 
+    /**
+     * Reads with MAPQ > minMappingQuality are treated as usable for variation detection, contributing to the PASS
+     * state.
+     */
     @Argument(fullName = "min-mapping-quality", shortName = "mmq", 
             doc = "Minimum mapping quality of reads to count towards depth")
     private byte minMappingQuality = 10;
 
+    /**
+     * Bases with less than minBaseQuality are viewed as not sufficiently high quality to contribute to the PASS state
+     */
     @Argument(fullName = "min-base-quality", shortName = "mbq", 
             doc = "Minimum quality of bases to count towards depth")
     private byte minBaseQuality = 20;
 
+    /**
+     * If the number of QC+ bases (on reads with MAPQ > minMappingQuality and with base quality > minBaseQuality) exceeds this
+     * value and is less than maxDepth the site is considered PASS.
+     */
     @Advanced
     @Argument(fullName = "min-depth", shortName = "min-depth", 
             doc = "Minimum QC+ read depth before a locus is considered callable")
     private int minDepth = 4;
 
+    /**
+     * If the QC+ depth exceeds this value the site is considered to have EXCESSIVE_DEPTH
+     */
     @Argument(fullName = "max-depth", shortName = "max-depth", 
             doc = "Maximum read depth before a locus is considered poorly mapped")
     private int maxDepth = -1;
 
+    /**
+     * We don't want to consider a site as POOR_MAPPING_QUALITY just because it has two reads, and one is MAPQ.  We
+     * won't assign a site to the POOR_MAPPING_QUALITY state unless there are at least minDepthForLowMAPQ reads
+     * covering the site.
+     */
     @Advanced
     @Argument(fullName = "min-depth-for-low-mapq", shortName = "mdflmq", 
             doc = "Minimum read depth before a locus is considered a potential candidate for poorly mapped")
     private int minDepthLowMAPQ = 10;
 
+    /**
+     * If the number of reads at this site is greater than minDepthForLowMAPQ and the fraction of reads with low mapping quality
+     * exceeds this fraction then the site has POOR_MAPPING_QUALITY.
+     */
     @Argument(fullName = "max-fraction-of-reads-with-low-mapq", shortName = "frlmq", 
             doc = "If the fraction of reads at a base with low mapping quality exceeds this value, the site may be poorly mapped")
     private double maxLowMAPQFraction = 0.1;
 
+    /**
+     * The output of this tool will be written in this format.  The recommended option is BED.
+     */
     @Advanced
     @Argument(fullName = "format", shortName = "format", 
             doc = "Output format")
@@ -217,6 +254,16 @@ public class CallableLoci extends LocusWalker {
     }
 
     @Override
+    public boolean emitEmptyLoci() {
+        return true;
+    }
+
+    @Override
+    public boolean includeNs() {
+        return true;
+    }
+
+    @Override
     public void onTraversalStart() {
         // Validate sample count
         if (getHeaderForReads().getReadGroups().stream()
@@ -234,6 +281,18 @@ public class CallableLoci extends LocusWalker {
         }
 
         integrator = new Integrator();
+    }
+
+    private static double ratio(int numerator, int denominator) {
+        if ( denominator > 0 ) {
+            return ((double) numerator)/denominator;
+        } else {
+            if ( numerator == 0 && denominator == 0) {
+                return 0.0;
+            } else {
+                throw new GATKException(String.format("The denominator of a ratio cannot be zero or less than zero: %d/%d", numerator, denominator));
+            }
+        }
     }
 
     @Override
@@ -260,7 +319,7 @@ public class CallableLoci extends LocusWalker {
 
             if (rawDepth == 0) {
                 state = CalledState.NO_COVERAGE;
-            } else if (rawDepth >= minDepthLowMAPQ && (double)lowMAPQDepth / rawDepth >= maxLowMAPQFraction) {
+            } else if ((rawDepth >= minDepthLowMAPQ) && (ratio(lowMAPQDepth, rawDepth) >= maxLowMAPQFraction)) {
                 state = CalledState.POOR_MAPPING_QUALITY;
             } else if (QCDepth < minDepth) {
                 state = CalledState.LOW_COVERAGE;
