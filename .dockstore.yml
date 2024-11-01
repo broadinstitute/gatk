@@ -115,6 +115,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1491_cmrg
          tags:
              - /.*/
    - name: GvsCreateFilterSet
