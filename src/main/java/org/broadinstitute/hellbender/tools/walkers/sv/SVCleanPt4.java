@@ -266,12 +266,14 @@ public class SVCleanPt4 extends VariantWalker {
         if (gt5kbFilter) {
             for (Genotype genotype : genotypes) {
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) >= 2) { // TODO: Verify that removal of sample_obj[GQ] is None condition is okay
-                    gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
-                } else if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) == 1) {
-                    gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                } else {
-                    gb.alleles(Arrays.asList(variant.getAlternateAllele(0), variant.getAlternateAllele(0)));
+                if (!genotype.isNoCall()) {
+                    if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) >= 2) { // TODO: Verify that removal of sample_obj[GQ] is None condition is okay
+                        gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
+                    } else if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) == 1) {
+                        gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
+                    } else if (genotype.hasGQ()) {
+                        gb.alleles(Arrays.asList(variant.getAlternateAllele(0), variant.getAlternateAllele(0)));
+                    }
                 }
                 updatedGenotypes.add(gb.make());
             }
@@ -328,12 +330,14 @@ public class SVCleanPt4 extends VariantWalker {
         if (gt5kbFilter) {
             for (Genotype genotype : genotypes) {
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) <= 2) {
-                    gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
-                } else if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) == 3) {
-                    gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                } else {
-                    gb.alleles(Arrays.asList(variant.getAlternateAllele(0), variant.getAlternateAllele(0)));
+                if (!genotype.isNoCall()) {
+                    if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 3).toString()) <= 2) {
+                        gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
+                    } else if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) == 3) {
+                        gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
+                    } else if (genotype.hasGQ()) {
+                        gb.alleles(Arrays.asList(variant.getAlternateAllele(0), variant.getAlternateAllele(0)));
+                    }
                 }
                 updatedGenotypes.add(gb.make());
             }
