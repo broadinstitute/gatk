@@ -470,6 +470,35 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(expectedRecordsFound, 1);
     }
 
+    @Test
+    public void testClusterSitesOnly() {
+        final File output = createTempFile("clsuter_sites_only", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .addVCF(getToolTestDataDir() + "1kgp_test.batch1.pesr.chr22.vcf.gz")
+                .addVCF(getToolTestDataDir() + "1kgp_test.batch1.depth.chr22.vcf.gz")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500)
+                .add(SVCluster.SITES_ONLY_LONG_NAME, true);
+
+        runCommandLine(args, SVCluster.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> vcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final VCFHeader header = vcf.getKey();
+        final List<VariantContext> records = vcf.getValue();
+        Assert.assertTrue(header.getSampleNamesInOrder().isEmpty());
+        Assert.assertEquals(records.size(), 1636);
+    }
 
     @Test
     public void testAllosome() {
