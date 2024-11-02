@@ -2,14 +2,19 @@ package org.broadinstitute.hellbender.tools.walkers.coverage;
 
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.LocusWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -21,6 +26,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Collect statistics on callable, uncallable, poorly mapped, and other parts of the genome
@@ -96,6 +103,7 @@ import java.io.PrintStream;
  * @author Mark DePristo / Jonn Smith
  * @since May 7, 2010 / Nov 1, 2024
  */
+@ExperimentalFeature
 @DocumentedFeature(groupName = "Coverage Analysis")
 @CommandLineProgramProperties(
         summary = "Collect statistics on callable, uncallable, poorly mapped, and other parts of the genome",
@@ -264,6 +272,19 @@ public class CallableLoci extends LocusWalker {
     }
 
     @Override
+    // This is the default set of filters for CallableLoci as implemented in the GATK3 version of this tool.
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> defaultFilters = new ArrayList<>(6);
+        defaultFilters.add(new ReadFilterLibrary.GoodCigarReadFilter());
+        defaultFilters.add(new ReadFilterLibrary.NotDuplicateReadFilter());
+        defaultFilters.add(new ReadFilterLibrary.PassesVendorQualityCheckReadFilter());
+        defaultFilters.add(new WellformedReadFilter());
+        defaultFilters.add(new ReadFilterLibrary.PrimaryLineReadFilter());
+        defaultFilters.add(new ReadFilterLibrary.MappedReadFilter());
+        return defaultFilters;
+    }
+
+    @Override
     public void onTraversalStart() {
         // Validate sample count
         if (getHeaderForReads().getReadGroups().stream()
@@ -311,8 +332,7 @@ public class CallableLoci extends LocusWalker {
                     lowMAPQDepth++;
                 }
 
-                if (e.getMappingQual() >= minMappingQuality && 
-                    (e.getQual() >= minBaseQuality || e.isDeletion())) {
+                if (e.getMappingQual() >= minMappingQuality && (e.getQual() >= minBaseQuality || e.isDeletion())) {
                     QCDepth++;
                 }
             }
