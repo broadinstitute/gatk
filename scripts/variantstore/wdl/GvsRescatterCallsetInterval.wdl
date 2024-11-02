@@ -11,6 +11,7 @@ workflow GvsRescatterCallsetInterval {
     String filter_set_name
     String interval_file_dir
     Array[String] intervals_to_scatter    #e.g. ["0001", "0413", "9839"] match format of the interval file names
+    String interval_file_name_suffix = "-scattered.interval_list"
     String output_file_base_name
     String project_id
     Int re_scatter_count
@@ -48,7 +49,7 @@ workflow GvsRescatterCallsetInterval {
         extract_table_prefix = extract_table_prefix,
         output_file_base_name = vcf_basename,
         scatter_count = re_scatter_count,
-        interval_list = sub(interval_file_dir, "/$", "") + '/' + intervals_to_scatter[i] + "-scattered.interval_list",
+        interval_list = sub(interval_file_dir, "/$", "") + '/' + intervals_to_scatter[i] + interval_file_name_suffix,
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
         target_interval_list = target_interval_list,
