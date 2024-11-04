@@ -3,7 +3,7 @@ version 1.0
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
-# It's a comment
+# It's a new comment
 
 workflow GvsCreateVATfromVDS {
     input {
