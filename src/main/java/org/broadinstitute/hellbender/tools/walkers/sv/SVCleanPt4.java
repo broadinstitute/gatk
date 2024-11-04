@@ -171,7 +171,6 @@ public class SVCleanPt4 extends VariantWalker {
         genotypes = processLargeDeletions(variant, builder, genotypes);
         genotypes = processLargeDuplications(variant, builder, genotypes);
         genotypes = processRevisedSex(variant, genotypes);
-        processInfoFields(builder);
 
         // Build genotypes
         if (isCalled(builder, genotypes)) {
@@ -181,18 +180,18 @@ public class SVCleanPt4 extends VariantWalker {
     }
 
     private List<Genotype> processRevisedCn(final VariantContext variant, final List<Genotype> genotypes) {
-        if (!revisedCopyNumbers.containsKey(variant.getID())) {
+        final String variantID = variant.getID();
+        if (!revisedCopyNumbers.containsKey(variantID)) {
             return genotypes;
         }
 
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
-        Map<String, Integer> sampleCnMap = revisedCopyNumbers.get(variant.getID());
         for (Genotype genotype : genotypes) {
             String sampleName = genotype.getSampleName();
-            if (sampleCnMap.containsKey(sampleName)) {
-                GenotypeBuilder gb = new GenotypeBuilder(genotype)
-                        .alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)))
-                        .attribute(GATKSVVCFConstants.RD_CN, sampleCnMap.get(sampleName));
+            if (revisedCopyNumbers.get(variantID).containsKey(sampleName)) {
+                GenotypeBuilder gb = new GenotypeBuilder(genotype);
+                gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
+                gb.attribute(GATKSVVCFConstants.RD_CN, revisedCopyNumbers.get(variantID).get(sampleName));
                 updatedGenotypes.add(gb.make());
             } else {
                 updatedGenotypes.add(genotype);
@@ -243,7 +242,7 @@ public class SVCleanPt4 extends VariantWalker {
         }
 
         boolean multiallelicFilter = false;
-        if (variant.getEnd() - variant.getStart() >= MIN_LARGE_EVENT_SIZE) {
+        if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
             for (Genotype genotype : genotypes) {
                 if (!outlierSamples.contains(genotype.getSampleName())  && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
@@ -258,7 +257,7 @@ public class SVCleanPt4 extends VariantWalker {
         boolean gt5kbFilter = false;
         if (genotypes.stream().anyMatch(g -> !isBiallelic(g))) {
             gt5kbFilter = true;
-        } else if (variant.getEnd() - variant.getStart() >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
+        } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
             gt5kbFilter = true;
         }
 
@@ -305,7 +304,7 @@ public class SVCleanPt4 extends VariantWalker {
         }
 
         boolean multiallelicFilter = false;
-        if (variant.getEnd() - variant.getStart() >= MIN_LARGE_EVENT_SIZE) {
+        if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
             for (Genotype genotype : genotypes) {
                 if (!outlierSamples.contains(genotype.getSampleName()) && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
@@ -322,7 +321,7 @@ public class SVCleanPt4 extends VariantWalker {
         boolean gt5kbFilter = false;
         if (!genotypes.stream().allMatch(g -> g.getAlleles().size() > 2)) {
             gt5kbFilter = true;
-        } else if (variant.getEnd() - variant.getStart() >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
+        } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
             gt5kbFilter = true;
         }
 
@@ -383,16 +382,6 @@ public class SVCleanPt4 extends VariantWalker {
             }
         }
         return updatedGenotypes;
-    }
-
-    private void processInfoFields(final VariantContextBuilder builder) {
-        Map<String, Object> attributes = builder.getAttributes();
-        if (attributes.containsKey(GATKSVVCFConstants.MULTI_CNV)) {
-            builder.rmAttribute(GATKSVVCFConstants.MULTI_CNV);
-        }
-        if (attributes.containsKey(GATKSVVCFConstants.REVISED_EVENT)) {
-            builder.rmAttribute(GATKSVVCFConstants.REVISED_EVENT);
-        }
     }
 
     public boolean isCalled(final VariantContextBuilder builder, final List<Genotype> genotypes) {
