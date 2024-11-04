@@ -77,11 +77,9 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        final VCFHeader header = getHeaderForVariants();
-        final Set<VCFHeaderLine> originalHeaderLines = header.getMetaDataInInputOrder();
-
-        // Add new header lines
+        // Remove unnecessary header lines
         final Set<VCFHeaderLine> newHeaderLines = new HashSet<>();
+        final VCFHeader header = getHeaderForVariants();
         for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
             if (line instanceof VCFInfoHeaderLine) {
                 if (GATKSVVCFConstants.FILTER_VCF_INFO_LINES.contains(((VCFInfoHeaderLine) line).getID())) {
@@ -155,6 +153,7 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
 
         VariantContextBuilder builder = new VariantContextBuilder(variant);
         processSvType(variant, builder);
+        cleanseInfoFields(builder);
         vcfWriter.add(builder.make());
     }
 
@@ -203,6 +202,15 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
         builder.alleles(newAlleles);
         builder.genotypes(updatedGenotypes);
+    }
+
+    private void cleanseInfoFields(final VariantContextBuilder builder) {
+        Map<String, Object> attributes = builder.getAttributes();
+        for (String field : GATKSVVCFConstants.FILTER_VCF_INFO_LINES) {
+            if (attributes.containsKey(field)) {
+                builder.rmAttribute(GATKSVVCFConstants.MULTI_CNV);
+            }
+        }
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {

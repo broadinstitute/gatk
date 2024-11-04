@@ -27,11 +27,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.LinkedHashSet;
-import java.util.HashSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -124,7 +120,6 @@ public final class SVCleanPt1a extends VariantWalker {
 
     private Set<String> failSet;
     private Set<String> passSet;
-    private final Set<String> revisedSet = new HashSet<>();
 
     private static final int MIN_ALLOSOME_EVENT_SIZE = 5000;
 
@@ -167,78 +162,119 @@ public final class SVCleanPt1a extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        // Create core data
         VariantContextBuilder builder = new VariantContextBuilder(variant);
-        final List<Genotype> processedGenotypes = processGenotypes(variant);
-        builder.genotypes(processedGenotypes);
-        processVariant(variant, builder);
-        vcfWriter.add(builder.make());
-    }
+        List<Genotype> genotypes = variant.getGenotypes();
 
-    private List<Genotype> processGenotypes(final VariantContext variant) {
-        return variant.getGenotypes().stream()
-                .map(genotype -> {
-                    GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
-                    processEVGenotype(genotype, genotypeBuilder);
-                    processAllosomesGenotype(variant, genotype, genotypeBuilder);
-                    return genotypeBuilder.make();
-                })
-                .collect(Collectors.toList());
-    }
-
-    private void processVariant(final VariantContext variant, final VariantContextBuilder builder) {
+        // Process variant
+        genotypes = processEV(genotypes);
         processVarGQ(variant, builder);
         processMultiallelic(variant, builder);
         processUnresolved(variant, builder);
         processNoisyEvents(variant, builder);
         processBothsidesSupportEvents(variant, builder);
-        processAllosomes(variant, builder);
+        genotypes = processAllosomes(variant, builder, genotypes);
+
+        builder.genotypes(genotypes);
+        vcfWriter.add(builder.make());
     }
 
-    private void processEVGenotype(final Genotype genotype, final GenotypeBuilder genotypeBuilder) {
-        if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)) {
-            String evAttribute = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.EV);
-            final int evIndex = Integer.parseInt(evAttribute);
-            if (evIndex >= 0 && evIndex < GATKSVVCFConstants.EV_VALUES.size()) {
-                genotypeBuilder.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.EV_VALUES.get(evIndex));
+    private List<Genotype> processEV(final List<Genotype> genotypes) {
+        List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
+        for (Genotype genotype : genotypes) {
+            if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)) {
+                GenotypeBuilder gb = new GenotypeBuilder(genotype);
+                String evAttribute = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.EV);
+                final int evIndex = Integer.parseInt(evAttribute);
+                if (evIndex >= 0 && evIndex < GATKSVVCFConstants.EV_VALUES.size()) {
+                    gb.attribute(GATKSVVCFConstants.EV, GATKSVVCFConstants.EV_VALUES.get(evIndex));
+                }
+                updatedGenotypes.add(gb.make());
+            } else {
+                updatedGenotypes.add(genotype);
             }
+        }
+        return updatedGenotypes;
+    }
+
+    private void processVarGQ(final VariantContext variant, final VariantContextBuilder builder) {
+        if (variant.hasAttribute(GATKSVVCFConstants.VAR_GQ)) {
+            final double varGQ = variant.getAttributeAsDouble(GATKSVVCFConstants.VAR_GQ, 0);
+            builder.rmAttribute(GATKSVVCFConstants.VAR_GQ);
+            builder.log10PError(varGQ / -10.0);
         }
     }
 
-    private void processAllosomesGenotype(final VariantContext variant, final Genotype genotype, final GenotypeBuilder genotypeBuilder) {
+    private void processMultiallelic(final VariantContext variant, final VariantContextBuilder builder) {
+        if (variant.hasAttribute(GATKSVVCFConstants.MULTIALLELIC)) {
+            builder.rmAttribute(GATKSVVCFConstants.MULTIALLELIC);
+        }
+    }
+
+    private void processUnresolved(final VariantContext variant, final VariantContextBuilder builder) {
+        if (variant.hasAttribute(GATKSVVCFConstants.UNRESOLVED)) {
+            builder.rmAttribute(GATKSVVCFConstants.UNRESOLVED);
+            builder.filter(GATKSVVCFConstants.UNRESOLVED);
+        }
+    }
+
+    private void processNoisyEvents(final VariantContext variant, final VariantContextBuilder builder) {
+        if (failSet.contains(variant.getID())) {
+            builder.attribute(GATKSVVCFConstants.HIGH_SR_BACKGROUND, true);
+        }
+    }
+
+    private void processBothsidesSupportEvents(final VariantContext variant, final VariantContextBuilder builder) {
+        if (passSet.contains(variant.getID())) {
+            builder.attribute(GATKSVVCFConstants.BOTHSIDES_SUPPORT, true);
+        }
+    }
+
+    private List<Genotype> processAllosomes(final VariantContext variant, final VariantContextBuilder builder, final List<Genotype> genotypes) {
         final String chromosome = variant.getContig();
-        if (chromosome.equals(chrX) || chromosome.equals(chrY)) {
+        if (!chromosome.equals(chrX) && !chromosome.equals(chrY)) {
+            return genotypes;
+        }
+
+        List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
+        for (Genotype genotype : genotypes) {
             final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
             if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) &&
                     (variant.getEnd() - variant.getStart() >= MIN_ALLOSOME_EVENT_SIZE)) {
+                GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 final boolean isY = chromosome.equals(chrY);
                 final int sex = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
-
                 if (sex == 1 && isRevisableEvent(variant, isY, sex)) { // Male
-                    revisedSet.add(variant.getID());
-                    adjustMaleGenotype(genotype, genotypeBuilder, svType);
+                    builder.attribute(GATKSVVCFConstants.REVISED_EVENT, true);
+                    adjustMaleGenotype(genotype, gb, svType);
                 } else if (sex == 2 && isY) { // Female
-                    genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+                    gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
                 } else if (sex == 0) { // Unknown
-                    genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+                    gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
                 }
+                updatedGenotypes.add(gb.make());
+            }
+            else {
+                updatedGenotypes.add(genotype);
             }
         }
+        return updatedGenotypes;
     }
 
-    private void adjustMaleGenotype(final Genotype genotype, final GenotypeBuilder genotypeBuilder, final String svType) {
+    private void adjustMaleGenotype(final Genotype genotype, final GenotypeBuilder gb, final String svType) {
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
             final int rdCN = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
-            genotypeBuilder.attribute(GATKSVVCFConstants.RD_CN, rdCN + 1);
+            gb.attribute(GATKSVVCFConstants.RD_CN, rdCN + 1);
 
             final Allele refAllele = genotype.getAllele(0);
             final Allele altAllele = genotype.getAllele(1);
             if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)) {
-                if (rdCN >= 1) genotypeBuilder.alleles(Arrays.asList(refAllele, refAllele));
-                else if (rdCN == 0) genotypeBuilder.alleles(Arrays.asList(refAllele, altAllele));
+                if (rdCN >= 1) gb.alleles(Arrays.asList(refAllele, refAllele));
+                else if (rdCN == 0) gb.alleles(Arrays.asList(refAllele, altAllele));
             } else if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) {
-                if (rdCN <= 1) genotypeBuilder.alleles(Arrays.asList(refAllele, refAllele));
-                else if (rdCN == 2) genotypeBuilder.alleles(Arrays.asList(refAllele, altAllele));
-                else genotypeBuilder.alleles(Arrays.asList(altAllele, altAllele));
+                if (rdCN <= 1) gb.alleles(Arrays.asList(refAllele, refAllele));
+                else if (rdCN == 2) gb.alleles(Arrays.asList(refAllele, altAllele));
+                else gb.alleles(Arrays.asList(altAllele, altAllele));
             }
         }
     }
@@ -279,45 +315,6 @@ public final class SVCleanPt1a extends VariantWalker {
             }
         }
         throw new RuntimeException("Error calculating median");
-    }
-
-    private void processVarGQ(final VariantContext variant, final VariantContextBuilder builder) {
-        if (variant.hasAttribute(GATKSVVCFConstants.VAR_GQ)) {
-            final double varGQ = variant.getAttributeAsDouble(GATKSVVCFConstants.VAR_GQ, 0);
-            builder.rmAttribute(GATKSVVCFConstants.VAR_GQ);
-            builder.log10PError(varGQ / -10.0);
-        }
-    }
-
-    private void processMultiallelic(final VariantContext variant, final VariantContextBuilder builder) {
-        if (variant.hasAttribute(GATKSVVCFConstants.MULTIALLELIC)) {
-            builder.rmAttribute(GATKSVVCFConstants.MULTIALLELIC);
-        }
-    }
-
-    private void processUnresolved(final VariantContext variant, final VariantContextBuilder builder) {
-        if (variant.hasAttribute(GATKSVVCFConstants.UNRESOLVED)) {
-            builder.rmAttribute(GATKSVVCFConstants.UNRESOLVED);
-            builder.filter(GATKSVVCFConstants.UNRESOLVED);
-        }
-    }
-
-    private void processNoisyEvents(final VariantContext variant, final VariantContextBuilder builder) {
-        if (failSet.contains(variant.getID())) {
-            builder.attribute(GATKSVVCFConstants.HIGH_SR_BACKGROUND, true);
-        }
-    }
-
-    private void processBothsidesSupportEvents(final VariantContext variant, final VariantContextBuilder builder) {
-        if (passSet.contains(variant.getID())) {
-            builder.attribute(GATKSVVCFConstants.BOTHSIDES_SUPPORT, true);
-        }
-    }
-
-    private void processAllosomes(final VariantContext variant, final VariantContextBuilder builder) {
-        if (revisedSet.contains(variant.getID())) {
-            builder.attribute(GATKSVVCFConstants.REVISED_EVENT, true);
-        }
     }
 
     private Set<String> readLastColumn(final GATKPath filePath) {
