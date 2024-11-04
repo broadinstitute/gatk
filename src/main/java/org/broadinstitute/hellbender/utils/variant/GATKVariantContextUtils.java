@@ -1128,7 +1128,7 @@ public final class GATKVariantContextUtils {
          * @param genotypeMergeOptions      merge option for genotypes
          * @param filteredAreUncalled       are filtered records uncalled?
          * @param storeAllVcfSources        if true, the sources of all VCs where isVariable()=true will be concatenated in the output VC's source field. If false, the source of the first VC will be used. This mirror's GATK3's behavior
-         * @param maxSourceFieldLength      if storeAllVcfSources=true, this value sets the max length of the resulting source field. set to -1 for unlimited
+         * @param maxSourceFieldLength      This can be used to enforce a maximum length for the value of the source field (primarily useful if storeAllVcfSources=true). Set to -1 for unlimited
          * @return new VariantContext       representing the merge of unsortedVCs
          */
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
