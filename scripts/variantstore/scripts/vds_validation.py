@@ -36,8 +36,6 @@ def check_ref_blocks(vds):
 	print('checking that: all ref blocks are max 1000 bases long')
 	assert rd.aggregate_entries(hl.agg.all(hl.all(LEN <= rd.ref_block_max_length)))
 
-#	assert rd.aggregate_entries(hl.agg.all(hl.all(rd.GQ > 0, LEN >= 0, LEN <= rd.ref_block_max_length)))
-
 def check_densify_small_region(vds):
 	print('running densify on 200kb region')
 	from time import time
