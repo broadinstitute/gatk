@@ -241,7 +241,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1513_dont_be_ridiculous
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -316,7 +315,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1513_dont_be_ridiculous
+             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsIngestTieout
