@@ -1255,11 +1255,16 @@ public final class GATKVariantContextUtils {
         final String ID = rsIDs.isEmpty() ? VCFConstants.EMPTY_ID_FIELD : Utils.join(",", rsIDs);
 
         // This preserves the GATK3-like behavior of reporting multiple sources, delimited with hyphen:
+        // NOTE: if storeAllVcfSources is false, variantSources will be empty and therefore no sorting is performed
         String allSources = variantSources.isEmpty() ? name : variantSources.stream()
                 .sorted()
                 .distinct()
                 .limit(MAX_SOURCES_TO_INCLUDE)
                 .collect(Collectors.joining("-"));
+
+        if (maxSourceFieldLength != -1 && allSources.length() > maxSourceFieldLength) {
+            allSources = allSources.substring(0, maxSourceFieldLength);
+        }
 
         final VariantContextBuilder builder = new VariantContextBuilder().source(allSources).id(ID);
         builder.loc(longestVC.getContig(), longestVC.getStart(), longestVC.getEnd());
