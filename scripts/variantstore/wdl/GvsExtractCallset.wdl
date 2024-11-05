@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# Almost done?
-
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -573,10 +571,9 @@ task CreateManifestAndOptionallyCopyOutputs {
     sort -n manifest_lines.txt | cut -d',' -f 2- >> manifest.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      # Copy VCFs and indexes and the manifest to the output directory.
+      # Copy VCFs, indexes and the manifest to the output directory.
       echo manifest.txt >> vcf_manifest.txt
       cat vcf_manifest.txt | gcloud storage cp -I ${OUTPUT_GCS_DIR}
-#      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
     fi
   >>>
   output {
