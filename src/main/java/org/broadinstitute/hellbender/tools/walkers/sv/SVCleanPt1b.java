@@ -138,7 +138,8 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         }
 
         // Process overlaps with variants in the buffer
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
+                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processOverlap(bufferedVariant, variant);
@@ -298,7 +299,9 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {
-        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
+        return v1.getContig().equals(v2.getContig())
+                && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
+                && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
     }
 
     private Set<String> getNonReferenceSamples(final VariantContext variant) {

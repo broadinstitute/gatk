@@ -136,7 +136,8 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
             return;
         }
 
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
+                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processVariantPair(bufferedVariant, variant);
@@ -157,24 +158,24 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         vcfWriter.add(builder.make());
     }
 
-    private void processVariantPair(VariantContext largerVariant, VariantContext smallerVariant) {
-        int lengthLarger = largerVariant.getEnd() - largerVariant.getStart() + 1;
-        int lengthSmaller = smallerVariant.getEnd() - smallerVariant.getStart() + 1;
+    private void processVariantPair(VariantContext v1, VariantContext v2) {
+        int lengthLarger = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        int lengthSmaller = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         if (lengthLarger < lengthSmaller) {
             return;
         }
 
-        int overlapStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
-        int overlapEnd = Math.min(largerVariant.getEnd(), smallerVariant.getEnd());
-        int overlapLength = overlapEnd - overlapStart + 1;
+        int minEnd = Math.min(v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0), v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        int maxStart = Math.max(v1.getStart(), v2.getStart());
+        int overlapLength = minEnd - maxStart + 1;
         if (overlapLength <= 0) {
             return;
         }
 
         double smallCoverage = (double) overlapLength / lengthSmaller;
         if (smallCoverage > 0.5) {
-            if (!filteredVariantIds.contains(largerVariant.getID())) {
-                filteredVariantIds.add(smallerVariant.getID());
+            if (!filteredVariantIds.contains(v1.getID())) {
+                filteredVariantIds.add(v2.getID());
             }
         }
     }
@@ -214,6 +215,8 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {
-        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
+        return v1.getContig().equals(v2.getContig())
+                && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
+                && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
     }
 }
