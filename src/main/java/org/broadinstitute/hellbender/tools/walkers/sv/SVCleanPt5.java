@@ -198,7 +198,7 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         for (Genotype genotype : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(genotype);
-            long altCount = genotype.getAlleles().stream().filter(allele -> !allele.isReference()).count();
+            long altCount = genotype.getAlleles().stream().filter(allele -> allele.isCalled() && !allele.isReference()).count();
             if (altCount == 1) { // Heterozygous case (0/1)
                 gb.alleles(Arrays.asList(refAllele, altAllele));
             } else if (altCount == 2) { // Homozygous alternate case (1/1)

@@ -393,8 +393,8 @@ public class SVCleanPt4 extends VariantWalker {
 
         if (builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
             for (Genotype genotype : genotypes) {
-                Integer cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.CNV, 2).toString());
-                if (cn != null && cn != 2) {
+                final int cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.CNV, 2).toString());
+                if (cn != 2) {
                     return true;
                 }
             }
