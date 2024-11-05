@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# Testy2
+# Testy_too
 
 workflow GvsExtractCallset {
   input {
@@ -575,7 +575,7 @@ task CreateManifestAndOptionallyCopyOutputs {
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       # Copy VCFs and indexes and the manifest to the output directory.
       echo "Hello"
-      cat vcf_manifest
+      cat vcf_manifest.txt
       echo "There!"
       cat vcf_manifest.txt | gcloud storage cp -I ${OUTPUT_GCS_DIR}
       gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
