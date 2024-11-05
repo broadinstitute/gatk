@@ -94,18 +94,18 @@ workflow GvsExtractCohortFromSampleNames {
   }
 
   File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
-  Int effective_sample_count = length(read_lines(cohort_sample_names_file))
 
+  # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(extract_scatter_count_override) then select_first([extract_scatter_count_override])
                                 else if is_wgs then
-                                     if effective_sample_count < 5000 then 1 # This results in 1 VCF per chromosome.
-                                     else if effective_sample_count < 20000 then 2000 # Stroke Anderson
-                                          else if effective_sample_count < 50000 then 10000
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                                else 20000
                                      else
-                                     if effective_sample_count < 5000 then 1 # This results in 1 VCF per chromosome.
-                                     else if effective_sample_count < 20000 then 1000
-                                          else if effective_sample_count < 50000 then 2500
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 1000
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
 
   # allow an interval list to be passed in, but default it to our standard one if no args are here
