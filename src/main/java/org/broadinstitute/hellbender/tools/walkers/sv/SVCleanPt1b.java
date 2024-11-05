@@ -182,10 +182,12 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         // Get overlap data
         VariantContext wider;
         VariantContext narrower;
-        if (v1.getLengthOnReference() > v2.getLengthOnReference()) {
+        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        if (length1 > length2) {
             wider = v1;
             narrower = v2;
-        } else if (v2.getLengthOnReference() > v1.getLengthOnReference()) {
+        } else if (length2 > length1) {
             wider = v2;
             narrower = v1;
         } else {
@@ -221,9 +223,9 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     private void processCollectedVariants() {
+        // Prunes variant-sample pairs we need RD_CN values for
         for (final Map.Entry<String, Map<String, Pair<String, String>>> entry : revisedEventsAll.entrySet()) {
             for (final Map.Entry<String, Pair<String, String>> innerEntry : entry.getValue().entrySet()) {
-                // Identifies variant-sample pairs we need RD_CN values for to improve speed
                 final String sampleName = innerEntry.getKey();
                 final String variantId = entry.getKey();
                 final String widerVariantId = innerEntry.getValue().getLeft();

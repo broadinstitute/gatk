@@ -159,9 +159,9 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
     }
 
     private void processVariantPair(VariantContext v1, VariantContext v2) {
-        int lengthLarger = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int lengthSmaller = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        if (lengthLarger < lengthSmaller) {
+        int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        if (length1 < length2) {
             return;
         }
 
@@ -172,7 +172,7 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
             return;
         }
 
-        double smallCoverage = (double) overlapLength / lengthSmaller;
+        double smallCoverage = (double) overlapLength / length2;
         if (smallCoverage > 0.5) {
             if (!filteredVariantIds.contains(v1.getID())) {
                 filteredVariantIds.add(v2.getID());
@@ -190,17 +190,23 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
             return;
         }
 
+        final Allele refAllele = variant.getReference();
+        final Allele altAllele = Allele.create("<" + svType + ">", false);
+        List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
+
         List<Genotype> genotypes = variant.getGenotypes();
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         for (Genotype genotype : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(genotype);
-            gb.alleles(Arrays.asList(variant.getReference(), Allele.create("<" + svType + ">", false)));
+            long altCount = genotype.getAlleles().stream().filter(allele -> !allele.isReference()).count();
+            if (altCount == 1) { // Heterozygous case (0/1)
+                gb.alleles(Arrays.asList(refAllele, altAllele));
+            } else if (altCount == 2) { // Homozygous alternate case (1/1)
+                gb.alleles(Arrays.asList(altAllele, altAllele));
+            }
             updatedGenotypes.add(gb.make());
         }
 
-        final Allele refAllele = variant.getReference();
-        final Allele altAllele = Allele.create("<" + svType + ">", false);
-        List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
         builder.alleles(newAlleles);
         builder.genotypes(updatedGenotypes);
     }
@@ -209,7 +215,7 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         Map<String, Object> attributes = builder.getAttributes();
         for (String field : GATKSVVCFConstants.FILTER_VCF_INFO_LINES) {
             if (attributes.containsKey(field)) {
-                builder.rmAttribute(GATKSVVCFConstants.MULTI_CNV);
+                builder.rmAttribute(field);
             }
         }
     }

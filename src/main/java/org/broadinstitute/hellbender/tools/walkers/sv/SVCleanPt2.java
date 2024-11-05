@@ -172,8 +172,8 @@ public class SVCleanPt2 extends VariantWalker {
         Map<String, Integer> variantRdCn2 = getRdCnForVariant(v2);
         Map<String, Set<String>> variantSupport1 = getSupportForVariant(v1);
         Map<String, Set<String>> variantSupport2 = getSupportForVariant(v2);
-        String svtype1 = v1.getAttributeAsString("SVTYPE", "");
-        String svtype2 = v2.getAttributeAsString("SVTYPE", "");
+        String svType1 = v1.getAttributeAsString("SVTYPE", "");
+        String svType2 = v2.getAttributeAsString("SVTYPE", "");
 
         // Calculate overlap metadata
         int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);;
@@ -238,7 +238,7 @@ public class SVCleanPt2 extends VariantWalker {
             // Condition 3: Depth-only calls where smaller call is driven by a larger call
             else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
-                    && overlap2 > 0.5 && !v1.hasAttribute(GATKSVVCFConstants.MULTI_CNV) && svtype1.equals(svtype2)) {
+                    && overlap2 > 0.5 && !v1.hasAttribute(GATKSVVCFConstants.MULTI_CNV) && svType1.equals(svType2)) {
                 if (rdCn1 == 0 && rdCn1 != rdCn2) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1 && rdCn1 > rdCn2) {
