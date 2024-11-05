@@ -4,6 +4,7 @@ import com.google.protobuf.Descriptors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
@@ -25,17 +26,24 @@ public class SamplePloidyCreator {
     private final String projectId;
     private final String datasetName;
 
+    private final CommonCode.OutputType outputType;
 
-    public SamplePloidyCreator(Long sampleId, String projectId, String datasetName) {
+
+    public SamplePloidyCreator(Long sampleId, String projectId, String datasetName, final CommonCode.OutputType outputType) {
         try {
             this.sampleId = sampleId;
             this.projectId = projectId;
             this.datasetName = datasetName;
+            this.outputType = outputType;
 
-            if (projectId == null || datasetName == null) {
-                throw new UserException("Must specify project-id and dataset-name.");
+            // For now, ignore all other output types because they aren't supported YET
+            if (outputType == CommonCode.OutputType.BQ) {
+                if (projectId == null || datasetName == null) {
+                    throw new UserException("Must specify project-id and dataset-name.");
+                }
+                samplePloidyBQJsonWriter = new PendingBQWriter(projectId, datasetName, SAMPLE_PLOIDY_TABLE_NAME);
             }
-            samplePloidyBQJsonWriter = new PendingBQWriter(projectId, datasetName, SAMPLE_PLOIDY_TABLE_NAME);
+
         } catch (Exception e) {
             throw new UserException("Could not create Sample Ploidy Table Writer", e);
         }
@@ -49,7 +57,9 @@ public class SamplePloidyCreator {
                 // This is the happy path we'll normally follow--no mixed ploidy detected
                 if (ploidiesWithCounts.size() == 1) {
                     // we know there's only one item here, so we can just send that off
-                    samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), ploidiesWithCounts.keySet().iterator().next()));
+                    if (outputType == CommonCode.OutputType.BQ) {
+                        samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(), 0), ploidiesWithCounts.keySet().iterator().next()));
+                    }
                     continue;
                 }
 
@@ -89,7 +99,11 @@ public class SamplePloidyCreator {
                 // It's a small enough number to just note and move on with
                 logger.warn("WARNING: Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", but second ploidy of "+secondBestPloidy+" detected in only "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total)of samples. Going with dominant ploidy of "+bestPloidy);
 
-                samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), bestPloidy));
+                if (outputType == CommonCode.OutputType.BQ) {
+                    samplePloidyBQJsonWriter.addJsonRow(createJson(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), bestPloidy));
+                }
+
+
             } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
                 throw new IOException("BQ exception", ex);
             }
