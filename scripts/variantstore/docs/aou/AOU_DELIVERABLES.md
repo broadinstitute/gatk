@@ -135,9 +135,9 @@ Once the VAT table is created and a tsv is exported, the AoU research workbench 
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
+    - `GvsExtractCallset` currently defaults to 1000 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Make sure to specify the appropriate `maximum_alternate_alleles` value (currently 100).
     - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflows have finished.
-    - For `GvsExtractCallset`, make sure to specify the appropriate `maximum_alternate_alleles` value (currently 100).
     - For `GvsExtractCallset`, you will probably (check the requirements to confirm) want to set the input `bgzip_output_vcfs` to `true`.
     - If the overall workflow appears to fail due to angry cloud issues in `PgenExtractTask` (PGEN) or `ExtractTask` (VCF), you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
     - The ACAF and Clinvar interval lists appear to be particularly challenging for the GVS extract workflows and have some special configuration requirements as described below.

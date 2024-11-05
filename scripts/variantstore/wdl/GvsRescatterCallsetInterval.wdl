@@ -17,6 +17,7 @@ workflow GvsRescatterCallsetInterval {
     File? target_interval_list
 
     Int? extract_preemptible_override
+    Int? maximum_alternate_alleles
     String? final_output_gcs_dir
     File? gatk_override
     Int? merge_disk_override
@@ -52,6 +53,7 @@ workflow GvsRescatterCallsetInterval {
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
         target_interval_list = target_interval_list,
+        maximum_alternate_alleles = maximum_alternate_alleles,
         gatk_docker = effective_gatk_docker,
         cloud_sdk_docker = effective_cloud_sdk_docker,
         variants_docker = effective_variants_docker,
