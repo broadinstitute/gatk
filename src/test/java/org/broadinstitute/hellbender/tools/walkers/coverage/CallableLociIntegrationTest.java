@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 public class CallableLociIntegrationTest extends CommandLineProgramTest {
 
-    public static final String testDataDir = largeFileTestDir + "/org/broadinstitute/hellbender/tools/walkers/coverage/callableloci/";
+    public static final String testDataDir = publicTestDir;
 
     @Test
     public void testBasicOperation() throws Exception {

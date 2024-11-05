@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.coverage;
 
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -10,6 +9,7 @@ import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.LocusWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -21,13 +21,16 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import htsjdk.samtools.util.Locatable;
 
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.stream.Collectors;
+import org.broadinstitute.hellbender.utils.Utils;
+import htsjdk.samtools.util.Lazy;
+import java.util.EnumMap;
 
 /**
  * Collect statistics on callable, uncallable, poorly mapped, and other parts of the genome
@@ -46,9 +49,9 @@ import java.util.List;
  * <dt>LOW_COVERAGE</dt>
  * <dd>There were fewer than min. depth bases at the locus, after applying filters</dd>
  * <dt>EXCESSIVE_COVERAGE</dt>
- * <dd>More than -maxDepth read at the locus, indicating some sort of mapping problem</dd>
+ * <dd>More than --max-depth read at the locus, indicating some sort of mapping problem</dd>
  * <dt>POOR_MAPPING_QUALITY</dt>
- * <dd>More than --maxFractionOfReadsWithLowMAPQ at the locus, indicating a poor mapping quality of the reads</dd>
+ * <dd>More than --max-fraction-of-reads-with-low-mapq at the locus, indicating a poor mapping quality of the reads</dd>
  * </dl>
  * </p>
  * <p/>
@@ -63,16 +66,14 @@ import java.util.List;
  * </p>
  * <h3>Usage example</h3>
  * <pre>
- *  java -jar GenomeAnalysisTK.jar \
- *     -T CallableLoci \
- *     -R reference.fasta \
- *     -I myreads.bam \
- *     -summary table.txt \
- *     -o callable_status.bed
+ *  gatk CallableLoci \
+ *      -I myreads.bam \
+ *      -R myreference.fasta \
+ *      -O callable_status.bed \    
+ *      --summary table.txt 
  * </pre>
  * <p/>
  * would produce a BED file that looks like:
- * <p/>
  * <pre>
  *     20 10000000 10000864 PASS
  *     20 10000865 10000985 POOR_MAPPING_QUALITY
@@ -115,15 +116,14 @@ public class CallableLoci extends LocusWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file (BED or per-base format)")
-    private File outputFile = null;
+    private GATKPath outputFile = null;
 
     /**
      * Callable loci summary counts will be written to this file.
      */
     @Argument(fullName = "summary", 
-            doc = "Name of file for output summary", 
-            optional = false)
-    private File summaryFile;
+            doc = "Name of file for output summary")
+    private GATKPath summaryFile;
 
     /**
      * The gap between this value and mmq are reads that are not sufficiently well mapped for calling but
@@ -132,40 +132,40 @@ public class CallableLoci extends LocusWalker {
      * reads with MAPQ >= 1 and < 20 are not bad in and of themselves but aren't sufficiently good to contribute to
      * calling.  In effect this reads are invisible, driving the base to the NO_ or LOW_COVERAGE states
      */
-    @Argument(fullName = "max-low-mapq", shortName = "mlmq", 
+    @Argument(fullName = "max-low-mapq", shortName = "mlmq", minValue = 0, maxValue = 255, optional = true,
             doc = "Maximum value for MAPQ to be considered a problematic mapped read")
-    private byte maxLowMAPQ = 1;
+    private int maxLowMAPQ = 1;
 
     /**
      * Reads with MAPQ > minMappingQuality are treated as usable for variation detection, contributing to the PASS
      * state.
      */
-    @Argument(fullName = "min-mapping-quality", shortName = "mmq", 
+    @Argument(fullName = "min-mapping-quality", shortName = "mmq", minValue = 0, maxValue = 255, optional = true,
             doc = "Minimum mapping quality of reads to count towards depth")
-    private byte minMappingQuality = 10;
+    private int minMappingQuality = 10;
 
     /**
      * Bases with less than minBaseQuality are viewed as not sufficiently high quality to contribute to the PASS state
      */
-    @Argument(fullName = "min-base-quality", shortName = "mbq", 
+    @Argument(fullName = "min-base-quality", shortName = "mbq", minValue = 0, maxValue = 255, optional = true,
             doc = "Minimum quality of bases to count towards depth")
-    private byte minBaseQuality = 20;
+    private int minBaseQuality = 20;
 
     /**
      * If the number of QC+ bases (on reads with MAPQ > minMappingQuality and with base quality > minBaseQuality) exceeds this
      * value and is less than maxDepth the site is considered PASS.
      */
     @Advanced
-    @Argument(fullName = "min-depth", shortName = "min-depth", 
+    @Argument(fullName = "min-depth", shortName = "min-depth", minValue = 0, optional = true,
             doc = "Minimum QC+ read depth before a locus is considered callable")
     private int minDepth = 4;
 
     /**
      * If the QC+ depth exceeds this value the site is considered to have EXCESSIVE_DEPTH
      */
-    @Argument(fullName = "max-depth", shortName = "max-depth", 
+    @Argument(fullName = "max-depth", shortName = "max-depth", optional = true,
             doc = "Maximum read depth before a locus is considered poorly mapped")
-    private int maxDepth = -1;
+    private Integer maxDepth = null;
 
     /**
      * We don't want to consider a site as POOR_MAPPING_QUALITY just because it has two reads, and one is MAPQ.  We
@@ -173,7 +173,7 @@ public class CallableLoci extends LocusWalker {
      * covering the site.
      */
     @Advanced
-    @Argument(fullName = "min-depth-for-low-mapq", shortName = "mdflmq", 
+    @Argument(fullName = "min-depth-for-low-mapq", shortName = "mdflmq", optional = true,
             doc = "Minimum read depth before a locus is considered a potential candidate for poorly mapped")
     private int minDepthLowMAPQ = 10;
 
@@ -181,7 +181,7 @@ public class CallableLoci extends LocusWalker {
      * If the number of reads at this site is greater than minDepthForLowMAPQ and the fraction of reads with low mapping quality
      * exceeds this fraction then the site has POOR_MAPPING_QUALITY.
      */
-    @Argument(fullName = "max-fraction-of-reads-with-low-mapq", shortName = "frlmq", 
+    @Argument(fullName = "max-fraction-of-reads-with-low-mapq", shortName = "frlmq", optional = true,
             doc = "If the fraction of reads at a base with low mapping quality exceeds this value, the site may be poorly mapped")
     private double maxLowMAPQFraction = 0.1;
 
@@ -189,20 +189,19 @@ public class CallableLoci extends LocusWalker {
      * The output of this tool will be written in this format.  The recommended option is BED.
      */
     @Advanced
-    @Argument(fullName = "format", shortName = "format", 
+    @Argument(fullName = "format", shortName = "format", optional = true,
             doc = "Output format")
     private OutputFormat outputFormat = OutputFormat.BED;
 
-    private PrintStream outputStream = null;
-    private PrintStream summaryStream = null;
-    private Integrator integrator;
+    private OutputStreamWriter outputStream = null;
+    private OutputStreamWriter summaryStream = null;
     
     public enum OutputFormat {
         BED,
         STATE_PER_BASE
     }
 
-    public enum CalledState {
+    public enum State {
         REF_N,
         CALLABLE,
         NO_COVERAGE,
@@ -211,33 +210,38 @@ public class CallableLoci extends LocusWalker {
         POOR_MAPPING_QUALITY
     }
 
-    protected static class Integrator {
-        final long[] counts = new long[CalledState.values().length];
-        CallableBaseState state = null;
-    }
+    private BaseState currentState = null;
+    private final StateCounter stateCounter = new StateCounter();
 
-    protected static class CallableBaseState {
-        private SimpleInterval interval;
-        private final CalledState state;
+    protected static class BaseState implements Locatable {
+        private Locatable interval;
+        private final State state;
 
-        public CallableBaseState(SimpleInterval interval, CalledState state) {
+        public BaseState(Locatable interval, State state) {
             this.interval = interval;
             this.state = state;
         }
 
-        public SimpleInterval getLocation() {
-            return interval;
-        }
-
-        public CalledState getState() {
+        public State getState() {
             return state;
         }
 
-        public boolean changingState(CalledState newState) {
-            return state != newState;
+        @Override
+        public String getContig() {
+            return interval.getContig();
         }
 
-        public void update(SimpleInterval newInterval) {
+        @Override
+        public int getStart() {
+            return interval.getStart();
+        }
+
+        @Override
+        public int getEnd() {
+            return interval.getEnd();
+        }
+
+        public void updateInterval(final Locatable newInterval) {
             this.interval = new SimpleInterval(
                 interval.getContig(),
                 interval.getStart(),
@@ -247,6 +251,10 @@ public class CallableLoci extends LocusWalker {
 
         @Override
         public String toString() {
+            return toBedString();
+        }
+
+        public String toBedString() {
             // BED format is 0-based, so subtract 1 from start
             return String.format("%s\t%d\t%d\t%s", 
                 interval.getContig(), 
@@ -286,42 +294,26 @@ public class CallableLoci extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
+        
         // Validate sample count
-        if (getHeaderForReads().getReadGroups().stream()
-                .map(rg -> rg.getSample())
-                .distinct()
-                .count() != 1) {
-            throw new UserException.BadInput("CallableLoci only works for a single sample");
+        final List<String> sampleList = getHeaderForReads().getReadGroups().stream()
+            .map(rg -> rg.getSample())
+            .distinct()
+            .collect(Collectors.toList());
+
+        if (sampleList.size() != 1) {
+            throw new UserException.BadInput("CallableLoci only works for a single sample.  Found " + sampleList.size() + " samples (" + String.join(", ", sampleList) + ").");
         }
 
-        try {
-            outputStream = new PrintStream(outputFile);
-            summaryStream = new PrintStream(summaryFile);
-        } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotCreateOutputFile("Could not create output file", e);
-        }
-
-        integrator = new Integrator();
+        outputStream = new OutputStreamWriter(outputFile.getOutputStream());
+        summaryStream = new OutputStreamWriter(summaryFile.getOutputStream());
     }
 
-    private static double ratio(int numerator, int denominator) {
-        if ( denominator > 0 ) {
-            return ((double) numerator)/denominator;
-        } else {
-            if ( numerator == 0 && denominator == 0) {
-                return 0.0;
-            } else {
-                throw new GATKException(String.format("The denominator of a ratio cannot be zero or less than zero: %d/%d", numerator, denominator));
-            }
-        }
-    }
-
-    @Override
-    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        CalledState state;
+    private State getCurrentState(ReferenceContext referenceContext, AlignmentContext alignmentContext) {
+        State state;
 
         if (BaseUtils.isNBase(referenceContext.getBase())) {
-            state = CalledState.REF_N;
+            state = State.REF_N;
         } else {
             int rawDepth = 0, QCDepth = 0, lowMAPQDepth = 0;
             
@@ -338,59 +330,100 @@ public class CallableLoci extends LocusWalker {
             }
 
             if (rawDepth == 0) {
-                state = CalledState.NO_COVERAGE;
-            } else if ((rawDepth >= minDepthLowMAPQ) && (ratio(lowMAPQDepth, rawDepth) >= maxLowMAPQFraction)) {
-                state = CalledState.POOR_MAPPING_QUALITY;
+                state = State.NO_COVERAGE;
+            } else if ((rawDepth >= minDepthLowMAPQ) && (((double)lowMAPQDepth) / ((double)rawDepth) >= maxLowMAPQFraction)) {
+                state = State.POOR_MAPPING_QUALITY;
             } else if (QCDepth < minDepth) {
-                state = CalledState.LOW_COVERAGE;
-            } else if (maxDepth != -1 && rawDepth >= maxDepth) {
-                state = CalledState.EXCESSIVE_COVERAGE;
+                state = State.LOW_COVERAGE;
+            } else if (maxDepth != null && rawDepth >= maxDepth) {
+                state = State.EXCESSIVE_COVERAGE;
             } else {
-                state = CalledState.CALLABLE;
+                state = State.CALLABLE;
             }
         }
 
-        CallableBaseState callableState = new CallableBaseState(
-            new SimpleInterval(alignmentContext.getLocation()), 
-            state
-        );
+        return state;
+    }
 
-        // Update counts
-        integrator.counts[state.ordinal()]++;
+    @Override
+    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        
+        final State state = getCurrentState(referenceContext, alignmentContext);
+        BaseState callableState = new BaseState(alignmentContext, state);
 
-        if (outputFormat == OutputFormat.STATE_PER_BASE) {
-            outputStream.println(callableState.toString());
-        } else {
-            // BED format - integrate adjacent regions with same state
-            if (integrator.state == null) {
-                integrator.state = callableState;
-            } else if (callableState.getLocation().getStart() != integrator.state.getLocation().getEnd() + 1 ||
-                       integrator.state.changingState(callableState.getState())) {
-                outputStream.println(integrator.state.toString());
-                integrator.state = callableState;
+        // Update counts using the counter
+        stateCounter.increment(state);
+
+        try {
+            if (outputFormat == OutputFormat.STATE_PER_BASE) {
+                outputStream.write(callableState.toBedString() + "\n");
             } else {
-                integrator.state.update(callableState.getLocation());
+                // BED format - integrate adjacent regions with same state
+                if (currentState == null) {
+                    currentState = callableState;
+                } else if (callableState.getStart() != currentState.getEnd() + 1 || currentState.getState() != callableState.getState()) {
+                    outputStream.write(currentState.toBedString() + "\n");
+                    currentState = callableState;
+                } else {
+                    currentState.updateInterval(callableState);
+                }
             }
+        } catch (IOException e) {
+            throw new GATKException("Error writing to output stream", e);
         }
     }
 
     @Override
     public Object onTraversalSuccess() {
+
+        try{
         // Print final state for BED format
-        if (outputFormat == OutputFormat.BED && integrator.state != null) {
-            outputStream.println(integrator.state.toString());
+        if (outputFormat == OutputFormat.BED && currentState != null) {
+            outputStream.write(currentState.toBedString() + "\n");
         }
 
-        // Write summary statistics
-        summaryStream.printf("%30s %s%n", "state", "nBases");
-        for (CalledState state : CalledState.values()) {
-            summaryStream.printf("%30s %d%n", state, integrator.counts[state.ordinal()]);
+        // Write summary statistics using the counter
+        summaryStream.write(String.format("%30s %s%n", "state", "nBases"));
+        for (State state : State.values()) {
+            summaryStream.write(String.format("%30s %d%n", state, stateCounter.getCount(state)));
         }
 
-        // Close streams
-        outputStream.close();
-        summaryStream.close();
+        } catch (IOException e) {
+            throw new GATKException("Error writing to summary stream", e);
+        }
         
         return null;
+    }
+
+    @Override
+    public void closeTool() {
+        try {
+            outputStream.close();
+            summaryStream.close();
+        } catch (IOException e) {
+            throw new GATKException("Error closing output streams", e);
+        }
+    }
+
+    private static class StateCounter {
+        private final EnumMap<State, Long> counts = new EnumMap<>(State.class);
+
+        public StateCounter() {
+            for (State state : State.values()) {
+                counts.put(state, 0L);
+            }
+        }
+
+        public void increment(State state) {
+            counts.put(state, counts.get(state) + 1);
+        }
+
+        public long getCount(State state) {
+            return counts.get(state);
+        }
+
+        public EnumMap<State, Long> getCounts() {
+            return new EnumMap<>(counts);
+        }
     }
 }
