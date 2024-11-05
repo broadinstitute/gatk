@@ -153,7 +153,8 @@ public class SVCleanPt2 extends VariantWalker {
         }
 
         // Process overlaps with variants in the buffer
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
+                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(variant, bufferedVariant)) {
                 adjustCopyNumber(bufferedVariant, variant);
@@ -175,9 +176,11 @@ public class SVCleanPt2 extends VariantWalker {
         String svtype2 = v2.getAttributeAsString("SVTYPE", "");
 
         // Calculate overlap metadata
-        int length1 = v1.getEnd() - v1.getStart();
-        int length2 = v2.getEnd() - v2.getStart();
-        int lengthOverlap = Math.min(v2.getEnd(), v1.getEnd()) - Math.max(v1.getStart(), v2.getStart());
+        int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);;
+        int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        int minEnd = Math.min(v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0), v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        int maxStart = Math.max(v1.getStart(), v2.getStart());
+        int lengthOverlap = minEnd - maxStart;
         double overlap1 = (double) lengthOverlap / (double) length1;
         double overlap2 = (double) lengthOverlap / (double) length2;
 
@@ -264,7 +267,9 @@ public class SVCleanPt2 extends VariantWalker {
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {
-        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
+        return v1.getContig().equals(v2.getContig())
+                && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
+                && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
     }
 
     private boolean isDelDup(final VariantContext variant) {

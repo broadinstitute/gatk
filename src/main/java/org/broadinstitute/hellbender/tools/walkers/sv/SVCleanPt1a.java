@@ -240,7 +240,7 @@ public final class SVCleanPt1a extends VariantWalker {
         for (Genotype genotype : genotypes) {
             final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
             if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) &&
-                    (variant.getEnd() - variant.getStart() >= MIN_ALLOSOME_EVENT_SIZE)) {
+                    (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_ALLOSOME_EVENT_SIZE)) {
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 final boolean isY = chromosome.equals(chrY);
                 final int sex = (int) genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
