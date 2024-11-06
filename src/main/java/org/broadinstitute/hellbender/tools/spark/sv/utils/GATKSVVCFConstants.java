@@ -11,7 +11,6 @@ import java.util.Map;
 
 import static java.util.Map.entry;
 
-
 public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines

@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -255,10 +256,8 @@ public class SVCleanPt4 extends VariantWalker {
         }
 
         boolean gt5kbFilter = false;
-        List<String> allowedAlleles = Arrays.asList(
-                Allele.NO_CALL.getBaseString(), variant.getReference().getBaseString(), variant.getAlternateAllele(0).getBaseString()
-        );
-        if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleles.contains(a.getBaseString())))) {
+        List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
+        if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
         } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
             gt5kbFilter = true;
@@ -325,10 +324,8 @@ public class SVCleanPt4 extends VariantWalker {
         }
 
         boolean gt5kbFilter = false;
-        List<String> allowedAlleles = Arrays.asList(
-                Allele.NO_CALL.getBaseString(), variant.getReference().getBaseString(), variant.getAlternateAllele(0).getBaseString()
-        );
-        if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleles.contains(a.getBaseString())))) {
+        List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
+        if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
         } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
             gt5kbFilter = true;
@@ -402,7 +399,7 @@ public class SVCleanPt4 extends VariantWalker {
 
         if (builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
             for (Genotype genotype : genotypes) {
-                final int cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.CNV, 2).toString());
+                final int cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2).toString());
                 if (cn != 2) {
                     return true;
                 }
@@ -410,13 +407,6 @@ public class SVCleanPt4 extends VariantWalker {
         }
 
         return false;
-    }
-
-    private boolean isBiallelic(Genotype genotype) {
-        List<Integer> gt = genotype.getAlleles().stream()
-                .map(allele -> allele.isNoCall() ? null : allele.getDisplayString().equals("1") ? 1 : 0)
-                .toList();
-        return GATKSVVCFConstants.BIALLELIC_GTS.contains(gt);
     }
 
     private boolean isNoCallGt(List<Allele> alleles) {
