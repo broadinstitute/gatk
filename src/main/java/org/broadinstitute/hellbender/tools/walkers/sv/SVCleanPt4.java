@@ -283,7 +283,6 @@ public class SVCleanPt4 extends VariantWalker {
 
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
-            builder.filter(GATKSVVCFConstants.MULTIALLELIC);
             for (Genotype genotype : genotypes) {
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
@@ -292,9 +291,11 @@ public class SVCleanPt4 extends VariantWalker {
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
             }
-            builder.alleles(Arrays.asList(variant.getReference(), Allele.create("<" + GATKSVVCFConstants.CNV + ">", false)));
-            builder.attribute(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.CNV);
             genotypes = updatedGenotypes;
+
+            builder.filter(GATKSVVCFConstants.MULTIALLELIC);
+            builder.attribute(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.CNV);
+            builder.alleles(Arrays.asList(variant.getReference(), Allele.create("<" + GATKSVVCFConstants.CNV + ">", false)));
         }
 
         return genotypes;
@@ -317,7 +318,7 @@ public class SVCleanPt4 extends VariantWalker {
                 multiallelicFilter = true;
             }
             if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).count() > 4) {
-                if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).count() > maxVF) {
+                if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).distinct().count() > maxVF) {
                     multiallelicFilter = true;
                 }
             }
@@ -351,7 +352,6 @@ public class SVCleanPt4 extends VariantWalker {
 
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
-            builder.filter(GATKSVVCFConstants.MULTIALLELIC);
             for (Genotype genotype : genotypes) {
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
@@ -360,9 +360,11 @@ public class SVCleanPt4 extends VariantWalker {
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
             }
-            builder.alleles(Arrays.asList(variant.getReference(), Allele.create("<" + GATKSVVCFConstants.CNV + ">", false)));
-            builder.attribute(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.CNV);
             genotypes = updatedGenotypes;
+
+            builder.filter(GATKSVVCFConstants.MULTIALLELIC);
+            builder.attribute(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.CNV);
+            builder.alleles(Arrays.asList(variant.getReference(), Allele.create("<" + GATKSVVCFConstants.CNV + ">", false)));
         }
 
         return genotypes;
