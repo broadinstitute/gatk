@@ -21,6 +21,9 @@ public class SamplePloidyCreator {
 
     private PendingBQWriter samplePloidyBQJsonWriter = null;
     private static final String SAMPLE_PLOIDY_TABLE_NAME = "sample_chromosome_ploidy";
+    // When we detect mixed ploidy, we allow for a small fraction due to DRAGEN bugs.  This constant determines the cutoff
+    // after which we'll throw an error instead of just normalizing the ploidy
+    private static final double MIXED_PLOIDY_ERROR_CUTOFF = 0.05;
 
     private final Long sampleId;
     private final String projectId;
@@ -93,7 +96,7 @@ public class SamplePloidyCreator {
                 // Decide which ploidy to keep
                 // First, see if the second best ploidy is for greater than 5% of the sample (this is likely way too generous).
                 // If so, there may be a deeper error going on and we should just quit
-                if (secondHighestPercentage > 0.05) {
+                if (secondHighestPercentage > MIXED_PLOIDY_ERROR_CUTOFF) {
                     throw new UserException("Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", with second ploidy of "+secondBestPloidy+" detected in "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total) of samples");
                 }
                 // It's a small enough number to just note and move on with
