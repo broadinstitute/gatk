@@ -250,7 +250,7 @@ workflow SingleSampleGCNVAndFilterVCFs {
 
     output {
         File filtered_vcf = FilterVCF.filtered_vcf
-        File filtered_vcf_index = FilterVCF.filtered_vcf
+        File filtered_vcf_index = FilterVCF.filtered_vcf_index
         File filtered_vcf_md5sum = FilterVCF.filtered_vcf_md5sum
 
         File preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals
