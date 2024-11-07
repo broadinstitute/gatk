@@ -85,8 +85,7 @@ workflow GvsExtractAvroFilesForHail {
 
     call Utils.IsUsingCompressedReferences {
         input:
-            query_project_id = project_id,
-            dest_project_id = project_id,
+            project_id = project_id,
             dataset_name = dataset_name,
             ref_table_timestamp = RefTableDatetimeCheck.last_modified_timestamp,
             cloud_sdk_docker = effective_cloud_sdk_docker,

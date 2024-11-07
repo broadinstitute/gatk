@@ -929,8 +929,7 @@ task IsVETS {
 
 task IsUsingCompressedReferences {
   input {
-    String query_project_id
-    String dest_project_id
+    String project_id
     String dataset_name
     String ref_table_timestamp
     String cloud_sdk_docker
@@ -941,11 +940,11 @@ task IsUsingCompressedReferences {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # bq query --max_rows check: ok one row
-    bq --apilog=false query --project_id=~{query_project_id} --format=csv --use_legacy_sql=false '
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
       SELECT
         column_name
       FROM
-        `~{dest_project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        `~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
       WHERE
         table_name = "ref_ranges_001"
       AND (column_name = "location" OR column_name = "packed_ref_data") ' | sed 1d > column_name.txt
