@@ -1,3 +1,0 @@
-20 315000 315100 # should overlap 2 in withSymbolic.vcf at 315006 and 315072
-20 316955 316959 # should overlap only deletion variant at 316952
-20 317900 400000 # should overlap only the symbolic variant at 317173
