@@ -158,7 +158,7 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         }
 
         VariantContextBuilder builder = new VariantContextBuilder(variant);
-        processSvType(variant, builder);
+        // processSvType(variant, builder);
         cleanseInfoFields(builder);
         vcfWriter.add(builder.make());
     }

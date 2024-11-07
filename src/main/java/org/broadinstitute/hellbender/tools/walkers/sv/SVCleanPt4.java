@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -172,6 +173,7 @@ public class SVCleanPt4 extends VariantWalker {
         genotypes = processLargeDeletions(variant, builder, genotypes);
         genotypes = processLargeDuplications(variant, builder, genotypes);
         genotypes = processRevisedSex(variant, genotypes);
+        genotypes = processSvType(variant, builder, genotypes);
 
         // Build genotypes
         if (isCalled(builder, genotypes)) {
@@ -389,6 +391,36 @@ public class SVCleanPt4 extends VariantWalker {
                 updatedGenotypes.add(genotype);
             }
         }
+        return updatedGenotypes;
+    }
+
+    private List<Genotype> processSvType(final VariantContext variant, final VariantContextBuilder builder, final List<Genotype> genotypes) {
+        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        boolean hasMobileElement = variant.getAlleles().stream()
+                .map(GATKSVVariantContextUtils::getSymbolicAlleleSymbols)
+                .flatMap(Arrays::stream)
+                .anyMatch(symbol -> symbol.equals(GATKSVVCFConstants.ME));
+        if (svType == null || hasMobileElement) {
+            return genotypes;
+        }
+
+        final Allele refAllele = builder.make().getReference();
+        final Allele altAllele = Allele.create("<" + svType + ">", false);
+        List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
+
+        List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
+        for (Genotype genotype : genotypes) {
+            GenotypeBuilder gb = new GenotypeBuilder(genotype);
+            long altCount = genotype.getAlleles().stream().filter(allele -> allele.isCalled() && !allele.isReference()).count();
+            if (altCount == 1) { // Heterozygous (0/1)
+                gb.alleles(Arrays.asList(refAllele, altAllele));
+            } else if (altCount == 2) { // Homozygous Alternate (1/1)
+                gb.alleles(Arrays.asList(altAllele, altAllele));
+            }
+            updatedGenotypes.add(gb.make());
+        }
+
+        builder.alleles(newAlleles);
         return updatedGenotypes;
     }
 
