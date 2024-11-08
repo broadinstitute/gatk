@@ -2,6 +2,7 @@ version 1.0
 
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
+import "GvsValidateVDS.wdl" as ValidateVDS
 
 
 workflow GvsCreateVDS {
@@ -19,7 +20,6 @@ workflow GvsCreateVDS {
         Int? cluster_max_age_minutes
         Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
-        Boolean use_classic_VQSR = false
 
         String? git_branch_or_tag
         String? hail_version
@@ -111,7 +111,6 @@ workflow GvsCreateVDS {
             prefix = cluster_prefix,
             vds_path = vds_destination_path,
             avro_path = avro_path,
-            use_classic_VQSR = use_classic_VQSR,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
@@ -130,12 +129,10 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call ValidateVds {
+    call ValidateVDS.GvsValidateVDS as ValidateVds {
         input:
             go = CreateVds.done,
-            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            vds_validation_script = GetHailScripts.vds_validation_script,
-            prefix = cluster_prefix,
+            cluster_prefix = cluster_prefix,
             vds_path = vds_destination_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
@@ -144,6 +141,7 @@ workflow GvsCreateVDS {
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            leave_cluster_running_at_end = leave_cluster_running_at_end,
     }
 
     output {
@@ -158,7 +156,6 @@ task CreateVds {
         String prefix
         String vds_path
         String avro_path
-        Boolean use_classic_VQSR
         Boolean leave_cluster_running_at_end
         File hail_gvs_import_script
         File gvs_import_script
@@ -233,7 +230,6 @@ task CreateVds {
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}"
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
-            ~{true=', "use-classic-vqsr": ""' false='' use_classic_VQSR}
         }
         FIN
 
@@ -268,79 +264,6 @@ task CreateVds {
     }
 }
 
-task ValidateVds {
-    input {
-        Boolean go
-        File run_in_hail_cluster_script
-        File vds_validation_script
-        String prefix
-        String vds_path
-        String? hail_version
-        File? hail_wheel
-        String workspace_project
-        String workspace_bucket
-        String region
-        String gcs_subnetwork_name
-        String cloud_sdk_slim_docker
-    }
-
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        account_name=$(gcloud config list account --format "value(core.account)")
-
-        pip3 install --upgrade pip
-
-        if [[ ! -z "~{hail_wheel}" ]]
-        then
-            pip3 install ~{hail_wheel}
-        else
-            pip3 install hail~{'==' + hail_version}
-        fi
-
-        pip3 install --upgrade google-cloud-dataproc ijson
-
-        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
-
-        cluster_name="~{prefix}-${hex}"
-        echo ${cluster_name} > cluster_name.txt
-        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
-
-        # construct a JSON of arguments for python script to be run in the hail cluster
-        cat > script-arguments.json <<FIN
-        {
-            "vds-path": "~{vds_path}",
-            "temp-path": "${hail_temp_path}"
-        }
-        FIN
-
-        # Run the hail python script to validate a VDS
-        python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{vds_validation_script} \
-            --script-arguments-json-path script-arguments.json \
-            --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
-            --region ~{region} \
-            --gcs-project ~{workspace_project} \
-            --cluster-name ${cluster_name}
-    >>>
-
-    runtime {
-        memory: "6.5 GB"
-        disks: "local-disk 100 SSD"
-        cpu: 1
-        preemptible: 0
-        docker: cloud_sdk_slim_docker
-        bootDiskSizeGb: 10
-    }
-    output {
-        String cluster_name = read_string("cluster_name.txt")
-    }
-}
-
 task GetHailScripts {
     input {
         String variants_docker
@@ -364,7 +287,6 @@ task GetHailScripts {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
         File hail_gvs_import_script = "app/hail_gvs_import.py"
         File gvs_import_script = "app/import_gvs.py"
-        File vds_validation_script = "app/vds_validation.py"
     }
     runtime {
         docker: variants_docker

@@ -10,20 +10,46 @@ The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scri
 
 To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](./gvs-overview.md).
 
-### What does it require as input?
+## What does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files with specific annotations described below
+- GVCF index files
+- sample identifiers
 
-While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files and 190,000 single sample whole exome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
 
-#### Reblocked GVCF files
+### Supported data types
+_* indicates regularly tested and validated_
 
-If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
+**Species**
+- Human data only (hg38)*
+
+**Sequencing platforms**
+- Illumina short read sequencing*
+
+**Data Types**
+- Whole Genome Sequencing*
+- Whole Exome Sequencing*
+- Blended Genome Exome Sequencing*
+
+**Secondary Analysis Methods**
+- DRAGEN 3.7.8*
+- GATK4*
+- DRAGEN-GATK
+- WARP Whole Genome + GATK 3.5*
+- DRAGEN 3.4.12
+
+### Reblocked GVCF files
+
+If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/ReblockGVCF_v2.1.12/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in this workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
+
+Note that the ReblockGVCF pipeline inputs default to accepting inputs with the file extension `.gvcf.gz`, which is the default for DRAGEN GVCFs. If this is not the extension on your input GVCFs, update the input variable `gvcf_file_extension`. 
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
-#### GVCF annotations
+For questions regarding which version of ReblockGVCF workflow to use, see [our FAQ](gvs-faq.md) 
+
+### GVCF annotations
 
 Input GVCF files for the GVS workflow must include the annotations described in the table below:
 
@@ -40,9 +66,9 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 | call_GT                                   | Genotype.                                                                                 | ---                        |
 | call_GQ                                   | Genotype quality.                                                                         | ---                        |
 
-### What does it return as output?
+## What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files, or the location specified by the `output_gcs_dir` workflow output.
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
@@ -55,11 +81,13 @@ The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interva
 
 Before you can begin uploading your data to Terra, you’ll need to setup some accounts and permissions that will allow Terra to access your data and use BigQuery to run the workflow. Follow the step-by-step instructions in [GVS Beta Quickstart](./gvs-quickstart.md).
 
-## Upload data to your workspace
+## Import data to your workspace
 
-To run the GVS workflow, your single sample GVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta). The procedure is a little different, depending on whether your samples are already stored in the cloud. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
+To run the GVS workflow, your single sample reblocked GVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta). The procedure is a little different, depending on whether your samples are already stored in the cloud, in another workspace, or are in the Terra Data Repository. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
 
-### Download the sample table template
+### For Importing Data from Local or Cloud Storage, or Another Terra Workspace
+
+#### Download the sample table template
 
 The GVS workflow relies on the table structure and names in the Beta workspace. Download a TSV of the `sample` table to use as a template for uploading your own data.
 
@@ -67,7 +95,7 @@ The GVS workflow relies on the table structure and names in the Beta workspace. 
 2. Click on the **three vertical dots icon** next to the **sample** data table inside the TABLES sidebar on the left side of the page.
 3. Select **Download TSV** to download the data table to your local machine.
 
-### Delete the example data
+#### Delete the example data
 
 You will need to delete the example sample data from your workspace so that it is not included in your callset.
 
@@ -76,25 +104,42 @@ You will need to delete the example sample data from your workspace so that it i
 3. Click the **top check mark** to select all samples.
 4. Click **Edit** and click **Delete selected rows** to delete the data.
 
-### Edit TSV to upload data stored in the cloud
+#### Edit TSV to import data stored in the cloud
 
 If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update the cloud permissions on the data to allow your Terra proxy group to access it.
 
 1. **Open the TSV file** with a spreadsheet editor of your choice.
 2. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the cloud paths to your GVCF and index files.
-3. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF files.
+3. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF files. They must be unique.
 
 ---
 
 **Warning:**
-The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md).
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 
 4. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
 5. Grant your Terra proxy group the Storage Object Creator and Storage Object Viewer roles on the Google Cloud Storage (GCS) bucket that holds your sample data by following the **Add a principal to a bucket-level policy** instructions in the Google Cloud documentation article, [Use IAM permissions](https://cloud.google.com/storage/docs/access-control/using-iam-permissions).
 
-### Edit TSV to upload data NOT stored in the cloud
+#### Edit TSV to import data stored in another Terra workspace(s)
+
+If your data is living in one or more Terra workspaces, your data can stay in those workspaces and you can still run GVS in your GVS workspace on that data. There is no need to make a copy. This can be done by uploading a TSV to your GVS workspace with the cloud paths to the gvcfs in your other workspaces. 
+
+1. **Download the data table TSV** from each Terra workspace with your reblocked gvcfs following the steps outlined above in `Download the sample table template`
+2. **Open the GVS sample TSV file** with a spreadsheet editor of your choice.
+3. **Replace the cloud paths and `sample_id` fields** to the example sample_id in the first column and GVCF and index files in the second and third columns with the sample ids and cloud paths to your GVCF and index files. The sample ids will be used to name the samples in the output joint VCF files. They must be unique. You can add rows of gvcfs from multiple workspaces in this tsv.
+
+---
+
+**Warning:**
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+
+---
+
+4. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
+
+#### Edit TSV to upload data NOT stored in the cloud
 
 If your data is not stored in the cloud, you’ll need to upload it to your workspace storage bucket along with a TSV file containing each of the data file names.
 
@@ -105,25 +150,68 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 ---
 
 **Warning:**        
-The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md).
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 4. Follow the steps in [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411) to **upload your data and TSV file** to Terra.
 
+### For Importing Data from TDR
+
+#### Delete the example data
+
+You will need to delete the example sample data from your workspace so that it is not included in your callset.
+
+1. Navigate to the **Data tab** in your clone of the GVS workspace.
+2. Click on the **sample** data table.
+3. Click the **top check mark** to select all samples.
+4. Click **Edit** and click **Delete selected rows** to delete the data.
+
+#### Export TDR Snapshot to the workspace
+
+1. Navigate to the data snapshot that needs to be processed. 
+2. Select the EXPORT SNAPSHOT tab once the snapshot is selected. The sample rows should include a `sample_id`, `gvcf_path`, and `gvcf_index_path` at a minimum.
+3. Make sure “Convert DRS URLs to Google Cloud Storage Paths (gs://)" is selected, then click the “EXPORT SNAPSHOT” button.
+   1. **Warning: The workflows will fail without selecting this.**
+4. Choose the workspace created in Step 7 of the Setup instructions in [gvs-quickstart](./gvs-quickstart.md)
+
+--- 
+
+**Warning:**        
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+
+---
 ## Run the workflow
 
-Now that your samples are loaded into data table in Terra, it’s time to setup and run the GVS workflow!
+Now that your samples are loaded into data table in Terra, it’s time to setup and run the GVS workflow! 
+
+---
+**Notes**
+1. Note that GVS **expects reblocked GVCFs**. If your GVCFs are not reblocked, see the text above on how you can use the ReblockGVCF workflow in this workspace.
+2. The workflow is designed to run on ALL samples in the `sample` data table.
+
+---
+
+To run:
 
 1. **Select the workflow** from the Workflows tab.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
-    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    2. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
+    3. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    4. Update the name of the **column of reblocked GVCFs** in your samples table in the workspace Data tab for the `vcf_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf"_.
+    5. Update the name of the **column of reblocked GVCF index files** in your samples table in the workspace Data tab for the `vcf_index_files_column_name` variable with the format "*COLUMN_NAME*" if it is different from the default. If you used the ReblockGVCF workflow in the workspace without modification, this will be the default string _"reblocked_gvcf_index"_.
+    6. Update the name of the **column with your sample IDs** that will be used to identify samples in the callset for the `sample_id_column_name` variable as a string with the format "*COLUMN_NAME*" if it is different from the default. Note that the supplied IDs **MUST** be unique.
+    7. Enter the name of the **output gcs bucket** where all outputs listed above will go in the variable `extract_output_gcs_dir` in the format `gs://bucket_name/my_run`. We recommend using the workspace google bucket, which you can find on the Dashboard tab under "Cloud Information">Bucket Name, and making a subdirectory under it for each run.
+    8. If running exomes: 
+       1. ensure that the (optional) `is_wgs` parameter is set to false.
+       2. ensure that the (optional) `target_interval_list` parameter is set to the appropriate target list for your data.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow.
+
+**Genomes**
 
 | Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
 |-------------------|----------------------|------------|---------------|------------|-----------------------------|
@@ -133,6 +221,15 @@ Below are several examples of the time and cost of running the workflow.
 | 5000              | 12:00                | $54.00     | $232.71       | $286.71    | $0.06                       |
 | 10000             | 13:41                | $138.1     | $466.87       | $604.97    | $0.06                       |
 
+**Exomes**
+
+| Number of Samples | Wall Clock Time (hh:mm) | Cost $    | Cost per Sample |
+|-------------------|-------------------------|-----------|-----------------|
+| 10                | 3:08:00                 | $0.76     | $0.07562        |
+| 5000              | 5:21:00                 | $20.41    | $0.00408        |
+| 20000             | 10:38:00                | $94.60    | $0.00473        |
+| 50000             | 20:29:00                | $250.07   | $0.00500        |
+| 100000            | 45:11:00                | $274.15   | $0.00274        |
 
 **Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
 
@@ -142,9 +239,7 @@ For more information about controlling Cloud costs, see [this article](https://s
 
 The GVS workflow produces several intermediate files in your BigQuery dataset, and storing these files in the cloud will increase the storage cost associated with your callset. To reduce cloud storage costs, you can delete some of the intermediate files after your callset has been created successfully.
 
-If you plan to create subcohorts of your data, you can delete the tables with `_REF_DATA`, `_SAMPLES`, and `_VET_DATA` at the end of the table name in your BigQuery dataset by following the instructions in the Google Cloud article, [Managing tables](https://cloud.google.com/bigquery/docs/managing-tables#deleting_a_table).
-
-If you don’t plan to create subcohorts of your data, you can delete your BigQuery dataset by following the instructions in the Google Cloud article, [Managing datasets](https://cloud.google.com/bigquery/docs/managing-datasets#deleting_a_dataset). Note that the data will be deleted permanently from this location, but output files can still be found in the workspace bucket.
+You can delete your BigQuery dataset by following the instructions in the Google Cloud article, [Managing datasets](https://cloud.google.com/bigquery/docs/managing-datasets#deleting_a_dataset). Note that the data will be deleted permanently from this location, but output files can still be found in the workspace bucket.
 
 ---
 
@@ -170,5 +265,5 @@ Details on citing Terra workspaces can be found here: [How to cite Terra](https:
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2023 | Apache**
+**Copyright Broad Institute, 2024 | Apache**
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.

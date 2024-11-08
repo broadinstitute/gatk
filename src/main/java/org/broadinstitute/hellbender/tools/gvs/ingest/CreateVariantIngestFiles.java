@@ -35,11 +35,7 @@ import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Ingest variant walker
@@ -56,6 +52,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private RefCreator refCreator;
     private VetCreator vetCreator;
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
+    private SamplePloidyCreator samplePloidyCreator;
     private LoadStatus loadStatus;
 
     private final Map<String, Boolean> allLineHeaders = new HashMap<>();
@@ -479,6 +476,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableReferenceRanges && !refRangesRowsExist) {
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
+
+            // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
+            // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
+            samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
         }
 
         if (enableVet && !vetRowsExist) {
@@ -557,10 +558,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineScratchCreator.commitData();
-
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteVCFHeadersLoadedStatusRow) {
-                loadStatus.writeHeadersLoadedStatus(sampleId);
-            }
         }
 
         if (refCreator != null) {
@@ -575,16 +572,28 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteReferencesLoadedStatusRow) {
-                loadStatus.writeReferencesLoadedStatus(sampleId);
+
+            // this is likely an unnecessary check as it currently stands, but it can't hurt to have it in case we
+            // later separate their creation, throwing the ploidy stuff explicity behind a flag
+            if (samplePloidyCreator != null) {
+                try {
+                    samplePloidyCreator.apply(refCreator.getReferencePloidyData(), refCreator.getTotalRefEntries());
+                } catch (IOException ioe) {
+                    throw new GATKException("Error writing ploidy data", ioe);
+                }
+
+                samplePloidyCreator.commitData();
             }
         }
 
         if (vetCreator != null) {
             vetCreator.commitData();
-            if (outputType == CommonCode.OutputType.BQ && shouldWriteVariantsLoadedStatusRow) {
-                loadStatus.writeVariantsLoadedStatus(sampleId);
-            }
+        }
+
+        if (outputType == CommonCode.OutputType.BQ) {
+            if (shouldWriteVCFHeadersLoadedStatusRow) loadStatus.writeHeadersLoadedStatus(sampleId);
+            if (shouldWriteVariantsLoadedStatusRow) loadStatus.writeVariantsLoadedStatus(sampleId);
+            if (shouldWriteReferencesLoadedStatusRow) loadStatus.writeReferencesLoadedStatus(sampleId);
         }
 
         return 0;
@@ -597,6 +606,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
         if (vetCreator != null) {
             vetCreator.closeTool();
+        }
+        if (samplePloidyCreator != null) {
+            samplePloidyCreator.closeTool();
         }
         if (vcfHeaderLineScratchCreator != null) {
             vcfHeaderLineScratchCreator.closeTool();

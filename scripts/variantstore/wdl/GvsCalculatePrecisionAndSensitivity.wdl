@@ -9,7 +9,10 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String call_set_identifier
     String dataset_name
     String filter_set_name
-    File interval_list
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    File? target_interval_list
+    File? vcf_eval_bed_file
+    Array[String] chromosomes = ["chr20"]
     String project_id
     Array[String] sample_names
 
@@ -32,15 +35,18 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   parameter_meta {
     call_set_identifier: "The name of the callset for which we are calculating precision and sensitivity."
+    chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
-    interval_list: "The intervals over which to calculate precision and sensitivity."
+    target_interval_list: "The intervals outside of which sites will be OUTSIDE_OF_TARGETS filtered."
+    interval_list: "The intervals over which to extract VCFs for calculating precision and sensitivity."
     project_id: "The Google Project ID where the GVS lives."
     sample_names: "A list of the sample names that are controls and that will be used for the analysis. For every element on the list of sample names there must be a corresponding element on the list of `truth_vcfs`, `truth_vcf_indices`, and `truth_beds`."
     truth_vcfs: "A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`."
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
     ref_fasta: "The cloud path for the reference fasta sequence."
+    vcf_eval_bed_file: "Optional bed file for EvaluateVcf; if passed, will be used instead of chromosomes."
   }
 
   String output_basename = call_set_identifier + "_PS"
@@ -75,6 +81,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
       call_set_identifier = call_set_identifier,
       filter_set_name = filter_set_name,
       control_samples = true,
+      target_interval_list = target_interval_list,
       interval_list = interval_list,
       extract_scatter_count_override = extract_scatter_count_override,
       cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -112,7 +119,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         variants_docker = effective_variants_docker,
     }
 
-    call IsVQSRLite {
+    call IsVETS {
       input:
         input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
         basic_docker = effective_basic_docker,
@@ -125,16 +132,28 @@ workflow GvsCalculatePrecisionAndSensitivity {
         gotc_imputation_docker = effective_gotc_imputation_docker,
     }
 
+    if (defined(target_interval_list)) {
+      call IntersectTargetIntervalListWithTruthBed {
+        input:
+          truth_bed = truth_beds[i],
+          target_interval_list = select_first([target_interval_list]),
+          gatk_docker = effective_gatk_docker,
+      }
+    }
+
+    File effective_truth_bed = select_first([IntersectTargetIntervalListWithTruthBed.intersected_truth_bed, truth_beds[i]])
+
     call EvaluateVcf as EvaluateVcfFiltered {
       input:
         input_vcf = BgzipAndTabix.output_vcf,
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = truth_beds[i],
-        interval_list = interval_list,
+        truth_bed = effective_truth_bed,
+        vcf_eval_bed_file = vcf_eval_bed_file,
+        chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
-        is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
+        is_vets = IsVETS.is_vets,
         ref_fasta = ref_fasta,
         real_time_genomics_docker = effective_real_time_genomics_docker,
     }
@@ -145,11 +164,12 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_index = BgzipAndTabix.output_vcf_index,
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
-        truth_bed = truth_beds[i],
-        interval_list = interval_list,
+        truth_bed = effective_truth_bed,
+        vcf_eval_bed_file = vcf_eval_bed_file,
+        chromosomes = chromosomes,
         all_records = true,
         output_basename = sample_name + "-bq_all",
-        is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
+        is_vets = IsVETS.is_vets,
         ref_fasta = ref_fasta,
         real_time_genomics_docker = effective_real_time_genomics_docker,
     }
@@ -300,13 +320,13 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
   }
 }
 
-task IsVQSRLite {
+task IsVETS {
   input {
     File input_vcf
     String basic_docker
   }
 
-  String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
+  String is_vets_file = "is_vets_file.txt"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -317,9 +337,9 @@ task IsVQSRLite {
     set +o errexit
     grep -v '^#' ~{input_vcf} | grep CALIBRATION_SENSITIVITY > /dev/null
     if [[ $? -eq 0 ]]; then
-      echo "true" > ~{is_vqsr_lite_file}
+      echo "true" > ~{is_vets_file}
     else
-      echo "false" > ~{is_vqsr_lite_file}
+      echo "false" > ~{is_vets_file}
     fi
     set -o errexit
   >>>
@@ -331,7 +351,7 @@ task IsVQSRLite {
     preemptible: 3
   }
   output {
-    Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
+    Boolean is_vets = read_boolean(is_vets_file)
   }
 }
 
@@ -377,15 +397,16 @@ task EvaluateVcf {
     File truth_vcf
     File truth_vcf_index
     File truth_bed
+    File? vcf_eval_bed_file
+    Array[String] chromosomes
 
     Boolean all_records = false
-    File interval_list
 
     File ref_fasta
 
     String output_basename
 
-    Boolean is_vqsr_lite
+    Boolean is_vets
 
     String real_time_genomics_docker
     Int cpu = 1
@@ -393,9 +414,17 @@ task EvaluateVcf {
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 500
   }
 
-  String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
+  String max_score_field_tag = if (is_vets == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
 
   command <<<
+    chromosomes=( ~{sep=' ' chromosomes} )
+
+    echo "Creating .bed file to control which chromosomes should be evaluated."
+    for i in "${chromosomes[@]}"
+    do
+    echo "$i	0	300000000" >> chromosomes.to.eval.txt
+    done
+
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -403,11 +432,11 @@ task EvaluateVcf {
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
-      --bed-regions ~{interval_list} \
+      --bed-regions ~{if defined(vcf_eval_bed_file) then vcf_eval_bed_file else "chromosomes.to.eval.txt"} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
-      ~{if is_vqsr_lite then "--sort-order ascending" else "--sort-order descending"} \
+      ~{if is_vets then "--sort-order ascending" else "--sort-order descending"} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\
@@ -505,4 +534,37 @@ task CountInputVcfs {
   runtime {
     docker: basic_docker
   }
+}
+
+
+task IntersectTargetIntervalListWithTruthBed {
+    input {
+        File truth_bed
+        File target_interval_list
+        String gatk_docker
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # `basename` so the output ends up in $PWD (/cromwell_root) and not wherever the inputs were localized.
+        # The outputs of these transformations need to be in a place where the `glob` expression will find them.
+        target_bed="$(basename ~{target_interval_list})"
+        target_bed="${target_bed%%.interval_list}.bed"
+
+        gatk IntervalListToBed -I ~{target_interval_list} -O "${target_bed}" --SORT
+
+        truth_bed="~{truth_bed}"
+        intersected_truth_bed="$(basename ${truth_bed%%.bed})"
+        intersected_truth_bed="${intersected_truth_bed}_intersected.bed"
+
+        bedtools intersect -a "${target_bed}" -b ${truth_bed} > ${intersected_truth_bed}
+    >>>
+    runtime {
+        docker: gatk_docker
+    }
+    output {
+        File intersected_truth_bed = glob("*_intersected.bed")[0]
+    }
 }

@@ -12,6 +12,7 @@ workflow GvsExtractCohortFromSampleNames {
     # cohort_sample_names_array will take precedence over cohort_sample_names if both are set
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
+    Boolean is_wgs = true
 
     String gvs_project
     String gvs_dataset
@@ -31,6 +32,8 @@ workflow GvsExtractCohortFromSampleNames {
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
+    Boolean bgzip_output_vcfs = false
+    Boolean collect_variant_calling_metrics = false
 
     File? interval_list
     Int? extract_preemptible_override
@@ -40,6 +43,8 @@ workflow GvsExtractCohortFromSampleNames {
     Int? extract_disk_override
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
+
+    File? target_interval_list
 
     String? git_branch_or_tag
     String? gatk_docker
@@ -78,15 +83,6 @@ workflow GvsExtractCohortFromSampleNames {
       cloud_sdk_docker = effective_cloud_sdk_docker
   }
 
-  Int effective_scatter_count = if defined(extract_scatter_count_override) then select_first([extract_scatter_count_override])
-                                else if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                     else if GetNumSamplesLoaded.num_samples < 1000 then 250
-                                          else if GetNumSamplesLoaded.num_samples < 5000 then 500
-                                               else if GetNumSamplesLoaded.num_samples < 20000 then 1000 # Stroke Anderson
-                                                    else if GetNumSamplesLoaded.num_samples < 50000 then 5000
-                                                         else if GetNumSamplesLoaded.num_samples < 100000 then 10000 # Charlie
-                                                              else 20000
-
   # writing the array to a file has to be done in a task
   # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
   if (defined(cohort_sample_names_array)) {
@@ -99,8 +95,21 @@ workflow GvsExtractCohortFromSampleNames {
 
   File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
 
+  # scatter for WGS and exome samples based on past successful runs and NOT optimized
+  Int effective_scatter_count = if defined(extract_scatter_count_override) then select_first([extract_scatter_count_override])
+                                else if is_wgs then
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                               else 20000
+                                     else
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 1000
+                                          else if GetNumSamplesLoaded.num_samples < 50000 then 2500
+                                               else 7500
+
   # allow an interval list to be passed in, but default it to our standard one if no args are here
-  File working_interval_list = select_first([interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
+  File effective_interval_list = select_first([interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
 
 
   call GvsPrepareCallset.GvsPrepareCallset {
@@ -118,7 +127,7 @@ workflow GvsExtractCohortFromSampleNames {
       write_cost_to_db = write_cost_to_db,
       cloud_sdk_docker = effective_cloud_sdk_docker,
       enable_extract_table_ttl = true,
-      interval_list = working_interval_list,
+      interval_list = effective_interval_list,
       control_samples = control_samples,
       cloud_sdk_docker = effective_cloud_sdk_docker,
       git_hash = effective_git_hash,
@@ -142,13 +151,15 @@ workflow GvsExtractCohortFromSampleNames {
       output_gcs_dir = output_gcs_dir,
 
       drop_state = drop_state,
+      bgzip_output_vcfs = bgzip_output_vcfs,
+      collect_variant_calling_metrics = collect_variant_calling_metrics,
       extract_preemptible_override = extract_preemptible_override,
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
       extract_memory_override_gib = extract_memory_override,
       disk_override = extract_disk_override,
-      interval_list = working_interval_list,
+      interval_list = effective_interval_list,
       control_samples = control_samples,
 
       cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -157,7 +168,8 @@ workflow GvsExtractCohortFromSampleNames {
       gatk_docker = effective_gatk_docker,
       git_hash = effective_git_hash,
       variants_docker = effective_variants_docker,
-      write_cost_to_db = write_cost_to_db
+      write_cost_to_db = write_cost_to_db,
+      target_interval_list = target_interval_list,
   }
 
   output {

@@ -1,6 +1,6 @@
 # Genomic Variant Store Beta Quickstart
 
-In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) with provided example data.
+In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) with provided example data. Using the example data in the [Exome GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta) is a similar process.
 
 The [GVS](../gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
 
@@ -16,18 +16,19 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What data does it require as input?
 
-- Reblocked single sample GVCF files (`input_vcfs`)
-- GVCF index files (`input_vcf_indexes`)
+- Reblocked single sample GVCF files
+- GVCF index files
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
+While the GVS has been tested with 410,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes and 100,000 whole exomes are currently supported by the beta workflow.
 
 ### What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket) or in the Google bucket specified in the inputs.
+The following files are stored in the Google Cloud Storage path specified in the `extract_output_gcs_dir` workflow input or in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket).
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
+- A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in MB
 - Manifest file containing the destinations and sizes in B of the output sharded joint VCF and index files
 
@@ -39,7 +40,7 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ### Step 1. Register for Terra
 
-The GVS workflow requires a Terra data table to run properly.  If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911).
+The GVS workflow requires Terra to run properly.  If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911).
 
 If you already have a Terra account, you can skip this step.
 
@@ -63,9 +64,11 @@ If you already have a GCP project that you would like to use to test the GVS wor
 
 ### Step 4. Create a BigQuery dataset
 
-BigQuery datasets store the tables created during the execution of the GVS workflow. A new dataset should be created for each callset you want to create using the workflow. Samples can be added to BiqQuery datasets cumulatively and any samples in the dataset will be included in the extracted callset. 
+BigQuery datasets store the tables created during the execution of the GVS workflow. A new dataset should be created for each callset you want to create using the workflow. 
 
-Create a dataset in BigQuery inside the GCP project you created in Step 3 (above) by following the instructions in the Google Cloud documentation article, [Creating datasets](https://cloud.google.com/bigquery/docs/datasets#create-dataset).
+Create a dataset in BigQuery inside the GCP project you created in Step 3 (above) by following the instructions in the Google Cloud documentation article, [Creating datasets](https://cloud.google.com/bigquery/docs/datasets#create-dataset). If you already have a google project but are not an owner, you will need at least BigQuery Create Dataset ("bigquery.datasets.create") permissions on the project to do this.
+
+We recommend that you select "Multi-region" for the dataset's "Location type" in order to avoid more restrictive Google quotas.
 
 Click on the arrow next to the name of your GCP project. When the BigQuery dataset has been created successfully, it will appear under the name of the GCP project.
 
@@ -92,42 +95,30 @@ If you’ve done this correctly, you should see your Terra proxy group listed in
 
 ### Step 7. Clone the GVS beta workspace
 
-The GVS beta workspace in Terra is read-only, so you’ll need to clone the workspace to create a copy where you can upload your own data and run the workflow. Clone the workspace using the billing project you created in Step 2 (above) by following the instructions in the article [Make your own project workspace](https://support.terra.bio/hc/en-us/articles/360026130851).
+The GVS beta workspaces in Terra are read-only, so you’ll need to clone the workspace to create a copy where you can upload your own data and run the workflow. Clone the workspace using the billing project you created in Step 2 (above) by following the instructions in the article [Make your own project workspace](https://support.terra.bio/hc/en-us/articles/360026130851).
+
+The GVS beta workspace for genomes is [here](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) and the workspace for exomes is [here](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta). 
 
 ## Running the workflow
 
-The workflow in the GVS beta workspace is pre-configured to use the 10 sample GVCF files in the workspace Data tab.
+The workflow in the GVS beta workspace is pre-configured to use the 10 sample reblocked GVCF files in the workspace Data tab. See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
 
-The workflow is configured to call this input from the data table. To run:
-
-1. Select the "GvsBeta" workflow from the Workflows tab.
-1. Configure the workflow inputs.
-    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
-    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-1. **Save** the workflow configuration.
-1. **Run** the workflow.
-
-To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](./run-your-own-samples.md).
+To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 ### Time and cost
-Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
+Generally, once over ~100 samples, the GVS costs $0.06 USD in compute per sample to run on genomes and $0.005 USD in compute per sample to run on exomes. Cost to run the example data is below and for more information on cost see the [run your own samples](./run-your-own-samples.md) document. 
+
+Cost and runtime of a callset of the **whole genome** sample data pre-loaded in the genome workspace.
 
 | Number of Genome Samples | Elapsed Time (hh:mm) | Terra Cost $ | BigQuery Cost | Total Cost | Measured Cost per Sample |
 |-------------------|----------------------|------------|---------------|------------|-----------------------------|
 | 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
 
-Here are several more examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
+Cost and runtime of a callset of the **exome** sample data pre-loaded in the exome workspace.
 
-| Number of Samples | Wall Clock Time (hh:mm) | Cost $     | Cost per Sample |
-|------------------|-------------------------|------------|------------|
-| 1000             | 07:24                   | $59.64     | $0.06      |
-| 2500             | 08:45                   | $141.28    | $0.06      |
-| 5000             | 12:00                   | $286.71    | $0.06      |
-| 10000            | 13:41                   | $604.97    | $0.06      |
-| 25000            | 63:35*                  | $1,282.65  | $0.051     |
-
-*Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
+| Number of Samples | Elapsed Time (hh:mm) |	Cost $ |Cost per Sample | 
+|-------------------|----------------------|--------|----------------| 
+| 10                | 	03:08               | 	$0.76	 | $0.07562 |
 
 **Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation. For example, in practice we've seen 10,000 genome runs take from 13-20 hours.
 

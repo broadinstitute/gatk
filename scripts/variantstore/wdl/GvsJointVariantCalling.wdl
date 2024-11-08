@@ -9,28 +9,33 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
-        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
-        # tag as specified in `GvsUtils.GetToolVersions`.
-        String? git_branch_or_tag
-        # Potentially specified by a calling integration WDL.
-        String? git_hash
-
-        String dataset_name
-        String project_id
+        Boolean go = true
         String call_set_identifier
-        String? extract_output_gcs_dir
+        String dataset_name
+        String extract_output_gcs_dir
+        String project_id
+
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
+
+        Boolean bgzip_output_vcfs = false
+        Boolean collect_variant_calling_metrics = false
         String drop_state = "FORTY"
-        Boolean use_classic_VQSR = false
+        Boolean use_VQSR = false
         Boolean use_compressed_references = false
         Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
+
+        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
+        # tag as specified in `GvsUtils.GetToolVersions`.
+        String? git_branch_or_tag
+        # Potentially specified by a calling integration WDL.
+        String? git_hash
 
         String? basic_docker
         String? cloud_sdk_docker
@@ -54,25 +59,29 @@ workflow GvsJointVariantCalling {
         String? extract_table_prefix
         String? filter_set_name
 
+        File? target_interval_list
+
         # Overrides to be passed to GvsCreateFilterSet
-        Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
-        Int? INDEL_VQSR_CLASSIC_mem_gb_override
-        Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
-        Int? SNP_VQSR_CLASSIC_mem_gb_override
+        Int? INDEL_VQSR_max_gaussians_override = 4
+        Int? INDEL_VQSR_mem_gb_override
+        Int? SNP_VQSR_max_gaussians_override = 6
+        Int? SNP_VQSR_mem_gb_override
 
         File? training_python_script
         File? scoring_python_script
+
+        Int? maximum_alternate_alleles
     }
 
-    # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use
-    # the same weighted bed file for whole genomes and exomes.
-    # But, if interval_list is defined, we'll use that instead of choosing based on is_wgs
+    # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
+    # We currently use the same weighted bed file for whole genomes and exomes. However if `interval_list` is defined,
+    # we'll use that instead of choosing based on `is_wgs`.
     File default_interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
                                              else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     File interval_list_to_use = select_first([interval_list, default_interval_list])
 
-    # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
-    # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
+    # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
+    # To make sure nothing is broken by creative users we replace spaces and underscores with hyphens.
     String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|\_+", "-")])
     String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|\_+", "-")])
     String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|\_+", "-")])
@@ -81,6 +90,7 @@ workflow GvsJointVariantCalling {
     String destination_project = project_id
     String destination_dataset = dataset_name
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
+    String ploidy_table_name = "sample_chromosome_ploidy"
 
     if (false) {
       Int extract_maxretries_override = ""
@@ -110,7 +120,6 @@ workflow GvsJointVariantCalling {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
@@ -161,15 +170,15 @@ workflow GvsJointVariantCalling {
             project_id = project_id,
             call_set_identifier = call_set_identifier,
             filter_set_name = effective_filter_set_name,
-            use_VQSR_lite = !use_classic_VQSR,
+            use_VETS = !use_VQSR,
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
-            INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
-            INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
-            SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
-            SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
+            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
+            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
+            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             training_python_script = training_python_script,
             scoring_python_script = scoring_python_script,
@@ -195,8 +204,6 @@ workflow GvsJointVariantCalling {
             enable_extract_table_ttl = true,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
-
     call ExtractCallset.GvsExtractCallset {
         input:
             go = GvsPrepareCallset.done,
@@ -217,16 +224,21 @@ workflow GvsJointVariantCalling {
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
-            output_gcs_dir = effective_output_gcs_dir,
+            output_gcs_dir = extract_output_gcs_dir,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            bgzip_output_vcfs = bgzip_output_vcfs,
+            collect_variant_calling_metrics = collect_variant_calling_metrics,
             is_wgs = is_wgs,
+            maximum_alternate_alleles = maximum_alternate_alleles,
+            target_interval_list = target_interval_list,
+            ploidy_table_name = ploidy_table_name,
     }
 
     output {
-        String output_gcs_path = effective_output_gcs_dir
+        String output_gcs_path = extract_output_gcs_dir
         Array[File] output_vcfs = GvsExtractCallset.output_vcfs
         Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
         Array[File] output_vcf_interval_files = GvsExtractCallset.output_vcf_interval_files

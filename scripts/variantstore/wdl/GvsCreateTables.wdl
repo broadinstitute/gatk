@@ -36,6 +36,7 @@ workflow CreateBQTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = true,
       datatype = "vet",
       max_table_id = max_table_id,
       schema_json = vet_schema_json,
@@ -49,6 +50,7 @@ workflow CreateBQTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      go = true,
       datatype = "ref_ranges",
       max_table_id = max_table_id,
       schema_json = ref_ranges_schema_used,
@@ -59,8 +61,8 @@ workflow CreateBQTables {
   }
 
   output {
-    String vetDone = CreateVetTables.done
-    String refDone = CreateRefRangesTables.done
+    Boolean vetDone = CreateVetTables.done
+    Boolean refDone = CreateRefRangesTables.done
     String recorded_git_hash = effective_git_hash
   }
 }
@@ -71,6 +73,7 @@ task CreateTables {
   input {
     String project_id
     String dataset_name
+    Boolean go
     String datatype
     Int max_table_id
     String schema_json
@@ -80,7 +83,8 @@ task CreateTables {
     String clustering_field = "location"
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # set to volatile because if the table already exists, this will not remake it
+    volatile: true
   }
 
   command <<<
@@ -125,7 +129,7 @@ task CreateTables {
   >>>
 
   output {
-    String done = "true"
+    Boolean done = true
   }
 
   runtime {

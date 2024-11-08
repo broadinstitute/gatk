@@ -101,7 +101,7 @@ workflows:
              - /.*/
    - name: GvsBenchmarkExtractTask
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsBenchmarkExtractTask.wdl
      filters:
          branches:
              - master
@@ -157,6 +157,15 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -173,6 +182,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -183,7 +193,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1245
-             - hatcher_testing_parquet
+             - hatcher_parquet_ingest_test
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -199,17 +209,16 @@ workflows:
              - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/variant-annotations-table/GvsCreateVATfromVDS.wdl
      filters:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1229_DeDupTheVatUponCreation
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATFilesFromBigQuery.wdl
      filters:
          branches:
              - master
@@ -218,9 +227,9 @@ workflows:
              - /.*/
    - name: GvsValidateVat
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl
      testParameterFiles:
-         - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
+         - /scripts/variantstore/variant-annotations-table/GvsValidateVat.example.inputs.json
      filters:
          branches:
              - master
@@ -252,6 +261,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
          tags:
              - /.*/
    - name: GvsBeta
@@ -262,7 +272,6 @@ workflows:
              # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
-             - vs_1099_composite_object_inputs
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost
@@ -281,12 +290,12 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1245
+             - vs_1460_intersect_target_truth_ps
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartVcfIntegration.wdl
      filters:
          branches:
              - master
@@ -295,7 +304,7 @@ workflows:
              - /.*/
    - name: GvsQuickstartHailIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartHailIntegration.wdl
      filters:
          branches:
              - master
@@ -304,17 +313,18 @@ workflows:
              - /.*/
    - name: GvsQuickstartIntegration
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1245
+             - vs_1456_status_writes_bug
+             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
          tags:
              - /.*/
    - name: GvsIngestTieout
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
      filters:
          branches:
              - master
@@ -357,14 +367,15 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: HailFromWdl
+   - name: GvsTieoutVcfMaxAltAlleles
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutVcfMaxAltAlleles.wdl
      filters:
-         branches:
-             - master
-         tags:
-             - /.*/
+       branches:
+         - ah_var_store
+         - master
+       tags:
+         - /.*/
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -413,3 +424,30 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallsetPgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: MergePgenHierarchicalWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsTieoutPgenToVcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
+     filters:
+       branches:
+         - ah_var_store

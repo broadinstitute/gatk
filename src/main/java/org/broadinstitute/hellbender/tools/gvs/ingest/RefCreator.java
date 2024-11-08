@@ -5,10 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
@@ -17,9 +14,7 @@ import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 
 public final class RefCreator {
@@ -38,6 +33,12 @@ public final class RefCreator {
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
+    private Map<String, BitSet> ploidiesPerChromosome = null;
+    private Map<String, Map<Integer, Long>> ploidiesCountPerChromosome = null;
+
+    // for easily calculating percentages later
+    private long totalRefEntries = 0L;
+
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
@@ -49,6 +50,9 @@ public final class RefCreator {
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
         this.gqStatesToIgnore = gqStatesToIgnore;
+
+        this.ploidiesPerChromosome = new HashMap<>();
+        this.ploidiesCountPerChromosome = new HashMap<>();
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
@@ -100,6 +104,31 @@ public final class RefCreator {
                 // if we are writing ref ranges, and this is a reference block, write it!
                 if (writeReferenceRanges) {
                     if (variant.isReferenceBlock()) {
+
+                        // Record reference ploidy if this is not in a PAR
+                        if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
+                            // create the bitset for this ploidy if it isn't there
+                            if (!ploidiesCountPerChromosome.containsKey(variant.getContig())) {
+                                ploidiesCountPerChromosome.put(variant.getContig(), new HashMap<>());
+                            }
+                            // set the bit for this ploidy so we record having seen it
+                            Map<Integer, Long> ploidyCounts = ploidiesCountPerChromosome.get(variant.getContig());
+
+                            int ploidy = variant.getMaxPloidy(1);
+
+                            Long currentCount = 0L;
+                            if (ploidyCounts.containsKey(ploidy)) {
+                                currentCount = ploidyCounts.get(ploidy);
+                            }
+
+                            // increment counts for this one and put it back
+                            ++currentCount;
+                            ploidyCounts.put(ploidy, currentCount);
+
+                            ++totalRefEntries;
+                        }
+
+
                         // break up reference blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
                         int localStart = start;
                         while ( localStart <= end ) {
@@ -260,6 +289,14 @@ public final class RefCreator {
         }
 
         return ret;
+    }
+
+    public Map<String, Map<Integer, Long>> getReferencePloidyData() {
+        return ploidiesCountPerChromosome;
+    }
+
+    public long getTotalRefEntries() {
+        return totalRefEntries;
     }
 
     public void commitData() {

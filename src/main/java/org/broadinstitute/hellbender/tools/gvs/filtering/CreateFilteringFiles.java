@@ -32,8 +32,6 @@ import java.io.IOException;
         omitFromCommandLine = true
 )
 public final class CreateFilteringFiles extends VariantWalker {
-    static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
-
     private SimpleXSVWriter writer;
 
     private final List<String> HEADER =
@@ -64,10 +62,10 @@ public final class CreateFilteringFiles extends VariantWalker {
     private String mode;
 
     @Argument(
-            fullName = "classic",
-            doc = "Whether or not this is using classic VQSR or the newer VQSR-Lite",
+            fullName = "use-vqsr",
+            doc = "Whether or not this is using VQSR or VETS",
             optional = true)
-    private Boolean usingOldVQSR = null;
+    private Boolean useVQSR = null;
 
     @Override
     public boolean requiresIntervals() {
@@ -82,8 +80,8 @@ public final class CreateFilteringFiles extends VariantWalker {
             throw new GATKException("Unable to initialize writer", ioe);
         }
 
-        if (usingOldVQSR == null) { // default to using the old, or "classic" VQSR if the user specifies nothing
-            usingOldVQSR = Boolean.TRUE;
+        if (useVQSR == null) { // default to using VQSR if the user specifies nothing
+            useVQSR = Boolean.TRUE;
         }
 
         writer.setHeaderLine(HEADER);
@@ -110,7 +108,7 @@ public final class CreateFilteringFiles extends VariantWalker {
         String culprit = "";
         String trainingLabel = "";
         String yng = "";
-        if (!usingOldVQSR) {
+        if (!useVQSR) {
             calibration_sensitivity = variant.getAttributeAsString("CALIBRATION_SENSITIVITY","");
             score = variant.getAttributeAsString("SCORE", "");
             trainingLabel = variant.hasAttribute("training") ? "POSITIVE" : "";

@@ -124,9 +124,9 @@ fi
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash . --iidfile /tmp/idfile.txt
 else
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} . --iidfile /tmp/idfile.txt
 fi
 # Since we build the docker image with stages, the first build stage for GATK will be leftover in
 # the local docker context after executing the above commands. This step reclaims that space automatically
