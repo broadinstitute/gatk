@@ -157,17 +157,18 @@ public class SVCleanPt4 extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        // Initialize data structures
-        recordIdx++;
-        VariantContextBuilder builder = new VariantContextBuilder(variant);
-
         // Exit if outside batch range
         if (recordIdx < recordStart || recordIdx >= recordEnd) {
+            recordIdx++;
             return;
         }
+        recordIdx++;
+
+        // Initialize data structures
+        VariantContextBuilder builder = new VariantContextBuilder(variant);
+        List<Genotype> genotypes = variant.getGenotypes();
 
         // Process variants
-        List<Genotype> genotypes = variant.getGenotypes();
         genotypes = processRevisedCn(variant, genotypes);
         processMultiallelic(builder, genotypes);
         genotypes = processLargeDeletions(variant, builder, genotypes);
