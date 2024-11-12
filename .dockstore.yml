@@ -313,7 +313,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - qi-attempt
          tags:
              - /.*/
    - name: GvsIngestTieout
