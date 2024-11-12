@@ -490,6 +490,7 @@ task ValidateVariants {
     runtime {
         docker: gatk_docker
         preemptible: select_first([preemptible_tries, 3])
+        maxRetries: 3
         memory: "3 GiB"
         disks: "local-disk 100 HDD"
     }
