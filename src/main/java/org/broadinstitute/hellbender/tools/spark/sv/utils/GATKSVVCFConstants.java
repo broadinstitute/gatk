@@ -180,12 +180,6 @@ public final class GATKSVVCFConstants {
     // SVCleanPt5
     public static final String UNR = "UNR";
     public static final String EVENT = "EVENT";
-    public static final Set<List<Integer>> BIALLELIC_GTS = new HashSet<>(Arrays.asList(
-            Arrays.asList(0, 0),
-            Arrays.asList(1, 1),
-            Arrays.asList(0, 1),
-            Arrays.asList(null, null)
-    ));
     public static final Set<String> FILTER_VCF_LINES = new HashSet<>(Arrays.asList(
             "CIPOS", "CIEND", "RMSSTD", "source", "bcftools", "GATKCommandLine", "#CHROM"
     ));

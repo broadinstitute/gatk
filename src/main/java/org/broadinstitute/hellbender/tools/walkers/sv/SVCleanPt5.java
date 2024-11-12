@@ -146,7 +146,6 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processVariantPair(bufferedVariant, variant);
-                processVariantPair(variant, bufferedVariant);
             }
         }
         overlappingVariantsBuffer.add(variant);
@@ -164,21 +163,32 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
     }
 
     private void processVariantPair(VariantContext v1, VariantContext v2) {
+        // Determine larger variant
+        VariantContext largerVariant = v1;
+        VariantContext smallerVariant = v2;
         int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        if (length1 < length2) {
-            return;
+
+        // Swap variants if necessary
+        if (length2 > length1) {
+            largerVariant = v2;
+            smallerVariant = v1;
         }
 
-        int minEnd = Math.min(v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0), v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
-        int maxStart = Math.max(v1.getStart(), v2.getStart());
+        // Calculate overlap
+        int minEnd = Math.min(
+                largerVariant.getStart() + largerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0),
+                smallerVariant.getStart() + smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)
+        );
+        int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
         int overlapLength = minEnd - maxStart + 1;
         if (overlapLength <= 0) {
             return;
         }
 
-        double smallCoverage = (double) overlapLength / length2;
-        if (smallCoverage > 0.5) {
+        // Filter variant based on conditions
+        double coverage = (double) overlapLength / length2;
+        if (coverage > 0.5) {
             if (!filteredVariantIds.contains(v1.getID())) {
                 filteredVariantIds.add(v2.getID());
             }

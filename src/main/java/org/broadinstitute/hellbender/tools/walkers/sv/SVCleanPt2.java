@@ -180,7 +180,7 @@ public class SVCleanPt2 extends VariantWalker {
             smallerLength = length1;
         }
 
-        // Get IDs and other attributes
+        // Get variant attributes
         String variantId1 = largerVariant.getID();
         String variantId2 = smallerVariant.getID();
         Map<String, Integer> variantRdCn1 = getRdCnForVariant(largerVariant);
@@ -191,9 +191,10 @@ public class SVCleanPt2 extends VariantWalker {
         String svType2 = smallerVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
 
         // Calculate overlap
-        int end1 = largerVariant.getEnd();
-        int end2 = smallerVariant.getEnd();
-        int minEnd = Math.min(end1, end2);
+        int minEnd = Math.min(
+                largerVariant.getStart() + largerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0),
+                smallerVariant.getStart() + smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)
+        );
         int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
         int lengthOverlap = minEnd - maxStart + 1;
         double overlap1 = (double) lengthOverlap / (double) largerLength;
