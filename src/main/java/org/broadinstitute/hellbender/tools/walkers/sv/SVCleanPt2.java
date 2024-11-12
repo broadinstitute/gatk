@@ -141,7 +141,7 @@ public class SVCleanPt2 extends VariantWalker {
         // Flag sample as having an abnormal copy number if it passes certain conditions
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
-            int rdCn = Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString());
+            int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
             if (!sampleWhitelist.contains(sample) || !genotype.isCalled() || rdCn == 2) {
                 continue;
             }
@@ -172,8 +172,8 @@ public class SVCleanPt2 extends VariantWalker {
         Map<String, Integer> variantRdCn2 = getRdCnForVariant(v2);
         Map<String, Set<String>> variantSupport1 = getSupportForVariant(v1);
         Map<String, Set<String>> variantSupport2 = getSupportForVariant(v2);
-        String svType1 = v1.getAttributeAsString("SVTYPE", "");
-        String svType2 = v2.getAttributeAsString("SVTYPE", "");
+        String svType1 = v1.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+        String svType2 = v2.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
 
         // Calculate overlap metadata
         int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);;
@@ -195,7 +195,7 @@ public class SVCleanPt2 extends VariantWalker {
             String id2 = variantId2 + "@" + sample;
             int rdCn1 = revisedCopyNumbers.getOrDefault(variantId1, Collections.emptyMap()).getOrDefault(sample, variantRdCn1.get(sample));
             int rdCn2 = revisedCopyNumbers.getOrDefault(variantId2, Collections.emptyMap()).getOrDefault(sample, variantRdCn2.get(sample));
-            if (revisedComplete.contains(id1)) {
+            if (revisedComplete.contains(id1) || revisedComplete.contains(id2)) {
                 continue;
             }
 
@@ -278,8 +278,7 @@ public class SVCleanPt2 extends VariantWalker {
     }
 
     private boolean isLarge(final VariantContext variant, final int minSize) {
-        int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
-        return variantLength >= minSize;
+        return Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) >= minSize;
     }
 
     private Map<String, Set<String>> getSupportForVariant(final VariantContext variant) {
@@ -308,6 +307,9 @@ public class SVCleanPt2 extends VariantWalker {
     }
 
     private void makeRevision(final String id, final int val) {
+        if (id.contains("brainvar_all_samples_DUP_chr1_890")) {
+            System.out.println(id + " --> " + Integer.toString(val)) ;
+        }
         String[] tokens = id.split("@");
         String variantId = tokens[0];
         String sample = tokens[1];
