@@ -182,7 +182,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1456_status_writes_bug
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -192,7 +191,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -260,7 +258,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
          tags:
              - /.*/
    - name: GvsBeta
@@ -289,7 +286,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1460_intersect_target_truth_ps
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -317,8 +313,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1456_status_writes_bug
-             - VS-1416-modify-ingest-to-correctly-handle-ploidy-differences-in-dragen-3-7-8-samples
+             - qi-attempt
          tags:
              - /.*/
    - name: GvsIngestTieout
