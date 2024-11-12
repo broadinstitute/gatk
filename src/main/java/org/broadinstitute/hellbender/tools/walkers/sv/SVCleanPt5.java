@@ -168,11 +168,13 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         VariantContext smallerVariant = v2;
         int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        int smallerLength = length2;
 
         // Swap variants if necessary
         if (length2 > length1) {
             largerVariant = v2;
             smallerVariant = v1;
+            smallerLength = length1;
         }
 
         // Calculate overlap
@@ -187,11 +189,9 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
         }
 
         // Filter variant based on conditions
-        double coverage = (double) overlapLength / length2;
-        if (coverage > 0.5) {
-            if (!filteredVariantIds.contains(v1.getID())) {
-                filteredVariantIds.add(v2.getID());
-            }
+        double coverage = (double) overlapLength / smallerLength;
+        if (coverage > 0.5 && !filteredVariantIds.contains(largerVariant.getID())) {
+            filteredVariantIds.add(smallerVariant.getID());
         }
     }
 
