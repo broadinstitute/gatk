@@ -100,11 +100,12 @@ task ReformatGCNVForFabric {
             header_out.info.add("CN", "A", "Integer", "Copy number associated with <CNV> alleles")
             with VariantFile("~{output_basename}.reformatted_for_fabric.vcf.gz",'w', header = header_out) as cnv_vcf_out:
                 for rec in cnv_vcf_in.fetch():
-                    if rec.alts and rec.alts[0] == "<DUP>":
-                        for rec_sample in rec.samples.values():
-                            ploidy = len(rec_sample.alleles)
-                            rec_sample.allele_indices = (None,)*(ploidy - 1) + (1,)
-                    cnv_vcf_out.write(rec)
+                    if 'PASS' in rec.filter:
+                        if rec.alts and rec.alts[0] == "<DUP>":
+                            for rec_sample in rec.samples.values():
+                                ploidy = len(rec_sample.alleles)
+                                rec_sample.allele_indices = (None,)*(ploidy - 1) + (1,)
+                        cnv_vcf_out.write(rec)
         CODE
     >>>
 
