@@ -516,7 +516,7 @@ task CreateManifestAndOptionallyCopyOutputs {
     String? output_gcs_dir
     String cloud_sdk_docker
   }
-  meta {
+  parameter_meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     output_vcfs: {
       localization_optional: true
@@ -540,6 +540,9 @@ task CreateManifestAndOptionallyCopyOutputs {
     declare -a output_vcf_bytes=(~{sep=' ' output_vcf_bytes})
     declare -a output_vcf_index_bytes=(~{sep=' ' output_vcf_index_bytes})
 
+    # (Possibly) create a manifest of VCFs and indexes to bulk copy with `gcloud storage cp`.
+    echo -n > vcf_manifest.txt
+
     echo -n >> manifest_lines.txt
     for (( i=0; i<${#interval_indices[@]}; ++i));
       do
@@ -551,8 +554,8 @@ task CreateManifestAndOptionallyCopyOutputs {
         LOCAL_VCF_INDEX=$(basename $OUTPUT_VCF_INDEX)
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
-          gsutil cp $OUTPUT_VCF ${OUTPUT_GCS_DIR}/
-          gsutil cp $OUTPUT_VCF_INDEX ${OUTPUT_GCS_DIR}/
+          echo $OUTPUT_VCF >> vcf_manifest.txt
+          echo $OUTPUT_VCF_INDEX >> vcf_manifest.txt
           OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/$LOCAL_VCF"
           OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/$LOCAL_VCF_INDEX"
         else
@@ -568,7 +571,9 @@ task CreateManifestAndOptionallyCopyOutputs {
     sort -n manifest_lines.txt | cut -d',' -f 2- >> manifest.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+      # Copy VCFs, indexes and the manifest to the output directory.
+      echo manifest.txt >> vcf_manifest.txt
+      cat vcf_manifest.txt | gcloud storage cp -I ${OUTPUT_GCS_DIR}
     fi
   >>>
   output {
