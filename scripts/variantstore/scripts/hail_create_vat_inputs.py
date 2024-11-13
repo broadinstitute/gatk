@@ -180,7 +180,7 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
     t.select(var_origin_id=hl.format('%s-%s-%s-%s', t.locus.contig, t.locus.position, t.alleles[0], t.alleles[1])).export(var_ids_path, parallel='separate_header')
 
 
-def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None):
+def main(vds, ancestry_file_location, sites_only_vcf_path):
     n_samples = vds.n_samples()
     n_rounds = math.ceiling(n_samples / 10000) // hardcoded as 5 for the Echo callset creation  n_rounds = 5
     n_parts = vds.variant_data.n_partitions()
