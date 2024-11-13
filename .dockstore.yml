@@ -211,6 +211,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-1528-n-rounds-update
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
