@@ -5,7 +5,6 @@ from datetime import datetime
 
 import create_vat_inputs
 
-
 ###
 # VAT preparation:
 # filtering:

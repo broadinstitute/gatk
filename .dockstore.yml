@@ -173,7 +173,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1526_DontRunForever
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -207,7 +206,7 @@ workflows:
              - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/variant-annotations-table/GvsCreateVATfromVDS.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl
      filters:
          branches:
              - master
