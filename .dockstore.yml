@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-1490_RefactorPython
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -174,7 +173,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1526_DontRunForever
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -213,7 +211,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1490_RefactorPython
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -223,7 +220,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1490_RefactorPython
          tags:
              - /.*/
    - name: GvsValidateVat
@@ -299,7 +295,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1490_RefactorPython
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -309,7 +304,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1490_RefactorPython
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -319,7 +313,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1490_RefactorPython
          tags:
              - /.*/
    - name: GvsIngestTieout
