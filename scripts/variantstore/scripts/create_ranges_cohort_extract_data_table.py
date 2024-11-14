@@ -422,8 +422,8 @@ if __name__ == '__main__':
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
     parser.add_argument('--use_compressed_references', type=bool,
                         help='Expect compressed reference data and expand the fields', required=False, default=False)
-    parser.add_argment('--vet-ranges-extract-table-version', type=str,
-                       help='Version of the vet ranges extract table - for maintaining backwards-compatibility', required=False)
+    parser.add_argument('--vet-ranges-extract-table-version', type=str,
+                       help='Version of the vet ranges extract table - for maintaining backwards-compatibility (V2 or V1)', required=False)
     parser.add_argument('--enable_extract_table_ttl', type=bool,
                         help='Add a TTL to the extract tables', required=False, default=False)
     parser.add_argument('--interval_list', type=str,
