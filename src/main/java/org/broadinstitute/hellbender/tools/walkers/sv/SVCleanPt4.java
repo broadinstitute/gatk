@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -26,7 +25,6 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
