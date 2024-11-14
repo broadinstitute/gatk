@@ -147,10 +147,19 @@ def get_location_filters_from_interval_list(interval_list):
     return "WHERE (" + " OR ".join(location_clause_list) + ")"
 
 
-def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl):
+def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version):
     ttl = ""
     if enable_extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
+
+    additional_columns = ""
+    if vet_ranges_extract_table_version == "V2":
+        additional_columns = f"""
+            ,
+            call_PGT      STRING,
+            call_PID      STRING,
+            call_PS       INT64
+        """
 
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_vet_data}` 
@@ -164,10 +173,8 @@ def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract
               call_AD       STRING,
               AS_QUALapprox STRING,
               QUALapprox    STRING,
-              call_PL       STRING,
-              call_PGT      STRING,
-              call_PID      STRING,
-              call_PS       INT64	
+              call_PL       STRING
+              {additional_columns}	
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
@@ -246,15 +253,19 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
     return
 
 
-def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids, interval_list):
+def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids, vet_ranges_extract_table_version, interval_list):
     location_string = ""
     if interval_list:
         location_string = get_location_filters_from_interval_list(interval_list)
 
-    # split file into files with x lines and then run
+    additional_columns = ""
+    if vet_ranges_extract_table_version == "V2":
+        additional_columns = ", CALL_PGT, CALL_PID, CALL_PS"
+
+        # split file into files with x lines and then run
     def get_ref_subselect(fq_vet_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS FROM \n" \
+        sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL{additional_columns} FROM \n" \
               f" `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
@@ -263,7 +274,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
         if len(partition_samples) > 0:
             subs = {}
-            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL, CALL_PGT, CALL_PID, CALL_PS) \n WITH \n"
+            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL{additional_columns}) \n WITH \n"
             fq_vet_table = f"{fq_ranges_dataset}.{VET_TABLE_PREFIX}{i:03}"
             j = 1
 
@@ -298,6 +309,7 @@ def make_extract_table(call_set_identifier,
                        only_output_vet_tables,
                        write_cost_to_db,
                        use_compressed_references,
+                       vet_ranges_extract_table_version,
                        enable_extract_table_ttl,
                        interval_list):
     try:
@@ -370,8 +382,8 @@ def make_extract_table(call_set_identifier,
             create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl)
             populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references, interval_list)
 
-        create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl)
-        populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids, interval_list)
+        create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version)
+        populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids, vet_ranges_extract_table_version, interval_list)
 
     finally:
         utils.write_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges',
@@ -410,6 +422,8 @@ if __name__ == '__main__':
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
     parser.add_argument('--use_compressed_references', type=bool,
                         help='Expect compressed reference data and expand the fields', required=False, default=False)
+    parser.add_argment('--vet-ranges-extract-table-version', type=str,
+                       help='Version of the vet ranges extract table - for maintaining backwards-compatibility', required=False)
     parser.add_argument('--enable_extract_table_ttl', type=bool,
                         help='Add a TTL to the extract tables', required=False, default=False)
     parser.add_argument('--interval_list', type=str,
@@ -424,6 +438,9 @@ if __name__ == '__main__':
                                   'Only samples with null `withdrawn` fields in the `sample_info` table will be included in the cohort.')
 
     args = parser.parse_args()
+
+    if not args.vet_ranges_extract_table_version:
+        args.vet_ranges_extract_table_version = "V2"
 
     make_extract_table(args.call_set_identifier,
                        args.control_samples,
@@ -441,5 +458,6 @@ if __name__ == '__main__':
                        args.only_output_vet_tables,
                        args.write_cost_to_db,
                        args.use_compressed_references,
+                       args.vet_ranges_extract_table_version,
                        args.enable_extract_table_ttl,
                        args.interval_list)

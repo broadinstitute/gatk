@@ -63,6 +63,15 @@ workflow GvsPrepareCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  call Utils.GetExtractVetTableVersion {
+    input:
+      query_project = query_project,
+      data_project = project_id,
+      dataset_name = dataset_name,
+      table_name = "~{project_id}.~{dataset_name}.vet_001",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call PrepareRangesCallsetTask {
     input:
       call_set_identifier             = call_set_identifier,
@@ -80,6 +89,7 @@ workflow GvsPrepareCallset {
       write_cost_to_db                = write_cost_to_db,
       variants_docker                 = effective_variants_docker,
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
+      vet_extract_table_version       = GetExtractVetTableVersion.version,
       enable_extract_table_ttl        = enable_extract_table_ttl,
       interval_list                   = interval_list,
   }
@@ -108,6 +118,7 @@ task PrepareRangesCallsetTask {
     Boolean only_output_vet_tables
     Boolean write_cost_to_db
     Boolean use_compressed_references
+    String? vet_extract_table_version
     String variants_docker
     Boolean enable_extract_table_ttl
     File? interval_list
@@ -154,6 +165,7 @@ task PrepareRangesCallsetTask {
           ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
           ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db} \
           ~{true="--use_compressed_references True" false='' use_compressed_references} \
+          ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
           ~{true="--enable_extract_table_ttl True" false='' enable_extract_table_ttl} \
           ~{"--interval_list " + interval_list}
 
