@@ -75,7 +75,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /*
         Permutect parameters
      */
-    public static final String PERMUTECT_TRAINING_MODE_LONG_NAME = "permutect-training-mode";
     public static final String PERMUTECT_TRAINING_NON_ARTIFACT_RATIO = "permutect-non-artifact-ratio";
     public static final String PERMUTECT_REF_DOWNSAMPLE_LONG_NAME = "permutect-ref-downsample";
     public static final String PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME = "permutect-alt-downsample";
@@ -177,12 +176,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
                 StandardArgumentDefinitions.ANNOTATION_LONG_NAME, "OriginalAlignment"
         };
     }
-
-    /**
-     * If true, collect Permutect data for learning; otherwise collect data for generating calls with a pre-trained model
-     */
-    @Argument(fullName = PERMUTECT_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Permutect data for learning.")
-    public Boolean permutectTrainingDataMode = false;
 
     /**
      * Downsample ref reads for Permutect data

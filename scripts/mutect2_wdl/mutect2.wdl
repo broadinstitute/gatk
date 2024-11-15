@@ -257,10 +257,18 @@ workflow Mutect2 {
         }
     }
 
-    if (make_permutect_training_dataset || make_permutect_test_dataset) {
-        call Concatenate {
+    if (make_permutect_training_dataset) {
+        call Concatenate as ConcatenatePermutectTrainingData {
             input:
-                input_files = M2.permutect_dataset,
+                input_files = M2.permutect_training_dataset,
+                gatk_docker = gatk_docker
+        }
+    }
+
+    if (make_permutect_test_dataset) {
+        call Concatenate as ConcatenatePermutectTestData {
+            input:
+                input_files = M2.permutect_test_dataset,
                 gatk_docker = gatk_docker
         }
     }
@@ -313,7 +321,8 @@ workflow Mutect2 {
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
-        File? permutect_dataset = Concatenate.concatenated
+        File? permutect_training_dataset = ConcatenatePermutectTrainingData.concatenated
+        File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
         File permutect_contigs_table = select_first(M2.permutect_contigs_table)
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
     }
@@ -443,7 +452,8 @@ task M2 {
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
         touch f1r2.tar.gz
-        touch dataset.txt
+        touch training-dataset.txt
+        touch test-dataset.txt
         touch contigs.table
         touch read-groups.table
 
@@ -468,8 +478,8 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{true='--permutect-dataset dataset.txt' false='' make_permutect_test_dataset} \
-            ~{true='--permutect-dataset dataset.txt --permutect-training-mode' false='' make_permutect_training_dataset} \
+            ~{true='--permutect-training-dataset training-dataset.txt' false='' make_permutect_training_dataset} \
+            ~{true='--permutect-test-dataset test-dataset.txt' false='' make_permutect_test_dataset} \
             ~{"--permutect-training-truth " + permutect_training_dataset_truth_vcf} \
             ~{m2_extra_args} \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
@@ -519,7 +529,8 @@ task M2 {
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
-        File permutect_dataset = "dataset.txt"
+        File permutect_training_dataset = "training-dataset.txt"
+        File permutect_test_dataset = "test-dataset.txt"
         File permutect_contigs_table = "contigs.table"
         File permutect_read_groups_table = "read-groups.table"
     }
