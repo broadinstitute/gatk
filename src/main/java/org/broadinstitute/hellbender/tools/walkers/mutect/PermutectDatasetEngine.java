@@ -269,7 +269,7 @@ public class PermutectDatasetEngine implements AutoCloseable {
             //normalAltReads.forEach(r -> printWriter.print(numberString(r)));
             printWriter.printf("%d %d %d %d%n", tumorDepth, tumorADs[n+1], normalDepth, normalADs[n+1]);  // pre-downsampling counts
             // this is approximately the likelihood that these particular reads are alt given sequencing error, excluding
-            // the depth C N_alt combinatorial factor that is common to all likelihoods in M3
+            // the depth C N_alt combinatorial factor that is common to all likelihoods in Permutect
             // basically, it's the TLOD with a correction for the marginalized flat prior from M2
             final double seqErrorLogLikelihood = -MathUtils.log10ToLog(tlod) - Math.log(tumorDepth + 1);
             printWriter.printf("%.3f%n", seqErrorLogLikelihood);

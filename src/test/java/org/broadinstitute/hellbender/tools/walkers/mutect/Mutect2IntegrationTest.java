@@ -308,11 +308,13 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         final File tumor = new File(NA12878_20_21_WGS_bam);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
-        final File mutect3Dataset = createTempFile("mutect3", ".data");
+        final File trainingDataset = createTempFile("training", ".data");
+        final File testDataset = createTempFile("test", ".data");
 
         runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
                    args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
-                   args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, mutect3Dataset));
+                   args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, trainingDataset),
+                    args -> args.add(M2ArgumentCollection.PERMUTECT_TEST_DATASET_LONG_NAME, testDataset));
     }
 
     // make sure we can call tumor alts when the normal has a different alt at the same site
