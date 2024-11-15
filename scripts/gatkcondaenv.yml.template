@@ -37,8 +37,8 @@ dependencies:
 - conda-forge::tqdm=4.66.1
 - conda-forge::dill=0.3.7             # used for pickling lambdas in TrainVariantAnnotationsModel
 - conda-forge::biopython=1.84         # used by NVScoreVariants
-#- conda-forge::tensorboard=2.8.0
-#- conda-forge::setuptools>=57.0.0
+- conda-forge::tensorboard=2.8.0
+- conda-forge::setuptools>=57.0.0
 #- conda-forge::psutil>=5.9.2
 #- conda-forge::protobuf<3.20,>=3.9.2  # Protobuf constraint for TensorFlow compatibility
 #- conda-forge::intervaltree~=3.1.0
