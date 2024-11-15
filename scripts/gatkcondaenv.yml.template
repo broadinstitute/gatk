@@ -31,19 +31,19 @@ dependencies:
 - conda-forge::h5py=3.10.0
 - conda-forge::pytorch=2.3.0=*mkl*100
 - conda-forge::pytorch-lightning=2.4.0   # supports Pytorch >= 2.1 and <= 2.4, used by NVScoreVariants
-- conda-forge::tensorboard=2.8.0
 - conda-forge::scikit-learn=1.3.2
 - conda-forge::matplotlib=3.8.2
 - conda-forge::pandas=2.1.3
 - conda-forge::tqdm=4.66.1
 - conda-forge::dill=0.3.7             # used for pickling lambdas in TrainVariantAnnotationsModel
 - conda-forge::biopython=1.84         # used by NVScoreVariants
-- conda-forge::setuptools>=57.0.0
-- conda-forge::psutil>=5.9.2
-- conda-forge::protobuf<3.20,>=3.9.2  # Protobuf constraint for TensorFlow compatibility
-- conda-forge::intervaltree~=3.1.0
-- conda-forge::cyvcf2~=0.30.15
-- conda-forge::mmap-ninja>=0.2.4
+#- conda-forge::tensorboard=2.8.0
+#- conda-forge::setuptools>=57.0.0
+#- conda-forge::psutil>=5.9.2
+#- conda-forge::protobuf<3.20,>=3.9.2  # Protobuf constraint for TensorFlow compatibility
+#- conda-forge::intervaltree~=3.1.0
+#- conda-forge::cyvcf2~=0.30.15
+#- conda-forge::mmap-ninja>=0.2.4
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=4.3.1
