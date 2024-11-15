@@ -101,10 +101,10 @@ workflow Mutect2 {
         Boolean compress_vcfs = false
         File? gga_vcf
         File? gga_vcf_idx
-        Boolean make_m3_training_dataset = false
-        Boolean make_m3_test_dataset = false
-        File? m3_training_dataset_truth_vcf
-        File? m3_training_dataset_truth_vcf_idx
+        Boolean make_permutect_training_dataset = false
+        Boolean make_permutect_test_dataset = false
+        File? permutect_training_dataset_truth_vcf
+        File? permutect_training_dataset_truth_vcf_idx
 
 
         # runtime
@@ -185,10 +185,10 @@ workflow Mutect2 {
                 compress_vcfs = compress_vcfs,
                 gga_vcf = gga_vcf,
                 gga_vcf_idx = gga_vcf_idx,
-                make_m3_training_dataset = make_m3_training_dataset,
-                make_m3_test_dataset = make_m3_test_dataset,
-                m3_training_dataset_truth_vcf = m3_training_dataset_truth_vcf,
-                m3_training_dataset_truth_vcf_idx = m3_training_dataset_truth_vcf_idx,
+                make_permutect_training_dataset = make_permutect_training_dataset,
+                make_permutect_test_dataset = make_permutect_test_dataset,
+                permutect_training_dataset_truth_vcf = permutect_training_dataset_truth_vcf,
+                permutect_training_dataset_truth_vcf_idx = permutect_training_dataset_truth_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
@@ -257,10 +257,10 @@ workflow Mutect2 {
         }
     }
 
-    if (make_m3_training_dataset || make_m3_test_dataset) {
+    if (make_permutect_training_dataset || make_permutect_test_dataset) {
         call Concatenate {
             input:
-                input_files = M2.m3_dataset,
+                input_files = M2.permutect_dataset,
                 gatk_docker = gatk_docker
         }
     }
@@ -313,7 +313,7 @@ workflow Mutect2 {
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
-        File? m3_dataset = Concatenate.concatenated
+        File? permutect_dataset = Concatenate.concatenated
         File permutect_contigs_table = select_first(M2.permutect_contigs_table)
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
     }
@@ -390,10 +390,10 @@ task M2 {
 
         String? gcs_project_for_requester_pays
 
-        Boolean make_m3_training_dataset = false
-        Boolean make_m3_test_dataset = false
-        File? m3_training_dataset_truth_vcf
-        File? m3_training_dataset_truth_vcf_idx
+        Boolean make_permutect_training_dataset = false
+        Boolean make_permutect_test_dataset = false
+        File? permutect_training_dataset_truth_vcf
+        File? permutect_training_dataset_truth_vcf_idx
 
         # runtime
         String gatk_docker
@@ -431,8 +431,8 @@ task M2 {
         gga_vcf_idx: {localization_optional: true}
         variants_for_contamination: {localization_optional: true}
         variants_for_contamination_idx: {localization_optional: true}
-        m3_training_dataset_truth_vcf: {localization_optional: true}
-        m3_training_dataset_truth_vcf_idx: {localization_optional: true}
+        permutect_training_dataset_truth_vcf: {localization_optional: true}
+        permutect_training_dataset_truth_vcf_idx: {localization_optional: true}
     }
 
     command <<<
@@ -468,9 +468,9 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{true='--mutect3-dataset dataset.txt' false='' make_m3_test_dataset} \
-            ~{true='--mutect3-dataset dataset.txt --mutect3-training-mode' false='' make_m3_training_dataset} \
-            ~{"--mutect3-training-truth " + m3_training_dataset_truth_vcf} \
+            ~{true='--permutect-dataset dataset.txt' false='' make_permutect_test_dataset} \
+            ~{true='--permutect-dataset dataset.txt --permutect-training-mode' false='' make_permutect_training_dataset} \
+            ~{"--permutect-training-truth " + permutect_training_dataset_truth_vcf} \
             ~{m2_extra_args} \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 
@@ -519,7 +519,7 @@ task M2 {
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
-        File m3_dataset = "dataset.txt"
+        File permutect_dataset = "dataset.txt"
         File permutect_contigs_table = "contigs.table"
         File permutect_read_groups_table = "read-groups.table"
     }

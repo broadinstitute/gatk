@@ -6,16 +6,11 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.DeprecatedFeature;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.CollectF1R2CountsArgumentCollection;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -80,17 +75,17 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /*
         Mutect3 parameters
      */
-    public static final String MUTECT3_TRAINING_MODE_LONG_NAME = "mutect3-training-mode";
-    public static final String MUTECT3_TRAINING_NON_ARTIFACT_RATIO = "mutect3-non-artifact-ratio";
-    public static final String MUTECT3_REF_DOWNSAMPLE_LONG_NAME = "mutect3-ref-downsample";
-    public static final String MUTECT3_ALT_DOWNSAMPLE_LONG_NAME = "mutect3-alt-downsample";
-    public static final String MUTECT3_DATASET_LONG_NAME = "mutect3-dataset";
-    public static final String MUTECT3_TRAINING_TRUTH_LONG_NAME = "mutect3-training-truth";
-    public static final String MUTECT3_DATASET_MODE_LONG_NAME = "mutect3-dataset-mode";
+    public static final String PERMUTECT_TRAINING_MODE_LONG_NAME = "permutect-training-mode";
+    public static final String PERMUTECT_TRAINING_NON_ARTIFACT_RATIO = "permutect-non-artifact-ratio";
+    public static final String PERMUTECT_REF_DOWNSAMPLE_LONG_NAME = "permutect-ref-downsample";
+    public static final String PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME = "permutect-alt-downsample";
+    public static final String PERMUTECT_DATASET_LONG_NAME = "permutect-dataset";
+    public static final String PERMUTECT_TRAINING_TRUTH_LONG_NAME = "permutect-training-truth";
+    public static final String PERMUTECT_DATASET_MODE_LONG_NAME = "permutect-dataset-mode";
 
-    public static final int DEFAULT_MUTECT3_REF_DOWNSAMPLE = 10;
-    public static final int DEFAULT_MUTECT3_ALT_DOWNSAMPLE = 20;
-    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 1;
+    public static final int DEFAULT_PERMUTECT_REF_DOWNSAMPLE = 10;
+    public static final int DEFAULT_PERMUTECT_ALT_DOWNSAMPLE = 20;
+    public static final int DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO = 1;
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 1; }
@@ -185,35 +180,35 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /**
      * If true, collect Mutect3 data for learning; otherwise collect data for generating calls with a pre-trained model
      */
-    @Argument(fullName = MUTECT3_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Mutect3 data for learning.")
+    @Argument(fullName = PERMUTECT_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Mutect3 data for learning.")
     public Boolean mutect3TrainingDataMode = false;
 
     /**
      * Downsample ref reads for Mutect3 data
      */
-    @Argument(fullName = MUTECT3_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Mutect3 dataset.")
-    public int maxRefCountForMutect3 = DEFAULT_MUTECT3_REF_DOWNSAMPLE;
+    @Argument(fullName = PERMUTECT_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Mutect3 dataset.")
+    public int maxRefCountForMutect3 = DEFAULT_PERMUTECT_REF_DOWNSAMPLE;
 
     /**
      * Downsample alt reads for Mutect3 data
      */
-    @Argument(fullName = MUTECT3_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Mutect3 training datasets.")
-    public int maxAltCountForMutect3 = DEFAULT_MUTECT3_ALT_DOWNSAMPLE;
+    @Argument(fullName = PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Mutect3 training datasets.")
+    public int maxAltCountForMutect3 = DEFAULT_PERMUTECT_ALT_DOWNSAMPLE;
 
     /**
      * Number of non-artifact data per artifact datum in Mutect3 training
      */
-    @Argument(fullName = MUTECT3_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Mutect3 training.")
-    public int mutect3NonArtifactRatio = DEFAULT_MUTECT3_NON_ARTIFACT_RATIO;
+    @Argument(fullName = PERMUTECT_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Mutect3 training.")
+    public int mutect3NonArtifactRatio = DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO;
 
     /**
      * Destination for Mutect3 data collection
      */
-    @Argument(fullName = MUTECT3_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
+    @Argument(fullName = PERMUTECT_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
     public File mutect3Dataset;
 
     @Advanced
-    @Argument(fullName = MUTECT3_DATASET_MODE_LONG_NAME, optional = true, doc="The type of Mutect3 dataset.  Depends on sequencing technology.")
+    @Argument(fullName = PERMUTECT_DATASET_MODE_LONG_NAME, optional = true, doc="The type of Mutect3 dataset.  Depends on sequencing technology.")
     public Mutect3DatasetMode mutect3DatasetMode = Mutect3DatasetMode.ILLUMINA;
 
     public enum Mutect3DatasetMode {
@@ -240,7 +235,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * for making Permutect calls.  In this case, the test data is labeled with truth from the VCF, Permutect makes filtered calls as
      * usual, and Permutect uses the labels to analyze the quality of its results.
      */
-    @Argument(fullName= MUTECT3_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Mutect3 training data", optional = true)
+    @Argument(fullName= PERMUTECT_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Mutect3 training data", optional = true)
     public FeatureInput<VariantContext> mutect3TrainingTruth;
 
     /**
