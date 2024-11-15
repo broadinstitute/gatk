@@ -125,7 +125,7 @@ public class PermutectDatasetEngine implements AutoCloseable {
                         final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods,
                         final AlleleLikelihoods<Fragment, Allele> logFragmentAlleleLikelihoods,
-                        final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode) {
+                        final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode) {
         final String refBases = ReferenceBases.annotate(ref, vc);
         final String refAllele = vc.getReference().getBaseString();
         final int contigIndex = sequenceDictionary.getSequenceIndex(vc.getContig());
@@ -232,9 +232,9 @@ public class PermutectDatasetEngine implements AutoCloseable {
         // TODO: for now we don't really need normal reads
         // note that the following use the VC's allele order, not necessarily the likelihoods' allele order
         final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, mutect3DatasetMode, readGroupIndices);
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, permutectDatasetMode, readGroupIndices);
         final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, mutect3DatasetMode, readGroupIndices);
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, permutectDatasetMode, readGroupIndices);
 
         // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);

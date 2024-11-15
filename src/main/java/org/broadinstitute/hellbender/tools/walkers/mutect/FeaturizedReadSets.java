@@ -50,9 +50,9 @@ public class FeaturizedReadSets {
                                                            final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods,
                                                            final int refDownsample,
                                                            final int altDownsample,
-                                                           final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode,
+                                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
                                                            final Map<String, Integer> readGroupIndices) {
-        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), mutect3DatasetMode, readGroupIndices);
+        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), permutectDatasetMode, readGroupIndices);
     }
 
     // returns Lists (in allele order) of lists of read vectors supporting each allele
@@ -63,7 +63,7 @@ public class FeaturizedReadSets {
                                                            final int refDownsample,
                                                            final int altDownsample,
                                                            final Map<Allele, Integer> altDownsampleMap,
-                                                           final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode,
+                                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
                                                            final Map<String, Integer> readGroupIndices) {
         final Map<Allele, List<GATKRead>> readsByAllele = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new ArrayList<>()));
@@ -87,14 +87,14 @@ public class FeaturizedReadSets {
                 .forEach(ba -> ba.evidence.getReads().forEach(read -> bestHaplotypes.put(read, ba.allele)));
 
         return vc.getAlleles().stream()
-                .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, mutect3DatasetMode, readGroupIndices)).collect(Collectors.toList()))
+                .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, permutectDatasetMode, readGroupIndices)).collect(Collectors.toList()))
                 .collect(Collectors.toList());
     }
 
 
     private static List<Integer> featurize(final GATKRead read, final VariantContext vc,
                                            final Map<GATKRead, Haplotype> bestHaplotypes,
-                                           final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode,
+                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
                                            final Map<String, Integer> readGroupIndices) {
         final List<Integer> result = new ArrayList<>();
         result.add(readGroupIndices.get(read.getReadGroup()));  // this is read group metadata rather than part of the tensor
@@ -118,7 +118,7 @@ public class FeaturizedReadSets {
 
         result.add(Math.abs(read.getFragmentLength()));
 
-        if (mutect3DatasetMode == M2ArgumentCollection.PermutectDatasetMode.ILLUMINA) {
+        if (permutectDatasetMode == M2ArgumentCollection.PermutectDatasetMode.ILLUMINA) {
             // distances from ends of fragment
             final int fragmentStart = Math.min(read.getMateStart(), read.getUnclippedStart());
             final int fragmentEnd = fragmentStart + Math.abs(read.getFragmentLength());
@@ -127,7 +127,7 @@ public class FeaturizedReadSets {
         }
 
         // Ultima-specific read tags
-        if (mutect3DatasetMode == M2ArgumentCollection.PermutectDatasetMode.ULTIMA) {
+        if (permutectDatasetMode == M2ArgumentCollection.PermutectDatasetMode.ULTIMA) {
             result.add(read.getAttributeAsInteger("si"));   // si is an integer on the order of 100s or 1000s
             result.add((int) (1000*read.getAttributeAsFloat("rq")));    // rq is a float from 0 and 1, so we multiply by 1000 and round
         }
@@ -202,7 +202,7 @@ public class FeaturizedReadSets {
             }
         }
         // the +1 is for the read group index that comes before the features
-        Utils.validate(result.size() == mutect3DatasetMode.getNumReadFeatures() + 1, "Wrong number of features");
+        Utils.validate(result.size() == permutectDatasetMode.getNumReadFeatures() + 1, "Wrong number of features");
 
         return result;
     }
