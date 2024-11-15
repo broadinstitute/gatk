@@ -487,7 +487,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0);
-        } else if (MTAC.mutect3TrainingDataMode) {
+        } else if (MTAC.permutectTrainingDataMode) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.primitives.Doubles;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -45,7 +44,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     private final Set<String> normalSamples;
     final boolean hasNormal;
     protected VariantAnnotatorEngine annotationEngine;
-    private final Optional<Mutect3DatasetEngine> mutect3DatasetEngine;
+    private final Optional<PermutectDatasetEngine> mutect3DatasetEngine;
 
     // If MTAC.minAF is non-zero we softly cut off allele fractions below minAF with a Beta prior of the form Beta(1+epsilon, 1); that is
     // the prior on allele fraction f is proportional to f^epsilon.  If epsilon is small this prior vanishes as f -> 0
@@ -63,10 +62,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         hasNormal = !normalSamples.isEmpty();
         this.annotationEngine = annotationEngine;
 
-        mutect3DatasetEngine = MTAC.mutect3Dataset == null ? Optional.empty() :
-                Optional.of(new Mutect3DatasetEngine(MTAC.mutect3Dataset, MTAC.mutect3TrainingDataMode, MTAC.maxRefCountForMutect3,
-                        MTAC.maxAltCountForMutect3, MTAC.mutect3NonArtifactRatio, normalSamples, header, sequenceDictionary));
-        Utils.validateArg(!(MTAC.mutect3Dataset == null && MTAC.mutect3TrainingDataMode), "No dataset file specified for Mutect3 training data mode.");
+        mutect3DatasetEngine = MTAC.permutectTrainingDataset == null ? Optional.empty() :
+                Optional.of(new PermutectDatasetEngine(MTAC.permutectTrainingDataset, MTAC.permutectTrainingDataMode, MTAC.maxPermutectRefCount,
+                        MTAC.maxPermutectAltCount, MTAC.permutectNonArtifactRatio, normalSamples, header, sequenceDictionary));
+        Utils.validateArg(!(MTAC.permutectTrainingDataset == null && MTAC.permutectTrainingDataMode), "No dataset file specified for Mutect3 training data mode.");
     }
 
     /**
@@ -224,10 +223,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods, Fragment::getReads);
             }
 
-            final Optional<List<VariantContext>> truthVCs = MTAC.mutect3TrainingTruth == null ? Optional.empty() :
-                    Optional.of(featureContext.getValues(MTAC.mutect3TrainingTruth, mergedVC.getStart()));
+            final Optional<List<VariantContext>> truthVCs = MTAC.permutectTrainingTruth == null ? Optional.empty() :
+                    Optional.of(featureContext.getValues(MTAC.permutectTrainingTruth, mergedVC.getStart()));
             mutect3DatasetEngine.ifPresent(engine -> engine.addData(referenceContext, annotatedCall, truthVCs,
-                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.mutect3DatasetMode));
+                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.permutectDatasetMode));
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );

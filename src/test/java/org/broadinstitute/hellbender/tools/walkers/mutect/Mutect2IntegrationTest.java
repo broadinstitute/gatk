@@ -140,8 +140,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
                 args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
-                args -> args.add(M2ArgumentCollection.PERMUTECT_DATASET_LONG_NAME, dataset),
-                args -> args.addFlag(M2ArgumentCollection.PERMUTECT_TRAINING_MODE_LONG_NAME),
+                args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset),
                 args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_LONG_NAME, 3.0) : args
         );
 
@@ -305,7 +304,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testMutect3Dataset() {
+    public void testPermutectDataset() {
         Utils.resetRandomGenerator();
         final File tumor = new File(NA12878_20_21_WGS_bam);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
@@ -313,7 +312,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
                    args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
-                   args -> args.add(M2ArgumentCollection.PERMUTECT_DATASET_LONG_NAME, mutect3Dataset));
+                   args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, mutect3Dataset));
     }
 
     // make sure we can call tumor alts when the normal has a different alt at the same site

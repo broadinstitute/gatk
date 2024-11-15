@@ -73,13 +73,14 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String FLOW_M2_MODE_LONG_NAME = "flow-mode";
 
     /*
-        Mutect3 parameters
+        Permutect parameters
      */
     public static final String PERMUTECT_TRAINING_MODE_LONG_NAME = "permutect-training-mode";
     public static final String PERMUTECT_TRAINING_NON_ARTIFACT_RATIO = "permutect-non-artifact-ratio";
     public static final String PERMUTECT_REF_DOWNSAMPLE_LONG_NAME = "permutect-ref-downsample";
     public static final String PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME = "permutect-alt-downsample";
-    public static final String PERMUTECT_DATASET_LONG_NAME = "permutect-dataset";
+    public static final String PERMUTECT_TRAINING_DATASET_LONG_NAME = "permutect-training-dataset";
+    public static final String PERMUTECT_TEST_DATASET_LONG_NAME = "permutect-test-dataset";
     public static final String PERMUTECT_TRAINING_TRUTH_LONG_NAME = "permutect-training-truth";
     public static final String PERMUTECT_DATASET_MODE_LONG_NAME = "permutect-dataset-mode";
 
@@ -178,46 +179,52 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     }
 
     /**
-     * If true, collect Mutect3 data for learning; otherwise collect data for generating calls with a pre-trained model
+     * If true, collect Permutect data for learning; otherwise collect data for generating calls with a pre-trained model
      */
-    @Argument(fullName = PERMUTECT_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Mutect3 data for learning.")
-    public Boolean mutect3TrainingDataMode = false;
+    @Argument(fullName = PERMUTECT_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Permutect data for learning.")
+    public Boolean permutectTrainingDataMode = false;
 
     /**
-     * Downsample ref reads for Mutect3 data
+     * Downsample ref reads for Permutect data
      */
-    @Argument(fullName = PERMUTECT_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Mutect3 dataset.")
-    public int maxRefCountForMutect3 = DEFAULT_PERMUTECT_REF_DOWNSAMPLE;
+    @Argument(fullName = PERMUTECT_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Permutect dataset.")
+    public int maxPermutectRefCount = DEFAULT_PERMUTECT_REF_DOWNSAMPLE;
 
     /**
-     * Downsample alt reads for Mutect3 data
+     * Downsample alt reads for Permutect data
      */
-    @Argument(fullName = PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Mutect3 training datasets.")
-    public int maxAltCountForMutect3 = DEFAULT_PERMUTECT_ALT_DOWNSAMPLE;
+    @Argument(fullName = PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Permutect training datasets.")
+    public int maxPermutectAltCount = DEFAULT_PERMUTECT_ALT_DOWNSAMPLE;
 
     /**
-     * Number of non-artifact data per artifact datum in Mutect3 training
+     * Number of non-artifact data per artifact datum in Permutect training
      */
-    @Argument(fullName = PERMUTECT_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Mutect3 training.")
-    public int mutect3NonArtifactRatio = DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO;
+    @Argument(fullName = PERMUTECT_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Permutect training.")
+    public int permutectNonArtifactRatio = DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO;
 
     /**
-     * Destination for Mutect3 data collection
+     * Destination for Permutect data collection (test data)
      */
-    @Argument(fullName = PERMUTECT_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
-    public File mutect3Dataset;
+    @Argument(fullName = PERMUTECT_TEST_DATASET_LONG_NAME, optional = true, doc="Destination for Permutect test data collection")
+    public File permutectTestDataset;
+
+    /**
+     * Destination for Permutect data collection (training data)
+     */
+    @Argument(fullName = PERMUTECT_TRAINING_DATASET_LONG_NAME, optional = true, doc="Destination for Permutect training data collection")
+    public File permutectTrainingDataset;
 
     @Advanced
-    @Argument(fullName = PERMUTECT_DATASET_MODE_LONG_NAME, optional = true, doc="The type of Mutect3 dataset.  Depends on sequencing technology.")
-    public Mutect3DatasetMode mutect3DatasetMode = Mutect3DatasetMode.ILLUMINA;
+    @Argument(fullName = PERMUTECT_DATASET_MODE_LONG_NAME, optional = true, doc="The type of Permutect dataset.  Depends on sequencing technology.")
+    public PermutectDatasetMode permutectDatasetMode = PermutectDatasetMode.ILLUMINA;
 
-    public enum Mutect3DatasetMode {
+    public enum PermutectDatasetMode {
         ILLUMINA(9 + FeaturizedReadSets.NUM_RANGED_FEATURES),
         ULTIMA(9 + FeaturizedReadSets.NUM_RANGED_FEATURES);
 
         final private int numReadFeatures;
 
-        Mutect3DatasetMode(final int numReadFeatures) {
+        PermutectDatasetMode(final int numReadFeatures) {
             this.numReadFeatures = numReadFeatures;
         }
 
@@ -227,7 +234,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     }
 
     /**
-     * VCF of known calls for a sample used for generating a Mutect3 training dataset.  Unfiltered variants (PASS or empty FILTER field)
+     * VCF of known calls for a sample used for generating a Permutect training dataset.  Unfiltered variants (PASS or empty FILTER field)
      * contained in this VCF are considered good; other variants (i.e. filtered in this VCF or absent from it) are considered errors.
      * If this VCF is not given the dataset is generated with an weak-labelling strategy based on allele fractions.
      *
@@ -235,8 +242,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * for making Permutect calls.  In this case, the test data is labeled with truth from the VCF, Permutect makes filtered calls as
      * usual, and Permutect uses the labels to analyze the quality of its results.
      */
-    @Argument(fullName= PERMUTECT_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Mutect3 training data", optional = true)
-    public FeatureInput<VariantContext> mutect3TrainingTruth;
+    @Argument(fullName= PERMUTECT_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Permutect training data", optional = true)
+    public FeatureInput<VariantContext> permutectTrainingTruth;
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.

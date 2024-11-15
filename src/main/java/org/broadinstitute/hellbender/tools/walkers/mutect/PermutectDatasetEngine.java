@@ -8,7 +8,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -33,9 +32,8 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-public class Mutect3DatasetEngine implements AutoCloseable {
+public class PermutectDatasetEngine implements AutoCloseable {
 
     public static final int CAPACITY = 100000;
 
@@ -91,9 +89,9 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     private final Random random = new Random(1);
 
 
-    public Mutect3DatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount,
-                                final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples,
-                                final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
+    public PermutectDatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount,
+                                  final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples,
+                                  final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
         try {
             printWriter = new PrintWriter(new FileWriter(Utils.nonNull(datasetFile)));
             final File contigTableFile = datasetFile.toPath().resolveSibling("contigs.table").toFile();
@@ -127,7 +125,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                         final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods,
                         final AlleleLikelihoods<Fragment, Allele> logFragmentAlleleLikelihoods,
-                        final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
+                        final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode) {
         final String refBases = ReferenceBases.annotate(ref, vc);
         final String refAllele = vc.getReference().getBaseString();
         final int contigIndex = sequenceDictionary.getSequenceIndex(vc.getContig());

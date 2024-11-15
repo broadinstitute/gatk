@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -51,7 +50,7 @@ public class FeaturizedReadSets {
                                                            final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods,
                                                            final int refDownsample,
                                                            final int altDownsample,
-                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode,
+                                                           final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode,
                                                            final Map<String, Integer> readGroupIndices) {
         return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), mutect3DatasetMode, readGroupIndices);
     }
@@ -64,7 +63,7 @@ public class FeaturizedReadSets {
                                                            final int refDownsample,
                                                            final int altDownsample,
                                                            final Map<Allele, Integer> altDownsampleMap,
-                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode,
+                                                           final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode,
                                                            final Map<String, Integer> readGroupIndices) {
         final Map<Allele, List<GATKRead>> readsByAllele = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new ArrayList<>()));
@@ -95,7 +94,7 @@ public class FeaturizedReadSets {
 
     private static List<Integer> featurize(final GATKRead read, final VariantContext vc,
                                            final Map<GATKRead, Haplotype> bestHaplotypes,
-                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode,
+                                           final M2ArgumentCollection.PermutectDatasetMode mutect3DatasetMode,
                                            final Map<String, Integer> readGroupIndices) {
         final List<Integer> result = new ArrayList<>();
         result.add(readGroupIndices.get(read.getReadGroup()));  // this is read group metadata rather than part of the tensor
@@ -119,7 +118,7 @@ public class FeaturizedReadSets {
 
         result.add(Math.abs(read.getFragmentLength()));
 
-        if (mutect3DatasetMode == M2ArgumentCollection.Mutect3DatasetMode.ILLUMINA) {
+        if (mutect3DatasetMode == M2ArgumentCollection.PermutectDatasetMode.ILLUMINA) {
             // distances from ends of fragment
             final int fragmentStart = Math.min(read.getMateStart(), read.getUnclippedStart());
             final int fragmentEnd = fragmentStart + Math.abs(read.getFragmentLength());
@@ -128,7 +127,7 @@ public class FeaturizedReadSets {
         }
 
         // Ultima-specific read tags
-        if (mutect3DatasetMode == M2ArgumentCollection.Mutect3DatasetMode.ULTIMA) {
+        if (mutect3DatasetMode == M2ArgumentCollection.PermutectDatasetMode.ULTIMA) {
             result.add(read.getAttributeAsInteger("si"));   // si is an integer on the order of 100s or 1000s
             result.add((int) (1000*read.getAttributeAsFloat("rq")));    // rq is a float from 0 and 1, so we multiply by 1000 and round
         }
