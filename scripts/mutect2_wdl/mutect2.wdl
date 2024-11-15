@@ -70,6 +70,7 @@ workflow Mutect2 {
     input {
         # basic inputs
         File? intervals
+        File? masked_intervals
         File ref_fasta
         File ref_fai
         File ref_dict
@@ -150,6 +151,7 @@ workflow Mutect2 {
     call SplitIntervals {
         input:
             intervals = intervals,
+            masked_intervals = masked_intervals,
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
@@ -331,6 +333,7 @@ workflow Mutect2 {
 task SplitIntervals {
     input {
       File? intervals
+      File? masked_intervals
       File ref_fasta
       File ref_fai
       File ref_dict
@@ -349,6 +352,7 @@ task SplitIntervals {
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
             -R ~{ref_fasta} \
             ~{"-L " + intervals} \
+            ~{"-XL " + masked_intervals} \
             -scatter ~{scatter_count} \
             -O interval-files \
             ~{split_intervals_extra_args}
