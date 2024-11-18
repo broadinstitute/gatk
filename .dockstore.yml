@@ -296,6 +296,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1514_BackwardsCompatibility
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -305,6 +306,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1514_BackwardsCompatibility
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -314,6 +316,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1514_BackwardsCompatibility
          tags:
              - /.*/
    - name: GvsIngestTieout
