@@ -122,30 +122,50 @@ public class CanonicalSVCollapser {
     /**
      * Comparators used for picking the representative genotype for a given sample
      */
+    // Priotize non-ref over ref
     final Comparator<Genotype> genotypeIsNonRefComparator = (o1, o2) -> {
         final long count1 = Math.min(1, o1.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count());
         final long count2 = Math.min(1, o2.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count());
         return Long.compare(count1, count2);
     };
 
+    // Prioritize hets over non-hets
+    final Comparator<Genotype> genotypeHetComparator = (o1, o2) -> {
+        final long count1 = o1.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
+        final long count2 = o2.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
+        final boolean het1 = count1 == 1;
+        final boolean het2 = count2 == 1;
+        if (het1 && !het2) {
+            return 1;
+        } else if (het2 && !het1) {
+            return -1;
+        } else {
+            return 0;
+        }
+    };
+
+    // Priotize fewer ALT alleles over more. When applied after non-ref comparator, hom-ref genotypes will not be encountered.
     final Comparator<Genotype> genotypeNonRefCountComparator = (o1, o2) -> {
         final long count1 = o1.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
         final long count2 = o2.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
-        return Long.compare(count1, count2);
+        return Long.compare(count2, count1);
     };
 
+    // Priotize called genotypes
     final Comparator<Genotype> genotypeCalledComparator = (o1, o2) -> {
         final long count1 = o1.getAlleles().stream().filter(Allele::isCalled).count();
         final long count2 = o2.getAlleles().stream().filter(Allele::isCalled).count();
         return Long.compare(count1, count2);
     };
 
+    // Priotize higher quality
     final Comparator<Genotype> genotypeQualityComparator = (o1, o2) -> {
         final int quality1 = VariantContextGetters.getAttributeAsInt(o1, VCFConstants.GENOTYPE_QUALITY_KEY, 0);
         final int quality2 = VariantContextGetters.getAttributeAsInt(o2, VCFConstants.GENOTYPE_QUALITY_KEY, 0);
         return Integer.compare(quality1, quality2);
     };
 
+    // Priotize higher depth genotyping quality
     final Comparator<Genotype> genotypeCopyNumberQualityComparator = new Comparator<Genotype>() {
         @Override
         public int compare(Genotype o1, Genotype o2) {
@@ -155,6 +175,7 @@ public class CanonicalSVCollapser {
         }
     };
 
+    // Priotize depth genotypes closer to reference
     final Comparator<Genotype> genotypeCopyNumberComparator = new Comparator<Genotype>() {
         @Override
         public int compare(Genotype o1, Genotype o2) {
@@ -162,7 +183,25 @@ public class CanonicalSVCollapser {
             final int copyNumber1 = VariantContextGetters.getAttributeAsInt(o1, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
             final int expectedQualityNumber2 = VariantContextGetters.getAttributeAsInt(o2, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
             final int copyNumber2 = VariantContextGetters.getAttributeAsInt(o2, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
-            return Double.compare(Math.abs(expectedQualityNumber1 - copyNumber1), Math.abs(expectedQualityNumber2 - copyNumber2));
+            return Double.compare(Math.abs(expectedQualityNumber2 - copyNumber2), Math.abs(expectedQualityNumber1 - copyNumber1));
+        }
+    };
+
+    // Priotize DEL over DUP as final tiebreaker
+    final Comparator<Genotype> genotypeDelOverDupComparator = new Comparator<Genotype>() {
+        @Override
+        public int compare(Genotype o1, Genotype o2) {
+            final int expectedCN1 = VariantContextGetters.getAttributeAsInt(o1, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
+            final boolean isDel1 = VariantContextGetters.getAttributeAsInt(o1, GATKSVVCFConstants.COPY_NUMBER_FORMAT, expectedCN1) < expectedCN1;
+            final int expectedCN2 = VariantContextGetters.getAttributeAsInt(o2, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
+            final boolean isDel2 = VariantContextGetters.getAttributeAsInt(o2, GATKSVVCFConstants.COPY_NUMBER_FORMAT, expectedCN2) < expectedCN2;
+            if (isDel1 && !isDel2) {
+                return 1;
+            } else if (isDel2 && !isDel1) {
+                return -1;
+            } else {
+                return 0;
+            }
         }
     };
 
@@ -459,9 +498,11 @@ public class CanonicalSVCollapser {
                 .max(genotypeIsNonRefComparator
                         .thenComparing(genotypeCalledComparator)
                         .thenComparing(genotypeQualityComparator)
+                        .thenComparing(genotypeHetComparator)
                         .thenComparing(genotypeNonRefCountComparator)
                         .thenComparing(genotypeCopyNumberQualityComparator)
-                        .thenComparing(genotypeCopyNumberComparator)).get();
+                        .thenComparing(genotypeCopyNumberComparator)
+                        .thenComparing(genotypeDelOverDupComparator)).get();
     }
 
 
