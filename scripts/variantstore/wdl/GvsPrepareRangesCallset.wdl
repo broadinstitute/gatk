@@ -70,7 +70,7 @@ workflow GvsPrepareCallset {
       query_project = query_project,
       data_project = project_id,
       dataset_name = dataset_name,
-      table_name = "~{project_id}.~{dataset_name}.vet_001",
+      table_name = "vet_001",
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
