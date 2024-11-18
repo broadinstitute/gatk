@@ -83,7 +83,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     private final Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
     private final Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
 
-    private static final int MIN_VARIANT_SIZE_CNV = 1000;
     private static final int MIN_VARIANT_SIZE = 5000;
 
     @Override
@@ -172,9 +171,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         if (revisedEventsAll.containsKey(variant.getID())) {
             processVariant(builder, variant);
         }
-        if (isDelDup(variant) && isLarge(variant, MIN_VARIANT_SIZE_CNV)) {
-            processCnvs(builder, variant);
-        }
+        processCnvs(builder, variant);
         vcfWriter.add(builder.make());
     }
 
