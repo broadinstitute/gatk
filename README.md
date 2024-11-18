@@ -56,11 +56,10 @@ releases of the toolkit.
     * Java 17 is needed to run or build GATK. 
     We recommend one of the following:
         * Download the Eclipse Foundation's distribution of OpenJDK 17 from [adoptium.net](https://adoptium.net/). Navigate to the [release archive](https://adoptium.net/temurin/archive/?version=17) to find downloads for Java 17.
-        * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew tap homebrew/cask-versions` followed by `brew install --cask temurin17` to install the Eclipse Foundation's OpenJDK 17. 
-    * Python 2.6 or greater (required to run the `gatk` frontend script)
-    * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
+        * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew tap homebrew/cask-versions` followed by `brew install --cask temurin17` to install the Eclipse Foundation's OpenJDK 17.
+    * Python 3.10.13, along with a set of additional Python packages, is required to run some tools and workflows (alsp required to run the `gatk` frontend script).
       See [Python Dependencies](#python) for more information.
-    * R 3.2.5 (needed for producing plots in certain tools)
+    * R 4.3.1 (needed for producing plots in certain tools)
 * To build GATK:
     * A Java 17 JDK
     * Git 2.5 or greater
@@ -73,7 +72,7 @@ releases of the toolkit.
       the size of the download.
     * Gradle 5.6. We recommend using the `./gradlew` script which will
       download and use an appropriate gradle version automatically (see examples below).
-    * R 3.2.5 (needed for running the test suite)
+    * R 4.3.1 (needed for running the test suite)
 * Pre-packaged Docker images with all needed dependencies installed can be found on
   [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). This requires a recent version of the
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
@@ -141,10 +140,10 @@ Our docker image contains the following bioinformatics tools, which can be run b
 * bcftools (1.13)
 * tabix (1.13+ds)
 
-We also include an installation of Python3 (3.6.10) with the following popular packages included:
+We also include an installation of Python3 (3.10.13) with the following popular packages included:
 * numpy
 * scipy
-* tensorflow
+* pytorch
 * pymc3
 * keras
 * scikit-learn
@@ -154,7 +153,7 @@ We also include an installation of Python3 (3.6.10) with the following popular p
 * pyvcf
 * pysam
 
-We also include an installation of R (3.6.2) with the following popular packages included:
+We also include an installation of R (4.3.1) with the following popular packages included:
 * data.table
 * dplyr
 * ggplot2
@@ -203,7 +202,7 @@ For more details on system packages, see the GATK [Base Dockerfile](scripts/dock
 ## <a name="running">Running GATK4</a>
 
 * The standard way to run GATK4 tools is via the **`gatk`** wrapper script located in the root directory of a clone of this repository.
-    * Requires Python 2.6 or greater (this includes Python 3.x)
+    * Requires Python 3.6 or greater
     * You need to have built the GATK as described in the [Building GATK4](#building) section above before running this script.
     * There are several ways `gatk` can be run:
         * Directly from the root of your git clone after building
