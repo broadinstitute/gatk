@@ -1,32 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
-import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
-import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-
-import java.util.List;
-import java.util.Set;
-
-import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
 
 /**
  * <p>Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:</p>
@@ -178,111 +159,10 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
 )
 @BetaFeature
 @DocumentedFeature
-public final class SVCluster extends MultiVariantWalker {
-    public static final String PLOIDY_TABLE_LONG_NAME = "ploidy-table";
-    public static final String VARIANT_PREFIX_LONG_NAME = "variant-prefix";
-    public static final String ENABLE_CNV_LONG_NAME = "enable-cnv";
+public final class SVCluster extends SVClusterWalker {
+
     public static final String DEFRAG_PADDING_FRACTION_LONG_NAME = "defrag-padding-fraction";
     public static final String DEFRAG_SAMPLE_OVERLAP_LONG_NAME = "defrag-sample-overlap";
-    public static final String CONVERT_INV_LONG_NAME = "convert-inv-to-bnd";
-    public static final String ALGORITHM_LONG_NAME = "algorithm";
-    public static final String FAST_MODE_LONG_NAME = "fast-mode";
-    public static final String OMIT_MEMBERS_LONG_NAME = "omit-members";
-    public static final String DEFAULT_NO_CALL_LONG_NAME = "default-no-call";
-
-    /**
-     * The enum Cluster algorithm.
-     */
-    enum CLUSTER_ALGORITHM {
-        /**
-         * Defragment cnv cluster algorithm.
-         */
-        DEFRAGMENT_CNV,
-        /**
-         * Single linkage cluster algorithm.
-         */
-        SINGLE_LINKAGE,
-        /**
-         * Max clique cluster algorithm.
-         */
-        MAX_CLIQUE
-    }
-
-    @Argument(
-            doc = "Output VCF",
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
-    )
-    private GATKPath outputFile;
-
-    /**
-     * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
-     * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
-     * integers in their respective columns.
-     */
-    @Argument(
-            doc = "Sample ploidy table (.tsv)",
-            fullName = PLOIDY_TABLE_LONG_NAME
-    )
-    private GATKPath ploidyTablePath;
-
-    @Argument(
-            doc = "If supplied, generate variant IDs with this prefix",
-            fullName = VARIANT_PREFIX_LONG_NAME,
-            optional = true
-    )
-    private String variantPrefix = null;
-
-    /**
-     * When enabled, DEL and DUP variants will be clustered together. The resulting records with have an SVTYPE of CNV.
-     */
-    @Argument(
-            doc = "Enable clustering DEL/DUP variants together as CNVs (does not apply to CNV defragmentation)",
-            fullName = ENABLE_CNV_LONG_NAME,
-            optional = true
-    )
-    private boolean enableCnv = false;
-
-    /**
-     * When enabled, INV records will be converted to a pairs of BNDs prior to clustering.
-     */
-    @Argument(
-            doc = "Convert inversions to BND records",
-            fullName = CONVERT_INV_LONG_NAME,
-            optional = true
-    )
-    private boolean convertInversions = false;
-
-    /**
-     * Results in substantial space and time costs for large sample sets by clearing genotypes that are not needed for
-     * clustering, but any associated annotation fields will be set to null in the output.
-     */
-    @Argument(
-            doc = "Fast mode. Drops hom-ref and no-call genotype fields and emits them as no-calls.",
-            fullName = FAST_MODE_LONG_NAME,
-            optional = true
-    )
-    private boolean fastMode = false;
-
-    @Argument(
-            doc = "Omit cluster member ID annotations",
-            fullName = OMIT_MEMBERS_LONG_NAME,
-            optional = true
-    )
-    private boolean omitMembers = false;
-
-    @Argument(fullName = BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME,
-            doc = "Strategy to use for choosing a representative value for a breakpoint cluster.",
-            optional = true)
-    private CanonicalSVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy =
-            CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE;
-
-    @Argument(fullName = JointGermlineCNVSegmentation.ALT_ALLELE_SUMMARY_STRATEGY_LONG_NAME,
-            doc = "Strategy to use for choosing a representative alt allele for non-CNV biallelic sites with " +
-                    "different subtypes.",
-            optional = true)
-    private CanonicalSVCollapser.AltAlleleSummaryStrategy altAlleleSummaryStrategy =
-            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE;
 
     @Argument(fullName = DEFRAG_PADDING_FRACTION_LONG_NAME,
             doc = "Padding as a fraction of variant length for CNV defragmentation mode.",
@@ -296,51 +176,14 @@ public final class SVCluster extends MultiVariantWalker {
     )
     private double defragSampleOverlapFraction = CNVLinkage.DEFAULT_SAMPLE_OVERLAP;
 
-    @Argument(fullName = ALGORITHM_LONG_NAME,
-            doc = "Clustering algorithm",
-            optional = true
-    )
-    private CLUSTER_ALGORITHM algorithm = CLUSTER_ALGORITHM.SINGLE_LINKAGE;
-
-    /**
-     * Default genotypes are assigned when they cannot be inferred from the inputs, such as when VCFs with different
-     * variants and samples are provided.
-     */
-    @Argument(fullName = DEFAULT_NO_CALL_LONG_NAME,
-            doc = "Default to no-call GT (e.g. ./.) instead of reference alleles (e.g. 0/0) when a genotype is not" +
-                    " available",
-            optional = true
-    )
-    private boolean defaultNoCall = false;
-
     @ArgumentCollection
     private final SVClusterEngineArgumentsCollection clusterParameterArgs = new SVClusterEngineArgumentsCollection();
 
-    private SAMSequenceDictionary dictionary;
-    private ReferenceSequenceFile reference;
-    private PloidyTable ploidyTable;
-    private VariantContextWriter writer;
-    private VCFHeader header;
-    private SVClusterEngine clusterEngine;
-    private Set<String> samples;
-    private String currentContig;
-    private int numVariantsBuilt = 0;
-
-    @Override
-    public boolean requiresReference() {
-        return true;
-    }
+    protected SVClusterEngine clusterEngine;
 
     @Override
     public void onTraversalStart() {
-        reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
-        dictionary = reference.getSequenceDictionary();
-        if (dictionary == null) {
-            throw new UserException("Reference sequence dictionary required");
-        }
-        ploidyTable = new PloidyTable(ploidyTablePath.toPath());
-        samples = getSamplesForVariants();
-
+        super.onTraversalStart();
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
             clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy,
                     reference, defragPaddingFraction, defragSampleOverlapFraction);
@@ -354,107 +197,21 @@ public final class SVCluster extends MultiVariantWalker {
         } else {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
-
-        writer = createVCFWriter(outputFile);
-        header = createHeader();
-        writer.writeHeader(header);
-        currentContig = null;
     }
 
     @Override
     public Object onTraversalSuccess() {
-        write(true);
+        clusterEngine.flush().stream().forEach(this::write);
         return super.onTraversalSuccess();
     }
 
     @Override
     public void closeTool() {
         super.closeTool();
-        if (writer != null) {
-            writer.close();
-        }
     }
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext,
-                      final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
-        final SVCallRecord filteredCall;
-        if (fastMode && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
-            // Strip out non-carrier genotypes to save memory and compute
-            // Don't do for multi-allelic CNVs since carrier status can't be determined
-            final GenotypesContext filteredGenotypes = GenotypesContext.copy(call.getCarrierGenotypeList());
-            filteredCall = SVCallRecordUtils.copyCallWithNewGenotypes(call, filteredGenotypes);
-        } else {
-            filteredCall = call;
-        }
-
-        // Update current contig
-        if (!filteredCall.getContigA().equals(currentContig)) {
-            currentContig = filteredCall.getContigA();
-            logger.info("Processing contig " + currentContig + "...");
-        }
-
-        // Add to clustering buffer
-        if (convertInversions) {
-            SVCallRecordUtils.convertInversionsToBreakends(filteredCall, dictionary).forEachOrdered(clusterEngine::add);
-        } else {
-            clusterEngine.add(filteredCall);
-        }
-
-        write(false);
+    public void applyRecord(final SVCallRecord record) {
+        clusterEngine.addAndFlush(record).stream().forEach(this::write);
     }
-
-    private void write(final boolean force) {
-        final List<SVCallRecord> records = force ? clusterEngine.forceFlush() : clusterEngine.flush();
-        records.stream().map(this::buildVariantContext).forEachOrdered(writer::add);
-    }
-
-    private VCFHeader createHeader() {
-        final VCFHeader header = new VCFHeader(getHeaderForVariants().getMetaDataInInputOrder(), samples);
-        header.setSequenceDictionary(dictionary);
-
-        // Required info lines
-        header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
-        header.addMetaDataLine(GATKSVVCFHeaderLines.getInfoLine(GATKSVVCFConstants.SVLEN));
-        header.addMetaDataLine(GATKSVVCFHeaderLines.getInfoLine(GATKSVVCFConstants.SVTYPE));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.END2_ATTRIBUTE, 1,
-                VCFHeaderLineType.Integer, "Second position"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, 1,
-                VCFHeaderLineType.String, "Second contig"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.STRANDS_ATTRIBUTE, 1,
-                VCFHeaderLineType.String, "First and second strands"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE,
-                VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Source algorithms"));
-        if (!omitMembers) {
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY,
-                    VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Cluster variant ids"));
-        }
-
-        // Required format lines
-        header.addMetaDataLine(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
-
-        return header;
-    }
-
-    public VariantContext buildVariantContext(final SVCallRecord call) {
-        // Add genotypes for missing samples
-        final GenotypesContext filledGenotypes = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(
-                call, samples, !defaultNoCall, ploidyTable, header);
-
-        // Assign new variant ID
-        final String newId = variantPrefix == null ? call.getId() : String.format("%s%08x", variantPrefix, numVariantsBuilt++);
-
-        // Build new variant
-        final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),
-                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getComplexSubtype(),
-                call.getComplexEventIntervals(), call.getLength(), call.getAlgorithms(), call.getAlleles(), filledGenotypes,
-                call.getAttributes(), call.getFilters(), call.getLog10PError(), dictionary);
-        final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(finalCall);
-        if (omitMembers) {
-            builder.rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
-        }
-        return builder.make();
-    }
-
 }

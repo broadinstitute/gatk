@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Class for collapsing a collection of similar {@link SVCallRecord} objects, such as clusters produced by
@@ -79,6 +80,32 @@ public class CanonicalSVCollapser {
 
     }
 
+    /**
+     * Flag field logic
+     */
+    public enum FlagFieldLogic {
+        /**
+         * Require all members to have the flag set
+         */
+        AND,
+
+        /**
+         * Require at least one member to have the flag set
+         */
+        OR,
+
+        /**
+         * Always set to false
+         */
+        ALWAYS_FALSE
+
+    }
+
+    public static final Set<String> FLAG_TYPE_INFO_FIELDS = Sets.newHashSet(
+            GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE,
+            GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE
+    );
+
     private static final Set<GATKSVVCFConstants.StructuralVariantAnnotationType> SUPPORTED_SV_TYPES = Sets.newHashSet(
             GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
             GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
@@ -89,6 +116,8 @@ public class CanonicalSVCollapser {
             GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
             GATKSVVCFConstants.StructuralVariantAnnotationType.CTX
     );
+
+    private static final BreakpointEvidenceComparator breakpointEvidenceComparator = new BreakpointEvidenceComparator();
 
     /**
      * Comparators used for picking the representative genotype for a given sample
@@ -139,16 +168,19 @@ public class CanonicalSVCollapser {
 
     private final AltAlleleSummaryStrategy altAlleleSummaryStrategy;
     private final BreakpointSummaryStrategy breakpointSummaryStrategy;
+    private final FlagFieldLogic flagFieldLogic;
     private final ReferenceSequenceFile reference;
     private final SAMSequenceDictionary dictionary;
 
     public CanonicalSVCollapser(final ReferenceSequenceFile reference,
                                 final AltAlleleSummaryStrategy altAlleleSummaryStrategy,
-                                final BreakpointSummaryStrategy breakpointSummaryStrategy) {
+                                final BreakpointSummaryStrategy breakpointSummaryStrategy,
+                                final FlagFieldLogic flagFieldLogic) {
         this.reference = Utils.nonNull(reference);
         this.dictionary = reference.getSequenceDictionary();
         this.altAlleleSummaryStrategy = altAlleleSummaryStrategy;
         this.breakpointSummaryStrategy = breakpointSummaryStrategy;
+        this.flagFieldLogic = flagFieldLogic;
     }
 
     private static final int distance(final SVCallRecord item, final int newStart, final int newEnd) {
@@ -193,7 +225,7 @@ public class CanonicalSVCollapser {
 
         return new SVCallRecord(representative.getId(), representative.getContigA(), start, strandA, representative.getContigB(),
                 end, strandB, type, representative.getComplexSubtype(), representative.getComplexEventIntervals(),
-                length, algorithms, alleles, genotypes, attributes, filters, quality, dictionary);
+                length, representative.getEvidence(), algorithms, alleles, genotypes, attributes, filters, quality, dictionary);
     }
 
     protected List<Allele> collapseAlleles(final List<Allele> altAlleles, final Allele refAllele) {
@@ -562,15 +594,37 @@ public class CanonicalSVCollapser {
         return alleles;
     }
 
+    private Stream<Boolean> getItemFlagStream(final String key, final Collection<SVCallRecord> items) {
+        return items.stream()
+                .map(item ->item.getAttributes().get(key) != null && item.getAttributes().get(key).equals(Boolean.TRUE));
+    }
+
     protected Map<String, Object> collapseAttributes(final SVCallRecord representative,
                                                      final Collection<SVCallRecord> items) {
         Utils.nonNull(items);
         Utils.nonEmpty(items);
         final Map<String, Object> attributes = new HashMap<>();
         for (final Map.Entry<String, Object> entry : representative.getAttributes().entrySet()) {
-            attributes.put(entry.getKey(), entry.getValue());
+            if (!FLAG_TYPE_INFO_FIELDS.contains(entry.getKey())) {
+                attributes.put(entry.getKey(), entry.getValue());
+            }
         }
         attributes.put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, items.stream().map(SVCallRecord::getId).sorted().collect(Collectors.toList()));
+        for (final String key : FLAG_TYPE_INFO_FIELDS) {
+            if (flagFieldLogic == FlagFieldLogic.AND) {
+                if (getItemFlagStream(key, items).allMatch(Boolean::booleanValue)) {
+                    attributes.put(key, Boolean.TRUE);
+                }
+            } else if (flagFieldLogic == FlagFieldLogic.OR) {
+                if (getItemFlagStream(key, items).anyMatch(Boolean::booleanValue)) {
+                    attributes.put(key, Boolean.TRUE);
+                }
+            } else if (flagFieldLogic == FlagFieldLogic.ALWAYS_FALSE) {
+                // Leave empty to imply FALSE
+            } else {
+                throw new IllegalArgumentException("Unsupported " + FlagFieldLogic.class.getSimpleName() + " value: " + flagFieldLogic.name());
+            }
+        }
         return attributes;
     }
 
@@ -671,14 +725,43 @@ public class CanonicalSVCollapser {
         if (records.size() == 1) {
             return records.iterator().next();
         }
-        // Favor more common variant with most similar distance
+        // Favor variant with highest quality or best evidence
+        final Comparator<SVCallRecord> qualityComparator = Comparator.comparing(r -> r.getLog10PError() == null ? 0 : r.getLog10PError());
         final Comparator<SVCallRecord> carrierCountComparator = Comparator.comparing(r -> -r.getCarrierGenotypeList().size());
         final Comparator<SVCallRecord> distanceComparator = Comparator.comparing(r -> getDistance(r.getPositionA(), r.getPositionB(), starts, ends));
-        final Comparator<SVCallRecord> idComparator = Comparator.comparing(r -> getDistance(r.getPositionA(), r.getPositionB(), starts, ends)); // stabilizes order
+        final Comparator<SVCallRecord> idComparator = Comparator.comparing(SVCallRecord::getId); // stabilizes order
         return records.stream().min(
-                carrierCountComparator
+                qualityComparator
+                        .thenComparing(breakpointEvidenceComparator)
+                        .thenComparing(carrierCountComparator)
                         .thenComparing(distanceComparator)
                         .thenComparing(idComparator)).get();
+    }
+
+    /***
+     * This class is for comparing evidence types for the purposes of breakpoint refinement. It prioritizes as follows:
+     * SR < PE < all other types. Note that SR is the "best" evidence but corresponds to the "least" value when sorting
+     * in ascending order.
+     */
+    protected static class BreakpointEvidenceComparator implements Comparator<SVCallRecord> {
+        @Override
+        public int compare(final SVCallRecord a, final SVCallRecord b) {
+            final Set<GATKSVVCFConstants.EvidenceTypes> evidenceA = new HashSet<>(a.getEvidence());
+            final Set<GATKSVVCFConstants.EvidenceTypes> evidenceB = new HashSet<>(b.getEvidence());
+            // SR < PE and if neither they are considered equal
+            // Note sorting is in ascending order, and we want the highest-priority record first
+            if (evidenceA.contains(GATKSVVCFConstants.EvidenceTypes.SR) && !evidenceB.contains(GATKSVVCFConstants.EvidenceTypes.SR)) {
+                return -1;
+            } else if (!evidenceA.contains(GATKSVVCFConstants.EvidenceTypes.SR) && evidenceB.contains(GATKSVVCFConstants.EvidenceTypes.SR)) {
+                return 1;
+            } else if (evidenceA.contains(GATKSVVCFConstants.EvidenceTypes.PE) && !evidenceB.contains(GATKSVVCFConstants.EvidenceTypes.PE)) {
+                return -1;
+            } else if (!evidenceA.contains(GATKSVVCFConstants.EvidenceTypes.PE) && evidenceB.contains(GATKSVVCFConstants.EvidenceTypes.PE)) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
     }
 
     protected static long getDistance(final int posA,
