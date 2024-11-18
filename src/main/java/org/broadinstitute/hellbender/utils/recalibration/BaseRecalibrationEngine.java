@@ -187,7 +187,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int errorModeIndex = 2;
 
         for ( final NestedIntegerArray.Leaf<RecalDatum> leaf : byQualTable.getAllLeaves() ) {
-            final int rgKey = leaf.keys[readGroupIndex]; // tsato: ??? What are these indices?
+            final int rgKey = leaf.keys[readGroupIndex];
             final int eventIndex = leaf.keys[errorModeIndex];
             final RecalDatum rgDatum = byReadGroupTable.get(rgKey, eventIndex);
             final RecalDatum qualDatum = leaf.value;
@@ -210,7 +210,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         for (int i = 0; i < rt.numTables(); i++) {
             for (final NestedIntegerArray.Leaf<RecalDatum> leaf : rt.getTable(i).getAllLeaves()) {
                 leaf.value.setNumMismatches(MathUtils.roundToNDecimalPlaces(leaf.value.getNumMismatches(), RecalUtils.NUMBER_ERRORS_DECIMAL_PLACES));
-                // leaf.value.setEmpiricalQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getEmpiricalQuality(), RecalUtils.EMPIRICAL_QUAL_DECIMAL_PLACES)); // tsato: now an integer
+                leaf.value.setEmpiricalQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getEmpiricalQuality(), RecalUtils.EMPIRICAL_QUAL_DECIMAL_PLACES)); // tsato: now an integer
                 leaf.value.setReportedQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getReportedQuality(), RecalUtils.REPORTED_QUALITY_DECIMAL_PLACES));
             }
         }

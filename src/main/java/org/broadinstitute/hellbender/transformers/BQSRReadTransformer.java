@@ -28,8 +28,7 @@ import static org.broadinstitute.hellbender.utils.recalibration.RecalDatum.MAX_R
 
 public final class BQSRReadTransformer implements ReadTransformer {
     private static final long serialVersionUID = 1L;
-    // tsato: remove?
-    private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
+
     private final RecalibrationTables recalibrationTables;
     private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
     private final SAMFileHeader header;
@@ -52,8 +51,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private byte[] staticQuantizedMapping;
     private final CovariateKeyCache keyCache;
 
-    // tsato: new flag, needs to be moved to apply BQSR argument
-    private boolean allowMissingReadGroup;
+    private boolean allowMissingReadGroups;
     private static final int READ_GROUP_MISSING_IN_RECAL_TABLE_CODE = -1;
 
     private List<Byte> quantizedQuals;
@@ -82,7 +80,6 @@ public final class BQSRReadTransformer implements ReadTransformer {
         this.header = header;
         this.recalibrationTables = recalibrationTables;
         this.covariates = covariates;
-        this.quantizationInfo = quantizationInfo;
 
         if (args.quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
@@ -108,7 +105,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         //Note: We pre-create the varargs arrays that will be used in the calls. Otherwise we're spending a lot of time allocating those int[] objects
         this.recalDatumsForSpecialCovariates = new RecalDatum[specialCovariateCount];
         this.keyCache = new CovariateKeyCache();//one cache per transformer
-        this.allowMissingReadGroup = args.allowMissingReadGroups;
+        this.allowMissingReadGroups = args.allowMissingReadGroups;
     }
 
     /**
@@ -158,26 +155,22 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
         final PerReadCovariateMatrix perReadCovariateMatrix = RecalUtils.computeCovariates(read, header, covariates, false, keyCache);
 
-        // clear indel qualities // tsato: why? Is this ok? Do we update them?
+        // clear indel qualities
         read.clearAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES);
         read.clearAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES);
 
         // this array has shape ( read length ) x ( num covariates ). The covariates are encoded as integers.
         final int[][] covariatesForRead = perReadCovariateMatrix.getMatrixForErrorModel(EventType.BASE_SUBSTITUTION);
 
+        // The integer code used to store read groups in the perReadCovariateMatrix
         final int rgKey = covariates.getReadGroupCovariate().keyFromValue(ReadGroupCovariate.getReadGroupIdentifier(readGroup));
-
-        // the rg key is constant over the whole read, the global deltaQ is too
-        final int anyOffset = 0;
-        final int rgKey2 = covariatesForRead[anyOffset][StandardCovariateList.READ_GROUP_COVARIATE_DEFAULT_INDEX];
-        assert rgKey == rgKey2; // tsato: remove this before merging
 
         final byte[] recalibratedQuals = read.getBaseQualities(); // recall this returns a new copy of the array
         final byte[] preUpdateQuals = read.getBaseQualities();
 
-        // tsato: if the read group encountered is not in the recalibration table...
         if (rgKey == READ_GROUP_MISSING_IN_RECAL_TABLE_CODE){
-            if (allowMissingReadGroup) {
+            // The read group is not in the recal table.
+            if (allowMissingReadGroups) {
                 // Given the way the recalibration code is implemented below, we cannot recalibrate a read with a
                 // read group that's not in the recal table. TODO: change the implementation below so we can collapse the read groups i.e. marginalize over it
                 for (int i = 0; i < recalibratedQuals.length; i++){
@@ -188,8 +181,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
                 return read;
             } else {
                 throw new GATKException("Read group " + read.getReadGroup() + " not found in the recalibration table." +
-                        "Set the " + ApplyBQSRArgumentCollection.ALLOW_MISSING_READ_GROUPS_LONG_NAME + " command line argument to avoid this error and" +
-                        "simply copy the original qualities as recalibrated qualities.");
+                        "Set the " + ApplyBQSRArgumentCollection.ALLOW_MISSING_READ_GROUPS_LONG_NAME + " command line argument to ignore this error.");
             }
         }
 
@@ -246,9 +238,6 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private byte getBoundedIntegerQual(final double recalibratedQualDouble) {
         return boundQual(fastRound(recalibratedQualDouble), MAX_RECALIBRATED_Q_SCORE);
     }
-
-
-
 
     /**
      * Quality score recalibration algorithm works as follows:

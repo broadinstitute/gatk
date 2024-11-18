@@ -35,7 +35,7 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
      * If set to true, do not throw an error upon encountering a read with a read group that's not in the recalibration table.
      * Instead, simply set the quantized original base qualities as the recalibrated base qualities.
      */ // tsato: should this be in the *unique* ApplyBQSRArgumentCollection?
-    @Argument(fullName = ALLOW_MISSING_READ_GROUPS_LONG_NAME, doc = "", optional = true)
+    @Argument(fullName = ALLOW_MISSING_READ_GROUPS_LONG_NAME, doc = "Do not throw an error when encountering a read group not in the recal table", optional = true)
     public boolean allowMissingReadGroups = false;
 
 }

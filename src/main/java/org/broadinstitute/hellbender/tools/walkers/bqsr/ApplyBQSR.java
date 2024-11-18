@@ -90,7 +90,7 @@ public final class ApplyBQSR extends ReadWalker{
      */
     @Argument(fullName=StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, shortName=StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME, doc="Input recalibration table for BQSR")
     @WorkflowInput
-    public File bqsrRecalFile; // tsato: change to GATKPath?
+    public File bqsrRecalFile;
 
     /**
      * Command-line arguments to fine tune the recalibration.
