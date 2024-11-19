@@ -1,5 +1,6 @@
 import argparse
 import hail as hl
+import math
 from typing import Union
 from datetime import datetime
 
