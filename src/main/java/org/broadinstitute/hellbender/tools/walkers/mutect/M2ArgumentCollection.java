@@ -30,6 +30,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PANEL_OF_NORMALS_SHORT_NAME = "pon";
     public static final String GENOTYPE_PON_SITES_LONG_NAME = "genotype-pon-sites";
     public static final String GENOTYPE_GERMLINE_SITES_LONG_NAME = "genotype-germline-sites";
+    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
@@ -135,6 +136,15 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName= GENOTYPE_GERMLINE_SITES_LONG_NAME, doc="Call all apparent germline site even though they will ultimately be filtered.", optional = true)
     public boolean genotypeGermlineSites = false;
+
+    /**
+     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
+     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, etting this parameter to a value less
+     * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
+     * this argument has no effect and no germline sites are genotyped.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped randomly.", optional = true)
+    public double genotypeGermlineSitesFraction = 1.0;
 
     /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.

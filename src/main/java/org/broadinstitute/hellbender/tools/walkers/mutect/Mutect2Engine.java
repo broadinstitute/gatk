@@ -17,6 +17,7 @@ import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
@@ -64,6 +65,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -126,6 +128,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private PileupQualBuffer tumorPileupQualBuffer;
     private PileupQualBuffer normalPileupQualBuffer;
+
+    private RandomGenerator rng = new JDKRandomGenerator();
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -489,7 +493,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             return new ActivityProfileState(refInterval, 0.0);
         } else if (MTAC.permutectTrainingDataset != null) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
-        } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
+        }
+        final boolean considerGermlineActive = MTAC.genotypeGermlineSites && rng.nextDouble() < MTAC.genotypeGermlineSitesFraction;
+        if (hasNormal() && !considerGermlineActive) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
@@ -500,7 +506,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                     return new ActivityProfileState(refInterval, 0.0);
                 }
             }
-        } else if (!MTAC.genotypeGermlineSites) {
+        } else if (!considerGermlineActive) {
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
 
             for (final VariantContext germlineVC : germline) {
