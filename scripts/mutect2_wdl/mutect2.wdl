@@ -106,6 +106,7 @@ workflow Mutect2 {
         Boolean make_permutect_test_dataset = false
         File? permutect_training_dataset_truth_vcf
         File? permutect_training_dataset_truth_vcf_idx
+        Boolean skip_filtering = false
 
 
         # runtime
@@ -201,7 +202,7 @@ workflow Mutect2 {
     Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
     Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
 
-    if (run_orientation_bias_mixture_model_filter) {
+    if (run_orientation_bias_mixture_model_filter && (!skip_filtering)) {
         call LearnReadOrientationModel {
             input:
                 f1r2_tar_gz = M2.f1r2_counts,
@@ -232,7 +233,7 @@ workflow Mutect2 {
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
-    if (defined(variants_for_contamination)) {
+    if (defined(variants_for_contamination) && (!skip_filtering)) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
                 input_tables = flatten(M2.tumor_pileups),
@@ -275,47 +276,49 @@ workflow Mutect2 {
         }
     }
 
-    call Filter {
-        input:
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
-            intervals = intervals,
-            unfiltered_vcf = MergeVCFs.merged_vcf,
-            unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
-            compress_vcfs = compress_vcfs,
-            mutect_stats = MergeStats.merged_stats,
-            contamination_table = CalculateContamination.contamination_table,
-            maf_segments = CalculateContamination.maf_segments,
-            artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
-            m2_extra_filtering_args = m2_extra_filtering_args,
-            runtime_params = standard_runtime,
-            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * 4) + disk_pad
-    }
-
-    if (defined(realignment_index_bundle)) {
-        call FilterAlignmentArtifacts {
+    if (!skip_filtering) {
+        call Filter {
             input:
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                reads = tumor_reads,
-                reads_index = tumor_reads_index,
-                realignment_index_bundle = select_first([realignment_index_bundle]),
-                realignment_extra_args = realignment_extra_args,
+                intervals = intervals,
+                unfiltered_vcf = MergeVCFs.merged_vcf,
+                unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
                 compress_vcfs = compress_vcfs,
-                input_vcf = Filter.filtered_vcf,
-                input_vcf_idx = Filter.filtered_vcf_idx,
+                mutect_stats = MergeStats.merged_stats,
+                contamination_table = CalculateContamination.contamination_table,
+                maf_segments = CalculateContamination.maf_segments,
+                artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
+                m2_extra_filtering_args = m2_extra_filtering_args,
                 runtime_params = standard_runtime,
-                mem = filter_alignment_artifacts_mem,
-                gcs_project_for_requester_pays = gcs_project_for_requester_pays
+                disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * 4) + disk_pad
+        }
+
+        if (defined(realignment_index_bundle)) {
+            call FilterAlignmentArtifacts {
+                input:
+                    ref_fasta = ref_fasta,
+                    ref_fai = ref_fai,
+                    ref_dict = ref_dict,
+                    reads = tumor_reads,
+                    reads_index = tumor_reads_index,
+                    realignment_index_bundle = select_first([realignment_index_bundle]),
+                    realignment_extra_args = realignment_extra_args,
+                    compress_vcfs = compress_vcfs,
+                    input_vcf = Filter.filtered_vcf,
+                    input_vcf_idx = Filter.filtered_vcf_idx,
+                    runtime_params = standard_runtime,
+                    mem = filter_alignment_artifacts_mem,
+                    gcs_project_for_requester_pays = gcs_project_for_requester_pays
+            }
         }
     }
 
     output {
-        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
-        File filtering_stats = Filter.filtering_stats
+        File output_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf, MergeVCFs.merged_vcf])
+        File output_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx,MergeVCFs.merged_vcf_idx])
+        File? filtering_stats = Filter.filtering_stats
         File mutect_stats = MergeStats.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
 
