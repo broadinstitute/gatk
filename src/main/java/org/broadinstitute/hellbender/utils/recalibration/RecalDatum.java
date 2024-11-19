@@ -161,12 +161,16 @@ public final class RecalDatum implements Serializable {
         this.empiricalQuality = empiricalQuality;
     }
 
+    /**
+     * Computes the empirical quality of the datum, using the reported quality as the prior.
+     * @see #getEmpiricalQuality(double) below.
+     */
     public double getEmpiricalQuality() {
         return getEmpiricalQuality(getReportedQuality());
     }
 
     /**
-     * Compute the empirical base quality (roughly (num errors)/(num observations)) from the counts stored in this datum.
+     * Computes the empirical base quality (roughly (num errors)/(num observations)) from the counts stored in this datum.
      */
     public double getEmpiricalQuality(final double priorQualityScore) {
         if (empiricalQuality == UNINITIALIZED_EMPIRICAL_QUALITY) {
