@@ -57,9 +57,9 @@ dependencies:
 # other python dependencies; these should be removed after functionality is moved into Java code
 - bioconda::pysam=0.22.0
 - conda-forge::pyvcf=0.6.8
+- bioconda::cyvcf2~=0.30.15
 
 # pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
 - pip:
-    - cyvcf2~=0.30.15
     - mmap-ninja>=0.2.4
     - gatkPythonPackageArchive.zip
