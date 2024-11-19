@@ -42,8 +42,6 @@ dependencies:
 - conda-forge::psutil>=5.9.2
 - conda-forge::protobuf<3.20,>=3.9.2  # Protobuf constraint for TensorFlow compatibility
 - conda-forge::intervaltree~=3.1.0
-- conda-forge::cyvcf2~=0.30.15
-#- conda-forge::mmap-ninja>=0.2.4
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=4.3.1
@@ -62,4 +60,6 @@ dependencies:
 
 # pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
 - pip:
+    - cyvcf2~=0.30.15
+    - mmap-ninja>=0.2.4
     - gatkPythonPackageArchive.zip
