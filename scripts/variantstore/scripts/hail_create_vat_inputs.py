@@ -182,7 +182,8 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     n_samples = vds.n_samples()
-    n_rounds = math.ceiling(n_samples / 10000) // hardcoded as 5 for the Echo callset creation  n_rounds = 5
+    n_rounds = math.ceiling(n_samples / 10000)
+    # note: this was hardcoded as 5 for the Echo callset creation  n_rounds = 5
     n_parts = vds.variant_data.n_partitions()
     # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
     # n_parts % n_rounds partitions.
