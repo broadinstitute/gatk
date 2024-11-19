@@ -1,5 +1,18 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.1 - 2024-11-18
+
+### Changed
+
+- Maximum alternate alleles for extract now defaults to 1000.
+- Ingest parallelism now specified by scatter width rather than batch size.
+
+### Fixed
+
+- Cohort extract now chooses a more appropriate scatter width based on the number of samples loaded rather than the size of the cohort being extracted.
+- Ingest now correctly handles ploidy differences in Dragen 3.7.8 VCFs.
+- Corrected handling of query project vs extract project in cohort extract.
+
 ## 0.6.0 - 2024-07-25
 
 ### Added
