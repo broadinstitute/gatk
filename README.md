@@ -56,7 +56,7 @@ releases of the toolkit.
     * Java 17 is needed to run or build GATK. 
     We recommend one of the following:
         * Download the Eclipse Foundation's distribution of OpenJDK 17 from [adoptium.net](https://adoptium.net/). Navigate to the [release archive](https://adoptium.net/temurin/archive/?version=17) to find downloads for Java 17.
-        * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew tap homebrew/cask-versions` followed by `brew install temurin@17` to install the Eclipse Foundation's OpenJDK 17.
+        * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew install temurin@17` to install the Eclipse Foundation's OpenJDK 17.
     * Python 3.10.13, along with a set of additional Python packages, is required to run some tools and workflows (also required to run the `gatk` frontend script).
       See [Python Dependencies](#python) for more information.
     * R 4.3.1 (needed for producing plots in certain tools)
