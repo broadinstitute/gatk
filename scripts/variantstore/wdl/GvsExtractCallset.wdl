@@ -54,7 +54,7 @@ workflow GvsExtractCallset {
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
     Boolean write_cost_to_db = true
-    Int? maximum_alternate_alleles
+    Int maximum_alternate_alleles = 1000
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
