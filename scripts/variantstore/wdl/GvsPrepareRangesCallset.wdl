@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# A comment for you, gentle reader.
-
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
