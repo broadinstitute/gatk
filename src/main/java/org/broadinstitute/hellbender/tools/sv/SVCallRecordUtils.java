@@ -527,4 +527,37 @@ public final class SVCallRecordUtils {
                     GATKSVVCFConstants.COPY_NUMBER_FORMAT + " attribute in " + "genotype: " + genotype);
         }
     }
+
+    public static boolean isValidSize(final SVCallRecord call, final int minEventSize) {
+        return call.getType().equals(StructuralVariantType.BND) || call.getLength() >= minEventSize;
+    }
+
+    public static <T> boolean intervalIsIncluded(final SVCallRecord call, final Map<String, IntervalTree<T>> includedIntervalTreeMap,
+                                                 final double minDepthOnlyIncludeOverlap) {
+        if (SVDepthOnlyCallDefragmenter.isDepthOnlyCall(call)) {
+            return intervalIsIncludedDepthOnly(call, includedIntervalTreeMap, minDepthOnlyIncludeOverlap);
+        }
+        return intervalIsIncludedNonDepthOnly(call, includedIntervalTreeMap);
+    }
+
+    public static SVCallRecord deduplicateWithRawCallAttribute(final Collection<SVCallRecord> items) {
+        if (items.isEmpty()) {
+            return null;
+        }
+        final List<Genotype> genotypes = collapseRecordGenotypesWithRawCallAttribute(items);
+        final List<String> algorithms = collapseAlgorithms(items);
+        final SVCallRecord example = items.iterator().next();
+        return new SVCallRecord(
+                example.getId(),
+                example.getContigA(),
+                example.getPositionA(),
+                example.getStrandA(),
+                example.getContigB(),
+                example.getPositionB(),
+                example.getStrandB(),
+                example.getType(),
+                example.getLength(),
+                algorithms,
+                genotypes);
+    }
 }
