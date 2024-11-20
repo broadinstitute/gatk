@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledContigPloidyCollection;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVIntervalVariantDecoder;
-import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
@@ -178,10 +177,10 @@ public class SVTrainDepth extends FeatureWalker<DepthEvidence> {
 
     private List<String> getSamplesFromHeader() {
         final Object header = getDrivingFeaturesHeader();
-        if (!(header instanceof DepthEvidenceCodec.DepthEvidenceMetadata)) {
+        if (!(header instanceof SVFeaturesHeader)) {
             throw new GATKException("Unexpected header type");
         }
-        return ((DepthEvidenceCodec.DepthEvidenceMetadata)header).getSamples();
+        return ((SVFeaturesHeader)header).getSampleNames();
     }
 
     @Override

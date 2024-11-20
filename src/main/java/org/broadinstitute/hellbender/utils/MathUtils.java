@@ -86,6 +86,28 @@ public final class MathUtils {
         }
     }
 
+    /**
+     * Overloaded version for double types
+     */
+    public static double secondSmallestMinusSmallest(final double[] values, final double defaultValue) {
+        Utils.nonNull(values);
+        if (values.length <= 1) {
+            return defaultValue;
+        } else {
+            double smallest = values[0];
+            double secondSmallest = Integer.MAX_VALUE;
+            for (int i = 1; i < values.length; i++) {
+                if (values[i] < smallest) {
+                    secondSmallest = smallest;
+                    smallest = values[i];
+                } else if (values[i] < secondSmallest) {
+                    secondSmallest = values[i];
+                }
+            }
+            return secondSmallest - smallest;
+        }
+    }
+
     public static int[] normalizePLs(int[] PLs) {
         final int[] newPLs = new int[PLs.length];
         final int smallest = arrayMin(PLs);
@@ -863,7 +885,7 @@ public final class MathUtils {
         return minI;
     }
 
-    public static double minElementIndex(final double[] array) {
+    public static int minElementIndex(final double[] array) {
         Utils.nonNull(array);
         Utils.validateArg(array.length > 0, "array may not be empty");
 

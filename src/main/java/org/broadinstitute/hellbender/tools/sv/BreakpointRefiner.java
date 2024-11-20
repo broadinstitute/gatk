@@ -72,13 +72,13 @@ public class BreakpointRefiner {
         SVCallRecordUtils.validateCoordinatesWithDictionary(call, dictionary);
 
         // Depth-only calls cannot be refined
-        if (SVClusterEngine.isDepthOnlyCall(call)) {
+        if (call.isDepthOnly()) {
             return call;
         }
 
         // Sample sets
         final Set<String> backgroundSamples = getBackgroundSamples(call);
-        final Set<String> calledSamples = call.getCalledSamples();
+        final Set<String> calledSamples = call.getCarrierSampleSet();
 
         // Refine start
         final SplitReadSite refinedStartSite = getRefinedSite(call.getStartSplitReadSites(), calledSamples, backgroundSamples, call.getPositionA());
@@ -100,9 +100,10 @@ public class BreakpointRefiner {
         // Create new record
         return new SVCallRecordWithEvidence(
                 call.getId(), call.getContigA(), refinedStartSite.getPosition(), call.getStrandA(), call.getContigB(),
-                refinedEndSite.getPosition(), call.getStrandB(), call.getType(), length, call.getAlgorithms(),
-                call.getGenotypes(), call.getStartSplitReadSites(), call.getEndSplitReadSites(), call.getDiscordantPairs(),
-                call.getCopyNumberDistribution());
+                refinedEndSite.getPosition(), call.getStrandB(), call.getType(), call.getComplexSubtype(), call.getComplexEventIntervals(),
+                length, call.getEvidence(), call.getAlgorithms(), call.getAlleles(), call.getGenotypes(),
+                call.getAttributes(), call.getFilters(), call.getLog10PError(), call.getStartSplitReadSites(),
+                call.getEndSplitReadSites(), call.getDiscordantPairs(), call.getCopyNumberDistribution(), dictionary);
     }
 
     /**
@@ -123,7 +124,7 @@ public class BreakpointRefiner {
      * @return sample ids
      */
     private Set<String> getBackgroundSamples(final SVCallRecord call) {
-        return sampleCoverageMap.keySet().stream().filter(s -> !call.getCarrierSamples().contains(s)).collect(Collectors.toSet());
+        return sampleCoverageMap.keySet().stream().filter(s -> !call.getCarrierSampleSet().contains(s)).collect(Collectors.toSet());
     }
 
     /**
@@ -136,7 +137,7 @@ public class BreakpointRefiner {
      * @return position
      */
     private int getEndLowerBound(final SVCallRecord call, final int refinedStartPosition) {
-        if (!SVCallRecordUtils.isIntrachromosomal(call)) {
+        if (!call.isIntrachromosomal()) {
             return 1;
         }
         if (call.getType().equals(StructuralVariantType.INS)) {

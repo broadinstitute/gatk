@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.SVInterval;
 
 import java.io.Serializable;
 import java.util.Collection;

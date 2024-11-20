@@ -239,7 +239,7 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
     }
 
     private void loadIntervalTree() {
-        final List<SimpleInterval> intervals = getRequestedIntervals();
+        final List<SimpleInterval> intervals = getUserSuppliedIntervals();
         if (intervals == null) {
             throw new UserException.MissingReference("Reference dictionary is required");
         }

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
@@ -541,24 +542,61 @@ public final class SVCallRecordUtils {
         return intervalIsIncludedNonDepthOnly(call, includedIntervalTreeMap);
     }
 
-    public static SVCallRecord deduplicateWithRawCallAttribute(final Collection<SVCallRecord> items) {
-        if (items.isEmpty()) {
-            return null;
+    private static <T> boolean intervalIsIncludedNonDepthOnly(final SVCallRecord call, final Map<String,IntervalTree<T>> includedIntervalTreeMap) {
+        final IntervalTree<T> startTree = includedIntervalTreeMap.get(call.getContigA());
+        if (startTree == null) {
+            return false;
         }
-        final List<Genotype> genotypes = collapseRecordGenotypesWithRawCallAttribute(items);
-        final List<String> algorithms = collapseAlgorithms(items);
-        final SVCallRecord example = items.iterator().next();
-        return new SVCallRecord(
-                example.getId(),
-                example.getContigA(),
-                example.getPositionA(),
-                example.getStrandA(),
-                example.getContigB(),
-                example.getPositionB(),
-                example.getStrandB(),
-                example.getType(),
-                example.getLength(),
-                algorithms,
-                genotypes);
+        final IntervalTree<T> endTree = includedIntervalTreeMap.get(call.getContigB());
+        if (endTree == null) {
+            return false;
+        }
+        return startTree.overlappers(call.getPositionA(), call.getPositionA() + 1).hasNext()
+                && endTree.overlappers(call.getPositionB(), call.getPositionB() + 1).hasNext();
+    }
+
+    private static <T> boolean intervalIsIncludedDepthOnly(final SVCallRecord call, final Map<String,IntervalTree<T>> includedIntervalTreeMap,
+                                                           final double minDepthOnlyIncludeOverlap) {
+        final IntervalTree<T> tree = includedIntervalTreeMap.get(call.getContigA());
+        if (tree == null) {
+            return false;
+        }
+        final double overlapFraction = totalOverlap(call.getPositionA(), call.getPositionB(), tree) / (double) call.getLength();
+        return overlapFraction >= minDepthOnlyIncludeOverlap;
+    }
+
+    private static <T> long totalOverlap(final int start, final int end, final IntervalTree<T> tree) {
+        final Iterator<IntervalTree.Node<T>> iter = tree.overlappers(start, end);
+        long overlap = 0;
+        while (iter.hasNext()) {
+            final IntervalTree.Node<T> node = iter.next();
+            overlap += intersectionLength(start, end, node.getStart(), node.getEnd());
+        }
+        return overlap;
+    }
+
+    private static long intersectionLength(final int start1, final int end1, final int start2, final int end2) {
+        return Math.max(0, Math.min(end1, end2) - Math.max(start1, start2) + 1);
+    }
+
+    public static void validateCoordinates(final SVCallRecord call) {
+        Utils.nonNull(call);
+        Utils.validateArg(call.getPositionA() >= 1, "Call start non-positive");
+        if (call.isIntrachromosomal()) {
+            Utils.validateArg(call.getPositionA() <= call.getPositionB(), "Second position before end on same contig");
+        } else {
+            Utils.validateArg(call.getPositionB() >= 1, "Call second position non-positive");
+        }
+    }
+
+    public static void validateCoordinatesWithDictionary(final SVCallRecord call, final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary);
+        validateCoordinates(call);
+        final SAMSequenceRecord contigARecord = dictionary.getSequence(call.getContigA());
+        Utils.validateArg(contigARecord != null, "Call first contig " + call.getContigA() + " not in dictionary");
+        final SAMSequenceRecord contigBRecord = dictionary.getSequence(call.getContigB());
+        Utils.validateArg(contigBRecord != null, "Call second contig " + call.getContigB() + " not in dictionary");
+        Utils.validateArg(call.getPositionA() <= contigARecord.getSequenceLength(), "Call first position greater than contig length");
+        Utils.validateArg(call.getPositionB() <= contigBRecord.getSequenceLength(), "Call second position greater than contig length");
     }
 }
