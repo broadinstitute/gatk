@@ -138,7 +138,7 @@ public final class MergeSVCalls extends GATKTool {
 
     @Override
     public Object onTraversalSuccess() {
-        samples = records.stream().flatMap(r -> r.getCalledSamples().stream())
+        samples = records.stream().flatMap(r -> r.getAllSamples().stream())
                 .sorted().collect(Collectors.toCollection(LinkedHashSet::new));
 
         // Sort variants

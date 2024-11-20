@@ -80,6 +80,7 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
     public static final String CNV_BND_PROB_THRESHOLD_LONG_NAME = "cnv-bnd-max-phred";
     public static final String CNV_BND_SAMPLE_THRESHOLD_LONG_NAME = "cnv-bnd-carrier-fraction";
     public static final String GENOTYPE_DEPTH_CALLS_LONG_NAME = "genotype-depth-calls";
+    public static final String DEPTH_ONLY_INCLUDE_INTERVAL_OVERLAP_LONG_NAME = "depth-only-include-interval-overlap";
 
     @Argument(
             doc = "Germline copy number intervals VCF. Can be specified more than once for runs with different bin sizes.",
@@ -142,7 +143,7 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
 
     @Argument(
             doc = "Depth-only call min included intervals overlap",
-            fullName = SVCluster.DEPTH_ONLY_INCLUDE_INTERVAL_OVERLAP_LONG_NAME,
+            fullName = DEPTH_ONLY_INCLUDE_INTERVAL_OVERLAP_LONG_NAME,
             minValue = 0,
             maxValue = 1,
             optional = true
@@ -189,7 +190,7 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord call = SVCallRecordUtils.create(variant);
+        final SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
         if (!SVCallRecordUtils.isValidSize(call, minEventSize)
                 || !SVCallRecordUtils.intervalIsIncluded(call, includedIntervalsTreeMap, minDepthOnlyIncludeOverlap)) {
             return;

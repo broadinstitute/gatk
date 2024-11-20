@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class SVCallRecordWithEvidence extends SVCallRecord {
 
@@ -20,10 +20,12 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
                                     final List<SplitReadSite> startSplitReadSites,
                                     final List<SplitReadSite> endSplitReadSites,
                                     final List<DiscordantPairEvidence> discordantPairs,
-                                    final CopyNumberPosteriorDistribution copyNumberDistribution) {
+                                    final CopyNumberPosteriorDistribution copyNumberDistribution,
+                                    final SAMSequenceDictionary dictionary) {
         this(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
-                record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(),
-                record.getGenotypes(), startSplitReadSites, endSplitReadSites, discordantPairs, copyNumberDistribution);
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(),
+                record.getComplexEventIntervals(), record.getLength(), record.getEvidence(), record.getAlgorithms(),
+                record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), startSplitReadSites, endSplitReadSites, discordantPairs, copyNumberDistribution, dictionary);
     }
 
     public SVCallRecordWithEvidence(final String id,
@@ -33,15 +35,23 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
                                     final String contig2,
                                     final int position2,
                                     final boolean strand2,
-                                    final StructuralVariantType type,
+                                    final GATKSVVCFConstants.StructuralVariantAnnotationType type,
+                                    final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype,
+                                    final List<ComplexEventInterval> cpxIntervals,
                                     final int length,
+                                    final List<GATKSVVCFConstants.EvidenceTypes> evidence,
                                     final List<String> algorithms,
+                                    final List<Allele> alleles,
                                     final List<Genotype> genotypes,
+                                    final Map<String,Object> attributes,
+                                    final Set<String> filters,
+                                    final Double log10PError,
                                     final List<SplitReadSite> startSplitReadSites,
                                     final List<SplitReadSite> endSplitReadSites,
                                     final List<DiscordantPairEvidence> discordantPairs,
-                                    final CopyNumberPosteriorDistribution copyNumberDistribution) {
-        super(id, startContig, position1, strand1, contig2, position2, strand2, type, length, algorithms, genotypes);
+                                    final CopyNumberPosteriorDistribution copyNumberDistribution,
+                                    final SAMSequenceDictionary dictionary) {
+        super(id, startContig, position1, strand1, contig2, position2, strand2, type, cpxSubtype, cpxIntervals, length, evidence, algorithms, alleles, genotypes, attributes, filters, log10PError, dictionary);
         Utils.nonNull(startSplitReadSites);
         Utils.nonNull(endSplitReadSites);
         Utils.nonNull(discordantPairs);

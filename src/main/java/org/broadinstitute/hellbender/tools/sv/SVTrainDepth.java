@@ -140,7 +140,7 @@ public class SVTrainDepth extends FeatureWalker<DepthEvidence> {
     }
 
     @Override
-    public GATKPath getDrivingFeaturesPath() {
+    public GATKPath getDrivingFeaturePath() {
         return depthEvidenceFilePath;
     }
 
