@@ -443,7 +443,7 @@ if __name__ == '__main__':
         args.vet_ranges_extract_table_version = "V2"
 
     if args.vet_ranges_extract_table_version != "V1" and args.vet_ranges_extract_table_version != "V2":
-        raise ValueError(f"Error: illegal value ({args.vet_ranges_extract_table_version}) for `vet-ranges-extract-table-version` must be 'V1' or 'V2'")
+        raise ValueError(f"Error: illegal value ({args.vet_ranges_extract_table_version}) for `vet-ranges-extract-table-version` must be either 'V1' or 'V2'")
 
     make_extract_table(args.call_set_identifier,
                        args.control_samples,
