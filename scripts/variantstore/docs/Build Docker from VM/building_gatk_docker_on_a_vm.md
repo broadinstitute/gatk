@@ -54,7 +54,7 @@ IMAGE_ID=${FULL_IMAGE_ID:7:12}
 
 # The GATK Docker image is based on gatkbase.
 IMAGE_TYPE="gatkbase"
-TAG=$(python3 ./scripts/variantstore/wdl/extract/build_docker_tag.py --image-id "${IMAGE_ID}" --image-type "${IMAGE_TYPE}")
+TAG=$(python3 ./scripts/variantstore/scripts/build_docker_tag.py --image-id "${IMAGE_ID}" --image-type "${IMAGE_TYPE}")
 
 BASE_REPO="broad-dsde-methods/gvs"
 REPO_WITH_TAG="${BASE_REPO}/gatk:${TAG}"
