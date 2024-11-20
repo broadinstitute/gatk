@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import com.google.common.collect.Lists;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
