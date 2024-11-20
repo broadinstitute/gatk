@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
@@ -534,7 +535,7 @@ public final class SVCallRecordUtils {
 
     public static <T> boolean intervalIsIncluded(final SVCallRecord call, final Map<String, IntervalTree<T>> includedIntervalTreeMap,
                                                  final double minDepthOnlyIncludeOverlap) {
-        if (SVDepthOnlyCallDefragmenter.isDepthOnlyCall(call)) {
+        if (call.isDepthOnly()) {
             return intervalIsIncludedDepthOnly(call, includedIntervalTreeMap, minDepthOnlyIncludeOverlap);
         }
         return intervalIsIncludedNonDepthOnly(call, includedIntervalTreeMap);
