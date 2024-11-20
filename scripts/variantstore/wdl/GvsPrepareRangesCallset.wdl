@@ -89,7 +89,7 @@ workflow GvsPrepareCallset {
       write_cost_to_db                = write_cost_to_db,
       variants_docker                 = effective_variants_docker,
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
-      vet_extract_table_version       = GetExtractVetTableVersion.version,
+      vet_extract_table_version       = "V3",
       enable_extract_table_ttl        = enable_extract_table_ttl,
       interval_list                   = interval_list,
   }
