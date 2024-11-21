@@ -24,7 +24,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.cloud.LocalizedFeatureSubset;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.*;
@@ -397,13 +396,9 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
 
     private void loadSampleCoverage() {
         final String fileString = sampleCoverageFile.toString();
-        try {
-            sampleCoverageMap = IOUtils.readLines(BucketUtils.openFile(fileString), Charset.defaultCharset()).stream()
-                    .map(line -> line.split("\t"))
-                    .collect(Collectors.toMap(tokens -> tokens[0], tokens -> Double.valueOf(tokens[1])));
-        } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(fileString, e);
-        }
+        sampleCoverageMap = IOUtils.readLines(BucketUtils.openFile(fileString), Charset.defaultCharset()).stream()
+                .map(line -> line.split("\t"))
+                .collect(Collectors.toMap(tokens -> tokens[0], tokens -> Double.valueOf(tokens[1])));
     }
 
     @Override
@@ -445,7 +440,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     @Override
     public void firstPassApply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord call = SVCallRecordUtils.create(variant);
+        final SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
         if (!validRecordType(call)) {
             return;
         }

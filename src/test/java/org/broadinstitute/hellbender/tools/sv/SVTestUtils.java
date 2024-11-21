@@ -555,6 +555,19 @@ public class SVTestUtils {
                 Collections.emptyMap(), Collections.emptySet(), null);
     }
 
+    public static SVCallRecord newBndCallRecordWithPositionAndStrands(final String chrA, final int posA, final boolean strandA,
+                                                                      final String chrB, final int posB, final boolean strandB) {
+        return new SVCallRecord("", chrA, posA, strandA, chrB, posB, strandB,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(), null,
+                Collections.emptyList(),
+                Collections.singletonList(PESR_ALGORITHM),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap(),
+                Collections.emptySet(),
+                null);
+    }
+
     public static VariantContext newVariantContext(final String id, final String chrA, final int posA,
                                                    final int end, final List<Allele> alleles,
                                                    final List<Genotype> genotypes, final Integer svlen,

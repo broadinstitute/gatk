@@ -599,4 +599,20 @@ public final class SVCallRecordUtils {
         Utils.validateArg(call.getPositionA() <= contigARecord.getSequenceLength(), "Call first position greater than contig length");
         Utils.validateArg(call.getPositionB() <= contigBRecord.getSequenceLength(), "Call second position greater than contig length");
     }
+
+    public static SVCallRecord assignDiscordantPairCountsToGenotypes(final SVCallRecord call,
+                                                                     final List<DiscordantPairEvidence> evidence) {
+        final Map<String, Integer> evidenceCounts = evidence.stream()
+                .collect(Collectors.groupingBy(DiscordantPairEvidence::getSample,
+                        Collectors.collectingAndThen(Collectors.toList(), List::size)));
+        final List<Genotype> genotypes = call.getGenotypes();
+        final GenotypesContext newGenotypes = GenotypesContext.create(genotypes.size());
+        for (final Genotype genotype : genotypes) {
+            final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
+            genotypeBuilder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_COUNT_ATTRIBUTE,
+                    evidenceCounts.getOrDefault(genotype.getSampleName(), 0));
+            newGenotypes.add(genotypeBuilder.make());
+        }
+        return SVCallRecordUtils.copyCallWithNewGenotypes(call, newGenotypes);
+    }
 }

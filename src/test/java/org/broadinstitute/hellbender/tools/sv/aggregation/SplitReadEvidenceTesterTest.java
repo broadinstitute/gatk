@@ -27,16 +27,16 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
     private static final int MAX_SR_CROSS_DISTANCE = 20;
 
     private final SVCallRecord TEST_DEL_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+            null, Collections.emptyList(), null, Collections.emptyList(), Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
 
     private final SVCallRecord TEST_INS_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
-            null, 500, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+            null, Collections.emptyList(), 500, Collections.emptyList(), Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
 
     private final SVCallRecord TEST_BND_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr22", 8000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
-            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.create("<BND>", false)), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+            null, Collections.emptyList(), null, Collections.emptyList(), Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.create("<BND>", false)), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
 
     private final SVCallRecord TEST_INV_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 8000, true, GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
-            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INV), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+            null, Collections.emptyList(), null, Collections.emptyList(), Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INV), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
 
     @DataProvider(name = "refineSplitReadSiteTestData")
     public Object[][] refineSplitReadSiteTestData() {

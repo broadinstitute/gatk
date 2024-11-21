@@ -239,8 +239,9 @@ public class SplitReadEvidenceTester {
         // Create new record
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(),
                 record.getStrandA(), record.getContigB(), record.getPositionB(), record.getStrandB(),
-                record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
-                newGenotypes, refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
+                record.getType(), record.getComplexSubtype(), record.getComplexEventIntervals(), record.getLength(),
+                record.getEvidence(), record.getAlgorithms(), record.getAlleles(), newGenotypes, refinedAttr,
+                record.getFilters(), record.getLog10PError(), dictionary);
     }
 
     private static EvidenceStatUtils.PoissonTestResult calculateBothsideTest(final SplitReadSite startSite,
