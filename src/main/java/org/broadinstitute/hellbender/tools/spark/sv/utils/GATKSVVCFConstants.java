@@ -155,6 +155,27 @@ public final class GATKSVVCFConstants {
     public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
+    public static final String FIRST_SPLIT_READ_COUNT_ATTRIBUTE = "SR1";
+    public static final String SECOND_SPLIT_READ_COUNT_ATTRIBUTE = "SR2";
+
+    public static final String FIRST_SPLIT_POSITION_ATTRIBUTE = "SR1POS";
+    public static final String SECOND_SPLIT_POSITION_ATTRIBUTE = "SR2POS";
+
+    // PESR aggregation
+    public static final String FIRST_SPLIT_QUALITY_ATTRIBUTE = "SR1Q";
+    public static final String FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SR1CS";
+    public static final String SECOND_SPLIT_QUALITY_ATTRIBUTE = "SR2Q";
+    public static final String SECOND_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SR2CS";
+    public static final String TOTAL_SPLIT_QUALITY_ATTRIBUTE = "SRQ";
+    public static final String TOTAL_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SRCS";
+    public static final String DISCORDANT_PAIR_QUALITY_ATTRIBUTE = "PEQ";
+    public static final String DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE = "PECS";
+    public static final String PESR_QUALITY_ATTRIBUTE = "PESRQ";
+    public static final String PESR_CARRIER_SIGNAL_ATTRIBUTE = "PESRCS";
+    public static final String BAF_HET_RATIO_ATTRIBUTE = "BAF_HET_RATIO";
+    public static final String BAF_KS_STAT_ATTRIBUTE = "BAF_KS_STAT";
+    public static final String BAF_KS_Q_ATTRIBUTE = "BAF_KS_Q";
+
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";

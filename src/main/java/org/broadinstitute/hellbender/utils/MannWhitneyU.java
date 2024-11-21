@@ -22,10 +22,10 @@ public class MannWhitneyU {
 
     private static final class Rank implements Comparable<Rank> {
         final double value;
-        float rank;
+        double rank;
         final int series;
 
-        private Rank(double value, float rank, int series) {
+        private Rank(double value, double rank, int series) {
             this.value = value;
             this.rank = rank;
             this.series = series;
@@ -170,9 +170,7 @@ public class MannWhitneyU {
     }
 
     // Constructs a normal distribution; this needs to be a standard normal in order to get a Z-score in the exact case
-    private static final double NORMAL_MEAN = 0;
-    private static final double NORMAL_SD = 1;
-    private static final NormalDistribution NORMAL = new NormalDistribution(NORMAL_MEAN, NORMAL_SD);
+    private static final NormalDistribution ZDIST = new NormalDistribution(0, 1);
 
     /**
      * A map of an Integer[] of the labels to the set of all possible permutations of those labels.
@@ -221,7 +219,7 @@ public class MannWhitneyU {
 
         // Now sort out any tie bands
         for (int i = 0; i < ranks.length; ) {
-            float rank = ranks[i].rank;
+            double rank = ranks[i].rank;
             int count = 1;
 
             for (int j = i + 1; j < ranks.length && ranks[j].value == ranks[i].value; ++j) {
@@ -256,7 +254,7 @@ public class MannWhitneyU {
         double numOfTiesForSigma = transformTies(lengthOfRanks, numOfTies);
 
         // Calculate R1 and R2 and U.
-        float r1 = 0, r2 = 0;
+        double r1 = 0, r2 = 0;
         for (Rank rank : ranks) {
             if (rank.series == 1) r1 += rank.rank;
             else r2 += rank.rank;
@@ -324,7 +322,8 @@ public class MannWhitneyU {
      * approximation only.
      */
     public double calculateZ(final double u, final int n1, final int n2, final double nties, final TestType whichSide) {
-        double m = (n1 * n2) / 2d;
+        double n1n2 = ((long) n1) * n2;
+        double m = n1n2 / 2d;
 
         //Adds a continuity correction
         double correction;
@@ -340,7 +339,7 @@ public class MannWhitneyU {
             correction = 0;
         }
 
-        double sigma = Math.sqrt((n1 * n2 / 12d) * ((n1 + n2 + 1) - nties / ((n1 + n2) * (n1 + n2 - 1))));
+        double sigma = Math.sqrt(( n1n2 / 12d) * ((n1 + n2 + 1) - nties / (( (long) n1 + n2) * (n1 + n2 - 1))));
         return (u - m - correction) / sigma;
     }
 
@@ -393,7 +392,7 @@ public class MannWhitneyU {
 
         if (n1 >= MINIMUM_NORMAL_N || n2 >= MINIMUM_NORMAL_N) {
             z = calculateZ(u, n1, n2, nties, whichSide);
-            p = 2 * NORMAL.cumulativeProbability(NORMAL_MEAN + z * NORMAL_SD);
+            p = 2 * ZDIST.cumulativeProbability(z);
             if (whichSide != TestType.TWO_SIDED) {
                 p = p / 2;
             }
@@ -403,7 +402,7 @@ public class MannWhitneyU {
                 logger.warn("An exact two-sided MannWhitneyU test was called. Only the one-sided exact test is implemented, use the approximation instead by setting minimumNormalN to 0.");
             }
             p = permutationTest(series1, series2, u);
-            z = NORMAL.inverseCumulativeProbability(p);
+            z = ZDIST.inverseCumulativeProbability(p);
         }
 
         return new Result(u, z, p, Math.abs(median(series1) - median(series2)));
