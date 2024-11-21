@@ -37,6 +37,7 @@ dependencies:
 - conda-forge::tqdm=4.66.1
 - conda-forge::dill=0.3.7             # used for pickling lambdas in TrainVariantAnnotationsModel
 - conda-forge::biopython=1.84         # used by NVScoreVariants
+- conda-forge::pyro-ppl=1.9.1         # used by SV genotyper
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=4.3.1
