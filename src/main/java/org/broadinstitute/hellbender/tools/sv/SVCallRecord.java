@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT;
 
 public class SVCallRecord implements SVLocatable {
 
@@ -31,6 +32,7 @@ public class SVCallRecord implements SVLocatable {
             VCFConstants.END_KEY,
             GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE,
             GATKSVVCFConstants.SVLEN,
+            GATKSVVCFConstants.EVIDENCE,
             GATKSVVCFConstants.CONTIG2_ATTRIBUTE,
             GATKSVVCFConstants.END2_ATTRIBUTE,
             GATKSVVCFConstants.STRANDS_ATTRIBUTE,
@@ -48,6 +50,7 @@ public class SVCallRecord implements SVLocatable {
     private final Boolean strandB;
     private final GATKSVVCFConstants.StructuralVariantAnnotationType type;
     private final Integer length;
+    private final List<GATKSVVCFConstants.EvidenceTypes> evidence;
     private final List<String> algorithms;
     private final List<Allele> alleles;
     private final Allele refAllele;
@@ -72,6 +75,7 @@ public class SVCallRecord implements SVLocatable {
                         final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype,
                         final List<ComplexEventInterval> cpxIntervals,
                         final Integer length,
+                        final List<GATKSVVCFConstants.EvidenceTypes> evidence,
                         final List<String> algorithms,
                         final List<Allele> alleles,
                         final List<Genotype> genotypes,
@@ -79,7 +83,7 @@ public class SVCallRecord implements SVLocatable {
                         final Set<String> filters,
                         final Double log10PError,
                         final SAMSequenceDictionary dictionary) {
-        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, cpxSubtype, cpxIntervals, length, algorithms, alleles, genotypes, attributes, filters, log10PError);
+        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, cpxSubtype, cpxIntervals, length, evidence, algorithms, alleles, genotypes, attributes, filters, log10PError);
         validateCoordinates(dictionary);
     }
 
@@ -94,6 +98,7 @@ public class SVCallRecord implements SVLocatable {
                            final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype,
                            final List<ComplexEventInterval> cpxIntervals,
                            final Integer length,
+                           final List<GATKSVVCFConstants.EvidenceTypes> evidence,
                            final List<String> algorithms,
                            final List<Allele> alleles,
                            final List<Genotype> genotypes,
@@ -106,6 +111,7 @@ public class SVCallRecord implements SVLocatable {
         Utils.nonNull(attributes);
         Utils.nonNull(filters);
         Utils.nonNull(cpxIntervals);
+        Utils.nonNull(evidence);
         this.id = Utils.nonNull(id);
         this.contigA = contigA;
         this.positionA = positionA;
@@ -123,6 +129,7 @@ public class SVCallRecord implements SVLocatable {
         this.genotypes = GenotypesContext.copy(genotypes).immutable();
         this.attributes = validateAttributes(attributes);
         this.length = inferLength(type, positionA, positionB, length);
+        this.evidence = evidence;
         final Pair<Boolean, Boolean> strands = inferStrands(type, strandA, strandB);
         this.strandA = strands.getLeft();
         this.strandB = strands.getRight();
@@ -272,7 +279,8 @@ public class SVCallRecord implements SVLocatable {
         }
 
         // Otherwise, try to infer status if it's a biallelic CNV with a copy number call
-        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT, expectedCopyNumber);
+        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT,
+                VariantContextGetters.getAttributeAsInt(genotype, DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, expectedCopyNumber));
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
             return copyNumber < expectedCopyNumber;
         } else if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
@@ -368,6 +376,10 @@ public class SVCallRecord implements SVLocatable {
 
     public Integer getLength() {
         return length;
+    }
+
+    public List<GATKSVVCFConstants.EvidenceTypes> getEvidence() {
+        return evidence;
     }
 
     public List<String> getAlgorithms() {

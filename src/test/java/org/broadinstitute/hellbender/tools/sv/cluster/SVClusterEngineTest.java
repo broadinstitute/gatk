@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.collect.Lists;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
@@ -50,7 +53,7 @@ public class SVClusterEngineTest {
 
     @BeforeTest
     public void initializeClusterEngine() {
-        engine.add(SVTestUtils.call1);
+        engine.addAndFlush(SVTestUtils.call1);
         linkageSizeSimilarity.setDepthOnlyParams(depthOnlyParametersSizeSimilarity);
         linkageSizeSimilarity.setMixedParams(mixedParametersSizeSimilarity);
         linkageSizeSimilarity.setEvidenceParams(evidenceParametersSizeSimilarity);
@@ -167,12 +170,12 @@ public class SVClusterEngineTest {
         // End position beyond contig end after padding
         final SVCallRecord deletion1 = new SVCallRecord("test_del", "chr1", 1000, true, "chr1", 248956423 + SVTestUtils.defaultEvidenceParameters.getWindow(), false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                null, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord deletion2 = new SVCallRecord("test_del", "chr1", 1000, true, "chr1", 248956422, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                null, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         engine.getLinkage().areClusterable(deletion1, deletion2);
@@ -204,7 +207,7 @@ public class SVClusterEngineTest {
     private void testGetMaxClusterableStartingPositionWithAlgorithm(final int start, final int end, final String algorithm) {
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start, true, "chr1", end, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                end - start + 1, Collections.singletonList(algorithm),
+                end - start + 1, Collections.emptyList(), Collections.singletonList(algorithm),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final int maxClusterableStart = engine.getLinkage().getMaxClusterableStartingPosition(call1);
@@ -212,12 +215,12 @@ public class SVClusterEngineTest {
         final int call2Start = maxClusterableStart;
         final SVCallRecord call2Depth = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                call1.getLength(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                call1.getLength(), Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2Pesr = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                call1.getLength(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                call1.getLength(), Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertTrue(engine.getLinkage().areClusterable(call1, call2Depth) || engine.getLinkage().areClusterable(call1, call2Pesr));
@@ -225,12 +228,12 @@ public class SVClusterEngineTest {
         final int call3Start = maxClusterableStart + 1;
         final SVCallRecord call3Depth = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                call1.getLength(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                call1.getLength(), Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call3Pesr = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
                 null, Collections.emptyList(),
-                call1.getLength(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                call1.getLength(), Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertFalse(engine.getLinkage().areClusterable(call1, call3Depth) || engine.getLinkage().areClusterable(call1, call3Pesr));
@@ -286,12 +289,12 @@ public class SVClusterEngineTest {
     public void testClusterTogetherVaryPositions(final int start1, final int end1, final int start2, final int end2, final boolean result) {
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start1, true,
                 "chr1", end1, false,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(), end1 - start1 + 1, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(), end1 - start1 + 1, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                 SVTestUtils.threeGenotypes, Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", start2, true,
                 "chr1", end2, false,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(), end2 - start2 + 1, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(), end2 - start2 + 1, Collections.emptyList(), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                 SVTestUtils.threeGenotypes, Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertEquals(engine.getLinkage().areClusterable(call1, call2), result);
@@ -303,12 +306,12 @@ public class SVClusterEngineTest {
             // Pass in null strands to let them be determined automatically
             final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, SVTestUtils.getValidTestStrandA(type1),
                     "chr1", 2001, SVTestUtils.getValidTestStrandB(type1), type1, null, Collections.emptyList(),
-                    SVTestUtils.getLength(1000, 2001, type1), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                    SVTestUtils.getLength(1000, 2001, type1), Collections.emptyList(), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                     Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
             for (final GATKSVVCFConstants.StructuralVariantAnnotationType type2 : GATKSVVCFConstants.StructuralVariantAnnotationType.values()) {
                 final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, SVTestUtils.getValidTestStrandA(type2),
                         "chr1", 2001, SVTestUtils.getValidTestStrandB(type2), type2, null, Collections.emptyList(),
-                        SVTestUtils.getLength(1000, 2001, type2), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                        SVTestUtils.getLength(1000, 2001, type2), Collections.emptyList(), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 // Should only cluster together if same type, except CNVs
                 if ((type1 == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV && call2.isSimpleCNV()) ||
@@ -328,13 +331,13 @@ public class SVClusterEngineTest {
             for (final Boolean strand1B : bools) {
                 final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, strand1A,
                         "chr1", 2001, strand1B, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
-                        null, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                        null, Collections.emptyList(), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 for (final Boolean strand2A : bools) {
                     for (final Boolean strand2B : bools) {
                         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, strand2A,
                                 "chr1", 2001, strand2B, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
-                                null, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                                null, Collections.emptyList(), Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                         // Should only cluster if strands match
                         Assert.assertEquals(engine.getLinkage().areClusterable(call1, call2), strand1A == strand2A && strand1B == strand2B);
@@ -353,7 +356,7 @@ public class SVClusterEngineTest {
                 final String contig1B = contigs.get(j);
                 final SVCallRecord call1 = new SVCallRecord("call1", contig1A, 1000, true,
                         contig1B, 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
-                        null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                        null, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 for (int k = 0; k < contigs.size(); k++) {
                     final String contig2A = contigs.get(k);
@@ -361,7 +364,7 @@ public class SVClusterEngineTest {
                         final String contig2B = contigs.get(m);
                         final SVCallRecord call2 = new SVCallRecord("call2", contig2A, 1000, true,
                                 contig2B, 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, Collections.emptyList(),
-                                null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                                null, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                         // Should only cluster if contigs match
                         Assert.assertEquals(engine.getLinkage().areClusterable(call1, call2), contig1A.equals(contig2A) && contig1B.equals(contig2B));
@@ -381,11 +384,11 @@ public class SVClusterEngineTest {
         for (final List<String> algorithms1 : algorithmsList) {
             final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, true,
                     "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                    1002, algorithms1, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+                    1002, Collections.emptyList(), algorithms1, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
             for (final List<String> algorithms2 : algorithmsList) {
                 final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, true,
                         "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                        1002, algorithms2, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+                        1002, Collections.emptyList(), algorithms2, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
                 // All combinations should cluster
                 Assert.assertTrue(engine.getLinkage().areClusterable(call1, call2));
             }
@@ -422,6 +425,50 @@ public class SVClusterEngineTest {
         Assert.assertTrue(engine.getLinkage().areClusterable(cnv1, del1));
         Assert.assertTrue(engine.getLinkage().areClusterable(cnv1, dup1));
         Assert.assertFalse(engine.getLinkage().areClusterable(del1, dup1));
+    }
+
+    @DataProvider(name = "testMatchCNVNoGTData")
+    public Object[][] testMatchCNVNoGTData() {
+        return new Object[][]{
+                // Empty
+                {0, new int[]{}, new int[]{}, true},
+                // Both equal
+                {0, new int[]{0}, new int[]{0}, true},
+                {1, new int[]{1}, new int[]{1}, true},
+                {2, new int[]{2}, new int[]{2}, true},
+                {2, new int[]{3}, new int[]{3}, true},
+                // Unequal
+                {2, new int[]{1}, new int[]{2}, false},
+                {2, new int[]{2}, new int[]{1}, false},
+                // Equal multiple
+                {2, new int[]{2, 2}, new int[]{2, 2}, true},
+                {2, new int[]{4, 2}, new int[]{4, 2}, true},
+                // Unequal multiple
+                {2, new int[]{2, 2}, new int[]{2, 1}, false},
+                {2, new int[]{0, 2}, new int[]{1, 1}, false},
+                {2, new int[]{3, 2}, new int[]{2, 2}, false},
+                {2, new int[]{6, 2}, new int[]{4, 2}, false},
+        };
+    }
+
+    @Test(dataProvider= "testMatchCNVNoGTData")
+    public void testMatchCNVNoGT(final int ploidy, final int[] copyNumbers1, final int[] copyNumbers2, final boolean expected) {
+        final List<Allele> alleles = Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_CNV);
+        final GATKSVVCFConstants.StructuralVariantAnnotationType svtype = GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
+        // Create genotypes with copy number attribute (and no GT)
+        final SVCallRecord recordCN1 = getCNVRecordWithCN(ploidy, alleles, svtype, copyNumbers1, GATKSVVCFConstants.COPY_NUMBER_FORMAT);
+        final SVCallRecord recordCN2 = getCNVRecordWithCN(ploidy, alleles, svtype, copyNumbers2, GATKSVVCFConstants.COPY_NUMBER_FORMAT);
+
+        // With sample overlap
+        final ClusteringParameters depthOnlyParams = ClusteringParameters.createDepthParameters(0.8, 0, 10000000, 1);
+        final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);
+        linkage.setDepthOnlyParams(depthOnlyParams);
+
+        Assert.assertEquals(linkage.areClusterable(recordCN1, recordCN2), expected);
+
+        final SVCallRecord recordRDCN1 = getCNVRecordWithCN(ploidy, alleles, svtype, copyNumbers1, GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT);
+        final SVCallRecord recordRDCN2 = getCNVRecordWithCN(ploidy, alleles, svtype, copyNumbers2, GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT);
+        Assert.assertEquals(linkage.areClusterable(recordRDCN1, recordRDCN2), expected);
     }
 
     @DataProvider(name = "testClusterTogetherIntervaledComplexData")
@@ -510,7 +557,7 @@ public class SVClusterEngineTest {
                 GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
                 GATKSVVCFConstants.ComplexVariantSubtype.delINV,
                 Arrays.asList(SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1100-1500", SVTestUtils.hg38Dict), SVCallRecord.ComplexEventInterval.decode("INV_chr1:1600-1900", SVTestUtils.hg38Dict)),
-                1000, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                1000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final Integer length2 = inferLength(contigA, posA, contigB, posB);
@@ -519,7 +566,7 @@ public class SVClusterEngineTest {
                 GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
                 subtype,
                 cpxIntervals,
-                length2, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                length2, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertEquals(engine.getLinkage().areClusterable(cpx1, cpx2), expected);
@@ -588,7 +635,7 @@ public class SVClusterEngineTest {
                 GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
                 GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
                 Arrays.asList(new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 6000, 8000))),
-                2000, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final Integer length2 = cpxIntervals.get(0).getInterval().size();
@@ -597,7 +644,7 @@ public class SVClusterEngineTest {
                 GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
                 subtype,
                 cpxIntervals,
-                length2, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                length2, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.assertEquals(engine.getLinkage().areClusterable(cpx1, cpx2), expected);
@@ -608,10 +655,10 @@ public class SVClusterEngineTest {
         final SVClusterEngine testEngine1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, true,
                 "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                1002, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+                1002, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1100, true,
                 "chr1", 2101, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                1002, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+                1002, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         // Cluster with default parameters
         Assert.assertTrue(testEngine1.getLinkage().areClusterable(call1, call2));
         final ClusteringParameters exactMatchParameters = ClusteringParameters.createDepthParameters(1.0, 0, 0, 1.0);
@@ -650,20 +697,22 @@ public class SVClusterEngineTest {
         }
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", positionA1, true,
                 "chr1", positionB1, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                positionB1 - positionA1 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                positionB1 - positionA1 + 1, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call2 = new SVCallRecord("call1", "chr1", positionA2, true,
                 "chr1", positionB2, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                positionB2 - positionA2 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                positionB2 - positionA2 + 1, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final SVCallRecord call3 = new SVCallRecord("call1", "chr1", positionA3, true,
                 "chr1", positionB3, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
-                positionB3 - positionA3 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                positionB3 - positionA3 + 1, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
-        engine.add(call1);
-        engine.add(call2);
-        engine.add(call3);
-        Assert.assertEquals(engine.forceFlush().size(), result);
+        final List<SVCallRecord> output = new ArrayList<>();
+        output.addAll(engine.addAndFlush(call1));
+        output.addAll(engine.addAndFlush(call2));
+        output.addAll(engine.addAndFlush(call3));
+        output.addAll(engine.flush());
+        Assert.assertEquals(output.size(), result);
     }
 
     @Test
@@ -671,22 +720,24 @@ public class SVClusterEngineTest {
         //single-sample merge case, ignoring sample sets
         final SVClusterEngine temp1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         Assert.assertTrue(temp1.isEmpty());
-        temp1.add(SVTestUtils.call1);
+        final List<SVCallRecord> output1 = new ArrayList<>();
+        output1.addAll(temp1.addAndFlush(SVTestUtils.call1));
         Assert.assertFalse(temp1.isEmpty());
         //force new cluster by adding a non-overlapping event
-        temp1.add(SVTestUtils.call3);
-        final List<SVCallRecord> output1 = temp1.forceFlush(); //flushes all clusters
+        output1.addAll(temp1.addAndFlush(SVTestUtils.call3));
+        output1.addAll(temp1.flush()); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
 
         final SVClusterEngine temp2 = SVTestUtils.getNewDefaultSingleLinkageEngine();
-        temp2.add(SVTestUtils.call1);
-        temp2.add(SVTestUtils.overlapsCall1);
+        final List<SVCallRecord> output2 = new ArrayList<>();
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call1));
+        output2.addAll(temp2.addAndFlush(SVTestUtils.overlapsCall1));
         //force new cluster by adding a call on another contig
-        temp2.add(SVTestUtils.call4_chr10);
-        final List<SVCallRecord> output2 = temp2.forceFlush();
+        output2.addAll(temp2.addAndFlush(SVTestUtils.call4_chr10));
+        output2.addAll(temp2.flush());
         Assert.assertEquals(output2.size(), 2);
         //median of two items ends up being the second item here
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
@@ -695,9 +746,10 @@ public class SVClusterEngineTest {
 
         //checking insensitivity to sample set overlap
         final SVClusterEngine temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
-        temp3.add(SVTestUtils.call1);
-        temp3.add(SVTestUtils.sameBoundsSampleMismatch);
-        final List<SVCallRecord> output3 = temp3.forceFlush();
+        final List<SVCallRecord> output3 = new ArrayList<>();
+        output3.addAll(temp3.addAndFlush(SVTestUtils.call1));
+        output3.addAll(temp3.addAndFlush(SVTestUtils.sameBoundsSampleMismatch));
+        output3.addAll(temp3.flush());
         Assert.assertEquals(output3.size(), 1);
         Assert.assertEquals(output3.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output3.get(0).getPositionB(), SVTestUtils.call1.getPositionB());
@@ -710,12 +762,13 @@ public class SVClusterEngineTest {
         final int numRecords = 100;
         final SVClusterEngine engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
         final int length = 5000;
+        final List<SVCallRecord> result = new ArrayList<>();
         for (int i = 0; i < numRecords; i++) {
             final int start = 1000 + 10 * i;
             final int end = start + length - 1;
-            engine.add(SVTestUtils.newPESRCallRecordWithIntervalAndType(start, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL));
+            result.addAll(engine.addAndFlush(SVTestUtils.newPESRCallRecordWithIntervalAndType(start, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)));
         }
-        final List<SVCallRecord> result = engine.forceFlush();
+        result.addAll(engine.flush());
         Assert.assertEquals(result.size(), 50);
         for (final SVCallRecord resultRecord : result) {
             Assert.assertTrue(resultRecord.getAttributes().containsKey(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
@@ -778,20 +831,13 @@ public class SVClusterEngineTest {
         }
 
         // Create genotypes with copy number attribute (and no GT)
-        final List<Genotype> genotypesWithCopyNumber = IntStream.range(0, copyNumbers.length)
-                .mapToObj(i -> new GenotypeBuilder(String.valueOf(i))
-                        .attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, copyNumbers[i])
-                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy)
-                        .alleles(SVTestUtils.buildHomAlleleListWithPloidy(Allele.NO_CALL, ploidy))
-                        .make())
-                .collect(Collectors.toList());
-        final SVCallRecord recordWithCopyNumber = new SVCallRecord("", "chr1", 1000, SVTestUtils.getValidTestStrandA(svtype),
-                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
-                1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                alleles, GenotypesContext.copy(genotypesWithCopyNumber), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
-        final Set<String> resultWithCopyNumber =  recordWithCopyNumber.getCarrierSampleSet();
-
+        final SVCallRecord recordCN = getCNVRecordWithCN(ploidy, alleles, svtype, copyNumbers, GATKSVVCFConstants.COPY_NUMBER_FORMAT);
+        final Set<String> resultWithCopyNumber =  recordCN.getCarrierSampleSet();
         Assert.assertEquals(resultWithCopyNumber, expectedResult);
+
+        final SVCallRecord recordRDCN = getCNVRecordWithCN(ploidy, alleles, svtype, copyNumbers, GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT);
+        final Set<String> resultWithRDCopyNumber =  recordRDCN.getCarrierSampleSet();
+        Assert.assertEquals(resultWithRDCopyNumber, expectedResult);
 
         // Create genotypes with GT (and no copy number attribute)
         final List<Genotype> genotypesWithGenotype = IntStream.range(0, copyNumbers.length)
@@ -802,11 +848,27 @@ public class SVClusterEngineTest {
                 .collect(Collectors.toList());
         final SVCallRecord recordWithGenotype = new SVCallRecord("", "chr1", 1000, SVTestUtils.getValidTestStrandA(svtype),
                 "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
-                1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                1000, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 alleles, GenotypesContext.copy(genotypesWithGenotype), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         final Set<String> resultWithGenotype = recordWithGenotype.getCarrierSampleSet();
 
         Assert.assertEquals(resultWithGenotype, expectedResult);
+    }
+
+    private SVCallRecord getCNVRecordWithCN(final int ploidy, List<Allele> alleles, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
+                                            final int[] copyNumbers, final String cnField) {
+        // Create genotypes with copy number attribute (and no GT)
+        final List<Genotype> genotypesWithCopyNumber = IntStream.range(0, copyNumbers.length)
+                .mapToObj(i -> new GenotypeBuilder(String.valueOf(i))
+                        .attribute(cnField, copyNumbers[i])
+                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy)
+                        .alleles(SVTestUtils.buildHomAlleleListWithPloidy(Allele.NO_CALL, ploidy))
+                        .make())
+                .collect(Collectors.toList());
+        return new SVCallRecord("", "chr1", 1000, SVTestUtils.getValidTestStrandA(svtype),
+                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
+                1000, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                alleles, GenotypesContext.copy(genotypesWithCopyNumber), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
     }
 
     @Test
@@ -819,8 +881,14 @@ public class SVClusterEngineTest {
             records.add(SVTestUtils.newPESRCallRecordWithIntervalAndType(Math.min(pos1, pos2), Math.max(pos1, pos2), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL));
         }
         final SVClusterEngine engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
-        records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).forEach(engine::add);
-        final List<SVCallRecord> output = engine.forceFlush();
+        final List<SVCallRecord> output = new ArrayList<>(
+            records.stream()
+                    .sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict))
+                    .map(engine::addAndFlush)
+                    .flatMap(List::stream)
+                    .collect(Collectors.toUnmodifiableList())
+        );
+        output.addAll(engine.flush());
         Assert.assertEquals(output.size(), 2926);
     }
 }
