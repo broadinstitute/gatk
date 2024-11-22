@@ -106,6 +106,8 @@ workflow Mutect2 {
         Boolean make_permutect_test_dataset = false
         File? permutect_training_dataset_truth_vcf
         File? permutect_training_dataset_truth_vcf_idx
+        File? permutect_test_dataset_truth_vcf
+        File? permutect_test_dataset_truth_vcf_idx
         Boolean skip_filtering = false
 
 
@@ -192,6 +194,8 @@ workflow Mutect2 {
                 make_permutect_test_dataset = make_permutect_test_dataset,
                 permutect_training_dataset_truth_vcf = permutect_training_dataset_truth_vcf,
                 permutect_training_dataset_truth_vcf_idx = permutect_training_dataset_truth_vcf_idx,
+                permutect_test_dataset_truth_vcf = permutect_test_dataset_truth_vcf,
+                permutect_test_dataset_truth_vcf_idx = permutect_test_dataset_truth_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
@@ -410,6 +414,8 @@ task M2 {
         Boolean make_permutect_test_dataset = false
         File? permutect_training_dataset_truth_vcf
         File? permutect_training_dataset_truth_vcf_idx
+        File? permutect_test_dataset_truth_vcf
+        File? permutect_test_dataset_truth_vcf_idx
 
         # runtime
         String gatk_docker
@@ -488,6 +494,7 @@ task M2 {
             ~{true='--permutect-training-dataset training-dataset.txt' false='' make_permutect_training_dataset} \
             ~{true='--permutect-test-dataset test-dataset.txt' false='' make_permutect_test_dataset} \
             ~{"--permutect-training-truth " + permutect_training_dataset_truth_vcf} \
+            ~{"--permutect-test-truth " + permutect_test_dataset_truth_vcf} \
             ~{m2_extra_args} \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 

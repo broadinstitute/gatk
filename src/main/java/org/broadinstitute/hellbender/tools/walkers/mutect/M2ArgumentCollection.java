@@ -82,6 +82,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PERMUTECT_TRAINING_DATASET_LONG_NAME = "permutect-training-dataset";
     public static final String PERMUTECT_TEST_DATASET_LONG_NAME = "permutect-test-dataset";
     public static final String PERMUTECT_TRAINING_TRUTH_LONG_NAME = "permutect-training-truth";
+    public static final String PERMUTECT_TEST_TRUTH_LONG_NAME = "permutect-test-truth";
     public static final String PERMUTECT_DATASET_MODE_LONG_NAME = "permutect-dataset-mode";
 
     public static final int DEFAULT_PERMUTECT_REF_DOWNSAMPLE = 10;
@@ -240,13 +241,17 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * VCF of known calls for a sample used for generating a Permutect training dataset.  Unfiltered variants (PASS or empty FILTER field)
      * contained in this VCF are considered good; other variants (i.e. filtered in this VCF or absent from it) are considered errors.
      * If this VCF is not given the dataset is generated with an weak-labelling strategy based on allele fractions.
-     *
-     * Although the normal use of this input is in generating training data, it can also be used when generating test data
-     * for making Permutect calls.  In this case, the test data is labeled with truth from the VCF, Permutect makes filtered calls as
-     * usual, and Permutect uses the labels to analyze the quality of its results.
      */
     @Argument(fullName= PERMUTECT_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Permutect training data", optional = true)
     public FeatureInput<VariantContext> permutectTrainingTruth;
+
+    /**
+     * Like the above, but used when generating test data for making Permutect calls.  In this case, the test data is
+     * labeled with truth from the VCF.  Permutect makes filtered calls as usual and uses the labels to analyze the quality of its results.
+     */
+    @Argument(fullName= PERMUTECT_TEST_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Permutect test data", optional = true)
+    public FeatureInput<VariantContext> permutectTestTruth;
+
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
