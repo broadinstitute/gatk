@@ -576,12 +576,8 @@ task CreateManifestAndOptionallyCopyOutputs {
 
       while IFS= read -r file; do
         # Check if the file exists before attempting to copy it
-        if [[ -f "$file" ]]; then
-          echo "Uploading $file to gs://$OUTPUT_GCS_DIR/"
-          gcloud storage cp vcf_manifest.txt ${OUTPUT_GCS_DIR}/
-        else
-          echo "File $file does not exist, skipping."
-        fi
+        echo "Uploading $file to gs://$OUTPUT_GCS_DIR/"
+        gcloud storage cp $file ${OUTPUT_GCS_DIR}/
       done < "vcf_manifest.txt"
     fi
   >>>
