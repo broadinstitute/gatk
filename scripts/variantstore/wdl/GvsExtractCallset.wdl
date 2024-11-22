@@ -584,7 +584,7 @@ task CreateManifestAndOptionallyCopyOutputs {
         fi
       done < "vcf_manifest.txt"
     fi
-
+  >>>
   output {
     File manifest_lines = "manifest_lines.txt"
     File manifest = "manifest.txt"
