@@ -573,9 +573,18 @@ task CreateManifestAndOptionallyCopyOutputs {
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       # Copy VCFs, indexes and the manifest to the output directory.
       echo manifest.txt >> vcf_manifest.txt
-      gcloud storage cp vcf_manifest.txt ${OUTPUT_GCS_DIR}/
+
+      while IFS= read -r file; do
+        # Check if the file exists before attempting to copy it
+        if [[ -f "$file" ]]; then
+          echo "Uploading $file to gs://$OUTPUT_GCS_DIR/"
+          gcloud storage cp vcf_manifest.txt ${OUTPUT_GCS_DIR}/
+        else
+          echo "File $file does not exist, skipping."
+        fi
+      done < "vcf_manifest.txt"
     fi
-  >>>
+
   output {
     File manifest_lines = "manifest_lines.txt"
     File manifest = "manifest.txt"
