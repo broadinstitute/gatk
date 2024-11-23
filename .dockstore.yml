@@ -173,6 +173,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1516_yolo
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -241,6 +242,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1516_yolo
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -314,7 +316,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1490_fix_curate_input_array_files
+             - vs_1516_yolo
          tags:
              - /.*/
    - name: GvsIngestTieout
