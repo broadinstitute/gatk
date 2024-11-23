@@ -280,8 +280,12 @@ public class ExtractCohortEngine {
 
             // get filter info (vqslod/sensitivity & yng values)
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
-
+                long recordsProcessed = 0;
+                long recordsDropped = 0;
                 for (final GenericRecord queryRow : reader) {
+                    if (++recordsProcessed % 10000 == 0) {
+                        logger.info("Processed " + recordsProcessed + " filter set info records, dropped " + recordsDropped + ".");
+                    }
                     final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
 
                     final long location = filterRow.getLocation();
@@ -289,6 +293,7 @@ public class ExtractCohortEngine {
                     final Allele alt = Allele.create(filterRow.getAltAllele(), false);
 
                     if (!vbs.containsVariant(location, location + Math.max(ref.length(), alt.length()))) {
+                        ++recordsDropped;
                         continue;
                     }
                     final Double score = filterRow.getScore();
@@ -312,8 +317,16 @@ public class ExtractCohortEngine {
         // load site-level filter data into data structure
         if (filterSetSiteTableRef != null) {
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetSiteTableRef, rowRestrictionWithFilterSetName, projectID)) {
+                long recordsProcessed = 0;
+                long recordsDropped = 0;
                 for (final GenericRecord queryRow : reader) {
+                    if (++recordsProcessed % 10000 == 0) {
+                        logger.info("Processed " + recordsProcessed + " filter set info records, dropped " + recordsDropped + ".");
+                    }
                     long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+                    if (!vbs.containsVariant(location, location + 1)) {
+                        continue;
+                    }
                     List<String> filters = Arrays.asList(queryRow.get(SchemaUtils.FILTERS).toString().split(","));
                     siteFilterMap.put(location, filters);
                 }
