@@ -6,7 +6,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -19,9 +18,9 @@ import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.TableReference;
-import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -85,6 +84,15 @@ public class ExtractCohortEngine {
     private final boolean presortedAvroFiles;
 
     private final Consumer<VariantContext> variantContextConsumer;
+
+    private static class VariantIterables {
+        public Iterable<GenericRecord> vets;
+        public Iterable<GenericRecord> refRanges;
+        public VariantIterables(Iterable<GenericRecord> vets, Iterable<GenericRecord> refRanges) {
+            this.vets = vets;
+            this.refRanges = refRanges;
+        }
+    }
 
     List<String> getFilterSetInfoTableFields() {
         return SchemaUtils.YNG_FIELDS;
@@ -234,6 +242,18 @@ public class ExtractCohortEngine {
     }
 
     public void traverse() {
+
+        SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
+        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
+        VariantIterables variantIterables;
+        if (fqRangesExtractVetTable != null) {
+            variantIterables = createVariantIterablesFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, vbs);
+        } else if (vetRangesFQDataSet != null) {
+            variantIterables = createVariantIterablesFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, vbs);
+        } else {
+            variantIterables = createVariantsIterablesFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, vbs, presortedAvroFiles);
+        }
+
         // First allele here is the ref, followed by the alts associated with that ref. We need this because at this
         // point the alleles haven't been joined and remapped to one reference allele.
         final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap = new HashMap<>();
@@ -265,11 +285,16 @@ public class ExtractCohortEngine {
                     final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
 
                     final long location = filterRow.getLocation();
+                    final Allele ref = Allele.create(filterRow.getRefAllele(), true);
+                    final Allele alt = Allele.create(filterRow.getAltAllele(), false);
+
+                    if (!vbs.containsVariant(location, location + Math.max(ref.length(), alt.length()))) {
+                        continue;
+                    }
                     final Double score = filterRow.getScore();
                     final Double vqsScore = filterRow.getVqScore();
                     final String yng = filterRow.getYng();
-                    final Allele ref = Allele.create(filterRow.getRefAllele(), true);
-                    final Allele alt = Allele.create(filterRow.getAltAllele(), false);
+
                     fullScoreMap.putIfAbsent(location, new HashMap<>());
                     fullScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
                     fullScoreMap.get(location).get(ref).put(alt, score);
@@ -320,17 +345,7 @@ public class ExtractCohortEngine {
             throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
         }
 
-        SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
-        if (fqRangesExtractVetTable != null) {
-            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable,
-                    sampleIdsToExtract, minLocation, maxLocation, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
-        } else if (vetRangesFQDataSet != null) {
-            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation,
-                    fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
-        } else {
-            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation,
-                    maxLocation,  fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
-        }
+        createVariantsFromSortedRanges(sampleIdsToExtract, variantIterables, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
 
         logger.debug("Finished Initializing Reader");
 
@@ -1049,24 +1064,15 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromUnsortedBigQueryRanges(
+    private VariantIterables createVariantIterablesFromUnsortedBigQueryRanges(
             final String fqDatasetName,
             final SortedSet<Long> sampleIdsToExtract,
-            final Long minLocation,
-            final Long maxLocation,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-            final Map<String, Integer> samplePloidyMap,
-            final Map<Long, List<String>> siteFilterMap,
-            final boolean noVQScoreFilteringRequested) {
+            VariantBitSet vbs) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
             throw new GATKException("Can not process cross-contig boundaries");
         }
-
-        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
 
         SortingCollection<GenericRecord> sortedVet = createSortedVetCollectionFromBigQuery(projectID,
                 fqDatasetName,
@@ -1085,31 +1091,23 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+        return new VariantIterables(sortedVet, sortedReferenceRange);
+
+        // createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     //
     // BEGIN REF RANGES COHORT EXTRACT
     //
-    private void createVariantsFromUnsortedExtractTableBigQueryRanges(
+    private VariantIterables createVariantIterablesFromUnsortedExtractTableBigQueryRanges(
             final String fqVetTable,
             final String fqRefTable,
-            final SortedSet<Long> sampleIdsToExtract,
-            final Long minLocation,
-            final Long maxLocation,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-            final Map<String, Integer> samplePloidyMap,
-            final Map<Long, List<String>> siteFilterMap,
-            final boolean noVQScoreFilteringRequested) {
+            VariantBitSet vbs) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
             throw new GATKException("Can not process cross-contig boundaries");
         }
-
-        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
 
         SortingCollection<GenericRecord> sortedVet = createSortedVetCollectionFromExtractTableBigQuery(projectID,
                 fqVetTable,
@@ -1126,7 +1124,8 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+        // createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+        return new VariantIterables(sortedVet, sortedReferenceRange);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
@@ -1185,18 +1184,10 @@ public class ExtractCohortEngine {
     //
     // END REF RANGES COHORT EXTRACT
     //
-    private void createVariantsFromUnsortedAvroRanges(
+    private VariantIterables createVariantsIterablesFromUnsortedAvroRanges(
             final GATKPath vetAvroFileName,
             final GATKPath refRangesAvroFileName,
-            final SortedSet<Long> sampleIdsToExtract,
-            final Long minLocation,
-            final Long maxLocation,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-            final Map<String, Integer> samplePloidyMap,
-            final Map<Long, List<String>> siteFilterMap,
-            final boolean noVQScoreFilteringRequested,
+            VariantBitSet vbs,
             final boolean presortedAvroFiles) {
 
         final AvroFileReader vetReader = new AvroFileReader(vetAvroFileName);
@@ -1209,8 +1200,6 @@ public class ExtractCohortEngine {
             sortedVet = vetReader;
             sortedReferenceRange = refRangesReader;
         } else {
-            VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
-
             SortingCollection<GenericRecord> localSortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
             addToVetSortingCollection(localSortedVet, vetReader, vbs);
 
@@ -1221,13 +1210,13 @@ public class ExtractCohortEngine {
             sortedReferenceRange = localSortedReferenceRange;
         }
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+        // createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
 
+        return new VariantIterables(sortedVet, sortedReferenceRange);
     }
 
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
-                                        final Iterable<GenericRecord> sortedVet,
-                                        Iterable<GenericRecord> sortedReferenceRange,
+                                        final VariantIterables variantIterables,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
@@ -1255,9 +1244,9 @@ public class ExtractCohortEngine {
             referenceCache.put(sampleId, new TreeSet<>());
         }
 
-        Iterator<GenericRecord> sortedReferenceRangeIterator = sortedReferenceRange.iterator();
+        Iterator<GenericRecord> sortedReferenceRangeIterator = variantIterables.refRanges.iterator();
 
-        for (final GenericRecord sortedRow : sortedVet) {
+        for (final GenericRecord sortedRow : variantIterables.vets) {
             final ExtractCohortRecord vetRow = new ExtractCohortRecord(sortedRow);
             long variantLocation = vetRow.getLocation();
             long variantSample = vetRow.getSampleId();
