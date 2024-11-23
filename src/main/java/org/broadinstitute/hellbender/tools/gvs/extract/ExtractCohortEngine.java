@@ -325,6 +325,7 @@ public class ExtractCohortEngine {
                     }
                     long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
                     if (!vbs.containsVariant(location, location + 1)) {
+                        ++recordsDropped;
                         continue;
                     }
                     List<String> filters = Arrays.asList(queryRow.get(SchemaUtils.FILTERS).toString().split(","));
