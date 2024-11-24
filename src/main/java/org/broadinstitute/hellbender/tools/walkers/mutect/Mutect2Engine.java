@@ -129,8 +129,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
     private PileupQualBuffer tumorPileupQualBuffer;
     private PileupQualBuffer normalPileupQualBuffer;
 
-    private RandomGenerator rng = new JDKRandomGenerator();
-
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
      * and a reference file
@@ -494,8 +492,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         } else if (MTAC.permutectTrainingDataset != null) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
         }
-        final boolean considerGermlineActive = MTAC.genotypeGermlineSites && rng.nextDouble() < MTAC.genotypeGermlineSitesFraction;
-        if (hasNormal() && !considerGermlineActive) {
+
+        if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
@@ -506,7 +504,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                     return new ActivityProfileState(refInterval, 0.0);
                 }
             }
-        } else if (!considerGermlineActive) {
+        } else if (!MTAC.genotypeGermlineSites) {
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
 
             for (final VariantContext germlineVC : germline) {

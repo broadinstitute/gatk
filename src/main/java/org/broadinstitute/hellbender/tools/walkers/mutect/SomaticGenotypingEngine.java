@@ -12,6 +12,7 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,6 +35,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -54,6 +56,8 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     // and very rapidly becomes flat.  We choose epsilon such that minAF^epsilon = 0.5.
     private final double refPseudocount = 1;
     private final double altPseudocount;
+
+    private RandomGenerator rng = new JDKRandomGenerator();
 
     public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples,
                                    final VariantAnnotatorEngine annotationEngine,
@@ -168,8 +172,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
 
+            final boolean considerGermlineActive = MTAC.genotypeGermlineSites && rng.nextDouble() < MTAC.genotypeGermlineSitesFraction;
+
             final List<Allele> allelesToGenotype = tumorAltAlleles.stream()
-                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
+                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || considerGermlineActive || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
                     .toList();
 
             // record somatic alleles for later use in the Event Count annotation
