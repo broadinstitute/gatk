@@ -283,7 +283,7 @@ public class ExtractCohortEngine {
                 long recordsProcessed = 0;
                 long recordsDropped = 0;
                 for (final GenericRecord queryRow : reader) {
-                    if (++recordsProcessed % 10000 == 0) {
+                    if (++recordsProcessed % 100000 == 0) {
                         logger.info("Processed " + recordsProcessed + " filter set info records, dropped " + recordsDropped + ".");
                     }
                     final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
@@ -321,7 +321,7 @@ public class ExtractCohortEngine {
                 long recordsDropped = 0;
                 for (final GenericRecord queryRow : reader) {
                     if (++recordsProcessed % 10000 == 0) {
-                        logger.info("Processed " + recordsProcessed + " filter set info records, dropped " + recordsDropped + ".");
+                        logger.info("Processed " + recordsProcessed + " filter set sites records, dropped " + recordsDropped + ".");
                     }
                     long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
                     if (!vbs.containsVariant(location, location + 1)) {
