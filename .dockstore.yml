@@ -315,6 +315,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1490_fix_curate_input_array_files
+             - gg_VS-1514_BackwardsCompatibility
          tags:
              - /.*/
    - name: GvsIngestTieout
