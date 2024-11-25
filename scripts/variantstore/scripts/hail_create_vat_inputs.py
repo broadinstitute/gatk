@@ -1,5 +1,6 @@
 import argparse
 import hail as hl
+import math
 from typing import Union
 from datetime import datetime
 
@@ -180,19 +181,15 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
     t.select(var_origin_id=hl.format('%s-%s-%s-%s', t.locus.contig, t.locus.position, t.alleles[0], t.alleles[1])).export(var_ids_path, parallel='separate_header')
 
 
-def main(vds, ancestry_file_location, sites_only_vcf_path, dry_run_n_parts=None):
+def main(vds, ancestry_file_location, sites_only_vcf_path):
+    n_samples = vds.n_samples()
+    n_rounds = math.ceil(n_samples / 10000)
+    # note: this was hardcoded as 5 for the Echo callset creation  n_rounds = 5
     n_parts = vds.variant_data.n_partitions()
-    if dry_run_n_parts:
-        n_rounds = 1
-        parts_per_round = dry_run_n_parts
-        ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_dryrun.ht')]
-        sites_only_vcf_path = sites_only_vcf_path.replace(r".vcf.bgz", f'_dryrun.vcf.bgz')
-    else:
-        n_rounds = 5
-        # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
-        # n_parts % n_rounds partitions.
-        parts_per_round = (n_parts + n_rounds - 1) // n_rounds
-        ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
+    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
+    # n_parts % n_rounds partitions.
+    parts_per_round = (n_parts + n_rounds - 1) // n_rounds
+    ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
     for i in range(n_rounds):
         part_range = range(i*parts_per_round, min((i+1)*parts_per_round, n_parts))
         vds_part = hl.vds.VariantDataset(
