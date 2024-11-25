@@ -516,15 +516,6 @@ task CreateManifestAndOptionallyCopyOutputs {
     String? output_gcs_dir
     String cloud_sdk_docker
   }
-  parameter_meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-    output_vcfs: {
-      localization_optional: true
-    }
-    output_vcf_indices: {
-      localization_optional: true
-    }
-  }
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
