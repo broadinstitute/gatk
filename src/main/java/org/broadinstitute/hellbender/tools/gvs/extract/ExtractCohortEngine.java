@@ -310,6 +310,7 @@ public class ExtractCohortEngine {
                     fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
                     fullYngMap.get(location).get(ref).put(alt, yng);
                 }
+                logger.info("Processed " + recordsProcessed + " filter set info records, dropped " + recordsDropped + ".");
                 processBytesScanned(reader);
             }
         }
@@ -1106,8 +1107,6 @@ public class ExtractCohortEngine {
                 vbs);
 
         return new VariantIterables(sortedVet, sortedReferenceRange);
-
-        // createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     //
@@ -1138,7 +1137,6 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        // createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
         return new VariantIterables(sortedVet, sortedReferenceRange);
     }
 
@@ -1223,8 +1221,6 @@ public class ExtractCohortEngine {
             sortedVet = localSortedVet;
             sortedReferenceRange = localSortedReferenceRange;
         }
-
-        // createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
 
         return new VariantIterables(sortedVet, sortedReferenceRange);
     }
