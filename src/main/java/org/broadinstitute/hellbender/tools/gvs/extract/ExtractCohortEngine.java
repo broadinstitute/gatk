@@ -1116,23 +1116,18 @@ public class ExtractCohortEngine {
             final String fqRefTable,
             VariantBitSet vbs) {
 
-        // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
             throw new GATKException("Can not process cross-contig boundaries");
         }
 
         SortingCollection<GenericRecord> sortedVet = createSortedVetCollectionFromExtractTableBigQuery(projectID,
                 fqVetTable,
-                minLocation,
-                maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
 
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromExtractTableBigQuery(projectID,
                 fqRefTable,
-                minLocation,
-                maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
 
@@ -1141,8 +1136,6 @@ public class ExtractCohortEngine {
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
                                                                                                final String fqVetTable,
-                                                                                               final Long minLocation,
-                                                                                               final Long maxLocation,
                                                                                                final int localSortMaxRecordsInRam,
                                                                                                final VariantBitSet vbs
     ) {
@@ -1172,18 +1165,21 @@ public class ExtractCohortEngine {
 
     private SortingCollection<GenericRecord> createSortedReferenceRangeCollectionFromExtractTableBigQuery(final String projectID,
                                                                                                           final String fqRefTable,
-                                                                                                          final Long minLocation,
-                                                                                                          final Long maxLocation,
                                                                                                           final int localSortMaxRecordsInRam,
                                                                                                           final VariantBitSet vbs
     ) {
 
         TableReference tableRef = new TableReference(fqRefTable, SchemaUtils.EXTRACT_REF_FIELDS);
 
-        // NOTE: MUST be written as location >= minLocation - MAX_REFERENCE_BLOCK_BASES +1 to not break cluster pruning in BigQuery
-        final String refRowRestriction =
-                "location >= " + (minLocation - IngestConstants.MAX_REFERENCE_BLOCK_BASES + 1) + " AND location <= " + maxLocation;
+        // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
+        // calculating the start of the current chromosome.  Math.max ensures that it'll work as a floor, stopping
+        // the subtraction from going too far back.
+        long adjustedStartingLocation = (minLocation - IngestConstants.MAX_DELETION_SIZE + 1);
+        long startOfChromosome = (minLocation / SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment;
+        adjustedStartingLocation = Math.max(startOfChromosome, adjustedStartingLocation);
 
+        final String refRowRestriction =
+                "location >= " + adjustedStartingLocation + " AND location <= " + maxLocation;
         try (StorageAPIAvroReader refReader = new StorageAPIAvroReader(tableRef, refRowRestriction, projectID)) {
             SortingCollection<GenericRecord> sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
             addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
