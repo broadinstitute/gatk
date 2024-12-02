@@ -129,21 +129,6 @@ public class CanonicalSVCollapser {
         return Long.compare(count1, count2);
     };
 
-    // Prioritize hets over non-hets
-    final Comparator<Genotype> genotypeHetComparator = (o1, o2) -> {
-        final long count1 = o1.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
-        final long count2 = o2.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
-        final boolean het1 = count1 == 1;
-        final boolean het2 = count2 == 1;
-        if (het1 && !het2) {
-            return 1;
-        } else if (het2 && !het1) {
-            return -1;
-        } else {
-            return 0;
-        }
-    };
-
     // Priotize fewer ALT alleles over more. When applied after non-ref comparator, hom-ref genotypes will not be encountered.
     final Comparator<Genotype> genotypeNonRefCountComparator = (o1, o2) -> {
         final long count1 = o1.getAlleles().stream().filter(Allele::isNonReference).filter(Allele::isCalled).count();
@@ -498,7 +483,6 @@ public class CanonicalSVCollapser {
                 .max(genotypeIsNonRefComparator
                         .thenComparing(genotypeCalledComparator)
                         .thenComparing(genotypeQualityComparator)
-                        .thenComparing(genotypeHetComparator)
                         .thenComparing(genotypeNonRefCountComparator)
                         .thenComparing(genotypeCopyNumberQualityComparator)
                         .thenComparing(genotypeCopyNumberComparator)
