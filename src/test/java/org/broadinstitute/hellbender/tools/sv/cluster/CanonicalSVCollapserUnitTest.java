@@ -646,23 +646,23 @@ public class CanonicalSVCollapserUnitTest {
                 },
                 // het preferred over hom ref even with lower gq
                 {
+                "sample",
+                Lists.newArrayList(
+                        Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                ),
+                Lists.newArrayList(
+                        createGenotypeTestAttributesWithGQ(2, 30),
+                        createGenotypeTestAttributesWithGQ(2, 20)
+                ),
+                Allele.REF_N,
+                GenotypeBuilder.create(
                         "sample",
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                        ),
-                        Lists.newArrayList(
-                                createGenotypeTestAttributesWithGQ(2, 30),
-                                createGenotypeTestAttributesWithGQ(2, 20)
-                        ),
-                        Allele.REF_N,
-                        GenotypeBuilder.create(
-                                "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                createGenotypeTestAttributesWithGQ(2, 20)
-                        )
-                },
-                // hom var preferred over het
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                        createGenotypeTestAttributesWithGQ(2, 20)
+                )
+        },
+                // het preferred over hom-var
                 {
                         "sample",
                         Lists.newArrayList(
@@ -676,11 +676,11 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(2)
                         )
                 },
-                // hom-var over het if GQ equal
+                // het over hom-var if GQ equal
                 {
                         "sample",
                         Lists.newArrayList(
@@ -694,11 +694,11 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(2)
                         )
                 },
-                // het over hom-var if GQ is higher
+                // hom-var over het if GQ is higher
                 {
                         "sample",
                         Lists.newArrayList(
@@ -706,17 +706,17 @@ public class CanonicalSVCollapserUnitTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
                         ),
                         Lists.newArrayList(
-                                createGenotypeTestAttributesWithGQ(2, 30),
-                                createGenotypeTestAttributesWithGQ(2, 40)
+                                createGenotypeTestAttributesWithGQ(2, 40),
+                                createGenotypeTestAttributesWithGQ(2, 30)
                         ),
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributesWithGQ(2, 40)
                         )
                 },
-                // hom var preferred over hom-ref too
+                // het preferred over hom-ref too
                 {
                         "sample",
                         Lists.newArrayList(
@@ -732,7 +732,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributesWithGQ(2, 30)
                         )
                 },
@@ -791,7 +791,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(3)
                         )
                 },
@@ -813,7 +813,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(3)
                         )
                 },
@@ -841,7 +841,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(3)
                         )
                 },
@@ -1083,25 +1083,7 @@ public class CanonicalSVCollapserUnitTest {
                                 createGenotypeTestAttributes(1, 1)
                         )
                 },
-                // Multi-allelic CNV, rare case with equal CNQ take CN!=ECN
-                {
-                        "sample",
-                        Lists.newArrayList(
-                                Collections.singletonList(Allele.NO_CALL),
-                                Collections.singletonList(Allele.NO_CALL)
-                        ),
-                        Lists.newArrayList(
-                                createGenotypeTestAttributesWithCNQ(1, 1, 30),
-                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
-                        ),
-                        Allele.REF_N,
-                        GenotypeBuilder.create(
-                                "sample",
-                                Lists.newArrayList(Allele.NO_CALL),
-                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
-                        )
-                },
-                // Multi-allelic CNV, haploid dup
+                // Multi-allelic CNV, with no CNQ use copy state closest to ref
                 {
                         "sample",
                         Lists.newArrayList(
@@ -1116,10 +1098,44 @@ public class CanonicalSVCollapserUnitTest {
                         GenotypeBuilder.create(
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL),
-                                createGenotypeTestAttributes(1, 2)
+                                createGenotypeTestAttributes(1, 1)
                         )
                 },
-                // Multi-allelic CNV, when CNQ equal use CN!=ECN
+                // Multi-allelic CNV, when CNQ equal use copy state closest to ref
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(1, 1, 30),
+                                createGenotypeTestAttributesWithCNQ(1, 2, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(1, 1, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 3, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30)
+                        )
+                },
                 {
                         "sample",
                         Lists.newArrayList(
@@ -1134,10 +1150,9 @@ public class CanonicalSVCollapserUnitTest {
                         GenotypeBuilder.create(
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
-                                createGenotypeTestAttributesWithCNQ(2, 1, 30)
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30)
                         )
                 },
-                // Multi-allelic CNV, when CNQ equal use CN!=ECN
                 {
                         "sample",
                         Lists.newArrayList(
@@ -1152,7 +1167,41 @@ public class CanonicalSVCollapserUnitTest {
                         GenotypeBuilder.create(
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30),
                                 createGenotypeTestAttributesWithCNQ(2, 0, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 5, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 6, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 5, 30)
                         )
                 },
                 // Multi-allelic CNV, conflicting del and dup genotypes determined by CNQ
@@ -1188,6 +1237,58 @@ public class CanonicalSVCollapserUnitTest {
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL),
                                 createGenotypeTestAttributesWithCNQ(1, 2, 50)
+                        )
+                },
+                // DEL prioritized over DUP tiebreaker when same distance from expected copy state
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(1, 2, 30),
+                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 0, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 4, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 0, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 3, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30)
                         )
                 },
         };

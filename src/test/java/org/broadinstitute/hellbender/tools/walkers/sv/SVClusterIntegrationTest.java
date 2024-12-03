@@ -460,11 +460,11 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final int nonRefGenotypeCount = (int) variant.getGenotypes().stream().filter(g -> SVCallRecordUtils.isAltGenotype(g)).count();
                 Assert.assertEquals(nonRefGenotypeCount, 71);
                 final int alleleCount = (int) variant.getGenotypes().stream().flatMap(g -> g.getAlleles().stream()).filter(SVCallRecordUtils::isAltAllele).count();
-                Assert.assertEquals(alleleCount, 94);
+                Assert.assertEquals(alleleCount, 87);
                 final Genotype g = variant.getGenotype("HG00129");
-                Assert.assertTrue(g.isHomVar());
+                Assert.assertTrue(g.isHet());
                 Assert.assertEquals(VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1), 2);
-                Assert.assertEquals(VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1), 0);
+                Assert.assertEquals(VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1), 1);
             }
         }
         Assert.assertEquals(expectedRecordsFound, 1);
