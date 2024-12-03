@@ -644,6 +644,24 @@ public class CanonicalSVCollapserUnitTest {
                                 createGenotypeTestAttributes(2)
                         )
                 },
+                // het preferred over hom ref even with lower gq
+                {
+                "sample",
+                Lists.newArrayList(
+                        Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                ),
+                Lists.newArrayList(
+                        createGenotypeTestAttributesWithGQ(2, 30),
+                        createGenotypeTestAttributesWithGQ(2, 20)
+                ),
+                Allele.REF_N,
+                GenotypeBuilder.create(
+                        "sample",
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                        createGenotypeTestAttributesWithGQ(2, 20)
+                )
+        },
                 // het preferred over hom-var
                 {
                         "sample",
