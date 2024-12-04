@@ -252,6 +252,9 @@ public class ExtractCohortEngine {
         String ploidyTableRestriction = null;
         final Map<String, Integer> samplePloidyMap = new HashMap<>();
 
+        // Note the IntelliJ warning here that this condition is always true. `minLocation` and `maxLocation` are
+        // Longs (not primitive longs), but the `decodeContig` invocations above do not null check and would have
+        // already NPEd if either of these values had been null.
         if (minLocation != null && maxLocation != null) {
             // This block of code already requires minLocation and maxLocation to be on the same chromosome, so we can rely on that here
             ploidyTableRestriction = "chromosome = " + ((minLocation/SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment);
@@ -282,6 +285,14 @@ public class ExtractCohortEngine {
         } else {
             variantIterables = createVariantIterablesFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, vbs, presortedAvroFiles);
         }
+
+        // Windowing: create a loop that starts here, after the ploidy lookup. Within this loop only process a
+        // fixed-size window's worth of data at a time, limiting the high-water mark of how much memory we consume.
+
+        // long windowSize = ...;
+        // for (int w = 0; w < ; w++) {
+        //     long effectiveMinLocation = minLocation + w * windowSize;
+        //     long effectiveMaxLocation = Math.min(effectiveMinLocation + windowSize, maxLocation);
 
         // First allele here is the ref, followed by the alts associated with that ref. We need this because at this
         // point the alleles haven't been joined and remapped to one reference allele.
