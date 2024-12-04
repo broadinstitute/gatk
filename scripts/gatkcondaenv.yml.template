@@ -37,6 +37,11 @@ dependencies:
 - conda-forge::tqdm=4.66.1
 - conda-forge::dill=0.3.7             # used for pickling lambdas in TrainVariantAnnotationsModel
 - conda-forge::biopython=1.84         # used by NVScoreVariants
+- conda-forge::tensorboard=2.8.0
+- conda-forge::setuptools>=57.0.0
+- conda-forge::psutil>=5.9.2
+# - conda-forge::protobuf<3.20,>=3.9.2  # Protobuf constraint for TensorFlow compatibility
+- conda-forge::intervaltree~=3.1.0
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=4.3.1
@@ -52,7 +57,9 @@ dependencies:
 # other python dependencies; these should be removed after functionality is moved into Java code
 - bioconda::pysam=0.22.0
 - conda-forge::pyvcf=0.6.8
+- bioconda::cyvcf2~=0.30.15
 
 # pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
 - pip:
-  - gatkPythonPackageArchive.zip
+    - mmap-ninja>=0.2.4
+    - gatkPythonPackageArchive.zip
