@@ -275,9 +275,21 @@ public class ExtractCohortEngine {
             }
         }
 
+
+        // WINDOWING
+        // Location-based windowing: create a loop that starts here, after the ploidy lookup. Within this loop only process a
+        // fixed-size window's worth of data at a time, limiting the high-water mark of how much memory we consume.
+        //
+        // long windowSize = ...;
+        // for (int w = 0; w < ; w++) {
+        //     long effectiveMinLocation = minLocation + w * windowSize;
+        //     long effectiveMaxLocation = Math.min(effectiveMinLocation + windowSize, maxLocation);
         SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
         VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
         VariantIterables variantIterables;
+        // WINDOWING
+        // These `createVariantIterables...` methods would need to be modified to accept `effectiveMinLocation` and
+        // `effectiveMaxLocation` rather than using the member data `minLocation` and `maxLocation`.
         if (fqRangesExtractVetTable != null) {
             variantIterables = createVariantIterablesFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, vbs);
         } else if (vetRangesFQDataSet != null) {
@@ -286,13 +298,6 @@ public class ExtractCohortEngine {
             variantIterables = createVariantIterablesFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, vbs, presortedAvroFiles);
         }
 
-        // Windowing: create a loop that starts here, after the ploidy lookup. Within this loop only process a
-        // fixed-size window's worth of data at a time, limiting the high-water mark of how much memory we consume.
-
-        // long windowSize = ...;
-        // for (int w = 0; w < ; w++) {
-        //     long effectiveMinLocation = minLocation + w * windowSize;
-        //     long effectiveMaxLocation = Math.min(effectiveMinLocation + windowSize, maxLocation);
 
         // First allele here is the ref, followed by the alts associated with that ref. We need this because at this
         // point the alleles haven't been joined and remapped to one reference allele.
@@ -372,6 +377,9 @@ public class ExtractCohortEngine {
             }
         }
 
+        // WINDOWING
+        // This function indirectly calls into VCF and PGEN writers. We'll need to make sure we can reenter this function
+        // with multiple windows' worth of data and still get correct results.
         createVariantsFromSortedRanges(sampleIdsToExtract, variantIterables, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
 
         logger.info("Processed " + totalRangeRecords + " range records and rejected " + totalIrrelevantRangeRecords + " irrelevant ones ");
