@@ -31,7 +31,7 @@ dependencies:
 - conda-forge::h5py=3.10.0
 - conda-forge::pytorch=2.1.0=*mkl*100
 - conda-forge::pytorch-lightning=2.4.0   # supports Pytorch >= 2.1 and <= 2.4, used by NVScoreVariants
-- conda-forge::pytorch-cuda=12.4
+- conda-forge::pytorch-cuda=11.8
 - conda-forge::scikit-learn=1.3.2
 - conda-forge::matplotlib=3.8.2
 - conda-forge::pandas=2.1.3
