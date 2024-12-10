@@ -24,7 +24,7 @@ dependencies:
 # core python dependencies
 - conda-forge::python=3.10.13         # do not update without good reason
 - conda-forge:pip=23.3.1
-- conda-forge:blas=1.0=mkl            # our official environment uses MKL versions of various packages; if other versions are desired, users should edit this YML accordingly
+- conda-forge:blas=1.            # our official environment uses MKL versions of various packages; if other versions are desired, users should edit this YML accordingly
 - conda-forge::numpy=1.26.2
 - conda-forge::pymc=5.10.1
 - conda-forge::pytensor=2.18.3
