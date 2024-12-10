@@ -18,5 +18,6 @@ public class MetricAccumulationLevelArgumentCollection implements Serializable {
             shortName = StandardArgumentDefinitions.METRIC_ACCUMULATION_LEVEL_SHORT_NAME,
             optional = true
     )
+    @SuppressWarnings("serial")
     public Set<MetricAccumulationLevel> accumulationLevels = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 }

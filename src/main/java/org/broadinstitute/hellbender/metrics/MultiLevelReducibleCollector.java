@@ -83,6 +83,7 @@ public abstract class MultiLevelReducibleCollector<
      * accumulation levels these will be listed in the order in which their children would be added to a
      * metric file
      */
+    @SuppressWarnings("serial")
     private List<Distributor<METRIC_TYPE, HISTOGRAM_KEY, ARGTYPE, UNIT_COLLECTOR>> outputOrderedDistributors;
 
     // Keep track of the all reads distributor and collector key since their
@@ -187,6 +188,7 @@ public abstract class MultiLevelReducibleCollector<
         /**
          * A Map mapping the key for a specific record (as determined by getKey) to the appropriate collector
          */
+        @SuppressWarnings("serial")
         protected Map<String, UNIT_COLLECTOR> collectors;
 
         public Distributor(

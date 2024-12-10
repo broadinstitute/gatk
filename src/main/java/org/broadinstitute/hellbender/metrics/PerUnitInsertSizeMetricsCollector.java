@@ -20,6 +20,7 @@ public final class PerUnitInsertSizeMetricsCollector
 
     // kryo can't serialize an EnumMap so use a LinkedHashMap (also so we can maintain order
     // the insertion order of entries since the combining code below counts on it
+    @SuppressWarnings("serial")
     private final Map<SamPairUtil.PairOrientation, Histogram<Integer>> histograms = new LinkedHashMap<>();
 
     private final String sample;

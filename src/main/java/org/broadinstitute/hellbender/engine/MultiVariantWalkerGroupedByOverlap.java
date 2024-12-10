@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
  *
  * Client tools must implement apply(List<VariantContext> variantContexts, ReferenceContext referenceContext)
  */
+@SuppressWarnings("this-escape")
 public abstract class MultiVariantWalkerGroupedByOverlap extends MultiVariantWalker {
     private List<VariantContext> currentVariants = new ArrayList<>();
     private String lastCurrentVariantContig;
@@ -70,6 +71,7 @@ public abstract class MultiVariantWalkerGroupedByOverlap extends MultiVariantWal
     protected boolean ignoreReferenceBlocks = false;
 
     // override to group variants that start nearby but not at the same locus
+    //Note: This is called during construction and should not depend on subclass state
     protected int defaultDistanceToGroupVariants() {
         return 10000;
     }

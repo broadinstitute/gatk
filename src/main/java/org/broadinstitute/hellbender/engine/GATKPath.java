@@ -10,28 +10,24 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * GATK tool command line arguments that are input or output resources. These can
  * have an optional name supplied on the command line, as well as one or more optional tag/value pairs.
  */
 public class GATKPath extends HtsPath implements TaggedArgument, Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     public static final String HDFS_SCHEME = "hdfs";
 
     private String tagName;
-    private Map<String, String> tagAttributes;
+    private SequencedMap<String, String> tagAttributes;
 
     /**
      * The raw value for this specifier as provided by the user. Can be a local file or valid URI.
@@ -151,11 +147,11 @@ public class GATKPath extends HtsPath implements TaggedArgument, Serializable {
 
     @Override
     public final void setTagAttributes(final Map<String, String> attributes) {
-            this.tagAttributes = attributes;
+            this.tagAttributes = new LinkedHashMap<>(attributes);
     }
 
     @Override
-    public Map<String, String> getTagAttributes() {
+    public SequencedMap<String, String> getTagAttributes() {
         return tagAttributes;
     }
 
