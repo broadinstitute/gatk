@@ -17,7 +17,7 @@ channels:
 # if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
 # verify that key dependencies are installed from the correct channel
 - conda-forge
-- nvidia
+- pytorch
 
 dependencies:
 
@@ -30,9 +30,9 @@ dependencies:
 - conda-forge::pytensor=2.18.3
 - conda-forge::scipy=1.11.4
 - conda-forge::h5py=3.10.0
-- conda-forge::pytorch=2.1.0
+- pytorch::pytorch=2.1.0
 - conda-forge::pytorch-lightning=2.4.0   # supports Pytorch >= 2.1 and <= 2.4, used by NVScoreVariants
-- nvidia::pytorch-cuda=12.1
+- pytorch::pytorch-cuda=12.1
 - conda-forge::scikit-learn=1.3.2
 - conda-forge::matplotlib=3.8.2
 - conda-forge::pandas=2.1.3
