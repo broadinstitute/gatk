@@ -6,7 +6,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -19,9 +18,9 @@ import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.TableReference;
-import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -85,6 +84,15 @@ public class ExtractCohortEngine {
     private final boolean presortedAvroFiles;
 
     private final Consumer<VariantContext> variantContextConsumer;
+
+    private static class VariantIterables {
+        public Iterable<GenericRecord> vets;
+        public Iterable<GenericRecord> refRanges;
+        public VariantIterables(Iterable<GenericRecord> vets, Iterable<GenericRecord> refRanges) {
+            this.vets = vets;
+            this.refRanges = refRanges;
+        }
+    }
 
     List<String> getFilterSetInfoTableFields() {
         return SchemaUtils.YNG_FIELDS;
@@ -234,66 +242,22 @@ public class ExtractCohortEngine {
     }
 
     public void traverse() {
-        // First allele here is the ref, followed by the alts associated with that ref. We need this because at this
-        // point the alleles haven't been joined and remapped to one reference allele.
-        final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap = new HashMap<>();
-        final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap = new HashMap<>();
-        final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap = new HashMap<>();
-        final Map<Long, List<String>> siteFilterMap = new HashMap<>();
+
+        logger.info("minLocation: " + minLocation + ", maxLocation: " + maxLocation);
+
+        if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
+            throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
+        }
+
+        String ploidyTableRestriction = null;
         final Map<String, Integer> samplePloidyMap = new HashMap<>();
 
-        String rowRestriction = null;
-        String ploidyTableRestriction = null;
+        // Note the IntelliJ warning here that this condition is always true. `minLocation` and `maxLocation` are
+        // Longs (not primitive longs), but the `decodeContig` invocations above do not null check and would have
+        // already NPEd if either of these values had been null.
         if (minLocation != null && maxLocation != null) {
-            rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
             // This block of code already requires minLocation and maxLocation to be on the same chromosome, so we can rely on that here
             ploidyTableRestriction = "chromosome = " + ((minLocation/SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment);
-        }
-        final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
-
-        boolean noVQScoreFilteringRequested = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE);
-        if (!noVQScoreFilteringRequested) {
-            // ensure vqScore filters (vqsLod or Sensitivity) are defined. this really shouldn't ever happen, said the engineer.
-            if (vqScoreSNPThreshold == null || vqScoreINDELThreshold == null) {
-                throw new UserException(getVQScoreFieldName() + " filtering thresholds for SNPs and INDELs must be defined.");
-            }
-
-            // get filter info (vqslod/sensitivity & yng values)
-            try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
-
-                for (final GenericRecord queryRow : reader) {
-                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
-
-                    final long location = filterRow.getLocation();
-                    final Double score = filterRow.getScore();
-                    final Double vqsScore = filterRow.getVqScore();
-                    final String yng = filterRow.getYng();
-                    final Allele ref = Allele.create(filterRow.getRefAllele(), true);
-                    final Allele alt = Allele.create(filterRow.getAltAllele(), false);
-                    fullScoreMap.putIfAbsent(location, new HashMap<>());
-                    fullScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
-                    fullScoreMap.get(location).get(ref).put(alt, score);
-                    fullVQScoreMap.putIfAbsent(location, new HashMap<>());
-                    fullVQScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
-                    fullVQScoreMap.get(location).get(ref).put(alt, vqsScore);
-                    fullYngMap.putIfAbsent(location, new HashMap<>());
-                    fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
-                    fullYngMap.get(location).get(ref).put(alt, yng);
-                }
-                processBytesScanned(reader);
-            }
-        }
-
-        // load site-level filter data into data structure
-        if (filterSetSiteTableRef != null) {
-            try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetSiteTableRef, rowRestrictionWithFilterSetName, projectID)) {
-                for (final GenericRecord queryRow : reader) {
-                    long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-                    List<String> filters = Arrays.asList(queryRow.get(SchemaUtils.FILTERS).toString().split(","));
-                    siteFilterMap.put(location, filters);
-                }
-                processBytesScanned(reader);
-            }
         }
 
         if (samplePloidyTableRef != null) {
@@ -307,32 +271,116 @@ public class ExtractCohortEngine {
                     samplePloidyMap.put(makePloidyLookupKey(chromosome, sampleId), ploidy);
                 }
                 processBytesScanned(reader);
-                logger.info("Finished reading ploidy table into memory. "+samplePloidyMap.size()+" entries read.");
+                logger.info("Finished reading ploidy table into memory. " + samplePloidyMap.size() + " entries read.");
             }
         }
 
-        if (printDebugInformation) {
-            logger.debug("using storage api with local sort");
-        }
-        logger.debug("Initializing Reader");
 
-        if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
-            throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
-        }
-
+        // WINDOWING
+        // Location-based windowing: create a loop that starts here, after the ploidy lookup. Within this loop only process a
+        // fixed-size window's worth of data at a time, limiting the high-water mark of how much memory we consume.
+        //
+        // long windowSize = ...;
+        // for (int w = 0; w < ; w++) {
+        //     long effectiveMinLocation = minLocation + w * windowSize;
+        //     long effectiveMaxLocation = Math.min(effectiveMinLocation + windowSize, maxLocation);
         SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
+        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
+        VariantIterables variantIterables;
+        // WINDOWING
+        // These `createVariantIterables...` methods would need to be modified to accept `effectiveMinLocation` and
+        // `effectiveMaxLocation` rather than using the member data `minLocation` and `maxLocation`.
         if (fqRangesExtractVetTable != null) {
-            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable,
-                    sampleIdsToExtract, minLocation, maxLocation, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+            variantIterables = createVariantIterablesFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, vbs);
         } else if (vetRangesFQDataSet != null) {
-            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation,
-                    fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+            variantIterables = createVariantIterablesFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, vbs);
         } else {
-            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation,
-                    maxLocation,  fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
+            variantIterables = createVariantIterablesFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, vbs, presortedAvroFiles);
         }
 
-        logger.debug("Finished Initializing Reader");
+
+        // First allele here is the ref, followed by the alts associated with that ref. We need this because at this
+        // point the alleles haven't been joined and remapped to one reference allele.
+        final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap = new HashMap<>();
+        final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap = new HashMap<>();
+        final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap = new HashMap<>();
+        final Map<Long, List<String>> siteFilterMap = new HashMap<>();
+
+        String rowRestriction = null;
+        if (minLocation != null && maxLocation != null) {
+            rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
+        }
+        final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
+
+        boolean noVQScoreFilteringRequested = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE);
+        if (!noVQScoreFilteringRequested) {
+            // ensure vqScore filters (vqsLod or Sensitivity) are defined. this really shouldn't ever happen, said the engineer.
+            if (vqScoreSNPThreshold == null || vqScoreINDELThreshold == null) {
+                throw new UserException(getVQScoreFieldName() + " filtering thresholds for SNPs and INDELs must be defined.");
+            }
+
+            // get filter info (vqslod/sensitivity & yng values)
+            try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
+                long filterRecordsProcessed = 0;
+                long filterRecordsDropped = 0;
+                for (final GenericRecord queryRow : reader) {
+                    if (++filterRecordsProcessed % 100000 == 0) {
+                        logger.info("Processed " + filterRecordsProcessed + " filter set info records, dropped " + filterRecordsDropped + ".");
+                    }
+                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
+
+                    final long location = filterRow.getLocation();
+                    final Allele ref = Allele.create(filterRow.getRefAllele(), true);
+                    final Allele alt = Allele.create(filterRow.getAltAllele(), false);
+
+                    if (!vbs.containsVariant(location, location + Math.max(ref.length(), alt.length()))) {
+                        ++filterRecordsDropped;
+                        continue;
+                    }
+                    final Double score = filterRow.getScore();
+                    final Double vqsScore = filterRow.getVqScore();
+                    final String yng = filterRow.getYng();
+
+                    fullScoreMap.putIfAbsent(location, new HashMap<>());
+                    fullScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
+                    fullScoreMap.get(location).get(ref).put(alt, score);
+                    fullVQScoreMap.putIfAbsent(location, new HashMap<>());
+                    fullVQScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
+                    fullVQScoreMap.get(location).get(ref).put(alt, vqsScore);
+                    fullYngMap.putIfAbsent(location, new HashMap<>());
+                    fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
+                    fullYngMap.get(location).get(ref).put(alt, yng);
+                }
+                logger.info("Processed " + filterRecordsProcessed + " filter set info records, dropped " + filterRecordsDropped + ".");
+                processBytesScanned(reader);
+            }
+        }
+
+        // load site-level filter data into data structure
+        if (filterSetSiteTableRef != null) {
+            try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetSiteTableRef, rowRestrictionWithFilterSetName, projectID)) {
+                long filterRecordsProcessed = 0;
+                long filterRecordsDropped = 0;
+                for (final GenericRecord queryRow : reader) {
+                    if (++filterRecordsProcessed % 10000 == 0) {
+                        logger.info("Processed " + filterRecordsProcessed + " filter set sites records, dropped " + filterRecordsDropped + ".");
+                    }
+                    long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+                    if (!vbs.containsVariant(location, location + 1)) {
+                        ++filterRecordsDropped;
+                        continue;
+                    }
+                    List<String> filters = Arrays.asList(queryRow.get(SchemaUtils.FILTERS).toString().split(","));
+                    siteFilterMap.put(location, filters);
+                }
+                processBytesScanned(reader);
+            }
+        }
+
+        // WINDOWING
+        // This function indirectly calls into VCF and PGEN writers. We'll need to make sure we can reenter this function
+        // with multiple windows' worth of data and still get correct results.
+        createVariantsFromSortedRanges(sampleIdsToExtract, variantIterables, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
 
         logger.info("Processed " + totalRangeRecords + " range records and rejected " + totalIrrelevantRangeRecords + " irrelevant ones ");
     }
@@ -1049,24 +1097,15 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromUnsortedBigQueryRanges(
+    private VariantIterables createVariantIterablesFromUnsortedBigQueryRanges(
             final String fqDatasetName,
             final SortedSet<Long> sampleIdsToExtract,
-            final Long minLocation,
-            final Long maxLocation,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-            final Map<String, Integer> samplePloidyMap,
-            final Map<Long, List<String>> siteFilterMap,
-            final boolean noVQScoreFilteringRequested) {
+            VariantBitSet vbs) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
             throw new GATKException("Can not process cross-contig boundaries");
         }
-
-        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
 
         SortingCollection<GenericRecord> sortedVet = createSortedVetCollectionFromBigQuery(projectID,
                 fqDatasetName,
@@ -1085,54 +1124,37 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+        return new VariantIterables(sortedVet, sortedReferenceRange);
     }
 
     //
     // BEGIN REF RANGES COHORT EXTRACT
     //
-    private void createVariantsFromUnsortedExtractTableBigQueryRanges(
+    private VariantIterables createVariantIterablesFromUnsortedExtractTableBigQueryRanges(
             final String fqVetTable,
             final String fqRefTable,
-            final SortedSet<Long> sampleIdsToExtract,
-            final Long minLocation,
-            final Long maxLocation,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-            final Map<String, Integer> samplePloidyMap,
-            final Map<Long, List<String>> siteFilterMap,
-            final boolean noVQScoreFilteringRequested) {
+            VariantBitSet vbs) {
 
-        // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
             throw new GATKException("Can not process cross-contig boundaries");
         }
 
-        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
-
         SortingCollection<GenericRecord> sortedVet = createSortedVetCollectionFromExtractTableBigQuery(projectID,
                 fqVetTable,
-                minLocation,
-                maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
 
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromExtractTableBigQuery(projectID,
                 fqRefTable,
-                minLocation,
-                maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
+        return new VariantIterables(sortedVet, sortedReferenceRange);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
                                                                                                final String fqVetTable,
-                                                                                               final Long minLocation,
-                                                                                               final Long maxLocation,
                                                                                                final int localSortMaxRecordsInRam,
                                                                                                final VariantBitSet vbs
     ) {
@@ -1162,18 +1184,21 @@ public class ExtractCohortEngine {
 
     private SortingCollection<GenericRecord> createSortedReferenceRangeCollectionFromExtractTableBigQuery(final String projectID,
                                                                                                           final String fqRefTable,
-                                                                                                          final Long minLocation,
-                                                                                                          final Long maxLocation,
                                                                                                           final int localSortMaxRecordsInRam,
                                                                                                           final VariantBitSet vbs
     ) {
 
         TableReference tableRef = new TableReference(fqRefTable, SchemaUtils.EXTRACT_REF_FIELDS);
 
-        // NOTE: MUST be written as location >= minLocation - MAX_REFERENCE_BLOCK_BASES +1 to not break cluster pruning in BigQuery
-        final String refRowRestriction =
-                "location >= " + (minLocation - IngestConstants.MAX_REFERENCE_BLOCK_BASES + 1) + " AND location <= " + maxLocation;
+        // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
+        // calculating the start of the current chromosome.  Math.max ensures that it'll work as a floor, stopping
+        // the subtraction from going too far back.
+        long adjustedStartingLocation = (minLocation - IngestConstants.MAX_DELETION_SIZE + 1);
+        long startOfChromosome = (minLocation / SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment;
+        adjustedStartingLocation = Math.max(startOfChromosome, adjustedStartingLocation);
 
+        final String refRowRestriction =
+                "location >= " + adjustedStartingLocation + " AND location <= " + maxLocation;
         try (StorageAPIAvroReader refReader = new StorageAPIAvroReader(tableRef, refRowRestriction, projectID)) {
             SortingCollection<GenericRecord> sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
             addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
@@ -1185,18 +1210,10 @@ public class ExtractCohortEngine {
     //
     // END REF RANGES COHORT EXTRACT
     //
-    private void createVariantsFromUnsortedAvroRanges(
+    private VariantIterables createVariantIterablesFromUnsortedAvroRanges(
             final GATKPath vetAvroFileName,
             final GATKPath refRangesAvroFileName,
-            final SortedSet<Long> sampleIdsToExtract,
-            final Long minLocation,
-            final Long maxLocation,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-            final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-            final Map<String, Integer> samplePloidyMap,
-            final Map<Long, List<String>> siteFilterMap,
-            final boolean noVQScoreFilteringRequested,
+            VariantBitSet vbs,
             final boolean presortedAvroFiles) {
 
         final AvroFileReader vetReader = new AvroFileReader(vetAvroFileName);
@@ -1209,8 +1226,6 @@ public class ExtractCohortEngine {
             sortedVet = vetReader;
             sortedReferenceRange = refRangesReader;
         } else {
-            VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
-
             SortingCollection<GenericRecord> localSortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
             addToVetSortingCollection(localSortedVet, vetReader, vbs);
 
@@ -1221,13 +1236,11 @@ public class ExtractCohortEngine {
             sortedReferenceRange = localSortedReferenceRange;
         }
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, samplePloidyMap, siteFilterMap, noVQScoreFilteringRequested);
-
+        return new VariantIterables(sortedVet, sortedReferenceRange);
     }
 
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
-                                        final Iterable<GenericRecord> sortedVet,
-                                        Iterable<GenericRecord> sortedReferenceRange,
+                                        final VariantIterables variantIterables,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
@@ -1255,9 +1268,9 @@ public class ExtractCohortEngine {
             referenceCache.put(sampleId, new TreeSet<>());
         }
 
-        Iterator<GenericRecord> sortedReferenceRangeIterator = sortedReferenceRange.iterator();
+        Iterator<GenericRecord> sortedReferenceRangeIterator = variantIterables.refRanges.iterator();
 
-        for (final GenericRecord sortedRow : sortedVet) {
+        for (final GenericRecord sortedRow : variantIterables.vets) {
             final ExtractCohortRecord vetRow = new ExtractCohortRecord(sortedRow);
             long variantLocation = vetRow.getLocation();
             long variantSample = vetRow.getSampleId();
