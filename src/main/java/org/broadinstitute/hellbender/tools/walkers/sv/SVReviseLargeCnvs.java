@@ -21,8 +21,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 
@@ -67,21 +65,14 @@ import java.util.HashMap;
  * </ol>
  */
 @CommandLineProgramProperties(
-        summary = "SClean and format SV VCF",
+        summary = "Clean and format SV VCF",
         oneLineSummary = "Clean and format SV VCF",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
 @DocumentedFeature
-public class SVCleanPt4 extends VariantWalker {
-    public static final String REVISED_CN_LIST_LONG_NAME = "revised-cn-list";
+public class SVReviseLargeCnvs extends VariantWalker {
     public static final String OUTLIERS_LIST_LONG_NAME = "outliers-list";
-
-    @Argument(
-            fullName = REVISED_CN_LIST_LONG_NAME,
-            doc = "File with variant IDs, sample IDs, and RD_CN values"
-    )
-    private GATKPath cnReviseList;
 
     @Argument(
             fullName = OUTLIERS_LIST_LONG_NAME,
@@ -99,12 +90,8 @@ public class SVCleanPt4 extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    private Map<String, Map<String, Integer>> revisedCopyNumbers;
     private Set<String> outlierSamples;
 
-    private double recordStart;
-    private double recordEnd;
-    private long recordIdx;
     private double maxVF;
 
     private static final int MIN_LARGE_EVENT_SIZE = 1000;
@@ -114,7 +101,6 @@ public class SVCleanPt4 extends VariantWalker {
     public void onTraversalStart() {
         // Read and parse input files
         try {
-            revisedCopyNumbers = readRevisedEvents(cnReviseList);
             outlierSamples = new HashSet<>();
             if (outliersListPath != null) {
                 outlierSamples = new HashSet<>(Files.readAllLines(outliersListPath.toPath()));
@@ -123,24 +109,8 @@ public class SVCleanPt4 extends VariantWalker {
             throw new RuntimeException("Error reading input file", e);
         }
 
-        // Parse batch-level metadata
-        String cnReviseListFileName = cnReviseList.toPath().getFileName().toString();
-        String[] regenoFileNameTokens = cnReviseListFileName.split("\\.");
-        String[] batchTokens = regenoFileNameTokens[1].split("_");
-        int batchNum = Math.max(Integer.parseInt(batchTokens[0]), 1);
-        int totalBatch = Math.max(Integer.parseInt(batchTokens[1]), 1);
-        long totalNumVariants = 0;
-        String inputVcfPath = getDrivingVariantsFeatureInput().getFeaturePath();
-        try (FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(inputVcfPath)) {
-            for (VariantContext ignored : dataSource) {
-                totalNumVariants++;
-            }
-        }
-        double segments = totalNumVariants / (double) totalBatch;
-        recordStart = (batchNum - 1) * segments;
-        recordEnd = batchNum * segments;
+        // Populate maxVf based on sample information
         maxVF = Math.max((getHeaderForVariants().getGenotypeSamples().size() - outlierSamples.size()) * 0.01, 2);
-        recordIdx = 0;
 
         // Filter specific header lines
         final VCFHeader header = getHeaderForVariants();
@@ -163,50 +133,20 @@ public class SVCleanPt4 extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        // Exit if outside batch range
-        if (recordIdx < recordStart || recordIdx >= recordEnd) {
-            recordIdx++;
-            return;
-        }
-        recordIdx++;
-
         // Initialize data structures
         VariantContextBuilder builder = new VariantContextBuilder(variant);
         List<Genotype> genotypes = variant.getGenotypes();
 
         // Process variants
-        genotypes = processRevisedCn(variant, genotypes);
         processMultiallelic(builder, genotypes);
         genotypes = processLargeDeletions(variant, builder, genotypes);
         genotypes = processLargeDuplications(variant, builder, genotypes);
-        genotypes = processRevisedSex(variant, genotypes);
 
         // Build genotypes
         if (isCalled(builder, genotypes)) {
             builder.genotypes(genotypes);
             vcfWriter.add(builder.make());
         }
-    }
-
-    private List<Genotype> processRevisedCn(final VariantContext variant, final List<Genotype> genotypes) {
-        final String variantID = variant.getID();
-        if (!revisedCopyNumbers.containsKey(variantID)) {
-            return genotypes;
-        }
-
-        List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
-        for (Genotype genotype : genotypes) {
-            String sampleName = genotype.getSampleName();
-            if (revisedCopyNumbers.get(variantID).containsKey(sampleName)) {
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                gb.attribute(GATKSVVCFConstants.RD_CN, revisedCopyNumbers.get(variantID).get(sampleName));
-                updatedGenotypes.add(gb.make());
-            } else {
-                updatedGenotypes.add(genotype);
-            }
-        }
-        return updatedGenotypes;
     }
 
     private void processMultiallelic(final VariantContextBuilder builder, final List<Genotype> genotypes) {
@@ -378,28 +318,6 @@ public class SVCleanPt4 extends VariantWalker {
         return genotypes;
     }
 
-    private List<Genotype> processRevisedSex(final VariantContext variant, List<Genotype> genotypes) {
-        if (!variant.getAttributeAsBoolean(GATKSVVCFConstants.REVISED_EVENT, false)) {
-            return genotypes;
-        }
-
-        List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
-        for (Genotype genotype : genotypes) {
-            if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) > 0) {
-                int newRdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()) - 1;
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                gb.attribute(GATKSVVCFConstants.RD_CN, newRdCn);
-                if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-                    gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, newRdCn);
-                }
-                updatedGenotypes.add(gb.make());
-            } else {
-                updatedGenotypes.add(genotype);
-            }
-        }
-        return updatedGenotypes;
-    }
-
     public boolean isCalled(final VariantContextBuilder builder, final List<Genotype> genotypes) {
         for (Genotype genotype : genotypes) {
             if (!isNoCallGt(genotype.getAlleles())) {
@@ -424,25 +342,5 @@ public class SVCleanPt4 extends VariantWalker {
         else if (alleles.size() == 2 && alleles.get(0).isReference() && alleles.get(1).isReference()) return true;
         else if (alleles.size() == 1 && alleles.get(0).isNoCall()) return true;
         return false;
-    }
-
-    private Map<String, Map<String, Integer>> readRevisedEvents(final GATKPath filePath) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toPath().toFile()))) {
-            final Map<String, Map<String, Integer>> result = new HashMap<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] fields = line.split("\t");
-                if (fields.length < 3) continue;
-
-                String variantId = fields[0];
-                String sampleId = fields[1];
-                int rdCn = Integer.parseInt(fields[2]);
-
-                result.computeIfAbsent(variantId, k -> new HashMap<>()).put(sampleId, rdCn);
-            }
-            return result;
-        } catch (IOException e) {
-            throw new RuntimeException("Error reading input file", e);
-        }
     }
 }
