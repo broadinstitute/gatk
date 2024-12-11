@@ -516,6 +516,15 @@ task CreateManifestAndOptionallyCopyOutputs {
     String? output_gcs_dir
     String cloud_sdk_docker
   }
+  parameter_meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    output_vcfs: {
+      localization_optional: true
+    }
+    output_vcf_indices: {
+      localization_optional: true
+    }
+  }
 
   Int disk_size_gb = ceil(2*size(output_vcfs, "GiB") + 2*size(output_vcf_indices, "GiB")) + 200
 
