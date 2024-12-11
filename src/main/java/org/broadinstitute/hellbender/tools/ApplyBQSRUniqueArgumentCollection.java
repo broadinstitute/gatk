@@ -17,6 +17,9 @@ import java.util.List;
 public class ApplyBQSRUniqueArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final String STATIC_QUANTIZED_QUALS_LONG_NAME = "static-quantized-quals";
+
+
     /**
      * Turns on the base quantization module. It requires a recalibration report.
      *
@@ -31,9 +34,11 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
     /**
      * Static quantized quals are entirely separate from the quantize_qual option which uses dynamic binning.
      * The two types of binning should not be used together.
+     *
+     * For example, the Warp germline pipeline uses the static bins { 10, 20, 30, 40 }
      */
     @Advanced
-    @Argument(fullName="static-quantized-quals", doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true, mutex = "quantize-quals")
+    @Argument(fullName=STATIC_QUANTIZED_QUALS_LONG_NAME, doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true, mutex = "quantize-quals")
     public List<Integer> staticQuantizationQuals = new ArrayList<>();
 
     /**

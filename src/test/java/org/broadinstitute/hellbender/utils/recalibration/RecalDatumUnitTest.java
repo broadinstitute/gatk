@@ -74,7 +74,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
         Assert.assertEquals(datum.getNumMismatches(), cfg.exError, 1E-6);
         Assert.assertEquals(datum.getNumObservations(), cfg.exTotal, 1E-6);
         if ( cfg.getReportedQual() != -1 )
-            Assert.assertEquals(datum.getEstimatedQReportedAsByte(), cfg.getReportedQual());
+            Assert.assertEquals(datum.getReportedQualityAsByte(), cfg.getReportedQual());
         assertEqualsDoubleSmart(datum.getEmpiricalErrorRate(), cfg.getErrorRate());
 
         final double e = datum.getEmpiricalQuality();
@@ -97,12 +97,12 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
     @Test(dataProvider = "RecalDatumTestProvider")
     public void testRecalDatumModification(RecalDatumTestProvider cfg) {
         RecalDatum datum = cfg.makeRecalDatum();
-        datum.setEmpiricalQuality(10.1);
-        Assert.assertEquals(datum.getEmpiricalQuality(), 10.1);
+        datum.setEmpiricalQuality(10); // tsato: 10.1 -> 10. Downstream data might be affected.
+        Assert.assertEquals(datum.getEmpiricalQuality(), 10);
 
-        datum.setEstimatedQReported(10.1);
-        Assert.assertEquals(datum.getEstimatedQReported(), 10.1);
-        Assert.assertEquals(datum.getEstimatedQReportedAsByte(), 10);
+        datum.setReportedQuality(10.1);
+        Assert.assertEquals(datum.getReportedQuality(), 10.1);
+        Assert.assertEquals(datum.getReportedQualityAsByte(), 10);
 
         datum = cfg.makeRecalDatum();
         cfg.exTotal = 100000;
@@ -153,7 +153,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
     public void testlog10QempPrior() {
         for ( int Qemp = 0; Qemp <= QualityUtils.MAX_SAM_QUAL_SCORE; Qemp++ ) {
             for ( int Qrep = 0; Qrep <= QualityUtils.MAX_SAM_QUAL_SCORE; Qrep++ ) {
-                final double logPrior = RecalDatum.logQempPrior(Qemp, Qrep);
+                final double logPrior = RecalDatum.getLogPrior(Qemp, Qrep);
                 Assert.assertTrue(logPrior < 0.0);
                 Assert.assertFalse(Double.isInfinite(logPrior));
                 Assert.assertFalse(Double.isNaN(logPrior));
@@ -164,7 +164,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
         int maxQemp = -1;
         double maxQempValue = -Double.MAX_VALUE;
         for ( int Qemp = 0; Qemp <= QualityUtils.MAX_SAM_QUAL_SCORE; Qemp++ ) {
-            final double logprior = RecalDatum.logQempPrior(Qemp, Qrep);
+            final double logprior = RecalDatum.getLogPrior(Qemp, Qrep);
             if ( logprior > maxQempValue ) {
                 maxQemp = Qemp;
                 maxQempValue = logprior;
@@ -209,7 +209,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
                     if ( error > observation )
                         continue;
 
-                    final double loglikelihood = RecalDatum.logQempLikelihood(Qemp, observation, error);
+                    final double loglikelihood = RecalDatum.getLogBinomialLikelihood(Qemp, observation, error);
                     Assert.assertTrue(observation == 0 ? MathUtils.compareDoubles(loglikelihood, 0.0) == 0 : loglikelihood < 0.0 || Qemp == 0.0);
                     Assert.assertFalse(Double.isInfinite(loglikelihood));
                     Assert.assertFalse(Double.isNaN(loglikelihood));
@@ -219,7 +219,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
 
         long bigNum = Integer.MAX_VALUE;
         bigNum *= 2L;
-        final double loglikelihood = RecalDatum.logQempLikelihood(30, bigNum, 100000);
+        final double loglikelihood = RecalDatum.getLogBinomialLikelihood(30, bigNum, 100000);
         Assert.assertTrue(loglikelihood < 0.0);
         Assert.assertFalse(Double.isInfinite(loglikelihood));
         Assert.assertFalse(Double.isNaN(loglikelihood));
