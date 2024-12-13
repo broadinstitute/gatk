@@ -282,20 +282,6 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
         }
     }
 
-    private Map<String, Set<String>> getSupportForVariant(final VariantContext variant) {
-        Map<String, Set<String>> supportMap = new HashMap<>();
-        for (String sample : variant.getSampleNames()) {
-            Genotype genotype = variant.getGenotype(sample);
-            String supportStr = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV) ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString() : "";
-            Set<String> supportSet = new HashSet<>();
-            if (!supportStr.isEmpty()) {
-                supportSet.addAll(Arrays.asList(supportStr.split(",")));
-            }
-            supportMap.put(sample, supportSet);
-        }
-        return supportMap;
-    }
-
     private boolean isDelDup(final VariantContext variant) {
         String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         return svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP);
