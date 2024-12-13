@@ -85,9 +85,7 @@ public class SVReviseOverlappingCnvCns extends MultiplePassVariantWalker {
     @Override
     public void onTraversalStart() {
         vcfWriter = createVCFWriter(outputVcf);
-        final VCFHeader header = getHeaderForVariants();
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MULTI_CNV, 0, VCFHeaderLineType.Flag, "Variant is a multiallelic CNV"));
-        vcfWriter.writeHeader(header);
+        vcfWriter.writeHeader(getHeaderForVariants());
     }
 
     @Override

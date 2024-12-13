@@ -81,10 +81,8 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        final VCFHeader header = getHeaderForVariants();
-        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.EV, 1, VCFHeaderLineType.String, "Classes of evidence supporting final genotype"));
         vcfWriter = createVCFWriter(outputVcf);
-        vcfWriter.writeHeader(header);
+        vcfWriter.writeHeader(getHeaderForVariants());
     }
 
     @Override
