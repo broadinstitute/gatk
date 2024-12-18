@@ -34,23 +34,16 @@ Note that if your workflow failed during ingestion, generally, the GvsBeta workf
    1. Please fully delete the GVS BigQuery dataset and recreate it as you did originally. Then kick off the ingest just as you did before--Make sure call caching is turned off.
 1. Ingest failure: There is already a list of sample names. This may need manual cleanup. Exiting.
    1. Clean up the BQ dataset manually by deleting it and recreating it fresh
-   1. Make sure to keep the call caching on and run it again
+   1. Make sure to keep the call caching off and run it again
 1. Ingest failure with error message: `A USER ERROR has occurred: Cannot be missing required value for <a required annotation>`
    1. (e.g. alternate_bases.AS_RAW_MQ, RAW_MQandDP or RAW_MQ)
    1. This means that there is at least one incorrectly formatted sample in your data model. Confirm your GVCFs are reblocked. If the incorrectly formatted samples are a small portion of your callset and you wish to just ignore them, simply delete the from the data model and restart the workflow without them. There should be no issue with starting from here as none of these samples were loaded.
-   1. Please see the full list of [required information in a GVCF to work in GVS](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md#gvcf-annotations)
+   1. Please see the full list of [required information in a GVCF to work in GVS](./run-your-own-samples.md#gvcf-annotations)
 1. Ingest failure with: `Lock table error`
    1. This error usually occurs when a previous error has been fixed but perhaps not completely and it is best to start with a clean slate.
    1. The lock table can be found inside your GVS BigQuery dataset  -- `{your_dataset_id}.sample_id_assignment_lock`. 
    1. It is created to prevent duplicate sample errors and if you see this, it's better to start fresh. 
    1. Please fully delete the GVS BigQuery dataset and recreate it as you did originally. Then kick off the ingest just as you did before--Make sure call caching is turned off.
-
-
-### Troubleshooting other pipeline failures
-1. Extract failure with OSError: Is a directory.
-   1. If you point your extract to a directory that doesn’t already exist, the workflow fails. Make the directory and run the workflow again.
-
-
 
 
 
