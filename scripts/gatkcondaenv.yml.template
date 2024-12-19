@@ -18,7 +18,6 @@ channels:
 # verify that key dependencies are installed from the correct channel
 - conda-forge
 - pytorch
-- nvidia
 
 dependencies:
 
