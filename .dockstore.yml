@@ -319,6 +319,14 @@ workflows:
              - vs_1516_yolo
          tags:
              - /.*/
+   - name: GvsQuickstartVATIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartVATIntegration.wdl
+     filters:
+       branches:
+         - gg_VS-1549_AddVATToIntegrationTests
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
