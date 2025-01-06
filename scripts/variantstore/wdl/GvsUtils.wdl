@@ -36,11 +36,11 @@ task GetToolVersions {
     if [[ -e /cromwell_root/gcs_delocalization.sh ]]
     then
       CROMWELL_ROOT=/cromwell_root
-    elif [[ -e /mnt/cromwell_root/gcs_delocalization.sh ]]
+    elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
     then
-      CROMWELL_ROOT=/mnt/cromwell_root
+      CROMWELL_ROOT=/mnt/disks/cromwell_root
     else
-      echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/cromwell_root (GCP Batch), exiting."
+      echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/disks/cromwell_root (GCP Batch), exiting."
       exit 1
     fi
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
