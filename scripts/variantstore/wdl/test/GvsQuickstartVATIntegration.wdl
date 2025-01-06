@@ -10,7 +10,6 @@ workflow GvsQuickstartVcfIntegration {
         String expected_output_prefix
         String dataset_suffix
         Boolean use_default_dockers = false
-        Boolean check_expected_cost_and_table_size_outputs = true
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -18,20 +17,12 @@ workflow GvsQuickstartVcfIntegration {
         String? variants_nirvana_docker
         String? gatk_docker
         File? gatk_override
-        String sample_id_column_name
-        String vcf_files_column_name
-        String vcf_index_files_column_name
-        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket
         String? workspace_id
         String? submission_id
-
-        File? target_interval_list
-        Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
-    File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
