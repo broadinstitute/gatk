@@ -33,11 +33,21 @@ task GetToolVersions {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Scrape out various workflow / workspace info from the localization and delocalization scripts.
-    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
-    sed -n -E 's!.*(gs://(fc-(secure-)?[^\/]+)).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
-    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{submission_id_output}
-    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
-    sed -n -E 's!.*(terra-[0-9a-f]+).*# project to use if requester pays$!\1!p' /cromwell_root/gcs_localization.sh | sort -u > ~{google_project_output}
+    if [[ -e /cromwell_root/gcs_delocalization.sh ]]
+    then
+      CROMWELL_ROOT=/cromwell_root
+    elif [[ -e /mnt/cromwell_root/gcs_delocalization.sh ]]
+    then
+      CROMWELL_ROOT=/mnt/cromwell_root
+    else
+      echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/cromwell_root (GCP Batch), exiting."
+      exit 1
+    fi
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
+    sed -n -E 's!.*(gs://(fc-(secure-)?[^\/]+)).*!\1!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{submission_id_output}
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
+    sed -n -E 's!.*(terra-[0-9a-f]+).*# project to use if requester pays$!\1!p' ${CROMWELL_ROOT}/gcs_localization.sh | sort -u > ~{google_project_output}
 
     echo "~{effective_version}" > version.txt
 
