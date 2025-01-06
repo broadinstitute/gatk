@@ -448,9 +448,3 @@ workflows:
      filters:
        branches:
          - ah_var_store
-   - name: Hello
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/Hello.wdl
-     filters:
-       branches:
-         - vs_1532_improved_containment_breakage
