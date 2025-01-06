@@ -43,6 +43,7 @@ task GetToolVersions {
       echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/disks/cromwell_root (GCP Batch), exiting."
       exit 1
     fi
+    echo ${CROMWELL_ROOT} > cromwell_root.txt
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
     sed -n -E 's!.*(gs://(fc-(secure-)?[^\/]+)).*!\1!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{submission_id_output}
@@ -76,6 +77,7 @@ task GetToolVersions {
   output {
     String gvs_version = read_string("version.txt")
     String git_hash = read_string("git_hash.txt")
+    String cromwell_root = read_string("cromwell_root.txt")
     String hail_version = "0.2.126"
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.

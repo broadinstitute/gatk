@@ -548,7 +548,7 @@ task IntersectTargetIntervalListWithTruthBed {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # `basename` so the output ends up in $PWD (/cromwell_root) and not wherever the inputs were localized.
+        # `basename` so the output ends up in $PWD (i.e. Cromwell root dir) and not wherever the inputs were localized.
         # The outputs of these transformations need to be in a place where the `glob` expression will find them.
         target_bed="$(basename ~{target_interval_list})"
         target_bed="${target_bed%%.interval_list}.bed"
