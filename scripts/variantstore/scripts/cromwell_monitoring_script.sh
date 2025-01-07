@@ -7,7 +7,14 @@
 # cloud storage folder.
 set -Eeuo pipefail
 
-MONITOR_MOUNT_POINT=${MONITOR_MOUNT_POINT:-"/cromwell_root"}
+if [[ -e /mnt/disks/cromwell_root ]]
+then
+  MONITOR_MOUNT_POINT_DEFAULT=/mnt/disks/cromwell_root
+else
+  MONITOR_MOUNT_POINT_DEFAULT=/cromwell_root
+fi
+
+MONITOR_MOUNT_POINT=${MONITOR_MOUNT_POINT:-$MONITOR_MOUNT_POINT_DEFAULT}
 SLEEP_TIME=${SLEEP_TIME:-"10"}
 
 function getCpuUsage() {
