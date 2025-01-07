@@ -524,7 +524,7 @@ task CreateDatasetForTest {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.

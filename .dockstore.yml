@@ -316,7 +316,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1516_yolo
+             - vs_1550_monitoring_script
          tags:
              - /.*/
    - name: GvsIngestTieout
