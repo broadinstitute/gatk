@@ -460,7 +460,7 @@ task ValidateVariants {
         String gatk_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
     parameter_meta {
         input_vcf: {
@@ -508,7 +508,7 @@ task ValidateVcf {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
     String base_vcf = basename(input_vcf)
     Boolean is_bgzipped = basename(base_vcf, "bgz") != base_vcf

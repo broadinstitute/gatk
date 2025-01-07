@@ -225,7 +225,7 @@ task MergeVatTSVs {
         String cloud_sdk_slim_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
     # going large with the default to make gsutil -m cp really zippy
     Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 500

@@ -396,7 +396,7 @@ task ExtractTask {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
@@ -685,7 +685,7 @@ task CollectVariantCallingMetrics {
     String gatk_docker
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
@@ -746,7 +746,7 @@ task GatherVariantCallingMetrics {
     }
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
 
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
