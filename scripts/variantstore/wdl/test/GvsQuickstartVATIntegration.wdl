@@ -10,6 +10,7 @@ workflow GvsQuickstartVcfIntegration {
         String vds_path
         String ancestry_path
         String output_path
+        String split_intervals_scatter_count = 10
         String expected_output_prefix
         String dataset_suffix
         Boolean use_default_dockers = false
@@ -75,6 +76,7 @@ workflow GvsQuickstartVcfIntegration {
             filter_set_name = "quickit",
             vds_path = vds_path,
             output_path = output_path,
+            split_intervals_scatter_count = split_intervals_scatter_count,
 
             git_branch_or_tag = git_branch_or_tag,
             basic_docker = effective_basic_docker,
