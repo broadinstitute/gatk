@@ -7,6 +7,9 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
+        String vds_path
+        String ancestry_path
+        String output_path
         String expected_output_prefix
         String dataset_suffix
         Boolean use_default_dockers = false
@@ -68,10 +71,10 @@ workflow GvsQuickstartVcfIntegration {
         input:
             project_id = project_id,
             dataset_name = CreateDatasetForTest.dataset_name,
-            ancestry_file = "todo",
+            ancestry_file = ancestry_path,
             filter_set_name = "quickit",
-            vds_path = "todo",
-            output_path = "todo",
+            vds_path = vds_path,
+            output_path = output_path,
 
             git_branch_or_tag = git_branch_or_tag,
             basic_docker = effective_basic_docker,
