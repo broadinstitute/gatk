@@ -9,16 +9,6 @@ ARG RELEASE=false
 ADD . /gatk
 WORKDIR /gatk
 
-# Install CUDA drivers
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
-    dpkg -i cuda-keyring_1.0-1_all.deb && \
-    apt-get update && \
-    apt-get -y install cuda-drivers && \
-    apt-get -y clean  && \
-    apt-get -y autoclean  && \
-    apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/*
-
 # Get an updated gcloud signing key, in case the one in the base image has expired
 #Download only resources required for the build, not for testing
 RUN ls . && \
@@ -48,6 +38,17 @@ RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt-get -y autoclean  && \
     apt-get -y autoremove && \
     rm -rf /var/lib/apt/lists/*
+
+# Install CUDA drivers
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
+    dpkg -i cuda-keyring_1.0-1_all.deb && \
+    apt-get update && \
+    apt-get -y install cuda-drivers && \
+    apt-get -y clean  && \
+    apt-get -y autoclean  && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /gatk
 
