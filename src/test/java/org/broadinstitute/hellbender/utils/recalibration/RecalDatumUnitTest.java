@@ -197,6 +197,13 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testCalcEmpiricalQuality(){
+        final RecalDatum datum = new RecalDatum(0L, 0.0, (byte)10);
+        datum.getEmpiricalQuality();
+
+    }
+
+    @Test
     public void testlog10QempLikelihood() {
 
         final double[] Qemps = new double[] { 0.0, 10.0, 20.0, 30.0 };

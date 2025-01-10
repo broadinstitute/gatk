@@ -245,12 +245,8 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
             final byte[] oldQuals = ReadUtils.getOriginalBaseQualities(originalRead);
 
             if (ReadUtils.getPlatformUnit(originalRead, originalBamHeader).equals(readGroupToFilterOut)) {
-                // These are the read groups that are not in teh recal table.
-                // final Random random = new Random();
-                // final int numSamples = 5;
-                // final int[] randomIndices = IntStream.range(0, numSamples).map(i -> random.nextInt(newQuals.length)).toArray();
+                // These are the read groups that are not in the recal table.
                 final List<Byte> possibleQuals = Arrays.asList((byte) 2, (byte) 6, (byte) 10, (byte) 20, (byte) 30, (byte) 40);
-                // for (int i : randomIndices){
                 for (int i = 0; i < originalRead.getLength(); i++){
                     final byte newQual = newQuals[i];
                     final byte oldQual = oldQuals[i];

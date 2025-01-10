@@ -179,10 +179,9 @@ public final class BaseRecalibrationEngine implements Serializable {
     public static void collapseQualityScoreTableToReadGroupTable(final NestedIntegerArray<RecalDatum> byQualTable,
                                                                  final NestedIntegerArray<RecalDatum> byReadGroupTable) {
         // the read group table has shape: (num read groups) x (num error modes)
-        // the qual table has shape:       (num read groups) x (num reported qualities) x (num error modes)
+        // the qual table has shape:       (num read groups) x (num reported qualities [default = MAX_PHRED_SCORE + 1 = 94]) x (num error modes)
 
         // iterate over all values in the qual table
-
         final int readGroupIndex = 0;
         final int errorModeIndex = 2;
 

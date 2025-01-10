@@ -192,7 +192,7 @@ public final class RecalUtils {
         int rowIndex = 0;
 
         GATKReportTable allCovsReportTable = null;
-
+        // enter main loop
         for (NestedIntegerArray<RecalDatum> table : recalibrationTables){
             final ArrayList<Pair<String, String>> columnNames = new ArrayList<>(); // initialize the array to hold the column names
             columnNames.add(new MutablePair<>(covariates.getReadGroupCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future

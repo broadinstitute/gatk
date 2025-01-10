@@ -103,12 +103,13 @@ public final class RecalDatum implements Serializable {
      *
      * @param other  RecalDatum to combine
      */
-    public void combine(final RecalDatum other) { // tsato: when is data combined?
-        // increment the counts
-        increment(other.getNumObservations(), other.getNumMismatches()); // tsato: very questionable here for combining, but it seems that the only time we combine is GatherBQSRTables (confirm)
-
+    public void combine(final RecalDatum other) {
         // this is the *expected* (or theoretical) number of errors given the reported qualities and the number of observations.
         final double expectedNumErrors = this.calcExpectedErrors() + other.calcExpectedErrors();
+
+        // increment the counts
+        increment(other.getNumObservations(), other.getNumMismatches()); // tsato: very questionable here for combining, but it seems that the only time we combine is GatherBQSRTables (confirm)
+        
         // we use the theoretical count above to compute the "estimated" reported quality
         // after combining two datums with different reported qualities.
         reportedQuality = -10 * Math.log10(expectedNumErrors / getNumObservations());
@@ -267,7 +268,7 @@ public final class RecalDatum implements Serializable {
         // smoothing is one error and one non-error observation
         final long mismatches = (long)(getNumMismatches() + 0.5) + SMOOTHING_CONSTANT; // TODO: why add 0.5?
         final long observations = getNumObservations() + SMOOTHING_CONSTANT + SMOOTHING_CONSTANT;
-        // tsato: int-double
+
         final int empiricalQual = bayesianEstimateOfEmpiricalQuality(observations, mismatches, priorQualityScore);
 
         empiricalQuality = Math.min(empiricalQual, MAX_RECALIBRATED_Q_SCORE);
