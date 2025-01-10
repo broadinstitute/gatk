@@ -51,12 +51,11 @@ public final class ReadGroupCovariateUnitTest {
         final String s = covariate.formatKey(1);
     }
 
-    @Test(expectedExceptions = IllegalStateException.class)
+    @Test()
     public void testMissingReadGroup() {
-        final String id = "MY.ID";
-        final String expected = "SAMPLE.1";
-        final ReadGroupCovariate covariate = new ReadGroupCovariate(Arrays.asList(expected));
-        final int key = covariate.keyFromValue("fred");
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(Arrays.asList("SAMPLE.1"));
+        final int badKey = covariate.keyFromValue("bad_read_name");
+        Assert.assertEquals(badKey, ReadGroupCovariate.MISSING_READ_GROUP_KEY);
     }
 
     @Test
