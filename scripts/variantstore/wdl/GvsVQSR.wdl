@@ -291,7 +291,7 @@ task SNPsVariantRecalibratorCreateModel {
   Int machine_mem = select_first([machine_mem_gb, default_mem_gb])
   Int java_mem = machine_mem - 10
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -351,7 +351,7 @@ task GatherTranches {
               }
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -437,7 +437,7 @@ task IndelsVariantRecalibrator {
   Int machine_mem = select_first([machine_mem_gb, 35])
   Int java_mem = machine_mem - 10
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -519,7 +519,7 @@ task SNPsVariantRecalibrator {
   Int java_mem = machine_mem - 5
   String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -584,7 +584,7 @@ task PopulateFilterSetTranches {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.

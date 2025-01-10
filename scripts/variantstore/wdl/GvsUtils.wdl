@@ -10,7 +10,7 @@ task GetToolVersions {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
   String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
@@ -111,7 +111,7 @@ task MergeVCFs {
   }
 
   Int disk_size = select_first([merge_disk_override, 100])
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
     input_vcfs: {
@@ -184,7 +184,7 @@ task SplitIntervals {
   Int java_memory = memory_size - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
     intervals: {
@@ -271,7 +271,7 @@ task SplitIntervalsTarred {
   Int java_memory = memory_size - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
     intervals: {
@@ -361,7 +361,7 @@ task GetBQTableLastModifiedDatetime {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   # ------------------------------------------------
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
@@ -413,7 +413,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   # ------------------------------------------------
   # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
@@ -457,7 +457,7 @@ task BuildGATKJar {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -524,7 +524,7 @@ task CreateDatasetForTest {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -587,7 +587,7 @@ task BuildGATKJarAndCreateDataset {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -701,7 +701,7 @@ task ScaleXYBedValues {
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -744,7 +744,7 @@ task GetNumSamplesLoaded {
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -791,7 +791,7 @@ task CountSuperpartitions {
         String dataset_name
         String cloud_sdk_docker
     }
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -832,7 +832,7 @@ task ValidateFilterSetName {
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -1066,7 +1066,7 @@ task IndexVcf {
       }
   }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -1125,7 +1125,7 @@ task SelectVariants {
             localization_optional: true
         }
     }
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -1175,7 +1175,7 @@ task MergeTsvs {
         String basic_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
       # Prepend date, time and pwd to xtrace log entries.
@@ -1264,7 +1264,7 @@ task PopulateFilterSetInfo {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500

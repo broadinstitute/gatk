@@ -378,7 +378,7 @@ task PgenExtractTask {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
     String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state

@@ -146,7 +146,7 @@ workflow GvsCreateFilterSet {
         score_runtime_attributes = vets_score_runtime_attributes,
         gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
-        monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh",
+        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh",
         scoring_python_script = scoring_python_script,
         training_python_script = training_python_script,
 
@@ -305,7 +305,7 @@ task ExtractFilterTask {
   }
 
   String intervals_name = basename(intervals)
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -373,7 +373,7 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.

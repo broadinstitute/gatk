@@ -454,7 +454,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
@@ -495,7 +495,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
 
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
@@ -598,7 +598,7 @@ task AnnotateVCF {
         Boolean use_reference_disk
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String gene_annotation_json_name = output_annotated_file_name + ".genes.json.gz"
@@ -725,7 +725,7 @@ task PrepVtAnnotationJson {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
@@ -773,7 +773,7 @@ task PrepGenesAnnotationJson {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/vs_1550_cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_genes_gcp_path = output_path + 'genes/'
