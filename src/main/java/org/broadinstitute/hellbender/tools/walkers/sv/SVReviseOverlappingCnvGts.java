@@ -132,7 +132,7 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
         // Process overlaps with variants in the buffer
         overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
                 || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
-        for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
+        for (final VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processOverlap(bufferedVariant, variant);
             }
@@ -153,14 +153,16 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
         // Initialize revisedRdCn value for each variant
         for (final String sampleName : samples) {
             final Genotype genotype = variant.getGenotype(sampleName);
-            final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
-            variantRdCn.put(sampleName, Integer.parseInt(rdCn));
+            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+
+            final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
+            variantRdCn.put(sampleName, rdCn);
         }
         currentCopyNumbers.put(variantId, variantRdCn);
     }
 
     public void thirdPassApply(final VariantContext variant) {
-        VariantContextBuilder builder = new VariantContextBuilder(variant);
+        final VariantContextBuilder builder = new VariantContextBuilder(variant);
         if (revisedEventsAll.containsKey(variant.getID())) {
             processRevisedEvent(builder, variant);
         }
@@ -201,29 +203,29 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
         } else {
             return;
         }
-        String widerID = wider.getID();
-        String narrowerID = narrower.getID();
+        final String widerID = wider.getID();
+        final String narrowerID = narrower.getID();
 
         // Skip processing if same variant ID, SV type or samples
-        String widerSvType = wider.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        String narrowerSvType = narrower.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        Set<String> widerSamples = getNonReferenceSamples(wider);
-        Set<String> narrowerSamples = getNonReferenceSamples(narrower);
+        final String widerSvType = wider.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+        final String narrowerSvType = narrower.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+        final Set<String> widerSamples = getNonReferenceSamples(wider);
+        final Set<String> narrowerSamples = getNonReferenceSamples(narrower);
         if (widerID.equals(narrowerID) || widerSvType.equals(narrowerSvType) || widerSamples.equals(narrowerSamples)) {
             return;
         }
 
         // Get samples present in wider but not in narrower
-        Set<String> nonCommonSamples = new HashSet<>(widerSamples);
+        final Set<String> nonCommonSamples = new HashSet<>(widerSamples);
         nonCommonSamples.removeAll(narrowerSamples);
         if (nonCommonSamples.isEmpty()) {
             return;
         }
 
         // Revise variant if coverage exceeds threshold
-        double coverage = getCoverage(wider, narrower);
+        final double coverage = getCoverage(wider, narrower);
         if (coverage >= 0.5) {
-            for (String sample : nonCommonSamples) {
+            for (final String sample : nonCommonSamples) {
                 revisedEventsAll.computeIfAbsent(narrowerID, k -> new HashMap<>())
                         .put(sample, new ImmutablePair<>(widerID, widerSvType));
             }
@@ -257,7 +259,10 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
                 if (newVal != -1) {
                     final GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
                     gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                    gb.GQ(Integer.parseInt((String) oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ)));
+//                    if (!oldGenotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+
+                    final int rdCn = Integer.parseInt(oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
+                    gb.GQ(rdCn);
                     newGenotypes.add(gb.make());
                 } else {
                     newGenotypes.add(oldGenotype);
@@ -273,8 +278,9 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
         final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         for (String sample : variant.getSampleNamesOrderedByName()) {
             final Genotype genotype = variant.getGenotype(sample);
-            final String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
-            final int rdCn = Integer.parseInt(rdCnString);
+            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+
+            final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
             if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {
                 builder.attribute(GATKSVVCFConstants.MULTI_CNV, true);
                 break;
@@ -283,12 +289,12 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
     }
 
     private boolean isDelDup(final VariantContext variant) {
-        String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         return svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP);
     }
 
     private boolean isLarge(final VariantContext variant, final int minSize) {
-        int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        final int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
         return variantLength >= minSize;
     }
 
@@ -299,9 +305,9 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
     }
 
     private Set<String> getNonReferenceSamples(final VariantContext variant) {
-        Set<String> samples = new HashSet<>();
-        for (String sampleName : variant.getSampleNames()) {
-            Genotype genotype = variant.getGenotype(sampleName);
+        final Set<String> samples = new HashSet<>();
+        for (final String sampleName : variant.getSampleNames()) {
+            final Genotype genotype = variant.getGenotype(sampleName);
             if (genotype.isCalled() && !genotype.isHomRef()) {
                 samples.add(sampleName);
             }
@@ -310,13 +316,13 @@ public class SVReviseOverlappingCnvGts extends MultiplePassVariantWalker {
     }
 
     private double getCoverage(final VariantContext wider, final VariantContext narrower) {
-        int nStart = narrower.getStart();
-        int nStop = narrower.getEnd();
-        int wStart = wider.getStart();
-        int wStop = wider.getEnd();
+        final int nStart = narrower.getStart();
+        final int nStop = narrower.getEnd();
+        final int wStart = wider.getStart();
+        final int wStop = wider.getEnd();
 
         if (wStart <= nStop && nStart <= wStop) {
-            int intersectionSize = Math.min(nStop, wStop) - Math.max(nStart, wStart) + 1;
+            final int intersectionSize = Math.min(nStop, wStop) - Math.max(nStart, wStart) + 1;
             return (double) intersectionSize / (nStop - nStart + 1);
         }
         return 0.0;

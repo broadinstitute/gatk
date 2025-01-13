@@ -3,9 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -93,7 +90,8 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
     }
 
     @Override
-    protected void nthPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext, int n) {
+    protected void nthPassApply(final VariantContext variant, final ReadsContext readsContext,
+                                final ReferenceContext referenceContext, final FeatureContext featureContext, int n) {
         switch (n) {
             case 0:
                 firstPassApply(variant);
@@ -111,7 +109,7 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
 
         overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
                 || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
-        for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
+        for (final VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processVariantPair(bufferedVariant, variant);
             }
@@ -124,16 +122,16 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
             return;
         }
 
-        VariantContextBuilder builder = new VariantContextBuilder(variant);
+        final VariantContextBuilder builder = new VariantContextBuilder(variant);
         vcfWriter.add(builder.make());
     }
 
-    private void processVariantPair(VariantContext v1, VariantContext v2) {
+    private void processVariantPair(final VariantContext v1, final VariantContext v2) {
         // Determine larger variant
         VariantContext largerVariant = v1;
         VariantContext smallerVariant = v2;
-        int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         int smallerLength = length2;
 
         // Swap variants if necessary
@@ -148,14 +146,14 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
                 largerVariant.getStart() + largerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0),
                 smallerVariant.getStart() + smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)
         );
-        int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
-        int overlapLength = minEnd - maxStart + 1;
+        final int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
+        final int overlapLength = minEnd - maxStart + 1;
         if (overlapLength <= 0) {
             return;
         }
 
         // Filter variant based on conditions
-        double coverage = (double) overlapLength / smallerLength;
+        final double coverage = (double) overlapLength / smallerLength;
         if (coverage > 0.5 && !filteredVariantIds.contains(largerVariant.getID())) {
             filteredVariantIds.add(smallerVariant.getID());
         }

@@ -81,18 +81,19 @@ public class SVReviseAbnormalAllosomes extends VariantWalker {
     }
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        VariantContextBuilder builder = new VariantContextBuilder(variant);
-        if (!variant.getAttributeAsBoolean(GATKSVVCFConstants.REVISED_EVENT, false)) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext,
+                      final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        final VariantContextBuilder builder = new VariantContextBuilder(variant);
+        if (variant.getAttributeAsBoolean(GATKSVVCFConstants.REVISED_EVENT, false)) {
             processRevisedSex(variant, builder);
         }
         vcfWriter.add(builder.make());
     }
 
     private void processRevisedSex(final VariantContext variant, final VariantContextBuilder builder) {
-        List<Genotype> genotypes = variant.getGenotypes();
-        List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
-        for (Genotype genotype : genotypes) {
+        final List<Genotype> genotypes = variant.getGenotypes();
+        final List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
+        for (final Genotype genotype : genotypes) {
             if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) > 0) {
                 int newRdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()) - 1;
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);

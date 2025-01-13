@@ -134,7 +134,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         // Initialize data structures
-        VariantContextBuilder builder = new VariantContextBuilder(variant);
+        final VariantContextBuilder builder = new VariantContextBuilder(variant);
         List<Genotype> genotypes = variant.getGenotypes();
 
         // Process variants
@@ -152,9 +152,9 @@ public class SVReviseLargeCnvs extends VariantWalker {
     private void processMultiallelic(final VariantContextBuilder builder, final List<Genotype> genotypes) {
         int numGtOver2 = 0;
         for (Genotype genotype : genotypes) {
-            Integer peGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.PE_GT) ?
+            final Integer peGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.PE_GT) ?
                     Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.PE_GT).toString()) : null;
-            Integer srGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.SR_GT) ?
+            final Integer srGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.SR_GT) ?
                     Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.SR_GT).toString()) : null;
             int gt;
             if (peGt == null) {
@@ -166,9 +166,9 @@ public class SVReviseLargeCnvs extends VariantWalker {
             } else if (peGt == 0) {
                 gt = srGt;
             } else {
-                Integer peGq = genotype.hasExtendedAttribute(GATKSVVCFConstants.PE_GQ) ?
+                final Integer peGq = genotype.hasExtendedAttribute(GATKSVVCFConstants.PE_GQ) ?
                         Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.PE_GQ).toString()) : null;
-                Integer srGq = genotype.hasExtendedAttribute(GATKSVVCFConstants.SR_GQ) ?
+                final Integer srGq = genotype.hasExtendedAttribute(GATKSVVCFConstants.SR_GQ) ?
                         Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.SR_GQ).toString()) : null;
                 if (peGq != null && srGq != null && peGq >= srGq) {
                     gt = peGt;
@@ -177,7 +177,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
                 }
             }
             if (gt > 2) {
-                numGtOver2++;
+                numGtOver2 += 1;
             }
         }
         if (numGtOver2 > maxVF) {
@@ -204,7 +204,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
         }
 
         boolean gt5kbFilter = false;
-        List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
+        final List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
         if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
         } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
@@ -213,8 +213,8 @@ public class SVReviseLargeCnvs extends VariantWalker {
 
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
-            for (Genotype genotype : genotypes) {
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
+            for (final Genotype genotype : genotypes) {
+                final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 if (!genotype.isNoCall()) {
                     if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) >= 2) {
                         gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
@@ -231,7 +231,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
 
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
-            for (Genotype genotype : genotypes) {
+            for (final Genotype genotype : genotypes) {
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
                 gb.alleles(Arrays.asList(Allele.NO_CALL));
@@ -257,7 +257,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
         boolean multiallelicFilter = false;
         if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
-            for (Genotype genotype : genotypes) {
+            for (final Genotype genotype : genotypes) {
                 if (!outlierSamples.contains(genotype.getSampleName()) && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                     sampleRdCn.put(genotype.getSampleName(), Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
                 }
@@ -273,7 +273,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
         }
 
         boolean gt5kbFilter = false;
-        List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
+        final List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
         if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
         } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
@@ -282,8 +282,8 @@ public class SVReviseLargeCnvs extends VariantWalker {
 
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
-            for (Genotype genotype : genotypes) {
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
+            for (final Genotype genotype : genotypes) {
+                final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 if (!genotype.isNoCall()) {
                     if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 3).toString()) <= 2) {
                         gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
@@ -300,8 +300,8 @@ public class SVReviseLargeCnvs extends VariantWalker {
 
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
-            for (Genotype genotype : genotypes) {
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
+            for (final Genotype genotype : genotypes) {
+                final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
                 gb.alleles(Arrays.asList(Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
@@ -319,16 +319,15 @@ public class SVReviseLargeCnvs extends VariantWalker {
     }
 
     public boolean isCalled(final VariantContextBuilder builder, final List<Genotype> genotypes) {
-        for (Genotype genotype : genotypes) {
+        for (final Genotype genotype : genotypes) {
             if (!isNoCallGt(genotype.getAlleles())) {
                 return true;
             }
         }
 
         if (builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
-            for (Genotype genotype : genotypes) {
-                final int cn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2).toString());
-                if (cn != 2) {
+            for (final Genotype genotype : genotypes) {
+                if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2).toString()) != 2) {
                     return true;
                 }
             }
@@ -337,7 +336,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
         return false;
     }
 
-    private boolean isNoCallGt(List<Allele> alleles) {
+    private boolean isNoCallGt(final List<Allele> alleles) {
         if (alleles.size() == 1 && alleles.get(0).isReference()) return true;
         else if (alleles.size() == 2 && alleles.get(0).isReference() && alleles.get(1).isReference()) return true;
         else if (alleles.size() == 1 && alleles.get(0).isNoCall()) return true;
