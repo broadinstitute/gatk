@@ -23,7 +23,7 @@ import java.util.List;
 @BetaFeature
 public class PermutectPreprocessDataset extends CommandLineProgram {
 
-    public static final String PERMUTECT_PREPREOCESS_DATASET_SCRIPT = "permutect_preprocess_dataset.py";
+    public static final String PERMUTECT_PREPREOCESS_DATASET_SCRIPT = "preprocess_dataset.py";
 
     //TODO handle lists for this? Make it a gatk list?
     @Argument(
