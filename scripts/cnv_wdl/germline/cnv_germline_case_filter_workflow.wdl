@@ -487,8 +487,8 @@ task QCFilteredVCF {
     command <<<
         set -euo pipefail
 
-        n_total_events=$(bcftools view --no-header -e '(GT=="hom")' ~{filtered_vcf} | wc -l)
-        n_pass_events=$(bcftools view --no-header -e '(GT=="hom") || (FILTER!~"PASS")' ~{filtered_vcf} | wc -l)
+        n_total_events=$(bcftools view --no-header -e '(GT=="ref")' ~{filtered_vcf} | wc -l)
+        n_pass_events=$(bcftools view --no-header -e '(GT=="ref") || (FILTER!~"PASS")' ~{filtered_vcf} | wc -l)
 
         if [ $n_total_events -le ~{max_events} ]; then
             if [ $n_pass_events -le ~{max_pass_events} ]; then
