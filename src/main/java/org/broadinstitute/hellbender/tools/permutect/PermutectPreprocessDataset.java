@@ -65,7 +65,7 @@ public class PermutectPreprocessDataset extends CommandLineProgram {
         arguments.add("--output=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputTarGz));
 
         return executor.executeScript(
-                new Resource(PERMUTECT_PREPREOCESS_DATASET_SCRIPT, GermlineCNVCaller.class),
+                new Resource(PERMUTECT_PREPREOCESS_DATASET_SCRIPT, PermutectPreprocessDataset.class),
                 null,
                 arguments);
     }
