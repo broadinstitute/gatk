@@ -72,7 +72,7 @@ workflow CNVCallingAndMergeForFabric {
 
         File merged_vcf = select_first([MergeVcfs.merged_vcf, short_variant_vcf])
         File merged_vcf_index = select_first([MergeVcfs.merged_vcf_index, short_variant_vcf_index])
-        File merged_vcf_md5sum = select_first([MergeVcfs.merged_vcf_md5sum, short_variant_vcf])
+        File merged_vcf_md5sum = select_first([MergeVcfs.merged_vcf_md5sum, short_variant_vcf_md5sum])
 
         Boolean qc_passed = SingleSampleGCNVAndFilterVCFs.qc_passed
 
