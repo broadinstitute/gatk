@@ -165,35 +165,30 @@ public final class GATKSVVCFConstants {
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
 
-    // SVCleanPt1a
-    public static final String EV = "EV";
-    public static final List<String> EV_VALUES = Arrays.asList(
-            null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
-    );
+    // CleanVcf
     public static final String ME = "ME";
     public static final String VAR_GQ = "varGQ";
     public static final String MULTIALLELIC = "MULTIALLELIC";
     public static final String UNRESOLVED = "UNRESOLVED";
     public static final String HIGH_SR_BACKGROUND = "HIGH_SR_BACKGROUND";
     public static final String BOTHSIDES_SUPPORT = "BOTHSIDES_SUPPORT";
+    public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
     public static final String REVISED_EVENT = "REVISED_EVENT";
-    public static final String RD_CN = "RD_CN";
-
-    // SVCleanPt1b
-    public static final String RD_GQ = "RD_GQ";
     public static final String MULTI_CNV = "MULTI_CNV";
 
-    // SVCleanPt4
-    public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
+    public static final String RD_CN = "RD_CN";
+    public static final String RD_GQ = "RD_GQ";
     public static final String PE_GT = "PE_GT";
     public static final String SR_GT = "SR_GT";
     public static final String PE_GQ = "PE_GQ";
     public static final String SR_GQ = "SR_GQ";
     public static final String CNV = "CNV";
-
-    // SVCleanPt5
     public static final String UNR = "UNR";
     public static final String EVENT = "EVENT";
+    public static final String EV = "EV";
+    public static final List<String> EV_VALUES = Arrays.asList(
+            null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
+    );
     public static final Set<String> FILTER_VCF_LINES = new HashSet<>(Arrays.asList(
             "CIPOS", "CIEND", "RMSSTD", "source", "bcftools", "GATKCommandLine", "#CHROM"
     ));
