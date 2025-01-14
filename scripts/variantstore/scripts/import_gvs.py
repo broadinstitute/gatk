@@ -73,6 +73,8 @@ def import_gvs(refs: 'List[List[str]]',
         scope of the resulting variant table, where keys of the dictionary are an alternate
         allele string, where the dictionary values are the full records from the input VETS
         filtering table, minus the `ref` and `alt` fields.
+      - `ploidy_data` -- This data is used to determine and assign reference data ploidy. Some
+         VCFs record ploidy for X and Y chromosomes as haploid, others as diploid.
 
     Execution notes
     ---------------
@@ -194,6 +196,8 @@ def import_gvs(refs: 'List[List[str]]',
         vets_filter = vets_filter.key_by('locus')
         vets_filter.write(vets_filter_path, overwrite=True)
 
+        ploidy = import_gvs_ploidy.import_ploidy(ploidy_data)
+
     n_samples = 0
 
     with hl._with_flags(use_new_shuffle='1'):
@@ -254,6 +258,7 @@ def import_gvs(refs: 'List[List[str]]',
             ref_ht = ref_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)),
                                              ref_block_max_length=ref_block_max_length)
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
+            ref_mt = import_gvs_ploidy.patch_reference_data(ploidy)
 
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
