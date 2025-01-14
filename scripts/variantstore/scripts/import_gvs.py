@@ -12,7 +12,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            sample_mapping=sequenceof(str),
            site_filtering_data=sequenceof(str),
            vets_filtering_data=sequenceof(str),
-           ploidy_data=oneof(str, sequenceof(str)),
+           ploidy_data=sequenceof(str),
            final_path=str,
            tmp_dir=str,
            truth_sensitivity_snp_threshold=float,
@@ -28,7 +28,7 @@ def import_gvs(refs: 'List[List[str]]',
                sample_mapping: 'List[str]',
                site_filtering_data: 'List[str]',
                vets_filtering_data: 'List[str]',
-               ploidy_data: 'str | List[str]'
+               ploidy_data: 'List[str]'
                final_path: 'str',
                tmp_dir: 'str',
                truth_sensitivity_snp_threshold: 'float' = 0.997,
@@ -108,7 +108,7 @@ def import_gvs(refs: 'List[List[str]]',
         Paths to site filtering files.
     vets_filtering_data : List[str]
         Paths to VETS filtering files.
-    ploidy_data : str | list[str]
+    ploidy_data : List[str]
         Path(s) to ploidy data file(s).
     final_path : :class:`str`
         Desired path to final VariantDataset on disk.
