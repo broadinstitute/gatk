@@ -265,6 +265,7 @@ workflow SingleSampleGCNVAndFilterVCFs {
         File genotyped_segments_vcf_indexes = CNVGermlineCaseWorkflow.genotyped_segments_vcf_indexes[0]
         String qc_status_string = QCFilteredVCF.qc_status
         Boolean qc_passed = (QCFilteredVCF.qc_status == "PASS")
+        File cnv_metrics = QCFilteredVCF.cnv_metrics
         File denoised_copy_ratios = CNVGermlineCaseWorkflow.denoised_copy_ratios[0]
     }
 }
@@ -502,12 +503,18 @@ task QCFilteredVCF {
 
         echo $n_total_events > n_total_events.txt
         echo $n_pass_events > n_pass_events.txt
+
+        sample_id=$(bcftools query -l ~{filtered_vcf})
+
+        echo "sample\ttotal_cnv_events\tpassing_cnv_events\n" > cnv_metrics.tsv
+        echo "${sample_id}\t${n_total_events}\t${n_pass_events}" >> cnv_metrics.tsv
     >>>
 
     output {
         String qc_status = read_string("qc_status.txt")
         Int n_total_events = read_int("n_total_events.txt")
         Int n_pass_events = read_int("n_pass_events.txt")
+        File cnv_metrics = "cnv_metrics.tsv"
     }
 
     runtime {
