@@ -51,7 +51,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private byte[] staticQuantizedMapping;
     private final CovariateKeyCache keyCache;
 
-    private boolean allowMissingReadGroups;
+    private final boolean allowMissingReadGroups;
     private static final int READ_GROUP_MISSING_IN_RECAL_TABLE_CODE = -1;
 
     private List<Byte> quantizedQuals;
@@ -155,7 +155,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
         final PerReadCovariateMatrix perReadCovariateMatrix = RecalUtils.computeCovariates(read, header, covariates, false, keyCache);
 
-        // clear indel qualities
+        // clear indel qualities TODO: do we still modify indel qualities?
         read.clearAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES);
         read.clearAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES);
 

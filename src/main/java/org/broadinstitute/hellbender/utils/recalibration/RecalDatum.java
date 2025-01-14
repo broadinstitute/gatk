@@ -153,7 +153,7 @@ public final class RecalDatum implements Serializable {
             return doubleMismatches / doubleObservations;
         }
     }
-    // tsato: int-double
+
     public void setEmpiricalQuality(final int empiricalQuality) {
         if ( empiricalQuality < 0 ) throw new IllegalArgumentException("empiricalQuality < 0");
         if ( Double.isInfinite(empiricalQuality) ) throw new IllegalArgumentException("empiricalQuality is infinite");

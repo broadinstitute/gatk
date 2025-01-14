@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
  */
 public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollection {
     private static final long serialVersionUID = 1L;
-    public static final String ALLOW_MISSING_READ_GROUPS_LONG_NAME = "allow-missing-read-group";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "use-original-qualities";
 
     /**
@@ -30,12 +29,4 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
      */
     @Argument(fullName=USE_ORIGINAL_QUALITIES_LONG_NAME, shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
     public Boolean useOriginalBaseQualities = false;
-
-    /**
-     * If set to true, do not throw an error upon encountering a read with a read group that's not in the recalibration table.
-     * Instead, simply set the quantized original base qualities as the recalibrated base qualities.
-     */ // tsato: should this be in the *unique* ApplyBQSRArgumentCollection?
-    @Argument(fullName = ALLOW_MISSING_READ_GROUPS_LONG_NAME, doc = "Do not throw an error when encountering a read group not in the recal table", optional = true)
-    public boolean allowMissingReadGroups = false;
-
 }

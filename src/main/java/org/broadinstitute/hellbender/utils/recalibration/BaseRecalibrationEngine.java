@@ -329,7 +329,13 @@ public final class BaseRecalibrationEngine implements Serializable {
         return read;
     }
 
-    // TODO: add docs
+    /**
+     * Outputs a boolean array that has the same length as the read.
+     * The array contains true at each index if the position meets one of the following criteria:
+     *   1) not a regular base
+     *   2) base quality is less than 6
+     *   3) is a known site.
+     */
     private boolean[] calculateSkipArray( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] skip = new boolean[readLength];
@@ -340,7 +346,10 @@ public final class BaseRecalibrationEngine implements Serializable {
         return skip;
     }
 
-    // TODO: add docs
+    /**
+     * Outputs a boolean array that has the same length as the read and contains true at positions where known events
+     * occur, as determined by the knownSites variable.
+     */
     private static boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false

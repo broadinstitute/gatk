@@ -32,7 +32,7 @@ import java.util.*;
 public final class RecalUtils {
     public static final String ARGUMENT_REPORT_TABLE_TITLE = "Arguments";
     public static final String QUANTIZED_REPORT_TABLE_TITLE = "Quantized";
-    public static final String READGROUP_REPORT_TABLE_TITLE = "RecalTable0"; // TODO: make them more descriptive
+    public static final String READGROUP_REPORT_TABLE_TITLE = "RecalTable0";
     public static final String QUALITY_SCORE_REPORT_TABLE_TITLE = "RecalTable1";
     public static final String ALL_COVARIATES_REPORT_TABLE_TITLE = "RecalTable2";
 
@@ -56,7 +56,7 @@ public final class RecalUtils {
 
     private static final String SCRIPT_FILE = "BQSR.R";
     public static final int EMPIRICAL_QUAL_DECIMAL_PLACES = 4;
-    public static final int REPORTED_QUALITY_DECIMAL_PLACES = 4; // tsato: "estimated" q reported...we need to rename (DONE)
+    public static final int REPORTED_QUALITY_DECIMAL_PLACES = 4;
     public static final int NUMBER_ERRORS_DECIMAL_PLACES = 2;
 
     private static final Pair<String, String> covariateValue     = new MutablePair<>(RecalUtils.COVARIATE_VALUE_COLUMN_NAME, "%s");

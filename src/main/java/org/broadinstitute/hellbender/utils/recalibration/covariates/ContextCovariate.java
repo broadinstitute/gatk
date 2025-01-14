@@ -21,7 +21,7 @@ public final class ContextCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(ContextCovariate.class);
 
-    private final int mismatchesContextSize; // TODO: rename "mismatch" here
+    private final int mismatchesContextSize;
     private final int indelsContextSize;
 
     private final int mismatchesKeyMask;
