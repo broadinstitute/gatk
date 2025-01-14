@@ -36,6 +36,7 @@ workflow GvsQuickstartHailIntegration {
         String? submission_id
 
         Int? maximum_alternate_alleles
+        String ploidy_table_name
     }
 
     String project_id = "gvs-internal"
@@ -100,6 +101,7 @@ workflow GvsQuickstartHailIntegration {
             project_id = project_id,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
+            ploidy_table_name = ploidy_table_name,
             scatter_width = 10,
             call_set_identifier = git_branch_or_tag,
             basic_docker = effective_basic_docker,
