@@ -245,7 +245,8 @@ workflow SingleSampleGCNVAndFilterVCFs {
         input:
             filtered_vcf = FilterVCF.filtered_vcf,
             max_events = maximum_number_events_per_sample,
-            max_pass_events = maximum_number_pass_events_per_sample
+            max_pass_events = maximum_number_pass_events_per_sample,
+            samplename = ExtractSamplename.samplename
     }
 
     output {
@@ -481,6 +482,7 @@ task FilterVCF {
 task QCFilteredVCF {
     input {
         File filtered_vcf
+        String samplename
         Int max_events
         Int max_pass_events
     }
@@ -504,17 +506,15 @@ task QCFilteredVCF {
         echo $n_total_events > n_total_events.txt
         echo $n_pass_events > n_pass_events.txt
 
-        sample_id=$(bcftools query -l ~{filtered_vcf})
-
-        echo -e "sample\ttotal_cnv_events\tpassing_cnv_events" > cnv_metrics.tsv
-        echo -e "${sample_id}\t${n_total_events}\t${n_pass_events}" >> cnv_metrics.tsv
+        echo -e "sample\ttotal_cnv_events\tpassing_cnv_events" > ~{samplename}.cnv_metrics.tsv
+        echo -e ~{samplename}\t${n_total_events}\t${n_pass_events}" >> ~{samplename}.cnv_metrics.tsv
     >>>
 
     output {
         String qc_status = read_string("qc_status.txt")
         Int n_total_events = read_int("n_total_events.txt")
         Int n_pass_events = read_int("n_pass_events.txt")
-        File cnv_metrics = "cnv_metrics.tsv"
+        File cnv_metrics = "~{samplename}.cnv_metrics.tsv"
     }
 
     runtime {
