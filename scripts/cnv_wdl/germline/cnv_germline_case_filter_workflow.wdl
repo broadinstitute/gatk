@@ -506,7 +506,7 @@ task QCFilteredVCF {
 
         sample_id=$(bcftools query -l ~{filtered_vcf})
 
-        echo -e "sample\ttotal_cnv_events\tpassing_cnv_events\n" > cnv_metrics.tsv
+        echo -e "sample\ttotal_cnv_events\tpassing_cnv_events" > cnv_metrics.tsv
         echo -e "${sample_id}\t${n_total_events}\t${n_pass_events}" >> cnv_metrics.tsv
     >>>
 
