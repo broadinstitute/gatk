@@ -507,7 +507,7 @@ task QCFilteredVCF {
         echo $n_pass_events > n_pass_events.txt
 
         echo -e "sample\ttotal_cnv_events\tpassing_cnv_events" > ~{samplename}.cnv_metrics.tsv
-        echo -e ~{samplename}\t${n_total_events}\t${n_pass_events}" >> ~{samplename}.cnv_metrics.tsv
+        echo -e "~{samplename}\t${n_total_events}\t${n_pass_events}" >> ~{samplename}.cnv_metrics.tsv
     >>>
 
     output {
