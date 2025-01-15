@@ -47,10 +47,10 @@ public class StratificationManager<K extends Stratifier<Object>, V> implements M
      * @param strats ordered list of stratifications to representation
      */
     public StratificationManager(final List<K> strats) {
-        this.stratifiers = new ArrayList<K>(strats);
+        this.stratifiers = new ArrayList<>(strats);
 
         // construct and store the full tree of strats
-        this.root = buildStratificationTree(new LinkedList<K>(strats));
+        this.root = buildStratificationTree(new LinkedList<>(strats));
         // assign the linear key ordering to the leafs
         assignKeys(root);
 
@@ -59,11 +59,11 @@ public class StratificationManager<K extends Stratifier<Object>, V> implements M
         if ( this.size == 0 )
             throw new GATKException("Size == 0 in StratificationManager");
 
-        // prepare the assocated data vectors mapping from key -> data
-        this.valuesByKey = new ArrayList<V>(size());
-        this.stratifierValuesByKey = new ArrayList<List<Object>>(size());
-        this.keyStrings = new ArrayList<String>(size());
-        for ( int i = 0; i < size(); i++ ) {
+        // prepare the associated data vectors mapping from key -> data
+        this.valuesByKey = new ArrayList<>(size);
+        this.stratifierValuesByKey = new ArrayList<>(size);
+        this.keyStrings = new ArrayList<>(size);
+        for ( int i = 0; i < size; i++ ) {
             this.valuesByKey.add(null);
             this.stratifierValuesByKey.add(null);
             this.keyStrings.add(null);
