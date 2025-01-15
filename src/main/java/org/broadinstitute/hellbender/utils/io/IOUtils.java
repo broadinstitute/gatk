@@ -202,24 +202,16 @@ public final class IOUtils {
     }
 
     /**
-     * Writes the an embedded resource to a file.
+     * Writes an embedded resource to a file.
      * File is not scheduled for deletion and must be cleaned up by the caller.
      * @param resource Embedded resource.
      * @param file File path to write.
      */
-    @SuppressWarnings("deprecation")
     public static void writeResource(Resource resource, File file) {
-        String path = resource.getPath();
-        InputStream inputStream = resource.getResourceContentsAsStream();
-        OutputStream outputStream = null;
         try {
-            outputStream = FileUtils.openOutputStream(file);
-            org.apache.commons.io.IOUtils.copy(inputStream, outputStream);
-        } catch (IOException e) {
-            throw new GATKException(String.format("Unable to copy resource '%s' to '%s'", path, file), e);
-        } finally {
-            org.apache.commons.io.IOUtils.closeQuietly(inputStream);
-            org.apache.commons.io.IOUtils.closeQuietly(outputStream);
+            Files.copy(resource.getResourceContentsAsStream(), file.toPath());
+        } catch (IOException | IllegalArgumentException e) {
+            throw new GATKException(String.format("Unable to copy resource '%s' to '%s'", resource.getPath(), file), e);
         }
     }
 
