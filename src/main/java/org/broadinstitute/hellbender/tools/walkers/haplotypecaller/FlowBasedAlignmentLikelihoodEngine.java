@@ -264,7 +264,7 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
                 read.getTrimmedEnd()).getLeft();
 
         final int haplotypeLength = haplotypeEnd - haplotypeStart;
-        final int readLength = read.seqLength();
+        final int readLength = read.getLength();
 
 
         //in case there is a deletion on the haplotype and hte read falls inside the deletion (thus length of the read is

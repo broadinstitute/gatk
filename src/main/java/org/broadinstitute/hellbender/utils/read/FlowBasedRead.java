@@ -26,10 +26,10 @@ import java.util.*;
  * is coded in the tags of the BAM and is given in flow space). This code is not used in production, but was used in
  * development and testing
  *
- * A common usage pattern is to covert a GATKRead into a FlowBasedRead. Additionally
+ * A common usage pattern is to covert a GATKRead into a FlowBasedRead. Additionally,
  * a SAMRecord can also be converted into a FlowBasedRead. Follows a common usage pattern:
  *
- * For a self contained example of a usage pattern, see {@link FlowBasedReadUtils#convertToFlowBasedRead(GATKRead, SAMFileHeader)}
+ * For a self-contained example of a usage pattern, see {@link FlowBasedReadUtils#convertToFlowBasedRead(GATKRead, SAMFileHeader)}
  *
  **/
 
@@ -72,22 +72,17 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     /**
      * The sam record from which this flow based read originated
      */
-    private SAMRecord samRecord;
+    private final SAMRecord samRecord;
 
     /**
-     * The read's sequence, always in forward direction
-     */
-    private byte[] forwardSequence;
-
-    /**
-     * The flow key for the read - i.e. lengths of hmers in an flow order.
+     * The flow key for the read - i.e. lengths of hmers in flow order.
      *
      * For example, assuming a flow order of TGCA, and a forward sequence of GGAAT, the key will be 0,2,0,2,1
      */
     private int[] key;
 
     /**
-     * the maping of key elements to their origin locations in the sequence. Entry n contains the offset in the sequence
+     * the mapping of key elements to their origin locations in the sequence. Entry n contains the offset in the sequence
      * where the hmer described by this key element starts.
      */
     private int [] flow2base;
@@ -95,7 +90,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     /**
      * The maximal length of an hmer that can be encoded (normally in the 10-12 range)
      */
-    private int maxHmer;
+    private final int maxHmer;
 
     /**
      * The value to fill the flow matrix with. Normally 0.001
@@ -104,20 +99,20 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     private double perHmerMinErrorProb;
 
     /**
-     * The order in which flow key in encoded (See decription for key field). Flow order may be wrapped if a longer one
+     * The order in which flow key in encoded (See description for key field). Flow order may be wrapped if a longer one
      * needed.
      */
     private byte[] flowOrder;
 
     /**
-     * The probability matrix for this read. [n][m] position represents that probablity that an hmer of n length will be
-     * present at the m key position. Therefore, the first dimention is in the maxHmer order, where the second dimension
+     * The probability matrix for this read. [n][m] position represents that probability that an hmer of n length will be
+     * present at the m key position. Therefore, the first dimension is in the maxHmer order, where the second dimension
      * is length(key).
      */
     private double[][] flowMatrix;
 
     /**
-     * The validity status of the key. Certain operations may produce undefined/errornous results. This is signaled by
+     * The validity status of the key. Certain operations may produce undefined/erroneous results. This is signaled by
      * the read being marked with a validKey == false
      */
     private boolean validKey = true;
@@ -199,7 +194,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * @param samRecord record from SAM file
      * @param flowOrder flow order (single cycle)
      * @param maxHmer maximal hmer to keep in the flow matrix
-     * @param fbargs arguments that control resoltion of the flow matrix
+     * @param fbargs arguments that control resolution of the flow matrix
      */
     public FlowBasedRead(final SAMRecord samRecord, final String flowOrder, final int maxHmer, final FlowBasedArgumentCollection fbargs) {
         super(samRecord);
@@ -208,9 +203,8 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         this.fbargs = fbargs;
         this.maxHmer = maxHmer;
         this.samRecord = samRecord;
-        forwardSequence = getForwardSequence();
 
-        // read flow matrix in. note that below code contains accomodates for old formats
+        // read flow matrix in. note that below code contains accommodates for old formats
         if ( samRecord.hasAttribute(FLOW_MATRIX_TAG_NAME) ) {
             perHmerMinErrorProb = fbargs.fillingValue;
             totalMinErrorProb = perHmerMinErrorProb;
@@ -408,18 +402,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     }
 
 
-    private byte[] getForwardSequence(){
-        if (!isReverseStrand()) {
-            return samRecord.getReadBases();
-        } else {
-            final byte[] result = new byte[samRecord.getReadBases().length];
-            System.arraycopy(samRecord.getReadBases(), 0, result, 0, result.length);
-            SequenceUtil.reverseComplement(result);
-            return result;
-        }
-    }
-
-
     private int[] getAttributeAsIntArray(final String attributeName, final boolean isSigned) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
         final Object attributeValue = this.samRecord.getAttribute(attributeName);
@@ -460,7 +442,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * @return
      */
     public double getProb(final int flow, final int hmer) {
-        double prob = flowMatrix[hmer < maxHmer ? hmer : maxHmer][flow];
+        double prob = flowMatrix[Math.min(hmer, maxHmer)][flow];
         return (prob <= 1) ? prob : 1;
     }
 
@@ -525,7 +507,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
                             flowMatrix[hmer2][pos] = flowMatrix[hmer][pos];
                         }
 
-                        // if we are copying bacwards, zero out source
+                        // if we are copying backwards, zero out source
                         if (hmer > hmer2)
                             flowMatrix[hmer][pos] = 0;
                     }
@@ -783,9 +765,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         return sum;
     }
 
-    public int seqLength(){
-        return forwardSequence.length;
-    }
     public boolean isBaseClipped() {
         return baseClipped;
     }
