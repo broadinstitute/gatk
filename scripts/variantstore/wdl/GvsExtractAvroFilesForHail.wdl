@@ -285,7 +285,7 @@ task ExtractFromPloidyTable {
                 WHEN 24 THEN 'chrY'
                 ELSE 'chr' || (p.chromosome / 1000000000000) END) AS location, s.sample_name, p.ploidy
             FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
-            JOIN \`~{project_id}.~{dataset_name}.sample_info s ON p.sample_id = s.sample_id
+            JOIN \`~{project_id}.~{dataset_name}.sample_info\' s ON p.sample_id = s.sample_id
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
     >>>
     output {
