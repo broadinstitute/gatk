@@ -67,8 +67,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
 
     private List<MultiIntervalLocalReadShard> readShards;
 
-    private boolean nonRandomDownsamplingMode = nonRandomDownsamplingMode();
-
     /**
      * Initialize data sources for traversal.
      *
@@ -141,7 +139,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     protected ReadsDownsampler createDownsampler() {
-        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads(), nonRandomDownsamplingMode) : null;
+        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads(), nonRandomDownsamplingMode()) : null;
     }
 
     /**

@@ -96,7 +96,7 @@ public class AltSiteRecord {
 
 
     /*** Writer ***/
-    public static class AltSiteRecordTableWriter extends TableWriter<AltSiteRecord> {
+    public static final class AltSiteRecordTableWriter extends TableWriter<AltSiteRecord> {
         public AltSiteRecordTableWriter(final Path output, final String sample) throws IOException {
             super(output, AltSiteRecord.AltSiteRecordTableColumn.COLUMNS);
             writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);

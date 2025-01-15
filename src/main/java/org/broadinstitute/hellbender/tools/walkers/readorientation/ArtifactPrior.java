@@ -56,7 +56,7 @@ public class ArtifactPrior {
 
     public int getNumAltExamples() { return numAltExamples; }
 
-    public static class ArtifactPriorTableWriter extends TableWriter<ArtifactPrior> {
+    public static final class ArtifactPriorTableWriter extends TableWriter<ArtifactPrior> {
         public ArtifactPriorTableWriter(final Path output, final String sample) throws IOException {
             super(output, ArtifactPriorTableColumn.COLUMNS);
             writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
