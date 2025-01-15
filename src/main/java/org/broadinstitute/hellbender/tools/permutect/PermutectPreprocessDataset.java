@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.permutect;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -28,45 +29,45 @@ public class PermutectPreprocessDataset extends CommandLineProgram {
     //TODO handle lists for this? Make it a gatk list?
     @Argument(
             doc = "List of plain text data files.",
-            fullName = "training-datasets"
+            fullName = PermutectArgumentConstants.TRAINING_DATASETS_NAME
     )
     public String trainingDatasetName = null;
 
     @Argument(
             doc = "Size in bytes of output binary data files. Default is 2e9.",
-            fullName = "chunk-size",
+            fullName = PermutectArgumentConstants.CHUNK_SIZE_NAME,
             optional = true
     )
     public String chunkSizeName = null;
 
     @Argument(
             doc = "Integer sources corresponding to plain text data files for distinguishing different sequencing conditions.",
-            fullName = "sources",
+            fullName = PermutectArgumentConstants.SOURCES_NAME,
             optional = true
     )
     public String sources = null;
 
     @Argument(
             doc = "Path to output tarfile of training data.",
-            fullName = "output"
+            fullName = PermutectArgumentConstants.OUTPUT_NAME
     )
     public String outputTarGz = null;
 
+    // Shared argument collections to include in arguments
+    @ArgumentCollection
+    PermutectBaseModelArgumentCollection baseArgumentCollection = new PermutectBaseModelArgumentCollection();
+    @ArgumentCollection
+    PermutectTrainingParamsArgumentCollection trainingParamsArgumentCollection = new PermutectTrainingParamsArgumentCollection();
+
     @Override
     protected Object doWork() {
-
-        //TODO this is where I check the environment
-
         PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        final List<String> arguments = new ArrayList<>();
-        arguments.add("--training_datasets=" + trainingDatasetName);
-        if (chunkSizeName != null) { arguments.add("--chunk_size=" + chunkSizeName);}
-        if (sources != null) { arguments.add("--sources=" + sources);}
-        arguments.add("--output=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputTarGz));
+        List<String> pythonifiedArguments = PermutectArgumentConstants.getPtyhonClassArgumentsFromToolParser(getCommandLineParser());
 
         return executor.executeScript(
-                new Resource(PERMUTECT_PREPREOCESS_DATASET_SCRIPT, PermutectPreprocessDataset.class),
+                new Resource(PERMUTECT_PREPREOCESS_DATASET_SCRIPT, PermutectTrainBaseModel.class),
                 null,
-                arguments);
+                pythonifiedArguments);
     }
+
 }
