@@ -19,8 +19,8 @@ import java.util.zip.ZipFile;
 
 public class OnRampBase extends RampBase {
 
-    final private ZipFile inputZip;
-    private Map<String,Integer> regionIndex = new LinkedHashMap<>();
+    private final ZipFile inputZip;
+    private final Map<String,Integer> regionIndex = new LinkedHashMap<>();
 
     public OnRampBase(final String filename) throws IOException {
         super(filename, Type.OnRamp);
@@ -39,6 +39,7 @@ public class OnRampBase extends RampBase {
             regionIndex.put(regionKey(regions.getJSONObject(i)), i);
     }
 
+    @Override
     public void close() throws IOException {
 
         // close file
@@ -47,9 +48,9 @@ public class OnRampBase extends RampBase {
         super.close();
     }
 
-    protected InputStream getEntry(final Locatable loc, final String nameParam) throws IOException {
+    protected final InputStream getEntry(final Locatable loc, final String nameParam) throws IOException {
 
-        final String      prefix = loc != null ? getLocFilenameSuffix(loc) + "/" : "";
+        final String      prefix = loc == null ? "" : getLocFilenameSuffix(loc) + "/";
         final String      name = prefix + nameParam;
 
         Enumeration<? extends ZipEntry> entries = inputZip.entries();

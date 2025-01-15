@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import htsjdk.samtools.util.Locatable;
@@ -31,7 +30,7 @@ public abstract class RampBase {
         logger.info("opening ramp. file: " + file + ", type: " + type);
     }
 
-    protected String getLocFilenameSuffix(final Locatable loc) {
+    protected static String getLocFilenameSuffix(final Locatable loc) {
         return String.format("%s-%d-%d", loc.getContig(), loc.getStart(), loc.getEnd());
     }
 
@@ -42,21 +41,15 @@ public abstract class RampBase {
         return type;
     }
 
-    protected Path getBamIndexPath(Path bamPath) {
+    protected static Path getBamIndexPath(Path bamPath) {
         return (new File(bamPath.toFile().getAbsolutePath().replace(".bam", ".bai"))).toPath();
     }
 
-    protected void copyStreamToPath(final InputStream is, final Path outPath) throws IOException {
-        final OutputStream        os = new FileOutputStream(outPath.toFile());
-        IOUtils.copy(is, os);
-        os.close();
-    }
-
-    protected String getReadSuppName(final GATKRead read) {
+    protected static String getReadSuppName(final GATKRead read) {
         return getReadSuppName(read.getName(), read.isSupplementaryAlignment());
     }
 
-    protected String getReadSuppName(final String name, final boolean supp) {
+    protected static String getReadSuppName(final String name, final boolean supp) {
         return name + (supp ? ",1" : ",0");
     }
 

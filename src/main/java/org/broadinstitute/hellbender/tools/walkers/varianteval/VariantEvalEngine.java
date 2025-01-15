@@ -140,6 +140,7 @@ public class VariantEvalEngine {
         this.features = null;
     }
 
+    @SuppressWarnings("this-escape")
     public VariantEvalEngine(VariantEvalArgumentCollection variantEvalArgs, FeatureManager features, List<SimpleInterval> traversalIntervals, SAMSequenceDictionary samSequenceDictionaryForDrivingVariants, @Nullable Collection<String> samples) {
         this.variantEvalArgs = variantEvalArgs;
         this.samSequenceDictionaryForDrivingVariants = samSequenceDictionaryForDrivingVariants;

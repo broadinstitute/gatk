@@ -17,6 +17,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,11 +35,11 @@ public class PostAssemblerOnRamp extends OnRampBase {
         super(filename);
 
         // open haplotype file (bam)
-        haplotypeBAMWriterPath = File.createTempFile("haplotypes_", ".bam").toPath();
+        haplotypeBAMWriterPath = Files.createTempFile("haplotypes_", ".bam");
         haplotypeBAIWriterPath = getBamIndexPath(haplotypeBAMWriterPath);
-        copyStreamToPath(getEntry(null, "haplotypes.bam"), haplotypeBAMWriterPath);
-        copyStreamToPath(getEntry(null, "haplotypes.bai"), haplotypeBAIWriterPath);
-        final SamInputResource    samInputResource = SamInputResource.of(haplotypeBAMWriterPath);
+        Files.copy(getEntry(null, "haplotypes.bam"), haplotypeBAMWriterPath);
+        Files.copy(getEntry(null, "haplotypes.bai"), haplotypeBAIWriterPath);
+        final SamInputResource samInputResource = SamInputResource.of(haplotypeBAMWriterPath);
         samInputResource.index(haplotypeBAIWriterPath);
         haplotypeReader = SamReaderFactory.makeDefault().open(samInputResource);
     }
@@ -46,8 +48,8 @@ public class PostAssemblerOnRamp extends OnRampBase {
     public void close() throws IOException {
         if ( haplotypeReader != null ) {
             haplotypeReader.close();
-            haplotypeBAMWriterPath.toFile().delete();
-            haplotypeBAIWriterPath.toFile().delete();
+            Files.deleteIfExists(haplotypeBAMWriterPath);
+            Files.deleteIfExists(haplotypeBAIWriterPath);
         }
         super.close();
     }
@@ -114,11 +116,10 @@ public class PostAssemblerOnRamp extends OnRampBase {
         return assemblyResult;
     }
 
-    private List<Haplotype> readHaplotypes(final AssemblyRegion region) {
+    private List<Haplotype> readHaplotypes(final Locatable loc) {
 
         // read records within the region range
         final List<Haplotype>     haplotypes = new LinkedList<>();
-        final Locatable           loc = region;
         final String              locStr = String.format("%s:%d-%d", loc.getContig(), loc.getStart(), loc.getEnd());
         final SAMRecordIterator   iter = haplotypeReader.query(loc.getContig(), loc.getStart(), loc.getEnd(), false);
         while ( iter.hasNext() ) {

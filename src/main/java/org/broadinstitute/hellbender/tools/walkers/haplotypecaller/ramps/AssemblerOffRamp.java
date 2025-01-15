@@ -24,8 +24,8 @@ public class AssemblerOffRamp extends OffRampBase {
     public void close() throws IOException {
         if ( haplotypeBAMWriter != null ) {
             haplotypeBAMWriter.close();
-            addEntry(null, "haplotypes.bam", haplotypeBAMWriterPath);
-            addEntry(null, "haplotypes.bai", getBamIndexPath(haplotypeBAMWriterPath));
+            addEntry("haplotypes.bam", haplotypeBAMWriterPath);
+            addEntry("haplotypes.bai", getBamIndexPath(haplotypeBAMWriterPath));
             haplotypeBAMWriterPath.toFile().delete();
         }
         super.close();

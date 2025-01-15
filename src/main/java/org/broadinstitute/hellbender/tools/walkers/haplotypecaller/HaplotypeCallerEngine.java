@@ -523,7 +523,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param sequenceDictionary sequence dictionary for the reads
      * @return a VCF header
      */
-    public VCFHeader makeVCFHeader( final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine>  defaultToolHeaderLines ) {
+    public final VCFHeader makeVCFHeader( final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine>  defaultToolHeaderLines ) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
         headerInfo.addAll(defaultToolHeaderLines);
 
@@ -589,7 +589,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      *
      * @param vcfWriter writer to which the header should be written
      */
-    public void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
+    public final void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
                              final Set<VCFHeaderLine>  defaultToolHeaderLines) {
         Utils.nonNull(vcfWriter);
         vcfWriter.writeHeader(makeVCFHeader(sequenceDictionary, defaultToolHeaderLines));
@@ -1157,7 +1157,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      *
      * @return true if HC must emit reference confidence.
      */
-    public boolean emitReferenceConfidence() {
+    public final boolean emitReferenceConfidence() {
         return hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
     }
 

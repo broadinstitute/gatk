@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps;
 
 import htsjdk.samtools.util.Locatable;
-import org.apache.commons.io.IOUtils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -28,6 +28,7 @@ public abstract class OffRampBase extends RampBase {
         info.put("regions", new JSONArray());
     }
 
+    @Override
     public void close() throws IOException {
 
         // add info
@@ -52,7 +53,7 @@ public abstract class OffRampBase extends RampBase {
                     haplotype.isReference() ? 1 : 0,
                     haplotype.getCigar().toString(),
                     new String(haplotype.getBases()),
-                    Double.toString(haplotype.getScore()),
+                    haplotype.getScore(),
                     haplotype.getAlignmentStartHapwrtRef()
                     )
             );
@@ -91,14 +92,11 @@ public abstract class OffRampBase extends RampBase {
         outputZip.closeEntry();
     }
 
-    protected void addEntry(final Locatable loc, final String name, final Path path) throws IOException {
+    protected void addEntry(final String name, final Path path) throws IOException {
 
-        final String      prefix = loc != null ? getLocFilenameSuffix(loc) + "/" : "";
-        final ZipEntry    e = new ZipEntry(prefix + name);
+        final ZipEntry e = new ZipEntry(name);
         outputZip.putNextEntry(e);
-        final InputStream is = new FileInputStream(path.toFile());
-        IOUtils.copy(is, outputZip);
-        is.close();
+        Files.copy(path, outputZip);
         outputZip.closeEntry();
     }
 }

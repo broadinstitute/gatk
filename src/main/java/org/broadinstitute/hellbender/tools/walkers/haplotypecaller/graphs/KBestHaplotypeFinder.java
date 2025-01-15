@@ -16,6 +16,7 @@ public abstract class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseE
     final Set<V> sinks;
     final Set<V> sources;
 
+    @SuppressWarnings("this-escape")
     public KBestHaplotypeFinder(final Set<V> sinks, final Set<V> sources, final BaseGraph<V, E> graph) {
         Utils.nonNull(graph, "graph cannot be null");
         Utils.nonNull(sources, "sources cannot be null");

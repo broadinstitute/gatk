@@ -51,6 +51,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
     protected PostAssemblerOnRamp postAssemblerOnRamp = null;
 
     // haplotype caller phases, as consumers
+    @SuppressWarnings("this-escape")
     final private List<Consumer<CallRegionContext>>   phases =
             Arrays.asList(
                     p -> prepare(p),
@@ -77,12 +78,13 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
     /**
      * Shutdown this HC engine, closing resources as appropriate
      */
+    @Override
     public void shutdown() {
         super.shutdown();
         tearRamps();
     }
 
-    public void buildRamps() {
+    private void buildRamps() {
         try {
 
             if ( rpArgs.offRampType != null && rpArgs.offRampType != RampedHaplotypeCallerArgumentCollection.OffRampTypeEnum.NONE) {
@@ -145,7 +147,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
             throw new RuntimeException(e);
         }
     }
-    private class CallRegionContext {
+    private static class CallRegionContext {
 
         // params
         final AssemblyRegion region;
@@ -232,7 +234,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
         context.VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
-            context.features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants).stream().forEach(context.VCpriors::add);
+            context.VCpriors.addAll(context.features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants));
         }
 
         if (hcArgs.sampleNameToUse != null) {
