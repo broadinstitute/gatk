@@ -5,6 +5,7 @@ import hail as hl
 from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
 from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, sequenceof, numeric
+import import_gvs_ploidy
 
 
 @typecheck(refs=sequenceof(sequenceof(str)),
