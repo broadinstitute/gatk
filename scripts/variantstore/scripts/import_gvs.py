@@ -28,7 +28,7 @@ def import_gvs(refs: 'List[List[str]]',
                sample_mapping: 'List[str]',
                site_filtering_data: 'List[str]',
                vets_filtering_data: 'List[str]',
-               ploidy_data: 'List[str]'
+               ploidy_data: 'List[str]',
                final_path: 'str',
                tmp_dir: 'str',
                truth_sensitivity_snp_threshold: 'float' = 0.997,
