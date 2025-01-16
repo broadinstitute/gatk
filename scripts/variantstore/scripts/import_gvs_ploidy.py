@@ -1,3 +1,15 @@
+import os
+import json
+import gzip
+
+from collections import namedtuple, defaultdict, abc
+
+import hail as hl
+
+from avro.datafile import DataFileReader
+from avro.io import DatumReader
+from hail.utils.java import info
+
 def import_ploidy(*avros) -> dict[str, hl.Struct]:
     """
     Parameters
