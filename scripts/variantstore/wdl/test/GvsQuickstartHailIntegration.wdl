@@ -179,7 +179,7 @@ task TieOutVds {
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/scripts"
-        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py
+        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py import_gvs_ploidy.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done

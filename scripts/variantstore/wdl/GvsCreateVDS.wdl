@@ -116,6 +116,7 @@ workflow GvsCreateVDS {
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
             gvs_import_script = GetHailScripts.gvs_import_script,
+            gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
@@ -159,6 +160,7 @@ task CreateVds {
         Boolean leave_cluster_running_at_end
         File hail_gvs_import_script
         File gvs_import_script
+        File gvs_import_ploidy_script
         File run_in_hail_cluster_script
         String? hail_version
         File? hail_wheel
@@ -237,6 +239,7 @@ task CreateVds {
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_gvs_import_script} \
             --secondary-script-path-list ~{gvs_import_script} \
+            --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -287,6 +290,7 @@ task GetHailScripts {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
         File hail_gvs_import_script = "app/hail_gvs_import.py"
         File gvs_import_script = "app/import_gvs.py"
+        File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
     }
     runtime {
         docker: variants_docker
