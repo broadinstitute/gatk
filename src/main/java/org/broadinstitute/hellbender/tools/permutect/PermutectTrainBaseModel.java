@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.permutect;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -52,6 +53,12 @@ public class PermutectTrainBaseModel extends CommandLineProgram {
             optional = true
     )
     public String outputTarGz = null;
+
+    // Shared argument collections to include in arguments
+    @ArgumentCollection
+    PermutectBaseModelArgumentCollection baseArgumentCollection = new PermutectBaseModelArgumentCollection();
+    @ArgumentCollection
+    PermutectTrainingParamsArgumentCollection trainingParamsArgumentCollection = new PermutectTrainingParamsArgumentCollection();
 
     @Override
     protected Object doWork() {

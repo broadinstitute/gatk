@@ -53,11 +53,6 @@ public class PermutectPreprocessDataset extends CommandLineProgram {
     )
     public String outputTarGz = null;
 
-    // Shared argument collections to include in arguments
-    @ArgumentCollection
-    PermutectBaseModelArgumentCollection baseArgumentCollection = new PermutectBaseModelArgumentCollection();
-    @ArgumentCollection
-    PermutectTrainingParamsArgumentCollection trainingParamsArgumentCollection = new PermutectTrainingParamsArgumentCollection();
 
     @Override
     protected Object doWork() {

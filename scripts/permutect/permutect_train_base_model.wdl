@@ -91,23 +91,23 @@ task TrainPermutectBase {
     command <<<
         set -e
 
-        train_base_model \
-            --train_tar ~{train_tar} \
-            ~{"--pretrained_model " + pretrained_model} \
-            --read_layers ~{sep=' ' read_layers} \
-            --self_attention_hidden_dimension ~{self_attention_hidden_dimension} \
-            --num_self_attention_layers ~{num_self_attention_layers} \
-            --info_layers ~{sep=' ' info_layers} \
-            --aggregation_layers ~{sep=' ' aggregation_layers} \
-            --ref_seq_layer_strings ~{sep=' ' ref_seq_layer_strings} \
-            --dropout_p ~{dropout_p} \
-            --reweighting_range ~{reweighting_range} \
-            --batch_size ~{batch_size} \
-            --inference_batch_size ~{inference_batch_size} \
-            ~{"--num_workers " + num_workers} \
-            --num_epochs ~{num_epochs} \
+        gatk PermutectTrainBaseModel \
+            --train-tar ~{train_tar} \
+            ~{"--pretrained-model " + pretrained_model} \
+            --read-layers ~{sep=' --read-layers ' read_layers} \
+            --self-attention-hidden-dimension ~{self_attention_hidden_dimension} \
+            --num-self-attention-layers ~{num_self_attention_layers} \
+            --info-layers ~{sep=' --info-layers ' info_layers} \
+            --aggregation-layers ~{sep=' --aggregation-layers ' aggregation_layers} \
+            --ref-seq-layer-strings ~{sep=' --ref-seq-layer-strings ' ref_seq_layer_strings} \
+            --dropout-p ~{dropout_p} \
+            --reweighting-range ~{reweighting_range} \
+            --batch-size ~{batch_size} \
+            --inference-batch-size ~{inference_batch_size} \
+            ~{"--num-workers " + num_workers} \
+            --num-epochs ~{num_epochs} \
             --output base_model.pt \
-            --tensorboard_dir tensorboard \
+            --tensorboard-dir tensorboard \
             ~{extra_args}
 
         tar cvf tensorboard.tar tensorboard/

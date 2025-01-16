@@ -19,7 +19,7 @@ public class PermutectBaseModelArgumentCollection implements Serializable {
             fullName = PermutectArgumentConstants.READ_LAYERS_NAME,
             optional = false
     )
-    public List<String> readLayers = null;
+    public String readLayers = null;
 
     @Argument(
             doc = "Hidden dimension of transformer keys and values in the self-attention layers.",
