@@ -7,9 +7,9 @@ version 1.0
 # note that the artifact model can be trained before the Mutect2 workflow runs FilterMutectCalls
 
 import "https://api.firecloud.org/ga4gh/v1/tools/davidben:mutect2/versions/18/plain-WDL/descriptor" as m2
-import "https://api.firecloud.org/ga4gh/v1/tools/davidben:permutect-uda-dataset/versions/3/plain-WDL/descriptor" as uda
-import "https://api.firecloud.org/ga4gh/v1/tools/davidben:permutect-train-artifact-model/versions/13/plain-WDL/descriptor" as training
-import "https://api.firecloud.org/ga4gh/v1/tools/davidben:permutect-call-variants/versions/19/plain-WDL/descriptor" as calling
+import "https://api.firecloud.org/ga4gh/v1/tools/emeryj:permutect-uda-dataset.modified/versions/1/plain-WDL/descriptor" as uda
+import "https://api.firecloud.org/ga4gh/v1/tools/emeryj:permutect-train-artifact-model.modified/versions/2/plain-WDL/descriptor" as training
+import "https://api.firecloud.org/ga4gh/v1/tools/emeryj:permutect-call-variants.modified/versions/1/plain-WDL/descriptor" as calling
 
 workflow CallVariantsWithUDA {
     input {
@@ -257,7 +257,7 @@ task Preprocess {
     command <<<
         set -e
 
-        preprocess_dataset --training_datasets ~{training_dataset} --chunk_size ~{chunk_size} ~{"--sources " + source_label} --output train.tar
+        gatk PermutectPreprocessDataset --training-datasets ~{training_dataset} --chunk-size ~{chunk_size} ~{"--sources " + source_label} --output train.tar
     >>>
 
     runtime {
