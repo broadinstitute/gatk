@@ -7,8 +7,7 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
-        String vds_path
-        String ancestry_path
+        Boolean use_vds = true
         String output_path
         String split_intervals_scatter_count = 10
         String expected_output_prefix
@@ -23,10 +22,15 @@ workflow GvsQuickstartVcfIntegration {
         File? gatk_override
 
         String? workspace_bucket
-        String? workspace_id
         String? submission_id
     }
     String project_id = "gvs-internal"
+
+    File input_data_prefix = "gs://gvs-internal-quickstart/integration/test_data/2025-01-17/"
+    File ancestry_path =  input_data_prefix + "quickstart_ancestry.tsv"
+    File? vds_path = if (use_vds) then input_data_prefix + "gvs_export.vds" else none
+    File? sites_only_vcf = if (!use_vds) then input_data_prefix + "todo" else none
+    File? sites_only_vcf_index = if (!use_vds) then input_data_prefix + "todo" else none
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -47,7 +51,6 @@ workflow GvsQuickstartVcfIntegration {
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     if (!use_default_dockers && !defined(gatk_override)) {
@@ -75,6 +78,8 @@ workflow GvsQuickstartVcfIntegration {
             ancestry_file = ancestry_path,
             filter_set_name = "quickit",
             vds_path = vds_path,
+            sites_only_vcf = sites_only_vcf,
+            sites_only_vcf_index = sites_only_vcf_index,
             output_path = output_path,
             split_intervals_scatter_count = split_intervals_scatter_count,
 
