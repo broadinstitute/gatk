@@ -59,7 +59,7 @@ public class SVDUSTFilteredKmerizer extends SVKmerizer {
     }
 
     @Override
-    protected SVKmer nextKmer( final SVKmer initialKmer, int validBaseCount ) {
+    protected final SVKmer nextKmer( final SVKmer initialKmer, int validBaseCount ) {
         final int len = seq.length();
         SVKmer result = initialKmer;
         while ( idx < len ) {

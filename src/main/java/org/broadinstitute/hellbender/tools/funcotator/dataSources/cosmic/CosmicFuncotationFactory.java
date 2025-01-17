@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
  * Created by jonn on 12/16/17.
  */
-public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
+public final class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Public Static Members:

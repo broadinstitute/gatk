@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
  * https://wiki.nci.nih.gov/display/TCGA/Mutation+Annotation+Format+%28MAF%29+Specification+-+v2.4
  * Created by jonn on 12/5/17.
  */
+@SuppressWarnings("this-escape")
 public class MafOutputRenderer extends OutputRenderer {
 
     //==================================================================================================================

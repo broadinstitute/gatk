@@ -16,7 +16,7 @@ import java.util.*;
  * Table utilized by CompareReferences tool to compare and analyze sequences found in specified references.
  * Underlying table is keyed by MD5, with the ability to query by sequence name across references as well.
  */
-public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.TableRow> {
+public final class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.TableRow> {
 
     public static final Logger logger = LogManager.getLogger(ReferenceSequenceTable.class);
     public static final String MISSING_ENTRY_DISPLAY_STRING = "---";
@@ -381,7 +381,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * Minimal class representing a table entry within a row of the ReferenceSequenceTable.
      * Stores the entry's value and the associated column.
      */
-    public class TableEntry {
+    public static class TableEntry {
 
         private final String columnName;
         private final String columnValue;
@@ -416,7 +416,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * Class representing a row of the ReferenceSequenceTable. Rows are keyed by MD5 and the remaining columns
      * contain the sequence length, followed by the sequence name across each reference.
      */
-    public class TableRow {
+    public final class TableRow {
         private final String md5;
         private final TableEntry[] entries;
         private final int length;

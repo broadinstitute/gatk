@@ -17,7 +17,7 @@ import java.util.Map;
  * This class holds onto as little information as possible in an attempt to prevent excessive serialization of
  * during the processing step of MarkDuplicatesSpark
  */
-public class Fragment extends TransientFieldPhysicalLocation {
+public final class Fragment extends TransientFieldPhysicalLocation {
     private static final long serialVersionUID = 0L;
 
     protected transient ReadsKey key;

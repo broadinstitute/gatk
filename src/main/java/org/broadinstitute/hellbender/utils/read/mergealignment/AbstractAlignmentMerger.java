@@ -595,7 +595,7 @@ public abstract class AbstractAlignmentMerger {
 
     protected SAMProgramRecord getProgramRecord() { return programRecord; }
 
-    protected void setProgramRecord(final SAMProgramRecord pg) {
+    protected final void setProgramRecord(final SAMProgramRecord pg) {
         Utils.validate(programRecord == null, "Cannot set program record more than once on alignment merger.");
         programRecord = pg;
         header.addProgramRecord(pg);

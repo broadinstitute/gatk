@@ -32,6 +32,12 @@ public class SVKmerizer implements Iterator<SVKmer> {
         this(seq, kSize, 1, kmer);
     }
 
+    /*
+     *  Warning: this constructor uses {@link #nextKmer(SVKmer, int)} which is overidden in practice by
+     *  subclasses. This constructor should not be invoked from a subclass since it could lead to confusing
+     *  undefined behavior.
+     */
+    @SuppressWarnings("this-escape")
     public SVKmerizer( final CharSequence seq, final int kSize, final int kSpace, SVKmer kmer ) {
         this.seq = seq;
         this.kSize = kSize;

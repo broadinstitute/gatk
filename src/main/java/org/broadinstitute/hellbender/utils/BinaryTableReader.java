@@ -19,6 +19,7 @@ public abstract class BinaryTableReader<R> implements AutoCloseable, Iterator<R>
     private R next;
     private final Runnable closeAction;
 
+    @SuppressWarnings("this-escape")
     protected BinaryTableReader(final InputStream in, final String source) {
         final DataInputStream dataInputStream = new DataInputStream(in);
         dtInput = new DataInputStream(in);

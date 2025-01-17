@@ -54,6 +54,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
         this(tableRef, null, parentProjectId);
     }
 
+    @SuppressWarnings("this-escape")
     public StorageAPIAvroReader(final TableReference tableRef, final String rowRestriction, String parentProjectId) {
 
         try {

@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * A class to create annotations from VCF feature sources.
  * Created by jonn on 3/23/18.
  */
-public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
+public final class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Public Static Members:

@@ -821,6 +821,7 @@ public class BreakpointEvidence {
         // tries to correct for that.
         public static final int MATE_ALIGNMENT_LENGTH_UNCERTAINTY = 2;
 
+        @SuppressWarnings("this-escape")
         public DiscordantReadPairEvidence(final GATKRead read, final ReadMetadata metadata, final int weight) {
             super(read, metadata, weight);
             target = getMateTargetInterval(read, metadata);

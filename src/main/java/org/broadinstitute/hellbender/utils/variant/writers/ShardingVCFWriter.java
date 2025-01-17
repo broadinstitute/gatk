@@ -49,6 +49,7 @@ public class ShardingVCFWriter implements VariantContextWriter {
      * @param createMD5             enable MD5 file creation
      * @param options               vcf writer options
      */
+    @SuppressWarnings("this-escape")
     public ShardingVCFWriter(final Path basePath,
                              final int maxVariantsPerShard,
                              final SAMSequenceDictionary dictionary,

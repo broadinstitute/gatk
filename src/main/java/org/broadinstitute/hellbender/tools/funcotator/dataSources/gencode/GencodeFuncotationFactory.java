@@ -53,7 +53,7 @@ import static org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGTFFieldCons
  * This is a high-level object that interfaces with the internals of {@link Funcotator}.
  * Created by jonn on 8/30/17.
  */
-public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
+public final class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Public Static Members:

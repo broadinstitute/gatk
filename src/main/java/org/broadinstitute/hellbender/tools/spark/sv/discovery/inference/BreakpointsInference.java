@@ -56,6 +56,7 @@ public abstract class BreakpointsInference {
     }
     abstract BreakpointComplications getComplications();
 
+    @SuppressWarnings("this-escape")
     protected BreakpointsInference(final SimpleChimera simpleChimera, final byte[] contigSequence, final SAMSequenceDictionary referenceDictionary) {
         resolveComplications(simpleChimera, contigSequence, referenceDictionary);
     }

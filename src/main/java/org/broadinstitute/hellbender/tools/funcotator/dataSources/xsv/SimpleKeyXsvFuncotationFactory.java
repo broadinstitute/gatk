@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
  * Created by jonn on 11/28/17.
  */
-public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory {
+public final class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Public Static Members:

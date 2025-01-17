@@ -19,7 +19,7 @@ public class HopscotchCollectionSpark<T> extends HopscotchCollection<T> {
     /** make a HopscotchCollectionSpark from a collection */
     public HopscotchCollectionSpark( final Collection<? extends T> collection ) { super(collection); }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "this-escape"})
     protected HopscotchCollectionSpark( final Kryo kryo, final Input input ) {
         super((int)(input.readInt() * HopscotchCollection.LOAD_FACTOR));
 

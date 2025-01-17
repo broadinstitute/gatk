@@ -88,6 +88,7 @@ public class VcfOutputRenderer extends OutputRenderer {
      * @param excludedOutputFields Fields that should not be rendered in the final output. Only exact name matches will be excluded (must not be null).
      * @param toolVersion The version number of the tool used to produce the VCF file (must not be null).
      */
+    @SuppressWarnings("this-escape")
     public VcfOutputRenderer(final VariantContextWriter vcfWriter,
                              final List<DataSourceFuncotationFactory> dataSources,
                              final VCFHeader existingHeader,

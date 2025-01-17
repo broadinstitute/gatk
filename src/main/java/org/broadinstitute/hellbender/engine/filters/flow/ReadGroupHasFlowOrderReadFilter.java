@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * A read filter to test if the read's readGroup has a flow order associated with it
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads without a flow associated")
-public class ReadGroupHasFlowOrderReadFilter extends ReadFilter {
+public final class ReadGroupHasFlowOrderReadFilter extends ReadFilter {
     private static final long serialVersionUID = 1l;
     private final static OneShotLogger readGroupFiltered = new OneShotLogger(ReadGroupHasFlowOrderReadFilter.class);
 
