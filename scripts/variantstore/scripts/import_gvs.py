@@ -197,7 +197,7 @@ def import_gvs(refs: 'List[List[str]]',
         vets_filter = vets_filter.key_by('locus')
         vets_filter.write(vets_filter_path, overwrite=True)
 
-        ploidy = import_gvs_ploidy.import_ploidy(ploidy_data)
+        ploidy = import_gvs_ploidy.import_ploidy(*ploidy_data)
 
     n_samples = 0
 
