@@ -34,15 +34,16 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
     public VariantSummary(VariantEvalEngine engine) {
         super(engine);
 
-        this.knownCNVs = getEngine().getVariantEvalArgs().getKnownCNVsFile();
+        this.knownCNVs = engine.getVariantEvalArgs().getKnownCNVsFile();
 
-        nSamples = getEngine().getSampleNamesForEvaluation().size();
-        countsPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
-        transitionsPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
-        transversionsPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
-        allVariantCounts = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
-        knownVariantCounts = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
-        depthPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+        final Set<String> sampleNames = engine.getSampleNamesForEvaluation();
+        nSamples = sampleNames.size();
+        countsPerSample = new TypeSampleMap(sampleNames);
+        transitionsPerSample = new TypeSampleMap(sampleNames);
+        transversionsPerSample = new TypeSampleMap(sampleNames);
+        allVariantCounts = new TypeSampleMap(sampleNames);
+        knownVariantCounts = new TypeSampleMap(sampleNames);
+        depthPerSample = new TypeSampleMap(sampleNames);
     }
 
     private FeatureInput<Feature> knownCNVs = null;
@@ -90,7 +91,7 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
 
     private final static String ALL = "ALL";
 
-    private class TypeSampleMap extends EnumMap<Type, Map<String, Integer>> {
+    private static class TypeSampleMap extends EnumMap<Type, Map<String, Integer>> {
         private static final long serialVersionUID = 1L;
 
         public TypeSampleMap(final Collection<String> samples) {

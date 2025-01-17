@@ -26,7 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
-public class PostAssemblerOnRamp extends OnRampBase {
+public final class PostAssemblerOnRamp extends OnRampBase {
 
     final private Path            haplotypeBAMWriterPath;
     final private Path            haplotypeBAIWriterPath;

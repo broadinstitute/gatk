@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.IOException;
 import java.util.*;
 
-public class PostFilterOnRamp extends OnRampBase {
+public final class PostFilterOnRamp extends OnRampBase {
 
     static private final int HAPLOTYPE_START_COLUMN = 2;
     static private final boolean IGNORE_DANGLING_READS = true;

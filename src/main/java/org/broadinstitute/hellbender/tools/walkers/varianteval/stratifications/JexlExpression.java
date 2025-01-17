@@ -17,12 +17,12 @@ import java.util.Set;
  */
 public class JexlExpression extends VariantStratifier implements StandardStratification {
     // needs to know the jexl expressions
-    private Set<SortableJexlVCMatchExp> jexlExpressions;
+    private final Set<SortableJexlVCMatchExp> jexlExpressions;
 
     public JexlExpression(VariantEvalEngine engine) {
         super(engine);
 
-        jexlExpressions = getEngine().getJexlExpressions();
+        jexlExpressions = engine.getJexlExpressions();
 
         states.add("none");
         for ( SortableJexlVCMatchExp jexlExpression : jexlExpressions ) {

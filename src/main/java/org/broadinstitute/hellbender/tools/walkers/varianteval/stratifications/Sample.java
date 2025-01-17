@@ -19,7 +19,7 @@ public class Sample extends VariantStratifier {
     public Sample(VariantEvalEngine engine) {
         super(engine);
 
-        states.addAll(getEngine().getSampleNamesForStratification());
+        states.addAll(engine.getSampleNamesForStratification());
     }
 
     @Override

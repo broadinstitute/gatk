@@ -196,6 +196,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * @param maxHmer maximal hmer to keep in the flow matrix
      * @param fbargs arguments that control resolution of the flow matrix
      */
+    @SuppressWarnings("this-escape")
     public FlowBasedRead(final SAMRecord samRecord, final String flowOrder, final int maxHmer, final FlowBasedArgumentCollection fbargs) {
         super(samRecord);
         Utils.nonNull(fbargs);

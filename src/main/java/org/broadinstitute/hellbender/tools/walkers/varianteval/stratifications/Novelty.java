@@ -25,7 +25,7 @@ public class Novelty extends VariantStratifier implements StandardStratification
         super(engine);
 
         states.addAll(Arrays.asList("all", "known", "novel"));
-        knowns = getEngine().getKnowns();
+        knowns = engine.getKnowns();
     }
 
     @Override

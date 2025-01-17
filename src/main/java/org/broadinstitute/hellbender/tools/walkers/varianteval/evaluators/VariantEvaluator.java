@@ -37,15 +37,15 @@ public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
 
     public void finalizeEvaluation() {}
 
-    protected double rate(long n, long d) {
+    protected static double rate(long n, long d) {
         return n / (1.0 * Math.max(d, 1));
     }
 
-    protected long inverseRate(long n, long d) {
+    protected static long inverseRate(long n, long d) {
         return n == 0 ? 0 : d / Math.max(n, 1);
     }
 
-    protected double ratio(long num, long denom) {
+    protected static double ratio(long num, long denom) {
         return ((double)num) / (Math.max(denom, 1));
     }
 

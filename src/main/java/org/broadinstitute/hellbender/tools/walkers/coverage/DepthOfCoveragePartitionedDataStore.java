@@ -16,7 +16,7 @@ import java.util.TreeMap;
  * the underlying DepthOfCoverageStats objects can be initialized with the samples for its traversal and update() should
  * be called on this object once for each locus this object corresponds to.
  */
-public class DepthOfCoveragePartitionedDataStore {
+public final class DepthOfCoveragePartitionedDataStore {
     private Map<DoCOutputType.Partition,DepthOfCoverageStats> coverageProfiles;
 
     /**

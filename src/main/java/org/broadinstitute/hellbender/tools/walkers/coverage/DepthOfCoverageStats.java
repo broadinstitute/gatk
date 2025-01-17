@@ -7,7 +7,7 @@ import java.util.*;
 /**
  * A class for storing summarized coverage statistics for DepthOfCoverage.
  */
-public class DepthOfCoverageStats {
+public final class DepthOfCoverageStats {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // STANDARD DATA

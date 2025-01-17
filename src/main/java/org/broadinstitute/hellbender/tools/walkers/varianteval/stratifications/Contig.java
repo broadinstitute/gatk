@@ -11,6 +11,7 @@ import java.util.*;
 /**
  * Stratifies the evaluation by each contig in the reference sequence. Note: if the user supplies custom intervals, it will defer to these rather than the full sequence dictionary
  */
+@SuppressWarnings("this-escape")
 public class Contig extends VariantStratifier {
     public Contig(VariantEvalEngine engine) {
         super(engine);

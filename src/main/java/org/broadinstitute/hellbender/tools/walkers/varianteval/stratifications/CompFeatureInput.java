@@ -16,8 +16,8 @@ public class CompFeatureInput extends VariantStratifier implements RequiredStrat
     public CompFeatureInput(VariantEvalEngine engine) {
         super(engine);
 
-        for ( FeatureInput<VariantContext> fi : getEngine().getVariantEvalArgs().getComps() ) {
-            states.add(getEngine().getNameForInput(fi));
+        for ( FeatureInput<VariantContext> fi : engine.getVariantEvalArgs().getComps() ) {
+            states.add(engine.getNameForInput(fi));
         }
 
         if (states.isEmpty()) {

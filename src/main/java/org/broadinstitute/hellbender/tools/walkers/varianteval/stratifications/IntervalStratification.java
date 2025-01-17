@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
+import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -32,15 +34,16 @@ public class IntervalStratification extends VariantStratifier {
     final List<Object> OVERLAPPING = Arrays.asList((Object)"all", (Object)"overlaps.intervals");
     final List<Object> NOT_OVERLAPPING = Arrays.asList((Object)"all", (Object)"outside.intervals");
 
-    private FeatureInput<?> intervalsFile;
+    private final FeatureInput<?> intervalsFile;
 
     public IntervalStratification(VariantEvalEngine engine) {
         super(engine);
 
-        if ( getEngine().getVariantEvalArgs().getIntervalsFile() == null )
+        FeatureInput<Feature> intervalsFile = engine.getVariantEvalArgs().getIntervalsFile();
+        if ( intervalsFile == null ) {
             throw new CommandLineException.MissingArgument("stratIntervals", "Must be provided when IntervalStratification is enabled");
-
-        intervalsFile = getEngine().getVariantEvalArgs().getIntervalsFile();
+        }
+        this.intervalsFile = intervalsFile;
 
         states.addAll(Arrays.asList("all", "overlaps.intervals", "outside.intervals"));
     }

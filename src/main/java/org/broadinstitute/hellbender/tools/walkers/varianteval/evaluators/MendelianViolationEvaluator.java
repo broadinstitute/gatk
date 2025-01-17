@@ -40,7 +40,7 @@ public class MendelianViolationEvaluator extends VariantEvaluator {
     public MendelianViolationEvaluator(VariantEvalEngine engine) {
         super(engine);
 
-        mv = new ExtendedMendelianViolation(getEngine().getVariantEvalArgs().getMendelianViolationQualThreshold());
+        mv = new ExtendedMendelianViolation(engine.getVariantEvalArgs().getMendelianViolationQualThreshold());
     }
 
     @DataPoint(description = "Number of variants found with at least one family having genotypes", format = "%d")
@@ -155,7 +155,7 @@ public class MendelianViolationEvaluator extends VariantEvaluator {
         }
     }
 
-    private class ExtendedMendelianViolation extends MendelianViolation
+    private static class ExtendedMendelianViolation extends MendelianViolation
     {
         public ExtendedMendelianViolation(double threshold)
         {

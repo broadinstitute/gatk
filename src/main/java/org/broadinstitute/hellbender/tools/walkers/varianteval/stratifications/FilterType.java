@@ -17,8 +17,8 @@ public class FilterType extends VariantStratifier {
         super(engine);
 
         final Set<String> filterNames = new HashSet<>();
-        for (FeatureInput<VariantContext> eval : getEngine().getVariantEvalArgs().getEvals()) {
-            final VCFHeader header = (VCFHeader)getEngine().getHeaderForFeatures(eval);
+        for (FeatureInput<VariantContext> eval : engine.getVariantEvalArgs().getEvals()) {
+            final VCFHeader header = (VCFHeader)engine.getHeaderForFeatures(eval);
             for (VCFFilterHeaderLine line : header.getFilterLines()) {
                 filterNames.add(line.getID());
             }

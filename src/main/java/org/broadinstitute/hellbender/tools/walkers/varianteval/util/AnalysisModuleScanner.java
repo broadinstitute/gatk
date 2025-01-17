@@ -17,11 +17,11 @@ import java.util.Map;
  *         Given an analysis, find the annotated fields and methods.  Given this module and
  *         the object, a Mashalling object can serialize or deserialize a analysis module.
  */
-public class AnalysisModuleScanner {
+public final class AnalysisModuleScanner {
     final private static Map<String, Annotation[]> annotationCache = new HashMap<String, Annotation[]>();
 
     // what we extracted from the class
-    private Map<Field, DataPoint> datums = new LinkedHashMap<Field, DataPoint>();   // the data we've discovered
+    private final Map<Field, DataPoint> datums = new LinkedHashMap<>();   // the data we've discovered
     private Analysis analysis;  // the analysis annotation
     
     private Field moltenField = null;

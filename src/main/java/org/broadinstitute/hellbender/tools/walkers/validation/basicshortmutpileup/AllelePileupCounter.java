@@ -22,12 +22,12 @@ import java.util.stream.Collectors;
  * Supports simple Indels, SNP, and MNP.
  *
  */
-public class AllelePileupCounter {
+public final class AllelePileupCounter {
 
     private final Allele referenceAllele;
     private final List<Allele> alternateAlleles;
-    private int minBaseQualityCutoff;
-    private Map<Allele, MutableInt> countMap = new HashMap<>();
+    private final int minBaseQualityCutoff;
+    private final Map<Allele, MutableInt> countMap = new HashMap<>();
 
     /**
      *

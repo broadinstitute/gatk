@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantSummary;
@@ -22,20 +23,21 @@ import java.util.*;
  * If not present, it then looks for the AC value in the INFO field.  If both are absent,
  * it computes the AC from the genotypes themselves.  If no AC can be computed, 0 is used.
  */
-public class AlleleCount extends VariantStratifier {
+public final class AlleleCount extends VariantStratifier {
     private static final Logger log = LogManager.getLogger(AlleleCount.class);
-    private int nchrom;
+    private final int nchrom;
 
     public AlleleCount(VariantEvalEngine engine) {
         super(engine);
 
         // we can only work with a single eval VCF, and it must have genotypes
-        if ( getEngine().getVariantEvalArgs().getEvals().size() != 1 && !getEngine().getVariantEvalArgs().isMergeEvals() )
+        VariantEvalArgumentCollection args = engine.getVariantEvalArgs();
+        if ( args.getEvals().size() != 1 && !args.isMergeEvals() )
             throw new CommandLineException.BadArgumentValue("AlleleCount", "AlleleCount stratification only works with a single eval vcf");
 
         // There are ploidy x n sample chromosomes
         // TODO -- generalize to handle multiple ploidy
-        nchrom = getEngine().getNumberOfSamplesForEvaluation() * getEngine().getVariantEvalArgs().getPloidy();
+        nchrom = engine.getNumberOfSamplesForEvaluation() * args.getPloidy();
         if ( nchrom < 2 )
             throw new CommandLineException.BadArgumentValue("AlleleCount", "AlleleCount stratification requires an eval vcf with at least one sample");
 

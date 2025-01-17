@@ -17,7 +17,7 @@ public class Family extends VariantStratifier {
     public Family(VariantEvalEngine engine) {
         super(engine);
 
-        states.addAll(getEngine().getFamilyNamesForStratification());
+        states.addAll(engine.getFamilyNamesForStratification());
     }
 
     @Override

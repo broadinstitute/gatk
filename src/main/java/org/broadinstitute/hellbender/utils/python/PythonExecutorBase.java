@@ -59,6 +59,7 @@ public abstract class PythonExecutorBase extends ScriptExecutor {
      * @param pythonExecutableName name of the python executable to start
      * @param ensureExecutableExists throw if the python executable cannot be found
      */
+    @SuppressWarnings("this-escape")
     public PythonExecutorBase(final PythonExecutableName pythonExecutableName, final boolean ensureExecutableExists) {
         super(pythonExecutableName.getExecutableName());
         if (ensureExecutableExists && !externalExecutableExists()) {

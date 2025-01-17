@@ -13,7 +13,7 @@ import java.util.List;
  * the primary, secondary (i.e. multi-mapping), and supplementary (e.g. chimeric) alignments.
  *
  */
-public class ReadPair {
+public final class ReadPair {
     private GATKRead firstOfPair;
     private GATKRead secondOfPair;
     private final List<GATKRead> secondaryAlignments = new ArrayList<>();

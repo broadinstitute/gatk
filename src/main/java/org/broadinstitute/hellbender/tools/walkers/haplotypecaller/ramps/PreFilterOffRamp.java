@@ -14,7 +14,7 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class PreFilterOffRamp extends OffRampBase {
+public final class PreFilterOffRamp extends OffRampBase {
 
     static final boolean WIDE_READS = false;
 

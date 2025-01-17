@@ -11,7 +11,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-public class AssemblerOffRamp extends OffRampBase {
+public final class AssemblerOffRamp extends OffRampBase {
 
     private Path                haplotypeBAMWriterPath;
     private HaplotypeBAMWriter  haplotypeBAMWriter;

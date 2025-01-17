@@ -14,22 +14,22 @@ import java.util.List;
  * Either uses a constant 0.005 frequency grid, and projects the AF INFO field value or logit scale from -30 to 30.
  * Requires that AF be present in every ROD, otherwise this stratification throws an exception
  */
-public class AlleleFrequency extends VariantStratifier {
+public final class AlleleFrequency extends VariantStratifier {
     private static final int LOGIT_BIN_WIDTH = 1;
 
-    private static int logLimit = 30; // go from -30 to 30 using logit function
+    private static final int LOG_LIMIT = 30; // go from -30 to 30 using logit function
 
     public AlleleFrequency(VariantEvalEngine engine) {
         super(engine);
 
-        switch (getEngine().getVariantEvalArgs().getAFScale()) {
+        switch (engine.getVariantEvalArgs().getAFScale()) {
             case LINEAR:
                 for (double a = 0.000; a <= 1.005; a += 0.005) {
                     states.add(String.format("%.3f", a));
                 }
                 break;
             case LOGARITHMIC:
-                for (int a = -logLimit; a <= logLimit; a += LOGIT_BIN_WIDTH) {
+                for (int a = -LOG_LIMIT; a <= LOG_LIMIT; a += LOGIT_BIN_WIDTH) {
                     states.add(String.format("%d", a));
                 }
 
@@ -68,7 +68,7 @@ public class AlleleFrequency extends VariantStratifier {
         Float score = (float)( -10 * Math.log10((alleleFrequency/(1-alleleFrequency))));
 
         // find correct bucket
-        return Math.min(logLimit, Math.max(-logLimit, Math.round(score)));
+        return Math.min(LOG_LIMIT, Math.max(-LOG_LIMIT, Math.round(score)));
     }
 }
 

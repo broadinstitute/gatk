@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
@@ -15,9 +16,10 @@ public class EvalFeatureInput extends VariantStratifier implements RequiredStrat
     public EvalFeatureInput(VariantEvalEngine engine) {
         super(engine);
 
-        for ( FeatureInput<VariantContext> fi : getEngine().getVariantEvalArgs().getEvals() ) {
-            states.add(getEngine().getNameForInput(fi));
-            if ( getEngine().getVariantEvalArgs().isMergeEvals() )
+        VariantEvalArgumentCollection args = engine.getVariantEvalArgs();
+        for ( FeatureInput<VariantContext> fi : args.getEvals() ) {
+            states.add(engine.getNameForInput(fi));
+            if ( args.isMergeEvals() )
                 break;
         }
     }

@@ -30,6 +30,7 @@ public class FlowModeFragment extends TransientFieldPhysicalLocation {
 
     protected final short score;
 
+    @SuppressWarnings("this-escape")
     public FlowModeFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap, final MarkDuplicatesSparkArgumentCollection mdArgs) {
         super(partitionIndex, first.getName());
 
