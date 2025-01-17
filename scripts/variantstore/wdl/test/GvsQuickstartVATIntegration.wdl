@@ -3,11 +3,11 @@ version 1.0
 import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
 
-workflow GvsQuickstartVcfIntegration {
+workflow GvsQuickstartVATIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
-        Boolean use_vds = true
+        Boolean use_vds = true      # If true, use a VDS, otherwise use a sites only VCF.
         String output_path
         String split_intervals_scatter_count = 10
         String expected_output_prefix
@@ -29,8 +29,7 @@ workflow GvsQuickstartVcfIntegration {
     File input_data_prefix = "gs://gvs-internal-quickstart/integration/test_data/2025-01-17/"
     File ancestry_path =  input_data_prefix + "quickstart_ancestry.tsv"
     File? vds_path = if (use_vds) then input_data_prefix + "gvs_export.vds" else none
-    File? sites_only_vcf = if (!use_vds) then input_data_prefix + "todo" else none
-    File? sites_only_vcf_index = if (!use_vds) then input_data_prefix + "todo" else none
+    File? sites_only_vcf = if (!use_vds) then input_data_prefix + "quickstart_sites_only.vcf.bgz" else none
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -79,7 +78,6 @@ workflow GvsQuickstartVcfIntegration {
             filter_set_name = "quickit",
             vds_path = vds_path,
             sites_only_vcf = sites_only_vcf,
-            sites_only_vcf_index = sites_only_vcf_index,
             output_path = output_path,
             split_intervals_scatter_count = split_intervals_scatter_count,
 
