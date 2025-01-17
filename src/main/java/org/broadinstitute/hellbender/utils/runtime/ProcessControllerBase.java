@@ -111,17 +111,6 @@ public abstract class ProcessControllerBase<CAPTURE_POLICY extends CapturedStrea
      */
     abstract void tryCleanShutdown();
 
-    @Override
-    @SuppressWarnings("deprecation")
-    protected void finalize() throws Throwable {
-        try {
-            tryCleanShutdown();
-        } catch (Exception e) {
-            logger.error(e);
-        }
-        super.finalize();
-    }
-
     protected class OutputCapture implements Callable<CAPTURE_POLICY> {
         private final CAPTURE_POLICY capturedProcessStream;
         private final ProcessStream key; // un-referenced, but retained for debugging
