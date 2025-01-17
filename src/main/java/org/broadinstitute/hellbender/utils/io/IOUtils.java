@@ -1077,7 +1077,7 @@ public final class IOUtils {
     }
 
     /**
-     * A simple helper method that reads a zipped archive and unzippes it to a file target, preserving the directory structure.
+     * A simple helper method that reads a zipped archive and unzippess it to a file target, preserving the directory structure.
      *
      * @param zippedArchive A Path to a zipped archive
      * @param toUnzipFolder A Path to a folder into which to place the archive contents

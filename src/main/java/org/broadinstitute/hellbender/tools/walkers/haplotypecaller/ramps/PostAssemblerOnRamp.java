@@ -18,8 +18,10 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -37,8 +39,8 @@ public class PostAssemblerOnRamp extends OnRampBase {
         // open haplotype file (bam)
         haplotypeBAMWriterPath = Files.createTempFile("haplotypes_", ".bam");
         haplotypeBAIWriterPath = getBamIndexPath(haplotypeBAMWriterPath);
-        Files.copy(getEntry(null, "haplotypes.bam"), haplotypeBAMWriterPath);
-        Files.copy(getEntry(null, "haplotypes.bai"), haplotypeBAIWriterPath);
+        Files.copy(getEntry(null, "haplotypes.bam"), haplotypeBAMWriterPath, StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(getEntry(null, "haplotypes.bai"), haplotypeBAIWriterPath, StandardCopyOption.REPLACE_EXISTING);
         final SamInputResource samInputResource = SamInputResource.of(haplotypeBAMWriterPath);
         samInputResource.index(haplotypeBAIWriterPath);
         haplotypeReader = SamReaderFactory.makeDefault().open(samInputResource);

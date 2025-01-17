@@ -6,10 +6,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps.AssemblerOffRamp;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps.PostAssemblerOnRamp;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps.PostFilterOnRamp;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps.PreFilterOffRamp;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
 /**
