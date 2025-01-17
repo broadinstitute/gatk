@@ -236,8 +236,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Parse the user provided custom ploidy regions into ploidyRegions object containing SimpleCounts
         if (this.hcArgs.ploidyRegions != null) {
-            FeatureDataSource<NamedFeature> ploidyDataSource = new FeatureDataSource<>(this.hcArgs.ploidyRegions, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, NamedFeature.class);
-            ploidyDataSource.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+            try (FeatureDataSource<NamedFeature> ploidyDataSource = new FeatureDataSource<>(this.hcArgs.ploidyRegions, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, NamedFeature.class)) {
+                ploidyDataSource.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+            }
         }
 
         for (SimpleCount region : this.ploidyRegions) {

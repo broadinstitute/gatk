@@ -55,7 +55,7 @@ public class FlowBasedReadIntegrationTest extends GATKBaseTest {
                                             new SAMRecordToGATKReadAdapter(i.next()),
                                             reader.getFileHeader());
             fbr.applyAlignment();
-            Assert.assertEquals(fbr.totalKeyBases(), fbr.seqLength());
+            Assert.assertEquals(fbr.totalKeyBases(), fbr.getLength());
 
             if ( limitCount < 1000 && outputPrefix != null ) {
                 try ( final FileWriter fos = new FileWriter(outputPrefix + "." + Integer.toString(count) + ".key.txt") ) {

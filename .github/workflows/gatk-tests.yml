@@ -64,7 +64,7 @@ jobs:
           outputs: type=docker,dest=/tmp/myimage.tar
       # By uploading the docker image as an artifact we save ourselves the requirement for the image to be built with ghcr push permission
       - name: Upload docker image as artifact 
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: gatkDockerImage
           path: /tmp/myimage.tar
@@ -204,7 +204,7 @@ jobs:
           cp scripts/docker/dockertest.gradle .
 
       - name: Download docker image artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: gatkDockerImage
           path: /tmp
