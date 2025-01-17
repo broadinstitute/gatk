@@ -74,11 +74,11 @@ task EditDataset {
     command <<<
         set -e
 
-        edit_dataset \
-            --train_tar ~{sep=' ' train_tar} \
-            --chunk_size ~{chunk_size} \
+        gatk PermutectEditDataset \
+            --train-tar ~{sep=' ' train_tar} \
+            --chunk-size ~{chunk_size} \
             ~{" --source " + new_source} \
-            --dataset_edit ~{edit_type} \
+            --dataset-edit ~{edit_type} \
             --output edited.tar \
             ~{extra_args}
     >>>

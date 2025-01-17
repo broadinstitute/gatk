@@ -164,16 +164,16 @@ workflow Permutect {
         # set -e
         genomic_span=`grep "callable" ~{mutect_stats} | while read name value; do echo $value; done`
 
-        filter_variants --input ~{mutect2_vcf} --test_dataset ~{test_dataset} \
-            --permutect_model ~{permutect_model} \
-            --contigs_table ~{contigs_table} \
+        gatk PermutectFilterVariants --input ~{mutect2_vcf} --test-dataset ~{test_dataset} \
+            --permutect-model ~{permutect_model} \
+            --contigs-table ~{contigs_table} \
             --output permutect-filtered.vcf \
-            --tensorboard_dir tensorboard \
-            --batch_size ~{batch_size} --num_workers ~{num_workers} --chunk_size ~{chunk_size} \
-            ~{" --num_spectrum_iterations " + num_spectrum_iterations} \
-            ~{" --spectrum_learning_rate " + spectrum_learning_rate} \
-            ~{" --maf_segments " + maf_segments} ~{" --normal_maf_segments " + normal_maf_segments} \
-            --genomic_span $genomic_span ~{permutect_filtering_extra_args}
+            --tensorboard-dir tensorboard \
+            --batch-size ~{batch_size} --num-workers ~{num_workers} --chunk-size ~{chunk_size} \
+            ~{" --num-spectrum-iterations " + num_spectrum_iterations} \
+            ~{" --spectrum-learning-rate " + spectrum_learning_rate} \
+            ~{" --maf-segments " + maf_segments} ~{" --normal-maf-segments " + normal_maf_segments} \
+            --genomic-span $genomic_span ~{permutect_filtering_extra_args}
 
         tar cvf tensorboard.tar tensorboard/
     >>>

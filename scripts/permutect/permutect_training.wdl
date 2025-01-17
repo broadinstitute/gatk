@@ -89,20 +89,20 @@ task TrainPermutect {
     command <<<
         set -e
 
-        train_model \
-            --train_tar ~{train_tar} \
-            --base_model ~{base_model} \
-            --aggregation_layers ~{sep=' ' aggregation_layers} \
-            --calibration_layers ~{sep=' ' calibration_layers} \
-            --dropout_p ~{dropout_p} \
-            --batch_size ~{batch_size} \
-            --inference_batch_size ~{inference_batch_size} \
-            ~{"--num_workers " + num_workers} \
-            --num_epochs ~{num_epochs} \
-            --num_calibration_epochs ~{num_calibration_epochs} \
+        gatk PermutectTrainArtifactModel \
+            --train-tar ~{train_tar} \
+            --base-model ~{base_model} \
+            --aggregation-layers ~{sep=' --aggregation-layers ' aggregation_layers} \
+            --calibration-layers ~{sep=' --calibration-layers ' calibration_layers} \
+            --dropout-p ~{dropout_p} \
+            --batch-size ~{batch_size} \
+            --inference-batch-size ~{inference_batch_size} \
+            ~{"--num-workers " + num_workers} \
+            --num-epochs ~{num_epochs} \
+            --num-calibration-epochs ~{num_calibration_epochs} \
             --output artifact.pt \
-            --tensorboard_dir tensorboard \
-            ~{"--genomic_span " + genomic_span} \
+            --tensorboard-dir tensorboard \
+            ~{"--genomic-span " + genomic_span} \
             ~{learn_artifact_cmd} \
             ~{extra_args}
 

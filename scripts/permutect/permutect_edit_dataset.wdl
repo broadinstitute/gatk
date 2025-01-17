@@ -51,12 +51,12 @@ task EditDataset {
     command <<<
         set -e
 
-        edit_dataset \
-            --train_tar ~{train_tar} \
-            --chunk_size ~{chunk_size} \
+        gatk PermutectEditDataset \
+            --train-tar ~{train_tar} \
+            --chunk-size ~{chunk_size} \
             {" --source " + new_source} \
-            --dataset_edit ~{edit_type} \
-            --output edited_dataset.tar \
+            --dataset-edit ~{edit_type} \
+            --output edited-dataset.tar \
             ~{extra_args}
     >>>
 

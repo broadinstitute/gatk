@@ -43,8 +43,11 @@ public class PermutectArgumentConstantsUnitTest extends GATKBaseTest {
         @Argument(fullName = PermutectArgumentConstants.DROPOUT_P_NAME, doc = "flag argument", optional = true)
         private boolean Arg5 = false;
 
+        @Argument(fullName = PermutectArgumentConstants.NUM_READ_FEATURES_NAME, doc = "integer arguments", optional = true)
+        private int Arg6 = 3;
+
         @Argument(fullName = PermutectArgumentConstants.AGGREGATION_LAYERS_NAME, doc = "list argument, optional", optional = true)
-        private List<String> Arg6 = new ArrayList<>();
+        private List<String> Arg7 = new ArrayList<>();
 
         @ArgumentCollection
         DummyPermutectArgCollection args = new DummyPermutectArgCollection();
@@ -65,6 +68,7 @@ public class PermutectArgumentConstantsUnitTest extends GATKBaseTest {
         builder.add(PermutectArgumentConstants.AGGREGATION_LAYERS_NAME, "agg2");
         builder.add(PermutectArgumentConstants.AGGREGATION_LAYERS_NAME, "agg3");
         builder.add(PermutectArgumentConstants.AGGREGATION_LAYERS_NAME, "agg4");
+        builder.add(PermutectArgumentConstants.NUM_READ_FEATURES_NAME, "2");
         builder.add(PermutectArgumentConstants.NUM_EPOCHS_NAME, "num_epochs");
         CommandLineParser parser = new dummyPermutectWrapper().getCommandLineParser();
         final boolean conversionMap = parser.parseArguments(new PrintStream(System.err), builder.getArgsArray());
@@ -89,6 +93,9 @@ public class PermutectArgumentConstantsUnitTest extends GATKBaseTest {
         Assert.assertEquals(pyArgs.indexOf("agg2") - 1, pyArgs.indexOf("agg1"));
         Assert.assertEquals(pyArgs.indexOf("agg3") - 1, pyArgs.indexOf("agg2"));
         Assert.assertEquals(pyArgs.indexOf("agg4") - 1, pyArgs.indexOf("agg3"));
+
+        Assert.assertTrue(pyArgs.contains("--num_read_features"));
+        Assert.assertTrue(pyArgs.contains("2"));
 
         Assert.assertTrue(pyArgs.contains("--num_epochs"));
         Assert.assertTrue(pyArgs.contains("num_epochs"));
