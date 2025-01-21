@@ -52,7 +52,7 @@ task EditDataset {
         set -e
 
         gatk PermutectEditDataset \
-            --train-tar ~{train_tar} \
+            --train-tar ~{sep=" --train-tar " + tdrain_tar} \
             --chunk-size ~{chunk_size} \
             {" --source " + new_source} \
             --dataset-edit ~{edit_type} \
