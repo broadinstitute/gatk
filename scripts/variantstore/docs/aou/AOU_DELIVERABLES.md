@@ -40,11 +40,25 @@
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - Set `sample_id_column_name` to "research_id" to use the shorter unique ID from AoU for the `sample_name` column.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-   - Set `process_vcf_headers` to true to include sample header information in your database.
-     - This slows down the ingestion process by about 30%, so if you don't care about this additional data, leave it as false.
-     - Once these headers have been loaded, they can be queried to provide helpful context on the samples pipeline, such as DRAGEN version.
-   - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to true (this will further compress the reference data).
-   - `GvsBulkIngestGenomes` performs the functions of both `GvsAssignIds` and `GvsImportGenomes` with a much more scalable design. Detailed bulk ingest documentation can be found [here](../gvs-bulk-ingest-details.md).
+   - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
+   1. `GvsBulkIngestGenomes` header ingest and validation
+      - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
+      - Note that when run with these parameters the workflow is expected to call `TerminateWorkflow` with a message that header data has been successfully loaded. In the Terra UI this will look like a failure but in this particular case is the desired outcome.
+      - Once these headers have been loaded, run a sanity checking query on the DRAGEN version ```
+  SELECT
+  REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
+  COUNT(*)
+FROM
+  `aou-genomics-curation-prod.echo.vcf_header_lines` AS header_lines
+WHERE
+  header_lines.is_expected_unique = TRUE
+  AND CONTAINS_SUBSTR(vcf_header_lines, 'DRAGENCommandLine=<ID=dragen,')
+GROUP BY
+  version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
+   1. `GvsBulkIngestGenomes` variant and reference data ingest
+      - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
+      - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
+      - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to true (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
