@@ -35,15 +35,19 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
     ploidy_table = defaultdict(dict)
     print(f"avros is {', '.join(avros)}")
     for file in avros:
-        print(f"looking at avro file {avro}")
+        print(f"reading avro file {file}")
+        records_read = 0
         with fs.open(file, "rb") as data:
             for record in DataFileReader(data, DatumReader()):
+                records_read = records_read + 1
                 location, sample_name, ploidy = PloidyRecord(**record)
                 if sample_name in ploidy_table[location]:
                     raise ValueError(
                         f"duplicate key `{sample_name}` for location {location}"
                     )
                 ploidy_table[location][sample_name] = ploidy
+            print(f"read {records_read} records from avro file {file}")
+    print(f"ploidy table has {len(ploidy_table.keys)} keys")
 
     # undo our monkey patch
     DataFileReader.determine_file_length = original_determine_file_length
