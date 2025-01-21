@@ -194,10 +194,7 @@ task CreateVds {
             pip3 install hail~{'==' + hail_version}
         fi
 
-        pip3 install --upgrade google-cloud-dataproc ijson python-snappy
-
-        apt-get update
-        apt install -y python3-snappy
+        pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
         hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
