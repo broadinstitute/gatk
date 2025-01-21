@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVAlleleCounter;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVLinkage;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -37,8 +38,7 @@ public class SVConcordanceAnnotator {
     }
 
     /**
-     * Annotator restricted to specific samples.
-     * @param samples samples to include for concordance computations. If null, all samples in eval records will be used.
+     * Option to enable annotating variants with overlap metrics.
      */
     public SVConcordanceAnnotator(final Set<String> samples) {
         this.samples = samples;
@@ -100,6 +100,13 @@ public class SVConcordanceAnnotator {
             attributes.put(GATKSVVCFConstants.VAR_PPV_INFO, Double.isNaN(metrics.VAR_PPV) ? null : metrics.VAR_PPV);
             attributes.put(GATKSVVCFConstants.VAR_SENSITIVITY_INFO, Double.isNaN(metrics.VAR_SENSITIVITY) ? null : metrics.VAR_SENSITIVITY);
             attributes.put(GATKSVVCFConstants.VAR_SPECIFICITY_INFO, Double.isNaN(metrics.VAR_SPECIFICITY) ? null : metrics.VAR_SPECIFICITY);
+        }
+        if (truthRecord != null) {
+            final CanonicalSVLinkage.CanonicalLinkageResult linkageResult = pair.getLinkage();
+            attributes.put(GATKSVVCFConstants.TRUTH_RECIPROCAL_OVERLAP_INFO, linkageResult.getReciprocalOverlap());
+            attributes.put(GATKSVVCFConstants.TRUTH_SIZE_SIMILARITY_INFO, linkageResult.getSizeSimilarity());
+            attributes.put(GATKSVVCFConstants.TRUTH_DISTANCE_START_INFO, linkageResult.getBreakpointDistance1());
+            attributes.put(GATKSVVCFConstants.TRUTH_DISTANCE_END_INFO, linkageResult.getBreakpointDistance2());
         }
 
         if (evalRecord.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {

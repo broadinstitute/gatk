@@ -22,6 +22,7 @@ import org.testng.TestException;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR;
 
@@ -43,6 +44,7 @@ public class SVTestUtils {
     public static final List<String> DEPTH_ONLY_ALGORITHM_LIST = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);
     public static final List<String> PESR_ONLY_ALGORITHM_LIST = Collections.singletonList(PESR_ALGORITHM);
     public static final Allele CPX_ALLELE = Allele.create(SimpleSVType.createBracketedSymbAlleleString(CPX_SV_SYB_ALT_ALLELE_STR));
+    public static final Allele BND_ALLELE = Allele.create(SimpleSVType.createBracketedSymbAlleleString(GATKSVVCFConstants.BREAKEND_STR));
 
     public static CanonicalSVLinkage<SVCallRecord> getNewDefaultLinkage() {
         final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);
@@ -168,6 +170,41 @@ public class SVTestUtils {
         builder.alleles(alleles);
         builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, alleles.size());
         return builder.make();
+    }
+
+    public static final SVCallRecord makeRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
+        final List<GenotypeBuilder> genotypes = makeDeletionGenotypesWithCarriers(allSamples, carrierSamples, Allele.SV_SIMPLE_DEL);
+        return makeRecord("", "chr1", 100, Boolean.TRUE, "chr1", 200, Boolean.FALSE,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
+                List.of(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes);
+    }
+
+    public static final SVCallRecord makeComplexRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
+        final List<Genotype> genotypes = makeDeletionGenotypesWithCarriers(allSamples, carrierSamples, SVTestUtils.CPX_ALLELE)
+                .stream().map(GenotypeBuilder::make).collect(Collectors.toUnmodifiableList());
+        return new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 2000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                Arrays.asList(SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1100-1500", SVTestUtils.hg38Dict), SVCallRecord.ComplexEventInterval.decode("INV_chr1:1600-1900", SVTestUtils.hg38Dict)),
+                1000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                genotypes, Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+    }
+
+    private static List<GenotypeBuilder> makeDeletionGenotypesWithCarriers(final List<String> allSamples, final Set<String> carrierSamples, final Allele altAllele) {
+        final List<GenotypeBuilder> genotypes = new ArrayList<>(allSamples.size());
+        for (final String sample : allSamples) {
+            final GenotypeBuilder builder = new GenotypeBuilder(sample);
+            if (carrierSamples.contains(sample)) {
+                builder.alleles(List.of(Allele.REF_N, altAllele));
+            } else {
+                builder.alleles(List.of(Allele.REF_N, Allele.REF_N));
+            }
+            builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2);
+            genotypes.add(builder);
+        }
+        return genotypes;
     }
 
     public final static SVCallRecord rightEdgeCall = makeRecord("rightEdgeCall", "chr1", chr1Length - 99, null,
@@ -405,6 +442,16 @@ public class SVTestUtils {
                 Collections.emptyMap(), Collections.emptySet(), null);
     }
 
+    public static SVCallRecord newDeletionRecordWithCoordinates(final String id, final String contig, final int positionA, final int positionB) {
+        return new SVCallRecord(id, contig, positionA, true, contig, positionB, false,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
+                getLength(positionA, positionB, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
+                Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap(), Collections.emptySet(), null);
+    }
+
     public static SVCallRecord newDeletionRecordWithAttributes(final Map<String, Object> attributes) {
         return new SVCallRecord("", "chr1", 100, true, "chr1", 199, false,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
@@ -639,5 +686,21 @@ public class SVTestUtils {
             map.put(keys[i], values[i]);
         }
         return map;
+    }
+
+    public static SVCallRecord getCNVRecordWithCN(final int ploidy, List<Allele> alleles, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
+                                           final int[] copyNumbers, final String cnField) {
+        // Create genotypes with copy number attribute (and no GT)
+        final List<Genotype> genotypesWithCopyNumber = IntStream.range(0, copyNumbers.length)
+                .mapToObj(i -> new GenotypeBuilder(String.valueOf(i))
+                        .attribute(cnField, copyNumbers[i])
+                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy)
+                        .alleles(SVTestUtils.buildHomAlleleListWithPloidy(Allele.NO_CALL, ploidy))
+                        .make())
+                .collect(Collectors.toList());
+        return new SVCallRecord("", "chr1", 1000, SVTestUtils.getValidTestStrandA(svtype),
+                "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
+                1000, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                alleles, GenotypesContext.copy(genotypesWithCopyNumber), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
     }
 }
