@@ -33,7 +33,9 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
 
     fs = hl.current_backend().fs
     ploidy_table = defaultdict(dict)
+    print(f"avros is {', '.join(avros)}")
     for file in avros:
+        print(f"looking at avro file {avro}")
         with fs.open(file, "rb") as data:
             for record in DataFileReader(data, DatumReader()):
                 location, sample_name, ploidy = PloidyRecord(**record)
