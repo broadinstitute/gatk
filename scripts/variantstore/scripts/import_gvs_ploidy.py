@@ -53,6 +53,7 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
         for contig, key in zip(hg38.contigs, sorted(ploidy_table))
         if contig in xy_contigs
     }
+    print(f"ploidy table keys are {', '.join(ploidy_table.keys()}")
     x_table = ploidy_table["chrX"]
     y_table = ploidy_table["chrY"]
     assert set(x_table) == set(y_table)
