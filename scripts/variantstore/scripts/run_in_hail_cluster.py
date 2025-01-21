@@ -46,6 +46,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
          --num-worker-local-ssds 1 
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
          --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
+         --packages=python-snappy
          {cluster_name}
          
         """)
