@@ -47,7 +47,7 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
                     )
                 ploidy_table[location][sample_name] = ploidy
             print(f"read {records_read} records from avro file {file}")
-    print(f"ploidy table has {len(ploidy_table.keys)} keys")
+    print(f"ploidy table has {len(ploidy_table.keys()} keys")
 
     # undo our monkey patch
     DataFileReader.determine_file_length = original_determine_file_length
