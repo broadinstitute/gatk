@@ -32,9 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.util.Random;
 
 public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     private static class ApplyBQSRTestData {
@@ -191,7 +189,6 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testMissingReadGroup() {
-        // TODO: there are two copies of this file (one under Validation and one under BQSR) in the repo; conslidate.
         final String inputBam = resourceDir + WGS_B37_CH20_1M_1M1K_BAM;
         final String knownSites = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
