@@ -40,7 +40,9 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
         with fs.open(file, "rb") as data:
             for record in DataFileReader(data, DatumReader()):
                 records_read = records_read + 1
+                print(f"record is {record}")
                 location, sample_name, ploidy = PloidyRecord(**record)
+                print(f"location is {location}, sample_name is {sample_name}, ploidy is {ploidy}")
                 if sample_name in ploidy_table[location]:
                     raise ValueError(
                         f"duplicate key `{sample_name}` for location {location}"
