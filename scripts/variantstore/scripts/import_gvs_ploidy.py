@@ -49,7 +49,7 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
                     )
                 ploidy_table[location][sample_name] = ploidy
             print(f"read {records_read} records from avro file {file}")
-    print(f"ploidy table has {len(ploidy_table.keys())} keys")
+    print(f"first ploidy table is {ploidy_table}")
 
     # undo our monkey patch
     DataFileReader.determine_file_length = original_determine_file_length
@@ -61,7 +61,7 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
         for contig, key in zip(hg38.contigs, sorted(ploidy_table))
         if contig in xy_contigs
     }
-    print(f"ploidy table keys are {', '.join(ploidy_table.keys())}")
+    print(f"second ploidy table is {ploidy_table}")
     x_table = ploidy_table["chrX"]
     y_table = ploidy_table["chrY"]
     assert set(x_table) == set(y_table)
