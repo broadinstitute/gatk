@@ -93,6 +93,7 @@ workflow GvsQuickstartVATIntegration {
             project_id = project_id,
             dataset_name = CreateDatasetForTest.dataset_name,
             vat_table_name = CreateVATfromVDS.vat_table_name,
+            is_small_callset = true,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
     }
