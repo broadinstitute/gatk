@@ -276,6 +276,9 @@ task ExtractFromPloidyTable {
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
+        # Note the query below extracts ploidy data for all chromosomes, yet the ploidy logic for VDS currently only
+        # looks at data for chrX and chrY.
+
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY') AS
