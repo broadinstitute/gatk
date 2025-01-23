@@ -396,7 +396,10 @@ task ExtractTask {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+#  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  # ALH: changing this to get more detailed heap information from gatk
+  File monitoring_script = "gs://gvs-internal-quickstart/hatcher_test/cromwell_monitoring_script_with_heap.sh"
+
 
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
