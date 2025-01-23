@@ -266,7 +266,7 @@ task AssertTableSizeIsAsExpected {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            SELECT 'vat_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
+            "SELECT 'vat_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
             FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
             WHERE table_name = '~{vat_table_name}'" > output/table_sizes.csv
 
