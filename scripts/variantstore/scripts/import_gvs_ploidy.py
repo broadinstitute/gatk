@@ -54,16 +54,19 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
     # undo our monkey patch
     DataFileReader.determine_file_length = original_determine_file_length
 
-    hg38 = hl.get_reference("GRCh38")
-    xy_contigs = set(hg38.x_contigs + hg38.y_contigs)
-    ploidy_table = {
-        contig: avro_ploidy_table[key]
-        for contig, key in zip(hg38.contigs, sorted(avro_ploidy_table))
-        if contig in xy_contigs
-    }
-    print(f"second ploidy table is {ploidy_table}")
-    x_table = ploidy_table["chrX"]
-    y_table = ploidy_table["chrY"]
+    # hg38 = hl.get_reference("GRCh38")
+    # xy_contigs = set(hg38.x_contigs + hg38.y_contigs)
+
+    # print(f"xy_contigs is {xy_contigs}, x_contigs is {hg38.x_contigs}, y_contigs is {hg38.y_contigs}")
+    # ploidy_table = {
+    #     contig: avro_ploidy_table[key]
+    #     for contig, key in zip(hg38.contigs, sorted(avro_ploidy_table))
+    #     if contig in xy_contigs
+    # }
+
+    # print(f"second ploidy table is {ploidy_table}")
+    x_table = avro_ploidy_table["chrX"]
+    y_table = avro_ploidy_table["chrY"]
     assert set(x_table) == set(y_table)
 
     return {
