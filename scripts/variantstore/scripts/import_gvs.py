@@ -259,7 +259,7 @@ def import_gvs(refs: 'List[List[str]]',
             ref_ht = ref_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)),
                                              ref_block_max_length=ref_block_max_length)
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
-            ref_mt = import_gvs_ploidy.patch_reference_data(ploidy)
+            ref_mt = import_gvs_ploidy.patch_reference_data(ref_mt, ploidy)
 
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
