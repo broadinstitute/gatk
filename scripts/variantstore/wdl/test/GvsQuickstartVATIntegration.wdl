@@ -2,6 +2,7 @@ version 1.0
 
 import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
+import "../../variant-annotations-table/GvsValidateVAT.wdl" as ValidateVAT
 
 workflow GvsQuickstartVATIntegration {
     input {
@@ -68,8 +69,6 @@ workflow GvsQuickstartVATIntegration {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    String extract_output_gcs_dir = "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}/~{dataset_suffix}"
-
     call CreateVATFromVDS.GvsCreateVATfromVDS as CreateVATfromVDS {
         input:
             project_id = project_id,
@@ -87,6 +86,15 @@ workflow GvsQuickstartVATIntegration {
             gatk_docker = effective_gatk_docker,
             variants_docker = effective_variants_docker,
             variants_nirvana_docker = effective_variants_nirvana_docker,
+    }
+
+    call ValidateVAT.GvsValidateVat {
+        input:
+            project_id = project_id,
+            dataset_name = CreateDatasetForTest.dataset_name,
+            vat_table_name = CreateVATfromVDS.vat_table_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
     }
 
     String expected_prefix = expected_output_prefix + dataset_suffix + "/"
@@ -108,135 +116,179 @@ workflow GvsQuickstartVATIntegration {
 #                cloud_sdk_docker = effective_cloud_sdk_docker,
 #        }
 #
-#        call AssertTableSizesAreExpected {
-#            input:
-#                go = JointVariantCalling.done,
-#                dataset_name = CreateDatasetForTest.dataset_name,
-#                project_id = project_id,
-#                expected_output_csv = expected_prefix + "table_sizes.csv",
-#                cloud_sdk_docker = effective_cloud_sdk_docker,
-#        }
-#    }
-
+    call AssertTableSizeIsAsExpected {
+        input:
+            dataset_name = CreateDatasetForTest.dataset_name,
+            project_id = project_id,
+            vat_table_name = CreateVATfromVDS.vat_table_name,
+            expected_output_csv = expected_prefix + "table_sizes.csv",
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
 
     output {
-#        Array[File] output_vcfs = JointVariantCalling.output_vcfs
-#        Array[File] output_vcf_indexes = JointVariantCalling.output_vcf_indexes
-#        Float total_vcfs_size_mb = JointVariantCalling.total_vcfs_size_mb
-#        File manifest = JointVariantCalling.manifest
+
         String dataset_name = CreateDatasetForTest.dataset_name
         String filter_set_name = "quickit"
         String recorded_git_hash = effective_git_hash
         Boolean done = true
-#        Boolean used_tighter_gcp_quotas = JointVariantCalling.used_tighter_gcp_quotas
     }
 }
 
-task AssertIdenticalOutputs {
+#task AssertIdenticalOutputs {
+#    input {
+#        String expected_output_prefix
+#        String expected_output_suffix
+#        Array[File] actual_vcfs
+#        String gatk_docker
+#    }
+#    parameter_meta {
+#        actual_vcfs: {
+#            localization_optional: true
+#        }
+#    }
+#    command <<<
+#        # Prepend date, time and pwd to xtrace log entries.
+#        PS4='\D{+%F %T} \w $ '
+#        set -o errexit -o nounset -o pipefail -o xtrace
+#
+#        failures=()
+#
+#        # Where the current set of expected results lives in the cloud
+#        expected_prefix="~{expected_output_prefix}"
+#        # Remove a trailing slash if there is one
+#        expected_prefix=${expected_prefix%/}
+#
+#        # Download all the expected data
+#        mkdir expected
+#        cd expected
+#        gcloud storage cp -r "${expected_prefix}"'/*.vcf~{expected_output_suffix}' .
+#        gzip -S ~{expected_output_suffix} -d *~{expected_output_suffix}
+#        cd ..
+#
+#        mkdir actual
+#        cd actual
+#        touch actual_manifest.txt
+#        # Making the manifest is pretty uninteresting and very noisy so turn off xtrace temporarily.
+#        set +o xtrace
+#        for actual in ~{sep=' ' actual_vcfs}
+#        do
+#            echo $actual >> actual_manifest.txt
+#        done
+#        set -o xtrace
+#
+#        cat actual_manifest.txt | gcloud storage cp -I .
+#        # Unzip actual result data.
+#        ls -1 | grep -E '\.vcf\~{expected_output_suffix}$' | xargs gzip -S ~{expected_output_suffix} -d
+#        cd ..
+#
+#        echo "Header Check"
+#        # Headers first, these can yield useful diagnostics when there are mismatches.
+#        for vcf in $(ls -1 actual | grep -E '\.vcf$')
+#        do
+#          actual="actual/$vcf"
+#          expected="expected/$vcf"
+#          set +o errexit
+#          cmp <(grep '^#' $actual | grep -E -v '^##GATKCommandLine=') <(grep '^#' $expected | grep -E -v '^##GATKCommandLine=')
+#          rc=$?
+#          set -o errexit
+#          if [[ $rc -ne 0 ]]; then
+#            # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
+#            failures+=( $vcf )
+#          fi
+#        done
+#
+#        echo "Header Failure Check"
+#        if [[ ${#failures[@]} -ne 0 ]]; then
+#          echo "Error: headers for the following files do not match:"
+#          for failure in ${failures[@]}; do
+#            echo $failure
+#            expected="expected/$failure"
+#            actual="actual/$failure"
+#            diff <(grep '^#' $actual) <(grep '^#' $expected)
+#          done
+#          exit 1
+#        fi
+#
+#        echo "Overall Check"
+#        # If the headers all matched look for any mismatches in overall file content.
+#        fail=0
+#        for vcf in $(ls -1 actual | grep -E '\.vcf$')
+#        do
+#          expected="expected/$vcf"
+#          actual="actual/$vcf"
+#          set +o errexit
+#          cmp <(grep -E -v '^##GATKCommandLine=' $actual) <(grep -E -v '^##GATKCommandLine=' $expected)
+#          rc=$?
+#          set -o errexit
+#          if [[ $rc -ne 0 ]]; then
+#            echo "Error: file contents of expected and actual do not match: $vcf"
+#            fail=1
+#          fi
+#        done
+#
+#        if [[ $fail -ne 0 ]]; then
+#          exit 1
+#        fi
+#
+#        echo "All vcfs compared and matched!"
+#    >>>
+#
+#    runtime {
+#        docker: gatk_docker
+#        disks: "local-disk 500 HDD"
+#    }
+#
+#    output {
+#        Boolean done = true
+#    }
+#}
+
+task AssertTableSizeIsAsExpected {
+    meta {
+        # we want to check the database each time this runs
+        volatile: true
+    }
+
     input {
-        String expected_output_prefix
-        String expected_output_suffix
-        Array[File] actual_vcfs
-        String gatk_docker
+        String dataset_name
+        String project_id
+        String vat_table_name
+        File expected_output_csv
+        String cloud_sdk_docker
     }
-    parameter_meta {
-        actual_vcfs: {
-            localization_optional: true
-        }
-    }
+
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        failures=()
+        mkdir output
 
-        # Where the current set of expected results lives in the cloud
-        expected_prefix="~{expected_output_prefix}"
-        # Remove a trailing slash if there is one
-        expected_prefix=${expected_prefix%/}
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+            SELECT 'vat_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
+            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+            WHERE table_name = '~{vat_table_name}'" > output/table_sizes.csv
 
-        # Download all the expected data
-        mkdir expected
-        cd expected
-        gcloud storage cp -r "${expected_prefix}"'/*.vcf~{expected_output_suffix}' .
-        gzip -S ~{expected_output_suffix} -d *~{expected_output_suffix}
-        cd ..
+        set +o errexit
+        diff -w output/table_sizes.csv ~{expected_output_csv} > differences.txt
+        set -o errexit
 
-        mkdir actual
-        cd actual
-        touch actual_manifest.txt
-        # Making the manifest is pretty uninteresting and very noisy so turn off xtrace temporarily.
-        set +o xtrace
-        for actual in ~{sep=' ' actual_vcfs}
-        do
-            echo $actual >> actual_manifest.txt
-        done
-        set -o xtrace
-
-        cat actual_manifest.txt | gcloud storage cp -I .
-        # Unzip actual result data.
-        ls -1 | grep -E '\.vcf\~{expected_output_suffix}$' | xargs gzip -S ~{expected_output_suffix} -d
-        cd ..
-
-        echo "Header Check"
-        # Headers first, these can yield useful diagnostics when there are mismatches.
-        for vcf in $(ls -1 actual | grep -E '\.vcf$')
-        do
-          actual="actual/$vcf"
-          expected="expected/$vcf"
-          set +o errexit
-          cmp <(grep '^#' $actual | grep -E -v '^##GATKCommandLine=') <(grep '^#' $expected | grep -E -v '^##GATKCommandLine=')
-          rc=$?
-          set -o errexit
-          if [[ $rc -ne 0 ]]; then
-            # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
-            failures+=( $vcf )
-          fi
-        done
-
-        echo "Header Failure Check"
-        if [[ ${#failures[@]} -ne 0 ]]; then
-          echo "Error: headers for the following files do not match:"
-          for failure in ${failures[@]}; do
-            echo $failure
-            expected="expected/$failure"
-            actual="actual/$failure"
-            diff <(grep '^#' $actual) <(grep '^#' $expected)
-          done
-          exit 1
+        if [[ -s differences.txt ]]; then
+            echo "Differences found:"
+            cat differences.txt
+            exit 1
         fi
-
-        echo "Overall Check"
-        # If the headers all matched look for any mismatches in overall file content.
-        fail=0
-        for vcf in $(ls -1 actual | grep -E '\.vcf$')
-        do
-          expected="expected/$vcf"
-          actual="actual/$vcf"
-          set +o errexit
-          cmp <(grep -E -v '^##GATKCommandLine=' $actual) <(grep -E -v '^##GATKCommandLine=' $expected)
-          rc=$?
-          set -o errexit
-          if [[ $rc -ne 0 ]]; then
-            echo "Error: file contents of expected and actual do not match: $vcf"
-            fail=1
-          fi
-        done
-
-        if [[ $fail -ne 0 ]]; then
-          exit 1
-        fi
-
-        echo "All vcfs compared and matched!"
     >>>
 
     runtime {
-        docker: gatk_docker
-        disks: "local-disk 500 HDD"
+        docker: cloud_sdk_docker
+        disks: "local-disk 10 HDD"
     }
 
     output {
-        Boolean done = true
+        File table_sizes_output_csv = "output/table_sizes.csv"
+        File differences = "differences.txt"
     }
 }
+
