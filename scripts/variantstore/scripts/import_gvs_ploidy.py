@@ -32,7 +32,7 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
     DataFileReader.determine_file_length = patched_determine_file_length
 
     fs = hl.current_backend().fs
-    ploidy_table = defaultdict(dict)
+    avro_ploidy_table = defaultdict(dict)
     print(f"avros is {', '.join(avros)}")
     for file in avros:
         print(f"reading avro file {file}")
@@ -43,13 +43,13 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
                 print(f"record is {record}")
                 location, sample_name, ploidy = PloidyRecord(**record)
                 print(f"location is {location}, sample_name is {sample_name}, ploidy is {ploidy}")
-                if sample_name in ploidy_table[location]:
+                if sample_name in avro_ploidy_table[location]:
                     raise ValueError(
                         f"duplicate key `{sample_name}` for location {location}"
                     )
-                ploidy_table[location][sample_name] = ploidy
+                avro_ploidy_table[location][sample_name] = ploidy
             print(f"read {records_read} records from avro file {file}")
-    print(f"first ploidy table is {ploidy_table}")
+    print(f"avro ploidy table is {avro_ploidy_table}")
 
     # undo our monkey patch
     DataFileReader.determine_file_length = original_determine_file_length
@@ -57,8 +57,8 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
     hg38 = hl.get_reference("GRCh38")
     xy_contigs = set(hg38.x_contigs + hg38.y_contigs)
     ploidy_table = {
-        contig: ploidy_table[key]
-        for contig, key in zip(hg38.contigs, sorted(ploidy_table))
+        contig: avro_ploidy_table[key]
+        for contig, key in zip(hg38.contigs, sorted(avro_ploidy_table))
         if contig in xy_contigs
     }
     print(f"second ploidy table is {ploidy_table}")
