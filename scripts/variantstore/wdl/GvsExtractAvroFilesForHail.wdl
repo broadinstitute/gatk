@@ -276,19 +276,20 @@ task ExtractFromPloidyTable {
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
-        # Note the query below extracts ploidy data for all chromosomes, yet the ploidy logic for VDS currently only
-        # looks at data for chrX and chrY.
+        # Note the query below extracts ploidy data for chrX and chrY only as those are the only chromosomes the VDS
+        # ploidy logic looks at.
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT (
                 CASE (p.chromosome / 1000000000000)
-                WHEN 23 THEN 'chrX'
-                WHEN 24 THEN 'chrY'
-                ELSE 'chr' || (p.chromosome / 1000000000000) END) AS location, s.sample_name, p.ploidy
+                    WHEN 23 THEN 'chrX'
+                    WHEN 24 THEN 'chrY'
+                    END) AS location, s.sample_name, p.ploidy
             FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
             JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON p.sample_id = s.sample_id
+            WHERE (p.chromosome / 1000000000000 = 23 or p.chromosome / 1000000000000 = 24)
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
     >>>
     output {
