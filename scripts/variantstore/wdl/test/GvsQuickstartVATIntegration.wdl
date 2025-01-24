@@ -4,7 +4,7 @@ import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
 import "../../variant-annotations-table/GvsValidateVAT.wdl" as ValidateVAT
 
-# A comment for debugging
+# A comment for debugging.
 
 workflow GvsQuickstartVATIntegration {
     input {
