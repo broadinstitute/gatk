@@ -48,10 +48,9 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
 
     # hg38 = hl.get_reference("GRCh38")
     # xy_contigs = set(hg38.x_contigs + hg38.y_contigs)
-
     # ploidy_table = {
-    #     contig: avro_ploidy_table[key]
-    #     for contig, key in zip(hg38.contigs, sorted(avro_ploidy_table))
+    #     contig: ploidy_table[key]
+    #     for contig, key in zip(hg38.contigs, sorted(ploidy_table))
     #     if contig in xy_contigs
     # }
 
