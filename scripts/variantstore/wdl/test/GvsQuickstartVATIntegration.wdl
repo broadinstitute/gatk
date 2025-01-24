@@ -4,7 +4,7 @@ import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
 import "../../variant-annotations-table/GvsValidateVAT.wdl" as ValidateVAT
 
-# A comment for debugging.
+# A comment for debugging!
 
 workflow GvsQuickstartVATIntegration {
     input {
@@ -71,7 +71,7 @@ workflow GvsQuickstartVATIntegration {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    call CreateVATFromVDS.GvsCreateVATfromVDS as CreateVATfromVDS {
+    call CreateVATFromVDS.GvsCreateVATfromVDS as CreateVATFromVDS {
         input:
             project_id = project_id,
             dataset_name = CreateDatasetForTest.dataset_name,
@@ -94,42 +94,31 @@ workflow GvsQuickstartVATIntegration {
         input:
             project_id = project_id,
             dataset_name = CreateDatasetForTest.dataset_name,
-            vat_table_name = CreateVATfromVDS.vat_table_name,
+            vat_table_name = CreateVATFromVDS.vat_table_name,
             is_small_callset = true,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
     }
 
     String expected_prefix = expected_output_prefix + dataset_suffix + "/"
-#    call AssertIdenticalOutputs {
-#        input:
-#            expected_output_prefix = expected_prefix,
-#            expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
-#            actual_vcfs = JointVariantCalling.output_vcfs,
-#            gatk_docker = effective_gatk_docker
-#    }
-#
-#    if (check_expected_cost_and_table_size_outputs) {
-#        call AssertCostIsTrackedAndExpected {
-#            input:
-#                go = JointVariantCalling.done,
-#                dataset_name = CreateDatasetForTest.dataset_name,
-#                project_id = project_id,
-#                expected_output_csv = expected_prefix + "cost_observability.csv",
-#                cloud_sdk_docker = effective_cloud_sdk_docker,
-#        }
-#
+    call AssertIdenticalOutputs {
+        input:
+            actual_file = select_first([CreateVATFromVDS.final_tsv_file]),
+            expected_file = expected_prefix + "vat_complete.bgz.tsv.gz",
+            gatk_docker = effective_gatk_docker
+    }
+
+
     call AssertTableSizeIsAsExpected {
         input:
             dataset_name = CreateDatasetForTest.dataset_name,
             project_id = project_id,
-            vat_table_name = CreateVATfromVDS.vat_table_name,
+            vat_table_name = CreateVATFromVDS.vat_table_name,
             expected_output_csv = expected_prefix + "table_sizes.csv",
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     output {
-
         String dataset_name = CreateDatasetForTest.dataset_name
         String filter_set_name = "quickit"
         String recorded_git_hash = effective_git_hash
@@ -137,114 +126,40 @@ workflow GvsQuickstartVATIntegration {
     }
 }
 
-#task AssertIdenticalOutputs {
-#    input {
-#        String expected_output_prefix
-#        String expected_output_suffix
-#        Array[File] actual_vcfs
-#        String gatk_docker
-#    }
-#    parameter_meta {
-#        actual_vcfs: {
-#            localization_optional: true
-#        }
-#    }
-#    command <<<
-#        # Prepend date, time and pwd to xtrace log entries.
-#        PS4='\D{+%F %T} \w $ '
-#        set -o errexit -o nounset -o pipefail -o xtrace
-#
-#        failures=()
-#
-#        # Where the current set of expected results lives in the cloud
-#        expected_prefix="~{expected_output_prefix}"
-#        # Remove a trailing slash if there is one
-#        expected_prefix=${expected_prefix%/}
-#
-#        # Download all the expected data
-#        mkdir expected
-#        cd expected
-#        gcloud storage cp -r "${expected_prefix}"'/*.vcf~{expected_output_suffix}' .
-#        gzip -S ~{expected_output_suffix} -d *~{expected_output_suffix}
-#        cd ..
-#
-#        mkdir actual
-#        cd actual
-#        touch actual_manifest.txt
-#        # Making the manifest is pretty uninteresting and very noisy so turn off xtrace temporarily.
-#        set +o xtrace
-#        for actual in ~{sep=' ' actual_vcfs}
-#        do
-#            echo $actual >> actual_manifest.txt
-#        done
-#        set -o xtrace
-#
-#        cat actual_manifest.txt | gcloud storage cp -I .
-#        # Unzip actual result data.
-#        ls -1 | grep -E '\.vcf\~{expected_output_suffix}$' | xargs gzip -S ~{expected_output_suffix} -d
-#        cd ..
-#
-#        echo "Header Check"
-#        # Headers first, these can yield useful diagnostics when there are mismatches.
-#        for vcf in $(ls -1 actual | grep -E '\.vcf$')
-#        do
-#          actual="actual/$vcf"
-#          expected="expected/$vcf"
-#          set +o errexit
-#          cmp <(grep '^#' $actual | grep -E -v '^##GATKCommandLine=') <(grep '^#' $expected | grep -E -v '^##GATKCommandLine=')
-#          rc=$?
-#          set -o errexit
-#          if [[ $rc -ne 0 ]]; then
-#            # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
-#            failures+=( $vcf )
-#          fi
-#        done
-#
-#        echo "Header Failure Check"
-#        if [[ ${#failures[@]} -ne 0 ]]; then
-#          echo "Error: headers for the following files do not match:"
-#          for failure in ${failures[@]}; do
-#            echo $failure
-#            expected="expected/$failure"
-#            actual="actual/$failure"
-#            diff <(grep '^#' $actual) <(grep '^#' $expected)
-#          done
-#          exit 1
-#        fi
-#
-#        echo "Overall Check"
-#        # If the headers all matched look for any mismatches in overall file content.
-#        fail=0
-#        for vcf in $(ls -1 actual | grep -E '\.vcf$')
-#        do
-#          expected="expected/$vcf"
-#          actual="actual/$vcf"
-#          set +o errexit
-#          cmp <(grep -E -v '^##GATKCommandLine=' $actual) <(grep -E -v '^##GATKCommandLine=' $expected)
-#          rc=$?
-#          set -o errexit
-#          if [[ $rc -ne 0 ]]; then
-#            echo "Error: file contents of expected and actual do not match: $vcf"
-#            fail=1
-#          fi
-#        done
-#
-#        if [[ $fail -ne 0 ]]; then
-#          exit 1
-#        fi
-#
-#        echo "All vcfs compared and matched!"
-#    >>>
-#
-#    runtime {
-#        docker: gatk_docker
-#        disks: "local-disk 500 HDD"
-#    }
-#
-#    output {
-#        Boolean done = true
-#    }
-#}
+task AssertIdenticalOutputs {
+    input {
+        File actual_file
+        File expected_file
+        String gatk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        cat ~{actual_file} | gunzip | wc > actual_wc.txt
+        cat ~{expected_file} | gunzip | wc > expected_wc.txt
+        set +o errexit
+        diff actual_wc.txt expected_wc.txt
+        rc=$?
+        set -o errexit
+        if [[ $rc -ne 0 ]]; then
+            echo "The observed file ~{actual_file} differs from the expected ~{expected_file} in wc output!"
+            exit 1;
+        fi
+        echo "REMOVE ME! The observed file ~{actual_file} does not differ from the expected ~{expected_file} in wc output!"
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        disks: "local-disk 500 HDD"
+    }
+
+    output {
+        Boolean done = true
+    }
+}
 
 task AssertTableSizeIsAsExpected {
     meta {
