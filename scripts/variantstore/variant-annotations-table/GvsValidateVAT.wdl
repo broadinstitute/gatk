@@ -157,7 +157,7 @@ workflow GvsValidateVat {
     }
 
     # only check certain things if the callset is larger than 10,000 samples (a guess)
-    Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples]) < 10000])
+    Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
     if (!callset_is_small) {
         call ClinvarSignificance {
             input:
