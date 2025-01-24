@@ -429,9 +429,13 @@ task ExtractTask {
     fi
 
     # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
-    # the input `memory_gib`, so use the memory-related environment variables rather than the `memory_gib` input.
+    # the input `memory_gib`. If so, use the memory-related environment variables rather than the `memory_gib` input.
+    # But also be prepared if those memory-related variables are not set and fall back to using `memory_gib`.
     # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
-    if [[ ${MEM_UNIT} == "GB" ]]
+    if [[ -z "${MEM_UNIT:-}" ]]
+    then
+        memory_mb=$(python3 -c "from math import floor; print(floor((~{memory_gib} - ~{overhead_memory_gib}) * 1000))")
+    elif [[ ${MEM_UNIT} == "GB" ]]
     then
         memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
     else
