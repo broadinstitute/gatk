@@ -4,8 +4,6 @@ import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
 import "../../variant-annotations-table/GvsValidateVAT.wdl" as ValidateVAT
 
-# A comment for debugging!
-
 workflow GvsQuickstartVATIntegration {
     input {
         String git_branch_or_tag
@@ -140,6 +138,8 @@ task AssertIdenticalOutputs {
 
         cat ~{actual_file} | gunzip | wc > actual_wc.txt
         cat ~{expected_file} | gunzip | wc > expected_wc.txt
+        cat actual_wc.txt
+        cat expected_wc.txt
         set +o errexit
         diff actual_wc.txt expected_wc.txt
         rc=$?
@@ -148,7 +148,7 @@ task AssertIdenticalOutputs {
             echo "The observed file ~{actual_file} differs from the expected ~{expected_file} in wc output!"
             exit 1;
         fi
-        echo "REMOVE ME! The observed file ~{actual_file} does not differ from the expected ~{expected_file} in wc output!"
+        echo "No differences found"
     >>>
 
     runtime {
