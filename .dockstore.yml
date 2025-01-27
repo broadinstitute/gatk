@@ -316,7 +316,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1516_yolo
+             - gg_VS-1549_AddVATToIntegrationTests
          tags:
              - /.*/
    - name: GvsQuickstartVATIntegration
