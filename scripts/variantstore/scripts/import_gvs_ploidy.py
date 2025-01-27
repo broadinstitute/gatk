@@ -66,7 +66,7 @@ def import_ploidy(*avros) -> dict[str, hl.Struct]:
     }
 
 
-def patch_reference_data(rd, ploidy) -> hl.MatrixTable:
+def update_reference_data_ploidy(rd, ploidy) -> hl.MatrixTable:
     """
     Parameters
     ----------
