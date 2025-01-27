@@ -325,7 +325,7 @@ workflow GvsQuickstartIntegration {
     }
 
     if (run_vat_integration) {
-        String extract_output_gcs_dir = "~{workspace_bucket}/output_vat/by_submission_id/~{submission_id}/vat"
+        String extract_vat_output_gcs_dir = "~{workspace_bucket}/output_vat/by_submission_id/~{submission_id}/vat"
 
         call QuickstartVATIntegration.GvsQuickstartVATIntegration as GvsQuickstartVATIntegration {
             input:
@@ -334,7 +334,7 @@ workflow GvsQuickstartIntegration {
                 use_default_dockers = use_default_dockers,
                 expected_output_prefix = expected_output_prefix,
                 dataset_suffix = "vat",
-                output_path = extract_output_gcs_dir,
+                output_path = extract_vat_output_gcs_dir,
                 use_vds = run_vat_integration_test_from_vds,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
