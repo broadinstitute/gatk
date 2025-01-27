@@ -6,7 +6,7 @@ import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
 
-# A comment
+# A comment!
 
 workflow GvsQuickstartIntegration {
     input {
@@ -79,7 +79,12 @@ workflow GvsQuickstartIntegration {
         }
     }
 
-    # Note for `GvsQuickstartIntegration` we use the git_branch_or_tag *input* and its corresponding git hash. This is not
+    String workspace_bucket = GetToolVersions.workspace_bucket
+    String workspace_id = GetToolVersions.workspace_id
+    String submission_id = GetToolVersions.submission_id
+
+
+                # Note for `GvsQuickstartIntegration` we use the git_branch_or_tag *input* and its corresponding git hash. This is not
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
     # though in practice likely they are the same.
     if (run_hail_integration) {
@@ -105,9 +110,9 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
+                workspace_bucket = workspace_bucket,
+                workspace_id = workspace_id,
+                submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
@@ -144,9 +149,9 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
+                workspace_bucket = workspace_bucket,
+                workspace_id = workspace_id,
+                submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
@@ -171,9 +176,9 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
+                workspace_bucket = workspace_bucket,
+                workspace_id = workspace_id,
+                submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
         }
 
@@ -217,9 +222,9 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
+                workspace_bucket = workspace_bucket,
+                workspace_id = workspace_id,
+                submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
         }
@@ -256,9 +261,9 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
+                workspace_bucket = workspace_bucket,
+                workspace_id = workspace_id,
+                submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
         }
@@ -275,8 +280,6 @@ workflow GvsQuickstartIntegration {
     if (run_beta_integration) {
         String project_id = "gvs-internal"
 
-        String workspace_bucket = GetToolVersions.workspace_bucket
-        String submission_id = GetToolVersions.submission_id
         String extract_output_gcs_dir = "~{workspace_bucket}/output_vcfs/by_submission_id/~{submission_id}/beta"
         Boolean collect_variant_calling_metrics = true
 
@@ -303,9 +306,9 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
-                workspace_bucket = GetToolVersions.workspace_bucket,
-                workspace_id = GetToolVersions.workspace_id,
-                submission_id = GetToolVersions.submission_id,
+                workspace_bucket = workspace_bucket,
+                workspace_id = workspace_id,
+                submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 git_branch_or_tag = git_branch_or_tag,
                 sample_id_column_name = sample_id_column_name,
