@@ -8,22 +8,18 @@ workflow GvsQuickstartVATIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
+        Boolean use_default_dockers = false
+        String expected_output_prefix
+        String dataset_suffix
         Boolean use_vds = true      # If true, use a VDS, otherwise use a sites only VCF.
         String output_path
         String split_intervals_scatter_count = 10
-        String expected_output_prefix
-        String dataset_suffix
-        Boolean use_default_dockers = false
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
         String? variants_docker
         String? variants_nirvana_docker
         String? gatk_docker
-        File? gatk_override
-
-        String? workspace_bucket
-        String? submission_id
     }
     String project_id = "gvs-internal"
 
@@ -50,10 +46,7 @@ workflow GvsQuickstartVATIntegration {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
-    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
-
-    if (!use_default_dockers && !defined(gatk_override)) {
+    if (!use_default_dockers) {
       call Utils.BuildGATKJar {
         input:
           git_branch_or_tag = git_branch_or_tag,

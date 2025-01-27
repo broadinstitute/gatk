@@ -2,8 +2,11 @@ version 1.0
 
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
+import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
+
+# A comment
 
 workflow GvsQuickstartIntegration {
     input {
@@ -14,6 +17,8 @@ workflow GvsQuickstartIntegration {
         Boolean run_exome_integration = true
         Boolean run_beta_integration = true
         Boolean run_bge_integration = true
+        Boolean run_vat_integration = true
+        Boolean run_vat_integration_test_from_vds = true        # If false, will use sites-only VCF
         String sample_id_column_name = "sample_id"
         String vcf_files_column_name = "hg38_reblocked_gvcf"
         String vcf_index_files_column_name = "hg38_reblocked_gvcf_index"
@@ -25,6 +30,7 @@ workflow GvsQuickstartIntegration {
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
         String? variants_docker
+        String? variants_nirvana_docker
         String? gatk_docker
         String? hail_version
         Boolean chr20_X_Y_only = true
@@ -52,6 +58,7 @@ workflow GvsQuickstartIntegration {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
@@ -314,6 +321,27 @@ workflow GvsQuickstartIntegration {
                     message = "QuickstartBeta should have used tighter GCP quotas but did not!",
                     basic_docker = effective_basic_docker,
             }
+        }
+    }
+
+    if (run_vat_integration) {
+        String extract_output_gcs_dir = "~{workspace_bucket}/output_vat/by_submission_id/~{submission_id}/vat"
+
+        call QuickstartVATIntegration.GvsQuickstartVATIntegration as GvsQuickstartVATIntegration {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+                git_hash = GetToolVersions.git_hash,
+                use_default_dockers = use_default_dockers,
+                expected_output_prefix = expected_output_prefix,
+                dataset_suffix = "vat",
+                output_path = extract_output_gcs_dir,
+                use_vds = run_vat_integration_test_from_vds,
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                variants_nirvana_docker = effective_variants_nirvana_docker,
+                gatk_docker = effective_gatk_docker,
         }
     }
 
