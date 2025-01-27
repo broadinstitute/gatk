@@ -81,7 +81,6 @@ workflow GvsQuickstartIntegration {
     String workspace_id = GetToolVersions.workspace_id
     String submission_id = GetToolVersions.submission_id
 
-
     # Note for `GvsQuickstartIntegration` we use the git_branch_or_tag *input* and its corresponding git hash. This is not
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
     # though in practice likely they are the same.

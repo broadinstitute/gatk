@@ -323,12 +323,12 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartVATIntegration.wdl
      filters:
-       branches:
-         - master
-         - ah_var_store
-         - gg_VS-1549_AddVATToIntegrationTests
-       tags:
-         - /.*/
+         branches:
+             - master
+             - ah_var_store
+             - gg_VS-1549_AddVATToIntegrationTests
+         tags:
+             - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
