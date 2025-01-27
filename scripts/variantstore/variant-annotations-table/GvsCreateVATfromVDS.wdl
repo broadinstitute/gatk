@@ -221,6 +221,7 @@ workflow GvsCreateVATfromVDS {
             ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
             call AnnotateVCF {
                 input:
+                    cromwell_root = GetToolVersions.cromwell_root,
                     input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
                     output_annotated_file_name = "${vcf_filename}_annotated",
                     custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
@@ -580,6 +581,7 @@ task AnnotateVCF {
         File input_vcf
         String output_annotated_file_name
         File custom_annotations_file
+        String cromwell_root
 
         # Mentioning this path in the inputs section of the task combined with checking the 'Use reference disks' option
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
@@ -643,7 +645,7 @@ task AnnotateVCF {
             # Take the parent of the parent directory of this file as root of the locally mounted references:
             DATA_SOURCES_FOLDER="$(dirname $(dirname ${REFERENCE_PATH}))"
         else
-            DATA_SOURCES_FOLDER=/cromwell_root/nirvana_references
+            DATA_SOURCES_FOLDER=~{cromwell_root}/nirvana_references
             mkdir ${DATA_SOURCES_FOLDER}
 
             # Download the references
