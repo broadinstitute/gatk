@@ -16,6 +16,7 @@ workflow GvsExtractAvroFilesForHail {
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker
+        String ploidy_table_name
     }
 
     if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
@@ -63,6 +64,16 @@ workflow GvsExtractAvroFilesForHail {
             dataset_name = dataset_name,
             filter_set_info_tablename = filter_set_info_tablename,
             filter_set_name = filter_set_name,
+            avro_sibling = OutputPath.out,
+            call_set_identifier = call_set_identifier,
+            variants_docker = effective_variants_docker,
+    }
+
+    call ExtractFromPloidyTable {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            ploidy_table_name = ploidy_table_name,
             avro_sibling = OutputPath.out,
             call_set_identifier = call_set_identifier,
             variants_docker = effective_variants_docker,
@@ -238,6 +249,59 @@ task ExtractFromFilterTables {
     }
 }
 
+
+task ExtractFromPloidyTable {
+    meta {
+        description: "Extracts from the sample chromosome ploidy table"
+        # Not dealing with caching for now as that would introduce a lot of complexity.
+        volatile: true
+    }
+    input {
+        String project_id
+        String dataset_name
+        String ploidy_table_name
+        String avro_sibling
+        String call_set_identifier
+        String variants_docker
+    }
+
+    parameter_meta {
+        avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        avro_prefix="$(dirname ~{avro_sibling})/avro"
+        echo $avro_prefix > "avro_prefix.out"
+
+        # Note the query below extracts ploidy data for chrX and chrY only as those are the only chromosomes the VDS
+        # ploidy logic looks at.
+
+        python3 /app/run_avro_query.py --sql "
+            EXPORT DATA OPTIONS(
+            uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            SELECT (
+                CASE (p.chromosome / 1000000000000)
+                    WHEN 23 THEN 'chrX'
+                    WHEN 24 THEN 'chrY'
+                    END) AS location, s.sample_name, p.ploidy
+            FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
+            JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON p.sample_id = s.sample_id
+            WHERE (p.chromosome / 1000000000000 = 23 or p.chromosome / 1000000000000 = 24)
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
+    >>>
+    output {
+        Boolean done = true
+        String output_prefix = read_string("avro_prefix.out")
+    }
+
+    runtime {
+        docker: variants_docker
+        disks: "local-disk 500 HDD"
+    }
+}
 
 task ExtractFromSuperpartitionedTables {
     meta {

@@ -46,6 +46,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
          --num-worker-local-ssds 1 
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
          --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
+         --packages=python-snappy
          {cluster_name}
          
         """)
@@ -64,7 +65,9 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
         )
 
         # prepare custom arguments
-        secondary_script_path_arg = f'--py-files {" ".join(secondary_script_path_list)}' if secondary_script_path_list else ''
+        # the following says `--py-files` is supposed to be a comma separated list
+        # https://fig.io/manual/gcloud/dataproc/jobs/submit/pyspark
+        secondary_script_path_arg = f'--py-files {",".join(secondary_script_path_list)}' if secondary_script_path_list else ''
         with open(script_arguments_json_path, 'r') as input_file:
             items = ijson.items(input_file, '', use_float=True)
             arguments = items.__next__();

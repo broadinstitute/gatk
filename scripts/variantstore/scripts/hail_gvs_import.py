@@ -38,6 +38,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume
             sample_mapping=argsfn('sample_mapping'),
             site_filtering_data=argsfn('site_filtering_data'),
             vets_filtering_data=argsfn('vets_filtering_data'),
+            ploidy_data=argsfn('ploidy_data'),
             reference_genome=rg38,
             final_path=vds_path,
             tmp_dir=f'{temp_path}/hail_tmp_create_vds',

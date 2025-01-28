@@ -36,6 +36,7 @@ workflow GvsQuickstartHailIntegration {
         String? submission_id
 
         Int? maximum_alternate_alleles
+        String ploidy_table_name
     }
 
     String project_id = "gvs-internal"
@@ -100,6 +101,7 @@ workflow GvsQuickstartHailIntegration {
             project_id = project_id,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
+            ploidy_table_name = ploidy_table_name,
             scatter_width = 10,
             call_set_identifier = git_branch_or_tag,
             basic_docker = effective_basic_docker,
@@ -177,7 +179,7 @@ task TieOutVds {
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/scripts"
-        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py
+        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py import_gvs_ploidy.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
