@@ -26,7 +26,7 @@ workflow GvsValidateVat {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-    # Definining is_small_callset allows us to run this WDL on a dataset that has not had samples loaded (for testing)
+    # Defining is_small_callset allows us to run this WDL on a dataset that has not had samples loaded (for testing)
     if (!defined(is_small_callset)) {
         call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
             input:
