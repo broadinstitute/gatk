@@ -1058,6 +1058,9 @@ public class ExtractCohortEngine {
                 }
             }
         }
+        if (sortedVet != null) {
+            sortedVet.doneAdding();
+        }
         return sortedVet;
     }
 
@@ -1092,6 +1095,9 @@ public class ExtractCohortEngine {
                 }
             }
         }
+//        if (sortedReferenceRange != null) {
+//            sortedReferenceRange.doneAdding();
+//        }
 
         return sortedReferenceRange;
     }
@@ -1114,7 +1120,9 @@ public class ExtractCohortEngine {
                 maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
-
+        if (sortedVet != null) {
+            sortedVet.doneAdding();
+        }
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromBigQuery(projectID,
                 fqDatasetName,
@@ -1123,6 +1131,9 @@ public class ExtractCohortEngine {
                 maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
+        if (sortedReferenceRange != null) {
+            sortedReferenceRange.doneAdding();
+        }
 
         return new VariantIterables(sortedVet, sortedReferenceRange);
     }
@@ -1143,12 +1154,13 @@ public class ExtractCohortEngine {
                 fqVetTable,
                 localSortMaxRecordsInRam,
                 vbs);
-
+        sortedVet.doneAdding();
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromExtractTableBigQuery(projectID,
                 fqRefTable,
                 localSortMaxRecordsInRam,
                 vbs);
+        sortedReferenceRange.doneAdding();
 
         return new VariantIterables(sortedVet, sortedReferenceRange);
     }
