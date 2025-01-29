@@ -83,6 +83,11 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
     private static final Map<String, Map<String, Integer>> revisedCopyNumbers = new HashMap<>();
     private static final Set<String> revisedComplete = new HashSet<>();
 
+    // Data structures for cached data
+    private final Map<String, Set<String>> nonRefSamplesCache = new HashMap<>();
+    private final Map<String, Map<String, Set<String>>> supportCache = new HashMap<>();
+    private final Map<String, Map<String, Integer>> rdCnCache = new HashMap<>();
+
     private static final int MIN_VARIANT_SIZE = 5000;
 
     @Override
@@ -92,6 +97,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
     protected void afterNthPass(final int n) {
         if (n == 0) {
             processCollectedVariants();
+            clearAllCaches();
         }
     }
 
@@ -134,8 +140,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
         // Flag variant as being a multiallelic CNV
         final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
-        for (String sample : variant.getSampleNamesOrderedByName()) {
-            final Genotype genotype = variant.getGenotype(sample);
+        for (final Genotype genotype : variant.getGenotypes()) {
             if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
 
             final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
@@ -151,20 +156,25 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         }
 
         // Flag sample as having an abnormal copy number
-        for (final String sample : variant.getSampleNames()) {
-            final Genotype genotype = variant.getGenotype(sample);
+        for (final Genotype genotype : variant.getGenotypes()) {
             if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
 
             final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
             final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
             if ((svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) && rdCn < 2) || (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) && rdCn > 2)) {
-                abnormalRdCn.computeIfAbsent(variant.getID(), k -> new HashSet<>()).add(sample);
+                abnormalRdCn.computeIfAbsent(variant.getID(), k -> new HashSet<>()).add(genotype.getSampleName());
             }
         }
 
+        // Remove variants not in current context window
+        overlappingVariantsBuffer.removeIf(overlappingVariant -> {
+            boolean shouldRemove = !overlappingVariant.getContig().equals(variant.getContig())
+                    || (overlappingVariant.getStart() + overlappingVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart();
+            if (shouldRemove) removeVariantFromCaches(overlappingVariant.getID());
+            return shouldRemove;
+        });
+
         // Process overlaps with variants in the buffer
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
-                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
         for (final VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processGt(bufferedVariant, variant);
@@ -217,28 +227,12 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         vcfWriter.add(builder.make());
     }
 
-    private void processCollectedVariants() {
-        // Prune variant-sample pairs we need RD_CN values for
-        for (final Map.Entry<String, Map<String, Pair<String, String>>> entry : revisedEventsAll.entrySet()) {
-            for (final Map.Entry<String, Pair<String, String>> innerEntry : entry.getValue().entrySet()) {
-                final String sampleName = innerEntry.getKey();
-                final String variantId = entry.getKey();
-                final String widerVariantId = innerEntry.getValue().getLeft();
-                final String svType = innerEntry.getValue().getRight();
-                if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)) {
-                    revisedEventsFiltered.computeIfAbsent(variantId, k -> new HashSet<>()).add(sampleName);
-                    revisedEventsFiltered.computeIfAbsent(widerVariantId, k -> new HashSet<>()).add(sampleName);
-                }
-            }
-        }
-    }
-
     private void processGt(final VariantContext v1, final VariantContext v2) {
         // Determine larger variant, swapping if necessary
-        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         VariantContext largerVariant = v1;
         VariantContext smallerVariant = v2;
+        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         if (length2 > length1) {
             largerVariant = v2;
             smallerVariant = v1;
@@ -246,7 +240,13 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         final String largerID = largerVariant.getID();
         final String smallerID = smallerVariant.getID();
 
-        // Skip processing if same variant ID, SV type or samples
+        // Skip if coverage below expected
+        final double coverage = getCoverage(largerVariant, smallerVariant);
+        if (coverage < 0.5) {
+            return;
+        }
+
+        // Skip if same variant ID, SV type or samples
         final String widerSvType = largerVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         final String narrowerSvType = smallerVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
         final Set<String> widerSamples = getNonReferenceSamples(largerVariant);
@@ -255,7 +255,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             return;
         }
 
-        // Get samples present in wider but not in narrower
+        // Skip if no non-overlapping samples
         final Set<String> nonCommonSamples = new HashSet<>(widerSamples);
         nonCommonSamples.removeAll(narrowerSamples);
         if (nonCommonSamples.isEmpty()) {
@@ -263,21 +263,18 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         }
 
         // Revise variant if coverage exceeds threshold
-        final double coverage = getCoverage(largerVariant, smallerVariant);
-        if (coverage >= 0.5) {
-            for (final String sample : nonCommonSamples) {
-                revisedEventsAll.computeIfAbsent(smallerID, k -> new HashMap<>())
-                        .put(sample, new ImmutablePair<>(largerID, widerSvType));
-            }
+        for (final String sample : nonCommonSamples) {
+            revisedEventsAll.computeIfAbsent(smallerID, k -> new HashMap<>())
+                    .put(sample, new ImmutablePair<>(largerID, widerSvType));
         }
     }
 
     private void processCn(final VariantContext v1, final VariantContext v2) {
         // Determine larger variant, swapping if necessary
-        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         VariantContext largerVariant = v1;
         VariantContext smallerVariant = v2;
+        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         if (length2 > length1) {
             largerVariant = v2;
             smallerVariant = v1;
@@ -305,12 +302,29 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         final double overlap1 = (double) lengthOverlap / (double) largerLength;
         final double overlap2 = (double) lengthOverlap / (double) smallerLength;
 
+        // Skip if overlap conditions not met
+        if (overlap2 <= 0.5) {
+            return;
+        }
+
         // Get samples with abnormal CN across both variants
         final Set<String> samples = new HashSet<>(abnormalRdCn.getOrDefault(variantId1, Collections.emptySet()));
         samples.retainAll(abnormalRdCn.getOrDefault(variantId2, Collections.emptySet()));
 
+        // Skip if sample overlap conditions not met
+        if (samples.isEmpty()) {
+            return;
+        }
+
+        // Cached boolean fields
+        final boolean isMultiCnv1 = multiCnvs.contains(variantId1);
+        final boolean isMultiCnv2 = multiCnvs.contains(variantId2);
+        final boolean isMatchingSvType = svType1.equals(svType2);
+        final boolean isOverlapping = (overlap1 > 0.5);
+        final boolean isLargerThanMin = largerLength > MIN_VARIANT_SIZE;
+
         // Iterate through samples to test against conditions
-        for (String sample : samples) {
+        for (final String sample : samples) {
             final String id1 = variantId1 + "@" + sample;
             final String id2 = variantId2 + "@" + sample;
             if (revisedComplete.contains(id1)) {
@@ -326,8 +340,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
             // Condition 1: Smaller depth call is being driven by larger call
             if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support1.size() > 1
-                    && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
-                    && overlap2 > 0.5 && !multiCnvs.contains(variantId1)) {
+                    && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1))) && !isMultiCnv1) {
                 if (rdCn1 == 0) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1) {
@@ -340,10 +353,9 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             }
 
             // Condition 2: Smaller CNV is driven by larger CNV genotype
-            else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
-                    && support2.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support2.size() > 1
-                    && overlap1 > 0.5 && overlap2 > 0.5 && !multiCnvs.contains(variantId2)
-                    && !genotype2.isHomRef()) {
+            else if (support2.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support2.size() > 1
+                    && support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
+                    && !genotype2.isHomRef() && !isMultiCnv2 && isOverlapping) {
                 if (rdCn2 == 0) {
                     makeRevision(id1, rdCn1 + 2);
                 } else if (rdCn2 == 1) {
@@ -358,7 +370,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             // Condition 3: Depth-only calls where smaller call is driven by larger call
             else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
-                    && overlap2 > 0.5 && !multiCnvs.contains(variantId1) && svType1.equals(svType2)) {
+                    && !isMultiCnv1 && isMatchingSvType) {
                 if (rdCn1 == 0 && rdCn1 != rdCn2) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1 && rdCn1 > rdCn2) {
@@ -371,8 +383,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             }
 
             // Condition 4: Any other time a larger call drives a smaller call
-            else if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1))
-                    && overlap2 > 0.5 && !multiCnvs.contains(variantId1) && largerLength > MIN_VARIANT_SIZE) {
+            else if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && !isMultiCnv1 && isLargerThanMin) {
                 if (rdCn1 == 0) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1) {
@@ -390,64 +401,99 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         // Initialize data structures
         final String variantId = variant.getID();
         final Map<String, Pair<String, String>> variantEvents = revisedEventsAll.get(variantId);
-        final List<Genotype> genotypes = builder.getGenotypes();
-        final List<Genotype> newGenotypes = new ArrayList<>();
+        final Map<String, Genotype> revisedGenotypes = new HashMap<>();
+        final List<Genotype> oldGenotypes = variant.getGenotypes();
+        final List<Genotype> newGenotypes = new ArrayList<>(oldGenotypes.size());
 
-        // Create updated genotypes
-        for (final Genotype genotype : genotypes) {
-            final String sampleName = genotype.getSampleName();
-            final Pair<String, String> event = variantEvents.get(sampleName);
+        // Populate genotypes that need revising
+        for (final Map.Entry<String, Pair<String, String>> entry : variantEvents.entrySet()) {
+            final Pair<String, String> event = entry.getValue();
+            if (event == null) {
+                continue;
+            }
 
-            if (event != null) {
-                final String widerVariantId = event.getLeft();
-                final String widerSvType = event.getRight();
-                final int currentRdCn = currentCopyNumbers.get(variantId).getOrDefault(sampleName, 0);
-                final int widerRdCn = currentCopyNumbers.getOrDefault(widerVariantId, new HashMap<>()).getOrDefault(sampleName, 0);
+            final String sampleName = entry.getKey();
+            final Genotype genotype = variant.getGenotype(sampleName);
+            final String widerVariantId = event.getLeft();
+            final String widerSvType = event.getRight();
+            final int currentRdCn = currentCopyNumbers.get(variantId).getOrDefault(sampleName, 0);
+            final int widerRdCn = currentCopyNumbers.getOrDefault(widerVariantId, new HashMap<>()).getOrDefault(sampleName, 0);
 
-                int newVal = -1;
-                if (widerSvType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) && currentRdCn == 2 && widerRdCn == 3) {
-                    newVal = 1;
-                } else if (widerSvType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) && currentRdCn == 2 && widerRdCn == 1) {
-                    newVal = 3;
-                }
+            int newVal = -1;
+            if (widerSvType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) && currentRdCn == 2 && widerRdCn == 3) {
+                newVal = 1;
+            } else if (widerSvType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) && currentRdCn == 2 && widerRdCn == 1) {
+                newVal = 3;
+            }
 
-                if (newVal != -1) {
-                    final GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                    gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                    if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+            if (newVal != -1) {
+                final GenotypeBuilder gb = new GenotypeBuilder(genotype);
+                gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
+                if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
 
-                    final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
-                    gb.GQ(rdCn);
-                    newGenotypes.add(gb.make());
-                } else {
-                    newGenotypes.add(genotype);
-                }
-            } else {
-                newGenotypes.add(genotype);
+                final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
+                gb.GQ(rdCn);
+                revisedGenotypes.put(sampleName, gb.make());
             }
         }
+
+        // Populate genotypes that don't need revising
+        for (final Genotype genotype : oldGenotypes) {
+            final String sampleName = genotype.getSampleName();
+            newGenotypes.add(revisedGenotypes.getOrDefault(sampleName, genotype));
+        }
+
         builder.genotypes(newGenotypes);
     }
 
     private void processRevisedCn(final VariantContextBuilder builder, final VariantContext variant) {
         // Initialize data structures
-        final String variantID = variant.getID();
+        final String variantId = variant.getID();
         final List<Genotype> genotypes = builder.getGenotypes();
         final List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
 
         // Replace revised alleles and copy numbers
         for (final Genotype genotype : genotypes) {
             final String sampleName = genotype.getSampleName();
-            if (revisedCopyNumbers.get(variantID).containsKey(sampleName)) {
+            if (revisedCopyNumbers.get(variantId).containsKey(sampleName)) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                gb.attribute(GATKSVVCFConstants.RD_CN, revisedCopyNumbers.get(variantID).get(sampleName));
+                gb.attribute(GATKSVVCFConstants.RD_CN, revisedCopyNumbers.get(variantId).get(sampleName));
                 updatedGenotypes.add(gb.make());
             } else {
                 updatedGenotypes.add(genotype);
             }
         }
         builder.genotypes(updatedGenotypes);
+    }
+
+    private void processCollectedVariants() {
+        // Prune variant-sample pairs we need RD_CN values for
+        for (final Map.Entry<String, Map<String, Pair<String, String>>> entry : revisedEventsAll.entrySet()) {
+            for (final Map.Entry<String, Pair<String, String>> innerEntry : entry.getValue().entrySet()) {
+                final String sampleName = innerEntry.getKey();
+                final String variantId = entry.getKey();
+                final String widerVariantId = innerEntry.getValue().getLeft();
+                final String svType = innerEntry.getValue().getRight();
+                if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)) {
+                    revisedEventsFiltered.computeIfAbsent(variantId, k -> new HashSet<>()).add(sampleName);
+                    revisedEventsFiltered.computeIfAbsent(widerVariantId, k -> new HashSet<>()).add(sampleName);
+                }
+            }
+        }
+    }
+
+    private void clearAllCaches() {
+        // Clear caches to free up memory
+        nonRefSamplesCache.clear();
+        supportCache.clear();
+        rdCnCache.clear();
+    }
+
+    private void removeVariantFromCaches(final String variantID) {
+        nonRefSamplesCache.remove(variantID);
+        supportCache.remove(variantID);
+        rdCnCache.remove(variantID);
     }
 
     private void makeRevision(final String id, final int val) {
@@ -476,17 +522,6 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
                 && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
     }
 
-    private Set<String> getNonReferenceSamples(final VariantContext variant) {
-        final Set<String> samples = new HashSet<>();
-        for (final String sampleName : variant.getSampleNames()) {
-            final Genotype genotype = variant.getGenotype(sampleName);
-            if (genotype.isCalled() && !genotype.isHomRef()) {
-                samples.add(sampleName);
-            }
-        }
-        return samples;
-    }
-
     private double getCoverage(final VariantContext wider, final VariantContext narrower) {
         final int nStart = narrower.getStart();
         final int nStop = narrower.getEnd();
@@ -500,28 +535,59 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         return 0.0;
     }
 
+    private Set<String> getNonReferenceSamples(final VariantContext variant) {
+        final String variantId = variant.getID();
+        if (nonRefSamplesCache.containsKey(variantId)) {
+            return nonRefSamplesCache.get(variantId);
+        }
+
+        final Set<String> samples = new HashSet<>();
+        for (final Genotype genotype : variant.getGenotypes()) {
+            if (genotype.isCalled() && !genotype.isHomRef()) {
+                samples.add(genotype.getSampleName());
+            }
+        }
+
+        nonRefSamplesCache.put(variantId, samples);
+        return samples;
+    }
+
     private Map<String, Set<String>> getSupport(final VariantContext variant) {
+        final String variantId = variant.getID();
+        if (supportCache.containsKey(variantId)) {
+            return supportCache.get(variantId);
+        }
+
         Map<String, Set<String>> supportMap = new HashMap<>();
-        for (String sample : variant.getSampleNames()) {
-            final Genotype genotype = variant.getGenotype(sample);
-            final String supportStr = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV) ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString() : "";
+        for (final Genotype genotype : variant.getGenotypes()) {
+            final String supportStr = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)
+                    ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString()
+                    : "";
             final Set<String> supportSet = new HashSet<>();
             if (!supportStr.isEmpty()) {
                 supportSet.addAll(Arrays.asList(supportStr.split(",")));
             }
-            supportMap.put(sample, supportSet);
+            supportMap.put(genotype.getSampleName(), supportSet);
         }
+
+        supportCache.put(variantId, supportMap);
         return supportMap;
     }
 
     private Map<String, Integer> getRdCn(final VariantContext variant) {
+        final String variantId = variant.getID();
+        if (rdCnCache.containsKey(variantId)) {
+            return rdCnCache.get(variantId);
+        }
+
         final Map<String, Integer> rdCnMap = new HashMap<>();
-        for (String sample : variant.getSampleNames()) {
-            final Genotype genotype = variant.getGenotype(sample);
+        for (final Genotype genotype : variant.getGenotypes()) {
             if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                rdCnMap.put(sample, Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
+                rdCnMap.put(genotype.getSampleName(), Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
             }
         }
+
+        rdCnCache.put(variantId, rdCnMap);
         return rdCnMap;
     }
 }

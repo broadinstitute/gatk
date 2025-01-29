@@ -151,7 +151,7 @@ public class SVReviseLargeCnvs extends VariantWalker {
 
     private void processMultiallelic(final VariantContextBuilder builder, final List<Genotype> genotypes) {
         int numGtOver2 = 0;
-        for (Genotype genotype : genotypes) {
+        for (final Genotype genotype : genotypes) {
             final Integer peGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.PE_GT) ?
                     Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.PE_GT).toString()) : null;
             final Integer srGt = genotype.hasExtendedAttribute(GATKSVVCFConstants.SR_GT) ?
@@ -193,9 +193,10 @@ public class SVReviseLargeCnvs extends VariantWalker {
         boolean multiallelicFilter = false;
         if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
-            for (Genotype genotype : genotypes) {
-                if (!outlierSamples.contains(genotype.getSampleName())  && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                    sampleRdCn.put(genotype.getSampleName(), Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
+            for (final Genotype genotype : genotypes) {
+                final String sample = genotype.getSampleName();
+                if (!outlierSamples.contains(sample)  && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
+                    sampleRdCn.put(sample, Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
                 }
             }
             if (sampleRdCn.values().stream().filter(value -> value > 3).count() > maxVF) {
@@ -258,8 +259,9 @@ public class SVReviseLargeCnvs extends VariantWalker {
         if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
             for (final Genotype genotype : genotypes) {
-                if (!outlierSamples.contains(genotype.getSampleName()) && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                    sampleRdCn.put(genotype.getSampleName(), Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
+                final String sample = genotype.getSampleName();
+                if (!outlierSamples.contains(sample) && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
+                    sampleRdCn.put(sample, Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()));
                 }
             }
             if (sampleRdCn.values().stream().filter(value -> value > 4).count() > maxVF) {
