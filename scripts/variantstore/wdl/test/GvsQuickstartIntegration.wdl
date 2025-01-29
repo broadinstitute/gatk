@@ -33,6 +33,7 @@ workflow GvsQuickstartIntegration {
         String? hail_version
         Boolean chr20_X_Y_only = true
         Int? maximum_alternate_alleles
+        String ploidy_table_name = "sample_chromosome_ploidy"
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -113,6 +114,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                ploidy_table_name = ploidy_table_name,
         }
 
         if (GvsQuickstartHailVETSIntegration.used_tighter_gcp_quotas) {

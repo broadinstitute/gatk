@@ -5,6 +5,7 @@ import hail as hl
 from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
 from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, sequenceof, numeric
+import import_gvs_ploidy
 
 
 @typecheck(refs=sequenceof(sequenceof(str)),
@@ -12,6 +13,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            sample_mapping=sequenceof(str),
            site_filtering_data=sequenceof(str),
            vets_filtering_data=sequenceof(str),
+           ploidy_data=sequenceof(str),
            final_path=str,
            tmp_dir=str,
            truth_sensitivity_snp_threshold=float,
@@ -27,6 +29,7 @@ def import_gvs(refs: 'List[List[str]]',
                sample_mapping: 'List[str]',
                site_filtering_data: 'List[str]',
                vets_filtering_data: 'List[str]',
+               ploidy_data: 'List[str]',
                final_path: 'str',
                tmp_dir: 'str',
                truth_sensitivity_snp_threshold: 'float' = 0.997,
@@ -71,6 +74,8 @@ def import_gvs(refs: 'List[List[str]]',
         scope of the resulting variant table, where keys of the dictionary are an alternate
         allele string, where the dictionary values are the full records from the input VETS
         filtering table, minus the `ref` and `alt` fields.
+      - `ploidy_data` -- This data is used to determine and assign reference data ploidy. Some
+         VCFs record ploidy for X and Y chromosomes as haploid, others as diploid.
 
     Execution notes
     ---------------
@@ -106,6 +111,8 @@ def import_gvs(refs: 'List[List[str]]',
         Paths to site filtering files.
     vets_filtering_data : List[str]
         Paths to VETS filtering files.
+    ploidy_data : List[str]
+        Path(s) to ploidy data file(s).
     final_path : :class:`str`
         Desired path to final VariantDataset on disk.
     tmp_dir : :class:`str`
@@ -190,6 +197,8 @@ def import_gvs(refs: 'List[List[str]]',
         vets_filter = vets_filter.key_by('locus')
         vets_filter.write(vets_filter_path, overwrite=True)
 
+        ploidy = import_gvs_ploidy.import_ploidy(*ploidy_data)
+
     n_samples = 0
 
     with hl._with_flags(use_new_shuffle='1'):
@@ -250,6 +259,7 @@ def import_gvs(refs: 'List[List[str]]',
             ref_ht = ref_ht.annotate_globals(col_data=sample_names_lit.map(lambda s: hl.struct(s=s)),
                                              ref_block_max_length=ref_block_max_length)
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
+            ref_mt = import_gvs_ploidy.update_reference_data_ploidy(ref_mt, ploidy)
 
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),

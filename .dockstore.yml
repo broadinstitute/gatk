@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1418_ploidy_for_foxtrot_vds
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -316,17 +317,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1549_AddVATToIntegrationTests
-         tags:
-             - /.*/
-   - name: GvsQuickstartVATIntegration
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartVATIntegration.wdl
-     filters:
-         branches:
-             - master
-             - ah_var_store
-             - gg_VS-1549_AddVATToIntegrationTests
          tags:
              - /.*/
    - name: GvsIngestTieout
