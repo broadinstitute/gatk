@@ -39,6 +39,7 @@ workflow GvsQuickstartIntegration {
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
     File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2024-10-29/" + expected_subdir
+    File truth_data_prefix = "gs://gvs-internal-quickstart/integration/test_data/2025-01-17/"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -327,15 +328,16 @@ workflow GvsQuickstartIntegration {
     if (run_vat_integration) {
         String extract_vat_output_gcs_dir = "~{workspace_bucket}/output_vat/by_submission_id/~{submission_id}/vat"
 
-        call QuickstartVATIntegration.GvsQuickstartVATIntegration as GvsQuickstartVATIntegration {
+        call QuickstartVATIntegration.GvsQuickstartVATIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
                 use_default_dockers = use_default_dockers,
+                truth_data_prefix = truth_data_prefix,
                 expected_output_prefix = expected_output_prefix,
                 dataset_suffix = "vat",
                 output_path = extract_vat_output_gcs_dir,
-                use_vds = run_vat_integration_test_from_vds,
+                use_vds_as_input = run_vat_integration_test_from_vds,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
