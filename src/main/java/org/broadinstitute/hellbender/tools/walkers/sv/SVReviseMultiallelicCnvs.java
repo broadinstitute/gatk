@@ -127,19 +127,16 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
     }
 
     private void processVariantPair(final VariantContext v1, final VariantContext v2) {
-        // Determine larger variant
+        // Determine larger variant, swapping if necessary
         VariantContext largerVariant = v1;
         VariantContext smallerVariant = v2;
         final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int smallerLength = length2;
-
-        // Swap variants if necessary
         if (length2 > length1) {
             largerVariant = v2;
             smallerVariant = v1;
-            smallerLength = length1;
         }
+        final int smallerLength = smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
 
         // Calculate overlap
         int minEnd = Math.min(
@@ -148,13 +145,15 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
         );
         final int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
         final int overlapLength = minEnd - maxStart + 1;
-        if (overlapLength <= 0) {
+
+        // Skip if insufficient overlap length or coverage
+        final double coverage = (double) overlapLength / smallerLength;
+        if (overlapLength <= 0 || coverage <= 0.5) {
             return;
         }
 
         // Filter variant based on conditions
-        final double coverage = (double) overlapLength / smallerLength;
-        if (coverage > 0.5 && !filteredVariantIds.contains(largerVariant.getID())) {
+        if (!filteredVariantIds.contains(largerVariant.getID())) {
             filteredVariantIds.add(smallerVariant.getID());
         }
     }
