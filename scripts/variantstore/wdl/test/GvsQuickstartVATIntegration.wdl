@@ -121,7 +121,7 @@ task AssertIdenticalOutputs {
         String gatk_docker
     }
 
-    Int disk_size_gb = ceil(10 * size(actual_file, "GiB") + 10 * size(expected_file)) + 200
+    Int disk_size_gb = ceil(10 * size(actual_file, "GiB") + 10 * size(expected_file, "GiB")) + 200
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
