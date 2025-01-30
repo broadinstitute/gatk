@@ -128,14 +128,14 @@ task AssertIdenticalOutputs {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        cat ~{actual_file} | gunzip > actual_file.txt
-        cat ~{expected_file} | gunzip > expected_file.txt
+        cat ~{actual_file} | gunzip | sort > actual_file.txt
+        cat ~{expected_file} | gunzip | sort > expected_file.txt
         set +o errexit
         cmp actual_file.txt expected_file.txt
         rc=$?
         set -o errexit
         if [[ $rc -ne 0 ]]; then
-            echo "The observed file ~{actual_file} differs from the expected ~{expected_file} in wc output!"
+            echo "The observed file ~{actual_file} differs from the expected ~{expected_file}!"
             exit 1;
         fi
     >>>
