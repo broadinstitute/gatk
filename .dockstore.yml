@@ -262,6 +262,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1558_ReleaseTheMemory
          tags:
              - /.*/
    - name: GvsBeta
