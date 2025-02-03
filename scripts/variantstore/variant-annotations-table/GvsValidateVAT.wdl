@@ -156,7 +156,8 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    # only check certain things if the callset is larger than 10,000 samples (a guess)
+    # Check if the input boolean `is_small_callset` is defined,
+    # if not use the `GetNumSamples` task to find the number of samples in the callset and set the flag if it's < 10000
     Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
     if (!callset_is_small) {
         call ClinvarSignificance {

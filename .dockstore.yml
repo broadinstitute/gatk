@@ -318,7 +318,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1418_ploidy_for_foxtrot_vds
-             - gg_VS-1549_AddVATToIntegrationTests
          tags:
              - /.*/
    - name: GvsIngestTieout
