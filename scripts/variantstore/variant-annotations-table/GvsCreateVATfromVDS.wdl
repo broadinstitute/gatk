@@ -85,7 +85,7 @@ workflow GvsCreateVATfromVDS {
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
-    String vat_table_name = filter_set_name + "_vat" + effective_vat_version
+    String effective_vat_table_name = filter_set_name + "_vat" + effective_vat_version
 
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
@@ -262,7 +262,7 @@ workflow GvsCreateVATfromVDS {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 output_path = effective_output_path,
-                base_vat_table_name = vat_table_name,
+                base_vat_table_name = effective_vat_table_name,
                 prep_vt_json_done = PrepVtAnnotationJson.done,
                 prep_genes_json_done = PrepGenesAnnotationJson.done,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -271,7 +271,7 @@ workflow GvsCreateVATfromVDS {
         call DeduplicateVatInBigQuery {
             input:
                 input_vat_table_name = BigQueryLoadJson.vat_table,
-                output_vat_table_name = vat_table_name,
+                output_vat_table_name = effective_vat_table_name,
                 nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
@@ -294,6 +294,7 @@ workflow GvsCreateVATfromVDS {
     }
 
     output {
+        String vat_table_name = effective_vat_table_name
         String? cluster_name = GenerateSitesOnlyVcf.cluster_name
         File? dropped_sites_file = MergeTsvs.output_file
         File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
