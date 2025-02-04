@@ -1095,9 +1095,9 @@ public class ExtractCohortEngine {
                 }
             }
         }
-//        if (sortedReferenceRange != null) {
-//            sortedReferenceRange.doneAdding();
-//        }
+        if (sortedReferenceRange != null) {
+            sortedReferenceRange.doneAdding();
+        }
 
         return sortedReferenceRange;
     }
@@ -1120,9 +1120,6 @@ public class ExtractCohortEngine {
                 maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
-        if (sortedVet != null) {
-            sortedVet.doneAdding();
-        }
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromBigQuery(projectID,
                 fqDatasetName,
@@ -1131,9 +1128,6 @@ public class ExtractCohortEngine {
                 maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
-        if (sortedReferenceRange != null) {
-            sortedReferenceRange.doneAdding();
-        }
 
         return new VariantIterables(sortedVet, sortedReferenceRange);
     }
@@ -1154,13 +1148,11 @@ public class ExtractCohortEngine {
                 fqVetTable,
                 localSortMaxRecordsInRam,
                 vbs);
-        sortedVet.doneAdding();
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromExtractTableBigQuery(projectID,
                 fqRefTable,
                 localSortMaxRecordsInRam,
                 vbs);
-        sortedReferenceRange.doneAdding();
 
         return new VariantIterables(sortedVet, sortedReferenceRange);
     }
@@ -1190,6 +1182,7 @@ public class ExtractCohortEngine {
             SortingCollection<GenericRecord> sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
             addToVetSortingCollection(sortedVet, vetReader, vbs);
             processBytesScanned(vetReader);
+            sortedVet.doneAdding();
             return sortedVet;
         }
     }
@@ -1215,6 +1208,7 @@ public class ExtractCohortEngine {
             SortingCollection<GenericRecord> sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
             addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
             processBytesScanned(refReader);
+            sortedReferenceRange.doneAdding();
             return sortedReferenceRange;
         }
     }
