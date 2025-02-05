@@ -173,8 +173,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1516_yolo
-             - VS-1561
          tags:
              - /.*/
    - name: GvsImportGenomes
