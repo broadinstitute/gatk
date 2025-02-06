@@ -141,6 +141,8 @@ public class SVCleanPt2 extends VariantWalker {
         // Flag sample as having an abnormal copy number if it passes certain conditions
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
+            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+
             int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
             if (!sampleWhitelist.contains(sample) || !genotype.isCalled() || rdCn == 2) {
                 continue;
