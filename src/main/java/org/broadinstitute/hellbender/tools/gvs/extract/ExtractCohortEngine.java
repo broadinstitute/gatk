@@ -1058,6 +1058,9 @@ public class ExtractCohortEngine {
                 }
             }
         }
+        if (sortedVet != null) {
+            sortedVet.doneAdding();
+        }
         return sortedVet;
     }
 
@@ -1092,6 +1095,9 @@ public class ExtractCohortEngine {
                 }
             }
         }
+        if (sortedReferenceRange != null) {
+            sortedReferenceRange.doneAdding();
+        }
 
         return sortedReferenceRange;
     }
@@ -1114,7 +1120,6 @@ public class ExtractCohortEngine {
                 maxLocation,
                 localSortMaxRecordsInRam,
                 vbs);
-
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromBigQuery(projectID,
                 fqDatasetName,
@@ -1143,7 +1148,6 @@ public class ExtractCohortEngine {
                 fqVetTable,
                 localSortMaxRecordsInRam,
                 vbs);
-
 
         SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromExtractTableBigQuery(projectID,
                 fqRefTable,
@@ -1178,6 +1182,7 @@ public class ExtractCohortEngine {
             SortingCollection<GenericRecord> sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
             addToVetSortingCollection(sortedVet, vetReader, vbs);
             processBytesScanned(vetReader);
+            sortedVet.doneAdding();
             return sortedVet;
         }
     }
@@ -1203,6 +1208,7 @@ public class ExtractCohortEngine {
             SortingCollection<GenericRecord> sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
             addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
             processBytesScanned(refReader);
+            sortedReferenceRange.doneAdding();
             return sortedReferenceRange;
         }
     }
