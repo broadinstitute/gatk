@@ -8,6 +8,7 @@ workflow GvsValidateVat {
         String project_id
         String dataset_name
         String vat_table_name
+        Boolean? is_small_callset
         String? cloud_sdk_docker
         String? variants_docker
     }
@@ -25,20 +26,23 @@ workflow GvsValidateVat {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-    call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
-        input:
-        project_id = project_id,
-        fq_table = fq_vat_table,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+    # Defining is_small_callset allows us to run this WDL on a dataset that has not had samples loaded (for testing)
+    if (!defined(is_small_callset)) {
+        call Utils.GetBQTableLastModifiedDatetime as SampleDateTime {
+            input:
+                project_id = project_id,
+                fq_table = fq_sample_table,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
 
-    call Utils.GetNumSamplesLoaded {
-        input:
-            fq_sample_table = fq_sample_table,
-            project_id = project_id,
-            sample_table_timestamp = SampleDateTime.last_modified_timestamp,
-            control_samples = false,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+        call Utils.GetNumSamplesLoaded {
+            input:
+                fq_sample_table = fq_sample_table,
+                project_id = project_id,
+                sample_table_timestamp = SampleDateTime.last_modified_timestamp,
+                control_samples = false,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
     }
 
     call Utils.GetBQTableLastModifiedDatetime as VatDateTime {
@@ -152,8 +156,9 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    # only check certain things if the callset is larger than 10,000 samples (a guess)
-    Boolean callset_is_small = GetNumSamplesLoaded.num_samples < 10000
+    # Check if the input boolean `is_small_callset` is defined,
+    # if not use the `GetNumSamples` task to find the number of samples in the callset and set the flag if it's < 10000
+    Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
     if (!callset_is_small) {
         call ClinvarSignificance {
             input:
