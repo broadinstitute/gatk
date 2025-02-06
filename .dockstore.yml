@@ -261,7 +261,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1558_ReleaseTheMemory
          tags:
              - /.*/
    - name: GvsBeta
@@ -318,7 +317,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1418_ploidy_for_foxtrot_vds
-             - gg_VS-1558_ReleaseTheMemory
          tags:
              - /.*/
    - name: GvsIngestTieout
