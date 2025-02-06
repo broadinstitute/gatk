@@ -160,6 +160,8 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         // Initialize revisedRdCn value for each variant
         for (final String sampleName : samples) {
             final Genotype genotype = variant.getGenotype(sampleName);
+            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+
             final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
             variantRdCn.put(sampleName, Integer.parseInt(rdCn));
         }
@@ -262,6 +264,8 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
                 if (newVal != -1) {
                     final GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
                     gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
+                    if (!oldGenotype.hasExtendedAttribute(GATKSVVCFConstants.RD_GQ)) continue;
+
                     gb.GQ(Integer.parseInt((String) oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ)));
                     newGenotypes.add(gb.make());
                 } else {
@@ -278,6 +282,8 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         for (String sample : variant.getSampleNamesOrderedByName()) {
             final Genotype genotype = variant.getGenotype(sample);
+            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
+
             final String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
             final int rdCn = Integer.parseInt(rdCnString);
             if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {

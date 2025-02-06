@@ -136,19 +136,10 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
             largerVariant = v2;
             smallerVariant = v1;
         }
-        final int smallerLength = smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
 
-        // Calculate overlap
-        int minEnd = Math.min(
-                largerVariant.getStart() + largerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0),
-                smallerVariant.getStart() + smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)
-        );
-        final int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
-        final int overlapLength = minEnd - maxStart + 1;
-
-        // Skip if insufficient overlap length or coverage
-        final double coverage = (double) overlapLength / smallerLength;
-        if (overlapLength <= 0 || coverage <= 0.5) {
+        // Skip if coverage below expected
+        final double coverage = getCoverage(largerVariant, smallerVariant);
+        if (coverage < 0.5) {
             return;
         }
 
@@ -162,5 +153,18 @@ public class SVReviseMultiallelicCnvs extends MultiplePassVariantWalker {
         return v1.getContig().equals(v2.getContig())
                 && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
                 && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+    }
+
+    private double getCoverage(final VariantContext larger, final VariantContext smaller) {
+        final int largerStart = larger.getStart();
+        final int smallerStart = smaller.getStart();
+        final int largerStop = larger.getEnd();
+        final int smallerStop = smaller.getEnd();
+
+        if (largerStart <= smallerStop && smallerStart <= largerStop) {
+            final int intersectionSize = Math.min(smallerStop, largerStop) - Math.max(smallerStart, largerStart) + 1;
+            return (double) intersectionSize / (smallerStop - smallerStart + 1);
+        }
+        return 0.0;
     }
 }
