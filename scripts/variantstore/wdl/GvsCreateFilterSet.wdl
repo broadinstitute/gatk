@@ -13,7 +13,10 @@ workflow GvsCreateFilterSet {
 
     String filter_set_name
 
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String reference_name = "hg38"
+    File? interval_list
+
+    String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
     String? gatk_docker
@@ -36,10 +39,6 @@ workflow GvsCreateFilterSet {
     File? scoring_python_script
   }
 
-  File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-  File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
-  File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-
   # fully-qualified table names
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -55,10 +54,34 @@ workflow GvsCreateFilterSet {
     }
   }
 
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  File reference_fasta = GetReference.reference.reference_fasta
+  File reference_fasta_index = GetReference.reference.reference_fasta_index
+  File reference_dict = GetReference.reference.reference_dict
+
+  # resource files - used for VETS (and VQSR)
+  File axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
+  File axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
+  File hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
+  File hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
+  File mills_resource_vcf = GetReference.reference.mills_resource_vcf
+  File mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
+  File omni_resource_vcf = GetReference.reference.omni_resource_vcf
+  File omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
+  File one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
+  File one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -82,9 +105,9 @@ workflow GvsCreateFilterSet {
 
   call Utils.SplitIntervals {
     input:
-      intervals = interval_list,
-      ref_fasta = reference,
-      ref_fai = reference_index,
+      intervals = effective_interval_list,
+      ref_fasta = reference_fasta,
+      ref_fai = reference_fasta_index,
       ref_dict = reference_dict,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
@@ -103,8 +126,8 @@ workflow GvsCreateFilterSet {
       input:
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
-        reference                  = reference,
-        reference_index            = reference_index,
+        reference                  = reference_fasta,
+        reference_index            = reference_fasta_index,
         reference_dict             = reference_dict,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
@@ -138,9 +161,9 @@ workflow GvsCreateFilterSet {
         sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
-        resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
-        extract_extra_args = "-L ${interval_list}",
-        score_extra_args = "-L ${interval_list}",
+        resource_args = "--resource:hapmap,training=true,calibration=true ${hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${omni_resource_vcf} --resource:1000G,training=true,calibration=false ${one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${mills_resource_vcf} --resource:axiom,training=true,calibration=false ${axiomPoly_resource_vcf}",
+        extract_extra_args = "-L ${effective_interval_list}",
+        score_extra_args = "-L ${effective_interval_list}",
         extract_runtime_attributes = vets_extract_runtime_attributes,
         train_runtime_attributes = vets_train_runtime_attributes,
         score_runtime_attributes = vets_score_runtime_attributes,

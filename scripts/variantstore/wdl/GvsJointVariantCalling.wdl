@@ -51,6 +51,7 @@ workflow GvsJointVariantCalling {
         # runs and feature development.
         File? gatk_override
 
+        String reference_name = "hg38"
         Boolean is_wgs = true
         File? interval_list
 
@@ -72,13 +73,6 @@ workflow GvsJointVariantCalling {
 
         Int? maximum_alternate_alleles
     }
-
-    # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
-    # We currently use the same weighted bed file for whole genomes and exomes. However if `interval_list` is defined,
-    # we'll use that instead of choosing based on `is_wgs`.
-    File default_interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-                                             else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
-    File interval_list_to_use = select_first([interval_list, default_interval_list])
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
     # To make sure nothing is broken by creative users we replace spaces and underscores with hyphens.
@@ -122,6 +116,18 @@ workflow GvsJointVariantCalling {
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
+    call Utils.GetReference {
+        input:
+            reference_name = reference_name,
+            basic_docker = effective_basic_docker,
+    }
+
+    # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
+    # However if `interval_list` is defined, we'll use that instead of choosing based on `is_wgs`.
+    File default_interval_list = if (is_wgs) then GetReference.reference.wgs_calling_interval_list
+                                 else GetReference.reference.exome_calling_interval_list
+    File interval_list_to_use = select_first([interval_list, default_interval_list])
+
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
             git_branch_or_tag = git_branch_or_tag,
@@ -133,6 +139,7 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
+            reference_name = reference_name,
             interval_list = interval_list_to_use,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
@@ -171,6 +178,7 @@ workflow GvsJointVariantCalling {
             call_set_identifier = call_set_identifier,
             filter_set_name = effective_filter_set_name,
             use_VETS = !use_VQSR,
+            reference_name = reference_name,
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
@@ -216,6 +224,7 @@ workflow GvsJointVariantCalling {
             filter_set_name = effective_filter_set_name,
             query_project = query_project,
             scatter_count = extract_scatter_count,
+            reference_name = reference_name,
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,

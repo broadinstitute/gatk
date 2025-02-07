@@ -298,6 +298,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_put_all_ref_constants_in_one_place
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -307,6 +308,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_put_all_ref_constants_in_one_place
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -317,6 +319,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1418_ploidy_for_foxtrot_vds
+             - gg_put_all_ref_constants_in_one_place
          tags:
              - /.*/
    - name: GvsIngestTieout

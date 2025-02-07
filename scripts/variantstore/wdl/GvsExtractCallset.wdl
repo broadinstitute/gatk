@@ -29,11 +29,13 @@ workflow GvsExtractCallset {
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
 
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String reference_name = "hg38"
+    File? interval_list
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
     File? target_interval_list
 
+    String? basic_docker
     String? variants_docker
     String? cloud_sdk_docker
     String? gatk_docker
@@ -56,13 +58,6 @@ workflow GvsExtractCallset {
     Boolean write_cost_to_db = true
     Int maximum_alternate_alleles = 1000
   }
-
-  File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-  File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
-  File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-
-  File dbsnp_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
-  File dbsnp_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx"
 
   String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
   String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
@@ -97,10 +92,22 @@ workflow GvsExtractCallset {
     }
   }
 
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  File reference_fasta = GetReference.reference.reference_fasta
+  File reference_fasta_index = GetReference.reference.reference_fasta_index
+  File reference_dict = GetReference.reference.reference_dict
 
   call Utils.ScaleXYBedValues {
     input:
@@ -155,9 +162,9 @@ workflow GvsExtractCallset {
 
   call Utils.SplitIntervals {
     input:
-      intervals = interval_list,
-      ref_fasta = reference,
-      ref_fai = reference_index,
+      intervals = effective_interval_list,
+      ref_fasta = reference_fasta,
+      ref_fai = reference_fasta_index,
       ref_dict = reference_dict,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
@@ -229,8 +236,8 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = reference,
-        reference_index                       = reference_index,
+        reference                             = reference_fasta,
+        reference_index                       = reference_fasta_index,
         reference_dict                        = reference_dict,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
@@ -268,8 +275,8 @@ workflow GvsExtractCallset {
           input_vcf = ExtractTask.output_vcf,
           input_vcf_index = ExtractTask.output_vcf_index,
           metrics_filename_prefix = call_set_identifier + "." + i,
-          dbsnp_vcf = dbsnp_vcf,
-          dbsnp_vcf_index = dbsnp_vcf_index,
+          dbsnp_vcf = GetReference.reference.dbsnp_vcf,
+          dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index,
           interval_list = SplitIntervals.interval_files[i],
           ref_dict = reference_dict,
           gatk_docker = effective_gatk_docker

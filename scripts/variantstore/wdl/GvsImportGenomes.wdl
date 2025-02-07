@@ -28,7 +28,10 @@ workflow GvsImportGenomes {
     # project for small regions per minute per region" default quota of ~19G.  Uses up to ~90% of the quota at peaks
     # without going over
     Int beta_customer_max_scatter = 200
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+
+    String reference_name = "hg38"
+    File? interval_list
+
     Int? load_data_scatter_width
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
@@ -67,6 +70,14 @@ workflow GvsImportGenomes {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   if (!load_vcf_headers && !load_vet_and_ref_ranges) {
     call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
@@ -145,7 +156,7 @@ workflow GvsImportGenomes {
         drop_state_includes_greater_than = false,
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-        interval_list = interval_list,
+        interval_list = effective_interval_list,
         gatk_docker = effective_gatk_docker,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
