@@ -8,6 +8,10 @@ import logging
 import sys
 from Bio.Seq import reverse_complement
 
+
+
+
+
 vat_nirvana_positions_dictionary = {
     "position": "position", # required
     "ref_allele": "refAllele", # required
