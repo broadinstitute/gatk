@@ -8,7 +8,7 @@ workflow JointVcfFiltering {
     String project_id
     String base_name
 
-    String reference_name
+    String reference_name = "hg38"
 
     String filter_set_name
     String filter_set_info_schema

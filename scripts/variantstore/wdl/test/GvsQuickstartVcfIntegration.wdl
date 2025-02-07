@@ -103,6 +103,7 @@ workflow GvsQuickstartVcfIntegration {
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             bgzip_output_vcfs = bgzip_output_vcfs,
+            reference_name = reference_name,
             is_wgs = is_wgs,
             interval_list = interval_list,
             sample_id_column_name = sample_id_column_name,

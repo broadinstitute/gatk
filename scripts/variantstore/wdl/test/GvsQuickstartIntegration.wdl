@@ -6,6 +6,8 @@ import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
 
+# Comment is here
+
 workflow GvsQuickstartIntegration {
     input {
         String git_branch_or_tag
@@ -101,6 +103,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "vets_hail",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
+                reference_name = reference_name,
                 is_wgs = true,
                 interval_list = select_first([FilterIntervalListChromosomes.out, GetReference.reference.wgs_calling_interval_list]),
                 expected_output_prefix = expected_output_prefix,
@@ -339,6 +342,7 @@ workflow GvsQuickstartIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
+                reference_name = reference_name,
                 use_default_dockers = use_default_dockers,
                 truth_data_prefix = truth_data_prefix,
                 expected_output_prefix = expected_output_prefix,

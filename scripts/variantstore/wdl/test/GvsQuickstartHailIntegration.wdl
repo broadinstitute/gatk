@@ -9,6 +9,7 @@ workflow GvsQuickstartHailIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
+        String reference_name = "hg38"
         Boolean is_wgs
         File? interval_list
         Boolean use_compressed_references = false
@@ -75,6 +76,7 @@ workflow GvsQuickstartHailIntegration {
             check_expected_cost_and_table_size_outputs = false,
             gatk_override = gatk_override,
             bgzip_output_vcfs = bgzip_output_vcfs,
+            reference_name = reference_name,
             is_wgs = is_wgs,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,

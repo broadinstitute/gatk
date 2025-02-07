@@ -233,6 +233,7 @@ workflow GvsCreateFilterSet {
         dataset_name = dataset_name,
         project_id = project_id,
         base_name = filter_set_name,
+        reference_name = reference_name,
         filter_set_name = filter_set_name,
         filter_set_info_schema = filter_set_info_destination_table_schema,
         fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,

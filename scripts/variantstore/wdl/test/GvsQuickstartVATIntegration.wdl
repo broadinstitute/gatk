@@ -8,6 +8,7 @@ workflow GvsQuickstartVATIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
+        String reference_name = "hg38"
         Boolean use_default_dockers = false
         String truth_data_prefix
         String expected_output_prefix
@@ -66,6 +67,7 @@ workflow GvsQuickstartVATIntegration {
         input:
             project_id = project_id,
             dataset_name = CreateDatasetForTest.dataset_name,
+            reference_name = reference_name,
             ancestry_file = ancestry_path,
             filter_set_name = "quickit",
             vds_path = vds_path,
