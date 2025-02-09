@@ -49,16 +49,16 @@ workflow JointVcfFiltering {
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
   Array[String] indel_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"]
 
-  if (!defined(git_hash) || !defined(gatk_docker)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call Utils.GetReference {
     input:

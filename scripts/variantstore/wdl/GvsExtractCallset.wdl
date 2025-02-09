@@ -85,18 +85,18 @@ workflow GvsExtractCallset {
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
   String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
 
-  if (!defined(git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
-  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call Utils.GetReference {
     input:

@@ -58,17 +58,17 @@ workflow GvsExtractCohortFromSampleNames {
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
-  if (!defined(git_branch_or_tag) || !defined(gatk_docker)  || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+  if (!defined(git_branch_or_tag) || !defined(basic_docker) || !defined(gatk_docker)  || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
-  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
-  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
-  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_branch_or_tag, GetToolVersions.git_hash])
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
   call Utils.GetReference {

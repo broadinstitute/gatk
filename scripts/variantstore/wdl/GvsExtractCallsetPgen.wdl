@@ -94,7 +94,7 @@ workflow GvsExtractCallsetPgen {
 
     String intervals_file_extension = if (zero_pad_output_pgen_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
 
-    if (!defined(git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
