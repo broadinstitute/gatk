@@ -29,14 +29,14 @@ task GetReference {
   }
 
   command <<<
-    # is not needed?
+    echo "Done."
   >>>
 
   runtime {
     docker: basic_docker
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 3
+    memory: "1 GiB"
+    disks: "local-disk 100 HDD"
+    preemptible: 0
     cpu: 1
   }
 
