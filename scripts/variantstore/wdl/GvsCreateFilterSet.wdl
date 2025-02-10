@@ -14,7 +14,7 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     String reference_name = "hg38"
-    File? interval_list
+    String? interval_list
 
     String? basic_docker
     String? cloud_sdk_docker
@@ -66,22 +66,22 @@ workflow GvsCreateFilterSet {
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
-  File reference_fasta = GetReference.reference.reference_fasta
-  File reference_fasta_index = GetReference.reference.reference_fasta_index
-  File reference_dict = GetReference.reference.reference_dict
+  String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  String reference_fasta = GetReference.reference.reference_fasta
+  String reference_fasta_index = GetReference.reference.reference_fasta_index
+  String reference_dict = GetReference.reference.reference_dict
 
   # resource files - used for VETS (and VQSR)
-  File axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
-  File axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
-  File hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
-  File hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
-  File mills_resource_vcf = GetReference.reference.mills_resource_vcf
-  File mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
-  File omni_resource_vcf = GetReference.reference.omni_resource_vcf
-  File omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
-  File one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
-  File one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
+  String axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
+  String axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
+  String hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
+  String hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
+  String mills_resource_vcf = GetReference.reference.mills_resource_vcf
+  String mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
+  String omni_resource_vcf = GetReference.reference.omni_resource_vcf
+  String omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
+  String one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
+  String one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -107,8 +107,6 @@ workflow GvsCreateFilterSet {
     input:
       intervals = effective_interval_list,
       ref_fasta = reference_fasta,
-      ref_fai = reference_fasta_index,
-      ref_dict = reference_dict,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -127,8 +125,6 @@ workflow GvsCreateFilterSet {
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
         reference                  = reference_fasta,
-        reference_index            = reference_fasta_index,
-        reference_dict             = reference_dict,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -304,8 +300,6 @@ task ExtractFilterTask {
     String call_set_identifier
 
     File reference
-    File reference_index
-    File reference_dict
 
     String fq_sample_table
     String sample_table_timestamp
@@ -326,6 +320,11 @@ task ExtractFilterTask {
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+  parameter_meta {
+    reference: {
+                 localization_optional: true
+               }
   }
 
   String intervals_name = basename(intervals)

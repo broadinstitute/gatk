@@ -108,10 +108,8 @@ workflow GvsCreateVATfromVDS {
             basic_docker = effective_basic_docker,
     }
 
-    File interval_list = GetReference.reference.wgs_calling_interval_list
-    File reference_fasta = GetReference.reference.reference_fasta
-    File reference_fasta_index = GetReference.reference.reference_fasta_index
-    File reference_dict = GetReference.reference.reference_dict
+    String interval_list = GetReference.reference.wgs_calling_interval_list
+    String reference_fasta = GetReference.reference.reference_fasta
 
     if (defined(sites_only_vcf) || (defined(vds_path))) {
         if (!defined(split_intervals_scatter_count)) {
@@ -185,8 +183,6 @@ workflow GvsCreateVATfromVDS {
             input:
                 intervals = interval_list,
                 ref_fasta = reference_fasta,
-                ref_fai = reference_fasta_index,
-                ref_dict = reference_dict,
                 scatter_count = effective_scatter_count,
                 output_gcs_dir = effective_output_path + "intervals",
                 split_intervals_disk_size_override = split_intervals_disk_size_override,

@@ -206,10 +206,8 @@ task MergeVCFs {
 
 task SplitIntervals {
   input {
-    File intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
+    String intervals
+    String ref_fasta
     Int scatter_count
     File? interval_weights_bed
     String? intervals_file_extension
@@ -236,12 +234,6 @@ task SplitIntervals {
       localization_optional: true
     }
     ref_fasta: {
-      localization_optional: true
-    }
-    ref_fai: {
-      localization_optional: true
-    }
-    ref_dict: {
       localization_optional: true
     }
   }
@@ -295,8 +287,6 @@ task SplitIntervalsTarred {
   input {
     File intervals
     File ref_fasta
-    File ref_fai
-    File ref_dict
     Int scatter_count
     File? interval_weights_bed
     String? intervals_file_extension
@@ -325,12 +315,6 @@ task SplitIntervalsTarred {
     ref_fasta: {
                  localization_optional: true
                }
-    ref_fai: {
-               localization_optional: true
-             }
-    ref_dict: {
-                localization_optional: true
-              }
   }
 
   command <<<

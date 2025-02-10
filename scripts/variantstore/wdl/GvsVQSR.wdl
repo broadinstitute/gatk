@@ -68,28 +68,28 @@ workflow JointVcfFiltering {
 
   # reference files
   # Axiom - Used only for indels
-  File axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
-  File axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
+  String axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
+  String axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
 
   # DbSNP - BOTH SNPs and INDELs.
-  File dbsnp_vcf = GetReference.reference.dbsnp_vcf
-  File dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index
+  String dbsnp_vcf = GetReference.reference.dbsnp_vcf
+  String dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index
 
   # HapMap - SNPs
-  File hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
-  File hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
+  String hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
+  String hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
 
   # Mills - Indels
-  File mills_resource_vcf = GetReference.reference.mills_resource_vcf
-  File mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
+  String mills_resource_vcf = GetReference.reference.mills_resource_vcf
+  String mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
 
   # Omni - SNPs
-  File omni_resource_vcf = GetReference.reference.omni_resource_vcf
-  File omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
+  String omni_resource_vcf = GetReference.reference.omni_resource_vcf
+  String omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
 
   # 1000G - SNPs
-  File one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
-  File one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
+  String one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
+  String one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
 
   call IndelsVariantRecalibrator {
     input:
@@ -290,6 +290,32 @@ task SNPsVariantRecalibratorCreateModel {
     Int disk_size
     String gatk_docker
   }
+  parameter_meta {
+    hapmap_resource_vcf: {
+                           localization_optional: true
+                         }
+    omni_resource_vcf: {
+                         localization_optional: true
+                       }
+    one_thousand_genomes_resource_vcf: {
+                                         localization_optional: true
+                                       }
+    dbsnp_resource_vcf: {
+                          localization_optional: true
+                        }
+    hapmap_resource_vcf_index: {
+                                 localization_optional: true
+                               }
+    omni_resource_vcf_index: {
+                               localization_optional: true
+                             }
+    one_thousand_genomes_resource_vcf_index: {
+                                               localization_optional: true
+                                             }
+    dbsnp_resource_vcf_index: {
+                                localization_optional: true
+                              }
+  }
 
   # Based on https://docs.google.com/spreadsheets/d/1jOsudfO1-RadJXPGuHOIrjZW3Rg2SzvlL8Wg-lxZVUU/edit#gid=1056496058
   Int default_mem_gb = if (num_samples <= 10000) then 110
@@ -443,6 +469,26 @@ task IndelsVariantRecalibrator {
     Int? machine_mem_gb
     String gatk_docker
   }
+  parameter_meta {
+    mills_resource_vcf: {
+                 localization_optional: true
+               }
+    axiomPoly_resource_vcf: {
+                 localization_optional: true
+               }
+    dbsnp_resource_vcf: {
+                          localization_optional: true
+                        }
+    axiomPoly_resource_vcf_index: {
+                                    localization_optional: true
+                                  }
+    mills_resource_vcf_index: {
+                          localization_optional: true
+                        }
+    dbsnp_resource_vcf_index: {
+                                localization_optional: true
+                              }
+  }
 
   Int machine_mem = select_first([machine_mem_gb, 35])
   Int java_mem = machine_mem - 10
@@ -517,6 +563,33 @@ task SNPsVariantRecalibrator {
     Int disk_size
     Int? machine_mem_gb
     String gatk_docker
+  }
+
+  parameter_meta {
+    hapmap_resource_vcf: {
+                          localization_optional: true
+                        }
+    omni_resource_vcf: {
+                              localization_optional: true
+                            }
+    one_thousand_genomes_resource_vcf: {
+                         localization_optional: true
+                       }
+    dbsnp_resource_vcf: {
+                          localization_optional: true
+                        }
+    hapmap_resource_vcf_index: {
+                                    localization_optional: true
+                                  }
+    omni_resource_vcf_index: {
+                                localization_optional: true
+                              }
+    one_thousand_genomes_resource_vcf_index: {
+                                localization_optional: true
+                              }
+    dbsnp_resource_vcf_index: {
+                                               localization_optional: true
+                                             }
   }
 
   Int auto_mem = ceil(2 * size([sites_only_variant_filtered_vcf,

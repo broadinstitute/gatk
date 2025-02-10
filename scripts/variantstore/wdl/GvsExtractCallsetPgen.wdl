@@ -114,9 +114,9 @@ workflow GvsExtractCallsetPgen {
     }
 
     File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
-    File reference_fasta = GetReference.reference.reference_fasta
-    File reference_fasta_index = GetReference.reference.reference_fasta_index
-    File reference_dict = GetReference.reference.reference_dict
+    String reference_fasta = GetReference.reference.reference_fasta
+    String reference_fasta_index = GetReference.reference.reference_fasta_index
+    String reference_dict = GetReference.reference.reference_dict
 
     call Utils.ScaleXYBedValues {
         input:
@@ -166,8 +166,6 @@ workflow GvsExtractCallsetPgen {
         input:
             intervals = effective_interval_list,
             ref_fasta = reference_fasta,
-            ref_fai = reference_fasta_index,
-            ref_dict = reference_dict,
             interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
@@ -241,8 +239,6 @@ workflow GvsExtractCallsetPgen {
                 gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
                 reference                          = reference_fasta,
-                reference_index                    = reference_fasta_index,
-                reference_dict                     = reference_dict,
                 fq_samples_to_extract_table        = fq_samples_to_extract_table,
                 interval_index                     = i,
                 interval_files_tar                 = SplitIntervalsTarred.interval_files_tar,
@@ -341,8 +337,6 @@ task PgenExtractTask {
         Boolean use_VETS
 
         File reference
-        File reference_index
-        File reference_dict
 
         String fq_samples_to_extract_table
 
@@ -387,6 +381,12 @@ task PgenExtractTask {
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    }
+
+    parameter_meta {
+        reference: {
+                       localization_optional: true
+                   }
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
