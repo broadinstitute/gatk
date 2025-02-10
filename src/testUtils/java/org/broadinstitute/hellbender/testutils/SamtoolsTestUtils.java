@@ -9,10 +9,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Test utilities for running samtools from htsjdk tests.
+ * Test utilities for running samtools from GATK tests.
  */
 public class SamtoolsTestUtils {
-    private static final String SAMTOOLS_BINARY_ENV_VARIABLE = "HTSJDK_SAMTOOLS_BIN";
+    private static final String SAMTOOLS_BINARY_ENV_VARIABLE = "GATK_SAMTOOLS_BIN";
     public final static String expectedSamtoolsVersion = "1.21";
 
     /**
@@ -39,12 +39,12 @@ public class SamtoolsTestUtils {
 
     /**
      * @return the name and location of the local samtools executable as specified by the environment
-     * variable HTSJDK_SAMTOOLS_BIN, or the default value of "/usr/local/bin/samtools" if the environment
+     * variable SAMTOOLS_BINARY_ENV_VARIABLE, or the default value of "/usr/bin/samtools" if the environment
      * variable is not set
      */
     public static String getSamtoolsBin() {
         final String samtoolsPath = System.getenv(SAMTOOLS_BINARY_ENV_VARIABLE);
-        return samtoolsPath == null ? "/usr/local/bin/samtools" : samtoolsPath;
+        return samtoolsPath == null ? "/usr/bin/samtools" : samtoolsPath;
     }
 
     /**
