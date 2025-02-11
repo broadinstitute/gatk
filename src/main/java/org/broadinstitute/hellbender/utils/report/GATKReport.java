@@ -4,7 +4,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
-import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -174,7 +173,6 @@ public final class GATKReport {
      * @param out the PrintStream to which the tables should be written
      */
     public void print(PrintStream out) {
-        out.println("#:GATK_version:" + RuntimeUtils.getVersion(this.getClass()));
         out.println(GATKREPORT_HEADER_PREFIX + getVersion() + SEPARATOR + getTables().size());
         for (GATKReportTable table : tables.values()) {
             table.write(out);
