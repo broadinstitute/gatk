@@ -33,9 +33,11 @@ public final class RecalDatum implements Serializable {
 
     /**
      * The empirical quality for datums that have been collapsed together (by read group and reported quality, for example).
+     *
+     * This variable was historically a double, but {@link #bayesianEstimateOfEmpiricalQuality} has always returned an integer qual score.
+     * Thus the type has been changed to integer in February 2025 to highlight this implementation detail. It does not change the output.
      */
-    private int empiricalQuality; // tsato: seems like it should have type integers (or byte?)
-    // TODO: this should probably be a byte
+    private int empiricalQuality;
 
     /**
      * Number of bases seen in total
@@ -108,7 +110,7 @@ public final class RecalDatum implements Serializable {
         final double expectedNumErrors = this.calcExpectedErrors() + other.calcExpectedErrors();
 
         // increment the counts
-        increment(other.getNumObservations(), other.getNumMismatches()); // tsato: very questionable here for combining, but it seems that the only time we combine is GatherBQSRTables (confirm)
+        increment(other.getNumObservations(), other.getNumMismatches());
         
         // we use the theoretical count above to compute the "estimated" reported quality
         // after combining two datums with different reported qualities.
@@ -232,7 +234,7 @@ public final class RecalDatum implements Serializable {
 
     public void incrementNumMismatches(final double by) {
         numMismatches += (by*MULTIPLIER);
-        empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY; // tsato: ditto below
+        empiricalQuality = UNINITIALIZED_EMPIRICAL_QUALITY;
     }
 
     public void increment(final long incObservations, final double incMismatches) {
@@ -299,8 +301,8 @@ public final class RecalDatum implements Serializable {
      * @param priorMeanQualityScore the prior quality score, often the reported quality score.
      *
      * @return phredScale quality score that maximizes the posterior probability.
-     */ // tsato: int-double
-    public static int bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double priorMeanQualityScore) { // tsato: reportedQuality -> priorQuality?
+     */
+    public static int bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double priorMeanQualityScore) {
         final int numQualityScoreBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1);
 
         final double[] logPosteriors = new IndexRange(0, numQualityScoreBins).mapToDouble(q ->

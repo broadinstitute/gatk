@@ -252,7 +252,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param priorQualityScore the prior quality score (in log space). It is either the "estimated" or collapsed reported quality score
      *                          for the read group, or the constant prior if given. This value has type double because of the "combine" (or collapse) operation
      *                          that collapses the quality scores represented within the same read group.
-     * @param readGroupDatum the RecalDatum object for a particular read group at hand. May be null. (tsato: can it be null?)
+     * @param readGroupDatum the RecalDatum object for a particular read group at hand. May be null.
      * @param qualityScoreDatum the RecalDatum object for a particular (read group, reported quality) tuple at hand. May be null.
      * @param specialCovariateDatums the array of RecalDatum objects for the non-required covariates (cycle and context covariates by default).
      * @return

@@ -31,7 +31,7 @@ public final class ReadGroupCovariate implements Covariate {
 
     public ReadGroupCovariate(final List<String> readGroups){
         final Map<String, Integer> rgLookupTable = new LinkedHashMap<>();
-        final Map<Integer, String> rgReverseLookupTable = new LinkedHashMap<>(); // tsato: this should be an array
+        final Map<Integer, String> rgReverseLookupTable = new LinkedHashMap<>();
 
         readGroups.forEach(
                 rg -> {
@@ -51,7 +51,7 @@ public final class ReadGroupCovariate implements Covariate {
         final SAMReadGroupRecord rg = ReadUtils.getSAMReadGroupRecord(read, header);
         final String readGroupIdentifier = getReadGroupIdentifier(rg); // note that the identifier by default is PU, not the ID.
 
-        final int key = keyForReadGroup(readGroupIdentifier); // tsato: key/index, be consistent
+        final int key = keyForReadGroup(readGroupIdentifier);
         Utils.validate(key >= -1, "key must be a nonnegative integer or the error code -1, but is " + key);
 
         final int readLength = read.getLength();
@@ -79,7 +79,7 @@ public final class ReadGroupCovariate implements Covariate {
     }
 
     @Override
-    public int keyFromValue(final Object value) { // tsato: this use of key and value is problematic...
+    public int keyFromValue(final Object value) {
         return keyForReadGroup((String) value);
     }
 
