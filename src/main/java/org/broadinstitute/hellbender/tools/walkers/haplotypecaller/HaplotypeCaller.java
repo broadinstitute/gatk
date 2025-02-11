@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
@@ -17,13 +15,17 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.HaplotypeFilteringAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.transformers.BaseQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
+import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -163,6 +165,12 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
+
+    @ArgumentCollection
+    @Hidden
+    @Advanced
+    public ApplyBQSRArgumentCollection bqsrArgs = new ApplyBQSRArgumentCollection();
+
     /**
      * A raw, unfiltered, highly sensitive callset in VCF format.
      */
@@ -170,6 +178,10 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "File to which variants should be written")
     public GATKPath outputVCF = null;
+
+    @Argument(fullName=StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, shortName=StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME, doc="Optional input recalibration table for on-the-fly BQSR.", optional = true)
+    @WorkflowInput
+    public File BQSR_RECAL_FILE = null;
 
     private VariantContextWriter vcfWriter;
 
@@ -210,7 +222,9 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
-    public ReadTransformer makePreReadFilterTransformer() { return HaplotypeCallerEngine.makeStandardHCReadTransformer(); }
+    public ReadTransformer makePreReadFilterTransformer() {
+        return HaplotypeCallerEngine.makeStandardHCReadTransformer().andThen(BQSR_RECAL_FILE != null ? new BQSRReadTransformer(getHeaderForReads(), BQSR_RECAL_FILE, bqsrArgs) : ReadTransformer.identity());
+    }
 
     @Override
     public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() { return HaplotypeCallerEngine.getStandardHaplotypeCallerAnnotationGroups();}
