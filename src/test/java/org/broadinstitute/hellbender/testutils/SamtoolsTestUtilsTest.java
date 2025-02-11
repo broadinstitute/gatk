@@ -26,6 +26,12 @@ public class SamtoolsTestUtilsTest extends GATKBaseTest {
 
     @Test
     public void testSamtoolsVersion() {
+        if (isGATKDockerContainer()) {
+            // since this test confirms that we're running a recent (specific) version of samtools for cram 3.1
+            // validation, skip it when running on the GATK Docker container, since the docker doesn't have the same
+            // recent samtools version that we use to verify cram 3.1 functionality
+            throw new SkipException("Samtools not available in GATK Docker container");
+        }
         if (!SamtoolsTestUtils.isSamtoolsAvailable()) {
             throw new SkipException("Samtools not available on local device");
         }
