@@ -323,8 +323,8 @@ task ExtractFilterTask {
   }
   parameter_meta {
     reference: {
-                 localization_optional: true
-               }
+      localization_optional: true
+    }
   }
 
   String intervals_name = basename(intervals)
