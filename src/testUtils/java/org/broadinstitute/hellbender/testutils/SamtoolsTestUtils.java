@@ -45,6 +45,7 @@ public class SamtoolsTestUtils {
     public static String getSamtoolsBin() {
         final String samtoolsPath = System.getenv(SAMTOOLS_BINARY_ENV_VARIABLE);
         return samtoolsPath == null ? "/usr/bin/samtools" : samtoolsPath;
+        //return samtoolsPath == null ? "/opt/homebrew/bin/samtools" : samtoolsPath;
     }
 
     /**
