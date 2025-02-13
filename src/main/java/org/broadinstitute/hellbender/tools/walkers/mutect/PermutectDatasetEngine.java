@@ -8,7 +8,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -33,9 +32,8 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-public class Mutect3DatasetEngine implements AutoCloseable {
+public class PermutectDatasetEngine implements AutoCloseable {
 
     public static final int CAPACITY = 100000;
 
@@ -51,8 +49,8 @@ public class Mutect3DatasetEngine implements AutoCloseable {
 
     private final Map<String, Integer> readGroupIndices = new HashMap<>();
 
-    // number of additional variant features for assembly complexity, reference context
-    private static final int NUM_EXTRA_FEATURES = 9;
+    // number of additional variant features for assembly complexity (4), TLOD / tumor depth (1)
+    private static final int NUM_EXTRA_FEATURES = 5;
 
     // threshold of negative log-10 population allele frequency to consider something an artifact for the purposes of training data
     // we want to be really sure we don't get germline variants
@@ -88,10 +86,12 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     // nonArtifactPerArtifact (downsampled) k-alt-read non-artifacts.
     private final EnumMap<VariantType, ArrayBlockingQueue<Integer>> unmatchedArtifactAltCounts;
 
+    private final Random random = new Random(1);
 
-    public Mutect3DatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount,
-                                final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples,
-                                final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
+
+    public PermutectDatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount,
+                                  final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples,
+                                  final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
         try {
             printWriter = new PrintWriter(new FileWriter(Utils.nonNull(datasetFile)));
             final File contigTableFile = datasetFile.toPath().resolveSibling("contigs.table").toFile();
@@ -125,7 +125,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                         final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods,
                         final AlleleLikelihoods<Fragment, Allele> logFragmentAlleleLikelihoods,
-                        final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
+                        final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode) {
         final String refBases = ReferenceBases.annotate(ref, vc);
         final String refAllele = vc.getReference().getBaseString();
         final int contigIndex = sequenceDictionary.getSequenceIndex(vc.getContig());
@@ -191,14 +191,20 @@ public class Mutect3DatasetEngine implements AutoCloseable {
                 if  (probableArtifact) {
                     if (unmatchedQueue.size() > 0.9 * CAPACITY) { // this should rarely come up
                         labels.add(Label.IGNORE);
-                    } else {
+                    } else if (tumorAF < 0.3) {
                         labels.add(Label.ARTIFACT);
                         unmatchedQueue.addAll(Collections.nCopies(nonArtifactPerArtifact, tumorADs[n + 1]));
+                    } else {    // very high AF could just be a germline variant missing from the truth VCF.  Leave it unlabeled for semisupervised learning to deal with
+                        labels.add(Label.UNLABELED);
                     }
                 } else if (trueVariant && !unmatchedQueue.isEmpty()) {
                     // high AF in tumor and normal, common in population implies germline, which we downsample
                     labels.add(Label.VARIANT);
-                    altDownsampleMap.put(altAllele, unmatchedQueue.poll());
+                    // Note: we used to have "altDownsampleMap.put(altAllele, unmatchedQueue.poll())" here, which forces the alt count distribution of
+                    // variants to match that of artifacts.  Due to Permutect's count-agnostic architecture this is
+                    // unnecessary, and it gives the model too few high-AF variant examples on which to learn calibration.
+                    unmatchedQueue.poll(); // just to pop off a value
+                    altDownsampleMap.put(altAllele, random.nextInt(5, 20));
                 } else if (tumorLods[n] > 4.0 && tumorAF < 0.3) {
                     labels.add(Label.UNLABELED);
                 } else {
@@ -226,9 +232,9 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         // TODO: for now we don't really need normal reads
         // note that the following use the VC's allele order, not necessarily the likelihoods' allele order
         final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, mutect3DatasetMode, readGroupIndices);
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, permutectDatasetMode, readGroupIndices);
         final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, mutect3DatasetMode, readGroupIndices);
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, permutectDatasetMode, readGroupIndices);
 
         // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);
@@ -242,9 +248,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             if (labels.get(n) ==  Label.IGNORE) {
                 continue;
             }
+            final double tlod = vc.getAttributeAsDoubleList("TLOD", 0).get(n);
 
             final String altAllele = vc.getAlternateAllele(n).getBaseString();
-            final List<Double> variantFeatureVector = variantFeatures(n, assemblyComplexity, refBases);
+            final List<Double> variantFeatureVector = variantFeatures(n, assemblyComplexity, tlod, tumorADs[n+1]);
             final List<List<Integer>> tumorAltReads = tumorReadVectorsByAllele.get(n+1);
             final List<List<Integer>> normalAltReads = normalReadVectorsByAllele.get(n+1);
 
@@ -262,9 +269,8 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             //normalAltReads.forEach(r -> printWriter.print(numberString(r)));
             printWriter.printf("%d %d %d %d%n", tumorDepth, tumorADs[n+1], normalDepth, normalADs[n+1]);  // pre-downsampling counts
             // this is approximately the likelihood that these particular reads are alt given sequencing error, excluding
-            // the depth C N_alt combinatorial factor that is common to all likelihoods in M3
+            // the depth C N_alt combinatorial factor that is common to all likelihoods in Permutect
             // basically, it's the TLOD with a correction for the marginalized flat prior from M2
-            final double tlod = vc.getAttributeAsDoubleList("TLOD", 0).get(n);
             final double seqErrorLogLikelihood = -MathUtils.log10ToLog(tlod) - Math.log(tumorDepth + 1);
             printWriter.printf("%.3f%n", seqErrorLogLikelihood);
 
@@ -284,7 +290,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         return numbers.stream().map(x -> String.format(formatString, decimal ? x.floatValue() : x)).collect(Collectors.joining(separator));
     }
 
-    private List<Double> variantFeatures(final int altAlleleIndex, Triple<int[], int[], double[]> assemblyComplexity, final String refBases) {
+    private List<Double> variantFeatures(final int altAlleleIndex, Triple<int[], int[], double[]> assemblyComplexity, final double tlod, final int tumorAltCount) {
         final int[] haplotypeEquivalenceCounts = assemblyComplexity.getLeft();
         final int haplotypeComplexity = assemblyComplexity.getMiddle()[altAlleleIndex];
         final double haplotypeDominance = assemblyComplexity.getRight()[altAlleleIndex];
@@ -298,46 +304,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         result.add(haplotypeEquivalenceCounts.length < 3 ? 0.0 : haplotypeEquivalenceCounts[2] / total);
         result.add((double) haplotypeComplexity);
         result.add(haplotypeDominance);
-
-        IntStream.range(1, 6).forEach(repeatLength -> result.add((double) countRepeats(refBases.getBytes(), repeatLength)));
+        result.add(tumorAltCount == 0 ? 0.0 : tlod / tumorAltCount);
 
         Utils.validate(result.size() == NUM_EXTRA_FEATURES, "produced a variant feature vector of wrong size");
         return result;
-    }
-
-    // count how many repeats of length k surround the middle base
-    // example: countRepeats(GACTACTACTG,3) = 3
-    private int countRepeats(final byte[] refBases, final int k) {
-        final int N = refBases.length;
-        final int n = (N - 1) / 2;
-        Utils.validateArg(k <= n, "Too few ref bases for given repeat length");
-
-        // extend a repeat forward, to front and then to back(both exclusive)
-        // note that this only extends backward if they match the bases going forward
-        // that is AAAAAGTGTCC(first G in the middle) will get extended forward through
-        // both GTs but won 't be extended back
-        int front = n + k;
-        while (front < N && refBases[front] == refBases[front - k]) {
-            front++;
-        }
-        int back = n - 1;
-        while (back >= 0 && refBases[back] == refBases[back + k]){
-            back--;
-        }
-        final int forwardRepeats = (front - back - 1) / k;
-
-        // same idea but extending backwards first (now back is exclusive and front is inclusive)
-        back = n - k;
-        while (back >= 0 && refBases[back] == refBases[back + k]) {
-            back--;
-        }
-        front = n + 1;
-        while (front < N && refBases[front] == refBases[front - k]) {
-            front++;
-        }
-        final int backwardRepeats = (front - back - 1) / k;
-
-        return FastMath.max(forwardRepeats, backwardRepeats);
     }
 
     private int[] sumADsOverSamples(final VariantContext vc, final Set<String> samples) {
