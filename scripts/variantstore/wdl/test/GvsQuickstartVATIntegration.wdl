@@ -4,6 +4,8 @@ import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
 import "../../variant-annotations-table/GvsValidateVAT.wdl" as ValidateVAT
 
+# Have the vat do multi chromosome
+
 workflow GvsQuickstartVATIntegration {
     input {
         String git_branch_or_tag
