@@ -1112,8 +1112,8 @@ task SelectVariants {
         Boolean exclude_filtered = false
         String output_basename
 
-        Int memory_gib = 8
-        Int overhead_memory_gib = 1
+        Int memory_gib = 10
+        Int overhead_memory_gib = 3
         Int disk_size_gb = ceil(3 * (size(input_vcf, "GiB") + size(input_vcf_index, "GiB"))) + 500
         String gatk_docker
     }
