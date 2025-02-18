@@ -105,8 +105,6 @@ workflow GvsExtractCallset {
   }
 
   File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
-  String reference_fasta = GetReference.reference.reference_fasta
-  String reference_dict = GetReference.reference.reference_dict
 
   call Utils.ScaleXYBedValues {
     input:
@@ -162,7 +160,7 @@ workflow GvsExtractCallset {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = reference_fasta,
+      ref_fasta = GetReference.reference.reference_fasta,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
@@ -233,7 +231,7 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = reference_fasta,
+        reference                             = GetReference.reference.reference_fasta,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
@@ -273,7 +271,7 @@ workflow GvsExtractCallset {
           dbsnp_vcf = GetReference.reference.dbsnp_vcf,
           dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index,
           interval_list = SplitIntervals.interval_files[i],
-          ref_dict = reference_dict,
+          ref_dict = GetReference.reference.reference_dict,
           gatk_docker = effective_gatk_docker
       }
     }
