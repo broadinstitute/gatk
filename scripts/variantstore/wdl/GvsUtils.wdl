@@ -1167,7 +1167,7 @@ task SelectVariants {
     runtime {
         docker: gatk_docker
         cpu: 1
-        memory: memory_gib + " GB"
+        memory: "${memory_gib} GiB"
         disks: "local-disk ${disk_size_gb} HDD"
         bootDiskSizeGb: 15
         preemptible: 3
