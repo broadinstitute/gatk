@@ -24,6 +24,7 @@ workflow SingleSampleGCNVAndFilterVCFs {
         File ref_fasta_fai
         File ref_fasta
         String gatk_docker
+        Float overlap_thresh = 0.5
 
         ##################################
         #### optional basic arguments ####
@@ -222,7 +223,8 @@ workflow SingleSampleGCNVAndFilterVCFs {
         input:
             vcf = vcf,
             panel_vcfs = pon_genotyped_segments_vcfs,
-            intervals = intervals
+            intervals = intervals,
+            overlap_thresh = overlap_thresh
     }
 
     call AnnotateWithPoNFreq {
@@ -367,7 +369,7 @@ task ExtractPoNFreq {
                 overlapping_exon_lengths = (np.minimum(r.end_exon_idx,overlapping_panel_events.end_exon_idx) -
                                            np.maximum(r.start_exon_idx,overlapping_panel_events.start_exon_idx))
                 overlapping_panel_fracs = overlapping_exon_lengths/(r.end_exon_idx - r.start_exon_idx)
-                overlapping_panel_events = overlapping_panel_events.loc[overlapping_panel_fracs>=0.5]
+                overlapping_panel_events = overlapping_panel_events.loc[overlapping_panel_fracs>=~{overlap_thresh}]
                 panel_count =  len(set(overlapping_panel_events.sample_path))
                 panel_counts.append(panel_count)
 

@@ -14,6 +14,8 @@ workflow CNVCallingAndMergeForFabric {
         Array[File] gcnv_model_tars
         Array[File] gcnv_panel_genotyped_segments
 
+        Float overlap_thresh = 0.5
+
         String gatk_docker
         File intervals
 
@@ -48,7 +50,8 @@ workflow CNVCallingAndMergeForFabric {
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
             allosomal_contigs = allosomal_contigs,
-            padding = padding
+            padding = padding,
+            overlap_thresh = overlap_thresh
     }
 
     if (SingleSampleGCNVAndFilterVCFs.qc_passed) {
