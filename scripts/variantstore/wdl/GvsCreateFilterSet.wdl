@@ -67,21 +67,6 @@ workflow GvsCreateFilterSet {
   }
 
   String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
-  String reference_fasta = GetReference.reference.reference_fasta
-  String reference_fasta_index = GetReference.reference.reference_fasta_index
-  String reference_dict = GetReference.reference.reference_dict
-
-  # resource files - used for VETS (and VQSR)
-  String axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
-  String axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
-  String hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
-  String hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
-  String mills_resource_vcf = GetReference.reference.mills_resource_vcf
-  String mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
-  String omni_resource_vcf = GetReference.reference.omni_resource_vcf
-  String omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
-  String one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
-  String one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -106,7 +91,7 @@ workflow GvsCreateFilterSet {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = reference_fasta,
+      ref_fasta = GetReference.reference.reference_fasta,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -124,7 +109,7 @@ workflow GvsCreateFilterSet {
       input:
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
-        reference                  = reference_fasta,
+        reference                  = GetReference.reference.reference_fasta,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -157,7 +142,7 @@ workflow GvsCreateFilterSet {
         sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
-        resource_args = "--resource:hapmap,training=true,calibration=true ${hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${omni_resource_vcf} --resource:1000G,training=true,calibration=false ${one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${mills_resource_vcf} --resource:axiom,training=true,calibration=false ${axiomPoly_resource_vcf}",
+        resource_args = "--resource:hapmap,training=true,calibration=true ${GetReference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetReference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetReference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetReference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetReference.reference.axiomPoly_resource_vcf}",
         extract_extra_args = "-L ${effective_interval_list}",
         score_extra_args = "-L ${effective_interval_list}",
         extract_runtime_attributes = vets_extract_runtime_attributes,

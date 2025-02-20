@@ -39,7 +39,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
-    reference_name: "The name of the reference (currently only support hg38)"
+    reference_name: "The name of the reference (currently only supports hg38)"
     interval_list: "Optional - The intervals over which to extract VCFs for calculating precision and sensitivity. Defaults to WGS interval list"
     target_interval_list: "The intervals outside of which sites will be OUTSIDE_OF_TARGETS filtered."
     project_id: "The Google Project ID where the GVS lives."
