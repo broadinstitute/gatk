@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
