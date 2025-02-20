@@ -13,7 +13,10 @@ workflow GvsCreateFilterSet {
 
     String filter_set_name
 
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String reference_name = "hg38"
+    String? interval_list
+
+    String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
     String? gatk_docker
@@ -36,10 +39,6 @@ workflow GvsCreateFilterSet {
     File? scoring_python_script
   }
 
-  File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-  File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
-  File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-
   # fully-qualified table names
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -48,17 +47,26 @@ workflow GvsCreateFilterSet {
 
   String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
-  if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -82,10 +90,8 @@ workflow GvsCreateFilterSet {
 
   call Utils.SplitIntervals {
     input:
-      intervals = interval_list,
-      ref_fasta = reference,
-      ref_fai = reference_index,
-      ref_dict = reference_dict,
+      intervals = effective_interval_list,
+      ref_fasta = GetReference.reference.reference_fasta,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -103,9 +109,7 @@ workflow GvsCreateFilterSet {
       input:
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
-        reference                  = reference,
-        reference_index            = reference_index,
-        reference_dict             = reference_dict,
+        reference                  = GetReference.reference.reference_fasta,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -138,9 +142,9 @@ workflow GvsCreateFilterSet {
         sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
-        resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
-        extract_extra_args = "-L ${interval_list}",
-        score_extra_args = "-L ${interval_list}",
+        resource_args = "--resource:hapmap,training=true,calibration=true ${GetReference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetReference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetReference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetReference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetReference.reference.axiomPoly_resource_vcf}",
+        extract_extra_args = "-L ${effective_interval_list}",
+        score_extra_args = "-L ${effective_interval_list}",
         extract_runtime_attributes = vets_extract_runtime_attributes,
         train_runtime_attributes = vets_train_runtime_attributes,
         score_runtime_attributes = vets_score_runtime_attributes,
@@ -210,6 +214,7 @@ workflow GvsCreateFilterSet {
         dataset_name = dataset_name,
         project_id = project_id,
         base_name = filter_set_name,
+        reference_name = reference_name,
         filter_set_name = filter_set_name,
         filter_set_info_schema = filter_set_info_destination_table_schema,
         fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
@@ -280,8 +285,6 @@ task ExtractFilterTask {
     String call_set_identifier
 
     File reference
-    File reference_index
-    File reference_dict
 
     String fq_sample_table
     String sample_table_timestamp
@@ -302,6 +305,11 @@ task ExtractFilterTask {
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+  parameter_meta {
+    reference: {
+      localization_optional: true
+    }
   }
 
   String intervals_name = basename(intervals)

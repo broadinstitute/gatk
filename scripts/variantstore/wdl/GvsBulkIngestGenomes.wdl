@@ -34,7 +34,8 @@ workflow GvsBulkIngestGenomes {
         # End GvsAssignIds
 
         # Begin GvsImportGenomes
-        File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+        String reference_name = "hg38"
+        File? interval_list
 
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
         String drop_state = "NONE"
@@ -128,6 +129,7 @@ workflow GvsBulkIngestGenomes {
             num_samples = SplitBulkImportFofn.sample_num,
             input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
             input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
+            reference_name = reference_name,
             interval_list = interval_list,
             load_data_scatter_width = load_data_scatter_width,
             load_data_maxretries_override = load_data_maxretries_override,

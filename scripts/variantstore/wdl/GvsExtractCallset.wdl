@@ -29,11 +29,13 @@ workflow GvsExtractCallset {
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
 
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String reference_name = "hg38"
+    File? interval_list
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
     File? target_interval_list
 
+    String? basic_docker
     String? variants_docker
     String? cloud_sdk_docker
     String? gatk_docker
@@ -56,13 +58,6 @@ workflow GvsExtractCallset {
     Boolean write_cost_to_db = true
     Int maximum_alternate_alleles = 1000
   }
-
-  File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-  File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
-  File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-
-  File dbsnp_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
-  File dbsnp_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx"
 
   String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
   String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
@@ -90,17 +85,26 @@ workflow GvsExtractCallset {
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
   String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
 
-  if (!defined(git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
-  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.ScaleXYBedValues {
     input:
@@ -155,10 +159,8 @@ workflow GvsExtractCallset {
 
   call Utils.SplitIntervals {
     input:
-      intervals = interval_list,
-      ref_fasta = reference,
-      ref_fai = reference_index,
-      ref_dict = reference_dict,
+      intervals = effective_interval_list,
+      ref_fasta = GetReference.reference.reference_fasta,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
@@ -229,9 +231,7 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = reference,
-        reference_index                       = reference_index,
-        reference_dict                        = reference_dict,
+        reference                             = GetReference.reference.reference_fasta,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
@@ -268,10 +268,10 @@ workflow GvsExtractCallset {
           input_vcf = ExtractTask.output_vcf,
           input_vcf_index = ExtractTask.output_vcf_index,
           metrics_filename_prefix = call_set_identifier + "." + i,
-          dbsnp_vcf = dbsnp_vcf,
-          dbsnp_vcf_index = dbsnp_vcf_index,
+          dbsnp_vcf = GetReference.reference.dbsnp_vcf,
+          dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index,
           interval_list = SplitIntervals.interval_files[i],
-          ref_dict = reference_dict,
+          ref_dict = GetReference.reference.reference_dict,
           gatk_docker = effective_gatk_docker
       }
     }
@@ -345,8 +345,6 @@ task ExtractTask {
     Boolean use_VETS
 
     File reference
-    File reference_index
-    File reference_dict
 
     String fq_samples_to_extract_table
 
@@ -394,6 +392,12 @@ task ExtractTask {
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  parameter_meta {
+    reference: {
+      localization_optional: true
+    }
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -687,6 +691,11 @@ task CollectVariantCallingMetrics {
     Int memory_mb = 7500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
     String gatk_docker
+  }
+  parameter_meta {
+    ref_dict: {
+      localization_optional: true
+    }
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"

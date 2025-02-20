@@ -8,6 +8,8 @@ workflow JointVcfFiltering {
     String project_id
     String base_name
 
+    String reference_name = "hg38"
+
     String filter_set_name
     String filter_set_info_schema
     String fq_filter_set_info_destination_table
@@ -18,6 +20,7 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcfs
     Array[File] sites_only_variant_filtered_vcf_idxs
 
+    String? basic_docker
     String? gatk_docker
     String? git_branch_or_tag
     String? git_hash
@@ -46,40 +49,47 @@ workflow JointVcfFiltering {
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
   Array[String] indel_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"]
 
-  # reference files
-  # Axiom - Used only for indels
-  File axiomPoly_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz"
-  File axiomPoly_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz.tbi"
-
-  # DbSNP - BOTH SNPs and INDELs.
-  File dbsnp_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
-  File dbsnp_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx"
-
-  # HapMap - SNPs
-  File hapmap_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz"
-  File hapmap_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz.tbi"
-
-  # Mills - Indels
-  File mills_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
-  File mills_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi"
-
-  # Omni - SNPs
-  File omni_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz"
-  File omni_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz.tbi"
-
-  # 1000G - SNPs
-  File one_thousand_genomes_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
-  File one_thousand_genomes_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi"
-
-  if (!defined(git_hash) || !defined(gatk_docker)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
-  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  # reference files
+  # Axiom - Used only for indels
+  String axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
+  String axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
+
+  # DbSNP - BOTH SNPs and INDELs.
+  String dbsnp_vcf = GetReference.reference.dbsnp_vcf
+  String dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index
+
+  # HapMap - SNPs
+  String hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
+  String hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
+
+  # Mills - Indels
+  String mills_resource_vcf = GetReference.reference.mills_resource_vcf
+  String mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
+
+  # Omni - SNPs
+  String omni_resource_vcf = GetReference.reference.omni_resource_vcf
+  String omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
+
+  # 1000G - SNPs
+  String one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
+  String one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
 
   call IndelsVariantRecalibrator {
     input:
@@ -280,6 +290,32 @@ task SNPsVariantRecalibratorCreateModel {
     Int disk_size
     String gatk_docker
   }
+  parameter_meta {
+    hapmap_resource_vcf: {
+                           localization_optional: true
+                         }
+    omni_resource_vcf: {
+                         localization_optional: true
+                       }
+    one_thousand_genomes_resource_vcf: {
+                                         localization_optional: true
+                                       }
+    dbsnp_resource_vcf: {
+                          localization_optional: true
+                        }
+    hapmap_resource_vcf_index: {
+                                 localization_optional: true
+                               }
+    omni_resource_vcf_index: {
+                               localization_optional: true
+                             }
+    one_thousand_genomes_resource_vcf_index: {
+                                               localization_optional: true
+                                             }
+    dbsnp_resource_vcf_index: {
+                                localization_optional: true
+                              }
+  }
 
   # Based on https://docs.google.com/spreadsheets/d/1jOsudfO1-RadJXPGuHOIrjZW3Rg2SzvlL8Wg-lxZVUU/edit#gid=1056496058
   Int default_mem_gb = if (num_samples <= 10000) then 110
@@ -433,6 +469,26 @@ task IndelsVariantRecalibrator {
     Int? machine_mem_gb
     String gatk_docker
   }
+  parameter_meta {
+    mills_resource_vcf: {
+                 localization_optional: true
+               }
+    axiomPoly_resource_vcf: {
+                 localization_optional: true
+               }
+    dbsnp_resource_vcf: {
+                          localization_optional: true
+                        }
+    axiomPoly_resource_vcf_index: {
+                                    localization_optional: true
+                                  }
+    mills_resource_vcf_index: {
+                          localization_optional: true
+                        }
+    dbsnp_resource_vcf_index: {
+                                localization_optional: true
+                              }
+  }
 
   Int machine_mem = select_first([machine_mem_gb, 35])
   Int java_mem = machine_mem - 10
@@ -507,6 +563,33 @@ task SNPsVariantRecalibrator {
     Int disk_size
     Int? machine_mem_gb
     String gatk_docker
+  }
+
+  parameter_meta {
+    hapmap_resource_vcf: {
+                          localization_optional: true
+                        }
+    omni_resource_vcf: {
+                              localization_optional: true
+                            }
+    one_thousand_genomes_resource_vcf: {
+                         localization_optional: true
+                       }
+    dbsnp_resource_vcf: {
+                          localization_optional: true
+                        }
+    hapmap_resource_vcf_index: {
+                                    localization_optional: true
+                                  }
+    omni_resource_vcf_index: {
+                                localization_optional: true
+                              }
+    one_thousand_genomes_resource_vcf_index: {
+                                localization_optional: true
+                              }
+    dbsnp_resource_vcf_index: {
+                                               localization_optional: true
+                                             }
   }
 
   Int auto_mem = ceil(2 * size([sites_only_variant_filtered_vcf,

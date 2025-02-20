@@ -3,14 +3,16 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "GvsExtractCohortFromSampleNames.wdl" as GvsExtractSubCohortVCFs
 
-
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
     String call_set_identifier
     String dataset_name
     String filter_set_name
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String reference_name = "hg38"
+    File? reference_fasta
+    File? interval_list
     File? target_interval_list
+
     File? vcf_eval_bed_file
     Array[String] chromosomes = ["chr20"]
     String project_id
@@ -21,7 +23,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_beds
 
     Int? extract_scatter_count_override
-    File ref_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
     String? basic_docker
     String? cloud_sdk_docker
@@ -38,14 +39,15 @@ workflow GvsCalculatePrecisionAndSensitivity {
     chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
+    reference_name: "The name of the reference (currently only supports hg38)"
+    interval_list: "Optional - The intervals over which to extract VCFs for calculating precision and sensitivity. Defaults to WGS interval list"
     target_interval_list: "The intervals outside of which sites will be OUTSIDE_OF_TARGETS filtered."
-    interval_list: "The intervals over which to extract VCFs for calculating precision and sensitivity."
     project_id: "The Google Project ID where the GVS lives."
     sample_names: "A list of the sample names that are controls and that will be used for the analysis. For every element on the list of sample names there must be a corresponding element on the list of `truth_vcfs`, `truth_vcf_indices`, and `truth_beds`."
     truth_vcfs: "A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`."
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
-    ref_fasta: "The cloud path for the reference fasta sequence."
+    reference_fasta: "Optional cloud path for the reference fasta sequence. Defaults to reference_fasta for reference_name"
     vcf_eval_bed_file: "Optional bed file for EvaluateVcf; if passed, will be used instead of chromosomes."
   }
 
@@ -73,6 +75,15 @@ workflow GvsCalculatePrecisionAndSensitivity {
     }
   }
 
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  File effective_reference_fasta = select_first([reference_fasta, GetReference.reference.reference_fasta])
+
   call GvsExtractSubCohortVCFs.GvsExtractCohortFromSampleNames as GenerateControlVCFs {
     input:
       cohort_sample_names_array = sample_names,
@@ -82,7 +93,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
       filter_set_name = filter_set_name,
       control_samples = true,
       target_interval_list = target_interval_list,
-      interval_list = interval_list,
+      interval_list = effective_interval_list,
       extract_scatter_count_override = extract_scatter_count_override,
       cloud_sdk_docker = effective_cloud_sdk_docker,
       gatk_docker = effective_gatk_docker,
@@ -154,7 +165,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vets = IsVETS.is_vets,
-        ref_fasta = ref_fasta,
+        ref_fasta = effective_reference_fasta,
         real_time_genomics_docker = effective_real_time_genomics_docker,
     }
 
@@ -170,7 +181,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vets = IsVETS.is_vets,
-        ref_fasta = ref_fasta,
+        ref_fasta = effective_reference_fasta,
         real_time_genomics_docker = effective_real_time_genomics_docker,
     }
   }

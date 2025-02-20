@@ -36,6 +36,7 @@ workflow GvsExtractCohortFromSampleNames {
     String ploidy_table_name = "sample_chromosome_ploidy"
     Boolean collect_variant_calling_metrics = false
 
+    String reference_name = "hg38"
     File? interval_list
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -48,6 +49,7 @@ workflow GvsExtractCohortFromSampleNames {
     File? target_interval_list
 
     String? git_branch_or_tag
+    String? basic_docker
     String? gatk_docker
     File? gatk_override
     String? cloud_sdk_docker
@@ -56,18 +58,27 @@ workflow GvsExtractCohortFromSampleNames {
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
-  if (!defined(git_branch_or_tag) || !defined(gatk_docker)  || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+  if (!defined(git_branch_or_tag) || !defined(basic_docker) || !defined(gatk_docker)  || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
-  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
-  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_branch_or_tag, GetToolVersions.git_hash])
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
+  call Utils.GetReference {
+    input:
+      reference_name = reference_name,
+      basic_docker = effective_basic_docker,
+  }
+
+  # allow an interval list to be passed in, but default it to the reference-standard one if no args are here
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -109,9 +120,6 @@ workflow GvsExtractCohortFromSampleNames {
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
 
-  # allow an interval list to be passed in, but default it to our standard one if no args are here
-  File effective_interval_list = select_first([interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
-
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
@@ -126,7 +134,6 @@ workflow GvsExtractCohortFromSampleNames {
       destination_dataset = destination_dataset_name,
       fq_temp_table_dataset = fq_gvs_extraction_temp_tables_dataset,
       write_cost_to_db = write_cost_to_db,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
       enable_extract_table_ttl = true,
       interval_list = effective_interval_list,
       control_samples = control_samples,
@@ -167,7 +174,6 @@ workflow GvsExtractCohortFromSampleNames {
       cloud_sdk_docker = effective_cloud_sdk_docker,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
-      gatk_docker = effective_gatk_docker,
       git_hash = effective_git_hash,
       variants_docker = effective_variants_docker,
       write_cost_to_db = write_cost_to_db,

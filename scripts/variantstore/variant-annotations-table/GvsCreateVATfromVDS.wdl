@@ -7,6 +7,7 @@ workflow GvsCreateVATfromVDS {
     input {
         String project_id
         String dataset_name
+        String reference_name
         File ancestry_file
         String filter_set_name
         File? sites_only_vcf
@@ -59,11 +60,6 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
-
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
-    File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
     String region = "us-central1"
     String gcs_subnetwork_name = "subnetwork"
 
@@ -105,6 +101,15 @@ workflow GvsCreateVATfromVDS {
                 basic_docker = effective_basic_docker,
         }
     }
+
+    call Utils.GetReference {
+        input:
+            reference_name = reference_name,
+            basic_docker = effective_basic_docker,
+    }
+
+    String interval_list = GetReference.reference.wgs_calling_interval_list
+    String reference_fasta = GetReference.reference.reference_fasta
 
     if (defined(sites_only_vcf) || (defined(vds_path))) {
         if (!defined(split_intervals_scatter_count)) {
@@ -177,9 +182,7 @@ workflow GvsCreateVATfromVDS {
         call Utils.SplitIntervals {
             input:
                 intervals = interval_list,
-                ref_fasta = reference,
-                ref_fai = reference_index,
-                ref_dict = reference_dict,
+                ref_fasta = reference_fasta,
                 scatter_count = effective_scatter_count,
                 output_gcs_dir = effective_output_path + "intervals",
                 split_intervals_disk_size_override = split_intervals_disk_size_override,
@@ -205,7 +208,7 @@ workflow GvsCreateVATfromVDS {
             call RemoveDuplicatesFromSitesOnlyVCF {
                 input:
                     sites_only_vcf = SelectVariants.output_vcf,
-                    ref = reference,
+                    ref = reference_fasta,
                     variants_docker = effective_variants_docker,
             }
 

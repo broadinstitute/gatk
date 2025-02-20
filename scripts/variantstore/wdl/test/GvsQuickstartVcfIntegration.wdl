@@ -15,6 +15,7 @@ workflow GvsQuickstartVcfIntegration {
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
+        String reference_name = "hg38"
         Boolean is_wgs = true
         File? interval_list
         Boolean use_default_dockers = false
@@ -38,7 +39,6 @@ workflow GvsQuickstartVcfIntegration {
         Int? maximum_alternate_alleles
     }
     String project_id = "gvs-internal"
-    File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -60,6 +60,12 @@ workflow GvsQuickstartVcfIntegration {
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
+
+    call Utils.GetReference {
+        input:
+            reference_name = reference_name,
+            basic_docker = effective_basic_docker,
+    }
 
     if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
@@ -97,6 +103,7 @@ workflow GvsQuickstartVcfIntegration {
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             bgzip_output_vcfs = bgzip_output_vcfs,
+            reference_name = reference_name,
             is_wgs = is_wgs,
             interval_list = interval_list,
             sample_id_column_name = sample_id_column_name,
@@ -155,7 +162,7 @@ workflow GvsQuickstartVcfIntegration {
             input:
                 input_vcf = JointVariantCalling.output_vcfs[i],
                 input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
-                ref_fasta = reference_fasta,
+                ref_fasta = GetReference.reference.reference_fasta,
                 gatk_docker = effective_gatk_docker,
         }
         call ValidateVcf {
