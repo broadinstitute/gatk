@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 """
-Can be run in any terminal in any workspace provided the proxy group being used to access the workspace has adequate
-auth to be able to write to the workspace containing the target table.
-Note below that this is currently hardcoded to the Foxtrot scale test workspace.
+Can be run in any analysis terminal provided the associated proxy group has auth to write to the target table.
+Note that this is currently hardcoded to write to the Foxtrot scale test workspace.
 """
 
 import csv
