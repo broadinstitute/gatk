@@ -47,7 +47,7 @@ workflow GvsImportGenomes {
     Boolean is_wgs = true
   }
 
-  Int max_auto_batch_size = if is_wgs then 25000 else 100000
+  Int max_auto_scatter_width = if is_wgs then 25000 else 100000
   String genome_type = if is_wgs then "WGS" else "exome"
 
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
@@ -87,10 +87,10 @@ workflow GvsImportGenomes {
     }
   }
 
-  if ((num_samples > max_auto_batch_size) && !(defined(load_data_scatter_width))) {
-    call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
+  if ((num_samples > max_auto_scatter_width) && !(defined(load_data_scatter_width))) {
+    call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataScatterWidth {
       input:
-        message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for auto batch-sizing is " + max_auto_batch_size + " for " + genome_type + " samples.",
+        message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for automatic scatter width selection is " + max_auto_scatter_width + " for " + genome_type + " samples.",
         basic_docker = effective_basic_docker,
     }
   }
