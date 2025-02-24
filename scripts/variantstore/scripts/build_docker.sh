@@ -1,5 +1,3 @@
-#!/usr/bin/env zsh
-
 set -o errexit -o nounset -o pipefail -o xtrace
 
 usage() {
@@ -21,17 +19,20 @@ then
     usage
 fi
 
-docker buildx create --platform linux/amd64 --name singlebuilder
-echo "Created the single platform builder"
+set +o errexit
+docker buildx ls | grep singlebuilder
+RET_VAL=$?
+set -o errexit
+if [ $RET_VAL -eq 1 ]; then
+  docker buildx create --platform linux/amd64 --name singlebuilder
+  echo "Created the single platform builder"
+fi
 
 docker buildx use singlebuilder
 echo "Using the single platform builder"
 
 docker buildx build --platform linux/amd64 --load .
 IMAGE_ID=$(docker image ls -q | head -n 1)
-
-docker buildx rm singlebuilder
-echo "Removed the single platform builder"
 
 # The Variants Docker image is alpine-based.
 IMAGE_TYPE="alpine"
@@ -44,30 +45,29 @@ REPO_WITH_TAG="${BASE_REPO}/variants:${TAG}"
 docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 
 # Run unit tests before pushing.
-#set +o errexit
-#fail=0
-#for test in test/test_*.py
-#do
-#    docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
-#    if [ $? -ne 0 ]; then
-#        fail=1
-#        echo "$test has failed"
-#    fi
-#done
-#
-#if [ $fail -ne 0 ]; then
-#    echo "One or more unit tests have failed, exiting."
-#    exit $fail
-#fi
-#
-#set -o errexit
+set +o errexit
+fail=0
+for test in test/test_*.py
+do
+    docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
+    if [ $? -ne 0 ]; then
+        fail=1
+        echo "$test has failed"
+    fi
+done
+
+if [ $fail -ne 0 ]; then
+    echo "One or more unit tests have failed, exiting."
+    exit $fail
+fi
+
+set -o errexit
 
 GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
 docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
 
 # Docker must be configured for GAR before pushes will work:
 # gcloud auth configure-docker us-central1-docker.pkg.dev
-echo "Docker tag is \"${GAR_TAG}\""
 docker push "${GAR_TAG}"
 
 echo "Docker image pushed to \"${GAR_TAG}\""
