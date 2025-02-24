@@ -1,4 +1,4 @@
-set -o errexit -o nounset -o pipefail -o xtrace
+set -o errexit -o nounset -o pipefail
 
 usage() {
     echo "
