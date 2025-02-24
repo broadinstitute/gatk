@@ -76,7 +76,7 @@ public final class PerReadCovariateMatrix {
     public int[] getCovariatesAtOffset(final int readPosition, final EventType errorModel) {
         return covariates[errorModel.ordinal()][readPosition];
     }
-    // tsato: this keySet language needs to go. "getTableForErrorType". Must replace all "getKey"
+
     public int[][] getMatrixForErrorModel(final EventType errorModel) {
         return covariates[errorModel.ordinal()];
     }

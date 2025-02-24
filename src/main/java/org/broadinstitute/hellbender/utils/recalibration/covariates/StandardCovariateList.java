@@ -53,7 +53,7 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * Creates a new list of standard BQSR covariates and initializes each covariate.
      */
     public StandardCovariateList(final RecalibrationArgumentCollection rac, final SAMFileHeader header){
-        this(rac, ReadGroupCovariate.getReadGroupIDs(header)); // tsato: but how does ApplyBQSR get the list of covariates?
+        this(rac, ReadGroupCovariate.getReadGroupIDs(header));
     }
 
     /**

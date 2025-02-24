@@ -331,7 +331,7 @@ public final class BaseRecalibrationEngine implements Serializable {
 
     /**
      * Outputs a boolean array that has the same length as the read.
-     * The array contains true at each index if the position meets one of the following criteria:
+     * The array stores true at index i if the ith element meets one of the following criteria:
      *   1) not a regular base
      *   2) base quality is less than 6
      *   3) is a known site.

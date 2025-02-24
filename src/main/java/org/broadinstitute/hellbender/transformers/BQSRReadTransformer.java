@@ -155,7 +155,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
         final PerReadCovariateMatrix perReadCovariateMatrix = RecalUtils.computeCovariates(read, header, covariates, false, keyCache);
 
-        // clear indel qualities TODO: do we still modify indel qualities?
+        // clear indel qualities
         read.clearAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES);
         read.clearAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES);
 
@@ -172,7 +172,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
             // The read group is not in the recal table.
             if (allowMissingReadGroups) {
                 // Given the way the recalibration code is implemented below, we cannot recalibrate a read with a
-                // read group that's not in the recal table. TODO: change the implementation below so we can collapse the read groups i.e. marginalize over it
+                // read group that's not in the recal table.
                 for (int i = 0; i < recalibratedQuals.length; i++){
                     recalibratedQuals[i] = staticQuantizedMapping != null ? staticQuantizedMapping[preUpdateQuals[i]] : quantizedQuals.get(preUpdateQuals[i]);
                 }
@@ -221,7 +221,6 @@ public final class BQSRReadTransformer implements ReadTransformer {
             }
 
             // Use the reported quality score of the read group as the prior, which can be non-integer because of collapsing.
-            // TODO: Avoid using this "estimated" reported quality, and remove it.
             final double priorQualityScore = constantQualityScorePrior > 0.0 ? constantQualityScorePrior : readGroupDatum.getReportedQuality();
             final double rawRecalibratedQualityScore = hierarchicalBayesianQualityEstimate(priorQualityScore, readGroupDatum, qualityScoreDatum, recalDatumsForSpecialCovariates);
             final byte quantizedQualityScore = quantizedQuals.get(getBoundedIntegerQual(rawRecalibratedQualityScore));
@@ -262,16 +261,14 @@ public final class BQSRReadTransformer implements ReadTransformer {
                                                              final RecalDatum qualityScoreDatum,
                                                              final RecalDatum... specialCovariateDatums) {
         final double empiricalQualityForReadGroup = readGroupDatum == null ? priorQualityScore : readGroupDatum.getEmpiricalQuality(priorQualityScore);
-        // TODO: the prior is ignored if the estimatedQuality for the datum has already been computed and cached.
         final double posteriorEmpiricalQualityForReportedQuality = qualityScoreDatum == null ? empiricalQualityForReadGroup :
                 qualityScoreDatum.getEmpiricalQuality(empiricalQualityForReadGroup);
 
-        //
         double deltaSpecialCovariates = 0.0;
         // At this point we stop being iterative; the special covariates (context and cycle by default) are treated differently.
         for( final RecalDatum specialCovariateDatum : specialCovariateDatums ) {
             if (specialCovariateDatum != null) {
-                // TODO: address the ignored prior
+                // TODO: the prior is ignored if the empirical quality for the datum is already cached.
                 deltaSpecialCovariates += specialCovariateDatum.getEmpiricalQuality(posteriorEmpiricalQualityForReportedQuality) - posteriorEmpiricalQualityForReportedQuality;
             }
         }
@@ -328,7 +325,6 @@ public final class BQSRReadTransformer implements ReadTransformer {
                     mapping[i] = (byte) previousQual;
                 } else {
                     final double iProb = QualityUtils.qualToProb(i);
-
                     if (iProb - previousProb > nextProb - iProb) {
                         mapping[i] = (byte) nextQual;
                     } else {

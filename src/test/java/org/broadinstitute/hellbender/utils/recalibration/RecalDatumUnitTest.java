@@ -97,7 +97,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
     @Test(dataProvider = "RecalDatumTestProvider")
     public void testRecalDatumModification(RecalDatumTestProvider cfg) {
         RecalDatum datum = cfg.makeRecalDatum();
-        datum.setEmpiricalQuality(10); // previously set to 10.1, but changed to 10 as empiricalQuality is now an integer (see
+        datum.setEmpiricalQuality(10); // previously set to 10.1, but changed to 10 as empiricalQuality is now an integer (see comment at RecalDatum.empiricalQuality)
         Assert.assertEquals(datum.getEmpiricalQuality(), 10);
 
         datum.setReportedQuality(10.1);

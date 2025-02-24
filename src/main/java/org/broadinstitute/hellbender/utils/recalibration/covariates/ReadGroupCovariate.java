@@ -37,7 +37,7 @@ public final class ReadGroupCovariate implements Covariate {
                 rg -> {
                     if (!rgLookupTable.containsKey(rg)) {
                         final int nextId = rgLookupTable.size();
-                        rgLookupTable.put(rg, nextId); // read group index starts at 0 TODO: refactor to use a for loop
+                        rgLookupTable.put(rg, nextId); // read group index starts at 0
                         rgReverseLookupTable.put(nextId, rg);
                     }
                 }

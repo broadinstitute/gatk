@@ -26,8 +26,6 @@ public final class RecalDatum implements Serializable {
     /**
      * Estimated reported quality score based on combined data's individual q-reporteds and number of observations.
      * The estimating occurs when collapsing counts across different reported qualities.
-     * TODO: investigate whether this estimated reported quality score can be eliminated.
-     *
      */
     private double reportedQuality;
 
