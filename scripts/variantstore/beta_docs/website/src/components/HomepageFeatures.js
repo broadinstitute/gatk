@@ -4,29 +4,11 @@ import styles from './HomepageFeatures.module.css';
 
 const FeatureList = [
   {
-    title: 'Supporting your “omics” research',
-    Svg: require('../../static/img/DNA200.svg').default,
+    title: 'Reliable, cost-effective Joint Calling',
+    Svg: require('../../static/img/logo.svg').default,
     description: (
       <>
-        GVS pipeline processes ....
-      </>
-    ),
-  },
-  {
-    title: 'Delivering production-level quality',
-    Svg: require('../../static/img/Gears200.svg').default,
-    description: (
-      <>
-        Pipelines are used for production by the Broad Genomics Platform and the Human Cell Atlas; they are scientifically validated, scalable, and cost- and cloud- optimized
-      </>
-    ),
-  },
-  {
-    title: 'Empowering reproducible science',
-    Svg: require('../../static/img/Reproducible200.svg').default,
-    description: (
-      <>
-        Pipelines are versioned and open-source, allowing you to track and share exactly how your data was processed.
+        Powered by BigQuery, GVS creates large joint callsets more reliably with decreased time and cost compared to previous solutions
       </>
     ),
   },

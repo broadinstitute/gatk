@@ -1,3 +1,6 @@
+---
+sidebar_position: 2
+---
 # Genomic Variant Store Beta Quickstart
 
 In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) with provided example data. Using the example data in the [Exome GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Exomes_Beta) is a similar process.

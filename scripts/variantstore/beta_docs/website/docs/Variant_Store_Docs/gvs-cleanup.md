@@ -1,3 +1,6 @@
+---
+sidebar_position: 6
+---
 # Genomic Variant Store Cleanup
 
 Running the GVS leaves behind intermediate files, BigQuery tables of variant data, and the final variant outputs. These data accrue approximately $X/genome/month in storage costs. Here, we introduce steps to clean up those outputs to reduce unnecessary storage cost if you no longer need them.

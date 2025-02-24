@@ -1,3 +1,6 @@
+---
+sidebar_position: 3
+---
 # Working with the outputs of the Genomic Variant Store
 
 ## Content in the VCF

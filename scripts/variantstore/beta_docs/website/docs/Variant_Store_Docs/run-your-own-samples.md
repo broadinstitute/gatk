@@ -1,3 +1,6 @@
+---
+sidebar_position: 4
+---
 # Upload data to Terra and run the GVS workflow
 
 In this tutorial, you will learn how to upload your own sample GVCF and index files to a Terra workspace and run the Genomic Variant Store (GVS) workflow using that data.

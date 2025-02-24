@@ -1,3 +1,6 @@
+---
+sidebar_position: 7
+---
 # Troubleshooting the Genomic Variant Store workflow
 
 Generally, if you have started the GVS workflow and it failed after ingestion, or due to any reason that wasn't cloud failure, we recommend that you delete your BigQuery dataset and recreate it with a new name to re-run. If it fails during ingestion due to cloud issues, it can be restarted and will pick up and ingest only the remaining samples.

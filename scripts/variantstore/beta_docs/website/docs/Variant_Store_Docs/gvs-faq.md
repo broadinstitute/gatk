@@ -1,3 +1,6 @@
+---
+sidebar_position: 8
+---
 # Frequently Asked Questions about the Genomic Variant Store
 
 ## Input questions

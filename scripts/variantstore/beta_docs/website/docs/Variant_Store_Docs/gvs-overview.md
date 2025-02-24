@@ -1,3 +1,6 @@
+---
+sidebar_position: 1
+---
 # Genomic Variant Store workflow overview
  
 | Workflow Version | Date Updated |                                     Contributing Documentation Authors                                     | Questions or Feedback |
