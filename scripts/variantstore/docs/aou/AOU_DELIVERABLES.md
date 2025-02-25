@@ -60,7 +60,7 @@ GROUP BY
       - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
       - Set a `load_data_scatter_width` of 333.
       - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
-      - **NOTE** Be sure to set the input `drop_state` to ZERO (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to true (this will further compress the reference data).
+      - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
