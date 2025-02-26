@@ -317,7 +317,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1418_ploidy_for_foxtrot_vds
+             - vs_1593_foxtrot_scale_test_ingest
          tags:
              - /.*/
    - name: GvsIngestTieout
