@@ -316,7 +316,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1418_ploidy_for_foxtrot_vds
+             - vs_1602_vat_creation_on_gcp_batch
          tags:
              - /.*/
    - name: GvsIngestTieout
