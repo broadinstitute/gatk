@@ -633,11 +633,11 @@ task AnnotateVCF {
             if [[ -e /cromwell_root/gcs_delocalization.sh ]]
             then
               # PAPI mount points
-              CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
+              CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
             elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
             then
               # GCP Batch mount points
-              CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/disks/[a-f0-9]+).*!\1!p')
+              CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/disks/[a-f0-9]+).*!\1!p')
             else
               >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
               exit 1
