@@ -240,7 +240,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gvs_0.6.1
+             - vs_1605_rwb_chr5_fixes
          tags:
              - /.*/
    - name: GvsWithdrawSamples
