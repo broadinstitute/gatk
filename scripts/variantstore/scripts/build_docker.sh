@@ -19,13 +19,20 @@ then
     usage
 fi
 
-# Write the full Docker image ID to a file. This will look something like:
-# sha256:5286e46648c595295dcb58a4cc2ec0b8893c9f26d7d49393908e5ae6d4dea188
-docker build . --iidfile idfile.txt
-FULL_IMAGE_ID=$(cat idfile.txt)
+set +o errexit
+docker buildx ls | grep singlebuilder
+RET_VAL=$?
+set -o errexit
+if [ $RET_VAL -eq 1 ]; then
+  docker buildx create --platform linux/amd64 --name singlebuilder
+  echo "Created the single platform builder"
+fi
 
-# Take the slice of this full Docker image ID that corresponds with the output of `docker images`:
-IMAGE_ID=${FULL_IMAGE_ID:7:12}
+docker buildx use singlebuilder
+echo "Using the single platform builder"
+
+docker buildx build --platform linux/amd64 --load .
+IMAGE_ID=$(docker image ls -q | head -n 1)
 
 # The Variants Docker image is alpine-based.
 IMAGE_TYPE="alpine"
@@ -64,5 +71,3 @@ docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
 docker push "${GAR_TAG}"
 
 echo "Docker image pushed to \"${GAR_TAG}\""
-
-rm idfile.txt
