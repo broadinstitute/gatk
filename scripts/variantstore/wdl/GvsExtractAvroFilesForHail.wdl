@@ -2,9 +2,10 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-
 workflow GvsExtractAvroFilesForHail {
     input {
+        Array[String]? cohort_sample_names_array
+        File? cohort_sample_names ## this would be a nice to have based on a parallel with GvsExtractCohortFromSampleNames
         String? git_branch_or_tag
         String? git_hash
         Boolean go = true
@@ -93,6 +94,17 @@ workflow GvsExtractAvroFilesForHail {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    # writing the array to a file has to be done in a task
+    # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
+    if (defined(cohort_sample_names_array)) {
+        call write_array_task {
+            input:
+                input_array = select_first([cohort_sample_names_array]),
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+    }
+
+    File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
 
     call Utils.IsUsingCompressedReferences {
         input:
@@ -106,6 +118,7 @@ workflow GvsExtractAvroFilesForHail {
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
+                sample_names_to_extract = cohort_sample_names_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 call_set_identifier = call_set_identifier,
@@ -310,6 +323,7 @@ task ExtractFromSuperpartitionedTables {
         volatile: true
     }
     input {
+        File sample_names_to_extract
         String project_id
         String dataset_name
         String avro_sibling
@@ -320,11 +334,24 @@ task ExtractFromSuperpartitionedTables {
         String variants_docker
         Boolean use_compressed_references = false
     }
+    String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
+    String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
+    String sample_list_param = if (defined(sample_names_to_extract)) then '--sample_names_to_extract sample_names_file' else '--fq_cohort_sample_names ' + fq_sample_mapping_table
+
+    ## TODO okay so what I need to do here is:
+    ## 1. put the sample_names_to_extract into a BQ table based on the fq_sample_mapping_table
+    ## 2. run the avro query only with the samples that are in the sample_names_to_extract BQ table
+    ## 3. what happens with the subcohort when there's a sample that is not defined in the info table?!?!
+
+
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
         num_superpartitions: "Total number of superpartitions requiring extraact"
         shard_index: "0-based index of this superpartition extract shard"
         num_shards: "Count of all superpartition extract shards"
+        sample_names_to_extract: {
+                                     localization_optional: true
+                                 }
     }
 
     command <<<
@@ -333,6 +360,13 @@ task ExtractFromSuperpartitionedTables {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
+
+        echo ~{sample_list_param}
+
+        if [ ~{use_sample_names_file} = 'true' ]; then
+            gsutil cp  ~{sample_names_to_extract} sample_names_file
+
+        fi
 
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
         do
@@ -405,5 +439,23 @@ task ExtractFromSuperpartitionedTables {
         docker: variants_docker
         disks: "local-disk 500 HDD"
         noAddress: true
+    }
+}
+
+task write_array_task {
+    input {
+        Array[String] input_array
+        String cloud_sdk_docker
+    }
+
+    command <<< ## yeah I think its weird that this is empty, but it echos the code in GvsExtractCohortFromSampleNames.wdl
+    >>>
+
+    output {
+        File output_file = write_lines(input_array)
+    }
+
+    runtime {
+        docker: cloud_sdk_docker
     }
 }
