@@ -223,6 +223,36 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         Assert.assertTrue(new File(outputPrefix + ".vcf.idx").exists());
     }
 
+    /**
+     * If no variants of a given type are present in the input in the specified region,
+     * test that we do not attempt to create the temporary scores or annotations HDF5 files for that type.
+     * This would result in a failure, because we cannot create HDF5 files with empty arrays/matrices.
+     */
+    @Test(groups = {"python"}) // python environment is required to run tool
+    public void testNoVariantsOfOneTypeInInput() {
+        final File outputDir = createTempDir("score");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.SNP)
+                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.INDEL)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr1:1-13000") // the test input VCF does not have indels here
+                .addOutput(outputPrefix);
+        final String modelPrefix = new File(INPUT_FROM_TRAIN_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly.IF").toString();
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addModelPrefix = ab ->
+                ADD_MODEL_PREFIX.apply(ab, modelPrefix);
+        addModelPrefix
+                .andThen(ExtractVariantAnnotationsIntegrationTest.ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS)
+                .andThen(ExtractVariantAnnotationsIntegrationTest.ADD_SNP_MODE_AND_RESOURCES)
+                .andThen(ExtractVariantAnnotationsIntegrationTest.ADD_INDEL_MODE_AND_RESOURCES)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
+        Assert.assertTrue(new File(outputPrefix + ScoreVariantAnnotations.ANNOTATIONS_HDF5_SUFFIX).exists());
+        Assert.assertTrue(new File(outputPrefix + ScoreVariantAnnotations.SCORES_HDF5_SUFFIX).exists());
+        Assert.assertTrue(new File(outputPrefix + ".vcf").exists());
+        Assert.assertTrue(new File(outputPrefix + ".vcf.idx").exists());
+    }
+
     @Test(expectedExceptions = PythonScriptExecutorException.class, groups = {"python"}) // python environment is required to run tool
     public void testAnnotationsDoNotMatchThoseUsedToTrainModel() {
         final File outputDir = createTempDir("score");
