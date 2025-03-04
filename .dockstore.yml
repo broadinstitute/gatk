@@ -242,7 +242,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1516_yolo
+             - vs_1605_chr5_oops
          tags:
              - /.*/
    - name: GvsWithdrawSamples
