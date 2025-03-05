@@ -340,6 +340,7 @@ task ExtractFromSuperpartitionedTables {
 
     ## TODO okay so what I need to do here is:
     ## 1. put the sample_names_to_extract into a BQ table based on the fq_sample_mapping_table
+    ## (should the above happen when we are splitting all the samples from the sample_info table?)
     ## 2. run the avro query only with the samples that are in the sample_names_to_extract BQ table
     ## 3. what happens with the subcohort when there's a sample that is not defined in the info table?!?!
 
