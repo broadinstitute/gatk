@@ -630,10 +630,17 @@ task AnnotateVCF {
 
             # Find where the reference disk should have been mounted on this VM.  Note this is referred to as a "candidate
             # mount point" because we do not actually confirm this is a reference disk until the following code block.
-            CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
-            if [[ -z ${CANDIDATE_MOUNT_POINT} ]]; then
-                >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
-                exit 1
+            if [[ -e /cromwell_root/gcs_delocalization.sh ]]
+            then
+              # PAPI mount points
+              CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
+            elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
+            then
+              # GCP Batch mount points
+              CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/disks/[a-f0-9]+).*!\1!p')
+            else
+              >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
+              exit 1
             fi
 
             # Find one particular reference under the mount path. Note this is not the same reference as was specified in the
