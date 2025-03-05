@@ -192,7 +192,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1593_foxtrot_scale_test_ingest
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -243,7 +242,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1516_yolo
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -317,7 +315,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1593_foxtrot_scale_test_ingest
          tags:
              - /.*/
    - name: GvsIngestTieout
