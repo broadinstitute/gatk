@@ -242,7 +242,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1516_yolo
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -316,7 +315,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1602_vat_creation_on_gcp_batch
          tags:
              - /.*/
    - name: GvsIngestTieout
