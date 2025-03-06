@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -76,6 +79,12 @@ public enum ChromosomeEnum {
         } else {
             return name();
         }
+    }
+
+    public static Pair<ChromosomeEnum, Integer> getContigAndPositionFromLocation(Long location) {
+        Integer position = (int) ((long) Integer.MAX_VALUE & location);
+        int index = (int) (location / SchemaUtils.chromAdjustment);
+        return new ImmutablePair<>(ChromosomeEnum.valueOfIndex(index), position);
     }
 
 }

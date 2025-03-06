@@ -315,7 +315,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1609_edge_case
+             - vs_1590_mem_footprint_part_I
          tags:
              - /.*/
    - name: GvsIngestTieout

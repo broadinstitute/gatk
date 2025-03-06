@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum GQStateEnum {
     VARIANT("v", null, 7),
     STAR("*", null, 8),
@@ -44,4 +47,15 @@ public enum GQStateEnum {
 
     public Integer getCompressedValue() { return compressedValue; }
 
+    private static final Map<String, GQStateEnum> byValue = new HashMap<>();
+
+    static {
+        for (GQStateEnum state : GQStateEnum.values()) {
+            byValue.put(state.getValue(), state);
+        }
+    }
+
+    public static GQStateEnum fromValue(String value) {
+        return byValue.get(value);
+    }
 }
