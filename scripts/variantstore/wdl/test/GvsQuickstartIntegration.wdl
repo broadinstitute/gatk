@@ -85,6 +85,8 @@ workflow GvsQuickstartIntegration {
         }
     }
 
+    File? effective_gatk_override = if (use_default_dockers) then none else if defined(gatk_override) then select_first([gatk_override]) else BuildGATKJar.jar
+
     String workspace_bucket = GetToolVersions.workspace_bucket
     String workspace_id = GetToolVersions.workspace_id
     String submission_id = GetToolVersions.submission_id
@@ -109,7 +111,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "vets_hail",
                 use_default_dockers = use_default_dockers,
-                gatk_override = if (use_default_dockers) then none else if defined(gatk_override) then select_first([gatk_override]) else BuildGATKJar.jar,
+                gatk_override = effective_gatk_override,
                 reference_name = reference_name,
                 is_wgs = true,
                 interval_list = select_first([FilterIntervalListChromosomes.out, GetReference.reference.wgs_calling_interval_list]),
@@ -150,7 +152,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "vets_vcf",
                 use_default_dockers = use_default_dockers,
-                gatk_override = if (use_default_dockers) then none else if (defined(gatk_override)) then select_first([gatk_override]) else BuildGATKJar.jar,
+                gatk_override = effective_gatk_override,
                 is_wgs = true,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
@@ -177,7 +179,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = true,
                 dataset_suffix = "vqsr_vcf",
                 use_default_dockers = use_default_dockers,
-                gatk_override = if (use_default_dockers) then none else if (defined(gatk_override)) then select_first([gatk_override]) else BuildGATKJar.jar,
+                gatk_override = effective_gatk_override,
                 is_wgs = true,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
@@ -223,7 +225,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "exome",
                 use_default_dockers = use_default_dockers,
-                gatk_override = if (use_default_dockers) then none else if (defined(gatk_override)) then select_first([gatk_override]) else BuildGATKJar.jar,
+                gatk_override = effective_gatk_override,
                 is_wgs = false,
                 interval_list = GetReference.reference.exome_calling_interval_list,
                 expected_output_prefix = expected_output_prefix,
@@ -262,7 +264,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "bge",
                 use_default_dockers = use_default_dockers,
-                gatk_override = if (use_default_dockers) then none else if defined(gatk_override) then select_first([gatk_override]) else BuildGATKJar.jar,
+                gatk_override = effective_gatk_override,
                 is_wgs = false,
                 interval_list = GetReference.reference.exome_calling_interval_list,
                 expected_output_prefix = expected_output_prefix,
@@ -312,7 +314,7 @@ workflow GvsQuickstartIntegration {
                 call_set_identifier = git_branch_or_tag,
                 dataset_name = CreateDatasetForTest.dataset_name,
                 project_id = project_id,
-                gatk_override = if (use_default_dockers) then none else if defined(gatk_override) then select_first([gatk_override]) else BuildGATKJar.jar,
+                gatk_override = effective_gatk_override,
                 extract_output_file_base_name = "quickit",
                 filter_set_name = "quickit",
                 extract_table_prefix = "quickit",
