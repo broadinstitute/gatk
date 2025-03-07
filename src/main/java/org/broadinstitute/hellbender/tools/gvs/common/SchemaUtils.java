@@ -123,7 +123,7 @@ public class SchemaUtils {
     }
 
     public static String decodeContig(long location) {
-        return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
+        return ChromosomeEnum.valueOfIndex((int) (location / chromAdjustment)).getContigName();
     }
 
     public static ChromosomeEnum decodeChromosome(long location) {
@@ -131,7 +131,7 @@ public class SchemaUtils {
     }
 
     public static int decodePosition(long location) {
-        return (int)(location % chromAdjustment);
+        return Math.toIntExact(location % chromAdjustment);
     }
 
     public final static Comparator<GenericRecord> LOCATION_AND_ALLELES_COMPARATOR = (o1, o2) -> {

@@ -20,7 +20,7 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
         this.position = SchemaUtils.decodePosition(location);
         this.chromosome = SchemaUtils.decodeChromosome(location);
-        this.sampleId = (int) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
+        this.sampleId = Math.toIntExact((Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME));
 
         int length = Math.toIntExact((Long) genericRecord.get("length"));
         this.endPosition = this.position + length - 1;
