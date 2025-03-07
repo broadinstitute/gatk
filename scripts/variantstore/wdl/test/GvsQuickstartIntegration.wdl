@@ -77,6 +77,14 @@ workflow GvsQuickstartIntegration {
         }
     }
 
+    if (use_default_dockers && defined(gatk_override)) {
+        call Utils.TerminateWorkflow as DefaultDockerOrOverrideNotBoth {
+            input:
+                message = "Cannot define both default Dockers and GATK override!",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     if (!use_default_dockers && !defined(gatk_override)) {
         call Utils.BuildGATKJar {
             input:
@@ -92,14 +100,6 @@ workflow GvsQuickstartIntegration {
     String workspace_bucket = GetToolVersions.workspace_bucket
     String workspace_id = GetToolVersions.workspace_id
     String submission_id = GetToolVersions.submission_id
-
-    if (use_default_dockers && defined(gatk_override)) {
-        call Utils.TerminateWorkflow as DefaultDockerOrOverrideNotBoth {
-            input:
-                message = "Cannot define both default Dockers and GATK override!",
-                basic_docker = effective_basic_docker,
-        }
-    }
 
     # Note for `GvsQuickstartIntegration` we use the git_branch_or_tag *input* and its corresponding git hash. This is not
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
