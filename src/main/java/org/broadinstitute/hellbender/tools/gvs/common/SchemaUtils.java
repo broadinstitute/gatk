@@ -123,7 +123,7 @@ public class SchemaUtils {
     }
 
     public static String decodeContig(long location) {
-        return ChromosomeEnum.valueOfIndex((int) (location / chromAdjustment)).getContigName();
+        return decodeChromosome(location).getContigName();
     }
 
     public static ChromosomeEnum decodeChromosome(long location) {
