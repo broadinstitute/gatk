@@ -1,5 +1,15 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.2 - 2025-3-7
+
+### Fixed
+- Fixed VETS bug that caused a rare failure when some parts of the genome had no variants in them. 
+- Fixed a bug that caused failure when making exome callsets with between 200 and 400 samples.
+
+### Changed
+
+- Extract code now more memory efficient in certain cases.
+
 ## 0.6.1 - 2024-11-18
 
 ### Changed
