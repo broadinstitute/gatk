@@ -122,6 +122,10 @@ public class SchemaUtils {
         return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
     }
 
+    public static ChromosomeEnum decodeChromosomeEnum(long location) {
+        return ChromosomeEnum.valueOfIndex((int) (location / chromAdjustment));
+    }
+
     public static int decodePosition(long location) {
         return (int)(location % chromAdjustment);
     }
