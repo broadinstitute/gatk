@@ -36,6 +36,7 @@ public enum ChromosomeEnum {
     private static final Map<String, ChromosomeEnum> ref38 = new HashMap<>();
     private static final Map<Integer, ChromosomeEnum> decodeValues = new HashMap<>();
     private static Map<String, ChromosomeEnum> currentVersion = null;
+    private static Map<String, Integer> customContigMap = null;
 
     static {
         for (ChromosomeEnum contig : ChromosomeEnum.values()) {
@@ -53,6 +54,10 @@ public enum ChromosomeEnum {
         }
     }
 
+    public static void setCustomContigMap(Map<String, Integer> customMapping) {
+        customContigMap = customMapping;
+    }
+
     ChromosomeEnum(int index, String v37identifier) {
         this.index = index;
         this.v37ContigName = v37identifier;
@@ -67,6 +72,18 @@ public enum ChromosomeEnum {
             throw new RuntimeException("must set reference version");
         } else {
             return currentVersion.get(contig);
+        }
+    }
+
+    public static Integer integerValueOfContig(String contig) {
+        if (currentVersion == ref37 || currentVersion == ref38) {
+            return valueOfContig(contig).index;
+        } else {
+            // this is a custom contig mapping that we're dealing with.  Look it up directly
+            if (customContigMap == null) {
+                throw new RuntimeException("Must supply a custom contig mapping for a non-standard reference");
+            }
+            return customContigMap.get(contig);
         }
     }
 
