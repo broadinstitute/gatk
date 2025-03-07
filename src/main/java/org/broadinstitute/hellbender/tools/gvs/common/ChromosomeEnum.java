@@ -77,4 +77,5 @@ public enum ChromosomeEnum {
             return name();
         }
     }
+
 }

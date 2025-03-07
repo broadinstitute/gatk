@@ -10,10 +10,10 @@ import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
-    private final int position; // No chromosome or contig so fits in an int, at least for humans, dogs, cats.
-    private final int endPosition; // Same here as `location`.
-    private final int sampleId;
     private final ChromosomeEnum chromosome;
+    private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
+    private final int endPosition; // Same here as `position`.
+    private final int sampleId;
     private final GQStateEnum state;
 
     public ReferenceRecord(GenericRecord genericRecord) {
