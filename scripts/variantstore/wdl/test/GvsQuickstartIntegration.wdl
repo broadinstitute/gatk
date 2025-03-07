@@ -77,7 +77,7 @@ workflow GvsQuickstartIntegration {
         }
     }
 
-    if (!use_default_dockers) {
+    if (!use_default_dockers && !defined(gatk_override)) {
         call Utils.BuildGATKJar {
             input:
                 git_branch_or_tag = git_branch_or_tag,
