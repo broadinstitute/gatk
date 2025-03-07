@@ -59,7 +59,7 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     @Override
     public int compareTo(ReferenceRecord o) {
-        final int contigResult = this.chromosome.ordinal() - o.chromosome.ordinal();
+        final int contigResult = this.chromosome.getIndex() - o.chromosome.getIndex();
         if (contigResult != 0) {
             return contigResult;
         }

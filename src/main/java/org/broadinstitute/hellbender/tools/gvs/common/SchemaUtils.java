@@ -97,12 +97,12 @@ public class SchemaUtils {
     public static final long chromAdjustment = 1000000000000L;
 
     public static long encodeLocation(String chrom, int position) {
-        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
+        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).getIndex();
         return (long) chromosomeIndex * chromAdjustment + (long) position;
     }
 
     public static long encodeLocation(ChromosomeEnum chromosome, int position) {
-        return (long) chromosome.index * chromAdjustment + (long) position;
+        return (long) chromosome.getIndex() * chromAdjustment + (long) position;
     }
 
     /*
@@ -113,7 +113,7 @@ public class SchemaUtils {
         Next 4 - state (16 values)
      */
     public static long encodeCompressedRefBlock(String chrom, long position, long length, long stateAsInt) {
-        long chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
+        long chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).getIndex();
         long packedBytes = ((0xFFFF & chromosomeIndex) << 48) |
                 ((0xFFFFFFFF & position) << 16) |
                 ((0xFFF & length) << 4) |
