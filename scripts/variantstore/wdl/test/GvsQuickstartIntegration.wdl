@@ -85,7 +85,9 @@ workflow GvsQuickstartIntegration {
         }
     }
 
-    File? effective_gatk_override = if (use_default_dockers) then none else if defined(gatk_override) then select_first([gatk_override]) else BuildGATKJar.jar
+    File? effective_gatk_override = if (use_default_dockers) then none
+                                    else if defined(gatk_override) then select_first([gatk_override])
+                                         else BuildGATKJar.jar
 
     String workspace_bucket = GetToolVersions.workspace_bucket
     String workspace_id = GetToolVersions.workspace_id
