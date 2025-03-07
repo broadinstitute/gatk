@@ -10,44 +10,44 @@ import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
-    private final int location; // No chromosome or contig so fits in an int, at least for humans, dogs, cats.
-    private final int endLocation; // Same here as `location`.
+    private final int position; // No chromosome or contig so fits in an int, at least for humans, dogs, cats.
+    private final int endPosition; // Same here as `location`.
     private final int sampleId;
-    private final ChromosomeEnum contig;
+    private final ChromosomeEnum chromosome;
     private final GQStateEnum state;
 
     public ReferenceRecord(GenericRecord genericRecord) {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
-        this.location = SchemaUtils.decodePosition(location);
-        this.contig = SchemaUtils.decodeChromosomeEnum(location);
+        this.position = SchemaUtils.decodePosition(location);
+        this.chromosome = SchemaUtils.decodeChromosome(location);
         this.sampleId = (int) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
 
         int length = Math.toIntExact((Long) genericRecord.get("length"));
-        this.endLocation = this.location + length - 1;
+        this.endPosition = this.position + length - 1;
         String stringState = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
         this.state = GQStateEnum.fromValue(stringState);
     }
 
     public ReferenceRecord(long location, long sampleId, int length, String stringState) {
-        this.location = SchemaUtils.decodePosition(location);
-        this.contig = SchemaUtils.decodeChromosomeEnum(location);
+        this.position = SchemaUtils.decodePosition(location);
+        this.chromosome = SchemaUtils.decodeChromosome(location);
         this.sampleId = (int) sampleId;
-        this.endLocation = this.location + length - 1;
+        this.endPosition = this.position + length - 1;
 
         this.state = GQStateEnum.fromValue(stringState);
     }
 
     @Override
-    public String getContig() { return this.contig.getContigName(); }
+    public String getContig() { return this.chromosome.getContigName(); }
 
     @Override
-    public int getStart() { return this.location; }
+    public int getStart() { return this.position; }
 
     @Override
-    public int getEnd() { return this.endLocation; }
+    public int getEnd() { return this.endPosition; }
 
-    public long getLocation() { return this.location; }
-    public long getEndLocation() { return this.endLocation; }
+    public long getLocation() { return SchemaUtils.encodeLocation(chromosome, position); }
+    public long getEndLocation() { return SchemaUtils.encodeLocation(chromosome, endPosition); }
 
     public long getSampleId() { return this.sampleId; }
 
@@ -59,16 +59,16 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     @Override
     public int compareTo(ReferenceRecord o) {
-        final long firstPosition = this.location;
-        final long secondPosition = o.location;
-
-        final int result = Long.compare(firstPosition, secondPosition);
-        if (result != 0) {
-            return result;
-        } else {
-            final long firstSample = this.location;
-            final long secondSample = o.location;
-            return Long.compare(firstSample, secondSample);
+        final int contigResult = this.chromosome.ordinal() - o.chromosome.ordinal();
+        if (contigResult != 0) {
+            return contigResult;
         }
+
+        final int positionResult = this.position - o.position;
+        if (positionResult != 0) {
+            return positionResult;
+        }
+
+        return this.sampleId - o.sampleId;
     }
 }

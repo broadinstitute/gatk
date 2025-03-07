@@ -101,6 +101,10 @@ public class SchemaUtils {
         return (long) chromosomeIndex * chromAdjustment + (long) position;
     }
 
+    public static long encodeLocation(ChromosomeEnum chromosome, int position) {
+        return (long) chromosome.index * chromAdjustment + (long) position;
+    }
+
     /*
         Dense packing scheme for ref table:
         Top 16 - chromosome (65,536 values)
@@ -122,7 +126,7 @@ public class SchemaUtils {
         return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
     }
 
-    public static ChromosomeEnum decodeChromosomeEnum(long location) {
+    public static ChromosomeEnum decodeChromosome(long location) {
         return ChromosomeEnum.valueOfIndex((int) (location / chromAdjustment));
     }
 
