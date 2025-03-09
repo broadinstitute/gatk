@@ -4,13 +4,14 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
-    private final ChromosomeEnum chromosome;
+    private static ChromosomeEnum chromosome;
     private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
     private final short length;
     private final int sampleId;
@@ -19,7 +20,7 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     public ReferenceRecord(GenericRecord genericRecord) {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
         this.position = SchemaUtils.decodePosition(location);
-        this.chromosome = SchemaUtils.decodeChromosome(location);
+        setChromosome(location);
         this.sampleId = Math.toIntExact((Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME));
 
         this.length = (short) Math.toIntExact((Long) genericRecord.get("length"));
@@ -30,13 +31,24 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     public ReferenceRecord(long location, long sampleId, int length, String stringState) {
         this.position = SchemaUtils.decodePosition(location);
         this.length = (short) length;
-        this.chromosome = SchemaUtils.decodeChromosome(location);
+        setChromosome(location);
         this.sampleId = (int) sampleId;
         this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
     }
 
+    private static void setChromosome(Long location) {
+        ChromosomeEnum thisChromosome = SchemaUtils.decodeChromosome(location);
+        if (chromosome == null) {
+            chromosome = thisChromosome;
+        } else {
+            if (chromosome != thisChromosome) {
+                throw new GATKException("unexpected mismatched chrs: " + chromosome + " vs " +  thisChromosome);
+            }
+        }
+    }
+
     @Override
-    public String getContig() { return this.chromosome.getContigName(); }
+    public String getContig() { return chromosome.getContigName(); }
 
     @Override
     public int getStart() { return this.position; }
@@ -57,11 +69,6 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     @Override
     public int compareTo(ReferenceRecord o) {
-        final int contigResult = this.chromosome.getIndex() - o.chromosome.getIndex();
-        if (contigResult != 0) {
-            return contigResult;
-        }
-
         final int positionResult = this.position - o.position;
         if (positionResult != 0) {
             return positionResult;
