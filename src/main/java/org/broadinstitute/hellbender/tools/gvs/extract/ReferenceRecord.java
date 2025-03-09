@@ -12,9 +12,9 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     private final ChromosomeEnum chromosome;
     private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
-    private final int endPosition; // Same here as `position`.
+    private final short length;
     private final int sampleId;
-    private final GQStateEnum state;
+    private final short stateOrdinal;
 
     public ReferenceRecord(GenericRecord genericRecord) {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
@@ -22,19 +22,17 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         this.chromosome = SchemaUtils.decodeChromosome(location);
         this.sampleId = Math.toIntExact((Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME));
 
-        int length = Math.toIntExact((Long) genericRecord.get("length"));
-        this.endPosition = this.position + length - 1;
+        this.length = (short) Math.toIntExact((Long) genericRecord.get("length"));
         String stringState = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
-        this.state = GQStateEnum.fromValue(stringState);
+        this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
     }
 
     public ReferenceRecord(long location, long sampleId, int length, String stringState) {
         this.position = SchemaUtils.decodePosition(location);
+        this.length = (short) length;
         this.chromosome = SchemaUtils.decodeChromosome(location);
         this.sampleId = (int) sampleId;
-        this.endPosition = this.position + length - 1;
-
-        this.state = GQStateEnum.fromValue(stringState);
+        this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
     }
 
     @Override
@@ -44,14 +42,14 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     public int getStart() { return this.position; }
 
     @Override
-    public int getEnd() { return this.endPosition; }
+    public int getEnd() { return this.position + this.length - 1; }
 
     public long getLocation() { return SchemaUtils.encodeLocation(chromosome, position); }
-    public long getEndLocation() { return SchemaUtils.encodeLocation(chromosome, endPosition); }
+    public long getEndLocation() { return SchemaUtils.encodeLocation(chromosome, position + length - 1); }
 
     public long getSampleId() { return this.sampleId; }
 
-    public String getState() { return this.state.getValue(); }
+    public String getState() { return GQStateEnum.fromOrdinal(stateOrdinal).getValue(); }
 
     public String toString() {
         return ReflectionToStringBuilder.toString(this);
