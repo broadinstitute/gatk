@@ -4,28 +4,20 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Set;
+import javax.validation.constraints.NotNull;
 
-import static org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum.*;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
-    private static final Logger log = LoggerFactory.getLogger(ReferenceRecord.class);
     private static ChromosomeEnum chromosome;
     private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
     private final short length;
     private final int sampleId;
     private final short stateOrdinal;
-    // Debug code -- why are there chr1's in a chr20 / chrX / chrY extract??
-    private static final Set<ChromosomeEnum> expectedChromosomes = Set.of(chr20, chrX, chrY);
 
     public ReferenceRecord(GenericRecord genericRecord) {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
@@ -54,9 +46,6 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         }
 
         ChromosomeEnum thisChromosome = SchemaUtils.decodeChromosome(location);
-        if (!expectedChromosomes.contains(thisChromosome)) {
-            throw new GATKException("saw unexpected chromosome " + thisChromosome);
-        }
         if (chromosome == null) {
             chromosome = thisChromosome;
         }
