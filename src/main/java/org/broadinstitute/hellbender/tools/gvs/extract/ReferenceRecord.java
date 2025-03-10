@@ -9,6 +9,10 @@ import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
+import java.util.Set;
+
+import static org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum.*;
+
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     private static ChromosomeEnum chromosome;
@@ -16,6 +20,8 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     private final short length;
     private final int sampleId;
     private final short stateOrdinal;
+    // Debug code -- why are there chr1's in a chr20 / chrX / chrY extract??
+    private static final Set<ChromosomeEnum> expectedChromosomes = Set.of(chr20, chrX, chrY);
 
     public ReferenceRecord(GenericRecord genericRecord) {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
@@ -38,12 +44,11 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     private static void setChromosome(Long location) {
         ChromosomeEnum thisChromosome = SchemaUtils.decodeChromosome(location);
+        if (!expectedChromosomes.contains(thisChromosome)) {
+            throw new GATKException("saw unexpected chromosome " + thisChromosome);
+        }
         if (chromosome == null) {
             chromosome = thisChromosome;
-        } else {
-            if (chromosome != thisChromosome) {
-                throw new GATKException("unexpected mismatched chrs: " + chromosome + " vs " +  thisChromosome);
-            }
         }
     }
 
