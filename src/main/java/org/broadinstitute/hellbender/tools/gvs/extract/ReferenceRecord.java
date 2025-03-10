@@ -13,6 +13,9 @@ import javax.validation.constraints.NotNull;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
+    // All the ReferenceRecords in a single invocation of an extract tool should be on the same chromosome. There is a
+    // weird `InferredReferenceRecord` type that falsely claims to be on chromosome 1, which the code in this class
+    // handles specially.
     private static ChromosomeEnum chromosome;
     private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
     private final short length;
