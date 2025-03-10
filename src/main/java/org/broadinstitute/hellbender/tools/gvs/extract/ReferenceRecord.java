@@ -47,8 +47,9 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     }
 
     private void setChromosome(Long location) {
-        if (this instanceof ExtractCohortEngine.InferredReferenceRecord) {
-            log.error("yikes this is an inferred record, skipping...");
+        if (isInferredReferenceRecord()) {
+            // Do not set chromosome based on an inferred reference record, it's just arbitrarily claiming to be on
+            // chromosome 1.
             return;
         }
 
@@ -81,10 +82,14 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         return ReflectionToStringBuilder.toString(this);
     }
 
+    public boolean isInferredReferenceRecord() {
+        return false;
+    }
+
     @Override
     public int compareTo(@NotNull ReferenceRecord o) {
-        boolean thisInferred = this instanceof ExtractCohortEngine.InferredReferenceRecord;
-        boolean thatInferred = o instanceof ExtractCohortEngine.InferredReferenceRecord;
+        boolean thisInferred = isInferredReferenceRecord();
+        boolean thatInferred = o.isInferredReferenceRecord();
         if (thisInferred && thatInferred) return 0;
         if (thisInferred) return -1;
         if (thatInferred) return 1;
