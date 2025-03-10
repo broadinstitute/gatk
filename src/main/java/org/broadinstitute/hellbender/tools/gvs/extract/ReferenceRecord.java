@@ -8,6 +8,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 
@@ -15,6 +18,7 @@ import static org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum.*;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
+    private static final Logger log = LoggerFactory.getLogger(ReferenceRecord.class);
     private static ChromosomeEnum chromosome;
     private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
     private final short length;
@@ -42,7 +46,12 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
     }
 
-    private static void setChromosome(Long location) {
+    private void setChromosome(Long location) {
+        if (this instanceof ExtractCohortEngine.InferredReferenceRecord) {
+            log.error("yikes this is an inferred record, skipping...");
+            return;
+        }
+
         ChromosomeEnum thisChromosome = SchemaUtils.decodeChromosome(location);
         if (!expectedChromosomes.contains(thisChromosome)) {
             throw new GATKException("saw unexpected chromosome " + thisChromosome);
@@ -73,7 +82,13 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     }
 
     @Override
-    public int compareTo(ReferenceRecord o) {
+    public int compareTo(@NotNull ReferenceRecord o) {
+        boolean thisInferred = this instanceof ExtractCohortEngine.InferredReferenceRecord;
+        boolean thatInferred = o instanceof ExtractCohortEngine.InferredReferenceRecord;
+        if (thisInferred && thatInferred) return 0;
+        if (thisInferred) return -1;
+        if (thatInferred) return 1;
+
         final int positionResult = this.position - o.position;
         if (positionResult != 0) {
             return positionResult;
