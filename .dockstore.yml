@@ -354,7 +354,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1418_ploidy_for_foxtrot_vds
+             - rc-vs-1576-avro-update
          tags:
              - /.*/
    - name: GvsCallsetStatistics
