@@ -51,6 +51,7 @@ workflow GvsExtractAvroFilesForHail {
 
     call ExtractFromSampleInfoTable {
         input:
+            new_sample_cutoff = new_sample_cutoff,
             project_id = project_id,
             dataset_name = dataset_name,
             avro_sibling = OutputPath.out,
@@ -71,6 +72,7 @@ workflow GvsExtractAvroFilesForHail {
 
     call ExtractFromPloidyTable {
         input:
+            new_sample_cutoff = new_sample_cutoff,
             project_id = project_id,
             dataset_name = dataset_name,
             ploidy_table_name = ploidy_table_name,
@@ -106,7 +108,7 @@ workflow GvsExtractAvroFilesForHail {
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
-                sample_names_to_extract = new_sample_cutoff,
+                new_sample_cutoff = new_sample_cutoff,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 call_set_identifier = call_set_identifier,
@@ -156,6 +158,7 @@ task ExtractFromSampleInfoTable {
         volatile: true
     }
     input {
+        String? new_sample_cutoff
         String project_id
         String dataset_name
         String avro_sibling
@@ -166,6 +169,7 @@ task ExtractFromSampleInfoTable {
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
+    ## TODO does the sample info table here need to be adjusted too?
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -258,6 +262,7 @@ task ExtractFromPloidyTable {
         volatile: true
     }
     input {
+        String? new_sample_cutoff
         String project_id
         String dataset_name
         String ploidy_table_name
@@ -269,6 +274,7 @@ task ExtractFromPloidyTable {
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
+    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND sample_id > ~{new_sample_cutoff}" else ""
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -291,6 +297,7 @@ task ExtractFromPloidyTable {
             FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
             JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON p.sample_id = s.sample_id
             WHERE (p.chromosome / 1000000000000 = 23 or p.chromosome / 1000000000000 = 24)
+            ~{new_samples_extract_clause}
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
     >>>
     output {
@@ -311,7 +318,7 @@ task ExtractFromSuperpartitionedTables {
         volatile: true
     }
     input {
-        String? sample_names_to_extract
+        String? new_sample_cutoff
         String project_id
         String dataset_name
         String avro_sibling
@@ -323,12 +330,7 @@ task ExtractFromSuperpartitionedTables {
         Boolean use_compressed_references = false
     }
     String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
-    String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
-
-    ## TODO okay so what I need to do here is:
-    ## 1. Get a cutoff sample_id number from the sample_info table -- this will be done manually for Foxtrot
-    ## 2. Pass this cutoff into the workflow and it will be used in the following query as well as the samples query
-
+    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND sample_id > ~{new_sample_cutoff}" else ""
 
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -359,6 +361,7 @@ task ExtractFromSuperpartitionedTables {
                 INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = v.sample_id
                 WHERE withdrawn IS NULL AND
                 is_control = false
+                ~{new_samples_extract_clause}
                 ORDER BY location
             " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id=~{project_id}
 
@@ -371,6 +374,7 @@ task ExtractFromSuperpartitionedTables {
                     INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
                     WHERE withdrawn IS NULL AND
                     is_control = false
+                    ~{new_samples_extract_clause}
                     ORDER BY location
                 " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
             else
@@ -401,6 +405,7 @@ task ExtractFromSuperpartitionedTables {
                     INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
                     WHERE withdrawn IS NULL AND
                     is_control = false
+                    ~{new_samples_extract_clause}
                     ORDER BY location
                     " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
             fi
