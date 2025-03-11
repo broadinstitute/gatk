@@ -274,7 +274,7 @@ task ExtractFromPloidyTable {
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
-    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND sample_id > ~{new_sample_cutoff}" else ""
+    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND s.sample_id > ~{new_sample_cutoff}" else ""
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -330,7 +330,7 @@ task ExtractFromSuperpartitionedTables {
         Boolean use_compressed_references = false
     }
     String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
-    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND sample_id > ~{new_sample_cutoff}" else ""
+    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND s.sample_id > ~{new_sample_cutoff}" else ""
 
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
