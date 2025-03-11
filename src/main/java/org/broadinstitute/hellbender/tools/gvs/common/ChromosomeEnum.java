@@ -35,6 +35,7 @@ public enum ChromosomeEnum {
     private static Map<String, ChromosomeEnum> ref37 = new HashMap<>();
     private static final Map<String, ChromosomeEnum> ref38 = new HashMap<>();
     private static final Map<Integer, ChromosomeEnum> decodeValues = new HashMap<>();
+    private static final Map<Integer, String> customDecodeValues = new HashMap<>();
     private static Map<String, ChromosomeEnum> currentVersion = null;
     private static Map<String, Integer> customContigMap = null;
 
@@ -56,6 +57,9 @@ public enum ChromosomeEnum {
 
     public static void setCustomContigMap(Map<String, Integer> customMapping) {
         customContigMap = customMapping;
+        for (Map.Entry<String, Integer> customContig : customMapping.entrySet()) {
+            customDecodeValues.put(customContig.getValue(), customContig.getKey());
+        }
     }
 
     ChromosomeEnum(int index, String v37identifier) {
@@ -65,6 +69,14 @@ public enum ChromosomeEnum {
 
     public static ChromosomeEnum valueOfIndex(int index) {
         return decodeValues.get(index);
+    }
+
+    public static String stringValueOfCustomIndex(int index) {
+        return customDecodeValues.get(index);
+    }
+
+    public static boolean usingCustomMapping() {
+        return currentVersion != ref37 && currentVersion != ref38;
     }
 
     public static ChromosomeEnum valueOfContig(String contig) {
@@ -82,6 +94,9 @@ public enum ChromosomeEnum {
             // this is a custom contig mapping that we're dealing with.  Look it up directly
             if (customContigMap == null) {
                 throw new RuntimeException("Must supply a custom contig mapping for a non-standard reference");
+            }
+            if (!customContigMap.containsKey(contig)) {
+                System.out.println("Contig " + contig + " not found in custom contig map");
             }
             return customContigMap.get(contig);
         }

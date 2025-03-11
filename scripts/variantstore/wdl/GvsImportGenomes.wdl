@@ -45,6 +45,10 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
     Boolean is_wgs = true
+
+    Boolean is_custom_ref = false
+    File? custom_ref_dictionary
+    File? custom_contig_mapping
   }
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000

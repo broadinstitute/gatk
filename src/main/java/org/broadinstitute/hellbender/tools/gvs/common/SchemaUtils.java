@@ -121,6 +121,9 @@ public class SchemaUtils {
     }
 
     public static String decodeContig(long location) {
+        if (ChromosomeEnum.usingCustomMapping()) {
+            return ChromosomeEnum.stringValueOfCustomIndex((int)(location/chromAdjustment));
+        }
         return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
     }
 
