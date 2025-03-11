@@ -170,6 +170,7 @@ task ExtractFromSampleInfoTable {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
     ## TODO does the sample info table here need to be adjusted too?
+    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "--new_sample_cutoff ~{new_sample_cutoff}" else ""
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -182,7 +183,8 @@ task ExtractFromSampleInfoTable {
             --avro_prefix ${avro_prefix} \
             --call_set_identifier ~{call_set_identifier} \
             --dataset_name ~{dataset_name} \
-            --project_id=~{project_id}
+            --project_id=~{project_id} \
+            ~{new_samples_extract_clause}
     >>>
 
     output {

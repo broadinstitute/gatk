@@ -32,13 +32,14 @@ def get_number_of_partitions(dataset_name, project_id):
     return math.ceil(max_table_num[0])
 
 
-def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix):
+def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix, new_sample_cutoff=None):
     num_of_tables = get_number_of_partitions(dataset_name, project_id)
 
     for i in range(1, num_of_tables + 1):
         file_name = f"*.{i:03}.avro"
         id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
-
+        if new_sample_cutoff:
+            id_where_clause += f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000} AND sample_id < {new_sample_cutoff}"
         sql = f"""
             EXPORT DATA OPTIONS(
                 uri='{avro_prefix}/sample_mapping/{file_name}', format='AVRO', compression='SNAPPY', overwrite=true) AS
@@ -46,6 +47,7 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' AS intervals_file
             FROM `{project_id}.{dataset_name}.sample_info`
             WHERE {id_where_clause} AND is_control = false
+
             ORDER BY sample_id"""
 
         print(f"{sql}\n")
@@ -59,10 +61,18 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--avro_prefix', type=str, help='prefix for the Avro file path', required=True)
+    parser.add_argument('--new_sample_cutoff', type=str, help='cutoff for sample ids')
 
     args = parser.parse_args()
 
-    construct_sample_info_avro_queries(args.call_set_identifier,
+    if (args.new_sample_cutoff):
+            construct_sample_info_avro_queries(args.call_set_identifier,
+                           args.dataset_name,
+                           args.project_id,
+                           args.avro_prefix,
+                           args.new_sample_cutoff)
+    else:
+        construct_sample_info_avro_queries(args.call_set_identifier,
                    args.dataset_name,
                    args.project_id,
                    args.avro_prefix)
