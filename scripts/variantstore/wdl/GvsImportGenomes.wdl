@@ -391,6 +391,7 @@ task LoadData {
         -L ~{interval_list} \
         ~{"--ref-block-gq-to-ignore " + drop_state} \
         ~{"--sequence-dictionary " + custom_ref_dictionary} \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
         --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
