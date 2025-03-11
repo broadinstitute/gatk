@@ -177,6 +177,16 @@ workflows:
              - vs_1590_mem_footprint_part_I
          tags:
              - /.*/
+   - name: GvsExtractCallsetShard30603
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1590_mem_footprint_part_I
+       tags:
+         - /.*/
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
