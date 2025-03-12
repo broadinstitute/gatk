@@ -47,7 +47,6 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' AS intervals_file
             FROM `{project_id}.{dataset_name}.sample_info`
             WHERE {id_where_clause} AND is_control = false
-
             ORDER BY sample_id"""
 
         print(f"{sql}\n")
