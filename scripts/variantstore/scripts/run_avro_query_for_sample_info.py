@@ -39,7 +39,7 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
         file_name = f"*.{i:03}.avro"
         id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
         if new_sample_cutoff:
-            id_where_clause += f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000} AND sample_id < {new_sample_cutoff}"
+            id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000} AND sample_id < {new_sample_cutoff}"
         sql = f"""
             EXPORT DATA OPTIONS(
                 uri='{avro_prefix}/sample_mapping/{file_name}', format='AVRO', compression='SNAPPY', overwrite=true) AS
