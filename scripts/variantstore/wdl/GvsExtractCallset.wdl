@@ -400,7 +400,7 @@ task ExtractTask {
     }
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script_with_heap.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
@@ -497,7 +497,7 @@ task ExtractTask {
     memory: memory_gib + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
-    # preemptible: select_first([extract_preemptible_override, "2"])
+    preemptible: select_first([extract_preemptible_override, "2"])
     maxRetries: select_first([extract_maxretries_override, "3"])
     cpu: 2
     noAddress: true
@@ -698,7 +698,7 @@ task CollectVariantCallingMetrics {
     }
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script_with_heap.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
@@ -759,7 +759,7 @@ task GatherVariantCallingMetrics {
     }
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script_with_heap.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
