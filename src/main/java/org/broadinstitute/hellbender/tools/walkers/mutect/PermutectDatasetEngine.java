@@ -134,10 +134,12 @@ public class PermutectDatasetEngine implements AutoCloseable {
         final int numAlt = vc.getNAlleles() - 1;
 
 
-        // the variant has already been annotated, so we have POPAF and AD
+        // the variant has already been annotated, so we have POPAF, AD, and in-PON status
         final double[] popafs = VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY);
         //final double[] altPopulationAFs = MathUtils.applyToArray(popafs, x -> Math.pow(10, -x ));
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
+        // the PoN is NOT for calling! We only use it to assign some unlabeled data as artifacts in training
+        final boolean inPon = vc.hasAttribute(GATKVCFConstants.IN_PON_KEY);
 
         // These ADs, which later make up the pre-downsampling depths, come from the genotype AD field applied by Mutect2.
         // This means that uninformative reads are not discarded; rather the expected non-integral ADs are rounded to
@@ -205,6 +207,8 @@ public class PermutectDatasetEngine implements AutoCloseable {
                     // unnecessary, and it gives the model too few high-AF variant examples on which to learn calibration.
                     unmatchedQueue.poll(); // just to pop off a value
                     altDownsampleMap.put(altAllele, random.nextInt(5, 20));
+                } else if (tumorLods[n] > 5.0 && inPon) {   // being in pon turns what would otherwise be unlabeled into artifact
+                    labels.add(Label.ARTIFACT);
                 } else if (tumorLods[n] > 4.0 && tumorAF < 0.3) {
                     labels.add(Label.UNLABELED);
                 } else {
