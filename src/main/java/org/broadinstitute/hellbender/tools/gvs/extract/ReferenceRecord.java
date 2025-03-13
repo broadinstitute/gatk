@@ -4,7 +4,6 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
@@ -16,7 +15,7 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     // All the "real" `ReferenceRecord`s in a single invocation of an extract tool should be on the same chromosome.
     // There is a weird singleton instance of an `InferredReferenceRecord` type that inherits from `ReferenceRecord` and
     // falsely claims to be on chromosome 1, which the code in this class handles specially.
-    private static ChromosomeEnum chromosome;
+    private static short chromosomeIndex = -1;
     private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
     private final short length;
     private final int sampleId;
@@ -48,14 +47,14 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
             return;
         }
 
-        ChromosomeEnum thisChromosome = SchemaUtils.decodeChromosome(location);
-        if (chromosome == null) {
-            chromosome = thisChromosome;
+        short thisChromosomeIndex = SchemaUtils.decodeChromosomeIndex(location);
+        if (chromosomeIndex == -1) {
+            chromosomeIndex = thisChromosomeIndex;
         }
     }
 
     @Override
-    public String getContig() { return chromosome.getContigName(); }
+    public String getContig() { return SchemaUtils.decodeContigFromIndex(chromosomeIndex); }
 
     @Override
     public int getStart() { return this.position; }
@@ -63,8 +62,8 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     @Override
     public int getEnd() { return this.position + this.length - 1; }
 
-    public long getLocation() { return SchemaUtils.encodeLocation(chromosome, position); }
-    public long getEndLocation() { return SchemaUtils.encodeLocation(chromosome, position + length - 1); }
+    public long getLocation() { return SchemaUtils.encodeLocation(chromosomeIndex, position); }
+    public long getEndLocation() { return SchemaUtils.encodeLocation(chromosomeIndex, position + length - 1); }
 
     public long getSampleId() { return this.sampleId; }
 
