@@ -174,8 +174,7 @@ public final class RefCreator {
 
     public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) throws IOException {
         GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
-//        logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
-//        logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
+
         // for each block of uncovered locations
         for (GenomeLoc genomeLoc : uncoveredIntervals) {
             final String contig = genomeLoc.getContig();

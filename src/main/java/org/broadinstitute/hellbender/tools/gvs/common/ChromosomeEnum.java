@@ -71,8 +71,12 @@ public enum ChromosomeEnum {
         return decodeValues.get(index);
     }
 
-    public static String stringValueOfCustomIndex(int index) {
-        return customDecodeValues.get(index);
+    public static String stringValueOfIndex(int index) {
+        if (!usingCustomMapping()) {
+            return decodeValues.get(index).getContigName();
+        } else {
+            return customDecodeValues.get(index);
+        }
     }
 
     public static boolean usingCustomMapping() {
@@ -88,7 +92,7 @@ public enum ChromosomeEnum {
     }
 
     public static Integer integerValueOfContig(String contig) {
-        if (currentVersion == ref37 || currentVersion == ref38) {
+        if (!usingCustomMapping()) {
             return valueOfContig(contig).index;
         } else {
             // this is a custom contig mapping that we're dealing with.  Look it up directly
