@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--avro_prefix', type=str, help='prefix for the Avro file path', required=True)
-    parser.add_argument('--new_sample_cutoff', type=str, help='cutoff for sample ids')
+    parser.add_argument('--new_sample_cutoff', type=int, help='cutoff for sample ids')
 
     args = parser.parse_args()
 
