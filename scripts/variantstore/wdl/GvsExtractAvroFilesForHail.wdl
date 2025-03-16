@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
-        String? new_sample_cutoff ## this will allow us to extract a subset of the samples -- specifically the new ones!
+        Int? new_sample_cutoff ## this will allow us to extract a subset of the samples -- specifically the new ones!
         String? git_branch_or_tag
         String? git_hash
         Boolean go = true
@@ -158,7 +158,7 @@ task ExtractFromSampleInfoTable {
         volatile: true
     }
     input {
-        String? new_sample_cutoff
+        Int? new_sample_cutoff
         String project_id
         String dataset_name
         String avro_sibling
@@ -263,7 +263,7 @@ task ExtractFromPloidyTable {
         volatile: true
     }
     input {
-        String? new_sample_cutoff
+        Int? new_sample_cutoff
         String project_id
         String dataset_name
         String ploidy_table_name
@@ -319,7 +319,7 @@ task ExtractFromSuperpartitionedTables {
         volatile: true
     }
     input {
-        String? new_sample_cutoff
+        Int? new_sample_cutoff
         String project_id
         String dataset_name
         String avro_sibling
