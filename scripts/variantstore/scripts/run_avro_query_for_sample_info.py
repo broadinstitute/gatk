@@ -35,33 +35,25 @@ def get_number_of_partitions(dataset_name, project_id):
 def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix, new_sample_cutoff=None):
     num_of_tables = get_number_of_partitions(dataset_name, project_id)
 
-    # For Foxtrot, we need to start at the new_sample_cutoff and export everything remaining in that group and then export the sample_info table in 4000 sample chunks to match with the other tables
+    # For Foxtrot, we need to start at the new_sample_cutoff and export everything remaining in that group and then export the sample_info table in 4000 sample chunks to match with the other tables (vet and ref_ranges)
     ## we want to know what table number to start with if we have a new sample cutoff
     ## and we will want groupings of 4000 samples once we have made it from the new sample cutoff to the next group start
     ## so we will need one avro file of everything from the int(new_sample_cutoff) to the end of the next table, and then the rest of the tables
-    if new_sample_cutoff:
-        ## set the loop down below to begin at the group after the cutoff
-        start_table = ceil(int(new_sample_cutoff) // 4000)
-        ## run a query to get the samples from the cutoff to the end of the table
-        first_file = start_table - 1
-        file_name = f"*.{first_file:03}.avro"
-        sql = f"""
-            EXPORT DATA OPTIONS(
-                uri='{avro_prefix}/sample_mapping/{file_name}', format='AVRO', compression='SNAPPY', overwrite=true) AS
-            SELECT sample_id, sample_name, '40',
-            'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' AS intervals_file
-            FROM `{project_id}.{dataset_name}.sample_info`
-            WHERE sample_id > {new_sample_cutoff} AND sample_id <= {start_table * 4000}
-            AND is_control = false
-            ORDER BY sample_id"""
+    def superpartition_for(sample_id):
+        if sample_id % 4000 == 0:
+            return sample_id // 4000
+        else:
+            return sample_id // 4000 + 1
 
-    else:
-        start_table = 1
-
-
+    start_table = 1 if not new_sample_cutoff else superpartition_for(new_sample_cutoff)
     for i in range(start_table, num_of_tables + 1):
         file_name = f"*.{i:03}.avro"
-        id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
+        if new_sample_cutoff:
+            id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000} AND sample_id > {new_sample_cutoff}"
+        else:
+            id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
+
+
         sql = f"""
             EXPORT DATA OPTIONS(
                 uri='{avro_prefix}/sample_mapping/{file_name}', format='AVRO', compression='SNAPPY', overwrite=true) AS
@@ -86,14 +78,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if (args.new_sample_cutoff):
-            construct_sample_info_avro_queries(args.call_set_identifier,
-                           args.dataset_name,
-                           args.project_id,
-                           args.avro_prefix,
-                           args.new_sample_cutoff)
-    else:
-        construct_sample_info_avro_queries(args.call_set_identifier,
-                   args.dataset_name,
-                   args.project_id,
-                   args.avro_prefix)
+    construct_sample_info_avro_queries(args.call_set_identifier,
+            args.dataset_name,
+            args.project_id,
+            args.avro_prefix,
+            args.new_sample_cutoff)
