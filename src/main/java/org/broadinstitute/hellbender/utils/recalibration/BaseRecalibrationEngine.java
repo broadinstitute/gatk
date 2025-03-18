@@ -25,7 +25,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.PerReadCovariateMatrix;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 
 import java.io.Serializable;
@@ -272,8 +271,8 @@ public final class BaseRecalibrationEngine implements Serializable {
                     final byte qual = recalInfo.getQual(eventType, offset);
                     final double isError = recalInfo.getErrorFraction(eventType, offset);
 
-                    final int readGroup = covariatesAtOffset[StandardCovariateList.READ_GROUP_COVARIATE_DEFAULT_INDEX];
-                    final int baseQuality = covariatesAtOffset[StandardCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
+                    final int readGroup = covariatesAtOffset[BQSRCovariateList.READ_GROUP_COVARIATE_DEFAULT_INDEX];
+                    final int baseQuality = covariatesAtOffset[BQSRCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
 
                     RecalUtils.incrementDatum3keys(qualityScoreTable, qual, isError, readGroup, baseQuality, eventIndex);
 

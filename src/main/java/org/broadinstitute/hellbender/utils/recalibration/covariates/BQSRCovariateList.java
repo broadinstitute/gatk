@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  *
  * Note: the first two covariates ({@link ReadGroupCovariate} and {@link QualityScoreCovariate})
  * are special in the way that they are represented in the BQSR recalibration table, and are
- * always required.
+ * always required. // tsato: why don't we call these 'required covariates'?
  *
  * The remaining covariates are called "additional covariates". The default additional covariates
  * are the context and cycle covariates, but the client can request others and/or disable the default
@@ -44,7 +44,14 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
 
     public static final List<String> COVARIATE_PACKAGES =
             Collections.unmodifiableList(Arrays.asList("org.broadinstitute.hellbender.utils.recalibration.covariates"));
-    public static final Set<Class<?>> DISCOVERED_COVARIATES;
+    public static final Set<Class<?>> DISCOVERED_COVARIATES; // tsato: can replace with ? extends Covariate right?
+
+    // tsato: ported from StandardCovariateList; may not need this, or might be better to remove them
+    public static final int READ_GROUP_COVARIATE_DEFAULT_INDEX = 0;
+    public static final int BASE_QUALITY_COVARIATE_DEFAULT_INDEX = 1;
+    public static final int CONTEXT_COVARIATE_DEFAULT_INDEX = 2;
+    public static final int CYCLE_COVARIATE_DEFAULT_INDEX = 3;
+    public static final int NUM_REQUIRED_COVARITES = 2;
 
     static {
         final ClassFinder classFinder = new ClassFinder();
@@ -53,7 +60,7 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
             classFinder.find(covariatePackage, Covariate.class);
         }
 
-        DISCOVERED_COVARIATES = Collections.unmodifiableSet(classFinder.getConcreteClasses());
+        DISCOVERED_COVARIATES = Collections.unmodifiableSet(classFinder.getConcreteClasses()); // tsato: need to exclude tests
     }
 
     public static List<String> getAllDiscoveredCovariateNames() {
@@ -78,7 +85,7 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
 
         this.additionalCovariates = Collections.unmodifiableList(createAdditionalCovariates(rac, allReadGroups));
 
-        List<Covariate> allCovariatesList = new ArrayList<>();
+        final List<Covariate> allCovariatesList = new ArrayList<>();
         allCovariatesList.add(readGroupCovariate);
         allCovariatesList.add(qualityScoreCovariate);
         additionalCovariates.forEach(allCovariatesList::add);
@@ -106,7 +113,7 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
             additionalCovariatesToAdd.addAll(createStandardCovariates(rac, allReadGroups));
         }
 
-        for ( final String requestedAdditionalCovariate : rac.COVARIATES ) {
+        for ( final String requestedAdditionalCovariate : rac.COVARIATES ) { // tsato: how did COVARIATES get populated?
             if ( isRequiredCovariate(requestedAdditionalCovariate) ) {
                 logger.warn("Covariate " + requestedAdditionalCovariate + " is a required covariate that is always on. Ignoring explicit request for it.");
             }
@@ -125,22 +132,24 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
         return additionalCovariatesToAdd;
     }
 
+    // tsato: javadoc?
     private List<Covariate> createStandardCovariates(final RecalibrationArgumentCollection rac, final List<String> allReadGroups) {
         List<Covariate> standardCovariates = new ArrayList<>();
 
-        for ( final String standardCovariateName : STANDARD_COVARIATE_NAMES ) {
+        for ( final String standardCovariateName : STANDARD_COVARIATE_NAMES ) { // tsato: I don't see any harm in hardcoding the instantiation of these classes
             standardCovariates.add(createAdditionalCovariate(standardCovariateName, rac, allReadGroups));
         }
 
         return standardCovariates;
     }
 
+    // tsato: javadoc createAdditionalCovariate is a bit of a misnomer, because the standard ones are initialized this way too.
     private Covariate createAdditionalCovariate(final String covariateName, final RecalibrationArgumentCollection rac, final List<String> allReadGroups) {
-        for ( final Class<?> covariateClass : DISCOVERED_COVARIATES ) {
+        for ( final Class<?> covariateClass : DISCOVERED_COVARIATES ) { // tsato: ? here. Can I use ? extends Covariate or something?
             if ( covariateName.equals(covariateClass.getSimpleName()) ) {
                 try {
                     @SuppressWarnings("unchecked")
-                    final Covariate covariate = ((Class<? extends Covariate>)covariateClass).newInstance();
+                    final Covariate covariate = ((Class<? extends Covariate>)covariateClass).getDeclaredConstructor().newInstance(); // tsato: understand what's going on here
                     covariate.initialize(rac, allReadGroups);
                     return covariate;
                 }
@@ -229,7 +238,7 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
      * For each covariate compute the values for all positions in this read and
      * record the values in the provided storage object.
       */
-    public void recordAllValuesInStorage(final GATKRead read, final SAMFileHeader header, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
+    public void populatePerReadCovariateMatrix(final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix resultsStorage, final boolean recordIndelValues) {
         for (int i = 0, n = allCovariates.size(); i < n; i++) {
             final Covariate cov = allCovariates.get(i);
             resultsStorage.setCovariateIndex(i);

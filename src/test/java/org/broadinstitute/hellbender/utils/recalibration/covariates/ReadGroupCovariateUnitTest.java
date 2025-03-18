@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -58,7 +59,6 @@ public final class ReadGroupCovariateUnitTest extends GATKBaseTest {
 
     @Test()
     public void testMissingReadGroup() {
-<<<<<<< HEAD
         final String expected = "SAMPLE.1";
         final ReadGroupCovariate covariate = new ReadGroupCovariate();
         covariate.initialize(new RecalibrationArgumentCollection(), Arrays.asList(expected));

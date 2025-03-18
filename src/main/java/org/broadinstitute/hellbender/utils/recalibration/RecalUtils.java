@@ -17,7 +17,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.PerReadCovariateMatrix;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
@@ -551,11 +550,12 @@ public final class RecalUtils {
      *
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static PerReadCovariateMatrix computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
-        final PerReadCovariateMatrix covariateTable = new PerReadCovariateMatrix(read.getLength(), covariates.size(), keyCache);
-        // covariates.populatePerReadCovariateMatrix(read, header, covariateTable, recordIndelValues);
-        computeCovariates(read, header, covariates, covariateTable, recordIndelValues);
-        return covariateTable;
+    public static PerReadCovariateMatrix computeCovariates(final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
+        final PerReadCovariateMatrix covariateMatrix = new PerReadCovariateMatrix(read.getLength(), covariates.size(), keyCache);
+        // tsato: this seems redundant; comment out for now
+        // covariates.populatePerReadCovariateMatrix(read, header, covariateMatrix, recordIndelValues);
+        computeCovariates(read, header, covariates, covariateMatrix, recordIndelValues);
+        return covariateMatrix;
     }
 
     /**
@@ -572,8 +572,8 @@ public final class RecalUtils {
      * @param resultsStorage      The object to store the covariate values
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      */
-    public static void computeCovariates( final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
-        covariates.recordAllValuesInStorage(read, header, resultsStorage, recordIndelValues);
+    public static void computeCovariates( final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final PerReadCovariateMatrix resultsStorage, final boolean recordIndelValues) {
+        covariates.populatePerReadCovariateMatrix(read, header, resultsStorage, recordIndelValues);
     }
 
     /**
