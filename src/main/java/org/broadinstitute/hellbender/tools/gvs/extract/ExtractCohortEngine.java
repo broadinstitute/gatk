@@ -1378,6 +1378,11 @@ public class ExtractCohortEngine {
         public InferredReferenceRecord(GQStateEnum inferredState) {
             super(SchemaUtils.chromAdjustment + 1, -1, -1, inferredState.getValue());
         }
+
+        @Override
+        public boolean isInferredReferenceRecord() {
+            return true;
+        }
     }
 
     private ReferenceRecord processReferenceDataFromCache(Map<Long, Set<ReferenceRecord>> referenceCache, long location, long sampleId) {

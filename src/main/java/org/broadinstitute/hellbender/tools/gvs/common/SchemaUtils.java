@@ -64,7 +64,6 @@ public class SchemaUtils {
     //Ploidy table
     public static final String CHROMOSOME = "chromosome";
     public static final String SAMPLE_ID = "sample_id";
-    public static final String GENOTYPE = "genotype";
     public static final String PLOIDY = "ploidy";
 
     // Site filtering table
@@ -97,7 +96,11 @@ public class SchemaUtils {
     public static final long chromAdjustment = 1000000000000L;
 
     public static long encodeLocation(String chrom, int position) {
-        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
+        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).getIndex();
+        return (long) chromosomeIndex * chromAdjustment + (long) position;
+    }
+
+    public static long encodeLocation(short chromosomeIndex, int position) {
         return (long) chromosomeIndex * chromAdjustment + (long) position;
     }
 
@@ -109,7 +112,7 @@ public class SchemaUtils {
         Next 4 - state (16 values)
      */
     public static long encodeCompressedRefBlock(String chrom, long position, long length, long stateAsInt) {
-        long chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
+        long chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).getIndex();
         long packedBytes = ((0xFFFF & chromosomeIndex) << 48) |
                 ((0xFFFFFFFF & position) << 16) |
                 ((0xFFF & length) << 4) |
@@ -119,11 +122,19 @@ public class SchemaUtils {
     }
 
     public static String decodeContig(long location) {
-        return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
+        return ChromosomeEnum.valueOfIndex((int) (location / chromAdjustment)).getContigName();
+    }
+
+    public static short decodeChromosomeIndex(Long location) {
+        return (short) (location / chromAdjustment);
     }
 
     public static int decodePosition(long location) {
-        return (int)(location % chromAdjustment);
+        return Math.toIntExact(location % chromAdjustment);
+    }
+
+    public static String decodeContigFromIndex(short chromosomeIndex) {
+        return ChromosomeEnum.valueOfIndex(chromosomeIndex).getContigName();
     }
 
     public final static Comparator<GenericRecord> LOCATION_AND_ALLELES_COMPARATOR = (o1, o2) -> {

@@ -30,8 +30,8 @@ public enum ChromosomeEnum {
     chrY(24, "Y"),
     chrM(25, "MT");
 
-    int index;
-    String v37ContigName;
+    private final int index;
+    private final String v37ContigName;
     private static Map<String, ChromosomeEnum> ref37 = new HashMap<>();
     private static final Map<String, ChromosomeEnum> ref38 = new HashMap<>();
     private static final Map<Integer, ChromosomeEnum> decodeValues = new HashMap<>();
@@ -78,4 +78,7 @@ public enum ChromosomeEnum {
         }
     }
 
+    public int getIndex() {
+        return index;
+    }
 }
