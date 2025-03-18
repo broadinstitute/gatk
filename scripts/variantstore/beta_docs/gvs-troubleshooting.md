@@ -44,7 +44,8 @@ Note that if your workflow failed during ingestion, generally, the GvsBeta workf
    1. The lock table can be found inside your GVS BigQuery dataset  -- `{your_dataset_id}.sample_id_assignment_lock`. 
    1. It is created to prevent duplicate sample errors and if you see this, it's better to start fresh. 
    1. Please fully delete the GVS BigQuery dataset and recreate it as you did originally. Then kick off the ingest just as you did before--Make sure call caching is turned off.
-
+1. LoadData failure with `ERROR: (gcloud.storage.cp) HTTPError 403` ... `Permission 'storage.objects.get' denied on resource (or it may not exist).`
+   1. This error occurs when the users pet service account does not have the correct permissions to access the GVCF referenced in the error message or that it does not exist.
 
 
 
