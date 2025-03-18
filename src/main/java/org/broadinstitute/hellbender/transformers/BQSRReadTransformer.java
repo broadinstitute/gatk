@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.PerReadCovariateMatrix;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadGroupCovariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 
 import java.io.File;
@@ -130,16 +129,16 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * It updates the base qualities of the read with the new recalibrated qualities (for all event types)
      * <p>
      * Implements a serial recalibration of the reads using the combinational table.
-     * First, we perform a positional recalibration, and then a subsequent dinuc correction.
+     * First, we perform a positional recalibration, and then a subsequent dinucleotide (dinuc) correction.
      * <p>
      * Given the full recalibration table, we perform the following preprocessing steps:
      * <p>
      * - calculate the global quality score shift across all data [DeltaQ]
      * - calculate for each of cycle and dinuc the shift of the quality scores relative to the global shift
-     * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Qempirical(pos, qual, dinuc) - Qreported(pos, qual, dinuc) / Npos * Nqual
+     * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Q_empirical(pos, qual, dinuc) - Q_reported(pos, qual, dinuc) / Npos * Nqual
      * - The final shift equation is:
      * <p>
-     * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
+     * Q_recal = Q_reported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
      *
      * @param originalRead the read to recalibrate
      */
@@ -210,17 +209,17 @@ public final class BQSRReadTransformer implements ReadTransformer {
             // clear and reuse this array to save space
             Arrays.fill(recalDatumsForSpecialCovariates, null);
             final int[] covariatesAtOffset = covariatesForRead[offset];
-            final int reportedBaseQualityAtOffset = covariatesAtOffset[StandardCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
+            final int reportedBaseQualityAtOffset = covariatesAtOffset[BQSRCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
 
             // Datum for the tuple (read group, reported quality score).
             final RecalDatum qualityScoreDatum = recalibrationTables.getQualityScoreTable()
                     .get3Keys(rgKey, reportedBaseQualityAtOffset, BASE_SUBSTITUTION_INDEX);
 
-            for (int j = StandardCovariateList.NUM_REQUIRED_COVARITES; j < totalCovariateCount; j++) {
+            for (int j = BQSRCovariateList.NUM_REQUIRED_COVARITES; j < totalCovariateCount; j++) {
                 // If the covariate is -1 (e.g. the first base in each read should have -1 for the context covariate),
                 // we simply leave the corresponding Datum to be null, which will subsequently be ignored when it comes time to recalibrate.
                 if (covariatesAtOffset[j] >= 0) {
-                    recalDatumsForSpecialCovariates[j - StandardCovariateList.NUM_REQUIRED_COVARITES] = recalibrationTables.getTable(j)
+                    recalDatumsForSpecialCovariates[j - BQSRCovariateList.NUM_REQUIRED_COVARITES] = recalibrationTables.getTable(j)
                             .get4Keys(rgKey, reportedBaseQualityAtOffset, covariatesAtOffset[j], BASE_SUBSTITUTION_INDEX);
                 }
             }

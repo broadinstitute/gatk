@@ -39,7 +39,6 @@ public final class ContextCovariate implements Covariate {
 
     public static final int UNKNOWN_OR_ERROR_CONTEXT_CODE = -1;
 
-    public ContextCovariate(final RecalibrationArgumentCollection RAC){
     @Override
     public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
         mismatchesContextSize = RAC.MISMATCHES_CONTEXT_SIZE;
@@ -78,7 +77,7 @@ public final class ContextCovariate implements Covariate {
 
         final int readLengthAfterClipping = strandedClippedBases.length;
 
-        // this is necessary to ensure that we don't keep historical data in the ReadCovariates values
+        // this is necessary to ensure that we don't keep historical data in the PerReadCovariateMatrix values
         // since the context covariate may not span the entire set of values in read covariates
         // due to the clipping of the low quality bases
         if ( readLengthAfterClipping != originalReadLength) {

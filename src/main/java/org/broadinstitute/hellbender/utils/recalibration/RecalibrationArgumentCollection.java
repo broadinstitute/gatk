@@ -34,7 +34,7 @@ public final class RecalibrationArgumentCollection implements Serializable {
 
     /**
      * Note that the ReadGroup and QualityScore covariates are required and do not need to be specified.
-     * Also, unless --no_standard_covs is specified, the Cycle and Context covariates are standard and are included by default.
+     * Also, unless --no-standard-covs is specified, the Cycle and Context covariates are standard and are included by default.
      * Use the --list argument to see the available covariates.
      */
     @Argument(fullName = "covariate", shortName = "cov", doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)

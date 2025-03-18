@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ public final class ReadGroupCovariate implements Covariate {
      */
     private Map<Integer, String> readGroupReverseLookupTable;
 
+    @Override
     public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
         final Map<String, Integer> rgLookupTable = new LinkedHashMap<>();
         final Map<Integer, String> rgReverseLookupTable = new LinkedHashMap<>();

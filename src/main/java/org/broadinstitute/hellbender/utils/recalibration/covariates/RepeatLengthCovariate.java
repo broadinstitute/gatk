@@ -30,7 +30,7 @@ public class RepeatLengthCovariate implements Covariate {
     }
 
     @Override
-    public void recordValues( final GATKRead read, final SAMFileHeader header, final ReadCovariates values, final boolean recordIndelValues) {
+    public void recordValues( final GATKRead read, final SAMFileHeader header, final PerReadCovariateMatrix values, final boolean recordIndelValues) {
         // store the original bases and then write Ns over low quality ones
         final byte[] originalBases = Arrays.copyOf(read.getBases(), read.getBases().length);
 

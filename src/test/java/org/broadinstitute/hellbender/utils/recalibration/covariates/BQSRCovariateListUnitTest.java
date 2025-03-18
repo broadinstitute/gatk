@@ -79,7 +79,7 @@ public final class BQSRCovariateListUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public void recordValues(GATKRead read, SAMFileHeader header, ReadCovariates values, boolean recordIndels) {
+            public void recordValues(GATKRead read, SAMFileHeader header, PerReadCovariateMatrix values, boolean recordIndels) {
 
             }
 
