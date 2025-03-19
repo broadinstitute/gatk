@@ -37,6 +37,10 @@ workflow GvsBulkIngestGenomes {
         String reference_name = "hg38"
         File? interval_list
 
+        # for supporting custom references... for now. Later map the references and use the reference_name above
+        File? custom_ref_dictionary
+        File? custom_contig_mapping
+
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
         String drop_state = "NONE"
 
@@ -131,6 +135,8 @@ workflow GvsBulkIngestGenomes {
             input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
             reference_name = reference_name,
             interval_list = interval_list,
+            custom_ref_dictionary = custom_ref_dictionary,
+            custom_contig_mapping = custom_contig_mapping,
             load_data_scatter_width = load_data_scatter_width,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,

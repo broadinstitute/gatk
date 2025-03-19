@@ -24,7 +24,9 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
@@ -164,6 +166,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean storeCompressedReferences = false;
 
+    @Argument(
+            fullName = "contig-mapping-file",
+            doc = "Path to the contig mapping file",
+            optional = true
+    )
+    public String contigMappingFile = null;
+
     private boolean shouldWriteReferencesLoadedStatusRow = false;
 
     private boolean shouldWriteVariantsLoadedStatusRow = false;
@@ -171,6 +180,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private boolean shouldWriteVCFHeadersLoadedStatusRow = false;
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
+
+    private Map<String, Integer> contigMappings = null;
 
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
@@ -200,8 +211,19 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
         }
 
-        // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
-        ChromosomeEnum.setRefVersion(refVersion);
+        if (refVersion.equals("CUSTOM")) {
+            // Look for the contig mapping files
+            if (contigMappingFile == null) {
+                throw new IllegalArgumentException("Contig mapping file must be provided when using non-human references");
+            }
+            contigMappings = loadContigMappingFile(contigMappingFile);
+            ChromosomeEnum.setCustomContigMap(contigMappings);
+        } else {
+            // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
+            ChromosomeEnum.setRefVersion(refVersion);
+        }
+
+
 
         String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(getHeaderForVariants()) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
@@ -459,4 +481,27 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
         return seqDictionary;
     }
+
+    private Map<String, Integer> loadContigMappingFile(String contigMappingFilePath) {
+        Map<String, Integer> contigMappings = new HashMap<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(contigMappingFilePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split("\t");
+                if (parts.length == 2) {
+                    String contig = parts[0];
+                    Integer id = Integer.parseInt(parts[1]);
+                    contigMappings.put(contig, id);
+                } else {
+                    throw new IllegalArgumentException("Invalid line format: " + line);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading contig mapping file", e);
+        }
+
+        return contigMappings;
+    }
+
 }

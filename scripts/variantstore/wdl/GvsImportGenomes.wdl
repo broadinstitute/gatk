@@ -30,7 +30,12 @@ workflow GvsImportGenomes {
     Int beta_customer_max_scatter = 200
 
     String reference_name = "hg38"
+
     File? interval_list
+
+    # for supporting custom references... for now. Later map the references and use the reference_name above
+    File? custom_ref_dictionary
+    File? custom_contig_mapping
 
     Int? load_data_scatter_width
     Int? load_data_preemptible_override
@@ -45,6 +50,10 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
     Boolean is_wgs = true
+
+    Boolean is_custom_ref = false
+    File? custom_ref_dictionary
+    File? custom_contig_mapping
   }
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
@@ -157,6 +166,8 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = effective_interval_list,
+        custom_ref_dictionary = custom_ref_dictionary,
+        custom_contig_mapping = custom_contig_mapping,
         gatk_docker = effective_gatk_docker,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
@@ -247,6 +258,8 @@ task LoadData {
     File interval_list
     File sample_map
     Array[String] sample_names
+    File? custom_ref_dictionary
+    File? custom_contig_mapping
 
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
@@ -283,6 +296,9 @@ task LoadData {
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String table_name = "sample_info"
+
+  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
+
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -374,6 +390,8 @@ task LoadData {
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
         ~{"--ref-block-gq-to-ignore " + drop_state} \
+        ~{"--sequence-dictionary " + custom_ref_dictionary} \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
         --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
@@ -383,7 +401,7 @@ task LoadData {
         --enable-vet ~{load_vet_and_ref_ranges} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
-        --ref-version 38 \
+        --ref-version ~{ref_version} \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-headers ~{load_vcf_headers} \
         --use-compressed-refs ~{use_compressed_references}
