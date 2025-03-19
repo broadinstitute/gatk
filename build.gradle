@@ -374,7 +374,7 @@ dependencies {
 
     //use netty bom to enforce same netty version
     //this upgrades all transitive netty dependencies without adding a direct dependency on netty
-    implementation platform('io.netty:netty-bom:4.1.114.Final')
+    implementation platform('io.netty:netty-bom:4.1.118.Final')
 
     implementation platform('org.eclipse.jetty:jetty-bom:9.4.56.v20240826')
     /************************************************************************************************/
