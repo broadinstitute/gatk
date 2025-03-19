@@ -39,13 +39,13 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
     ## we want to know what table number to start with if we have a new sample cutoff
     ## and we will want groupings of 4000 samples once we have made it from the new sample cutoff to the next group start
     ## so we will need one avro file of everything from the int(new_sample_cutoff) to the end of the next table, and then the rest of the tables
-    def superpartition_for(sample_id):
-        if sample_id % 4000 == 0:
-            return sample_id // 4000
+    def superpartition_for(new_sample_cutoff_id):
+        if new_sample_cutoff_id % 4000 == 0:
+            return new_sample_cutoff_id // 4000
         else:
-            return sample_id // 4000 + 1
+            return new_sample_cutoff_id // 4000 + 1
 
-    start_table = 1 if not new_sample_cutoff else superpartition_for(new_sample_cutoff)
+    start_table = 1 if not new_sample_cutoff else superpartition_for(new_sample_cutoff + 1)
     for i in range(start_table, num_of_tables + 1):
         file_name = f"*.{i:03}.avro"
         if new_sample_cutoff:
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--avro_prefix', type=str, help='prefix for the Avro file path', required=True)
-    parser.add_argument('--new_sample_cutoff', type=int, help='cutoff for sample ids')
+    parser.add_argument('--new_sample_cutoff', type=int, help='cutoff for sample ids-- specifically the last sample from the previous extract that is not to be included in this extract')
 
     args = parser.parse_args()
 
