@@ -40,10 +40,7 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
     ## and we will want groupings of 4000 samples once we have made it from the new sample cutoff to the next group start
     ## so we will need one avro file of everything from the int(new_sample_cutoff) to the end of the next table, and then the rest of the tables
     def superpartition_for(new_sample_cutoff_id):
-        if new_sample_cutoff_id % 4000 == 0:
-            return new_sample_cutoff_id // 4000
-        else:
-            return new_sample_cutoff_id // 4000 + 1
+        return math.ceil(new_sample_cutoff_id / 4000)
 
     start_table = 1 if not new_sample_cutoff else superpartition_for(new_sample_cutoff + 1)
     for i in range(start_table, num_of_tables + 1):
