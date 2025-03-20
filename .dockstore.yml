@@ -327,6 +327,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1590_mem_footprint_part_I
+             - gg_VS-1449_AddReferenceStringToVcf
          tags:
              - /.*/
    - name: GvsIngestTieout
