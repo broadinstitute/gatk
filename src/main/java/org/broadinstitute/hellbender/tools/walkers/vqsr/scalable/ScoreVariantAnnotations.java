@@ -539,12 +539,14 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                                                   final List<Boolean> isVariantType,
                                                                   final VariantAnnotationsScorer variantTypeScorer,
                                                                   final List<Double> allScores) {
-        final File variantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isVariantType);
-        final File variantTypeScoresFile = IOUtils.createTempFile("temp", ".scores.hdf5");
-        variantTypeScorer.score(variantTypeAnnotationsFile, variantTypeScoresFile); // TODO we do not fail until here in the case of mismatched annotation names; we could fail earlier
-        final double[] variantTypeScores = VariantAnnotationsScorer.readScores(variantTypeScoresFile);
-        final Iterator<Double> variantTypeScoresIterator = Arrays.stream(variantTypeScores).iterator();
-        IntStream.range(0, allScores.size()).filter(isVariantType::get).forEach(i -> allScores.set(i, variantTypeScoresIterator.next()));
+        if (isVariantType.stream().anyMatch(x -> x)) {
+            final File variantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isVariantType);
+            final File variantTypeScoresFile = IOUtils.createTempFile("temp", ".scores.hdf5");
+            variantTypeScorer.score(variantTypeAnnotationsFile, variantTypeScoresFile); // TODO we do not fail until here in the case of mismatched annotation names; we could fail earlier
+            final double[] variantTypeScores = VariantAnnotationsScorer.readScores(variantTypeScoresFile);
+            final Iterator<Double> variantTypeScoresIterator = Arrays.stream(variantTypeScores).iterator();
+            IntStream.range(0, allScores.size()).filter(isVariantType::get).forEach(i -> allScores.set(i, variantTypeScoresIterator.next()));
+        }
     }
 
     @Override

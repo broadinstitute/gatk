@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.primitives.Doubles;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -13,6 +12,7 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,6 +35,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -45,13 +46,18 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     private final Set<String> normalSamples;
     final boolean hasNormal;
     protected VariantAnnotatorEngine annotationEngine;
-    private final Optional<Mutect3DatasetEngine> mutect3DatasetEngine;
+
+    // one can have multiple dataset engines, eg collecting train and test data at the same time
+    private final List<PermutectDatasetEngine> permutectTrainingDatasetEngines = new ArrayList<>();
+    private final List<PermutectDatasetEngine> permutectTestDatasetEngines = new ArrayList<>();
 
     // If MTAC.minAF is non-zero we softly cut off allele fractions below minAF with a Beta prior of the form Beta(1+epsilon, 1); that is
     // the prior on allele fraction f is proportional to f^epsilon.  If epsilon is small this prior vanishes as f -> 0
     // and very rapidly becomes flat.  We choose epsilon such that minAF^epsilon = 0.5.
     private final double refPseudocount = 1;
     private final double altPseudocount;
+
+    private RandomGenerator rng = new JDKRandomGenerator();
 
     public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples,
                                    final VariantAnnotatorEngine annotationEngine,
@@ -63,10 +69,19 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         hasNormal = !normalSamples.isEmpty();
         this.annotationEngine = annotationEngine;
 
-        mutect3DatasetEngine = MTAC.mutect3Dataset == null ? Optional.empty() :
-                Optional.of(new Mutect3DatasetEngine(MTAC.mutect3Dataset, MTAC.mutect3TrainingDataMode, MTAC.maxRefCountForMutect3,
-                        MTAC.maxAltCountForMutect3, MTAC.mutect3NonArtifactRatio, normalSamples, header, sequenceDictionary));
-        Utils.validateArg(!(MTAC.mutect3Dataset == null && MTAC.mutect3TrainingDataMode), "No dataset file specified for Mutect3 training data mode.");
+        //
+        if (MTAC.permutectTrainingDataset != null) {
+            permutectTrainingDatasetEngines.add(new PermutectDatasetEngine(MTAC.permutectTrainingDataset, true,
+                    MTAC.maxPermutectRefCount,MTAC.maxPermutectAltCount, MTAC.permutectNonArtifactRatio, normalSamples,
+                    header, sequenceDictionary));
+        }
+
+        // important: this is not an "else if" -- having two permutect dataset engines is permissible
+        if (MTAC.permutectTestDataset != null) {
+            permutectTestDatasetEngines.add(new PermutectDatasetEngine(MTAC.permutectTestDataset, false,
+                    MTAC.maxPermutectRefCount,MTAC.maxPermutectAltCount, MTAC.permutectNonArtifactRatio, normalSamples,
+                    header, sequenceDictionary));
+        }
     }
 
     /**
@@ -157,8 +172,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
 
+            final boolean considerGermlineActive = MTAC.genotypeGermlineSites && rng.nextDouble() < MTAC.genotypeGermlineSitesFraction;
+
             final List<Allele> allelesToGenotype = tumorAltAlleles.stream()
-                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
+                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || considerGermlineActive || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
                     .toList();
 
             // record somatic alleles for later use in the Event Count annotation
@@ -224,10 +241,14 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods, Fragment::getReads);
             }
 
-            final Optional<List<VariantContext>> truthVCs = MTAC.mutect3TrainingTruth == null ? Optional.empty() :
-                    Optional.of(featureContext.getValues(MTAC.mutect3TrainingTruth, mergedVC.getStart()));
-            mutect3DatasetEngine.ifPresent(engine -> engine.addData(referenceContext, annotatedCall, truthVCs,
-                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.mutect3DatasetMode));
+            final Optional<List<VariantContext>> trainingTruthVCs = MTAC.permutectTrainingTruth == null ? Optional.empty() :
+                    Optional.of(featureContext.getValues(MTAC.permutectTrainingTruth, mergedVC.getStart()));
+            final Optional<List<VariantContext>> testTruthVCs = MTAC.permutectTestTruth == null ? Optional.empty() :
+                    Optional.of(featureContext.getValues(MTAC.permutectTestTruth, mergedVC.getStart()));
+            permutectTrainingDatasetEngines.forEach(engine -> engine.addData(referenceContext, annotatedCall, trainingTruthVCs,
+                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.permutectDatasetMode));
+            permutectTestDatasetEngines.forEach(engine -> engine.addData(referenceContext, annotatedCall, testTruthVCs,
+                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.permutectDatasetMode));
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );
@@ -454,6 +475,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
      */
     @Override
     public void close() {
-        mutect3DatasetEngine.ifPresent(engine -> engine.close());
+        permutectTrainingDatasetEngines.forEach(engine -> engine.close());
+        permutectTestDatasetEngines.forEach(engine -> engine.close());
     }
 }
