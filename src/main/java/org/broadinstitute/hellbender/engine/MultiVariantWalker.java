@@ -86,7 +86,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                     features.addToFeatureSources(0, featureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                                  referenceArguments.getReferencePath());
                 }
-        ); 9434,
+        );
 
         final boolean skipDictionaryValidation = !seqValidationArguments.performSequenceDictionaryValidation() || !doDictionaryCrossValidation();
         if (skipDictionaryValidation && !hasReference() && getMasterSequenceDictionary() == null) {
