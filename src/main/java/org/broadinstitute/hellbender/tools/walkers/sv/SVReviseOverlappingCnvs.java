@@ -335,7 +335,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             final Set<String> smallerSampleSupport = smallerSupport.get(sample);
             final Genotype genotype2 = smallerVariant.getGenotype(sample);
 
-            // Condition 1: Smaller depth call is being driven by larger call
+            // Condition 1: Smaller depth call is driven by larger call
             if (largerSampleSupport.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && largerSampleSupport.size() > 1
                     && smallerSampleSupport.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1))) && !largerIsMultiCnv) {
                 if (largerSampleRdCn == 0) {
@@ -349,7 +349,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
                 }
             }
 
-            // Condition 2: Smaller CNV is driven by larger CNV genotype
+            // Condition 2: Smaller call is driven by larger depth call
             else if (smallerSampleSupport.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && smallerSampleSupport.size() > 1
                     && largerSampleSupport.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && !genotype2.isHomRef() && !smallerIsMultiCnv && isOverlapping) {
