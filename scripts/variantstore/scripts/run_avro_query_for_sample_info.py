@@ -32,12 +32,24 @@ def get_number_of_partitions(dataset_name, project_id):
     return math.ceil(max_table_num[0])
 
 
-def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix):
+def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix, new_sample_cutoff=None):
     num_of_tables = get_number_of_partitions(dataset_name, project_id)
 
-    for i in range(1, num_of_tables + 1):
+    # For Foxtrot, we need to start at the new_sample_cutoff and export everything remaining in that group and then export the sample_info table in 4000 sample chunks to match with the other tables (vet and ref_ranges)
+    ## we want to know what table number to start with if we have a new sample cutoff
+    ## and we will want groupings of 4000 samples once we have made it from the new sample cutoff to the next group start
+    ## so we will need one avro file of everything from the int(new_sample_cutoff) to the end of the next table, and then the rest of the tables
+    def superpartition_for(new_sample_cutoff_id):
+        return math.ceil(new_sample_cutoff_id / 4000)
+
+    start_table = 1 if not new_sample_cutoff else superpartition_for(new_sample_cutoff + 1)
+    for i in range(start_table, num_of_tables + 1):
         file_name = f"*.{i:03}.avro"
-        id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
+        if new_sample_cutoff:
+            id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000} AND sample_id > {new_sample_cutoff}"
+        else:
+            id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
+
 
         sql = f"""
             EXPORT DATA OPTIONS(
@@ -59,10 +71,12 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--avro_prefix', type=str, help='prefix for the Avro file path', required=True)
+    parser.add_argument('--new_sample_cutoff', type=int, help='cutoff for sample ids-- specifically the last sample from the previous extract that is not to be included in this extract')
 
     args = parser.parse_args()
 
     construct_sample_info_avro_queries(args.call_set_identifier,
-                   args.dataset_name,
-                   args.project_id,
-                   args.avro_prefix)
+            args.dataset_name,
+            args.project_id,
+            args.avro_prefix,
+            args.new_sample_cutoff)
