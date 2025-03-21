@@ -326,7 +326,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1590_mem_footprint_part_I
+             - rc-vs-1576-avro-update
              - gg_VS-1449_AddReferenceStringToVcf
          tags:
              - /.*/
@@ -355,7 +355,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1418_ploidy_for_foxtrot_vds
+             - rc-vs-1576-avro-update
          tags:
              - /.*/
    - name: GvsCallsetStatistics
