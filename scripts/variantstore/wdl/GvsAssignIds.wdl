@@ -248,7 +248,8 @@ task AssignIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_table_id
 
     # remove the lock table
-    bq --apilog=false --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
+    # DEBUG keep this around for inspection
+    # bq --apilog=false --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
     docker: cloud_sdk_docker
