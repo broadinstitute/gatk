@@ -18,18 +18,17 @@ workflow GvsAnnotateAnyVcf {
 
     parameter_meta {
         project_id: {
-            help: "Google project ID for the GVS BigQuery dataset"
-        }
+                        help: "Google project ID for the GVS BigQuery dataset"
+                    }
         dataset_name: {
-            help: "BigQuery dataset name for GVS"
-        }
+                          help: "BigQuery dataset name for GVS"
+                      }
         sites_only_vcf: {
-            help: "Sites-only VCF file for annotation"
-        }
+                            help: "Sites-only VCF file for annotation"
+                        }
         output_path: {
-            help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
-        }
-
+                         help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
+                     }
     }
 
     call Utils.GetToolVersions {
@@ -48,7 +47,6 @@ workflow GvsAnnotateAnyVcf {
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
 
-
     if (!defined(sites_only_vcf)) {
         call Utils.TerminateWorkflow as MustSetSitesOnlyVcfCreationParameters {
             input:
@@ -66,7 +64,6 @@ workflow GvsAnnotateAnyVcf {
     String reference_fasta = GetReference.reference.reference_fasta
 
     if (defined(sites_only_vcf)) {
-
         call Utils.CopyFile as CopySitesOnlyVcf {
             input:
                 input_file = sites_only_vcf,
@@ -102,53 +99,14 @@ workflow GvsAnnotateAnyVcf {
 
         String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
 
-#        scatter(i in range(length(SplitIntervals.interval_files))) {
-#            String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
-#            String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
-
-#            call Utils.SelectVariants {
-#                input:
-#                    input_vcf = CopySitesOnlyVcf.output_file_path,
-#                    input_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
-#                    interval_list = SplitIntervals.interval_files[i],
-#                    output_basename = vcf_filename,
-#                    gatk_docker = effective_gatk_docker,
-#            }
-
-#            call RemoveDuplicatesFromSitesOnlyVCF {
-#                input:
-#                    sites_only_vcf = SelectVariants.output_vcf,
-#                    ref = reference_fasta,
-#                    variants_docker = effective_variants_docker,
-#            }
-
-            ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-            call AnnotateVCF {
-                input:
-                    cromwell_root = GetToolVersions.cromwell_root,
-                    input_vcf = CopySitesOnlyVcf.output_file_path,
-                    output_annotated_file_name = "${vcf_filename}_annotated",
-                    variants_nirvana_docker = effective_variants_nirvana_docker,
-                    use_reference_disk = use_reference_disk,
-            }
-
-#            call PrepVtAnnotationJson {
-#                input:
-#                    positions_annotation_json = AnnotateVCF.positions_annotation_json,
-#                    output_file_suffix = "${vcf_filename}.json.gz",
-#                    output_path = effective_output_path,
-#                    variants_docker = effective_variants_docker,
-#            }
-#
-#            call PrepGenesAnnotationJson {
-#                input:
-#                    genes_annotation_json = AnnotateVCF.genes_annotation_json,
-#                    output_file_suffix = "${vcf_filename}.json.gz",
-#                    output_path = effective_output_path,
-#                    variants_docker = effective_variants_docker,
-#            }
-
-#        }
+        call AnnotateVCF {
+            input:
+                cromwell_root = GetToolVersions.cromwell_root,
+                input_vcf = CopySitesOnlyVcf.output_file_path,
+                output_annotated_file_name = "${sites_only_vcf_basename}_annotated",
+                variants_nirvana_docker = effective_variants_nirvana_docker,
+                use_reference_disk = use_reference_disk,
+        }
     }
 
     output {
@@ -159,73 +117,57 @@ workflow GvsAnnotateAnyVcf {
 }
 
 
-
 task RemoveDuplicatesFromSitesOnlyVCF {
     input {
         File sites_only_vcf
         File ref
         String variants_docker
     }
-
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
 
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
     # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
     command <<<
-        # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # custom function to prepend the current datetime to an echo statement
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         echo_date "VAT: Convert input to BCF format"
         bcftools convert --threads 4 -O b -o sites_only.bcf ~{sites_only_vcf}
 
         echo_date "VAT: Calculating number of sites with Ns"
-
-        ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
-        ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
-        ##       determined by examining the sites-only VCF provided to this WDL.
         bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
-        ## note that normalization may create sites with more than 50 alt alleles
         bcftools norm --threads 4 -m- --check-ref w -f ~{ref} filtered_sites_only.bcf -O b -o normalized.bcf
         rm filtered_sites_only.bcf
 
         echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
-
-        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
-        ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
 
         echo_date "VAT: done with duplicate detection"
         wc -l duplicates.tsv
         echo_date "VAT: Duplicates may have been found"
 
-        # If there ARE dupes to remove
         if [ -s duplicates.tsv ]; then
-            ## remove those rows (that match up to the first 5 cols)
-            echo_date "VAT: Removing those rows"
-            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv > deduplicated.vcf
+        echo_date "VAT: Removing those rows"
+        bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv > deduplicated.vcf
         else
-            # There are no duplicates to remove
-            echo_date "VAT: No duplicates found"
-            bcftools view --threads 4 normalized.bcf -o deduplicated.vcf
+        echo_date "VAT: No duplicates found"
+        bcftools view --threads 4 normalized.bcf -o deduplicated.vcf
         fi
         rm normalized.bcf
 
-        ## add duplicates to the file that's tracking dropped variants
         cat duplicates.tsv >> track_dropped.tsv
-        rm duplicates.tsv ## clean up unneeded file
+        rm duplicates.tsv
 
         echo_date "VAT: finished"
     >>>
@@ -475,293 +417,5 @@ task PrepGenesAnnotationJson {
         File vat_genes_json="~{output_genes_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
-    }
-}
-
-
-task BigQueryLoadJson {
-    meta {
-        # since the WDL will not see the updated data (its getting put in a gcp bucket)
-        volatile: true
-    }
-
-    input {
-        String base_vat_table_name
-        File? nirvana_schema
-        File? vt_schema
-        File? genes_schema
-        String project_id
-        String dataset_name
-        String output_path
-        Array[Boolean] prep_vt_json_done
-        Array[Boolean] prep_genes_json_done
-        String cloud_sdk_docker
-    }
-
-    # This is the name of the vat table. Due to sharding (VS-1191) there may be some duplicated entries.
-    # So we create it here, and then deduplicate it in a later step
-    String vat_table_name = base_vat_table_name + "_w_dups"
-
-    String variant_transcript_table = base_vat_table_name + "_variants"
-    String genes_table = base_vat_table_name + "_genes"
-
-    String vt_path = output_path + 'vt/*'
-    String genes_path = output_path + 'genes/*'
-
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        DATE=86400 ## 24 hours in seconds
-
-        set +o errexit
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
-        BQ_SHOW_RC=$?
-        set -o errexit
-
-        if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
-        fi
-
-        echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-        echo ~{vt_path}
-        echo ~{genes_path}
-        bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
-
-        set +o errexit
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
-        BQ_SHOW_RC=$?
-        set -o errexit
-
-        if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Creating a pre-vat table ~{dataset_name}.~{genes_table}"
-            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
-        fi
-
-        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-        bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
-
-        set +e
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} > /dev/null
-        BQ_SHOW_RC=$?
-        set -e
-
-        if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Creating the vat table ~{dataset_name}.~{vat_table_name}"
-        else
-            echo "Dropping and recreating the vat table ~{dataset_name}.~{vat_table_name}"
-            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table_name}
-        fi
-
-        CLUSTERING_STRING="--clustering_fields=contig"
-        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
-        echo "Loading data into it"
-
-
-        # Now we run a giant query in BQ to get this all in the right table and join the genes properly
-        # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
-        # Commented out columns in the query are to be added in the next release
-        # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
-        # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
-
-        # bq query --max_rows check: ok selecting into a table
-        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table_name} --replace --project_id=~{project_id} \
-        'SELECT
-            v.vid,
-            v.transcript,
-            v.contig,
-            v.position,
-            v.ref_allele,
-            v.alt_allele,
-            v.gvs_all_ac,
-            v.gvs_all_an,
-            v.gvs_all_af,
-            v.gvs_all_sc,
-            v.gvs_max_af,
-            v.gvs_max_ac,
-            v.gvs_max_an,
-            v.gvs_max_sc,
-            v.gvs_max_subpop,
-            v.gvs_afr_ac,
-            v.gvs_afr_an,
-            v.gvs_afr_af,
-            v.gvs_afr_sc,
-            v.gvs_amr_ac,
-            v.gvs_amr_an,
-            v.gvs_amr_af,
-            v.gvs_amr_sc,
-            v.gvs_eas_ac,
-            v.gvs_eas_an,
-            v.gvs_eas_af,
-            v.gvs_eas_sc,
-            v.gvs_eur_ac,
-            v.gvs_eur_an,
-            v.gvs_eur_af,
-            v.gvs_eur_sc,
-            v.gvs_mid_ac,
-            v.gvs_mid_an,
-            v.gvs_mid_af,
-            v.gvs_mid_sc,
-            v.gvs_oth_ac,
-            v.gvs_oth_an,
-            v.gvs_oth_af,
-            v.gvs_oth_sc,
-            v.gvs_sas_ac,
-            v.gvs_sas_an,
-            v.gvs_sas_af,
-            v.gvs_sas_sc,
-            v.gene_symbol,
-            v.transcript_source,
-            v.aa_change,
-            v.consequence,
-            v.dna_change_in_transcript,
-            v.variant_type,
-            v.exon_number,
-            v.intron_number,
-            v.genomic_location,
-            # v.hgvsc AS splice_distance
-            v.dbsnp_rsid,
-            v.gene_id,
-            # v.entrez_gene_id,
-            # g.hgnc_gene_id,
-            g.gene_omim_id,
-            CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
-            THEN False WHEN ( v.transcript is not null and v.is_canonical_transcript is True) THEN True END AS is_canonical_transcript,
-            v.gnomad_all_af,
-            v.gnomad_all_ac,
-            v.gnomad_all_an,
-            v.gnomad_failed_filter,
-            v.gnomad_max_af,
-            v.gnomad_max_ac,
-            v.gnomad_max_an,
-            v.gnomad_max_subpop,
-            v.gnomad_afr_ac,
-            v.gnomad_afr_an,
-            v.gnomad_afr_af,
-            v.gnomad_amr_ac,
-            v.gnomad_amr_an,
-            v.gnomad_amr_af,
-            v.gnomad_asj_ac,
-            v.gnomad_asj_an,
-            v.gnomad_asj_af,
-            v.gnomad_eas_ac,
-            v.gnomad_eas_an,
-            v.gnomad_eas_af,
-            v.gnomad_fin_ac,
-            v.gnomad_fin_an,
-            v.gnomad_fin_af,
-            v.gnomad_nfe_ac,
-            v.gnomad_nfe_an,
-            v.gnomad_nfe_af,
-            v.gnomad_sas_ac,
-            v.gnomad_sas_an,
-            v.gnomad_sas_af,
-            v.gnomad_oth_ac,
-            v.gnomad_oth_an,
-            v.gnomad_oth_af,
-            v.revel,
-            v.splice_ai_acceptor_gain_score,
-            v.splice_ai_acceptor_gain_distance,
-            v.splice_ai_acceptor_loss_score,
-            v.splice_ai_acceptor_loss_distance,
-            v.splice_ai_donor_gain_score,
-            v.splice_ai_donor_gain_distance,
-            v.splice_ai_donor_loss_score,
-            v.splice_ai_donor_loss_distance,
-            g.omim_phenotypes_id,
-            g.omim_phenotypes_name,
-            v.clinvar_classification,
-            v.clinvar_last_updated,
-            v.clinvar_phenotype,
-        FROM `~{dataset_name}.~{variant_transcript_table}` as v
-            left join
-        (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
-        on v.gene_symbol = g.gene_symbol'
-    >>>
-
-    runtime {
-        docker: cloud_sdk_docker
-        memory: "3 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-
-    output {
-        String vat_table = vat_table_name
-        Boolean done = true
-    }
-}
-
-task DeduplicateVatInBigQuery {
-    meta {
-        # since the WDL will not see the updated data (it's getting put in a gcp bucket)
-        volatile: true
-    }
-
-    input {
-        String input_vat_table_name
-        String output_vat_table_name
-        File? nirvana_schema
-
-        String project_id
-        String dataset_name
-        String cloud_sdk_docker
-    }
-
-
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        DATE=86400 ## 24 hours in seconds
-
-        set +e
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} > /dev/null
-        BQ_SHOW_RC=$?
-        set -e
-
-        if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Creating the final vat table ~{dataset_name}.~{output_vat_table_name}"
-        else
-            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name}
-        fi
-        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} ~{nirvana_schema}
-        echo "Loading data into it"
-
-        # Now we query the original VAT table and recreate it, but remove any rows that appear twice.
-
-        # bq query --max_rows check: ok selecting into a table
-        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{output_vat_table_name} --replace --project_id=~{project_id} \
-        ' SELECT * EXCEPT(row_number) FROM (
-            SELECT
-                *,
-                row_number()
-                    over (partition by vid, transcript)
-                    row_number
-            FROM
-                `~{dataset_name}.~{input_vat_table_name}`
-            )
-            where row_number = 1'
-    >>>
-
-    runtime {
-        docker: cloud_sdk_docker
-        memory: "3 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-
-    output {
-        String vat_table = output_vat_table_name
-        Boolean done = true
     }
 }
