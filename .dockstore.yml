@@ -459,3 +459,10 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: GvsAnnotateAnyVcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsAnnotateAnyVcf.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - rc-annotate-any-vcf
