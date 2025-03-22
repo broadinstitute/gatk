@@ -110,9 +110,9 @@ workflow GvsAnnotateAnyVcf {
     }
 
     output {
-        File genes_annotation_json = AnnotateVCF.genes_annotation_json
-        File positions_annotation_json = AnnotateVCF.positions_annotation_json
-        File monitoring_log = AnnotateVCF.monitoring_log
+        File? genes_annotation_json = AnnotateVCF.genes_annotation_json
+        File? positions_annotation_json = AnnotateVCF.positions_annotation_json
+        File? monitoring_log = AnnotateVCF.monitoring_log
     }
 }
 
