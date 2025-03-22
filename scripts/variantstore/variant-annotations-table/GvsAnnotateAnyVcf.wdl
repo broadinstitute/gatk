@@ -290,7 +290,6 @@ task AnnotateVCF {
             -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
-            --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -o ~{output_annotated_file_name}
 
