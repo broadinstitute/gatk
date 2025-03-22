@@ -44,7 +44,6 @@
    - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
    1. `GvsBulkIngestGenomes` header ingest and validation
       - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
-      - Note that when run with these parameters the workflow is expected to call `TerminateWorkflow` with a message that header data has been successfully loaded. In the Terra UI this will look like a failure but in this particular case is the desired outcome.
       - Once these headers have been loaded, run a sanity checking query on the DRAGEN version ```
   SELECT
   REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
