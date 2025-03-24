@@ -167,7 +167,7 @@ workflow GvsExtractCallset {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = GetReference.reference.reference_fasta,
+      ref_fasta = extract_reference,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
