@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import com.github.luben.zstd.ZstdInputStream;
-import htsjdk.samtools.util.BufferedLineReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -21,34 +19,22 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   private final String quickstart10mbVetAvroFile = prefix + "quickstart_10mb_vet.avro";
   private final String quickstartSampleListFile = prefix + "quickstart.sample.list";
 
-  private File decompressVCFAndRemoveSelectedHeaderLines(final File vcfFile) {
-    try {
-      // Open an input stream for reading from the compressed vcf
-      final ZstdInputStream vcfZstdStream = new ZstdInputStream(new FileInputStream(vcfFile));
-      final BufferedLineReader vcfZstdReader = new BufferedLineReader(vcfZstdStream);
-      // Open an output stream to write the decompressed pvar to
-      final File decompressedVcf = createTempFile(vcfFile.getName(), ".vcf");
-      final BufferedWriter decompressedVcfWriter = new BufferedWriter(new FileWriter(decompressedVcf));
+  private File removeSelectedHeaderLinesFromFile(final File vcfFile) {
+    File filteredVcfFile = createTempFile(vcfFile.getName(), ".vcf");
+    try (BufferedReader reader = new BufferedReader(new FileReader(vcfFile));
+         BufferedWriter writer = new BufferedWriter(new FileWriter(filteredVcfFile))) {
 
-      // Read from the Zstd reader and write to the decompressed Vcf
-      while (vcfZstdReader.ready()) {
-        final String nextLine = vcfZstdReader.readLine();
-        // Skip the reference header line because the file path is local on where the test is run.
-        if (nextLine.startsWith("##reference"))
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line.startsWith("##reference"))
           continue;
-
-        decompressedVcfWriter.write(nextLine);
-        decompressedVcfWriter.newLine();
+        writer.write(line);
+        writer.newLine();
       }
-
-      vcfZstdReader.close();
-      decompressedVcfWriter.close();
-
-      return decompressedVcf;
+    } catch (IOException e) {
+      System.err.println("Error processing file: " + e.getMessage());
     }
-    catch(IOException e) {
-      throw new RuntimeException("Failed to decompress vcf.zst file: ", e);
-    }
+    return filteredVcfFile;
   }
 
   @AfterTest
@@ -81,7 +67,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
     final File expectedVCF = getTestFile("ranges_extract.expected_vets.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
-    final File outputVCF = createTempFile("extract_output", "vcf.gz");
+    final File outputVCF = createTempFile("extract_output", "vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -97,7 +83,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
 
     runCommandLine(args);
     // Decompress the vcf for validation
-    final File decompressedVCF = decompressVCFAndRemoveSelectedHeaderLines(outputVCF);
+    final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
     IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
   }
 
@@ -119,7 +105,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
     final File expectedVCF = getTestFile("ranges_extract.expected_vqsr.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
-    final File outputVCF = createTempFile("extract_output", "vcf.gz");
+    final File outputVCF = createTempFile("extract_output", "vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -136,7 +122,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
 
     runCommandLine(args);
     // Decompress the vcf for validation
-    final File decompressedVCF = decompressVCFAndRemoveSelectedHeaderLines(outputVCF);
+    final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
     IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
   }
 
