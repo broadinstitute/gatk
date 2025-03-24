@@ -65,6 +65,19 @@ A `ReadWalker` iterates over a source of reads (e.g. one or more BAM files) and 
 #### FeatureWalker
 A `FeatureWalker` iterates over a source of features and processes one at a time.  A `Feature`, in the context of GATK/HTSJDK, is basically a locus on a reference sequence and some other information tied to that locus.  For example, a `BEDFeature` is an entry in a BED file.  For an example demonstrating how to extend `FeatureWalker`, see `ExampleFeatureWalker`.
 
+## Filters
+GATK implements filtering functionality for the inclusion/exclusion of specific data points from an input (or other source of data).  They are implemented using the Java `Predicate` interface, which allows them to be easily used as part of lambda expressions.
+
+### ReadFilter
+
+### VariantFilter
+
+## Intervals
+
+
+
+## Transformers
+
 ## Important dependencies
 Like many a modern software project, GATK has several dependencies.  This section calls out a few dependencies, in particular, that are helpful to understand when developing for GATK.
 
@@ -87,3 +100,5 @@ Barclay is a library for parsing command line arguments and generating documenta
 
 For more information on Barclay, see the [Barclay repo](https://github.com/broadinstitute/barclay).
 
+## Releasing GATK
+Doing a proper release of GATK is a multistep process that is helpfully detailed [in the GATK wiki, here](https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4).
