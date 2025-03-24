@@ -110,7 +110,7 @@ workflow GvsExtractCallset {
 
   File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
-  call Utils.ScaleXYBegdValues {
+  call Utils.ScaleXYBedValues {
     input:
       interval_weights_bed = interval_weights_bed,
       x_bed_weight_scaling = x_bed_weight_scaling,
