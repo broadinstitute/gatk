@@ -156,8 +156,8 @@ workflow GvsExtractCallset {
                                           else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
                                                else 9 + extract_overhead_memory_override_gib
 
-  # support a custom reference if one is provided
-  File extract_reference = if defined(custom_reference) then custom_reference else GetReference.reference.reference_fasta
+  # support a custom reference if one is provided.  There's gotta be a cleaner way
+  File extract_reference = if defined(custom_reference) then "~{custom_reference}" else GetReference.reference.reference_fasta
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
