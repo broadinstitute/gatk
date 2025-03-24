@@ -39,8 +39,6 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     protected ClusteringParameters mixedParams;
     protected ClusteringParameters evidenceParams;
 
-    protected boolean computeLinkageMetrics = false;
-
     public static final int INSERTION_ASSUMED_LENGTH_FOR_OVERLAP = 50;
     public static final int INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY = 1;
 
@@ -93,10 +91,6 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         this.mixedParams = DEFAULT_MIXED_PARAMS;
         this.evidenceParams = DEFAULT_PESR_PARAMS;
         this.clusterDelWithDup = clusterDelWithDup;
-    }
-
-    public void enableLinkageMetrics() {
-        computeLinkageMetrics = true;
     }
 
     @Override
