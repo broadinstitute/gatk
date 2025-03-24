@@ -2,13 +2,13 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.intel.gkl.pdhmm.IntelPDHMM;
 import htsjdk.samtools.util.Locatable;
-import picard.illumina.parser.ReadData;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments;
 import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments.AVXLevel;
+import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments.OpenMPSetting;
 import org.broadinstitute.gatk.nativebindings.pdhmm.ReadDataHolder;
 import org.broadinstitute.gatk.nativebindings.pdhmm.HaplotypeDataHolder;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -86,8 +86,9 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
         }
         PDHMMNativeArguments nativeArguments = new PDHMMNativeArguments();
         nativeArguments.maxNumberOfThreads = 8;
-        nativeArguments.avxLevel = AVXLevel.AVX512;
-        nativeArguments.maxMemoryInMB = 1024;
+        nativeArguments.avxLevel = AVXLevel.FASTEST_AVAILABLE;
+        nativeArguments.setMaxMemoryInMB(1024);
+        nativeArguments.openMPSetting = OpenMPSetting.FASTEST_AVAILABLE;
         pairPDHmm.initialize(nativeArguments);
         // TODO no initialize argument?
         // pairPDHmm.initialize(args);
@@ -187,6 +188,24 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
         }
 
         pairPDHmm.computeLikelihoods(readDataHolders, haplotypeDataHolders, mLogLikelihoodArray);
+
+        int readIndex = 0;
+        for (final GATKRead read : processedReads) {
+            final Locatable unclippedSpan = (Locatable) read.getTransientAttribute(
+                    PDPairHMMLikelihoodCalculationEngine.UNCLIPPED_ORIGINAL_SPAN_ATTR);
+            for (int a = 0; a < alleleCount; a++) {
+                final PartiallyDeterminedHaplotype allele = alleles.get(a);
+                if (rangeForReadOverlapToDeterminedBases < 0 ||
+                    allele.getMaximumExtentOfSiteDeterminedAlleles().overlapsWithMargin(
+                        unclippedSpan, rangeForReadOverlapToDeterminedBases + 1)) {
+                    // Do nothing, keep the computed likelihood
+                } else {
+                    mLogLikelihoodArray[readIndex * alleleCount + a] = Double.NEGATIVE_INFINITY;
+                }
+                logLikelihoods.set(a, readIndex, mLogLikelihoodArray[readIndex * alleleCount + a]);
+            }
+            readIndex++;
+        }
 
         if (doProfiling) {
             pairHMMTime += (System.nanoTime() - startTime);
