@@ -178,14 +178,13 @@ workflow GvsExtractCallset {
       gatk_override = gatk_override,
   }
 
-  call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
-    input:
-      project_id = project_id,
-      fq_table = "~{fq_filter_set_info_table}",
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-  }
-
   if ( !do_not_filter_override ) {
+    call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
+      input:
+        project_id = project_id,
+        fq_table = "~{fq_filter_set_info_table}",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
     call Utils.ValidateFilterSetName {
       input:
         project_id = query_project,
