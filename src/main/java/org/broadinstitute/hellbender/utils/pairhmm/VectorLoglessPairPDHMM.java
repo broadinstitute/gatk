@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.intel.gkl.pdhmm.IntelPDHMM;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.SAMUtils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,6 +12,7 @@ import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments.AVXLeve
 import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments.OpenMPSetting;
 import org.broadinstitute.gatk.nativebindings.pdhmm.ReadDataHolder;
 import org.broadinstitute.gatk.nativebindings.pdhmm.HaplotypeDataHolder;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PDPairHMMLikelihoodCalculationEngine;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
@@ -18,7 +20,9 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -203,6 +207,7 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
                     mLogLikelihoodArray[readIndex * alleleCount + a] = Double.NEGATIVE_INFINITY;
                 }
                 logLikelihoods.set(a, readIndex, mLogLikelihoodArray[readIndex * alleleCount + a]);
+                writeToResultsFileIfApplicable(inputScoreImputator, read, allele, mLogLikelihoodArray[readIndex * alleleCount + a]);
             }
             readIndex++;
         }
@@ -221,6 +226,33 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
             // logger.info("Total calls : " + totalCalls);
         }
         super.close();
+    }
+
+    protected void writeToResultsFileIfApplicable(final PairHMMInputScoreImputator inputScoreImputator, GATKRead read, PartiallyDeterminedHaplotype allele, double lk)
+    {
+        if(debugOutputStream == null) return;
+
+        if (inputScoreImputator == null || read == null || allele == null) {
+            logger.warn("Null input provided to writeToResultsFileIfApplicable");
+            return;
+        }
+
+        final PairHMMInputScoreImputation inputScoreImputation = inputScoreImputator.impute(read);
+        final byte[] readBases = read.getBases();
+        final byte[] readQuals = read.getBaseQualities();
+        final byte[] readInsQuals = inputScoreImputation.insOpenPenalties();
+        final byte[] readDelQuals = inputScoreImputation.delOpenPenalties();
+        final byte[] overallGCP = inputScoreImputation.gapContinuationPenalties();
+
+        final byte[] alleleBases = allele.getBases();
+        final byte[] allelePDBases = allele.getAlternateBases();
+
+        try {
+            debugOutputStream.write("\n" + new String(alleleBases) + "\t" + Arrays.toString(allelePDBases) + "\t" + new String(readBases) + "\t" + SAMUtils.phredToFastq(readQuals) + "\t" + SAMUtils.phredToFastq(readInsQuals) + "\t" + SAMUtils.phredToFastq(readDelQuals) + "\t" + SAMUtils.phredToFastq(overallGCP) + "\t" + String.format("%e",lk));
+        } catch (IOException e) {
+            throw new GATKException("Error writing to specified HMM results output stream", e);
+        }
+
     }
 
     private class GKLSubmissionBatchManager {
