@@ -79,6 +79,13 @@ public abstract class ExtractTool extends GATKTool {
     )
     protected Long maxLocation = null;
 
+    @Argument(
+            fullName = "contig-mapping-file",
+            doc = "Path to the contig mapping file",
+            optional = true
+    )
+    public String contigMappingFile = null;
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -122,6 +129,19 @@ public abstract class ExtractTool extends GATKTool {
         //TODO verify what we really need here
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
-        ChromosomeEnum.setRefVersion(refVersion);
+
+        if (refVersion.equals("CUSTOM")) {
+            // Look for the contig mapping files
+            if (contigMappingFile == null) {
+                throw new IllegalArgumentException("Contig mapping file must be provided when using non-human references");
+            }
+
+            ChromosomeEnum.setCustomContigMap(SchemaUtils.loadContigMappingFile(contigMappingFile));
+        } else {
+            // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
+            ChromosomeEnum.setRefVersion(refVersion);
+        }
+
+//        ChromosomeEnum.setRefVersion(refVersion);
     }
 }

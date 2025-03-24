@@ -8,9 +8,11 @@ argParser = argparse.ArgumentParser()
 argParser.add_argument("-s", "--bin-size", help="size of the bins in kb", type=int)
 argParser.add_argument("-i", "--infile", help="bed input file", type=str)
 argParser.add_argument("-o", "--outfile", help="bed output file", type=str)
+argParser.add_argument("-v", "--verbose", help="whether to be verbose in output", type=bool, default=False)
 argParser.add_argument("-l", "--interval-list", help="an interval list we can use to fill in any data on a contig past the end of our samples", type=str)
 
 args = argParser.parse_args()
+print("args=%s" % args)
 
 binsize_kb = args.bin_size
 infile = args.infile
@@ -34,10 +36,16 @@ if args.interval_list:
 else:
 	print("We do not have an interval list")
 
+
 last_contig = ""
 last_ending = 0
 interval_size = binsize_kb * 1000
 print(f"Interval size is {interval_size}")
+
+def maybe_say(s):
+	if args.verbose:
+		print(s)
+
 
 with open(infile, newline='') as bedfile, open(outfile, 'w') as output:
 	bedreader = csv.reader(bedfile, delimiter='\t')
@@ -54,12 +62,12 @@ with open(infile, newline='') as bedfile, open(outfile, 'w') as output:
 			# the intervals are read as [,) so the final entry in the previous one should
 			# match the first entry in the next one if there are no gaps
 			if start != last_ending:
-				print(f"detected gap from {contig} {last_ending} to {start}")
+				maybe_say(f"detected gap from {contig} {last_ending} to {start}")
 				size_of_gap = start - last_ending
 				num_empty_entries = size_of_gap / interval_size
-				print(f"Will create {num_empty_entries} 0 weight entries here")
+				maybe_say(f"Will create {num_empty_entries} 0 weight entries here")
 				for s in range(last_ending, start, interval_size):
-					print(f"\t{contig} {s} - {s + interval_size}")
+					maybe_say(f"\t{contig} {s} - {s + interval_size}")
 					new_row = [contig, str(s), str(s + interval_size), ".", "0"]
 					output.write("\t".join(new_row) + "\n")
 		else:
@@ -68,19 +76,19 @@ with open(infile, newline='') as bedfile, open(outfile, 'w') as output:
 				# we'll want to round up the listed ending to the next block in case we
 				# haven't reached it yet
 				new_ending_block = int(math.ceil(contig_sizes[last_contig] / float(interval_size))) * interval_size
-				print(f"Ending detected for contig: {last_contig} rounded up to block {new_ending_block}.  Last block written was {last_ending}")
+				maybe_say(f"Ending detected for contig: {last_contig} rounded up to block {new_ending_block}.  Last block written was {last_ending}")
 				for s in range(last_ending, new_ending_block, interval_size):
-					print(f"\t{last_contig} {s} - {s + interval_size}")
+					maybe_say(f"\t{last_contig} {s} - {s + interval_size}")
 					new_row = [last_contig, str(s), str(s + interval_size), ".", "0"]
 					output.write("\t".join(new_row) + "\n")
 			# make sure we always start at 0 on a new contig and search for gaps
-			print(f"detected gap at beginning of {contig}")
+			maybe_say(f"detected gap at beginning of {contig}")
 			last_ending = 0
 			size_of_gap = start
 			num_empty_entries = size_of_gap / interval_size
-			print(f"Would create {num_empty_entries} 0 weight entries here")
+			maybe_say(f"Would create {num_empty_entries} 0 weight entries here")
 			for s in range(last_ending, start, interval_size):
-				print(f"\t{contig} {s} - {s + interval_size}")
+				maybe_say(f"\t{contig} {s} - {s + interval_size}")
 				new_row = [contig, str(s), str(s + interval_size), ".", "0"]
 				output.write("\t".join(new_row) + "\n")
 			
@@ -96,11 +104,11 @@ with open(infile, newline='') as bedfile, open(outfile, 'w') as output:
 		# we'll want to round up the listed ending to the next block in case we
 		# haven't reached it yet
 		new_ending_block = int(math.ceil(contig_sizes[last_contig] / float(interval_size))) * interval_size
-		print(f"Ending detected for contig: {last_contig} rounded up to block {new_ending_block}.  Last block written was {last_ending}")
+		maybe_say(f"Ending detected for contig: {last_contig} rounded up to block {new_ending_block}.  Last block written was {last_ending}")
 		for s in range(last_ending, new_ending_block, interval_size):
-			print(f"\t{last_contig} {s} - {s + interval_size}")
+			maybe_say(f"\t{last_contig} {s} - {s + interval_size}")
 			new_row = [last_contig, str(s), str(s + interval_size), ".", "0"]
 			output.write("\t".join(new_row) + "\n")
-	print("Processing done")
+	maybe_say("Processing done")
 
 

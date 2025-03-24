@@ -216,7 +216,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             if (contigMappingFile == null) {
                 throw new IllegalArgumentException("Contig mapping file must be provided when using non-human references");
             }
-            contigMappings = loadContigMappingFile(contigMappingFile);
+            contigMappings = SchemaUtils.loadContigMappingFile(contigMappingFile);
+
             ChromosomeEnum.setCustomContigMap(contigMappings);
         } else {
             // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
@@ -480,28 +481,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
         }
         return seqDictionary;
-    }
-
-    private Map<String, Integer> loadContigMappingFile(String contigMappingFilePath) {
-        Map<String, Integer> contigMappings = new HashMap<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(contigMappingFilePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("\t");
-                if (parts.length == 2) {
-                    String contig = parts[0];
-                    Integer id = Integer.parseInt(parts[1]);
-                    contigMappings.put(contig, id);
-                } else {
-                    throw new IllegalArgumentException("Invalid line format: " + line);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error reading contig mapping file", e);
-        }
-
-        return contigMappings;
     }
 
 }

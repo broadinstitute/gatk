@@ -33,6 +33,10 @@ workflow GvsExtractCallset {
     File? interval_list
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
+    # for supporting custom references... for now. Later map the references and use the reference_name above
+    File? custom_reference
+    File? custom_contig_mapping
+
     File? target_interval_list
 
     String? basic_docker
@@ -106,7 +110,7 @@ workflow GvsExtractCallset {
 
   File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
-  call Utils.ScaleXYBedValues {
+  call Utils.ScaleXYBegdValues {
     input:
       interval_weights_bed = interval_weights_bed,
       x_bed_weight_scaling = x_bed_weight_scaling,
