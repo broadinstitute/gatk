@@ -110,6 +110,7 @@ workflow GvsAnnotateAnyVcf {
     }
 
     output {
+        File? nirvana_json = AnnotateVCF.nirvana_json
         File? genes_annotation_json = AnnotateVCF.genes_annotation_json
         File? positions_annotation_json = AnnotateVCF.positions_annotation_json
         File? monitoring_log = AnnotateVCF.monitoring_log
@@ -318,6 +319,7 @@ task AnnotateVCF {
     }
 
     output {
+        File nirvana_json = "~{output_annotated_file_name}"
         File genes_annotation_json = "~{gene_annotation_json_name}"
         File positions_annotation_json = "~{positions_annotation_json_name}"
         File monitoring_log = "monitoring.log"
