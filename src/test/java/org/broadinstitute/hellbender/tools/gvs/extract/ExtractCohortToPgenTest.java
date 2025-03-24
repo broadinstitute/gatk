@@ -36,7 +36,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
       while (pvarZstdReader.ready()) {
         final String nextLine = pvarZstdReader.readLine();
         // Skip the source header line because some weirdness in the way the gatk build works makes that not match
-        if(nextLine.startsWith("##source"))
+        if ((nextLine.startsWith("##source")) || (nextLine.startsWith("##reference")))
           continue;
 
         decompressedPvarWriter.write(nextLine);
