@@ -326,7 +326,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1576-avro-update
+             - rc-vs-1457-vat-clinvar
          tags:
              - /.*/
    - name: GvsIngestTieout
