@@ -174,7 +174,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - 
+             -
          tags:
              - /.*/
    - name: GvsImportGenomes

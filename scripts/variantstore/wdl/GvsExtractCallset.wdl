@@ -156,6 +156,9 @@ workflow GvsExtractCallset {
                                           else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
                                                else 9 + extract_overhead_memory_override_gib
 
+  # support a custom reference if one is provided
+  File extract_reference = if defined(custom_reference) then custom_reference else GetReference.reference.reference_fasta
+
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
     File? none = ""
@@ -235,7 +238,7 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = GetReference.reference.reference_fasta,
+        reference                             = extract_reference,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
@@ -263,6 +266,7 @@ workflow GvsExtractCallset {
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
         maximum_alternate_alleles             = maximum_alternate_alleles,
+        custom_contig_mapping                 = custom_contig_mapping,
         target_interval_list                  = target_interval_list,
     }
 
@@ -389,6 +393,9 @@ task ExtractTask {
     Int? local_sort_max_records_in_ram = 10000000
     Int? maximum_alternate_alleles
 
+    # for supporting custom references... for now.
+    File? custom_contig_mapping
+
     File? target_interval_list
 
     # for call-caching -- check if DB tables haven't been updated since the last run
@@ -466,6 +473,7 @@ task ExtractTask {
         ~{true='' false='--use-vqsr-scoring' use_VETS} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         ${FILTERING_ARGS} \
         ~{"--sample-ploidy-table " + fq_ploidy_mapping_table} \
         --dataset-id ~{dataset_name} \
