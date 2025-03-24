@@ -319,7 +319,7 @@ task AnnotateVCF {
     }
 
     output {
-        File nirvana_json = "~{output_annotated_file_name}"
+        File nirvana_json = "~{annotation_json_name}"
         File genes_annotation_json = "~{gene_annotation_json_name}"
         File positions_annotation_json = "~{positions_annotation_json_name}"
         File monitoring_log = "monitoring.log"
