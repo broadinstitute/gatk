@@ -299,7 +299,7 @@ dependencies {
 
     implementation 'org.broadinstitute:hdf5-java-bindings:1.2.0-hdf5_2.11.0'
 //    implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'
-    implementation files('libs/gatk-native-bindings_2025_02_05.jar')
+    implementation files('libs/gatk-native-bindings_2025_03_20.jar')
 
     implementation 'org.ojalgo:ojalgo:44.0.0'
     implementation('org.ojalgo:ojalgo-commons-math3:1.0.0'){
@@ -340,7 +340,7 @@ dependencies {
     implementation 'com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives'
 
 //  implementation 'com.intel.gkl:gkl:' + gklVersion
-    implementation files('libs/gkl-2025_02_25.jar')
+    implementation files('libs/gkl-2025_03_22.jar')
 
     implementation 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     implementation 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
