@@ -1,7 +1,5 @@
 version 1.0
 
-# It's a comment!
-
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
