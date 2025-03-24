@@ -1,50 +1,7 @@
 # GATK Developer Guide
 This document is intended to serve as a basic introduction to developing for the GATK.
 
-TODO
-
-## A basic tool walkthrough
-Let's start with a walkthrough of one of the most basic GATK tools: PrintReads.  Here is all the code for PrintReads (minus imports and doc comments):
-
-```java
-@CommandLineProgramProperties(
-        summary = "Prints reads from the input SAM/BAM/CRAM file to the SAM/BAM/CRAM file.",
-        oneLineSummary = "Print reads in the SAM/BAM/CRAM file",
-        programGroup = ReadDataManipulationProgramGroup.class
-)
-@DocumentedFeature
-@WorkflowProperties
-public final class PrintReads extends ReadWalker {
-
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="Write output to this file")
-    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
-    public GATKPath output;
-    private SAMFileGATKReadWriter outputWriter;
-
-    @Override
-    public void onTraversalStart() {
-        outputWriter = createSAMWriter(output, true);
-    }
-
-    @Override
-    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputWriter.addRead(read);
-    }
-
-    @Override
-    public void closeTool() {
-        if ( outputWriter != null ) {
-            outputWriter.close();
-        }
-    }
-}
-```
-
-PrintReads accepts a file in SAM/BAM/CRAM format, and iterates through the reads in the file, printing each to a specified output file.
-
-TODO: finish the description, or get rid of this, I don't know
+TODO: expand on this
 
 ## Classes you might want to extend
 This section describes classes you might want to extend when making new tools in GATK.
@@ -103,8 +60,30 @@ The walker classes you are mostly likely to use are:
 A `VariantWalker` iterates over a source of variants (e.g. one or more VCF files) and processes one variant at a time.  This processing is done in the `apply` method, which is the primary method you will override if extending `VariantWalker`.  For an example demonstrating in more depth how to extend `VariantWalker`, see `ExampleVariantWalker`.
 
 #### ReadWalker
-A `ReadWalker` iterates over a source of reads (e.g. one or more BAM files) and processes one read at a time.  This processing is done in the `apply` method, which is the primary method you will override if extending `ReadWalker`.  For an example demonstrating in more depth how to extend `ReadWalker`, see `ExampleReadWalkerWithVariants` or `ExampleReadWAlkerWithReference`.
+A `ReadWalker` iterates over a source of reads (e.g. one or more BAM files) and processes one read at a time.  This processing is done in the `apply` method, which is the primary method you will override if extending `ReadWalker`.  For an example demonstrating in more depth how to extend `ReadWalker`, see `ExampleReadWalkerWithVariants` or `ExampleReadWalkerWithReference`.
 
 #### FeatureWalker
-A `FeatureWalker` iterates over a source of features and processes one at a time.  A `Feature`, in the context of GATK, is basically a locus on a reference sequence and some other information tied to that locus.  For example, a `BEDFeature` is an entry in a BED file.  For an example demonstrating how to extend `FeatureWalker`, see `ExampleFeatureWalker`.
+A `FeatureWalker` iterates over a source of features and processes one at a time.  A `Feature`, in the context of GATK/HTSJDK, is basically a locus on a reference sequence and some other information tied to that locus.  For example, a `BEDFeature` is an entry in a BED file.  For an example demonstrating how to extend `FeatureWalker`, see `ExampleFeatureWalker`.
+
+## Important dependencies
+Like many a modern software project, GATK has several dependencies.  This section calls out a few dependencies, in particular, that are helpful to understand when developing for GATK.
+
+### HTSJDK
+HTSJDK is a Java API for accessing common genomics file formats, such as SAM and VCF.  You will encounter HTSJDK within the GATK codebase mostly in the context of data types for the data stored in these types of files (e.g. `VariantContext`, `FeatureContext`).  For more information on HTSJDK, see the [HTSJDK repo](https://github.com/samtools/htsjdk).
+
+### Picard
+Picard is a fairly similar software project to GATK.  It is a set of command line tools for manipulating the same type of data that GATK handles.  For historical reasons, Picard and GATK are separate projects.  However, Picard is also a dependency of GATK, so all Picard tools are available in GATK.  It should be noted that Picard and GATK have some classes that share names, such as `CommandLineProgram`, but they are different implementations of similar concepts and should not be treated as interchangeable.  For more information on Picard, see the [Picard repo](https://github.com/broadinstitute/picard).
+
+### Barclay
+Barclay is a library for parsing command line arguments and generating documentation.  It also provides a feature for generating WDL workflow files from tools ([more information on WDL](https://openwdl.org/)).  You will see Barclay annotations all over GATK classes.  A few are especially worth being familiar with:
+
+`@DocumentedFeature` indicates a class should be included in generated documentation.
+
+`@CommandLineProgramProperties` allows you to configure a tool to be displayed in the GATK help text.  You can specify summary text along with what group your tool should be displayed in.
+
+`@WorfklowProperties` allows a WDL to be generated for the annotated tool.
+
+`@Argument` indicates a class attribute is a command line argument and allows you to configure command line documentation and behavior for it.
+
+For more information on Barclay, see the [Barclay repo](https://github.com/broadinstitute/barclay).
 
