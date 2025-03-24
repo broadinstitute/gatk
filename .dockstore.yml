@@ -328,7 +328,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1576-avro-update
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsIngestTieout
