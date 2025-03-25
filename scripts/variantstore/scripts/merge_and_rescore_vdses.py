@@ -7,11 +7,11 @@ import hail as hl
 from hail.utils.java import info
 
 
-def merge_vdses(vds1, vds2, output_path, hail_temp_path):
+def merge_vdses(general_temp_path, output_merged_vds_path, *input_vds):
     combiner = hl.vds.new_combiner(
-        output_path=output_path,
-        temp_path=hail_temp_path,
-        vds_paths=[vds1, vds2],
+        output_path=output_merged_vds_path,
+        temp_path=general_temp_path,
+        vds_paths=list(input_vds),
         use_genome_default_intervals=True)
 
     combiner.run()
@@ -83,25 +83,25 @@ def import_vets_filters(
     return hl.read_table(vets_path)
 
 
-def patch_variant_data(vd, site, vets) -> hl.MatrixTable:
+def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters: hl.Table) -> hl.MatrixTable:
     """
     Parameters
     ----------
     vd : MatrixTable
         vds variant data
-    site : Table
+    site_filters : Table
         site filtering table
-    vets : Table
+    vets_filters : Table
         vets filtering table
     """
     vd = vd.annotate_rows(
-        filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr))
+        filters=hl.coalesce(site_filters[vd.locus].filters, hl.empty_set(hl.tstr))
     )
 
     # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
     vd = vd.annotate_rows(
         as_vets=hl.dict(
-            vets.index(vd.locus, all_matches=True).map(
+            vets_filters.index(vd.locus, all_matches=True).map(
                 lambda record: (
                     record.alt + vd.alleles[0][hl.len(record.ref) :],
                     record.drop("ref", "alt"),
@@ -181,10 +181,9 @@ def patch_variant_data(vd, site, vets) -> hl.MatrixTable:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter information.')
-    parser.add_argument('--input-vds-first-path', type=str,
-                        help='Path to first input VDS', required=True)
-    parser.add_argument('--input-vds-second-path', type=str,
-                        help='Path to second input VDS', required=True)
+
+    parser.add_argument('--input-vds', nargs='2', action='append', required=True)
+
     parser.add_argument('--avro-path', type=str,
                         help='Path at which exported GVS Avro files are found, including the filter data to apply in the output merged VDS.',
                         required=True)
@@ -195,6 +194,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     tmp_dir = f'{args.temp_path}/hail_tmp_general'
+    merge_tmp_vds = f'{args.temp_path}/hail_tmp_merge/merged.vds'
     hl.init(
         idempotent=True,
         tmp_dir=tmp_dir
@@ -209,11 +209,13 @@ if __name__ == '__main__':
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
-    merge_vdses(args.input_vds_first_path,
-                args.input_vds_second_path,
-                args.output_vds_path,
-                tmp_dir)
+    merge_vdses(tmp_dir,
+                merge_tmp_vds,
+                *args.input_vds)
 
-    merged_vds = hl.vds.read_vds(args.output_vds_path)
+    merged_vds = hl.vds.read_vds(merge_tmp_vds)
 
-    patch_variant_data(merged_vds, site, vets)
+    patched_vd = patch_variant_data(merged_vds.variant_data, site, vets)
+
+    vds = hl.vds.VariantDataset(merged_vds.reference_data, patched_vd)
+    vds.write(args.output_vds_path, overwrite=True)
