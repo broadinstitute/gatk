@@ -36,6 +36,14 @@ public final class GATKSVVCFConstants {
     public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
     public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
 
+    // Evidence types
+    public enum EvidenceTypes {
+        BAF,
+        PE,
+        RD,
+        SR
+    }
+
     // GATK-SV specific header lines
     // TODO: 10/3/17 the following comment is a goal we are trying to achieve
     // applicable to all records all the time
@@ -141,9 +149,14 @@ public final class GATKSVVCFConstants {
     public static final String BND_DELETION_STRANDS = "+-";
     public static final String BND_DUPLICATION_STRANDS = "-+";
 
+    // SR support
+    public static final String BOTHSIDES_SUPPORT_ATTRIBUTE = "BOTHSIDES_SUPPORT";
+    public static final String HIGH_SR_BACKGROUND_ATTRIBUTE = "HIGH_SR_BACKGROUND";
+
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
     public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
+    public static final String DEPTH_GENOTYPE_COPY_NUMBER_FORMAT = "RD_CN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
     // filter block
@@ -223,6 +236,9 @@ public final class GATKSVVCFConstants {
     public static final String TRUTH_ALLELE_COUNT_INFO = "TRUTH_AC";
     public static final String TRUTH_ALLELE_NUMBER_INFO = "TRUTH_AN";
     public static final String TRUTH_ALLELE_FREQUENCY_INFO = "TRUTH_AF";
+
+    // stratification
+    public static final String STRATUM_INFO_KEY = "STRAT";
 
     // functional annotations
     public static final String LOF = "PREDICTED_LOF";
