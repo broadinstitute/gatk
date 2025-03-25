@@ -117,7 +117,7 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
     }
 
     /**
-     * Used for storing the result of a clustering check between two record and any additional metadata
+     * Used for storing the result of a clustering check between two records and any additional metadata
      */
     public static class LinkageResult {
         private final boolean result;

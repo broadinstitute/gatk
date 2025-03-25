@@ -354,6 +354,9 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         this.evidenceParams = evidenceParams;
     }
 
+    /**
+     * Adds overlap metrics to the linkage check result
+     */
     public static class CanonicalLinkageResult extends SVClusterLinkage.LinkageResult {
         private final Double reciprocalOverlap;
         private final Double sizeSimilarity;

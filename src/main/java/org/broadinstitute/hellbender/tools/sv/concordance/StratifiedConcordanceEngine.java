@@ -18,6 +18,26 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Handles stratification of variants for genotype concordance analysis of SVs, similar to the functionality
+ * implemented in {@link org.broadinstitute.hellbender.tools.walkers.sv.GroupedSVCluster}.
+ *
+ * Truth and eval variants can be added with their respective methods and are stratified using the stratification
+ * machinery passed in through this class's constructor. Concordance results are buffered in the {@link ItemTracker}
+ * subclass, which keeps track of which stratifications each eval variant has been submitted to and returned. The
+ * stratification group with the highest priority, as determined by the ordering returned by the
+ * {@link SVStratificationEngine#getStrata()} method,  and matched truth variant is returned to the final output buffer
+ * once a variant has been returned from all stratification groups. The "default" group is always added and of lowest
+ * priority. If an eval variant fails to match in all groups, then there is no guarantee on which group's output variant
+ * is returned, but they are all identical (i.e. a copy of the input variant with a "FP" status field).
+ *
+ * Output records must be retrieved using the {@link #flush} method and are not sorted.
+ *
+ * TODO: This implementation will result in proliferation of deep copies of the input variant, with up to one copy per
+ *   possible stratification group. Avoiding the deep copies, particularly of genotypes, would substantially improve
+ *   performance on large inputs.
+ *
+ */
 public class StratifiedConcordanceEngine {
 
     protected final Map<String, ClosestSVFinder> clusterEngineMap;
@@ -55,6 +75,11 @@ public class StratifiedConcordanceEngine {
         this.defaultEngine = new ClosestSVFinder(defaultLinkage, defaultCollapser::annotate, false, dictionary);
     }
 
+    /**
+     * Retrieve finished eval variants with concordance annotations
+     * @param force returns all variants regardless of the position of the last added variant
+     * @return final output records
+     */
     public Collection<VariantContext> flush(boolean force) {
         for (final String name : clusterEngineMap.keySet()) {
             flushEngineToBuffer(clusterEngineMap.get(name), force, name);
@@ -65,10 +90,16 @@ public class StratifiedConcordanceEngine {
         return result;
     }
 
+    /**
+     * Checks if there are any active eval variants or unflushed output variants
+     */
     public boolean isEmpty() {
         return variantStatusMap.isEmpty() && outputBuffer.isEmpty();
     }
 
+    /**
+     * Adds a "truth" variant
+     */
     public void addTruthVariant(final SVCallRecord record) {
         final Long id = nextItemId++;
         // truth variants can be matched across all stratification groups
@@ -78,6 +109,9 @@ public class StratifiedConcordanceEngine {
         addToEngine(record, id, true, defaultEngine, SVStratify.DEFAULT_STRATUM);
     }
 
+    /**
+     * Adds an "eval" variant
+     */
     public void addEvalVariant(final SVCallRecord record) {
         final Long id = nextItemId++;
         // eval variants get stratified
@@ -99,7 +133,7 @@ public class StratifiedConcordanceEngine {
     }
 
     /**
-     * Adds a record to the given concordance engine, flushing if hit a new contig
+     * Adds a record to the given concordance engine, flushing active variants to the buffer if it hit a new contig
      */
     protected void addToEngine(final SVCallRecord record, final Long id, final boolean isTruth, final ClosestSVFinder engine, final String name) {
         if (engine.getLastItemContig() != null && !record.getContigA().equals(engine.getLastItemContig())) {
@@ -109,6 +143,9 @@ public class StratifiedConcordanceEngine {
         flushEngineToBuffer(engine, false, name);
     }
 
+    /**
+     * Flushes active eval variants in a specific group's engine to the output buffer
+     */
     protected void flushEngineToBuffer(final ClosestSVFinder engine, final boolean force, final String name) {
         for (final ClosestSVFinder.LinkageConcordanceRecord record: engine.flush(force)) {
             final ItemTracker tracker = variantStatusMap.get(record.id());
@@ -125,6 +162,10 @@ public class StratifiedConcordanceEngine {
         }
     }
 
+    /**
+     * Tracks a given eval variant's stratification groups and its status in each. Prioritizes the final output variant
+     * as the one produced by the highest priority group that also matched a truth variant.
+     */
     protected static class ItemTracker {
 
         private final Map<String, Integer> groupPriorityMap;
@@ -132,6 +173,11 @@ public class StratifiedConcordanceEngine {
         private Integer outPriority;
         private final List<String> groups;
 
+        /**
+         * Constructor with stratification groups to which this record belongs. Note that the input record is not
+         * tracked because only the output record(s) are needed.
+         * @param submittedTo stratification group names, sorted in order of decreasing priority
+         */
         public ItemTracker(final List<String> submittedTo) {
             this.groups = submittedTo;
             this.groupPriorityMap = new HashMap<>(SVUtils.hashMapCapacity(submittedTo.size()));
@@ -140,9 +186,15 @@ public class StratifiedConcordanceEngine {
             }
         }
 
+        /**
+         * To be called when a record is returned from one of the engines. May only be called once per group.
+         * @param name name of the group
+         * @param record record returned by that group's engine
+         */
         public void eject(final String name, final SVCallRecord record) {
             final Integer priority = groupPriorityMap.remove(name);
             Utils.nonNull(priority, "Unregistered name: " + name);
+            // assign to output if higher than current output's priority
             if (outPriority == null || (isTruePositive(record)) && (priority < outPriority || (priority > outPriority && !isTruePositive(out)))) {
                 out = record;
                 outPriority = priority;
@@ -153,10 +205,16 @@ public class StratifiedConcordanceEngine {
             return ConcordanceState.TRUE_POSITIVE.getAbbreviation().equals(record.getAttributes().get(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE));
         }
 
+        /**
+         * Returns true if this tracker is done
+         */
         public boolean allEjected() {
             return groupPriorityMap.isEmpty();
         }
 
+        /**
+         * Get the highest priority output record. Should only be called if {@link #allEjected()} is true.
+         */
         public SVCallRecord getOutput() {
             return out;
         }

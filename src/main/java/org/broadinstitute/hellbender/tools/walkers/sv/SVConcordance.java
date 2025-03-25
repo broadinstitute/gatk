@@ -62,9 +62,10 @@ import java.util.stream.Collectors;
  * of the specific fields. For multi-allelic CNVs, only a copy state concordance metric is
  * annotated. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
  *
- * This tool also allows supports stratification of SVs into groups with specified matching criteria including SV type,
+ * This tool also allows supports stratification of the SVs into groups with specified matching criteria including SV type,
  * size range, and interval overlap. Please see the {@link GroupedSVCluster} tool documentation for further details
- * on how to specify stratification groups.
+ * on how to specify stratification groups. Stratification only affects the criteria applied to each "eval" SV. In
+ * other words, "truth" variants are not stratified and can match to an "eval" SV from any stratification group.
  *
  * Note that unlike {@link GroupedSVCluster}, this tool allows any variant to
  * match more than one stratification group. If this occurs, groups will be prioritized by their ordering in the input
@@ -75,6 +76,13 @@ import java.util.stream.Collectors;
  *
  * The "default" stratification group, with clustering parameters specified directly through the clustering program
  * arguments (e.g. --depth-breakend-window, --pesr-interval-overlap, etc.), is always present and given lowest priority.
+ *
+ * Output records determined to be "true positives" are annotated with the following INFO fields according to overlap
+ * with the highest priority matching stratification group:
+ *
+ * This tool performs a final sorting step on the emitted records using {@link SortingCollection}, which may
+ * inflate memory usage and degrade performance on very large VCFs. Performance may be improved by reducing the
+ * {@link #maxRecordsInRam} parameter.
  *
  * <h3>Inputs</h3>
  *
@@ -187,6 +195,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                 new HashSet<>(getTruthHeader().getGenotypeSamples()));
         final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples);
 
+        // Load stratification groups
         final Map<String, ClosestSVFinder> clusterEngineMap = new HashMap<>();
         if (strataClusteringConfigFile != null) {
             try (final TableReader<StratifiedClusteringTableParser.StratumParameters> tableReader = TableUtils.reader(strataClusteringConfigFile.toPath(), StratifiedClusteringTableParser::tableParser)) {
@@ -257,7 +266,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     }
 
     /**
-     * Strips unneeded attributes from a truth variant to save memory.
+     * Strips unneeded FORMAT fields from a truth variant to save memory.
      */
     private SVCallRecord minimizeTruthFootprint(final SVCallRecord item) {
         final List<Genotype> genotypes = item.getGenotypes().stream().map(SVConcordance::stripTruthGenotype).collect(Collectors.toList());
@@ -267,6 +276,9 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                 item.getAlleles(), genotypes, item.getAttributes(), item.getFilters(), item.getLog10PError(), dictionary);
     }
 
+    /**
+     * Strips all FORMAT fields except for the genotype and copy state
+     */
     private static Genotype stripTruthGenotype(final Genotype genotype) {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype.getSampleName()).alleles(genotype.getAlleles());
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
