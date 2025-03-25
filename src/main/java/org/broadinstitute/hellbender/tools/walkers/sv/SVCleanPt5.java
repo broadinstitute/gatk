@@ -18,12 +18,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashSet;
+import java.util.*;
 
 /**
  * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
@@ -82,9 +77,11 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        // Remove unnecessary header lines
-        final Set<VCFHeaderLine> newHeaderLines = new HashSet<>();
         final VCFHeader header = getHeaderForVariants();
+        final Set<VCFHeaderLine> originalHeaderLines = header.getMetaDataInInputOrder();
+
+        // Add new header lines
+        final Set<VCFHeaderLine> newHeaderLines = new HashSet<>();
         for (final VCFHeaderLine line : header.getMetaDataInInputOrder()) {
             if (line instanceof VCFInfoHeaderLine) {
                 if (GATKSVVCFConstants.FILTER_VCF_INFO_LINES.contains(((VCFInfoHeaderLine) line).getID())) {
@@ -141,11 +138,11 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
             return;
         }
 
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
-                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processVariantPair(bufferedVariant, variant);
+                processVariantPair(variant, bufferedVariant);
             }
         }
         overlappingVariantsBuffer.add(variant);
@@ -158,40 +155,28 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
 
         VariantContextBuilder builder = new VariantContextBuilder(variant);
         processSvType(variant, builder);
-        cleanseInfoFields(builder);
         vcfWriter.add(builder.make());
     }
 
-    private void processVariantPair(VariantContext v1, VariantContext v2) {
-        // Determine larger variant
-        VariantContext largerVariant = v1;
-        VariantContext smallerVariant = v2;
-        int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int smallerLength = length2;
-
-        // Swap variants if necessary
-        if (length2 > length1) {
-            largerVariant = v2;
-            smallerVariant = v1;
-            smallerLength = length1;
+    private void processVariantPair(VariantContext largerVariant, VariantContext smallerVariant) {
+        int lengthLarger = largerVariant.getEnd() - largerVariant.getStart() + 1;
+        int lengthSmaller = smallerVariant.getEnd() - smallerVariant.getStart() + 1;
+        if (lengthLarger < lengthSmaller) {
+            return;
         }
 
-        // Calculate overlap
-        int minEnd = Math.min(
-                largerVariant.getStart() + largerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0),
-                smallerVariant.getStart() + smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)
-        );
-        int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
-        int overlapLength = minEnd - maxStart + 1;
+        int overlapStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
+        int overlapEnd = Math.min(largerVariant.getEnd(), smallerVariant.getEnd());
+        int overlapLength = overlapEnd - overlapStart + 1;
         if (overlapLength <= 0) {
             return;
         }
 
-        // Filter variant based on conditions
-        double coverage = (double) overlapLength / smallerLength;
-        if (coverage > 0.5 && !filteredVariantIds.contains(largerVariant.getID())) {
-            filteredVariantIds.add(smallerVariant.getID());
+        double smallCoverage = (double) overlapLength / lengthSmaller;
+        if (smallCoverage > 0.5) {
+            if (!filteredVariantIds.contains(largerVariant.getID())) {
+                filteredVariantIds.add(smallerVariant.getID());
+            }
         }
     }
 
@@ -205,39 +190,22 @@ public class SVCleanPt5 extends MultiplePassVariantWalker {
             return;
         }
 
-        final Allele refAllele = variant.getReference();
-        final Allele altAllele = Allele.create("<" + svType + ">", false);
-        List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
-
         List<Genotype> genotypes = variant.getGenotypes();
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         for (Genotype genotype : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(genotype);
-            long altCount = genotype.getAlleles().stream().filter(allele -> allele.isCalled() && !allele.isReference()).count();
-            if (altCount == 1) { // Heterozygous (0/1)
-                gb.alleles(Arrays.asList(refAllele, altAllele));
-            } else if (altCount == 2) { // Homozygous Alternate (1/1)
-                gb.alleles(Arrays.asList(altAllele, altAllele));
-            }
+            gb.alleles(Arrays.asList(variant.getReference(), Allele.create("<" + svType + ">", false)));
             updatedGenotypes.add(gb.make());
         }
 
+        final Allele refAllele = variant.getReference();
+        final Allele altAllele = Allele.create("<" + svType + ">", false);
+        List<Allele> newAlleles = Arrays.asList(refAllele, altAllele);
         builder.alleles(newAlleles);
         builder.genotypes(updatedGenotypes);
     }
 
-    private void cleanseInfoFields(final VariantContextBuilder builder) {
-        Map<String, Object> attributes = builder.getAttributes();
-        for (String field : GATKSVVCFConstants.FILTER_VCF_INFO_LINES) {
-            if (attributes.containsKey(field)) {
-                builder.rmAttribute(field);
-            }
-        }
-    }
-
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {
-        return v1.getContig().equals(v2.getContig())
-                && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
-                && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
     }
 }

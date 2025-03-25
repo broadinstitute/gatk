@@ -141,9 +141,7 @@ public class SVCleanPt2 extends VariantWalker {
         // Flag sample as having an abnormal copy number if it passes certain conditions
         for (String sample : variant.getSampleNames()) {
             Genotype genotype = variant.getGenotype(sample);
-            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
-
-            int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
+            int rdCn = Integer.parseInt(genotype.getExtendedAttribute("RD_CN").toString());
             if (!sampleWhitelist.contains(sample) || !genotype.isCalled() || rdCn == 2) {
                 continue;
             }
@@ -155,10 +153,10 @@ public class SVCleanPt2 extends VariantWalker {
         }
 
         // Process overlaps with variants in the buffer
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
-                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(variant, bufferedVariant)) {
+                adjustCopyNumber(bufferedVariant, variant);
                 adjustCopyNumber(variant, bufferedVariant);
             }
         }
@@ -166,41 +164,22 @@ public class SVCleanPt2 extends VariantWalker {
     }
 
     private void adjustCopyNumber(final VariantContext v1, final VariantContext v2) {
-        // Determine larger variant
-        VariantContext largerVariant = v1;
-        VariantContext smallerVariant = v2;
-        int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        int largerLength = length1;
-        int smallerLength = length2;
+        // Track metadata through data structures
+        String variantId1 = v1.getID();
+        String variantId2 = v2.getID();
+        Map<String, Integer> variantRdCn1 = getRdCnForVariant(v1);
+        Map<String, Integer> variantRdCn2 = getRdCnForVariant(v2);
+        Map<String, Set<String>> variantSupport1 = getSupportForVariant(v1);
+        Map<String, Set<String>> variantSupport2 = getSupportForVariant(v2);
+        String svtype1 = v1.getAttributeAsString("SVTYPE", "");
+        String svtype2 = v2.getAttributeAsString("SVTYPE", "");
 
-        // Swap variants if necessary
-        if (length2 > length1) {
-            largerVariant = v2;
-            smallerVariant = v1;
-            largerLength = length2;
-            smallerLength = length1;
-        }
-
-        // Get variant attributes
-        String variantId1 = largerVariant.getID();
-        String variantId2 = smallerVariant.getID();
-        Map<String, Integer> variantRdCn1 = getRdCnForVariant(largerVariant);
-        Map<String, Integer> variantRdCn2 = getRdCnForVariant(smallerVariant);
-        Map<String, Set<String>> variantSupport1 = getSupportForVariant(largerVariant);
-        Map<String, Set<String>> variantSupport2 = getSupportForVariant(smallerVariant);
-        String svType1 = largerVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        String svType2 = smallerVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-
-        // Calculate overlap
-        int minEnd = Math.min(
-                largerVariant.getStart() + largerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0),
-                smallerVariant.getStart() + smallerVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)
-        );
-        int maxStart = Math.max(largerVariant.getStart(), smallerVariant.getStart());
-        int lengthOverlap = minEnd - maxStart + 1;
-        double overlap1 = (double) lengthOverlap / (double) largerLength;
-        double overlap2 = (double) lengthOverlap / (double) smallerLength;
+        // Calculate overlap metadata
+        int length1 = v1.getEnd() - v1.getStart();
+        int length2 = v2.getEnd() - v2.getStart();
+        int lengthOverlap = Math.min(v2.getEnd(), v1.getEnd()) - Math.max(v1.getStart(), v2.getStart());
+        double overlap1 = (double) lengthOverlap / (double) length1;
+        double overlap2 = (double) lengthOverlap / (double) length2;
 
         // Get samples with abnormal CN across both variants
         Set<String> samples = new HashSet<>(abnormalRdCn.getOrDefault(variantId1, Collections.emptySet()));
@@ -208,23 +187,24 @@ public class SVCleanPt2 extends VariantWalker {
 
         // Iterate through samples to test against conditions
         for (String sample : samples) {
+            // Validate baseline filters
             String id1 = variantId1 + "@" + sample;
             String id2 = variantId2 + "@" + sample;
+            int rdCn1 = revisedCopyNumbers.getOrDefault(variantId1, Collections.emptyMap()).getOrDefault(sample, variantRdCn1.get(sample));
+            int rdCn2 = revisedCopyNumbers.getOrDefault(variantId2, Collections.emptyMap()).getOrDefault(sample, variantRdCn2.get(sample));
             if (revisedComplete.contains(id1)) {
                 continue;
             }
 
-            // Initialize variables for evaluation
-            int rdCn1 = revisedCopyNumbers.getOrDefault(variantId1, Collections.emptyMap()).getOrDefault(sample, variantRdCn1.get(sample));
-            int rdCn2 = revisedCopyNumbers.getOrDefault(variantId2, Collections.emptyMap()).getOrDefault(sample, variantRdCn2.get(sample));
+            // Initialize fields for evaluation
             Set<String> support1 = variantSupport1.get(sample);
             Set<String> support2 = variantSupport2.get(sample);
-            Genotype genotype2 = smallerVariant.getGenotype(sample);
+            Genotype genotype2 = v2.getGenotype(sample);
 
-            // Condition 1: Smaller depth call is being driven by larger call
+            // Condition 1: Smaller depth call is being driven by a larger call
             if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support1.size() > 1
                     && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
-                    && overlap2 > 0.5 && !largerVariant.hasAttribute(GATKSVVCFConstants.MULTI_CNV)) {
+                    && overlap2 > 0.5 && !v1.hasAttribute(GATKSVVCFConstants.MULTI_CNV)) {
                 if (rdCn1 == 0) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1) {
@@ -236,10 +216,10 @@ public class SVCleanPt2 extends VariantWalker {
                 }
             }
 
-            // Condition 2: Smaller CNV is driven by larger CNV genotype
+            // Condition 2: Smaller CNV is driven by a larger CNV genotype
             else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && support2.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && support2.size() > 1
-                    && overlap1 > 0.5 && overlap2 > 0.5 && !smallerVariant.hasAttribute(GATKSVVCFConstants.MULTI_CNV)
+                    && overlap1 > 0.5 && overlap2 > 0.5 && !v2.hasAttribute(GATKSVVCFConstants.MULTI_CNV)
                     && !genotype2.isHomRef()) {
                 if (rdCn2 == 0) {
                     makeRevision(id1, rdCn1 + 2);
@@ -252,18 +232,16 @@ public class SVCleanPt2 extends VariantWalker {
                 }
             }
 
-            // Condition 3: Depth-only calls where smaller call is driven by larger call
+            // Condition 3: Depth-only calls where smaller call is driven by a larger call
             else if (support1.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && support2.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
-                    && overlap2 > 0.5 && !largerVariant.hasAttribute(GATKSVVCFConstants.MULTI_CNV) && svType1.equals(svType2)) {
+                    && overlap2 > 0.5 && !v1.hasAttribute(GATKSVVCFConstants.MULTI_CNV) && svtype1.equals(svtype2)) {
                 if (rdCn1 == 0 && rdCn1 != rdCn2) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1 && rdCn1 > rdCn2) {
                     makeRevision(id2, 1);
                 } else if (rdCn1 > 1 && rdCn1 < rdCn2) {
-                    int newCN = rdCn2 - rdCn1 + 2;
-                    newCN = Math.max(newCN, 0);
-                    makeRevision(id2, newCN);
+                    makeRevision(id2, Math.max(rdCn2 - rdCn1 + 2, 0));
                 } else {
                     makeRevision(id2, 2);
                 }
@@ -271,7 +249,7 @@ public class SVCleanPt2 extends VariantWalker {
 
             // Condition 4: Any other time a larger call drives a smaller call
             else if (support1.contains(GATKSVVCFConstants.EV_VALUES.get(1))
-                    && overlap2 > 0.5 && !largerVariant.hasAttribute(GATKSVVCFConstants.MULTI_CNV) && largerLength > MIN_VARIANT_SIZE) {
+                    && overlap2 > 0.5 && !v1.hasAttribute(GATKSVVCFConstants.MULTI_CNV) && length2 > MIN_VARIANT_SIZE) {
                 if (rdCn1 == 0) {
                     makeRevision(id2, rdCn2 + 2);
                 } else if (rdCn1 == 1) {
@@ -286,9 +264,7 @@ public class SVCleanPt2 extends VariantWalker {
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {
-        return v1.getContig().equals(v2.getContig())
-                && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
-                && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
     }
 
     private boolean isDelDup(final VariantContext variant) {
@@ -297,7 +273,8 @@ public class SVCleanPt2 extends VariantWalker {
     }
 
     private boolean isLarge(final VariantContext variant, final int minSize) {
-        return Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) >= minSize;
+        int variantLength = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        return variantLength >= minSize;
     }
 
     private Map<String, Set<String>> getSupportForVariant(final VariantContext variant) {

@@ -83,6 +83,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     private final Map<String, Set<String>> revisedEventsFiltered = new HashMap<>();
     private final Map<String, Map<String, Integer>> revisedRdCn = new HashMap<>();
 
+    private static final int MIN_VARIANT_SIZE_CNV = 1000;
     private static final int MIN_VARIANT_SIZE = 5000;
 
     @Override
@@ -137,8 +138,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         }
 
         // Process overlaps with variants in the buffer
-        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig())
-                || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
+        overlappingVariantsBuffer.removeIf(vc -> !vc.getContig().equals(variant.getContig()) || vc.getEnd() < variant.getStart());
         for (VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
                 processOverlap(bufferedVariant, variant);
@@ -160,8 +160,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         // Initialize revisedRdCn value for each variant
         for (final String sampleName : samples) {
             final Genotype genotype = variant.getGenotype(sampleName);
-            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
-
             final String rdCn = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
             variantRdCn.put(sampleName, Integer.parseInt(rdCn));
         }
@@ -173,7 +171,9 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         if (revisedEventsAll.containsKey(variant.getID())) {
             processVariant(builder, variant);
         }
-        processCnvs(builder, variant);
+        if (isDelDup(variant) && isLarge(variant, MIN_VARIANT_SIZE_CNV)) {
+            processCnvs(builder, variant);
+        }
         vcfWriter.add(builder.make());
     }
 
@@ -181,12 +181,10 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         // Get overlap data
         VariantContext wider;
         VariantContext narrower;
-        final int length1 = v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        final int length2 = v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
-        if (length1 > length2) {
+        if (v1.getLengthOnReference() > v2.getLengthOnReference()) {
             wider = v1;
             narrower = v2;
-        } else if (length2 > length1) {
+        } else if (v2.getLengthOnReference() > v1.getLengthOnReference()) {
             wider = v2;
             narrower = v1;
         } else {
@@ -222,9 +220,9 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     private void processCollectedVariants() {
-        // Prunes variant-sample pairs we need RD_CN values for
         for (final Map.Entry<String, Map<String, Pair<String, String>>> entry : revisedEventsAll.entrySet()) {
             for (final Map.Entry<String, Pair<String, String>> innerEntry : entry.getValue().entrySet()) {
+                // Identifies variant-sample pairs we need RD_CN values for to improve speed
                 final String sampleName = innerEntry.getKey();
                 final String variantId = entry.getKey();
                 final String widerVariantId = innerEntry.getValue().getLeft();
@@ -264,8 +262,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
                 if (newVal != -1) {
                     final GenotypeBuilder gb = new GenotypeBuilder(oldGenotype);
                     gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                    if (!oldGenotype.hasExtendedAttribute(GATKSVVCFConstants.RD_GQ)) continue;
-
                     gb.GQ(Integer.parseInt((String) oldGenotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ)));
                     newGenotypes.add(gb.make());
                 } else {
@@ -282,8 +278,6 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
         final boolean isDel = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL);
         for (String sample : variant.getSampleNamesOrderedByName()) {
             final Genotype genotype = variant.getGenotype(sample);
-            if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
-
             final String rdCnString = (String) genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
             final int rdCn = Integer.parseInt(rdCnString);
             if ((isDel && rdCn > 3) || (!isDel && (rdCn < 1 || rdCn > 4))) {
@@ -304,9 +298,7 @@ public class SVCleanPt1b extends MultiplePassVariantWalker {
     }
 
     private boolean overlaps(final VariantContext v1, final VariantContext v2) {
-        return v1.getContig().equals(v2.getContig())
-                && v1.getStart() <= (v2.getStart() + v2.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0))
-                && v2.getStart() <= (v1.getStart() + v1.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        return v1.getContig().equals(v2.getContig()) && v1.getStart() <= v2.getEnd() && v2.getStart() <= v1.getEnd();
     }
 
     private Set<String> getNonReferenceSamples(final VariantContext variant) {
