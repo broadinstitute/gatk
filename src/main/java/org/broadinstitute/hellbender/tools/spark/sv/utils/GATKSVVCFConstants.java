@@ -11,13 +11,13 @@ import java.util.Map;
 
 import static java.util.Map.entry;
 
+
 public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
     // VCF standard keys reserved for sv
     public static final String SVTYPE = "SVTYPE";
     public static final String SVLEN = "SVLEN";
-    public static final String EVIDENCE = "EVIDENCE";
     public static final String IMPRECISE = "IMPRECISE";
     public static final String CIPOS = "CIPOS";
     public static final String CIEND = "CIEND";
@@ -35,14 +35,6 @@ public final class GATKSVVCFConstants {
     // symbolic alt alleles
     public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
     public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
-
-    // Evidence types
-    public enum EvidenceTypes {
-        BAF,
-        PE,
-        RD,
-        SR
-    }
 
     // GATK-SV specific header lines
     // TODO: 10/3/17 the following comment is a goal we are trying to achieve
@@ -149,13 +141,8 @@ public final class GATKSVVCFConstants {
     public static final String BND_DELETION_STRANDS = "+-";
     public static final String BND_DUPLICATION_STRANDS = "-+";
 
-    // SR support
-    public static final String BOTHSIDES_SUPPORT_ATTRIBUTE = "BOTHSIDES_SUPPORT";
-    public static final String HIGH_SR_BACKGROUND_ATTRIBUTE = "HIGH_SR_BACKGROUND";
-
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
-    public static final String DEPTH_GENOTYPE_COPY_NUMBER_FORMAT = "RD_CN";
     public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
@@ -165,36 +152,47 @@ public final class GATKSVVCFConstants {
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
 
-    // CleanVcf
+    // SVCleanPt1a
+    public static final String EV = "EV";
+    public static final List<String> EV_VALUES = Arrays.asList(
+            null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
+    );
     public static final String ME = "ME";
     public static final String VAR_GQ = "varGQ";
     public static final String MULTIALLELIC = "MULTIALLELIC";
     public static final String UNRESOLVED = "UNRESOLVED";
     public static final String HIGH_SR_BACKGROUND = "HIGH_SR_BACKGROUND";
     public static final String BOTHSIDES_SUPPORT = "BOTHSIDES_SUPPORT";
-    public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
     public static final String REVISED_EVENT = "REVISED_EVENT";
+    public static final String RD_CN = "RD_CN";
+
+    // SVCleanPt1b
+    public static final String RD_GQ = "RD_GQ";
     public static final String MULTI_CNV = "MULTI_CNV";
 
-    public static final String RD_CN = "RD_CN";
-    public static final String RD_GQ = "RD_GQ";
+    // SVCleanPt4
+    public static final String PESR_GT_OVERDISPERSION = "PESR_GT_OVERDISPERSION";
     public static final String PE_GT = "PE_GT";
     public static final String SR_GT = "SR_GT";
     public static final String PE_GQ = "PE_GQ";
     public static final String SR_GQ = "SR_GQ";
     public static final String CNV = "CNV";
+
+    // SVCleanPt5
     public static final String UNR = "UNR";
     public static final String EVENT = "EVENT";
-    public static final String EV = "EV";
-    public static final List<String> EV_VALUES = Arrays.asList(
-            null, "RD", "PE", "RD,PE", "SR", "RD,SR", "PE,SR", "RD,PE,SR"
-    );
+    public static final Set<List<Integer>> BIALLELIC_GTS = new HashSet<>(Arrays.asList(
+            Arrays.asList(0, 0),
+            Arrays.asList(1, 1),
+            Arrays.asList(0, 1),
+            Arrays.asList(null, null)
+    ));
     public static final Set<String> FILTER_VCF_LINES = new HashSet<>(Arrays.asList(
             "CIPOS", "CIEND", "RMSSTD", "source", "bcftools", "GATKCommandLine", "#CHROM"
     ));
 
     public static final Set<String> FILTER_VCF_INFO_LINES = new HashSet<>(Arrays.asList(
-        GATKSVVCFConstants.UNRESOLVED, GATKSVVCFConstants.MULTIALLELIC, GATKSVVCFConstants.VAR_GQ,
+            GATKSVVCFConstants.UNRESOLVED, GATKSVVCFConstants.MULTIALLELIC, GATKSVVCFConstants.VAR_GQ,
             GATKSVVCFConstants.MULTI_CNV, GATKSVVCFConstants.REVISED_EVENT, GATKSVVCFConstants.EVENT
     ));
 
@@ -225,9 +223,6 @@ public final class GATKSVVCFConstants {
     public static final String TRUTH_ALLELE_COUNT_INFO = "TRUTH_AC";
     public static final String TRUTH_ALLELE_NUMBER_INFO = "TRUTH_AN";
     public static final String TRUTH_ALLELE_FREQUENCY_INFO = "TRUTH_AF";
-
-    // stratification
-    public static final String STRATUM_INFO_KEY = "STRAT";
 
     // functional annotations
     public static final String LOF = "PREDICTED_LOF";
