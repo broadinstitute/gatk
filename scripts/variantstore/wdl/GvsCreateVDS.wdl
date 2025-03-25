@@ -118,6 +118,7 @@ workflow GvsCreateVDS {
             gvs_import_script = GetHailScripts.gvs_import_script,
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
+            hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
@@ -159,6 +160,7 @@ task CreateVds {
         String avro_path
         Boolean leave_cluster_running_at_end
         File hail_gvs_import_script
+        File hail_gvs_util_script
         File gvs_import_script
         File gvs_import_ploidy_script
         File run_in_hail_cluster_script
@@ -238,7 +240,8 @@ task CreateVds {
         # Run the hail python script to make a VDS
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_gvs_import_script} \
-            --secondary-script-path-list ~{gvs_import_script} \
+            --secondary-script-path-list ~{hail_gvs_util_script} \
+            --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
@@ -289,6 +292,7 @@ task GetHailScripts {
     output {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
         File hail_gvs_import_script = "app/hail_gvs_import.py"
+        File hail_gvs_util_script = "app/hail_gvs_util.py"
         File gvs_import_script = "app/import_gvs.py"
         File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
     }
