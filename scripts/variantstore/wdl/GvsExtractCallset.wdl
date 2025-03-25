@@ -416,6 +416,7 @@ task ExtractTask {
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
+  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -459,7 +460,7 @@ task ExtractTask {
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-        --ref-version CUSTOM \
+        --ref-version ~{ref_version} \
         -R ~{reference} \
         -O ~{output_file} \
         --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
