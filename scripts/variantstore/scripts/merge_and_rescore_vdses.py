@@ -7,7 +7,7 @@ import hail as hl
 from hail.utils.java import info
 
 
-def merge_two_vds(vds1, vds2, output_path, hail_temp_path):
+def merge_vdses(vds1, vds2, output_path, hail_temp_path):
     combiner = hl.vds.new_combiner(
         output_path=output_path,
         temp_path=hail_temp_path,
@@ -209,10 +209,10 @@ if __name__ == '__main__':
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
-    merge_two_vds(args.input_vds_first_path,
-                  args.input_vds_second_path,
-                  args.output_vds_path,
-                  tmp_dir)
+    merge_vdses(args.input_vds_first_path,
+                args.input_vds_second_path,
+                args.output_vds_path,
+                tmp_dir)
 
     merged_vds = hl.vds.read_vds(args.output_vds_path)
 
