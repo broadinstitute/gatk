@@ -53,6 +53,7 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
     private static final Logger logger = LogManager.getLogger(VectorLoglessPairPDHMM.class);
     private static long pairHMMTime = 0;
     private static long pairHMMSetupTime = 0;
+    private static long postProcessingTime = 0;
     private static long totalCalls = 0;
 
     private final IntelPDHMM pairPDHmm;
@@ -193,6 +194,11 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
 
         pairPDHmm.computeLikelihoods(readDataHolders, haplotypeDataHolders, mLogLikelihoodArray);
 
+        if (doProfiling) {
+            pairHMMTime += (System.nanoTime() - startTime);
+            startTime = System.nanoTime();
+        }
+
         int readIndex = 0;
         for (final GATKRead read : processedReads) {
             final Locatable unclippedSpan = (Locatable) read.getTransientAttribute(
@@ -212,9 +218,11 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
             readIndex++;
         }
 
-        if (doProfiling) {
-            pairHMMTime += (System.nanoTime() - startTime);
+        if(doProfiling) {
+            postProcessingTime += (System.nanoTime() - startTime);
         }
+
+
     }
 
     @Override
@@ -223,6 +231,7 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
         if (doProfiling) {
             logger.info("Time spent in setup for JNI call : " + (pairHMMSetupTime * 1e-9));
             logger.info("Time spent in JNI call : " + (pairHMMTime * 1e-9));
+            logger.info("Time spent in post-processing : " + (postProcessingTime * 1e-9));
             // logger.info("Total calls : " + totalCalls);
         }
         super.close();
