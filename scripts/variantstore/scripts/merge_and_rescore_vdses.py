@@ -1,15 +1,9 @@
 import argparse
 import os
-import json
-import gzip
-
-from collections import namedtuple, defaultdict, abc
+from collections import abc
 from typing import Sequence
 
 import hail as hl
-
-from avro.datafile import DataFileReader
-from avro.io import DatumReader
 from hail.utils.java import info
 
 
@@ -34,8 +28,15 @@ def translate_locus(location):
     return hl.locus(chrom, pos, reference_genome=_GRCH38)
 
 
-def find_filter_data(avro_path: str, site_path: str) -> (Sequence[str], Sequence[str]):
-    pass
+def find_site_and_vets_filter_data(avro_path: str) -> (Sequence[str], Sequence[str]):
+    from hail_gvs_util import gcs_generate_avro_args, gcs_pattern
+    from google.cloud import storage
+
+    avro_bucket_name, avro_object_prefix = gcs_pattern.match(avro_path).groups()
+    avro_bucket = storage.Client().get_bucket(avro_bucket_name)
+    ret = [gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
+           for key in ["site_filtering_data", "vets_filtering_data"]]
+    return ret
 
 
 def import_site_filters(
@@ -61,14 +62,14 @@ site_path : str
     return hl.read_table(site_path)
 
 
-def import_vets(
+def import_vets_filters(
         avros: abc.Sequence[str], vets_path: str
 ) -> hl.Table:
     """
     Parameters
     ----------
     avros : Sequence[str]
-        List of paths for vets/vets data
+        List of paths for vets allele/variant filtering data
     vets_path : str
         Path to where variant filters table will be written
 
@@ -201,12 +202,12 @@ if __name__ == '__main__':
     hl.default_reference('GRCh38')
 
     site_path = os.path.join(tmp_dir, "site_filters.ht")
-    vets_path = os.path.join(tmp_dir, "vets.ht")
+    vets_path = os.path.join(tmp_dir, "vets_filters.ht")
 
-    site_filtering_data, vets_filtering_data = find_filter_data(args.avro_path)
+    site_filtering_data, vets_filtering_data = find_site_and_vets_filter_data(args.avro_path)
 
     site = import_site_filters(site_filtering_data, site_path)
-    vets = import_vets(vets_filtering_data, vets_path)
+    vets = import_vets_filters(vets_filtering_data, vets_path)
 
     merge_two_vds(args.input_vds_first_path,
                   args.input_vds_second_path,
@@ -215,3 +216,4 @@ if __name__ == '__main__':
 
     merged_vds = hl.vds.read_vds(args.output_vds_path)
 
+    patch_variant_data(merged_vds, site, vets)
