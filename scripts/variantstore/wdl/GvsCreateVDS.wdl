@@ -240,8 +240,8 @@ task CreateVds {
         # Run the hail python script to make a VDS
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_gvs_import_script} \
+            --secondary-script-path-list ~{gvs_import_script} \
             --secondary-script-path-list ~{hail_gvs_util_script} \
-            --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
