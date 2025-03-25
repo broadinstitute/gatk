@@ -459,7 +459,7 @@ task ExtractTask {
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-        --ref-version 38 \
+        --ref-version CUSTOM \
         -R ~{reference} \
         -O ~{output_file} \
         --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
