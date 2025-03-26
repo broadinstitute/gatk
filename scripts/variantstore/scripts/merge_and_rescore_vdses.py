@@ -185,9 +185,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter information.')
 
-    parser.add_argument('--echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
+    parser.add_argument('--input-echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
 
-    parser.add_argument('--unmerged-foxtrot-vds', help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=True)
+    parser.add_argument('--input-unmerged-foxtrot-vds', help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=True)
 
     parser.add_argument('--avro-path', type=str,
                         help='Path at which exported GVS Avro files are found, including the filter data to apply in the output merged VDS.',
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
-    echo_vds = hl.vds.read_vds(args.echo_vds)
+    echo_vds = hl.vds.read_vds(args.input_echo_vds)
 
     patched_echo_vd = patch_variant_data(echo_vds.variant_data, site, vets)
     patched_echo_vds = hl.vds.VariantDataset(echo_vds.reference_data, patched_echo_vd)
@@ -224,4 +224,4 @@ if __name__ == '__main__':
 
     merge_vdses(tmp_dir,
                 args.output_vds_path,
-                patched_echo_vds_path, args.unmerged_foxtrot_vds)
+                patched_echo_vds_path, args.input_unmerged_foxtrot_vds)

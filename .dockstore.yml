@@ -156,7 +156,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1418_ploidy_for_foxtrot_vds
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -166,6 +165,16 @@ workflows:
        branches:
          - master
          - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsMergeAndRescoreVDSes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1613_merge_and_rescore
        tags:
          - /.*/
    - name: GvsExtractCallset
