@@ -327,7 +327,6 @@ workflows:
              - master
              - ah_var_store
              - rc-vs-1576-avro-update
-             - gg_VS-1449_AddReferenceStringToVcf
          tags:
              - /.*/
    - name: GvsIngestTieout

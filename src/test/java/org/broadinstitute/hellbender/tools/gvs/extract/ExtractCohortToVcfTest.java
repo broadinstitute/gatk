@@ -82,7 +82,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("L", "chr20:10000000-20000000");
 
     runCommandLine(args);
-    // Decompress the vcf for validation
+    // Remove iine(s) from the generated VCF that
     final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
     IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
   }
