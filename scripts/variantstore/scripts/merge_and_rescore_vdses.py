@@ -189,8 +189,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--input-unmerged-foxtrot-vds', help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=True)
 
-    parser.add_argument('--avro-path', type=str,
-                        help='Path at which exported GVS Avro files are found, including the filter data to apply in the output merged VDS.',
+    parser.add_argument('--input-foxtrot-avro-path', type=str,
+                        help='Path at which exported Foxtrot GVS Avro files are found, including the filter data to apply in the output merged VDS.',
                         required=True)
     parser.add_argument('--output-vds-path', type=str,
                         help='Path to write output VDS', required=True)
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     site_path = os.path.join(tmp_dir, "site_filters.ht")
     vets_path = os.path.join(tmp_dir, "vets_filters.ht")
 
-    site_filtering_data, vets_filtering_data = find_site_and_vets_filter_data(args.avro_path)
+    site_filtering_data, vets_filtering_data = find_site_and_vets_filter_data(args.input_foxtrot_avro_path)
 
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)

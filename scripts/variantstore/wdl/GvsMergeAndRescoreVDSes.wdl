@@ -8,10 +8,9 @@ import "GvsValidateVDS.wdl" as ValidateVDS
 
 workflow GvsMergeAndRescoreVDSes {
     input {
-        String avro_path
-
         String input_echo_vds_path
         String input_unmerged_foxtrot_vds_path
+        String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
 
         String cluster_prefix = "vds-cluster"
@@ -36,8 +35,8 @@ workflow GvsMergeAndRescoreVDSes {
     }
 
     parameter_meta {
-        avro_path : {
-            help: "Input location for the avro files"
+        input_foxtrot_avro_path : {
+            help: "Input location for Foxtrot Avro files with the updated Foxtrot filter"
         }
         input_echo_vds_path: {
             help: "Previous full Echo VDS with Echo filters"
@@ -122,7 +121,7 @@ workflow GvsMergeAndRescoreVDSes {
             input_echo_vds_path = input_echo_vds_path,
             input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
             output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
-            avro_path = avro_path,
+            input_foxtrot_avro_path = input_foxtrot_avro_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
@@ -168,8 +167,8 @@ task MergeAndRescoreVDS {
         String prefix
         String input_echo_vds_path
         String input_unmerged_foxtrot_vds_path
+        String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
-        String avro_path
         Boolean leave_cluster_running_at_end
         File merge_and_rescore_script
         File hail_gvs_util_script
@@ -241,7 +240,7 @@ task MergeAndRescoreVDS {
         cat > script-arguments.json <<FIN
         {
             "temp-path": "${hail_temp_path}",
-            "avro-path": "~{avro_path}",
+            "input-foxtrot-avro-path": "~{input_foxtrot_avro_path}",
             "input-echo-vds": "~{input_echo_vds_path}",
             "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
             "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
