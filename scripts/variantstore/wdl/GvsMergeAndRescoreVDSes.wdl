@@ -12,6 +12,7 @@ workflow GvsMergeAndRescoreVDSes {
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
+        Boolean skip_validate = false
 
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
@@ -140,24 +141,26 @@ workflow GvsMergeAndRescoreVDSes {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call ValidateVDS.GvsValidateVDS as ValidateVds {
-        input:
-            go = MergeAndRescoreVDS.done,
-            cluster_prefix = cluster_prefix,
-            vds_path = output_merged_and_rescored_foxtrot_vds_path,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            workspace_project = effective_google_project,
-            region = region,
-            workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
+    if (!skip_validate) {
+        call ValidateVDS.GvsValidateVDS as ValidateVds {
+            input:
+                go = MergeAndRescoreVDS.done,
+                cluster_prefix = cluster_prefix,
+                vds_path = output_merged_and_rescored_foxtrot_vds_path,
+                hail_version = effective_hail_version,
+                hail_wheel = hail_wheel,
+                workspace_project = effective_google_project,
+                region = region,
+                workspace_bucket = effective_workspace_bucket,
+                gcs_subnetwork_name = gcs_subnetwork_name,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                leave_cluster_running_at_end = leave_cluster_running_at_end,
+        }
     }
 
     output {
         String create_cluster_name = MergeAndRescoreVDS.cluster_name
-        String validate_cluster_name = ValidateVds.cluster_name
+        String? validate_cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
 }
