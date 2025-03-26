@@ -185,9 +185,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter information.')
 
-    parser.add_argument('--echo-vds', nargs=1, help="Echo VDS with Echo filter, will not be overwritten", required=True)
+    parser.add_argument('--echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
 
-    parser.add_argument('--unmerged-foxtrot-vds', nargs=1, help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=True)
+    parser.add_argument('--unmerged-foxtrot-vds', help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=True)
 
     parser.add_argument('--avro-path', type=str,
                         help='Path at which exported GVS Avro files are found, including the filter data to apply in the output merged VDS.',
