@@ -18,6 +18,7 @@ public final class GATKSVVCFConstants {
     // VCF standard keys reserved for sv
     public static final String SVTYPE = "SVTYPE";
     public static final String SVLEN = "SVLEN";
+    public static final String EVIDENCE = "EVIDENCE";
     public static final String IMPRECISE = "IMPRECISE";
     public static final String CIPOS = "CIPOS";
     public static final String CIEND = "CIEND";
