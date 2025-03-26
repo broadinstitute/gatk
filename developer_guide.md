@@ -59,6 +59,13 @@ The walker classes you are mostly likely to use are:
 #### VariantWalker
 A `VariantWalker` iterates over a source of variants (e.g. one or more VCF files) and processes one variant at a time.  This processing is done in the `apply` method, which is the primary method you will override if extending `VariantWalker`.  For an example demonstrating in more depth how to extend `VariantWalker`, see `ExampleVariantWalker`.
 
+##### VariantWalkerBase
+There are multiple types of variant walkers, and they all inherit from `VariantWalkerBase`.  The reason they extend `VariantWalkerBase` and not `VariantWalker` is to allow iterating over variants in ways other than one variant at a time from one source for variants.  The other abstract walkers that inherit from `VariantWalkerBase` are:
+
+`MultiVariantWalker` - a variant walker that processes one variant at a time, in position order, from multiple sources of variants
+
+`VariantLocusWalker` - a variant walker that processes variants grouped by locus overlap
+
 #### ReadWalker
 A `ReadWalker` iterates over a source of reads (e.g. one or more BAM files) and processes one read at a time.  This processing is done in the `apply` method, which is the primary method you will override if extending `ReadWalker`.  For an example demonstrating in more depth how to extend `ReadWalker`, see `ExampleReadWalkerWithVariants` or `ExampleReadWalkerWithReference`.
 
@@ -69,6 +76,15 @@ A `FeatureWalker` iterates over a source of features and processes one at a time
 GATK implements filtering functionality for the inclusion/exclusion of specific data points from an input (or other source of data).  They are implemented using the Java `Predicate` interface, which allows them to be easily used as part of lambda expressions.
 
 ### ReadFilter
+A `ReadFilter` filters a source of reads.  More specifically, it filters a source of `GATKRead` objects.  
+
+`GATKTool` defines a method called `getTransformedReadStream` which returns a stream of `GATKRead` objects that has been transformed by configured pre transformers, filtered, and then transformed by configured post transformers.  For more information on transformers, see the [transformers section](#transformers).  Tools exteding `GATKTool` should call `getTransformedReadStream` to make use for read filtering.
+
+`GATKTool` also defines a method called `getDefaultReadFilters` 
+
+
+
+
 
 ### VariantFilter
 
