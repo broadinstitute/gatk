@@ -226,7 +226,7 @@ task MergeAndRescoreVDS {
             minInstances: 2
             maxInstances: 2
         secondaryWorkerConfig:
-            maxInstances: 500
+            maxInstances: 200
         basicAlgorithm:
             cooldownPeriod: 120s
             yarnConfig:
