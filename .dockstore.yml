@@ -177,6 +177,16 @@ workflows:
          - vs_1613_merge_and_rescore
        tags:
          - /.*/
+   - name: GvsTieOutVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieOutVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1613_merge_and_rescore
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl

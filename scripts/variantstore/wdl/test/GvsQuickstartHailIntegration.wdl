@@ -4,6 +4,7 @@ import "../GvsUtils.wdl" as Utils
 import "../GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
 import "../GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
+import "GvsTieOutVDS.wdl" as TieOutVDS
 
 workflow GvsQuickstartHailIntegration {
     input {
@@ -130,7 +131,7 @@ workflow GvsQuickstartHailIntegration {
             leave_cluster_running_at_end = false,
     }
 
-    call TieOutVds {
+    call TieOutVDS.TieOutVDS {
         input:
             go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
