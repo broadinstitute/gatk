@@ -8,12 +8,12 @@ workflow GvsTieOutVds {
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
         String tieout_vcf_suffix = ".gz"
-        String? git_branch_or_tag
+        String git_branch_or_tag
         String? cloud_sdk_slim_docker
         String? hail_version
     }
 
-    if (!defined(git_branch_or_tag) || !defined(cloud_sdk_slim_docker) || !defined(hail_version)) {
+    if (!defined(cloud_sdk_slim_docker) || !defined(hail_version)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -22,7 +22,6 @@ workflow GvsTieOutVds {
 
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
-    String effective_git_branch_or_tag = select_first([git_branch_or_tag, GetToolVersions.git_hash])
 
     call TieOutVDS {
         input:
@@ -31,7 +30,7 @@ workflow GvsTieOutVds {
             tieout_vcf_indexes = tieout_vcf_indexes,
             vds_path = vds_path,
             tieout_vcf_suffix = tieout_vcf_suffix,
-            git_branch_or_tag = effective_git_branch_or_tag,
+            git_branch_or_tag = git_branch_or_tag,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             hail_version = effective_hail_version,
     }
