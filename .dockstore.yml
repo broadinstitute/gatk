@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -155,7 +156,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1418_ploidy_for_foxtrot_vds
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -165,6 +165,26 @@ workflows:
        branches:
          - master
          - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsMergeAndRescoreVDSes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1613_merge_and_rescore
+       tags:
+         - /.*/
+   - name: GvsTieOutVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieOutVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1613_merge_and_rescore
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -203,6 +223,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -326,7 +347,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1576-avro-update
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsIngestTieout

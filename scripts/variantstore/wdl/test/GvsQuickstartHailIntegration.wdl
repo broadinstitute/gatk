@@ -4,6 +4,7 @@ import "../GvsUtils.wdl" as Utils
 import "../GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
 import "../GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
+import "GvsTieOutVDS.wdl" as TieOutVDS
 
 workflow GvsQuickstartHailIntegration {
     input {
@@ -130,7 +131,7 @@ workflow GvsQuickstartHailIntegration {
             leave_cluster_running_at_end = false,
     }
 
-    call TieOutVds {
+    call TieOutVDS.TieOutVDS {
         input:
             go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
@@ -181,7 +182,7 @@ task TieOutVds {
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/scripts"
-        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py import_gvs_ploidy.py
+        for script in hail_gvs_import.py hail_gvs_util.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py import_gvs_ploidy.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
