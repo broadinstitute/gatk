@@ -79,17 +79,17 @@ public class AlleleFilteringUnitTest {
         List<Haplotype> haplotypeList = new ArrayList<>();
         final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
         Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
-        haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
+        haplotype.setGenomeLocation(new SimpleInterval("1", 10000, 10008));
         haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGGCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
-        haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
+        haplotype.setGenomeLocation(new SimpleInterval("1", 10000, 10008));
         haplotypeList.add(haplotype);
         haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
 
         haplotype = new Haplotype("CATTCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
-        haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
+        haplotype.setGenomeLocation(new SimpleInterval("1", 10000, 10008));
         haplotypeList.add(haplotype);
         haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
 
@@ -138,7 +138,7 @@ public class AlleleFilteringUnitTest {
         HaplotypeCallerGenotypingEngine genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samples, ! hcArgs.doNotRunPhysicalPhasing, false);
 
 
-        AlleleFiltering alleleFiltering = new AlleleFilteringHC(hcArgs, null, genotypingEngine);
+        AlleleFiltering alleleFiltering = new AlleleFilteringHC(hcArgs, null, genotypingEngine, initReference());
         AlleleLikelihoods<GATKRead, Haplotype> filtered_lks = alleleFiltering.filterAlleles(lks, 0, new HashSet<>());
         Assert.assertEquals(filtered_lks.alleles(), lks.alleles());
     }
