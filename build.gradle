@@ -171,7 +171,8 @@ configurations.configureEach {
     configurations*.exclude group: 'junit', module: 'junit'
 
     //this is excluded and replaced below with a dependency on bcprof-jdk18on which fixes known vulnerabilities
-    //configurations*.exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
+    //note that this is in the testUtils configuration and doesn't show up in the runtime files
+    configurations*.exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
 }
 
 tasks.withType(JavaCompile).configureEach {
