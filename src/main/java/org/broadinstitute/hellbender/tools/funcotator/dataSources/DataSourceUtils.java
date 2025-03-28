@@ -86,7 +86,7 @@ final public class DataSourceUtils {
 
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
-    public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
+    public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://gcp-public-data--broad-references/funcotator/";
     public static final String DATA_SOURCES_NAME_PREFIX                    = "funcotator_dataSources";
     public static final String DS_SOMATIC_NAME_MODIFIER                    = "s";
     public static final String DS_GERMLINE_NAME_MODIFIER                   = "g";
