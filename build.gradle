@@ -284,7 +284,7 @@ dependencies {
     }
     implementation 'org.hipparchus:hipparchus-stat:2.0'
     implementation 'org.apache.commons:commons-collections4:4.4'
-    implementation 'org.apache.commons:commons-vfs2:2.9.0'
+    implementation 'org.apache.commons:commons-vfs2:2.10.0'
     implementation 'org.apache.commons:commons-configuration2:2.10.1'
 
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'

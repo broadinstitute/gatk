@@ -135,7 +135,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         final ArrayList<Object[]> data = new ArrayList<>();
 
         for (int i = 0; i < 20; ++i) {
-            data.add(new Object[]{RandomStringUtils.randomAlphanumeric(i)});
+            data.add(new Object[]{RandomStringUtils.insecure().nextAlphanumeric(i)});
         }
 
         return data.iterator();
