@@ -334,7 +334,7 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                     }
 
                     final String whitespaceString = whitespace != 0 ? "\t \t \t " : " ";
-                    final String decoratorString  = decoratorCount  !=0 ? RandomStringUtils.randomAlphanumeric(decoratorCount) : "";
+                    final String decoratorString  = decoratorCount  !=0 ? RandomStringUtils.insecure().nextAlphanumeric(decoratorCount) : "";
 
                     testArgs.add(
                             new Object[] {
@@ -370,7 +370,7 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                         }
 
                         final String whitespaceString = whitespace != 0 ? "\t \t \t " : " ";
-                        final String decoratorString = decoratorCount != 0 ? RandomStringUtils.randomAlphanumeric(decoratorCount) : "";
+                        final String decoratorString = decoratorCount != 0 ? RandomStringUtils.insecure().nextAlphanumeric(decoratorCount) : "";
 
                         testArgs.add(
                                 new Object[]{
