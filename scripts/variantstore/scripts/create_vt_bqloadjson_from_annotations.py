@@ -6,6 +6,10 @@ import gzip
 import argparse
 import logging
 import sys
+from Bio.Seq import reverse_complement
+
+
+
 
 vat_nirvana_positions_dictionary = {
     "position": "position", # required
@@ -59,6 +63,17 @@ vat_nirvana_clinvar_dictionary = {
     "clinvar_classification": "significance", # nullable
     "clinvar_last_updated": "lastUpdatedDate", # nullable
     "clinvar_phenotype": "phenotypes" # nullable
+}
+
+vat_clinvar_review_status_dictionary = { # https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/
+    "no classification for the individual variant": "none",
+    "no classification provided": "none",
+    "no assertion criteria provided": "none",
+    "criteria provided, conflicting classifications": "one",
+    "criteria provided, single submitter": "one",
+    "criteria provided, multiple submitters, no conflicts": "two",
+    "reviewed by expert panel": "three",
+    "practice guideline": "four"
 }
 
 vat_nirvana_gnomad_dictionary = {
@@ -233,14 +248,24 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         updated_dates = [] # grab the most recent
         phenotypes = [] # ordered alphabetically
         clinvar_ids = [] # For easy validation downstream
-        # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for. We check by making sure the ref and alt are the same
+        # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for.
+        # We check by making sure the ref and alt are the same including any reverse complements
         for clinvar_obj in clinvar_objs:
             # get only the clinvar objs with right variant and the id that starts with RCV
-            if (clinvar_obj.get("refAllele") == var_ref) and (clinvar_obj.get("altAllele") == var_alt) and (clinvar_obj.get("id")[:3] == "RCV"):
-                clinvar_ids.append(clinvar_obj.get("id"))
-                significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
-                updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
-                phenotypes.extend(clinvar_obj.get("phenotypes"))
+            if (((clinvar_obj.get("refAllele") == var_ref) and (clinvar_obj.get("altAllele") == var_alt)) \
+            or ((clinvar_obj.get("refAllele") == reverse_complement(variant_line["refAllele"])) and (clinvar_obj.get("altAllele") == reverse_complement(variant_line["altAllele"])))) \
+            and (clinvar_obj.get("id")[:3] == "RCV"):
+                clinvar_obj_star_status = vat_clinvar_review_status_dictionary.get(clinvar_obj.get("reviewStatus")) ## for testing it might make sense to carry these values to BQ and drop them before we make the VAT
+
+                if  clinvar_obj_star_status == None:
+                    logging.warning(f"WARNING: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
+                    # continue ## we will continue to include these in the VAT for now under the assumption that they are valid Clinvar entries w/o a reviewStatus
+                if clinvar_obj_star_status != "none": # we only want to include the ones that are not terrible
+                    clinvar_ids.append(clinvar_obj.get("id"))
+                    significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
+                    updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
+                    phenotypes.extend(clinvar_obj.get("phenotypes"))
+
         if len(clinvar_ids) > 0:
             ordered_significance_values = []
             # We want to collect all the significance values and order them by the significance_ordering list
