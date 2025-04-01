@@ -447,7 +447,7 @@ public class SVTestUtils {
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 getLength(positionA, positionB, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
                 Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Collections.emptyList(),
+                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(),
                 Collections.emptyMap(), Collections.emptySet(), null);
     }
@@ -456,7 +456,7 @@ public class SVTestUtils {
         return new SVCallRecord("", "chr1", 100, true, "chr1", 199, false,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 100, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Collections.emptyList(),
+                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(),
                 attributes, Collections.emptySet(), null);
     }
@@ -658,7 +658,7 @@ public class SVTestUtils {
 
     public static List<Allele> getCNVAlleles(final GATKSVVCFConstants.StructuralVariantAnnotationType type) {
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
-            return Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP);
+            return Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_CNV);
         } else if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
             return Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL);
         } else if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {

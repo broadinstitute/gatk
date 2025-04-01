@@ -59,8 +59,13 @@ import java.util.stream.Collectors;
  * genotype concordance metrics, including allele frequency of the truth variant. Concordance metrics are computed
  * on the intersection of sample sets of the two VCFs, but all other annotations including variant truth status
  * and allele frequency use all records and samples available. See output header for descriptions
- * of the specific fields. For multi-allelic CNVs, only a copy state concordance metric is
- * annotated. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
+ * of the specific fields. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
+ *
+ * Each multi-allelic copy number variant (i.e. records with the "CNV" type) is matched to the single nearest deletion, duplication,
+ * or other multi-allelic copy number variant. Because these variants do not have genotype calls (./.), concordance
+ * is approximated by inferring genotypes based on copy state and ploidy defined the CN and ECN fields. For example,
+ * a genotype with CN=1 and ECN=2 is assumed to represent a heterozygous deletion. Duplications with extra copies
+ * exceeding the ploidy, for example CN=5 and ECN=2, are assigned homozygous-alt genotypes.
  *
  * This tool also allows supports stratification of the SVs into groups with specified matching criteria including SV type,
  * size range, and interval overlap. Please see the {@link GroupedSVCluster} tool documentation for further details
@@ -283,6 +288,9 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype.getSampleName()).alleles(genotype.getAlleles());
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
             builder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
+        }
+        if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
+            builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT));
         }
         return builder.make();
     }

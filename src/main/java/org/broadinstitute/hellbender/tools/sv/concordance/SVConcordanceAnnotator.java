@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.sv.SVAlleleCounter;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVLinkage;
+import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVCollapser;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import picard.vcf.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Generates SV records annotated with concordance metrics given a pair of "evaluation" and "truth" SVs.
@@ -52,16 +54,27 @@ public class SVConcordanceAnnotator {
         final SVCallRecord evalRecord = pair.getEvalItem();
         final GenotypesContext evalGenotypes = evalRecord.getGenotypes();
         final SVCallRecord truthRecord = pair.getClosest();
+        final List<Allele> evalAltList = evalRecord.getAltAlleles();
+        Utils.validate(evalAltList.size() == 1, "Eval record must have exactly 1 alt allele");
+        final Allele evalAlt = evalAltList.get(0);
+        final Allele truthAlt;
+        if (truthRecord == null) {
+            truthAlt = null;
+        } else {
+            final List<Allele> truthAltList = truthRecord.getAltAlleles();
+            Utils.validate(truthAltList.size() == 1, "Truth record must have exactly 1 alt allele");
+            truthAlt = truthAltList.get(0);
+        }
 
         final ArrayList<Genotype> newGenotypes = new ArrayList<>(evalGenotypes.size());
         final GenotypeConcordanceCounts counts = new GenotypeConcordanceCounts();
-        final boolean isCnv = evalRecord.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
+        final boolean isMultiallelicCnv = evalRecord.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
         int numCnvMatches = 0;
         int numValidCnvComparisons = 0;
         for (final String sample : evalGenotypes.getSampleNames()) {
             GenotypeBuilder builder = new GenotypeBuilder(evalGenotypes.get(sample));
             if (samples == null || samples.contains(sample)) {
-                if (isCnv) {
+                if (isMultiallelicCnv) {
                     final Boolean result = copyNumbersMatch(sample, evalRecord, truthRecord);
                     builder = builder.attribute(GATKSVVCFConstants.TRUTH_CN_EQUAL_FORMAT, result == null ? null : result.booleanValue() ? 1 : 0);
                     if (result != null) {
@@ -70,12 +83,13 @@ public class SVConcordanceAnnotator {
                             numCnvMatches++;
                         }
                     }
-                } else {
-                    final GenotypeConcordanceStates.TruthAndCallStates states = getStates(sample, evalRecord, truthRecord);
-                    counts.increment(states);
-                    builder = builder.attribute(GenotypeConcordance.CONTINGENCY_STATE_TAG,
-                            scheme.getContingencyStateString(states.truthState, states.callState));
                 }
+                Genotype evalGenotype = evalRecord.getGenotypes().get(sample);
+                Genotype truthGenotype = truthRecord == null ? null : truthRecord.getGenotypes().get(sample);
+                final GenotypeConcordanceStates.TruthAndCallStates states = evalRecord.isSimpleCNV() ? getCNVStates(evalGenotype, truthGenotype, evalAlt, truthAlt, evalRecord.getRefAllele()) : getStates(evalGenotype, truthGenotype);
+                counts.increment(states);
+                builder = builder.attribute(GenotypeConcordance.CONTINGENCY_STATE_TAG,
+                        scheme.getContingencyStateString(states.truthState, states.callState));
             }
             newGenotypes.add(builder.make());
         }
@@ -86,10 +100,11 @@ public class SVConcordanceAnnotator {
         attributes.put(GATKSVVCFConstants.TRUTH_VARIANT_ID_INFO, closestVariantId);
         attributes.put(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, variantStatus.getAbbreviation());
 
-        if (isCnv) {
+        if (isMultiallelicCnv) {
             final Double cnvConcordance = numValidCnvComparisons == 0 ? null : numCnvMatches / (double) numValidCnvComparisons;
             attributes.put(GATKSVVCFConstants.COPY_NUMBER_CONCORDANCE_INFO, cnvConcordance);
-        } else if (truthRecord != null) {
+        }
+        if (truthRecord != null) {
             final GenotypeConcordanceSummaryMetrics metrics = new GenotypeConcordanceSummaryMetrics(VariantContext.Type.SYMBOLIC, counts, "truth", "eval", true);
             attributes.put(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, Double.isNaN(metrics.GENOTYPE_CONCORDANCE) ? null : metrics.GENOTYPE_CONCORDANCE);
             attributes.put(GATKSVVCFConstants.NON_REF_GENOTYPE_CONCORDANCE_INFO, Double.isNaN(metrics.NON_REF_GENOTYPE_CONCORDANCE) ? null : metrics.NON_REF_GENOTYPE_CONCORDANCE);
@@ -146,31 +161,6 @@ public class SVConcordanceAnnotator {
         return SVCallRecordUtils.copyCallWithNewAttributes(recordWithGenotypes, attributes);
     }
 
-    private boolean hasAlleleFrequencyAnnotations(final SVCallRecord record) {
-        Utils.nonNull(record);
-        final Map<String, Object> attr = record.getAttributes();
-        return (attr.containsKey(VCFConstants.ALLELE_COUNT_KEY) && attr.get(VCFConstants.ALLELE_COUNT_KEY) != null)
-                        && (attr.containsKey(VCFConstants.ALLELE_FREQUENCY_KEY) && attr.get(VCFConstants.ALLELE_FREQUENCY_KEY) != null)
-                        && (attr.containsKey(VCFConstants.ALLELE_NUMBER_KEY) && attr.get(VCFConstants.ALLELE_NUMBER_KEY) != null);
-    }
-
-    /**
-     * Get truth/call states for the genotypes of the given sample
-     */
-    private GenotypeConcordanceStates.TruthAndCallStates getStates(final String sample,
-                                                                   final SVCallRecord eval,
-                                                                   final SVCallRecord truth) {
-        final List<Allele> altAlleles = eval.getAltAlleles();
-        if (altAlleles.size() > 1) {
-            throw new IllegalArgumentException("Record " + eval.getId() + " is multiallelic but this is not supported");
-        }
-        final Genotype evalGenotype = eval.getGenotypes().get(sample);
-        final Genotype truthGenotype = truth == null ? null : truth.getGenotypes().get(sample);
-        final GenotypeConcordanceStates.TruthState truthState = getTruthState(truthGenotype);
-        final GenotypeConcordanceStates.CallState callState = getEvalState(evalGenotype);
-        return new GenotypeConcordanceStates.TruthAndCallStates(truthState, callState);
-    }
-
     /**
      * Returns whether the copy state of the given sample's genotype matches. Only use for multi-allelic CNVs.
      */
@@ -192,6 +182,101 @@ public class SVConcordanceAnnotator {
         final int evalCopyNumber = VariantContextGetters.getAttributeAsInt(evalGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
         final int truthCopyNumber = VariantContextGetters.getAttributeAsInt(truthGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
         return truthCopyNumber == evalCopyNumber;
+    }
+
+    private boolean hasAlleleFrequencyAnnotations(final SVCallRecord record) {
+        Utils.nonNull(record);
+        final Map<String, Object> attr = record.getAttributes();
+        return (attr.containsKey(VCFConstants.ALLELE_COUNT_KEY) && attr.get(VCFConstants.ALLELE_COUNT_KEY) != null)
+                        && (attr.containsKey(VCFConstants.ALLELE_FREQUENCY_KEY) && attr.get(VCFConstants.ALLELE_FREQUENCY_KEY) != null)
+                        && (attr.containsKey(VCFConstants.ALLELE_NUMBER_KEY) && attr.get(VCFConstants.ALLELE_NUMBER_KEY) != null);
+    }
+
+    /**
+     * Get truth/call states for the genotypes of the given sample
+     */
+    private GenotypeConcordanceStates.TruthAndCallStates getStates(final Genotype evalGenotype, final Genotype truthGenotype) {
+        final GenotypeConcordanceStates.TruthState truthState = getTruthState(truthGenotype);
+        final GenotypeConcordanceStates.CallState callState = getEvalState(evalGenotype);
+        return new GenotypeConcordanceStates.TruthAndCallStates(truthState, callState);
+    }
+
+    /**
+     * Returns whether the copy state of the given sample's genotype matches. Only use for multi-allelic CNVs.
+     */
+    @VisibleForTesting
+    protected GenotypeConcordanceStates.TruthAndCallStates getCNVStates(final Genotype evalGenotype, final Genotype truthGenotype,
+                                                                        final Allele evalAlt, final Allele truthAlt, final Allele refAllele) {
+        Utils.nonNull(evalGenotype);
+        final List<Allele> evalAlleles = getCNVAlleles(evalGenotype, evalAlt, refAllele);
+        List<Allele> truthAlleles = getCNVAlleles(truthGenotype, truthAlt, refAllele);
+        final List<Allele> evalAlts = evalAlleles.stream().filter(a -> a == Allele.SV_SIMPLE_DEL || a == Allele.SV_SIMPLE_DUP).distinct().collect(Collectors.toUnmodifiableList());
+        final List<Allele> truthAlts = truthAlleles.stream().filter(a -> a == Allele.SV_SIMPLE_DEL || a == Allele.SV_SIMPLE_DUP).distinct().collect(Collectors.toUnmodifiableList());
+        Utils.validate(evalAlts.size() < 2, "Unexpected eval alts found");
+        Utils.validate(truthAlts.size() < 2, "Unexpected truth alts found");
+        if (!evalAlts.isEmpty() && !truthAlts.isEmpty() && !evalAlts.equals(truthAlts)) {
+            // Mixed alt allele case - set truth allele to reference
+            truthAlleles = replaceAltAllele(truthAlleles, truthAlts.get(0), refAllele);
+        }
+        final Genotype newEvalGenotype = new GenotypeBuilder(evalGenotype).alleles(evalAlleles).make();
+        final Genotype newTruthGenotype = truthGenotype == null ? null : new GenotypeBuilder(truthGenotype).alleles(truthAlleles).make();
+        return getStates(newEvalGenotype, newTruthGenotype);
+    }
+
+    private static List<Allele> replaceAltAllele(final List<Allele> list, final Allele search, final Allele replace) {
+        Utils.nonNull(search);
+        final List<Allele> newList = new ArrayList<>(list.size());
+        for (final Allele a : list) {
+            if (search.equals(a)) {
+                newList.add(replace);
+            } else {
+                newList.add(a);
+            }
+        }
+        return newList;
+    }
+
+    private static List<Allele> getCNVAlleles(final Genotype genotype, final Allele altAllele, final Allele refAllele) {
+        if (genotype == null) {
+            return Collections.emptyList();
+        } else if (!altAllele.equals(Allele.SV_SIMPLE_CNV)) {
+            return genotype.getAlleles();
+        } else {
+            return getCNVGenotypeAllelesFromCopyNumber(genotype, refAllele);
+        }
+    }
+
+
+    /**
+     * Generates genotype alleles, i.e. for the GT field, for CNVs (DEL and/or DUP). Multi-allelics result in
+     * {@link Allele#NO_CALL} alleles.
+     * @param genotype  genotype
+     * @param refAllele   reference allele
+     * @return  alleles for the sample at the site
+     * @throws {@link IllegalArgumentException} if the alt allele(s) are not CNV(s)
+     */
+    private static List<Allele> getCNVGenotypeAllelesFromCopyNumber(final Genotype genotype, final Allele refAllele) {
+        Utils.nonNull(refAllele);
+        final int expectedCopyNumber = VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1);
+        if (genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT) == null) {
+            // Had conflicting genotypes
+            return Collections.nCopies(expectedCopyNumber, Allele.NO_CALL);
+        }
+        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
+        Utils.validateArg(copyNumber >= 0, "Invalid negative copy number: " + copyNumber);
+        Utils.validateArg(expectedCopyNumber >= 0, "Invalid expected copy number: " + expectedCopyNumber);
+        if (copyNumber == expectedCopyNumber) {
+            // Most common in practice - use faster method
+            return Collections.nCopies(expectedCopyNumber, refAllele);
+        } else if (copyNumber < expectedCopyNumber) {
+            // deletion case
+            final int numAlt = expectedCopyNumber - copyNumber;
+            return CanonicalSVCollapser.makeBiallelicList(Allele.SV_SIMPLE_DEL, refAllele, numAlt, expectedCopyNumber);
+        } else {
+            // duplication case
+            final int numAlt = copyNumber - expectedCopyNumber;
+            return CanonicalSVCollapser.makeBiallelicList(Allele.SV_SIMPLE_DUP, refAllele, numAlt, expectedCopyNumber);
+        }
     }
 
     @VisibleForTesting

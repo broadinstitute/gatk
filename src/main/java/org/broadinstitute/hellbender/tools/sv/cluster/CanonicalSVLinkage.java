@@ -120,18 +120,18 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
      * Tests if SVTYPEs match, allowing for DEL/DUP/CNVs to match in some cases.
      */
     protected boolean typesMatch(final SVCallRecord a, final SVCallRecord b) {
-        final GATKSVVCFConstants.StructuralVariantAnnotationType aType = a.getType();
-        final GATKSVVCFConstants.StructuralVariantAnnotationType bType = b.getType();
-        if (aType == bType && a.getComplexSubtype() == b.getComplexSubtype()) {
+        if (a.getType() == b.getType() && a.getComplexSubtype() == b.getComplexSubtype()) {
             return true;
         }
+        // Exceptions for CNV types
+        return cnvTypesMatch(a, b);
+    }
+
+    protected boolean cnvTypesMatch(final SVCallRecord a, final SVCallRecord b) {
         // Allow CNVs to cluster with both DELs and DUPs, but only allow DEL/DUP clustering if enabled
-        if (a.isSimpleCNV() && b.isSimpleCNV()) {
-            if (clusterDelWithDup || (aType == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV || bType == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)) {
-                return true;
-            }
-        }
-        return false;
+        return (a.isSimpleCNV() && b.isSimpleCNV()) &&
+                (clusterDelWithDup || (a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ||
+                        b.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV));
     }
 
     /**

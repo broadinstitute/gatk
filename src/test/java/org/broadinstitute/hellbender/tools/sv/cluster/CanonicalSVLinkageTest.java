@@ -479,6 +479,10 @@ public class CanonicalSVLinkageTest extends GATKBaseTest {
         Assert.assertTrue(linkage.areClusterable(cnv1, del1).getResult());
         Assert.assertTrue(linkage.areClusterable(cnv1, dup1).getResult());
         Assert.assertFalse(linkage.areClusterable(del1, dup1).getResult());
+
+        // with del/dup clustering enabled
+        final CanonicalSVLinkage<SVCallRecord> cnvLinkage = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, true);
+        Assert.assertTrue(cnvLinkage.areClusterable(del1, dup1).getResult());
     }
 
     @DataProvider(name = "testMatchCNVNoGTData")

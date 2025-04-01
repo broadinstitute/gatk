@@ -12,13 +12,10 @@ public class SVConcordanceLinkage extends CanonicalSVLinkage<SVCallRecord> {
     }
 
     @Override
-    public CanonicalLinkageResult areClusterable(final SVCallRecord a, final SVCallRecord b) {
-        final GATKSVVCFConstants.StructuralVariantAnnotationType aType = a.getType();
-        final GATKSVVCFConstants.StructuralVariantAnnotationType bType = b.getType();
-        // Don't allow CNV/DEL or CNV/DUP matching, which is problematic for concordance calculations
-        if ((aType == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV || bType != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) && aType != bType) {
-            return new CanonicalLinkageResult(false);
-        }
-        return super.areClusterable(a, b);
+    protected boolean cnvTypesMatch(final SVCallRecord a, final SVCallRecord b) {
+        // Allow multi-allelic CNVs to cluster with both DELs and DUPs
+        return (a.isSimpleCNV() && b.isSimpleCNV()) &&
+                (a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ||
+                        b.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV);
     }
 }

@@ -145,13 +145,18 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             } else if (outputVariant.getID().equals("ref_panel_1kg.chr22.final_cleanup_INS_chr22_100")) {
                 checkVariant(outputVariant, expectedVariant, "ref_panel_1kg_raw_00001b78",
                         1., 1./312, 1., 1., 0, 0, checkedVariantsSet);
+            } else if (outputVariant.getID().equals("ref_panel_1kg.chr22.final_cleanup_CNV_chr22_26")) {
+                // mCNV
+                checkVariant(outputVariant, expectedVariant, "ref_panel_1kg_raw_00001d53",
+                        0.378, -1., 1., 1., 0, 1, checkedVariantsSet);
             }
         }
-        Assert.assertEquals(numTP, 1104);
-        Assert.assertEquals(checkedVariantsSet.size(), 3);
+        Assert.assertEquals(numTP, 1148);
+        Assert.assertEquals(checkedVariantsSet.size(), 4);
         Assert.assertTrue(checkedVariantsSet.contains("ref_panel_1kg.chr22.final_cleanup_DEL_chr22_1"));
         Assert.assertTrue(checkedVariantsSet.contains("ref_panel_1kg.chr22.final_cleanup_DEL_chr22_140"));
         Assert.assertTrue(checkedVariantsSet.contains("ref_panel_1kg.chr22.final_cleanup_INS_chr22_100"));
+        Assert.assertTrue(checkedVariantsSet.contains("ref_panel_1kg.chr22.final_cleanup_CNV_chr22_26"));
     }
 
     @Test
@@ -262,7 +267,13 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         MathUtilsUnitTest.assertEqualsDoubleSmart(expected.getAttributeAsDouble(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, -1.), expected.getAttributeAsDouble(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, -1.), TOLERANCE);
         MathUtilsUnitTest.assertEqualsDoubleSmart(actual.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.), expectedAF, TOLERANCE);
         checkVariantOverlapMetrics(actual, reciprocalOverlap, sizeSimliarity, startDist, endDist);
-        MathUtilsUnitTest.assertEqualsDoubleSmart(expected.getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, -1.).get(0).doubleValue(), expectedAF, TOLERANCE);
+        // getAttributeAsDoubleList doesn't seem to return a list in the default case, which is problematic
+        // work around by checking explicitly for the unassigned case
+        if (expectedAF == -1.) {
+            MathUtilsUnitTest.assertEqualsDoubleSmart(expected.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.), expectedAF, TOLERANCE);
+        } else {
+            MathUtilsUnitTest.assertEqualsDoubleSmart(expected.getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, -1.).get(0).doubleValue(), expectedAF, TOLERANCE);
+        }
     }
 
     private static void checkVariantOverlapMetrics(final VariantContext actual, final Double reciprocalOverlap, final Double sizeSimliarity, final Integer startDist, final Integer endDist) {
@@ -449,9 +460,8 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(outputVariant.getAttributeAsString(GATKSVVCFConstants.TRUTH_VARIANT_ID_INFO, ""), outputVariant.getID());
             if (svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV.toString())) {
                 MathUtilsUnitTest.assertEqualsDoubleSmart(outputVariant.getAttributeAsDouble(GATKSVVCFConstants.COPY_NUMBER_CONCORDANCE_INFO, -1.), 1.0, TOLERANCE);
-            } else {
-                MathUtilsUnitTest.assertEqualsDoubleSmart(outputVariant.getAttributeAsDouble(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, -1.), 1.0, TOLERANCE);
             }
+            MathUtilsUnitTest.assertEqualsDoubleSmart(outputVariant.getAttributeAsDouble(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, -1.), 1.0, TOLERANCE);
         }
     }
 
@@ -568,7 +578,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
         Assert.assertEquals(outputVcf.getValue().size(), inputEvalVariants.size());
         final long numTruePositives = outputVcf.getValue().stream().filter(v -> v.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "").equals(ConcordanceState.TRUE_POSITIVE.getAbbreviation())).count();
-        Assert.assertEquals((int) numTruePositives, 1104);
+        Assert.assertEquals((int) numTruePositives, 1148);
         for (final VariantContext variant: outputVcf.getValue()) {
             // Concordance can't be calculated for sites-only
             Assert.assertTrue(variant.getAttributeAsString(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, ".").equals("."));

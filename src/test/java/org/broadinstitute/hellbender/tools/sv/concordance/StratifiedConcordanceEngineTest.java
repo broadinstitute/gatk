@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 public class StratifiedConcordanceEngineTest extends BaseTest {
 
-    private static final SVCallRecord TEST_VARIANT_1 = SVTestUtils.newCallRecordWithCoordinatesAndType("record1", "chr1", 1000, "chr1", 2000, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
+    private static final SVCallRecord TEST_VARIANT_1 = SVTestUtils.newDeletionRecordWithCoordinates("record1", "chr1", 1000, 2000);
     
     private static final String STRATIFICATION_1 = "strat1";
     private static final String STRATIFICATION_2 = "strat2";

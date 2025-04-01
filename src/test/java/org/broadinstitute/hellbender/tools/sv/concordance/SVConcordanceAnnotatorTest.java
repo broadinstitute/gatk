@@ -247,6 +247,317 @@ public class SVConcordanceAnnotatorTest {
         Assert.assertNull(collapser.copyNumbersMatch(sample, recordNoCn, record));
     }
 
+    @DataProvider(name = "testGetCnvStatesData")
+    public Object[][] testGetCnvStatesData() {
+        return new Object[][]{
+
+                ////////////////////////////////////////
+                // Minimal edge cases
+                ////////////////////////////////////////
+
+                // empty
+                {
+                    new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                    new Allele[]{}, Allele.SV_SIMPLE_DEL, 0, 0,
+                    GenotypeConcordanceStates.CallState.NO_CALL,
+                    GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                {
+                        new Allele[]{}, Allele.SV_SIMPLE_DUP, 0, 0,
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        GenotypeConcordanceStates.CallState.NO_CALL,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                {
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        GenotypeConcordanceStates.CallState.NO_CALL,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+
+                ////////////////////////////////////////
+                // Haploid
+                ////////////////////////////////////////
+
+                // multi-allelic CNV with no-call alleles
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                {
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.NO_CALL,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                // bi-allelic CNV with no-call alleles: no call is kept
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_DEL, 1, 1,
+                        new Allele[]{}, Allele.SV_SIMPLE_DEL, 0, 0,
+                        GenotypeConcordanceStates.CallState.NO_CALL,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                {
+                        new Allele[]{}, Allele.SV_SIMPLE_DEL, 0, 0,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_DEL, 1, 1,
+                        GenotypeConcordanceStates.CallState.NO_CALL,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                // with ref alleles
+                {
+                        new Allele[]{Allele.REF_N}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                {
+                        new Allele[]{}, Allele.SV_SIMPLE_CNV, 0, 0,
+                        new Allele[]{Allele.REF_N}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.NO_CALL,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                // hom del call
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 1,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+                // with del allele
+                {
+                        new Allele[]{Allele.SV_SIMPLE_DEL}, Allele.SV_SIMPLE_DEL, 0, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                // del allele takes priority over copy state
+                {
+                        new Allele[]{Allele.SV_SIMPLE_DEL}, Allele.SV_SIMPLE_DEL, 1, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                // hom dup call
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 3, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 1,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+                // with dup allele
+                {
+                        new Allele[]{Allele.SV_SIMPLE_DUP}, Allele.SV_SIMPLE_DUP, 2, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.SV_SIMPLE_DUP}, Allele.SV_SIMPLE_DUP, 3, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 1,
+                        new Allele[]{Allele.SV_SIMPLE_DUP}, Allele.SV_SIMPLE_DUP, 2, 1,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+                // with dup and ref alleles
+                {
+                        new Allele[]{Allele.REF_N}, Allele.SV_SIMPLE_DEL, 1, 1,
+                        new Allele[]{Allele.SV_SIMPLE_DUP}, Allele.SV_SIMPLE_DUP, 2, 1,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+                // alleles take priority over copy states
+                {
+                        new Allele[]{Allele.REF_N}, Allele.SV_SIMPLE_DUP, 2, 1,
+                        new Allele[]{Allele.SV_SIMPLE_DUP}, Allele.SV_SIMPLE_DUP, 1, 1,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+
+                // eval is multi-allelic CNV with DUP call, but truth containing deletion is treated as hom-ref
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 1,
+                        new Allele[]{Allele.SV_SIMPLE_DEL}, Allele.SV_SIMPLE_DEL, 0, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_DEL, 0, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+
+                // eval is multi-allelic CNV with DEL call, but truth containing duplication is treated as hom-ref
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 1,
+                        new Allele[]{Allele.SV_SIMPLE_DUP}, Allele.SV_SIMPLE_DUP, 2, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 1,
+                        new Allele[]{Allele.NO_CALL}, Allele.SV_SIMPLE_DUP, 2, 1,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+
+                ////////////////////////////////////////
+                // Diploid
+                ////////////////////////////////////////
+
+                // test some simple cases
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 3, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        GenotypeConcordanceStates.CallState.HET_REF_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 4, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        GenotypeConcordanceStates.CallState.HET_REF_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        GenotypeConcordanceStates.CallState.HOM_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+                // truth tests
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 3, 2,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HET_REF_VAR1
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 4, 2,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 2,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HET_REF_VAR1
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 2, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 0, 2,
+                        GenotypeConcordanceStates.CallState.HOM_REF,
+                        GenotypeConcordanceStates.TruthState.HOM_VAR1
+                },
+
+                // CNV / DEL
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 2,
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_DEL, 1, 2,
+                        GenotypeConcordanceStates.CallState.HET_REF_VAR1,
+                        GenotypeConcordanceStates.TruthState.NO_CALL
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 2,
+                        new Allele[]{Allele.REF_N, Allele.SV_SIMPLE_DEL}, Allele.SV_SIMPLE_DEL, 1, 2,
+                        GenotypeConcordanceStates.CallState.HET_REF_VAR1,
+                        GenotypeConcordanceStates.TruthState.HET_REF_VAR1
+                },
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 1, 2,
+                        new Allele[]{Allele.REF_N, Allele.SV_SIMPLE_DEL}, Allele.SV_SIMPLE_DEL, 2, 2,  // alleles take priority
+                        GenotypeConcordanceStates.CallState.HET_REF_VAR1,
+                        GenotypeConcordanceStates.TruthState.HET_REF_VAR1
+                },
+                // CNV has a dup, so DEL is set to ref
+                {
+                        new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, Allele.SV_SIMPLE_CNV, 3, 2,
+                        new Allele[]{Allele.REF_N, Allele.SV_SIMPLE_DEL}, Allele.SV_SIMPLE_DEL, 1, 2,
+                        GenotypeConcordanceStates.CallState.HET_REF_VAR1,
+                        GenotypeConcordanceStates.TruthState.HOM_REF
+                },
+        };
+    }
+
+    @Test(dataProvider= "testGetCnvStatesData")
+    public void testGetCnvStates(final Allele[] evalAlleles, final Allele evalAlt, final int evalCopyState, final int evalExpectedCopyState,
+                                 final Allele[] truthAlleles, final Allele truthAlt, final Integer truthCopyState, final int truthExpectedCopyState,
+                                 final GenotypeConcordanceStates.CallState expectedCallState,
+                                 final GenotypeConcordanceStates.TruthState expectedTruthState) {
+        final Genotype evalGenotype = alleleArrayToGenotype(evalAlleles, evalExpectedCopyState, evalCopyState);
+        final Genotype truthGenotype = alleleArrayToGenotype(truthAlleles, truthExpectedCopyState, truthCopyState);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
+        final GenotypeConcordanceStates.TruthAndCallStates actual = collapser.getCNVStates(evalGenotype, truthGenotype, evalAlt, truthAlt, Allele.REF_N);
+        final GenotypeConcordanceStates.TruthAndCallStates expected = new GenotypeConcordanceStates.TruthAndCallStates(expectedTruthState, expectedCallState);
+        Assert.assertEquals(actual.truthState, expected.truthState);
+        Assert.assertEquals(actual.callState, expected.callState);
+    }
+
+    @Test
+    public void testGetCnvStatesNull() {
+        final Allele alt = Allele.SV_SIMPLE_CNV;
+        final Genotype evalGenotype = alleleArrayToGenotype(new Allele[]{Allele.NO_CALL, Allele.NO_CALL}, 2, 2);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
+        final GenotypeConcordanceStates.TruthAndCallStates actual = collapser.getCNVStates(evalGenotype, null, alt, alt, Allele.REF_N);
+        Assert.assertEquals(actual.callState, GenotypeConcordanceStates.CallState.HOM_REF);
+        Assert.assertEquals(actual.truthState, GenotypeConcordanceStates.TruthState.NO_CALL);
+    }
+
     @DataProvider(name = "testGetStateFromGenotypeData")
     public Object[][] testGetStateFromGenotypeData() {
         return new Object[][]{
