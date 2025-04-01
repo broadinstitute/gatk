@@ -412,6 +412,7 @@ public abstract class ExtractCohort extends ExtractTool {
         Map<Long, String> sampleIdToName = sampleList.getSampleIdToNameMap();
 
         reference = directlyAccessEngineReferenceDataSource();
+        extraHeaderLines.add(new VCFHeaderLine("reference", referenceArguments.getReferenceSpecifier().toString()));
 
         if (vetRangesExtractTableVersion == VetRangesExtractVersionEnum.V2) {
             extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
