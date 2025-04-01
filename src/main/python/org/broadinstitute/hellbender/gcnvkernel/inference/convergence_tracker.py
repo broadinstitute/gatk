@@ -1,5 +1,5 @@
 import numpy as np
-from pymc3.variational.callbacks import Callback
+from pymc.variational.callbacks import Callback
 
 from ..utils.rls import NonStationaryLinearRegression
 

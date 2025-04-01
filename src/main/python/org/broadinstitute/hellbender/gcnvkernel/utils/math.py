@@ -80,10 +80,10 @@ def logsumexp_double_complement(a: np.ndarray, rel_tol: float = 1e-3) -> float:
     """
     try:
         assert isinstance(a, np.ndarray)
-        a = np.asarray(a.copy(), dtype=np.float)
+        a = np.asarray(a.copy(), dtype=float)
     except AssertionError:
         try:
-            a = np.asarray(a, dtype=np.float)
+            a = np.asarray(a, dtype=float)
         except ValueError:
             raise ValueError("The input argument must be castable to a float ndarray.")
     assert len(a) > 0
@@ -93,7 +93,7 @@ def logsumexp_double_complement(a: np.ndarray, rel_tol: float = 1e-3) -> float:
     a[a > 0.] = 0.
 
     if len(a) == 1:
-        return np.asscalar(a)
+        return a.item()
     else:
         a = np.sort(a.flatten())[::-1]
         x = a[0]

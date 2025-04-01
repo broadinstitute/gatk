@@ -38,7 +38,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testRefPanel() {
-        final File output = createTempFile("concord", ".vcf");
+        final File output = createTempFile("concord", ".vcf.gz");
         final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
         /**
          * Test file produced from raw standardized VCFs from manta, melt, wham, and cnv callers with SVCluster parameters:
@@ -53,7 +53,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -69,7 +69,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
@@ -79,9 +79,9 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final SVConcordanceAnnotator annotator = new SVConcordanceAnnotator();
 
         final List<SVCallRecord> inputEvalVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
-                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+                .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
         final List<SVCallRecord> inputTruthVariants = VariantContextTestUtils.readEntireVCFIntoMemory(truthVcfPath).getValue()
-                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+                .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
 
         final ClosestSVFinder finder = new ClosestSVFinder(linkage, annotator::annotate, dictionary);
         final List<SVCallRecord> expectedRecords = new ArrayList<>(inputEvalVariants.size());
@@ -171,7 +171,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
         // Run a vcf against itself and check that every variant matched itself
 
-        final File output = createTempFile("concord", ".vcf");
+        final File output = createTempFile("concord", ".vcf.gz");
         final String vcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
@@ -180,7 +180,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SIZE_SIMILARITY_NAME, 0)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SIZE_SIMILARITY_NAME, 0)
@@ -197,7 +197,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
@@ -260,7 +260,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
         // Run a vcf against itself but with extra samples and variants
 
-        final File output = createTempFile("concord", ".vcf");
+        final File output = createTempFile("concord", ".vcf.gz");
         final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.sample_subset.vcf.gz";
         final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
 
@@ -279,7 +279,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 10000000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
@@ -322,7 +322,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testSitesOnly() {
-        final File output = createTempFile("concord_sites_only", ".vcf");
+        final File output = createTempFile("concord_sites_only", ".vcf.gz");
         final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.sites_only.vcf.gz";
         final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.raw_calls.chr22_chrY.sites_only.vcf.gz";
 
@@ -331,7 +331,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
                 .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
                 .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
@@ -346,7 +346,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
         final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         final List<SVCallRecord> inputEvalVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
-                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+                .stream().map(v -> SVCallRecordUtils.create(v, SVTestUtils.hg38Dict)).collect(Collectors.toList());
         Assert.assertEquals(outputVcf.getValue().size(), inputEvalVariants.size());
         final long numTruePositives = outputVcf.getValue().stream().filter(v -> v.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "").equals(ConcordanceState.TRUE_POSITIVE.getAbbreviation())).count();
         Assert.assertEquals((int) numTruePositives, 1104);
@@ -358,7 +358,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
 
     @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
     public void testHeaderContigsOutOfOrder() {
-        final File output = createTempFile("concord_sites_only", ".vcf");
+        final File output = createTempFile("concord_sites_only", ".vcf.gz");
         final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
         final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.contigs_out_of_order.vcf.gz";
 
@@ -369,5 +369,25 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcfPath);
 
         runCommandLine(args, SVConcordance.class.getSimpleName());
+    }
+
+    @Test
+    public void testSelfUnsorted() {
+
+        // Run a vcf against itself but don't sort the output
+
+        final File output = createTempFile("concord", ".vcf");
+        final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
+        final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcfPath)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcfPath)
+                .add(SVConcordance.UNSORTED_OUTPUT_LONG_NAME, true);
+
+        runCommandLine(args, SVConcordance.class.getSimpleName());
+        assertPerfectConcordance(output, evalVcfPath);
     }
 }

@@ -9,9 +9,11 @@ public final class ReadFilterArgumentDefinitions {
     // GATKReadFilterPluginDescriptor arguments
 
     public static final String READ_FILTER_LONG_NAME = "read-filter";
+    public static final String INVERTED_READ_FILTER_LONG_NAME = "inverted-read-filter";
     public static final String DISABLE_READ_FILTER_LONG_NAME = "disable-read-filter";
     public static final String DISABLE_TOOL_DEFAULT_READ_FILTERS = "disable-tool-default-read-filters";
     public static final String READ_FILTER_SHORT_NAME = "RF";
+    public static final String INVERTED_READ_FILTER_SHORT_NAME = "XRF";
     public static final String DISABLE_READ_FILTER_SHORT_NAME = "DF";
 
     // ReadFilter arguments
@@ -51,10 +53,8 @@ public final class ReadFilterArgumentDefinitions {
 
     public static final String KEEP_INTERVAL_NAME = "keep-intervals";
 
-    public static final String SOFT_CLIPPED_RATIO_THRESHOLD = "soft-clipped-ratio-threshold";
-    public static final String SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD = "soft-clipped-leading-trailing-ratio";
-
-    public static final String INVERT_SOFT_CLIP_RATIO_FILTER = "invert-soft-clip-ratio-filter";
+    public static final String SOFT_CLIPPED_RATIO_THRESHOLD = "max-soft-clipped-ratio";
+    public static final String SOFT_CLIPPED_LEADING_TRAILING_RATIO_THRESHOLD = "max-soft-clipped-leading-trailing-ratio";
 
     public static final String READ_FILTER_TAG = "read-filter-tag";
     public static final String READ_FILTER_TAG_COMP = "read-filter-tag-comp";

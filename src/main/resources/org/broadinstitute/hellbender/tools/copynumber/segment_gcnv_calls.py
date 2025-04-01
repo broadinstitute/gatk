@@ -1,11 +1,11 @@
 import os
 
-# set theano flags
-user_theano_flags = os.environ.get("THEANO_FLAGS")
-default_theano_flags = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore," + \
-                       "openmp=true,blas.ldflags=-lmkl_rt,openmp_elemwise_minsize=10"
-theano_flags = default_theano_flags + ("" if user_theano_flags is None else "," + user_theano_flags)
-os.environ["THEANO_FLAGS"] = theano_flags
+# set pytensor flags
+user_pytensor_flags = os.environ.get("PYTENSOR_FLAGS")
+default_pytensor_flags = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore," + \
+                       "openmp=true,blas__ldflags=-lmkl_rt,openmp_elemwise_minsize=10,exception_verbosity=high"
+pytensor_flags = default_pytensor_flags + ("" if user_pytensor_flags is None else "," + user_pytensor_flags)
+os.environ["PYTENSOR_FLAGS"] = pytensor_flags
 
 import logging
 import argparse
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     gcnvkernel.cli_commons.set_logging_config_from_args(args)
 
-    logger.info("THEANO_FLAGS environment variable has been set to: {theano_flags}".format(theano_flags=theano_flags))
+    logger.info("PYTENSOR_FLAGS environment variable has been set to: {pytensor_flags}".format(pytensor_flags=pytensor_flags))
 
     # load read depth and ploidy metadata
     logger.info("Loading ploidy calls...")
