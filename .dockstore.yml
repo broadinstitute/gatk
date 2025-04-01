@@ -194,7 +194,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1590_mem_footprint_part_I
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
