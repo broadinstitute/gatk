@@ -92,7 +92,6 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     final File outputPsam = new File(outputBasePath + ".psam");
     final File outputPvar = new File(outputBasePath + ".pvar.zst");
 
-
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
             .add("ref-version", 38)
