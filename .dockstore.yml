@@ -326,7 +326,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1576-avro-update
+             - sanity_check_new_hail
          tags:
              - /.*/
    - name: GvsIngestTieout
