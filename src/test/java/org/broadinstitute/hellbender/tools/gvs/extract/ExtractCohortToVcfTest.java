@@ -19,24 +19,6 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   private final String quickstart10mbVetAvroFile = prefix + "quickstart_10mb_vet.avro";
   private final String quickstartSampleListFile = prefix + "quickstart.sample.list";
 
-  private File removeSelectedHeaderLinesFromFile(final File vcfFile) {
-    File filteredVcfFile = createTempFile(vcfFile.getName(), ".vcf");
-    try (BufferedReader reader = new BufferedReader(new FileReader(vcfFile));
-         BufferedWriter writer = new BufferedWriter(new FileWriter(filteredVcfFile))) {
-
-      String line;
-      while ((line = reader.readLine()) != null) {
-        if (line.startsWith("##reference"))
-          continue;
-        writer.write(line);
-        writer.newLine();
-      }
-    } catch (IOException e) {
-      System.err.println("Error processing file: " + e.getMessage());
-    }
-    return filteredVcfFile;
-  }
-
   @AfterTest
   public void afterTest() {
     try {
@@ -83,8 +65,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
 
     runCommandLine(args);
     // Remove iine(s) from the generated VCF that
-    final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
-    IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
+    IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
 
   @Test
@@ -122,8 +103,7 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
 
     runCommandLine(args);
     // Decompress the vcf for validation
-    final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
-    IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
+    IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
 
   @Test(expectedExceptions = UserException.class)
