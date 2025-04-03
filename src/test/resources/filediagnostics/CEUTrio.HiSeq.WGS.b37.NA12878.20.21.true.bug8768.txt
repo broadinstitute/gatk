@@ -1,0 +1,70 @@
+CRAM File Name: CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram
+CRAM Version: 3.0
+CRAM ID Contents: Li4vaHRzamRrL3NyYy90ZXN0L3I=
+
+**********************NO CORRUPT CONTAINERS DETECTED**********************
+Average mismatch rate for presumed good containers: 0.005962
+
+Presumed GOOD Containers:
+  Ordinal: 1 (sequenceId=SINGLE_REFERENCE: 0, start=9999902, span=11055) Mismatch Rate/Count: 0.006629/1010000
+  Ordinal: 2 (sequenceId=SINGLE_REFERENCE: 0, start=10010859, span=11595) Mismatch Rate/Count: 0.003216/1010000
+  Ordinal: 3 (sequenceId=SINGLE_REFERENCE: 0, start=10022353, span=10302) Mismatch Rate/Count: 0.002870/1010000
+  Ordinal: 4 (sequenceId=SINGLE_REFERENCE: 0, start=10032556, span=10955) Mismatch Rate/Count: 0.002814/1010000
+  Ordinal: 5 (sequenceId=SINGLE_REFERENCE: 0, start=10043410, span=11007) Mismatch Rate/Count: 0.002641/1010000
+  Ordinal: 6 (sequenceId=SINGLE_REFERENCE: 0, start=10054316, span=11415) Mismatch Rate/Count: 0.002330/1010000
+  Ordinal: 7 (sequenceId=SINGLE_REFERENCE: 0, start=10065630, span=11707) Mismatch Rate/Count: 0.004124/1010000
+  Ordinal: 8 (sequenceId=SINGLE_REFERENCE: 0, start=10077236, span=10857) Mismatch Rate/Count: 0.002971/1010000
+  Ordinal: 9 (sequenceId=SINGLE_REFERENCE: 0, start=10087992, span=12022) Mismatch Rate/Count: 0.004208/1010000
+  Ordinal: 10 (sequenceId=SINGLE_REFERENCE: 0, start=10099914, span=11455) Mismatch Rate/Count: 0.004024/1010000
+  Ordinal: 11 (sequenceId=SINGLE_REFERENCE: 0, start=10111269, span=11677) Mismatch Rate/Count: 0.003359/1010000
+  Ordinal: 12 (sequenceId=SINGLE_REFERENCE: 0, start=10122847, span=11517) Mismatch Rate/Count: 0.003245/1010000
+  Ordinal: 13 (sequenceId=SINGLE_REFERENCE: 0, start=10134264, span=10812) Mismatch Rate/Count: 0.002529/1010000
+  Ordinal: 14 (sequenceId=SINGLE_REFERENCE: 0, start=10144976, span=11737) Mismatch Rate/Count: 0.002812/1010000
+  Ordinal: 15 (sequenceId=SINGLE_REFERENCE: 0, start=10156616, span=11103) Mismatch Rate/Count: 0.002781/1010000
+  Ordinal: 16 (sequenceId=SINGLE_REFERENCE: 0, start=10167620, span=10903) Mismatch Rate/Count: 0.003217/1010000
+  Ordinal: 17 (sequenceId=SINGLE_REFERENCE: 0, start=10178422, span=10654) Mismatch Rate/Count: 0.003332/1010000
+  Ordinal: 18 (sequenceId=SINGLE_REFERENCE: 0, start=10188975, span=12280) Mismatch Rate/Count: 0.002854/1010000
+  Ordinal: 19 (sequenceId=SINGLE_REFERENCE: 0, start=10201162, span=10498) Mismatch Rate/Count: 0.002308/1010000
+  Ordinal: 20 (sequenceId=SINGLE_REFERENCE: 0, start=10211560, span=11415) Mismatch Rate/Count: 0.003357/1010000
+  Ordinal: 21 (sequenceId=SINGLE_REFERENCE: 0, start=10222875, span=10825) Mismatch Rate/Count: 0.002823/1010000
+  Ordinal: 22 (sequenceId=SINGLE_REFERENCE: 0, start=10233602, span=11012) Mismatch Rate/Count: 0.003494/1010000
+  Ordinal: 23 (sequenceId=SINGLE_REFERENCE: 0, start=10244514, span=5587) Mismatch Rate/Count: 0.003444/513989
+
+  Ordinal: 1 (sequenceId=SINGLE_REFERENCE: 1, start=9999901, span=5725) Mismatch Rate/Count: 0.007091/1010000
+  Ordinal: 2 (sequenceId=SINGLE_REFERENCE: 1, start=10005525, span=4771) Mismatch Rate/Count: 0.008675/1010000
+  Ordinal: 3 (sequenceId=SINGLE_REFERENCE: 1, start=10010195, span=6694) Mismatch Rate/Count: 0.006677/1010000
+  Ordinal: 4 (sequenceId=SINGLE_REFERENCE: 1, start=10016789, span=6937) Mismatch Rate/Count: 0.006947/1010000
+  Ordinal: 5 (sequenceId=SINGLE_REFERENCE: 1, start=10023629, span=6933) Mismatch Rate/Count: 0.007452/1010000
+  Ordinal: 6 (sequenceId=SINGLE_REFERENCE: 1, start=10030464, span=54819) Mismatch Rate/Count: 0.009954/1010000
+  Ordinal: 7 (sequenceId=SINGLE_REFERENCE: 1, start=10085182, span=1209) Mismatch Rate/Count: 0.027154/1010000
+  Ordinal: 8 (sequenceId=SINGLE_REFERENCE: 1, start=10086291, span=1849) Mismatch Rate/Count: 0.010438/1010000
+  Ordinal: 9 (sequenceId=SINGLE_REFERENCE: 1, start=10088040, span=4846) Mismatch Rate/Count: 0.007102/1010000
+  Ordinal: 10 (sequenceId=SINGLE_REFERENCE: 1, start=10092786, span=5025) Mismatch Rate/Count: 0.007654/1010000
+  Ordinal: 11 (sequenceId=SINGLE_REFERENCE: 1, start=10097710, span=4565) Mismatch Rate/Count: 0.007856/1010000
+  Ordinal: 12 (sequenceId=SINGLE_REFERENCE: 1, start=10102174, span=5112) Mismatch Rate/Count: 0.008387/1010000
+  Ordinal: 13 (sequenceId=SINGLE_REFERENCE: 1, start=10107185, span=4822) Mismatch Rate/Count: 0.008465/1010000
+  Ordinal: 14 (sequenceId=SINGLE_REFERENCE: 1, start=10111906, span=4648) Mismatch Rate/Count: 0.006218/1010000
+  Ordinal: 15 (sequenceId=SINGLE_REFERENCE: 1, start=10116453, span=5595) Mismatch Rate/Count: 0.006370/1010000
+  Ordinal: 16 (sequenceId=SINGLE_REFERENCE: 1, start=10121948, span=4596) Mismatch Rate/Count: 0.006819/1010000
+  Ordinal: 17 (sequenceId=SINGLE_REFERENCE: 1, start=10126444, span=4699) Mismatch Rate/Count: 0.007886/1010000
+  Ordinal: 18 (sequenceId=SINGLE_REFERENCE: 1, start=10131043, span=4025) Mismatch Rate/Count: 0.008906/1010000
+  Ordinal: 19 (sequenceId=SINGLE_REFERENCE: 1, start=10134967, span=3486) Mismatch Rate/Count: 0.009243/1010000
+  Ordinal: 20 (sequenceId=SINGLE_REFERENCE: 1, start=10138352, span=2580) Mismatch Rate/Count: 0.008777/1010000
+  Ordinal: 21 (sequenceId=SINGLE_REFERENCE: 1, start=10140831, span=2362) Mismatch Rate/Count: 0.009877/1010000
+  Ordinal: 22 (sequenceId=SINGLE_REFERENCE: 1, start=10143092, span=3693) Mismatch Rate/Count: 0.007791/1010000
+  Ordinal: 23 (sequenceId=SINGLE_REFERENCE: 1, start=10146684, span=3779) Mismatch Rate/Count: 0.008423/1010000
+  Ordinal: 24 (sequenceId=SINGLE_REFERENCE: 1, start=10150362, span=3205) Mismatch Rate/Count: 0.008382/1010000
+  Ordinal: 25 (sequenceId=SINGLE_REFERENCE: 1, start=10153467, span=4029) Mismatch Rate/Count: 0.005922/1010000
+  Ordinal: 26 (sequenceId=SINGLE_REFERENCE: 1, start=10157395, span=3564) Mismatch Rate/Count: 0.006862/1010000
+  Ordinal: 27 (sequenceId=SINGLE_REFERENCE: 1, start=10160858, span=3833) Mismatch Rate/Count: 0.006395/1010000
+  Ordinal: 28 (sequenceId=SINGLE_REFERENCE: 1, start=10164591, span=4631) Mismatch Rate/Count: 0.005550/1010000
+  Ordinal: 29 (sequenceId=SINGLE_REFERENCE: 1, start=10169122, span=5087) Mismatch Rate/Count: 0.004498/1010000
+  Ordinal: 30 (sequenceId=SINGLE_REFERENCE: 1, start=10174110, span=5846) Mismatch Rate/Count: 0.004410/1010000
+  Ordinal: 31 (sequenceId=SINGLE_REFERENCE: 1, start=10179857, span=5196) Mismatch Rate/Count: 0.005847/1010000
+  Ordinal: 32 (sequenceId=SINGLE_REFERENCE: 1, start=10184953, span=3979) Mismatch Rate/Count: 0.005392/1010000
+  Ordinal: 33 (sequenceId=SINGLE_REFERENCE: 1, start=10188831, span=5765) Mismatch Rate/Count: 0.005117/1010000
+  Ordinal: 34 (sequenceId=SINGLE_REFERENCE: 1, start=10194495, span=3216) Mismatch Rate/Count: 0.005947/1010000
+  Ordinal: 35 (sequenceId=SINGLE_REFERENCE: 1, start=10197610, span=4759) Mismatch Rate/Count: 0.005800/1010000
+  Ordinal: 36 (sequenceId=SINGLE_REFERENCE: 1, start=10202269, span=3867) Mismatch Rate/Count: 0.005150/1010000
+  Ordinal: 37 (sequenceId=SINGLE_REFERENCE: 1, start=10206036, span=4706) Mismatch Rate/Count: 0.004727/1010000
+  Ordinal: 38 (sequenceId=SINGLE_REFERENCE: 1, start=10210641, span=5332) Mismatch Rate/Count: 0.004119/961621

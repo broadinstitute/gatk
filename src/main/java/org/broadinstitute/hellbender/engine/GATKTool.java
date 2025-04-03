@@ -16,8 +16,10 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Stream;
 
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -45,6 +47,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 
 /**
  * Base class for all GATK tools. Tool authors that want to write a "GATK" tool but not use one of
@@ -417,6 +420,13 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public String getProgressMeterRecordLabel() { return ProgressMeter.DEFAULT_RECORD_LABEL; }
 
+    /**
+     * @return default value does no filtering. Override to change how variants are filtered against the intervals for your tools.
+     */
+    public IntervalFilteringVcfWriter.Mode getVariantOutputFilteringMode(){
+        return IntervalFilteringVcfWriter.Mode.ANYWHERE;
+    }
+
     protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
         return getIntervals;
     }
@@ -600,7 +610,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Does this tool want to disable the progress meter? If so, override here to return true
-     * 
+     *
      * @return true if this tools wants to disable progress meter output, otherwise false
      */
     public boolean disableProgressMeter() {
@@ -727,11 +737,15 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeIntervals(); // Must be initialized after reference, reads and features, since intervals currently require a sequence dictionary from another data source
 
-        if ( seqValidationArguments.performSequenceDictionaryValidation()) {
+        if (seqValidationArguments.performSequenceDictionaryValidation()) {
             validateSequenceDictionaries();
         }
 
         checkToolRequirements();
+
+        if ((getVariantOutputFilteringMode() != IntervalFilteringVcfWriter.Mode.ANYWHERE ) && userIntervals == null){
+            throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME + " was specified or if the tool uses interval filtering.");
+        }
 
         initializeProgressMeter(getProgressMeterRecordLabel());
     }
@@ -911,20 +925,27 @@ public abstract class GATKTool extends CommandLineProgram {
         if (outputSitesOnlyVCFs) {
             options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
-
+        final VariantContextWriter unfilteredWriter;
         if (maxVariantsPerShard > 0) {
-            return new ShardingVCFWriter(
+            unfilteredWriter = new ShardingVCFWriter(
                     outPath,
                     maxVariantsPerShard,
                     sequenceDictionary,
                     createOutputVariantMD5,
-                    options.toArray(new Options[options.size()]));
+                    options.toArray(new Options[0]));
+        } else {
+            unfilteredWriter = GATKVariantContextUtils.createVCFWriter(
+                    outPath,
+                    sequenceDictionary,
+                    createOutputVariantMD5,
+                    options.toArray(new Options[0]));
         }
-        return GATKVariantContextUtils.createVCFWriter(
-                outPath,
-                sequenceDictionary,
-                createOutputVariantMD5,
-                options.toArray(new Options[options.size()]));
+
+        return getVariantOutputFilteringMode() == IntervalFilteringVcfWriter.Mode.ANYWHERE ?
+                unfilteredWriter :
+                new IntervalFilteringVcfWriter(unfilteredWriter,
+                        intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()),
+                        getVariantOutputFilteringMode());
     }
 
     /**

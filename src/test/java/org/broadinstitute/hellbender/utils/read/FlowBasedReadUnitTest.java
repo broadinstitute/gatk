@@ -44,7 +44,7 @@ public class FlowBasedReadUnitTest extends GATKBaseTest {
 
             String expectedFile = outputDir + "sample." + curRead + ".key.txt";
             if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
-                Assert.assertEquals(fbr.totalKeyBases(), fbr.seqLength());
+                Assert.assertEquals(fbr.totalKeyBases(), fbr.getLength());
                 try (FileWriter fos = new FileWriter(tempOutputDir + "/" + curRead + ".key.txt")) {
                     fbr.writeKey(fos);
                 }
@@ -91,7 +91,7 @@ public class FlowBasedReadUnitTest extends GATKBaseTest {
             String expectedFile = outputDir + "sample.t0." + curRead + ".key.txt";
 
             if ( !UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
-                Assert.assertEquals(fbr.totalKeyBases(), fbr.seqLength());
+                Assert.assertEquals(fbr.totalKeyBases(), fbr.getLength());
                 try (FileWriter fos = new FileWriter(tempOutputDir + "/" + curRead + ".key.txt")) {
                     fbr.writeKey(fos);
                 }

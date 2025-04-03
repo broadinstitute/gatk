@@ -70,6 +70,7 @@ workflow Mutect2 {
     input {
         # basic inputs
         File? intervals
+        File? masked_intervals
         File ref_fasta
         File ref_fai
         File ref_dict
@@ -95,15 +96,19 @@ workflow Mutect2 {
         # additional modes and outputs
         File? realignment_index_bundle
         String? realignment_extra_args
+        File? dragstr_model
         Boolean run_orientation_bias_mixture_model_filter = false
         Boolean make_bamout = false
         Boolean compress_vcfs = false
         File? gga_vcf
         File? gga_vcf_idx
-        Boolean make_m3_training_dataset = false
-        Boolean make_m3_test_dataset = false
-        File? m3_training_dataset_truth_vcf
-        File? m3_training_dataset_truth_vcf_idx
+        Boolean make_permutect_training_dataset = false
+        Boolean make_permutect_test_dataset = false
+        File? permutect_training_dataset_truth_vcf
+        File? permutect_training_dataset_truth_vcf_idx
+        File? permutect_test_dataset_truth_vcf
+        File? permutect_test_dataset_truth_vcf_idx
+        Boolean skip_filtering = false
 
 
         # runtime
@@ -149,6 +154,7 @@ workflow Mutect2 {
     call SplitIntervals {
         input:
             intervals = intervals,
+            masked_intervals = masked_intervals,
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
@@ -178,15 +184,18 @@ workflow Mutect2 {
                 getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
+                dragstr_model = dragstr_model,
                 make_bamout = make_bamout,
                 run_ob_filter = run_orientation_bias_mixture_model_filter,
                 compress_vcfs = compress_vcfs,
                 gga_vcf = gga_vcf,
                 gga_vcf_idx = gga_vcf_idx,
-                make_m3_training_dataset = make_m3_training_dataset,
-                make_m3_test_dataset = make_m3_test_dataset,
-                m3_training_dataset_truth_vcf = m3_training_dataset_truth_vcf,
-                m3_training_dataset_truth_vcf_idx = m3_training_dataset_truth_vcf_idx,
+                make_permutect_training_dataset = make_permutect_training_dataset,
+                make_permutect_test_dataset = make_permutect_test_dataset,
+                permutect_training_dataset_truth_vcf = permutect_training_dataset_truth_vcf,
+                permutect_training_dataset_truth_vcf_idx = permutect_training_dataset_truth_vcf_idx,
+                permutect_test_dataset_truth_vcf = permutect_test_dataset_truth_vcf,
+                permutect_test_dataset_truth_vcf_idx = permutect_test_dataset_truth_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
@@ -197,7 +206,7 @@ workflow Mutect2 {
     Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
     Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
 
-    if (run_orientation_bias_mixture_model_filter) {
+    if (run_orientation_bias_mixture_model_filter && (!skip_filtering)) {
         call LearnReadOrientationModel {
             input:
                 f1r2_tar_gz = M2.f1r2_counts,
@@ -228,7 +237,7 @@ workflow Mutect2 {
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
-    if (defined(variants_for_contamination)) {
+    if (defined(variants_for_contamination) && (!skip_filtering)) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
                 input_tables = flatten(M2.tumor_pileups),
@@ -255,55 +264,65 @@ workflow Mutect2 {
         }
     }
 
-    if (make_m3_training_dataset || make_m3_test_dataset) {
-        call Concatenate {
+    if (make_permutect_training_dataset) {
+        call Concatenate as ConcatenatePermutectTrainingData {
             input:
-                input_files = M2.m3_dataset,
+                input_files = M2.permutect_training_dataset,
                 gatk_docker = gatk_docker
         }
     }
 
-    call Filter {
-        input:
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
-            intervals = intervals,
-            unfiltered_vcf = MergeVCFs.merged_vcf,
-            unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
-            compress_vcfs = compress_vcfs,
-            mutect_stats = MergeStats.merged_stats,
-            contamination_table = CalculateContamination.contamination_table,
-            maf_segments = CalculateContamination.maf_segments,
-            artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
-            m2_extra_filtering_args = m2_extra_filtering_args,
-            runtime_params = standard_runtime,
-            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * 4) + disk_pad
+    if (make_permutect_test_dataset) {
+        call Concatenate as ConcatenatePermutectTestData {
+            input:
+                input_files = M2.permutect_test_dataset,
+                gatk_docker = gatk_docker
+        }
     }
 
-    if (defined(realignment_index_bundle)) {
-        call FilterAlignmentArtifacts {
+    if (!skip_filtering) {
+        call Filter {
             input:
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                reads = tumor_reads,
-                reads_index = tumor_reads_index,
-                realignment_index_bundle = select_first([realignment_index_bundle]),
-                realignment_extra_args = realignment_extra_args,
+                intervals = intervals,
+                unfiltered_vcf = MergeVCFs.merged_vcf,
+                unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
                 compress_vcfs = compress_vcfs,
-                input_vcf = Filter.filtered_vcf,
-                input_vcf_idx = Filter.filtered_vcf_idx,
+                mutect_stats = MergeStats.merged_stats,
+                contamination_table = CalculateContamination.contamination_table,
+                maf_segments = CalculateContamination.maf_segments,
+                artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
+                m2_extra_filtering_args = m2_extra_filtering_args,
                 runtime_params = standard_runtime,
-                mem = filter_alignment_artifacts_mem,
-                gcs_project_for_requester_pays = gcs_project_for_requester_pays
+                disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * 4) + disk_pad
+        }
+
+        if (defined(realignment_index_bundle)) {
+            call FilterAlignmentArtifacts {
+                input:
+                    ref_fasta = ref_fasta,
+                    ref_fai = ref_fai,
+                    ref_dict = ref_dict,
+                    reads = tumor_reads,
+                    reads_index = tumor_reads_index,
+                    realignment_index_bundle = select_first([realignment_index_bundle]),
+                    realignment_extra_args = realignment_extra_args,
+                    compress_vcfs = compress_vcfs,
+                    input_vcf = Filter.filtered_vcf,
+                    input_vcf_idx = Filter.filtered_vcf_idx,
+                    runtime_params = standard_runtime,
+                    mem = filter_alignment_artifacts_mem,
+                    gcs_project_for_requester_pays = gcs_project_for_requester_pays
+            }
         }
     }
 
     output {
-        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
-        File filtering_stats = Filter.filtering_stats
+        File output_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf, MergeVCFs.merged_vcf])
+        File output_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx,MergeVCFs.merged_vcf_idx])
+        File? filtering_stats = Filter.filtering_stats
         File mutect_stats = MergeStats.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
 
@@ -311,13 +330,17 @@ workflow Mutect2 {
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
-        File? m3_dataset = Concatenate.concatenated
+        File? permutect_training_dataset = ConcatenatePermutectTrainingData.concatenated
+        File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
+        File permutect_contigs_table = select_first(M2.permutect_contigs_table)
+        File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
     }
 }
 
 task SplitIntervals {
     input {
       File? intervals
+      File? masked_intervals
       File ref_fasta
       File ref_fai
       File ref_dict
@@ -336,6 +359,7 @@ task SplitIntervals {
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
             -R ~{ref_fasta} \
             ~{"-L " + intervals} \
+            ~{"-XL " + masked_intervals} \
             -scatter ~{scatter_count} \
             -O interval-files \
             ~{split_intervals_extra_args}
@@ -380,15 +404,18 @@ task M2 {
         File? gga_vcf_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
+        File? dragstr_model
 
         File? gatk_override
 
         String? gcs_project_for_requester_pays
 
-        Boolean make_m3_training_dataset = false
-        Boolean make_m3_test_dataset = false
-        File? m3_training_dataset_truth_vcf
-        File? m3_training_dataset_truth_vcf_idx
+        Boolean make_permutect_training_dataset = false
+        Boolean make_permutect_test_dataset = false
+        File? permutect_training_dataset_truth_vcf
+        File? permutect_training_dataset_truth_vcf_idx
+        File? permutect_test_dataset_truth_vcf
+        File? permutect_test_dataset_truth_vcf_idx
 
         # runtime
         String gatk_docker
@@ -426,8 +453,8 @@ task M2 {
         gga_vcf_idx: {localization_optional: true}
         variants_for_contamination: {localization_optional: true}
         variants_for_contamination_idx: {localization_optional: true}
-        m3_training_dataset_truth_vcf: {localization_optional: true}
-        m3_training_dataset_truth_vcf_idx: {localization_optional: true}
+        permutect_training_dataset_truth_vcf: {localization_optional: true}
+        permutect_training_dataset_truth_vcf_idx: {localization_optional: true}
     }
 
     command <<<
@@ -438,33 +465,36 @@ task M2 {
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
         touch f1r2.tar.gz
-        touch dataset.txt
-        echo "" > normal_name.txt
-
-        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_reads} -O tumor_name.txt -encode \
-        ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-        tumor_command_line="-I ~{tumor_reads} -tumor `cat tumor_name.txt`"
+        touch training-dataset.txt
+        touch test-dataset.txt
+        touch contigs.table
+        touch read-groups.table
 
         if [[ ! -z "~{normal_reads}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_name.txt -encode \
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-            normal_command_line="-I ~{normal_reads} -normal `cat normal_name.txt`"
+            # add "-normal " to the start of each line and " " to the end, then remove newlines
+            # to get -normal sample1 -normal sample2 etc
+            normal_sample_line=`awk '{ print "-normal", $0 }' normal_names.txt | tr '\n' ' '`
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
             -R ~{ref_fasta} \
-            $tumor_command_line \
-            $normal_command_line \
+            -I ~{tumor_reads} \
+            ~{"-I " + normal_reads} \
+            $normal_sample_line \
             ~{"--germline-resource " + gnomad} \
             ~{"-pon " + pon} \
             ~{"-L " + intervals} \
             ~{"--alleles " + gga_vcf} \
+            ~{"--dragstr-params-path " + dragstr_model} \
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{true='--mutect3-dataset dataset.txt' false='' make_m3_test_dataset} \
-            ~{true='--mutect3-dataset dataset.txt --mutect3-training-mode' false='' make_m3_training_dataset} \
-            ~{"--mutect3-training-truth " + m3_training_dataset_truth_vcf} \
+            ~{true='--permutect-training-dataset training-dataset.txt' false='' make_permutect_training_dataset} \
+            ~{true='--permutect-test-dataset test-dataset.txt' false='' make_permutect_test_dataset} \
+            ~{"--permutect-training-truth " + permutect_training_dataset_truth_vcf} \
+            ~{"--permutect-test-truth " + permutect_test_dataset_truth_vcf} \
             ~{m2_extra_args} \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 
@@ -474,7 +504,7 @@ task M2 {
 
         # If the variants for contamination and the intervals for this scatter don't intersect, GetPileupSummaries
         # throws an error.  However, there is nothing wrong with an empty intersection for our purposes; it simply doesn't
-        # contribute to the merged pileup summaries that we create downstream.  We implement this by with array outputs.
+        # contribute to the merged pileup summaries that we create downstream.  We implement this via array outputs.
         # If the tool errors, no table is created and the glob yields an empty array.
         set +e
 
@@ -509,13 +539,14 @@ task M2 {
         File unfiltered_vcf = "~{output_vcf}"
         File unfiltered_vcf_idx = "~{output_vcf_idx}"
         File output_bamOut = "bamout.bam"
-        String tumor_sample = read_string("tumor_name.txt")
-        String normal_sample = read_string("normal_name.txt")
         File stats = "~{output_stats}"
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
-        File m3_dataset = "dataset.txt"
+        File permutect_training_dataset = "training-dataset.txt"
+        File permutect_test_dataset = "test-dataset.txt"
+        File permutect_contigs_table = "contigs.table"
+        File permutect_read_groups_table = "read-groups.table"
     }
 }
 

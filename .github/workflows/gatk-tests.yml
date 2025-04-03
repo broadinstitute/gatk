@@ -116,7 +116,7 @@ jobs:
 
       - name: 'Set up Cloud SDK'
         if: needs.check-secrets.outputs.google-credentials == 'true'
-        uses: google-github-actions/setup-gcloud@v0
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: pull lfs files
         run: git lfs pull
@@ -188,7 +188,7 @@ jobs:
 
       - name: 'Set up Cloud SDK'
         if: needs.check-secrets.outputs.google-credentials == 'true'
-        uses: google-github-actions/setup-gcloud@v0
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: build test jars
         run: ./gradlew clean shadowTestClassJar shadowTestJar
@@ -230,10 +230,6 @@ jobs:
             bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
           TEST_EXIT_VALUE=$?;
           $( exit ${TEST_EXIT_VALUE} );
-          sudo chmod -R a+w build/reports/;
-          mkdir build/reports/tests/test \
-           && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
-           && rm -r build/reports/tests/testOnPackagedReleaseJar;
 
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
@@ -295,7 +291,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_CNN_WDL', 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' ]
+        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' ]
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
@@ -348,12 +344,6 @@ jobs:
           rm -Rf src/test/resources/large/VQSR;
           echo "Running M2 WDL";
           bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
-
-      - name: "CNN_WDL_TEST"
-        if: ${{ matrix.wdlTest == 'RUN_CNN_WDL' }}
-        run: |
-          echo "Running CNN WDL";
-          bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
 
       - name: "VCF_SITE_LEVEL_FILTERING_WDL_TEST"
         if: ${{ matrix.wdlTest == 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' }}

@@ -36,8 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import java.util.zip.*;
 
 public final class IOUtils {
@@ -468,8 +466,7 @@ public final class IOUtils {
 
         // Go through the archive and get the entries:
         TarArchiveEntry entry;
-        while ((entry = archiveStream.getNextTarEntry()) != null) {
-
+        while ((entry = archiveStream.getNextEntry()) != null) {
             logger.info("Extracting file: " + entry.getName());
 
             // Make sure we can read the data for the entry:
@@ -549,7 +546,7 @@ public final class IOUtils {
         if (file.isFile()){
             out.putArchiveEntry(new TarArchiveEntry(file, entry));
             try (FileInputStream in = new FileInputStream(file)){
-                org.apache.commons.compress.utils.IOUtils.copy(in, out);
+                org.apache.commons.io.IOUtils.copy(in, out);
             }
             out.closeArchiveEntry();
         } else if (file.isDirectory()) {

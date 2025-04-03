@@ -147,7 +147,8 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                 new FlankSettings(0,0),
                 true,
                 funcotatorArgs.minNumBasesForValidSegment,
-                funcotatorArgs.spliceSiteWindow
+                funcotatorArgs.spliceSiteWindow,
+                funcotatorArgs.MANETranscriptMode
         ).stream()
          .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
          .collect(Collectors.toList());

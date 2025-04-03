@@ -17,10 +17,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -29,27 +26,43 @@ public class CanonicalSVCollapserUnitTest {
     private static final CanonicalSVCollapser collapser = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
-            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END);
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.FlagFieldLogic.OR);
     private static final CanonicalSVCollapser collapserMinMax = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
-            CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END);
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END,
+            CanonicalSVCollapser.FlagFieldLogic.OR);
     private static final CanonicalSVCollapser collapserMaxMin = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
-            CanonicalSVCollapser.BreakpointSummaryStrategy.MAX_START_MIN_END);
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MAX_START_MIN_END,
+            CanonicalSVCollapser.FlagFieldLogic.OR);
     private static final CanonicalSVCollapser collapserMean = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
-            CanonicalSVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END);
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END,
+            CanonicalSVCollapser.FlagFieldLogic.OR);
     private static final CanonicalSVCollapser collapserRepresentative = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
-            CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE);
+            CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE,
+            CanonicalSVCollapser.FlagFieldLogic.OR);
     private static final CanonicalSVCollapser collapserSpecificAltAllele = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.MOST_SPECIFIC_SUBTYPE,
-            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END);
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.FlagFieldLogic.OR);
+    private static final CanonicalSVCollapser collapserFlagAnd = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.FlagFieldLogic.AND);
+    private static final CanonicalSVCollapser collapserFlagAlwaysFalse = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.FlagFieldLogic.ALWAYS_FALSE);
 
     private static final Allele MEI_INSERTION_ALLELE = Allele.create("<INS:MEI>");
     private static final Allele SVA_INSERTION_ALLELE = Allele.create("<INS:MEI:SVA>");
@@ -633,23 +646,23 @@ public class CanonicalSVCollapserUnitTest {
                 },
                 // het preferred over hom ref even with lower gq
                 {
+                "sample",
+                Lists.newArrayList(
+                        Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                ),
+                Lists.newArrayList(
+                        createGenotypeTestAttributesWithGQ(2, 30),
+                        createGenotypeTestAttributesWithGQ(2, 20)
+                ),
+                Allele.REF_N,
+                GenotypeBuilder.create(
                         "sample",
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                        ),
-                        Lists.newArrayList(
-                                createGenotypeTestAttributesWithGQ(2, 30),
-                                createGenotypeTestAttributesWithGQ(2, 20)
-                        ),
-                        Allele.REF_N,
-                        GenotypeBuilder.create(
-                                "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                createGenotypeTestAttributesWithGQ(2, 20)
-                        )
-                },
-                // hom var preferred over het
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                        createGenotypeTestAttributesWithGQ(2, 20)
+                )
+        },
+                // het preferred over hom-var
                 {
                         "sample",
                         Lists.newArrayList(
@@ -663,11 +676,11 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(2)
                         )
                 },
-                // hom-var over het if GQ equal
+                // het over hom-var if GQ equal
                 {
                         "sample",
                         Lists.newArrayList(
@@ -681,11 +694,11 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(2)
                         )
                 },
-                // het over hom-var if GQ is higher
+                // hom-var over het if GQ is higher
                 {
                         "sample",
                         Lists.newArrayList(
@@ -693,17 +706,17 @@ public class CanonicalSVCollapserUnitTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
                         ),
                         Lists.newArrayList(
-                                createGenotypeTestAttributesWithGQ(2, 30),
-                                createGenotypeTestAttributesWithGQ(2, 40)
+                                createGenotypeTestAttributesWithGQ(2, 40),
+                                createGenotypeTestAttributesWithGQ(2, 30)
                         ),
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributesWithGQ(2, 40)
                         )
                 },
-                // hom var preferred over hom-ref too
+                // het preferred over hom-ref too
                 {
                         "sample",
                         Lists.newArrayList(
@@ -719,7 +732,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributesWithGQ(2, 30)
                         )
                 },
@@ -778,7 +791,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(3)
                         )
                 },
@@ -800,7 +813,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(3)
                         )
                 },
@@ -828,7 +841,7 @@ public class CanonicalSVCollapserUnitTest {
                         Allele.REF_N,
                         GenotypeBuilder.create(
                                 "sample",
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 createGenotypeTestAttributes(3)
                         )
                 },
@@ -1070,25 +1083,7 @@ public class CanonicalSVCollapserUnitTest {
                                 createGenotypeTestAttributes(1, 1)
                         )
                 },
-                // Multi-allelic CNV, rare case with equal CNQ take CN!=ECN
-                {
-                        "sample",
-                        Lists.newArrayList(
-                                Collections.singletonList(Allele.NO_CALL),
-                                Collections.singletonList(Allele.NO_CALL)
-                        ),
-                        Lists.newArrayList(
-                                createGenotypeTestAttributesWithCNQ(1, 1, 30),
-                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
-                        ),
-                        Allele.REF_N,
-                        GenotypeBuilder.create(
-                                "sample",
-                                Lists.newArrayList(Allele.NO_CALL),
-                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
-                        )
-                },
-                // Multi-allelic CNV, haploid dup
+                // Multi-allelic CNV, with no CNQ use copy state closest to ref
                 {
                         "sample",
                         Lists.newArrayList(
@@ -1103,10 +1098,44 @@ public class CanonicalSVCollapserUnitTest {
                         GenotypeBuilder.create(
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL),
-                                createGenotypeTestAttributes(1, 2)
+                                createGenotypeTestAttributes(1, 1)
                         )
                 },
-                // Multi-allelic CNV, when CNQ equal use CN!=ECN
+                // Multi-allelic CNV, when CNQ equal use copy state closest to ref
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(1, 1, 30),
+                                createGenotypeTestAttributesWithCNQ(1, 2, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(1, 1, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 3, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30)
+                        )
+                },
                 {
                         "sample",
                         Lists.newArrayList(
@@ -1121,10 +1150,9 @@ public class CanonicalSVCollapserUnitTest {
                         GenotypeBuilder.create(
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
-                                createGenotypeTestAttributesWithCNQ(2, 1, 30)
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30)
                         )
                 },
-                // Multi-allelic CNV, when CNQ equal use CN!=ECN
                 {
                         "sample",
                         Lists.newArrayList(
@@ -1139,7 +1167,41 @@ public class CanonicalSVCollapserUnitTest {
                         GenotypeBuilder.create(
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 2, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30),
                                 createGenotypeTestAttributesWithCNQ(2, 0, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 5, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 6, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 5, 30)
                         )
                 },
                 // Multi-allelic CNV, conflicting del and dup genotypes determined by CNQ
@@ -1175,6 +1237,58 @@ public class CanonicalSVCollapserUnitTest {
                                 "sample",
                                 Lists.newArrayList(Allele.NO_CALL),
                                 createGenotypeTestAttributesWithCNQ(1, 2, 50)
+                        )
+                },
+                // DEL prioritized over DUP tiebreaker when same distance from expected copy state
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(1, 2, 30),
+                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(1, 0, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 0, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 4, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 0, 30)
+                        )
+                },
+                {
+                        "sample",
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        ),
+                        Lists.newArrayList(
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30),
+                                createGenotypeTestAttributesWithCNQ(2, 3, 30)
+                        ),
+                        Allele.REF_N,
+                        GenotypeBuilder.create(
+                                "sample",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributesWithCNQ(2, 1, 30)
                         )
                 },
         };
@@ -1237,13 +1351,158 @@ public class CanonicalSVCollapserUnitTest {
         Assert.assertEquals(collapser.collapseLength(record, type, record.getPositionA(), record.getPositionB()), expectedLength);
     }
 
-    @DataProvider(name = "collapseIdsTestData")
-    public Object[][] collapseIdsTestData() {
+
+    @DataProvider(name = "collapseAttributesTestData")
+    public Object[][] collapseAttributesTestData() {
         return new Object[][]{
-                {Collections.singletonList("var1"), "var1"},
-                {Lists.newArrayList("var1", "var2"), "var1"},
-                {Lists.newArrayList("var2", "var1"), "var1"},
+                // Empty case
+                {
+                        new String[]{}, new Object[]{},
+                        new String[]{}, new Object[]{},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                // Use representative
+                {
+                        new String[]{"TEST_KEY"}, new Object[]{"TEST_VALUE"},
+                        new String[]{}, new Object[]{},
+                        new String[]{"TEST_KEY"}, new Object[]{"TEST_VALUE"},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{}, new Object[]{},
+                        new String[]{"TEST_KEY"}, new Object[]{"TEST_VALUE"},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{"TEST_KEY1"}, new Object[]{"TEST_VALUE1"},
+                        new String[]{"TEST_KEY1"}, new Object[]{"TEST_VALUE2"},
+                        new String[]{"TEST_KEY1"}, new Object[]{"TEST_VALUE1"},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{"TEST_KEY1"}, new Object[]{"TEST_VALUE1"},
+                        new String[]{"TEST_KEY1", "TEST_KEY2"}, new Object[]{"TEST_VALUE12", "TEST_VALUE22"},
+                        new String[]{"TEST_KEY1"}, new Object[]{"TEST_VALUE1"},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                // Reserved flags OR
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{}, new Object[]{},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{}, new Object[]{},  // False results in non-assignment, implying false
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{}, new Object[]{},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{}, new Object[]{},
+                        new String[]{GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                {
+                        new String[]{}, new Object[]{},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE, GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE}, new Object[]{Boolean.TRUE, Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE, GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE}, new Object[]{Boolean.TRUE, Boolean.TRUE},
+                        CanonicalSVCollapser.FlagFieldLogic.OR
+                },
+                // Reserved flags AND
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{}, new Object[]{},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                {
+                        new String[]{}, new Object[]{},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.FALSE},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                {
+                        new String[]{GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{}, new Object[]{},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                {
+                        new String[]{}, new Object[]{},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE, GATKSVVCFConstants.HIGH_SR_BACKGROUND_ATTRIBUTE}, new Object[]{Boolean.TRUE, Boolean.TRUE},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.AND
+                },
+                // Reserved flags ALWAYS_FALSE
+                {
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{GATKSVVCFConstants.BOTHSIDES_SUPPORT_ATTRIBUTE}, new Object[]{Boolean.TRUE},
+                        new String[]{}, new Object[]{},
+                        CanonicalSVCollapser.FlagFieldLogic.ALWAYS_FALSE
+                },
         };
+    }
+
+    @Test(dataProvider= "collapseAttributesTestData")
+    public void collapseAttributesTest(final String[] representativeKeys, final Object[] representativeValues,
+                                       final String[] secondKeys, final Object[] secondValues,
+                                       final String[] expectedKeys, final Object[] expectedValues,
+                                       final CanonicalSVCollapser.FlagFieldLogic flagLogic) {
+        final Map<String, Object> representativeMap = SVTestUtils.buildMapFromArrays(representativeKeys, representativeValues);
+        final Map<String, Object> secondMap = SVTestUtils.buildMapFromArrays(secondKeys, secondValues);
+        final Map<String, Object> expectedMap = SVTestUtils.buildMapFromArrays(expectedKeys, expectedValues);
+        final SVCallRecord representativeCall = SVTestUtils.newDeletionRecordWithAttributes(representativeMap);
+        final SVCallRecord secondCall = SVTestUtils.newDeletionRecordWithAttributes(secondMap);
+        final Collection<SVCallRecord> collection = Lists.newArrayList(secondCall, representativeCall);
+        final CanonicalSVCollapser testCollapser = new CanonicalSVCollapser(
+                SVTestUtils.hg38Reference,
+                CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+                CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+                flagLogic);
+        final Map<String, Object> result = new HashMap<>(testCollapser.collapseAttributes(representativeCall, collection));
+        // Ignore MEMBERS field
+        result.remove(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
+        Assert.assertEquals(result, expectedMap);
     }
 
     @DataProvider(name = "getMostPreciseCallsTestData")
@@ -1431,32 +1690,205 @@ public class CanonicalSVCollapserUnitTest {
         collapseIntervalTestHelper(collapserMean, svtype, contigs, records, expectedMean);
     }
 
-    @Test
-    public void collapseIntervalRepresentativeTest() {
+    @DataProvider(name = "collapseIntervalRepresentativeTestData")
+    public Object[][] collapseIntervalRepresentativeTestData() {
+        return new Object[][]{
+                // equal evidence, expect second with more carriers
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        false
+                },
+                {
+                        0.,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        false
+                },
+                {
+                        null,
+                        0.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        false
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.RD, GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.RD, GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR},
+                        false
+                },
+                {
+                        -99.,
+                        -99.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        false
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.BAF},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.BAF},
+                        false
+                },
+                // quality based
+                {
+                        -99.,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        true
+                },
+                {
+                        null,
+                        -99.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        false
+                },
+                {
+                        -10.,
+                        -9.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        true
+                },
+                {
+                        -10.,
+                        -9.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        true
+                },
+                // SR > PE
+                {
+                        -99.,
+                        -99.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        true
+                },
+                // note quality null = 0
+                {
+                        null,
+                        0.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE},
+                        true
+                },
+                {
+                        0.,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.RD},
+                        true
+                },
+                {
+                        null,
+                        0.,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.BAF},
+                        true
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.RD, GATKSVVCFConstants.EvidenceTypes.BAF},
+                        true
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.RD, GATKSVVCFConstants.EvidenceTypes.BAF},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.SR},
+                        false
+                },
+                // PE > others
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        true
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.RD},
+                        true
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.PE},
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.RD, GATKSVVCFConstants.EvidenceTypes.BAF},
+                        true
+                },
+                // irrelevant evidence, expect second with more carriers
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.RD},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        false
+                },
+                {
+                        null,
+                        null,
+                        new GATKSVVCFConstants.EvidenceTypes[]{GATKSVVCFConstants.EvidenceTypes.BAF},
+                        new GATKSVVCFConstants.EvidenceTypes[]{},
+                        false
+                },
+        };
+    }
+
+    @Test(dataProvider = "collapseIntervalRepresentativeTestData")
+    public void collapseIntervalRepresentativeTest(final Double log10PErrorA,
+                                                   final Double log10PErrorB,
+                                                   final GATKSVVCFConstants.EvidenceTypes[] evidenceA,
+                                                   final GATKSVVCFConstants.EvidenceTypes[] evidenceB,
+                                                   final boolean expectFirst) {
         // Choose second record with more carriers
         final List<SVCallRecord> records =
                 Lists.newArrayList(
-                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                        SVTestUtils.makeRecordWithEvidenceAndQuality("record1", "chr1", 1000, true,
                                 "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                null, Arrays.asList(evidenceA), Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                                 Lists.newArrayList(
                                         new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
                                         new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
-                                )
+                                ),
+                                log10PErrorA
                         ),
-                        SVTestUtils.makeRecord("record2", "chr1", 1001, true,
+                        SVTestUtils.makeRecordWithEvidenceAndQuality("record2", "chr1", 1001, true,
                                 "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                null, Arrays.asList(evidenceB), Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                                 Lists.newArrayList(
                                         new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
                                         new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
-                                )
+                                ),
+                                log10PErrorB
                         )
                 );
         final Pair<Integer, Integer> result = collapserRepresentative.collapseInterval(records);
-        Assert.assertEquals((int) result.getLeft(), 1001);
-        Assert.assertEquals((int) result.getRight(), 2001);
+        if (expectFirst) {
+            Assert.assertEquals((int) result.getLeft(), 1000);
+            Assert.assertEquals((int) result.getRight(), 2000);
+        } else {
+            Assert.assertEquals((int) result.getLeft(), 1001);
+            Assert.assertEquals((int) result.getRight(), 2001);
+        }
+    }
 
+    @Test
+    public void collapseIntervalRepresentativeByCoordinatesTest() {
         // record2 and record3 have the best carrier status, but choose second record which is closer to all others on average
         final List<SVCallRecord> records2 =
                 Lists.newArrayList(
@@ -1486,9 +1918,9 @@ public class CanonicalSVCollapserUnitTest {
                         )
                 );
         final Pair<Integer, Integer> result2 = collapserRepresentative.collapseInterval(records2);
-        Assert.assertEquals((int) result2.getLeft(), 999);
-        Assert.assertEquals((int) result2.getRight(), 2000);
-    }
+            Assert.assertEquals((int) result2.getLeft(), 999);
+            Assert.assertEquals((int) result2.getRight(), 2000);
+}
 
     @DataProvider(name = "distanceDataProvider")
     public Object[][] distanceDataProvider() {
@@ -1577,5 +2009,28 @@ public class CanonicalSVCollapserUnitTest {
     public void collapseAlgorithmsTest(final List<List<String>> algorithmLists, final List<String> expectedResult) {
         final List<SVCallRecord> records = algorithmLists.stream().map(list -> SVTestUtils.newDeletionCallRecordWithIdAndAlgorithms("", list)).collect(Collectors.toList());
         Assert.assertEquals(collapser.collapseAlgorithms(records), expectedResult);
+    }
+
+    @Test
+    public void testComplexSubtypeAndIntervals() {
+        final SVCallRecord cpx1 = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                Arrays.asList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict)),
+                null, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord cpx2 = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                Arrays.asList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict)),
+                null, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord result = collapser.collapse(new SVClusterEngine.OutputCluster(Lists.newArrayList(cpx1, cpx2)));
+        Assert.assertEquals(result.getComplexSubtype(), GATKSVVCFConstants.ComplexVariantSubtype.dDUP);
+        Assert.assertEquals(result.getComplexEventIntervals(), cpx1.getComplexEventIntervals());
     }
 }

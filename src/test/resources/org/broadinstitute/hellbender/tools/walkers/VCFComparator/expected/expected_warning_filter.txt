@@ -1,0 +1,1 @@
+At position chr1:187471 Variant contexts have different attribute values for AS_FilterStatus: actual has VQSRTrancheSNP99.00to99.90+ and expected has VQSRTrancheSNP99.90to100.00+

@@ -48,8 +48,8 @@ public class CapturedStreamOutput extends StreamOutput {
                     } else {
                         outputStream = new HardThresholdingOutputStream(bufferSize) {
                             @Override
-                            protected OutputStream getStream() {
-                                return bufferTruncated ? NullOutputStream.NULL_OUTPUT_STREAM : bufferStream;
+                            protected OutputStream getOutputStream() {
+                                return bufferTruncated ? NullOutputStream.INSTANCE : bufferStream;
                             }
 
                             @Override

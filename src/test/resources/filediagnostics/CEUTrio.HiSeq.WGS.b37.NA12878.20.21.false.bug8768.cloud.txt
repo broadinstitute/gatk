@@ -1,0 +1,17 @@
+CRAM File Name: CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram
+CRAM Version: 2.1
+CRAM ID Contents: L1VzZXJzL2FraWV6dW4vSWRlYVA=
+
+**********************NO CORRUPT CONTAINERS DETECTED**********************
+Average mismatch rate for presumed good containers: 0.005615
+
+Presumed GOOD Containers:
+  Ordinal: 1 (sequenceId=SINGLE_REFERENCE: 0, start=9999902, span=11055) Mismatch Rate/Count: 0.006629/1010000
+  Ordinal: 2 (sequenceId=SINGLE_REFERENCE: 0, start=10010859, span=11595) Mismatch Rate/Count: 0.003216/1010000
+  Ordinal: 3 (sequenceId=SINGLE_REFERENCE: 0, start=10022353, span=10302) Mismatch Rate/Count: 0.002870/1010000
+  Ordinal: 4 (sequenceId=SINGLE_REFERENCE: 0, start=10032556, span=10955) Mismatch Rate/Count: 0.002814/1010000
+
+  Ordinal: 1 (sequenceId=SINGLE_REFERENCE: 1, start=9999901, span=5725) Mismatch Rate/Count: 0.007091/1010000
+  Ordinal: 2 (sequenceId=SINGLE_REFERENCE: 1, start=10005525, span=4771) Mismatch Rate/Count: 0.008675/1010000
+  Ordinal: 3 (sequenceId=SINGLE_REFERENCE: 1, start=10010195, span=6694) Mismatch Rate/Count: 0.006677/1010000
+  Ordinal: 4 (sequenceId=SINGLE_REFERENCE: 1, start=10016789, span=6937) Mismatch Rate/Count: 0.006947/1010000
