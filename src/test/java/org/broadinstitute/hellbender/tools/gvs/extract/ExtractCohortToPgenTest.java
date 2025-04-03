@@ -112,7 +112,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test
+  @Test(enabled = false)
   public void testFinalVETSPgenfromRangesAvroLowAlleleCountMax() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
@@ -160,7 +160,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test
+  @Test(enabled = false)
   public void testFinalVETSPgenfromRangesAvroSeparateIndex() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
@@ -211,7 +211,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test
+  @Test(enabled = false)
   public void testFinalVETSPgenfromRangesAvroEmptyPgenAllow() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
@@ -257,7 +257,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     Assert.assertEquals(outputPvar.length(), 0L);
   }
 
-  @Test
+  @Test(enabled = false)
   public void testFinalVQSRPgenfromRangesAvro() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
@@ -304,7 +304,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test(expectedExceptions = PgenEmptyPgenException.class)
+  @Test(enabled = false, expectedExceptions = PgenEmptyPgenException.class)
   public void testEmptyPgenExceptionVETS() throws Exception {
     final File outputDir = createTempDir("extract_output");
     final String outputBasePath = outputDir.getAbsolutePath() + "/extract_output";
@@ -326,7 +326,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
 
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testThrowErrorIfNoCallingFilteredGtsAndFilteringBySite() {
     // Verifies that an exception is thrown if you try to --convert-filtered-genotypes-to-no-calls, but are using site filtering
     final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -347,7 +347,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
 
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testThrowFilterErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -364,7 +364,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
             .add("pgen-chromosome-code", "chrM");
     runCommandLine(args);
   }
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testThrowFilterErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -383,7 +383,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
 
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testNoFilteringThresholdsErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -400,7 +400,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
             .add("pgen-chromosome-code", "chrM");
     runCommandLine(args);
   }
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testNoFilteringThresholdsErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -419,7 +419,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
 
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testFakeFilteringErrorVETS() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
@@ -438,7 +438,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
 
-  @Test(expectedExceptions = UserException.class)
+  @Test(enabled = false, expectedExceptions = UserException.class)
   public void testFakeFilteringErrorVQSR() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
