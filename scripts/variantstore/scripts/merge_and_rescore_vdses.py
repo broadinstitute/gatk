@@ -183,7 +183,7 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter, AC, AN, AF information.')
+                                     description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter, AC/AN/AF information.')
 
     parser.add_argument('--input-echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
 
@@ -194,6 +194,14 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--output-vds-path', type=str,
                         help='Path to write output VDS', required=True)
+
+    parser.add_argument('--truth-sensitivity-snp-threshold', type=float,
+                        help='Sensitivity threshold for SNP filtering.',
+                        default=0.997)
+
+    parser.add_argument('--truth-sensitivity-indel-threshold', type=float,
+                        help='Sensitivity threshold for indel filtering.',
+                        default=0.99)
 
     parser.add_argument('--temp-path', type=str, help='Path to temporary directory', required=True)
 
@@ -224,13 +232,10 @@ if __name__ == '__main__':
 
     tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
 
-    # force AWOL globals back in
-    truth_sensitivity_snp_threshold = 0.997
-    truth_sensitivity_indel_threshold = 0.990
-
+    # These globals seem to get dropped after the merge. Add them back as they are required for rescoring.
     vd = tmp_merged_vds.variant_data
-    vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                             truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+    vd = vd.annotate_globals(truth_sensitivity_snp_threshold=args.truth_sensitivity_snp_threshold,
+                             truth_sensitivity_indel_threshold=args.truth_sensitivity_indel_threshold)
 
     rescored_vd = patch_variant_data(vd, site, vets)
     merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
