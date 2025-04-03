@@ -262,7 +262,14 @@ workflow Mutect2 {
                 normal_pileups = MergeNormalPileups.merged_table,
                 runtime_params = standard_runtime
         }
-        
+
+        if (make_permutect_test_dataset) {
+            call CalculateContamination as GetNormalMAFSegments {
+                input:
+                    tumor_pileups = MergeNormalPileups.merged_table,
+                    runtime_params = standard_runtime
+            }
+        }
     }
 
     if (make_permutect_training_dataset) {
@@ -330,6 +337,7 @@ workflow Mutect2 {
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
+        File? normal_maf_segments = GetNormalMAFSegments.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? permutect_training_dataset = ConcatenatePermutectTrainingData.concatenated
         File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
