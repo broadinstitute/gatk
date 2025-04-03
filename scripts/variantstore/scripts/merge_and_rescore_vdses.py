@@ -223,7 +223,16 @@ if __name__ == '__main__':
                 args.input_echo_vds, args.input_unmerged_foxtrot_vds)
 
     tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
-    rescored_vd = patch_variant_data(tmp_merged_vds.variant_data, site, vets)
+
+    # force AWOL globals back in
+    truth_sensitivity_snp_threshold = 0.997
+    truth_sensitivity_indel_threshold = 0.990
+
+    vd = tmp_merged_vds.variant_data
+    vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                             truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+
+    rescored_vd = patch_variant_data(vd, site, vets)
     merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
 
     merged_and_rescored_vds.write(args.output_vds_path)
