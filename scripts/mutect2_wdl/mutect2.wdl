@@ -254,6 +254,14 @@ workflow Mutect2 {
                     ref_dict = ref_dict,
                     runtime_params = standard_runtime
             }
+
+            if (make_permutect_test_dataset) {
+                call CalculateContamination as GetNormalMAFSegments {
+                    input:
+                        tumor_pileups = select_first([MergeNormalPileups.merged_table]),
+                        runtime_params = standard_runtime
+                }
+            }
         }
 
         call CalculateContamination {
@@ -261,14 +269,6 @@ workflow Mutect2 {
                 tumor_pileups = MergeTumorPileups.merged_table,
                 normal_pileups = MergeNormalPileups.merged_table,
                 runtime_params = standard_runtime
-        }
-
-        if (make_permutect_test_dataset) {
-            call CalculateContamination as GetNormalMAFSegments {
-                input:
-                    tumor_pileups = MergeNormalPileups.merged_table,
-                    runtime_params = standard_runtime
-            }
         }
     }
 
