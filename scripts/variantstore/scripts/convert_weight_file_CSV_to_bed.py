@@ -34,7 +34,7 @@ def load_contig_mapping(mapping_file):
 
 # Load the contig mapping file if provided, else use standard hg38 mappings
 if args.mapping_file:
-    contig_map = load_contig_mapping(args.mappingfile)
+    contig_map = load_contig_mapping(args.mapping_file)
 else:
     contig_map = hg38_contig_map
 
