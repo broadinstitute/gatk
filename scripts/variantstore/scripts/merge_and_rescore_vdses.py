@@ -183,7 +183,7 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter information.')
+                                     description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter, AC, AN, AF information.')
 
     parser.add_argument('--input-echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     tmp_dir = f'{args.temp_path}/hail_tmp_general'
-    patched_echo_vds_path = f'{args.temp_path}/hail_tmp_merge/patched_echo.vds'
+    tmp_merged_vds_path = f'{args.temp_path}/hail_tmp_merge/tmp_merged.vds'
 
     hl.init(
         idempotent=True,
@@ -215,13 +215,15 @@ if __name__ == '__main__':
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
-    echo_vds = hl.vds.read_vds(args.input_echo_vds)
-
-    patched_echo_vd = patch_variant_data(echo_vds.variant_data, site, vets)
-    patched_echo_vds = hl.vds.VariantDataset(echo_vds.reference_data, patched_echo_vd)
-
-    patched_echo_vds.write(patched_echo_vds_path)
-
+    # First merge the Echo and new-to-Foxtrot VDSes, then rescore. Although the new-to-Foxtrot VDS already has correct
+    # filter data, it does not have correct AC/AN/AF values, so we can't just patch the Echo VDS and then merge.
+    # Merge must come before rescore for correct AC/AN/AF.
     merge_vdses(tmp_dir,
-                args.output_vds_path,
-                patched_echo_vds_path, args.input_unmerged_foxtrot_vds)
+                tmp_merged_vds_path,
+                args.input_echo_vds, args.input_unmerged_foxtrot_vds)
+
+    tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
+    rescored_vd = patch_variant_data(tmp_merged_vds.variant_data, site, vets)
+    merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
+
+    merged_and_rescored_vds.write(args.output_vds_path)
