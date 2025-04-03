@@ -99,7 +99,7 @@ public class SchemaUtils {
 
     public static long encodeLocation(String chrom, int position) {
         long chromosomeIndex = ChromosomeEnum.integerValueOfContig(chrom);
-        return (long) chromosomeIndex * chromAdjustment + (long) position;
+        return chromosomeIndex * chromAdjustment + (long) position;
     }
 
     /*
