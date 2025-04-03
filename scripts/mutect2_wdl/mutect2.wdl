@@ -237,7 +237,7 @@ workflow Mutect2 {
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
-    if (defined(variants_for_contamination) && (!skip_filtering)) {
+    if (defined(variants_for_contamination) && (make_permutect_test_dataset || (!skip_filtering))) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
                 input_tables = flatten(M2.tumor_pileups),
@@ -262,6 +262,7 @@ workflow Mutect2 {
                 normal_pileups = MergeNormalPileups.merged_table,
                 runtime_params = standard_runtime
         }
+        
     }
 
     if (make_permutect_training_dataset) {
