@@ -1,7 +1,7 @@
 version 1.0
 
-# This WDL will rescore a previous callset's VDS and merge it with a partial VDS from the
-# current callset using Hail running in a Dataproc cluster.
+# This WDL will merge the Echo VDS with a VDS of only samples new to Foxtrot and apply the full Foxtrot filter created
+# from all samples to the merged result.
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
 
@@ -37,13 +37,13 @@ workflow GvsMergeAndRescoreVDSes {
 
     parameter_meta {
         input_foxtrot_avro_path : {
-            help: "Input location for Foxtrot Avro files with the updated Foxtrot filter"
+            help: "Input location for Foxtrot Avro files including the new Foxtrot filter data"
         }
         input_echo_vds_path: {
-            help: "Previous full Echo VDS with Echo filters"
+            help: "Previous full Echo VDS"
         }
         input_unmerged_foxtrot_vds_path: {
-           help: "New unmerged Foxtrot VDS with only the samples new to Foxtrot and the new Foxtrot filters"
+           help: "New unmerged Foxtrot VDS with only the samples new to Foxtrot"
         }
         output_merged_and_rescored_foxtrot_vds_path: {
             help: "Location for the complete merged and rescored Foxtrot VDS with all samples and Foxtrot filters"
