@@ -133,7 +133,7 @@ public abstract class ExtractTool extends GATKTool {
         if (refVersion.equals("CUSTOM")) {
             // Look for the contig mapping files
             if (contigMappingFile == null) {
-                throw new IllegalArgumentException("Contig mapping file must be provided when using non-human references");
+                throw new IllegalArgumentException("Contig mapping file must be provided when using custom references");
             }
 
             ChromosomeEnum.setCustomContigMap(SchemaUtils.loadContigMappingFile(contigMappingFile));

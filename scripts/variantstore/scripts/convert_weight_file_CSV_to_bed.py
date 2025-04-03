@@ -20,7 +20,7 @@ binsize_kb = args.bin_size
 infile = args.infile
 outfile = args.outfile
 
-# Funtion to parse the contig mappings file
+# Function to parse the contig mappings file
 def load_contig_mapping(mapping_file):
     contig_map = {}
     with open(mapping_file, mode='r') as file:
