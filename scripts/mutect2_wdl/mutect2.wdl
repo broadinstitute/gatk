@@ -231,7 +231,7 @@ workflow Mutect2 {
                 ref_dict = ref_dict,
                 bam_outs = M2.output_bamOut,
                 runtime_params = standard_runtime,
-                disk_space = ceil(merged_bamout_size * 4) + disk_pad,
+                disk_space = ceil(merged_bamout_size * 10) + disk_pad,
         }
     }
 
