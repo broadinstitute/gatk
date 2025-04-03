@@ -141,7 +141,5 @@ public abstract class ExtractTool extends GATKTool {
             // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
             ChromosomeEnum.setRefVersion(refVersion);
         }
-
-//        ChromosomeEnum.setRefVersion(refVersion);
     }
 }

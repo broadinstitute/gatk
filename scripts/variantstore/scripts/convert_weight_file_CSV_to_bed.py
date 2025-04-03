@@ -10,7 +10,7 @@ argParser = argparse.ArgumentParser()
 argParser.add_argument("-s", "--bin-size", help="size of the bins in kb", type=int, default=1)
 argParser.add_argument("-i", "--infile", help="bed input file", type=str, default="49K_vet_weight_1k.csv")
 argParser.add_argument("-o", "--outfile", help="bed output file", type=str, default="gvs_vet_weights_1kb.bed")
-argParser.add_argument("-m", "--mappingfile", help="chromosome to integer mapping file", type=str)
+argParser.add_argument("-m", "--mapping-file", help="chromosome to integer mapping file", type=str)
 
 
 args = argParser.parse_args()
@@ -33,7 +33,7 @@ def load_contig_mapping(mapping_file):
     return contig_map
 
 # Load the contig mapping file if provided, else use standard hg38 mappings
-if args.mappingfile:
+if args.mapping_file:
     contig_map = load_contig_mapping(args.mappingfile)
 else:
     contig_map = hg38_contig_map
