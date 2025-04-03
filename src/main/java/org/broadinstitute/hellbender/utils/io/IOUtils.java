@@ -466,8 +466,7 @@ public final class IOUtils {
 
         // Go through the archive and get the entries:
         TarArchiveEntry entry;
-        while ((entry = (TarArchiveEntry) archiveStream.getNextEntry()) != null) {
-
+        while ((entry = archiveStream.getNextEntry()) != null) {
             logger.info("Extracting file: " + entry.getName());
 
             // Make sure we can read the data for the entry:
