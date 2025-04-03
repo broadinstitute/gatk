@@ -85,12 +85,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     final File expectedPsam = getTestFile("ranges_extract.expected_vets.psam");
     final File expectedPvar = getTestFile("ranges_extract.expected_vets.pvar");
 
-    final File newExpectedPvar = getTestFile("test.out.pvar.zst");
-    System.out.println(newExpectedPvar.getAbsolutePath());
-    final File decompressedNewExpectedPvar = decompressPvar(newExpectedPvar);
-    System.out.println(decompressedNewExpectedPvar.getAbsolutePath());
-
-    // Create a temp dif for the output
+    // Create a temp dir for the output
     final File outputDir = createTempDir("extract_output");
     final String outputBasePath = outputDir.getAbsolutePath() + "/extract_output";
     final File outputPgen = new File(outputBasePath + ".pgen");
