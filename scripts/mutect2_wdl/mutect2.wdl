@@ -237,6 +237,9 @@ workflow Mutect2 {
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
+    # When generating Permutect test data we need the minor allele fraction (MAF) segmentation from CalculateContamination,
+    # even if we are skipping filtering.  Note also that we run CalculateContamination witht he normal as a "tumor"
+    # in order to get normal MAF segments.
     if (defined(variants_for_contamination) && (make_permutect_test_dataset || (!skip_filtering))) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
