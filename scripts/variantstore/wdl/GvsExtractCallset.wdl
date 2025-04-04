@@ -33,6 +33,10 @@ workflow GvsExtractCallset {
     File? interval_list
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
+    # for supporting custom references... for now. Later map the references and use the reference_name above
+    File? custom_reference
+    File? custom_contig_mapping
+
     File? target_interval_list
 
     String? basic_docker
@@ -152,6 +156,9 @@ workflow GvsExtractCallset {
                                           else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
                                                else 9 + extract_overhead_memory_override_gib
 
+  # support a custom reference if one is provided.
+  File extract_reference = select_first([custom_reference,  GetReference.reference.reference_fasta])
+
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
     File? none = ""
@@ -160,7 +167,7 @@ workflow GvsExtractCallset {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = GetReference.reference.reference_fasta,
+      ref_fasta = extract_reference,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
@@ -171,14 +178,13 @@ workflow GvsExtractCallset {
       gatk_override = gatk_override,
   }
 
-  call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
-    input:
-      project_id = project_id,
-      fq_table = "~{fq_filter_set_info_table}",
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-  }
-
   if ( !do_not_filter_override ) {
+    call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
+      input:
+        project_id = project_id,
+        fq_table = "~{fq_filter_set_info_table}",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
     call Utils.ValidateFilterSetName {
       input:
         project_id = query_project,
@@ -231,7 +237,7 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = GetReference.reference.reference_fasta,
+        reference                             = extract_reference,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
@@ -259,6 +265,7 @@ workflow GvsExtractCallset {
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
         maximum_alternate_alleles             = maximum_alternate_alleles,
+        custom_contig_mapping                 = custom_contig_mapping,
         target_interval_list                  = target_interval_list,
     }
 
@@ -385,6 +392,9 @@ task ExtractTask {
     Int? local_sort_max_records_in_ram = 10000000
     Int? maximum_alternate_alleles
 
+    # for supporting custom references... for now.
+    File? custom_contig_mapping
+
     File? target_interval_list
 
     # for call-caching -- check if DB tables haven't been updated since the last run
@@ -406,6 +416,7 @@ task ExtractTask {
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
+  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -449,7 +460,7 @@ task ExtractTask {
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-        --ref-version 38 \
+        --ref-version ~{ref_version} \
         -R ~{reference} \
         -O ~{output_file} \
         --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
@@ -462,6 +473,7 @@ task ExtractTask {
         ~{true='' false='--use-vqsr-scoring' use_VETS} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         ${FILTERING_ARGS} \
         ~{"--sample-ploidy-table " + fq_ploidy_mapping_table} \
         --dataset-id ~{dataset_name} \

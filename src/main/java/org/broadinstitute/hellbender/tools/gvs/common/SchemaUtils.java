@@ -3,9 +3,10 @@ package org.broadinstitute.hellbender.tools.gvs.common;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
 
 public class SchemaUtils {
 
@@ -97,8 +98,8 @@ public class SchemaUtils {
     public static final long chromAdjustment = 1000000000000L;
 
     public static long encodeLocation(String chrom, int position) {
-        int chromosomeIndex = ChromosomeEnum.integerValueOfContig(chrom);
-        return (long) chromosomeIndex * chromAdjustment + (long) position;
+        long chromosomeIndex = ChromosomeEnum.integerValueOfContig(chrom);
+        return chromosomeIndex * chromAdjustment + (long) position;
     }
 
     /*
@@ -109,7 +110,7 @@ public class SchemaUtils {
         Next 4 - state (16 values)
      */
     public static long encodeCompressedRefBlock(String chrom, long position, long length, long stateAsInt) {
-        int chromosomeIndex = ChromosomeEnum.integerValueOfContig(chrom);
+        long chromosomeIndex = ChromosomeEnum.integerValueOfContig(chrom);
         long packedBytes = ((0xFFFF & chromosomeIndex) << 48) |
                 ((0xFFFFFFFF & position) << 16) |
                 ((0xFFF & length) << 4) |
@@ -142,5 +143,27 @@ public class SchemaUtils {
         }
         return retVal;
     };
+
+    public static Map<String, Integer> loadContigMappingFile(String contigMappingFilePath) {
+        Map<String, Integer> contigMappings = new HashMap<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(contigMappingFilePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split("\t");
+                if (parts.length == 2) {
+                    String contig = parts[0];
+                    Integer id = Integer.parseInt(parts[1]);
+                    contigMappings.put(contig, id);
+                } else {
+                    throw new IllegalArgumentException("Invalid line format: " + line);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading contig mapping file", e);
+        }
+
+        return contigMappings;
+    }
 
 }
