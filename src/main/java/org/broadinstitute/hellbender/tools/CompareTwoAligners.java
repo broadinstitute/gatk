@@ -1,10 +1,16 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.util.FastMath;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -20,8 +26,10 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferen
 
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.CachedOverlapDetector;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 
 import java.io.File;
@@ -67,9 +75,18 @@ public class CompareTwoAligners extends CommandLineProgram {
     @WorkflowOutput
     private File outputComparisonFile = null;
 
+    // Typically in a GATK or Picard tool you have a logger, e.g.:
+    private static final Logger logger = LogManager.getLogger();
+
+    // Create a ProgressLogger that reports every 1,000,000 reads (you can pick any interval).
+    private static final ProgressLogger progressLogger = new ProgressLogger(logger, 1_000_000, "Processed", "records");
+
+
     private List<SimpleInterval> intervals;
 
     private CachedOverlapDetector<SimpleInterval> intervalCachedOverlapDetector;
+
+    private EquallySpacedSearchableIntervalCollection searchableIntervalCollection;
 
     @ArgumentCollection
     final IntervalArgumentCollection intervalArgumentCollection = new RequiredIntervalArgumentCollection();
@@ -99,11 +116,12 @@ public class CompareTwoAligners extends CommandLineProgram {
             this.queryName = firstRecord.getReadName();
             this.records = new ArrayList<>();
             this.records.add(firstRecord);
-
+            progressLogger.record(firstRecord);
             while (iterator.hasNext()) {
                 final SAMRecord record = iterator.peek();
                 if (record.getReadName().equals(queryName)) {
                     records.add(iterator.next());
+                    progressLogger.record(record);
                 } else {
                     break;
                 }
@@ -163,18 +181,61 @@ public class CompareTwoAligners extends CommandLineProgram {
             // If either read is unmapped, skip this pair
             interval1 = null;
         } else {
-            interval1 = intervalCachedOverlapDetector.getOverlap(new SimpleInterval(firstRecord.getContig(), firstRecord.getStart(), firstRecord.getStart()));
+            interval1 = searchableIntervalCollection.getBinForPosition(firstRecord.getContig(), firstRecord.getStart());
         }
         if (secondRecord.getReadUnmappedFlag()) {
             // If either read is unmapped, skip this pair
             interval2 = null;
         } else {
-            interval2 = intervalCachedOverlapDetector.getOverlap(new SimpleInterval(secondRecord.getContig(), secondRecord.getStart(), secondRecord.getStart()));
+            interval2 = searchableIntervalCollection.getBinForPosition(secondRecord.getContig(), secondRecord.getStart());
         }
 
         return new ImmutablePair<>(interval1, interval2);
     }
 
+    private static class EquallySpacedSearchableIntervalCollection {
+
+        private final Map<String, List<SimpleInterval>> contigToBins;
+        private final int binLength;
+
+        public EquallySpacedSearchableIntervalCollection(final SAMSequenceDictionary sequenceDictionary, final int binLength) {
+            final List<SimpleInterval> referenceIntervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+            this.contigToBins = new HashMap<>();
+            this.binLength = binLength;
+            for (final SimpleInterval interval : referenceIntervals) {
+                for (int binStart = interval.getStart(); binStart <= interval.getEnd(); binStart += binLength) {
+                    final int binEnd = FastMath.min(binStart + binLength - 1, interval.getEnd());
+                    // add the bin to the appropriate contig list or create new list if it doesn't exist with the interval
+                    contigToBins.computeIfAbsent(interval.getContig(), k -> new ArrayList<>())
+                            .add(new SimpleInterval(interval.getContig(), binStart, binEnd));
+                }
+            }
+        }
+
+        public List<SimpleInterval> getBinsForContig(final String contig) {
+            // Check if contigToBins contains the specified contig, if not throw exception
+            Utils.nonNull(contigToBins.get(contig),
+                    "Contig " + contig + " not found in the bins collection. " +
+                            "Please ensure that the reference sequence dictionary contains this contig.");
+            return contigToBins.get(contig);
+        }
+
+        public SimpleInterval getBinForPosition(final String contig, final int position) {
+            Utils.nonNull(contig, "Contig cannot be null.");
+            Utils.validateArg(position > 0, "Position must be greater than 0.");
+            // Find the corresponding interval taking advantage of the fact that the bins are equally spaced
+            List<SimpleInterval> bins = getBinsForContig(contig);
+            final int contigEnd = bins.get(bins.size() - 1).getEnd();
+            Utils.validateArg(position <= contigEnd,
+                    "Position " + position + " exceeds the end of the contig " + contig + " which is at " + contigEnd + ".");
+            return bins.get(
+                    FastMath.min(
+                            bins.size() - 1, // ensure we don't go out of bounds
+                            FastMath.max(0, (position - 1) / binLength) // find the index of the bin for the position
+                    )
+            );
+        }
+    }
 
     @Override
     protected Object doWork() {
@@ -183,6 +244,10 @@ public class CompareTwoAligners extends CommandLineProgram {
         final ReferenceDataSource referenceDataSource = ReferenceDataSource.of(reference.getReferencePath());
         intervals = intervalArgumentCollection.getIntervals(referenceDataSource.getSequenceDictionary());
         intervalCachedOverlapDetector = new CachedOverlapDetector<>(intervals);
+        searchableIntervalCollection = new EquallySpacedSearchableIntervalCollection(
+                referenceDataSource.getSequenceDictionary(),
+                10000
+        );
 
         final Map<Pair<SimpleInterval, SimpleInterval>, Integer> intervalPairCounts = new HashMap<>();
         try (final SamReader firstReader = samReaderFactory.open(firstBam);
