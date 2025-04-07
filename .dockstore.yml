@@ -177,14 +177,14 @@ workflows:
              - vs_1590_mem_footprint_part_I
          tags:
              - /.*/
-   - name: GvsExtractCallsetShard30603
+   - name: GvsExtractChoiceACAFIntervals
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - vs_1590_mem_footprint_part_I
+         - vs_1594_scale_test_extract
        tags:
          - /.*/
    - name: GvsImportGenomes
