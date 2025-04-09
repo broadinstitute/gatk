@@ -934,10 +934,13 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Finds number of repetitions a string consists of.
+     * (tsato: to delete) Finds number of repetitions a string consists of.
+     *
+     *
+     *
      * For example, for string ATAT and repeat unit AT, number of repetitions = 2
-     * @param repeatUnit             Non-empty substring represented by byte array
-     * @param testString             String to test (represented by byte array), may be empty
+     * @param repeatUnit             The repeat unit to count e.g. AT in ATATAT
+     * @param targetString           The sequence in which we count the number of repeatUnit. May be empty.
      * @param leadingRepeats         Look for leading (at the beginning of string) or trailing (at end of string) repetitions
      * For example:
      *    GATAT has 0 leading repeats of AT but 2 trailing repeats of AT
@@ -946,14 +949,14 @@ public final class GATKVariantContextUtils {
      *
      * @return  Number of repetitions (0 if testString is not a concatenation of n repeatUnit's, including the case of empty testString)
      */
-    public static int findNumberOfRepetitions(byte[] repeatUnit, byte[] testString, boolean leadingRepeats) {
-        Utils.nonNull(repeatUnit, "repeatUnit");
-        Utils.nonNull(testString, "testString");
+    public static int findNumberOfRepetitions(byte[] repeatUnit, byte[] targetString, boolean leadingRepeats) {
+        Utils.nonNull(repeatUnit, "repeatUnit cannot be null.");
+        Utils.nonNull(targetString, "testString cannot be null.");
         Utils.validateArg(repeatUnit.length != 0, "empty repeatUnit");
-        if (testString.length == 0){
+        if (targetString.length == 0){
             return 0;
         }
-        return findNumberOfRepetitions(repeatUnit, 0, repeatUnit.length, testString, 0, testString.length, leadingRepeats);
+        return findNumberOfRepetitions(repeatUnit, 0, repeatUnit.length, targetString, 0, targetString.length, leadingRepeats);
     }
 
     /**

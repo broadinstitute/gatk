@@ -11,7 +11,7 @@ import java.util.List;
  * The Cycle covariate.
  * For ILLUMINA the cycle is simply the position in the read (counting backwards if it is a negative strand read)
  */
-public final class CycleCovariate implements Covariate {
+public final class CycleCovariate implements DefaultCovariate {
     private static final long serialVersionUID = 1L;
 
     private int MAXIMUM_CYCLE_VALUE;

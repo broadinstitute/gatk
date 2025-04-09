@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.reflections.Reflections;
 
 import java.io.Serializable;
 import java.util.*;
@@ -35,6 +36,14 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
     private final List<Covariate> allCovariates;
 
     private final Map<Class<? extends Covariate>, Integer> indexByClass;
+
+    // tsato: START EXPERIMENTATION
+    Reflections reflections = new Reflections("org.broadinstitute.hellbender.utils.recalibration.covariates");
+    // tsato: why are these null?
+    Set<Class<? extends RequiredCovariate>> requiredCovariateClasses = reflections.getSubTypesOf(RequiredCovariate.class);
+    Set<Class<? extends DefaultCovariate>> defaultCovariateClasses = reflections.getSubTypesOf(DefaultCovariate.class);
+    Set<Class<? extends CustomCovariate>> customCovariateClasses = reflections.getSubTypesOf(CustomCovariate.class);
+    // tsato: END EXPERIMENTATION
 
     private static final List<String> REQUIRED_COVARIATE_NAMES =
             Collections.unmodifiableList(Arrays.asList("ReadGroupCovariate", "QualityScoreCovariate"));

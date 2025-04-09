@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * The Reported Quality Score covariate.
  */
-public final class QualityScoreCovariate implements Covariate {
+public final class QualityScoreCovariate implements RequiredCovariate {
     private static final long serialVersionUID = 1L;
 
     @Override

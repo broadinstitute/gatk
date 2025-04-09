@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * The Read Group covariate.
  */
-public final class ReadGroupCovariate implements Covariate {
+public final class ReadGroupCovariate implements RequiredCovariate {
     private static final long serialVersionUID = 1L;
     public static final int MISSING_READ_GROUP_KEY = -1;
 
