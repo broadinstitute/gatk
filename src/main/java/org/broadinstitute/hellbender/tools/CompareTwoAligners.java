@@ -67,6 +67,9 @@ public class CompareTwoAligners extends CommandLineProgram {
     @Argument(doc = "The second BAM file to compare.")
     public File secondBam;
 
+    @Argument(doc = "The length of the bins to use for comparison.")
+    public int binLength = 100000;
+
     @Argument(
             doc = "Output file to write comparison results to.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -246,7 +249,7 @@ public class CompareTwoAligners extends CommandLineProgram {
         intervalCachedOverlapDetector = new CachedOverlapDetector<>(intervals);
         searchableIntervalCollection = new EquallySpacedSearchableIntervalCollection(
                 referenceDataSource.getSequenceDictionary(),
-                10000
+                binLength
         );
 
         final Map<Pair<SimpleInterval, SimpleInterval>, Integer> intervalPairCounts = new HashMap<>();
