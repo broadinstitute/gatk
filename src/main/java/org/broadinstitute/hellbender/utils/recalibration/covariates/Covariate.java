@@ -19,6 +19,7 @@ public interface Covariate extends Serializable {
      * Initialize any member variables using the command-line arguments passed to the walker
      *
      * @param RAC the recalibration argument collection
+     * @param readGroups (only used by the ReadGroup covariate --- consider refactoring)
      */
     public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups);
 

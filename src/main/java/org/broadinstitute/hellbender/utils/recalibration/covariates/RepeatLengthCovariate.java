@@ -9,11 +9,12 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-public class RepeatLengthCovariate implements Covariate {
+public class RepeatLengthCovariate implements CustomCovariate {
     private static final long serialVersionUID = 1L;
 
     protected int MAX_REPEAT_LENGTH;
@@ -57,37 +58,117 @@ public class RepeatLengthCovariate implements Covariate {
         read.setBases(originalBases);
     }
 
+    // tsato: vs GATKVariatnContextUtils.getNumTandemRepeatUnits
+    // *** START GPT *** //
+    /**
+     * Detects if a given offset is in the middle of a Short Tandem Repeat (STR).
+     *
+     * @param dnaSequence The DNA sequence represented as a byte array.
+     * @param offset The position in the sequence to check.
+     * @param maxRepeatUnitSize The maximum length of repeat units to check.
+     * @return A string describing the repeat unit and its length, or "No STR detected".
+     */
+    public static Pair<byte[], Integer> detectSTR(byte[] dnaSequence, int offset, int maxRepeatUnitSize) {
+        int n = dnaSequence.length;
+
+        // Check for repeat units of size 1 to maxRepeatUnitSize
+        for (int unitSize = 1; unitSize <= maxRepeatUnitSize; unitSize++) {
+            if (offset < unitSize) continue; // Ensure offset is valid for checking
+
+            byte[] candidateUnit = Arrays.copyOfRange(dnaSequence, offset - unitSize + 1, offset + 1);
+            int left = offset, right = offset + 1;
+
+            // Expand leftward
+            while (left - unitSize >= 0 && matches(candidateUnit, dnaSequence, left - unitSize)) {
+                left -= unitSize;
+            }
+
+            // Expand rightward
+            while (right + unitSize <= n && matches(candidateUnit, dnaSequence, right)) {
+                right += unitSize;
+            }
+
+            int repeatLength = right - left;
+            if (repeatLength > unitSize) {
+                System.out.println("Repeat Unit: " + new String(candidateUnit) + ", Repeat Length: " + repeatLength);
+                return new MutablePair<>(candidateUnit , repeatLength);
+                // return "Repeat Unit: " + new String(candidateUnit) + ", Repeat Length: " + repeatLength;
+            }
+        }
+
+        // str not found
+        return new MutablePair<>(Arrays.copyOfRange(dnaSequence, offset, offset+1), 1); // tsato: handle this better
+    }
+
+    /**
+     * Checks if a given segment in the sequence matches the repeat unit.
+     */
+    private static boolean matches(byte[] unit, byte[] sequence, int start) {
+        for (int i = 0; i < unit.length; i++) {
+            if (start + i >= sequence.length || sequence[start + i] != unit[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    // *** END GPT *** //
+
+    /**
+     *
+     *
+     * [A,C,G,A,C,G,(T),A,C,G,A,C,G]
+     * [T,T,T,A,C,T,(A),C,T,A,A,A,A]
+     *
+     * @param readBases
+     * @param offset
+     * @return a pair of byte array (the repeat unit) and integer (the number of repetitions).
+     */ // should really be a static method
     public Pair<byte[], Integer> findTandemRepeatUnits(byte[] readBases, int offset) {
-        int maxBW = 0;
+        int numRepetitions = 0; // tsato: BW? backward?
         byte[] bestBWRepeatUnit = new byte[]{readBases[offset]};
-        for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
+        for (int strSize = 1; strSize <= MAX_STR_UNIT_LENGTH; strSize++) {
             // fix repeat unit length
             //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
-            if (offset+1-str < 0)
+            if (offset+1-strSize < 0)
                 break;
 
-            // get backward repeat unit and # repeats
-            byte[] backwardRepeatUnit = Arrays.copyOfRange(readBases, offset - str + 1, offset + 1);
-            maxBW = GATKVariantContextUtils.findNumberOfRepetitions(backwardRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
-            if (maxBW > 1) {
+            //
+            // Count the number of backwardRepeatUnits to the left of the offset.
+            // Example: strSize = 3, then backwardRepeatUnit = GTG
+            //                offset
+            //                  |
+            // [A, G, T, G, T, (G), *, *, *, *, *] ( input string )
+            // [A, G, T, G, T, (G) ]               ( search repeat units in this substring )
+            //
+            // backward repeat unit *includes* the offset base (unlike the forward repeat unit)
+            final byte[] backwardRepeatUnit = Arrays.copyOfRange(readBases, offset - strSize + 1, offset + 1);
+            String backwardRepeatUnitStr = new String(backwardRepeatUnit, StandardCharsets.UTF_8);
+
+            // "leadingRepeats = false" indicates that we look for the consecutive repeat units in the *back end* of the substring.
+            numRepetitions = GATKVariantContextUtils.findNumberOfRepetitions(backwardRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
+            if (numRepetitions > 1) {
                 bestBWRepeatUnit = Arrays.copyOf(backwardRepeatUnit, backwardRepeatUnit.length);
+                // By exiting early, could we miss longer, more informative STRs?
+                // Also, this means that TTTTT will be represented as TT repeated .... 2 times?
+                // It needs to be T repeated 5 times.
                 break;
             }
         }
         byte[] bestRepeatUnit = bestBWRepeatUnit;
-        int maxRL = maxBW;
+        int maxRepeatLength = numRepetitions;
 
         if (offset < readBases.length-1) {
             byte[] bestFWRepeatUnit = new byte[]{readBases[offset+1]};
             int maxFW = 0;
-            for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
+            for (int strLength = 1; strLength <= MAX_STR_UNIT_LENGTH; strLength++) {
                 // fix repeat unit length
-                //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
-                if (offset+str+1 > readBases.length)
+                // edge case: if candidate tandem repeat unit falls beyond edge of read, skip
+                if (offset+strLength+1 > readBases.length)  // tsato: is +1 needed...
                     break;
 
-                // get forward repeat unit and # repeats
-                byte[] forwardRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset + str + 1);
+                // get forward repeat unit and # repeats (tsato: offset + 1 .... so we don't include the base at offset...)
+                byte[] forwardRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset + strLength + 1);
+                String forwardRepeatUnitStr = new String(forwardRepeatUnit, StandardCharsets.UTF_8);
                 maxFW = GATKVariantContextUtils.findNumberOfRepetitions(forwardRepeatUnit, Arrays.copyOfRange(readBases, offset + 1, readBases.length), true);
                 if (maxFW > 1) {
                     bestFWRepeatUnit = Arrays.copyOf(forwardRepeatUnit, forwardRepeatUnit.length);
@@ -96,26 +177,26 @@ public class RepeatLengthCovariate implements Covariate {
             }
             // if FW repeat unit = BW repeat unit it means we're in the middle of a tandem repeat - add FW and BW components
             if (Arrays.equals(bestFWRepeatUnit, bestBWRepeatUnit)) {
-                maxRL = maxBW + maxFW;
+                maxRepeatLength = numRepetitions + maxFW;
                 bestRepeatUnit = bestFWRepeatUnit; // arbitrary
             }
             else {
                 // tandem repeat starting forward from current offset.
-                // It could be the case that best BW unit was differnet from FW unit, but that BW still contains FW unit.
+                // It could be the case that best BW unit was different from FW unit, but that BW still contains FW unit.
                 // For example, TTCTT(C) CCC - at (C) place, best BW unit is (TTC)2, best FW unit is (C)3.
                 // but correct representation at that place might be (C)4.
                 // Hence, if the FW and BW units don't match, check if BW unit can still be a part of FW unit and add
                 // representations to total
-                maxBW = GATKVariantContextUtils.findNumberOfRepetitions(bestFWRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
-                maxRL = maxFW + maxBW;
+                numRepetitions = GATKVariantContextUtils.findNumberOfRepetitions(bestFWRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
+                maxRepeatLength = maxFW + numRepetitions;
                 bestRepeatUnit = bestFWRepeatUnit;
 
             }
 
         }
         
-        if(maxRL > MAX_REPEAT_LENGTH) { maxRL = MAX_REPEAT_LENGTH; }
-        return new MutablePair<>(bestRepeatUnit, maxRL);
+        if(maxRepeatLength > MAX_REPEAT_LENGTH) { maxRepeatLength = MAX_REPEAT_LENGTH; }
+        return new MutablePair<>(bestRepeatUnit, maxRepeatLength);
 
     }
 

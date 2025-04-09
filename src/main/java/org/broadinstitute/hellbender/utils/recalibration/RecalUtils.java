@@ -569,11 +569,11 @@ public final class RecalUtils {
      * @param read                The read for which to compute covariate values.
      * @param header              SAM header for the read
      * @param covariates          The list of covariates.
-     * @param resultsStorage      The object to store the covariate values
+     * @param covariateMatrix      The object to store the covariate values
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      */
-    public static void computeCovariates( final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final PerReadCovariateMatrix resultsStorage, final boolean recordIndelValues) {
-        covariates.populatePerReadCovariateMatrix(read, header, resultsStorage, recordIndelValues);
+    public static void computeCovariates( final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final PerReadCovariateMatrix covariateMatrix, final boolean recordIndelValues) {
+        covariates.populatePerReadCovariateMatrix(read, header, covariateMatrix, recordIndelValues);
     }
 
     /**
