@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVLinkage;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -37,9 +38,8 @@ public class ClosestSVFinder {
     private final SVConcordanceLinkage linkage;
     private final Function<ClosestPair, SVCallRecord> collapser;
 
-    private final PriorityQueue<SVCallRecord> outputBuffer;
+    private final PriorityQueue<LinkageConcordanceRecord> outputBuffer;
 
-    private Long nextItemId;
     private Integer lastItemStart;
     private String lastItemContig;
 
@@ -55,10 +55,15 @@ public class ClosestSVFinder {
         this.sortOutput = sortOutput;
         this.linkage = Utils.nonNull(linkage);
         this.collapser = Utils.nonNull(collapser);
-        outputBuffer = new PriorityQueue<>(SVCallRecordUtils.getCallComparator(dictionary));
+        outputBuffer = new PriorityQueue<>(new Comparator<>() {
+            private final Comparator<SVCallRecord> callComparator = SVCallRecordUtils.getCallComparator(dictionary);
+            @Override
+            public int compare(LinkageConcordanceRecord o1, LinkageConcordanceRecord o2) {
+                return callComparator.compare(o1.record, o2.record);
+            }
+        });
         truthIdToItemMap = new HashMap<>();
         idToClusterMap = new HashMap<>();
-        nextItemId = 0L;
         lastItemStart = null;
         lastItemContig = null;
     }
@@ -77,10 +82,10 @@ public class ClosestSVFinder {
      * @param force flushes all variants in the output buffer regardless of position
      * @return finalized variants
      */
-    public List<SVCallRecord> flush(final boolean force) {
-        final List<SVCallRecord> collapsedRecords = flushClusters(force).stream()
-                .map(c -> new ClosestPair(c.getItem(), c.getClosest()))
-                .map(collapser)
+    public List<LinkageConcordanceRecord> flush(final boolean force) {
+        final List<LinkageConcordanceRecord> collapsedRecords = flushClusters(force).stream()
+                .map(c -> new ClosestPair(c.getItemId(), c.getItem(), c.getClosestRecord(), c.getClosestLinkage()))
+                .map(p -> new LinkageConcordanceRecord(p.getId(), collapser.apply(p), p.getLinkage()))
                 .collect(Collectors.toList());
         if (sortOutput) {
             outputBuffer.addAll(collapsedRecords);
@@ -93,18 +98,18 @@ public class ClosestSVFinder {
     /**
      * Flushes output buffer
      */
-    private List<SVCallRecord> flushBuffer(final boolean force) {
+    private List<LinkageConcordanceRecord> flushBuffer(final boolean force) {
         if (force) {
-            final List<SVCallRecord> output = new ArrayList<>(outputBuffer.size());
+            final List<LinkageConcordanceRecord> output = new ArrayList<>(outputBuffer.size());
             while (!outputBuffer.isEmpty()) {
                 output.add(outputBuffer.poll());
             }
             return output;
         } else {
-            final ArrayList<SVCallRecord> output = new ArrayList<>();
+            final ArrayList<LinkageConcordanceRecord> output = new ArrayList<>();
             final Integer minActiveStartPosition = minActiveStartPosition();
             while (!outputBuffer.isEmpty() &&
-                    (minActiveStartPosition == null || outputBuffer.peek().getPositionA() <= minActiveStartPosition)) {
+                    (minActiveStartPosition == null || outputBuffer.peek().record.getPositionA() <= minActiveStartPosition)) {
                 output.add(outputBuffer.poll());
             }
             output.trimToSize();
@@ -142,40 +147,43 @@ public class ClosestSVFinder {
     /**
      * Adds and clusters a new variant. Variants must be added in dictionary-sorted order.
      */
-    public void add(final SVCallRecord item, final boolean isTruthVariant) {
+    public void add(final SVCallRecord item, final Long id, final boolean isTruthVariant) {
         Utils.validateArg(lastItemContig == null || lastItemContig.equals(item.getContigA()), "Attempted to add item on a new contig; please run a force flush beforehand");
         Utils.validateArg(lastItemStart == null || lastItemStart <= item.getPositionA(), "Items must be added in dictionary-sorted order");
+        Utils.validateArg(!idToClusterMap.containsKey(id), "ID already in use: " + id);
         lastItemContig = item.getContigA();
         lastItemStart = item.getPositionA();
         if (isTruthVariant) {
-            truthIdToItemMap.put(nextItemId, item);
-            idToClusterMap.values().stream()
-                .filter(other -> linkage.areClusterable(other.getItem(), item))
-                .forEach(cluster -> cluster.update(nextItemId, item));
+            Utils.validateArg(!truthIdToItemMap.containsKey(id), "ID already in use: " + id);
+            truthIdToItemMap.put(id, item);
+            for (final ActiveClosestPair activeClosestPair : idToClusterMap.values()) {
+                final CanonicalSVLinkage.CanonicalLinkageResult result = linkage.areClusterable(activeClosestPair.getItem(), item);
+                if (result.getResult()) {
+                    activeClosestPair.update(new LinkageConcordanceRecord(id, item, result));
+                }
+            }
         } else {
             final int maxStart = linkage.getMaxClusterableStartingPosition(item);
-            final Map.Entry<Long, SVCallRecord> minEntry = getClosestItem(item, truthIdToItemMap.entrySet());
-            final Long closestId = minEntry == null ? null : minEntry.getKey();
-            final SVCallRecord closest = minEntry == null ? null : minEntry.getValue();
-            final ActiveClosestPair cluster = new ActiveClosestPair(nextItemId, item, closestId, closest, maxStart);
-            idToClusterMap.put(nextItemId, cluster);
+            final LinkageConcordanceRecord closest = getClosestItem(item, truthIdToItemMap);
+            final ActiveClosestPair cluster = new ActiveClosestPair(id, item, closest, maxStart);
+            idToClusterMap.put(id, cluster);
         }
-        nextItemId++;
     }
 
     /**
      * Compares a set of records to the given item and returns the "closest" one.
      */
     @VisibleForTesting
-    public Map.Entry<Long, SVCallRecord> getClosestItem(final SVCallRecord evalRecord, final Set<Map.Entry<Long, SVCallRecord>> candidates) {
-        final Comparator<Map.Entry<Long, SVCallRecord>> distanceComparator = Comparator.comparingInt(o -> totalDistance(evalRecord, o.getValue()));
-        final Comparator<Map.Entry<Long, SVCallRecord>> minDistanceComparator = Comparator.comparingInt(o -> minDistance(evalRecord, o.getValue()));
-        final Comparator<Map.Entry<Long, SVCallRecord>> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(evalRecord, o.getValue()));
+    public LinkageConcordanceRecord getClosestItem(final SVCallRecord evalRecord, final Map<Long, SVCallRecord> candidates) {
+        final Comparator<LinkageConcordanceRecord> distanceComparator = Comparator.comparingInt(o -> totalDistance(evalRecord, o.record()));
+        final Comparator<LinkageConcordanceRecord> minDistanceComparator = Comparator.comparingInt(o -> minDistance(evalRecord, o.record()));
+        final Comparator<LinkageConcordanceRecord> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(evalRecord, o.record()));
         // For consistency, in case all other criteria are equal
-        final Comparator<Map.Entry<Long, SVCallRecord>> idEqualComparator = Comparator.comparing(o -> !o.getValue().getId().equals(evalRecord.getId()));
-        final Comparator<Map.Entry<Long, SVCallRecord>> idOrderComparator = Comparator.comparing(o -> o.getValue().getId());
-        final Optional<Map.Entry<Long, SVCallRecord>> result = candidates.stream()
-                .filter(other -> linkage.areClusterable(evalRecord, other.getValue()))
+        final Comparator<LinkageConcordanceRecord> idEqualComparator = Comparator.comparing(o -> !o.record().getId().equals(evalRecord.getId()));
+        final Comparator<LinkageConcordanceRecord> idOrderComparator = Comparator.comparing(o -> o.record().getId());
+        final Optional<LinkageConcordanceRecord> result = candidates.entrySet().stream()
+                .map(other -> new LinkageConcordanceRecord(other.getKey(), other.getValue(), linkage.areClusterable(evalRecord, other.getValue())))
+                .filter(o -> o.linkage().getResult())
                 .min(distanceComparator.thenComparing(minDistanceComparator).thenComparing(genotypeDistanceComparator)
                         .thenComparing(idEqualComparator).thenComparing(idOrderComparator));
         return result.orElseGet(() -> null);
@@ -230,15 +238,37 @@ public class ClosestSVFinder {
         }
     }
 
+    public String getLastItemContig() {
+        return lastItemContig;
+    }
+
+    public record LinkageConcordanceRecord(Long id, SVCallRecord record, CanonicalSVLinkage.CanonicalLinkageResult linkage) {}
+
     /**
      * Output container for an evaluation record and its closest truth record.
      */
     public static class ClosestPair {
+        final Long id;
         final SVCallRecord evalItem;
         final SVCallRecord closest;
-        public ClosestPair(final SVCallRecord evalItem, final SVCallRecord closest) {
+        final CanonicalSVLinkage.CanonicalLinkageResult linkage;
+
+        public ClosestPair(final Long id, final SVCallRecord evalItem, final SVCallRecord closest, final CanonicalSVLinkage.CanonicalLinkageResult linkage) {
+            this.id = id;
             this.evalItem = evalItem;
             this.closest = closest;
+            this.linkage = linkage;
+        }
+
+        /**
+         * Constructor with linkage metrics set to null and a "true" result
+         */
+        public ClosestPair(final Long id, final SVCallRecord evalItem, final SVCallRecord closest) {
+            this(id, evalItem, closest, new CanonicalSVLinkage.CanonicalLinkageResult(true));
+        }
+
+        public Long getId() {
+            return id;
         }
 
         public SVCallRecord getEvalItem() {
@@ -248,25 +278,27 @@ public class ClosestSVFinder {
         public SVCallRecord getClosest() {
             return closest;
         }
+
+        public CanonicalSVLinkage.CanonicalLinkageResult getLinkage() {
+            return linkage;
+        }
     }
 
     /**
-     * Internal representation of a eval-truth pair.
+     * Internal representation of an eval-truth pair.
      */
     private static class ActiveClosestPair {
 
         final Long itemId;
         final SVCallRecord item;
-        Long closestId;
-        SVCallRecord closest;
+        LinkageConcordanceRecord closest;
         final int maxClusterableStartingPosition;
 
         ActiveClosestPair(final Long itemId, final SVCallRecord item,
-                          final Long closestId, final SVCallRecord closest,
+                          final LinkageConcordanceRecord closest,
                           final int maxClusterableStartingPosition) {
             this.itemId = Utils.nonNull(itemId);
             this.item = Utils.nonNull(item);
-            this.closestId = closestId;
             this.closest = closest;
             this.maxClusterableStartingPosition = maxClusterableStartingPosition;
         }
@@ -274,25 +306,23 @@ public class ClosestSVFinder {
         /**
          * Compares the given new paired record with the eval record and updates if it's closer than the current one.
          */
-        boolean update(final Long newClosestId, final SVCallRecord newClosest) {
+        void update(final LinkageConcordanceRecord newClosest) {
             Utils.nonNull(newClosest);
-            final Comparator<Map.Entry<Long, SVCallRecord>> distanceComparator = Comparator.comparingInt(o -> totalDistance(item, o.getValue()));
-            final Comparator<Map.Entry<Long, SVCallRecord>> minDistanceComparator = Comparator.comparingInt(o -> minDistance(item, o.getValue()));
-            final Comparator<Map.Entry<Long, SVCallRecord>> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(item, o.getValue()));
-            final Comparator<Map.Entry<Long, SVCallRecord>> idEqualComparator = Comparator.comparing(o -> !o.getValue().getId().equals(item.getId()));
-            final Comparator<Map.Entry<Long, SVCallRecord>> idOrderComparator = Comparator.comparing(o -> o.getValue().getId());
-            final List<Map.Entry<Long, SVCallRecord>> candidates = new ArrayList<>(2);
-            candidates.add(new AbstractMap.SimpleImmutableEntry<>(closestId, closest));
-            candidates.add(new AbstractMap.SimpleImmutableEntry<>(newClosestId, newClosest));
-            final Map.Entry<Long, SVCallRecord> result = candidates.stream()
-                    .min(distanceComparator.thenComparing(minDistanceComparator).thenComparing(genotypeDistanceComparator)
-                            .thenComparing(idEqualComparator).thenComparing(idOrderComparator)).get();
-            if (result.getKey() == closestId) {
-                return false;
+            if (closest == null) {
+                closest = newClosest;
             }
-            closestId = Utils.nonNull(newClosestId);
-            closest = newClosest;
-            return true;
+            final Comparator<LinkageConcordanceRecord> distanceComparator = Comparator.comparingInt(o -> totalDistance(item, o.record()));
+            final Comparator<LinkageConcordanceRecord> minDistanceComparator = Comparator.comparingInt(o -> minDistance(item, o.record()));
+            final Comparator<LinkageConcordanceRecord> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(item, o.record()));
+            final Comparator<LinkageConcordanceRecord> idEqualComparator = Comparator.comparing(o -> !o.record().getId().equals(item.getId()));
+            final Comparator<LinkageConcordanceRecord> idOrderComparator = Comparator.comparing(o -> o.record().getId());
+            final List<LinkageConcordanceRecord> candidates = Arrays.asList(closest, newClosest);
+            closest = candidates.stream().min(distanceComparator
+                            .thenComparing(minDistanceComparator)
+                            .thenComparing(genotypeDistanceComparator)
+                            .thenComparing(idEqualComparator)
+                            .thenComparing(idOrderComparator))
+                            .get();
         }
 
         Long getItemId() {
@@ -303,20 +333,16 @@ public class ClosestSVFinder {
             return item;
         }
 
-        Long getClosestId() {
-            return closestId;
+        SVCallRecord getClosestRecord() {
+            return closest == null ? null : closest.record();
         }
 
-        SVCallRecord getClosest() {
-            return closest;
+        CanonicalSVLinkage.CanonicalLinkageResult getClosestLinkage() {
+            return closest == null ? null : closest.linkage();
         }
 
         int getMaxClusterableStartingPosition() {
             return maxClusterableStartingPosition;
-        }
-
-        String getContig() {
-            return item.getContigA();
         }
     }
 }
