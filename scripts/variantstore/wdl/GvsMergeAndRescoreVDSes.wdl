@@ -254,7 +254,7 @@ task MergeAndRescoreVDS {
             "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
             "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
-            ~{', "samples-to-remove-path": ' + samples_to_remove_path}
+            ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
         }
         FIN
 
