@@ -801,6 +801,7 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(
                 GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
+                GATKVCFConstants.QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.FISHER_STRAND_KEY));
 
