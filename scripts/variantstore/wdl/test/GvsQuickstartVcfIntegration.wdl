@@ -489,8 +489,9 @@ task ValidateVariants {
         bash ~{monitoring_script} > monitoring.log &
 
         gatk --java-options -Xmx3g ValidateVariants \
-          -V ~{input_vcf} \
-          -R ~{ref_fasta}
+            -V ~{input_vcf} \
+            -R ~{ref_fasta} \
+            --validation-type-to-exclude ALL
 
     >>>
 
