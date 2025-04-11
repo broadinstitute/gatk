@@ -326,7 +326,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1576-avro-update
+             - vs_1647_batch_root_detection_fixups
          tags:
              - /.*/
    - name: GvsIngestTieout
