@@ -12,7 +12,7 @@ workflow GvsMergeAndRescoreVDSes {
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
-        File samples_to_remove_path
+        String samples_to_remove_path
         Boolean skip_validate = false
 
         String cluster_prefix = "vds-cluster"
@@ -177,7 +177,7 @@ task MergeAndRescoreVDS {
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
-        File? samples_to_remove_path
+        String? samples_to_remove_path
         Boolean leave_cluster_running_at_end
         File merge_and_rescore_script
         File hail_gvs_util_script
