@@ -491,7 +491,7 @@ task ValidateVariants {
         gatk --java-options -Xmx3g ValidateVariants \
             -V ~{input_vcf} \
             -R ~{ref_fasta} \
-            --validation-type-to-exclude ALL
+            --validation-type-to-exclude ALLELES
 
     >>>
 
