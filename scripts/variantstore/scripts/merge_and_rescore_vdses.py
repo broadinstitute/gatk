@@ -235,8 +235,8 @@ if __name__ == '__main__':
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
     # First merge the Echo and new-to-Foxtrot VDSes, then rescore. Although the new-to-Foxtrot VDS already has correct
-    # filter data, it does not have correct AC/AN/AF values, so we can't just patch the Echo VDS and then merge.
-    # Merge must come before rescore for correct AC/AN/AF.
+    # filter data, we don't get correct AC/AN/AF results during our VDS tieout tests if we score just the Foxtrot-only
+    # VDS and then merge.
     merge_vdses(tmp_dir,
                 tmp_merged_vds_path,
                 args.input_echo_vds, args.input_unmerged_foxtrot_vds)
