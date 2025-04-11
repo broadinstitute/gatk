@@ -364,9 +364,89 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         return (GencodeGtfStartCodonFeature)GencodeGtfStartCodonFeature.create(baseData);
     }
 
+    private GencodeGtfTranscriptFeature provideArtificialTranscriptForTestMANEExtractMode(final SimpleInterval interval,
+                                                                                          final boolean isBasic,
+                                                                                          final boolean isMANESelect,
+                                                                                          final boolean isMANEPlusClinical ) {
+        List<GencodeGtfFeature.OptionalField<?>> optionalFields = new ArrayList<>();
+        if ( isBasic ) {
+            optionalFields.add(new GencodeGtfFeature.OptionalField<String>("tag", GencodeGTFFieldConstants.FeatureTag.BASIC.toString()));
+        }
+        if ( isMANEPlusClinical ) {
+            optionalFields.add(new GencodeGtfFeature.OptionalField<String>("tag", GencodeGTFFieldConstants.FeatureTag.MANE_PLUS_CLINICAL.toString()));
+        }
+        if ( isMANESelect ) {
+            optionalFields.add(new GencodeGtfFeature.OptionalField<String>("tag", GencodeGTFFieldConstants.FeatureTag.MANE_SELECT.toString()));
+        }
+
+        final GencodeGtfTranscriptFeature baseData = (GencodeGtfTranscriptFeature) GencodeGtfTranscriptFeature.create( new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING,
+                1,
+                interval.getContig(),
+                GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA,
+                GencodeGtfFeature.FeatureType.GENE,
+                interval.getStart(),
+                interval.getEnd(),
+                Strand.POSITIVE,
+                GencodeGtfFeature.GenomicPhase.DOT,
+                "TEST-GENE-ID",
+                "TEST-TX-ID-"+Math.random(), // Randomize the transcript ID to ensure uniqueness for later comparisons
+                GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                GencodeGTFFieldConstants.GeneTranscriptStatus.PUTATIVE.toString(),
+                "TEST-GENE",
+                GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                GencodeGTFFieldConstants.GeneTranscriptStatus.PUTATIVE.toString(),
+                "TEST-TX",
+                1,
+                "",
+                GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
+                optionalFields.isEmpty() ? null : optionalFields
+        ));
+        return baseData;
+    }
+
 
     //==================================================================================================================
     // Data Providers:
+
+    @DataProvider
+    Object[][] provideTestForMANESelectMode() {
+        final GencodeGtfTranscriptFeature NONBASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, false);
+        final GencodeGtfTranscriptFeature BASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, false);
+        final GencodeGtfTranscriptFeature BASIC_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, false);
+        final GencodeGtfTranscriptFeature BASIC_MANESELECT_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, true, false);
+        final GencodeGtfTranscriptFeature BASIC_MANESELECT_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, true, false);
+        final GencodeGtfTranscriptFeature BASIC_MANEPLUSCLINICAL_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, true);
+        final GencodeGtfTranscriptFeature BASIC_MANEPLUSCLINICAL_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, true);
+        final GencodeGtfTranscriptFeature BASIC_MANESELECT_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, true, true);
+        final GencodeGtfTranscriptFeature NONBASIC_MANESELECT = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, true, false);
+        final GencodeGtfTranscriptFeature NONBASIC_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, true);
+
+        return new Object[][]{
+                // trivial cases where only one transcript is present
+                {List.of(NONBASIC_A), List.of()},
+                {List.of(BASIC_A), List.of(BASIC_A)},
+                {List.of(BASIC_MANESELECT_A), List.of(BASIC_MANESELECT_A)},
+                {List.of(BASIC_MANEPLUSCLINICAL_A), List.of(BASIC_MANEPLUSCLINICAL_A)},
+                {List.of(BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_MANEPLUSCLINICAL)},
+                // NOTE that these are (NOT BASIC TRANSCRIPTS), we still return them in MANE select mode
+                {List.of(NONBASIC_MANESELECT), List.of(NONBASIC_MANESELECT)},
+                {List.of(NONBASIC_MANESELECT), List.of(NONBASIC_MANESELECT)},
+
+                // More complicated cases with multiple transcripts
+                {List.of(NONBASIC_A, BASIC_B), List.of(BASIC_B)}, // filter out non-basic transcripts
+                {List.of(BASIC_A, BASIC_B), List.of(BASIC_A, BASIC_B)}, // return all basic transcripts
+                {List.of(BASIC_A, BASIC_MANESELECT_A), List.of(BASIC_MANESELECT_A)}, // return only MANE select transcript
+                {List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B), List.of(BASIC_MANESELECT_A, BASIC_MANESELECT_B)}, // return ALL MANE_SELECT transcripts present
+                {List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANESELECT), List.of(BASIC_MANESELECT_A, NONBASIC_MANESELECT)}, // return ALL MANE_SELECT transcripts present, even if one is non-basic
+                {List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_B)}, // return only MANE+Clinical transcript
+                {List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B)}, // return multiple MANE+Clinical transcripts
+                {List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_B)}, // MANE+Clinical Overrides MANE select
+
+                //edge cases
+                {List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL), List.of(NONBASIC_MANEPLUSCLINICAL)}, // MANE+Clinical Overrides MANE select EVEN if it is non-basic and MANE select is basic (probably doesn't happen in practice)
+                {List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_MANEPLUSCLINICAL)}, // MANE+Clinical trumps MANE_Select if both are present (should not happen in practice)
+        };
+    }
 
     @DataProvider
     Object[][] provideTranscriptForGetSortedCdsAndStartStopPositions() {
@@ -1267,6 +1347,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Tests:
+
+    @Test ( dataProvider = "provideTestForMANESelectMode" )
+    void testMANESelectTranscriptSelectionCriteria(final List<GencodeGtfTranscriptFeature> inputTranscripts, final List<GencodeGtfTranscriptFeature> expectedTranscripts) {
+        final List<GencodeGtfTranscriptFeature> selectedTranscripts = GencodeFuncotationFactory.retreiveMANESelectModeTranscriptsCriteria(inputTranscripts);
+        Assert.assertEquals(selectedTranscripts.size(), expectedTranscripts.size());
+        for (int i = 0; i < selectedTranscripts.size(); i++) {
+            Assert.assertEquals(selectedTranscripts.get(i), expectedTranscripts.get(i));
+        }
+    }
 
     @Test ( dataProvider = "provideTranscriptForGetSortedCdsAndStartStopPositions")
     void testGetSortedExonAndStartStopPositions(final GencodeGtfTranscriptFeature transcript, final List<? extends Locatable> expected) {

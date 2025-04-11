@@ -82,9 +82,9 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("L", "chr20:10000000-20000000");
 
     runCommandLine(args);
-    // Remove iine(s) from the generated VCF that
-    final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
-    IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
+    // Remove line(s) from the generated VCF that are specific to testing environment
+    final File scrubbedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
+    IntegrationTestSpec.assertEqualTextFiles(scrubbedVCF, expectedVCF);
   }
 
   @Test
@@ -121,9 +121,9 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("L", "chr20:10000000-20000000");
 
     runCommandLine(args);
-    // Decompress the vcf for validation
-    final File decompressedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
-    IntegrationTestSpec.assertEqualTextFiles(decompressedVCF, expectedVCF);
+    // Remove line(s) from the generated VCF that are specific to testing environment
+    final File scrubbedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
+    IntegrationTestSpec.assertEqualTextFiles(scrubbedVCF, expectedVCF);
   }
 
   @Test(expectedExceptions = UserException.class)

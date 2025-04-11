@@ -1,4 +1,4 @@
-# let theano share memory workspace on large tensors with numpy
+# let pytensor share memory workspace on large tensors with numpy
 borrow_numpy = True
 
 # if a normalized PMF violates total probability by the following threshold, it will

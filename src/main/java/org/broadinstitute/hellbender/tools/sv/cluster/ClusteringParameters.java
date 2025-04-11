@@ -17,6 +17,7 @@ public class ClusteringParameters {
 
     // if true, both reciprocal overlap and window criteria must be met
     // if false, reciprocal overlap and/or window criteria must be met
+    // NOTE this is currently set to true in all tools but is being kept for possible future use
     private final boolean requiresOverlapAndProximity;
 
     // returns true if two given records are the correct type of pair for this parameter set
@@ -57,7 +58,7 @@ public class ClusteringParameters {
     }
 
     public static ClusteringParameters createDepthParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {
-        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, false, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
+        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, true, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
     }
 
     public static ClusteringParameters createMixedParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {

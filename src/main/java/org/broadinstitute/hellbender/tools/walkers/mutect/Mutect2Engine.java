@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -16,6 +17,7 @@ import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
@@ -63,6 +65,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -72,7 +75,7 @@ import java.util.stream.IntStream;
 public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseable {
 
     private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY,
-            GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_KEY, GATKVCFConstants.POPULATION_AF_KEY,
+            GATKVCFConstants.EVENT_COUNT_IN_REGION_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_KEY, GATKVCFConstants.POPULATION_AF_KEY,
             GATKVCFConstants.GERMLINE_QUAL_KEY, GATKVCFConstants.CONTAMINATION_QUAL_KEY, GATKVCFConstants.SEQUENCING_QUAL_KEY,
             GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_KEY, GATKVCFConstants.READ_ORIENTATION_QUAL_KEY,
             GATKVCFConstants.STRAND_QUAL_KEY, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.AS_UNIQUE_ALT_READ_SET_COUNT_KEY);
@@ -94,6 +97,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     final private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
+    private SAMSequenceDictionary sequenceDictionary;
     private final int minCallableDepth;
     public static final String CALLABLE_SITES_NAME = "callable";
 
@@ -136,9 +140,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
      * @param referenceSpec reference specifier for the reference
      * @param annotatorEngine annotator engine built with desired annotations
      */
-    public Mutect2Engine(final M2ArgumentCollection MTAC, AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final GATKPath referenceSpec, final VariantAnnotatorEngine annotatorEngine) {
+    public Mutect2Engine(final M2ArgumentCollection MTAC, AssemblyRegionArgumentCollection assemblyRegionArgs,
+                         final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header,
+                         final SAMSequenceDictionary sequenceDictionary, final GATKPath referenceSpec, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
+        this.sequenceDictionary = sequenceDictionary;
         minCallableDepth = MTAC.callableDepth;
         referenceReader = ReferenceUtils.createReferenceReader(Utils.nonNull(referenceSpec));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
@@ -162,7 +169,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs, MTAC.fbargs, true, MTAC.likelihoodArgs.likelihoodEngineImplementation);
-        genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
+        genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine, header, sequenceDictionary);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, header.getSequenceDictionary());
 
@@ -482,9 +489,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0);
-        } else if (MTAC.mutect3TrainingDataMode) {
+        } else if (MTAC.permutectTrainingDataset != null) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
-        } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
+        }
+
+        if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();

@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-import pymc3 as pm
+import pymc as pm
 from typing import Callable
 
 from .inference_task_base import Sampler, Caller, CallerUpdateSummary, \

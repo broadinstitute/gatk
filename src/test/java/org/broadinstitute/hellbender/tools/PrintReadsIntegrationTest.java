@@ -54,8 +54,8 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
     public Object[][] getHttpPaths(){
         final String bam = "gs://hellbender/test/resources/benchmark/CEUTrio.HiSeq.WEx.b37.NA12892.bam";
         final String bai = "gs://hellbender/test/resources/benchmark/CEUTrio.HiSeq.WEx.b37.NA12892.bam.bai";
-        final String cram = "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram";
-        final String crai = "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram.bai";
+        final String cram = "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram";
+        final String crai = "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram.crai";
         final List<SimpleInterval> bamIntervals = Arrays.asList(new SimpleInterval("3",1_000_000, 1_000_001),
                new SimpleInterval("3", 1_000_003, 1_000_100),
                 new SimpleInterval("20", 1_099_000, 1_100_000));

@@ -65,7 +65,8 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
                                 new FlankSettings(0, 0),
                                 false,
                                 FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT,
-                                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE)
+                                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE,
+                                false)
                 );
 
         for (int i = 0; i < entireVcf.getRight().size(); i++) {

@@ -4,10 +4,10 @@ from functools import partial
 from typing import List
 
 import numpy as np
-import pymc3 as pm
-import theano as th
-import theano.tensor as tt
-from pymc3.variational.updates import get_or_compute_grads
+import pymc as pm
+import pytensor
+import pytensor.tensor as pt
+from pymc.variational.updates import get_or_compute_grads
 
 from .. import types
 from ..io import io_commons
@@ -28,12 +28,12 @@ class FancyStochasticOptimizer:
         """
 
         Args:
-            model: a generalized continuous PyMC3 model
-            approx: an instance of PyMC3 mean-field approximation
+            model: a generalized continuous PyMC model
+            approx: an instance of PyMC mean-field approximation
 
         Returns:
             A callable function that upon providing `loss_or_grads` and `params`, returns an
-            `OrderedDict` of shared theano tensor updates (for example, see `FancyAdamax.get_optimizer`).
+            `OrderedDict` of shared pytensor tensor updates (for example, see `FancyAdamax.get_optimizer`).
         """
         raise NotImplementedError
 
@@ -139,7 +139,7 @@ class FancyAdamax(FancyStochasticOptimizer):
 
         Returns:
             returns the function itself if `loss_or_grads` and `params` are not given;
-            otherwise, returns an ordered dict of shared tensor updates (to be used in pymc3 for compiling
+            otherwise, returns an ordered dict of shared tensor updates (to be used in pymc for compiling
             the step function)
         """
         if loss_or_grads is None and params is None:
@@ -160,16 +160,16 @@ class FancyAdamax(FancyStochasticOptimizer):
             for vmap in vmap_list:
                 if vmap.var in model.sample_specific_var_registry:
                     sample_specific_indices += [idx for idx in range(vmap.slc.start, vmap.slc.stop)]
-            update_indices = th.shared(np.asarray(sample_specific_indices, dtype=np.int))
+            update_indices = pytensor.shared(np.asarray(sample_specific_indices, dtype=int))
             num_dof = len(sample_specific_indices)
 
-        # Using theano constant to prevent upcasting of float32
-        one = tt.constant(1)
+        # Using pytensor constant to prevent upcasting of float32
+        one = pt.constant(1)
 
         if disable_bias_correction:
             a_t = learning_rate
         else:
-            res_prev = th.shared(pm.theanof.floatX(beta1))
+            res_prev = pytensor.shared(pm.pytensorf.floatX(beta1))
             res = beta1 * res_prev
             a_t = learning_rate / (one - res)
             updates[res_prev] = res
@@ -179,17 +179,17 @@ class FancyAdamax(FancyStochasticOptimizer):
         for param, g_t in zip(params, all_grads):
             if sample_specific_only:
                 g_t_view = g_t[update_indices]
-                m_prev = th.shared(np.zeros((num_dof,), dtype=types.floatX),
-                                   broadcastable=(False,))
-                u_prev = th.shared(np.zeros((num_dof,), dtype=types.floatX),
-                                   broadcastable=(False,))
+                m_prev = pytensor.shared(np.zeros((num_dof,), dtype=types.floatX),
+                                         broadcastable=(False,))
+                u_prev = pytensor.shared(np.zeros((num_dof,), dtype=types.floatX),
+                                         broadcastable=(False,))
             else:
                 g_t_view = g_t
                 value = param.get_value(borrow=True)
-                m_prev = th.shared(np.zeros(value.shape, dtype=types.floatX),
-                                   broadcastable=(False,))
-                u_prev = th.shared(np.zeros(value.shape, dtype=types.floatX),
-                                   broadcastable=(False,))
+                m_prev = pytensor.shared(np.zeros(value.shape, dtype=types.floatX),
+                                         broadcastable=(False,))
+                u_prev = pytensor.shared(np.zeros(value.shape, dtype=types.floatX),
+                                         broadcastable=(False,))
 
             # save a reference to m and u in the base class
             if base_class is not None:
@@ -197,11 +197,11 @@ class FancyAdamax(FancyStochasticOptimizer):
                 base_class.u_tensors.append(u_prev)
 
             m_t = beta1 * m_prev + (one - beta1) * g_t_view
-            u_t = tt.maximum(beta2 * u_prev, abs(g_t_view))
+            u_t = pt.maximum(beta2 * u_prev, abs(g_t_view))
             step = a_t * m_t / (u_t + epsilon)
 
             if sample_specific_only:
-                new_param = tt.inc_subtensor(param[update_indices], -step)
+                new_param = pt.inc_subtensor(param[update_indices], -step)
             else:
                 new_param = param - step
 

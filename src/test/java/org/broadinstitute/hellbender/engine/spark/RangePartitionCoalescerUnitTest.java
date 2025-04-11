@@ -8,7 +8,7 @@ import org.apache.spark.rdd.PartitionGroup;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-import scala.collection.JavaConversions;
+import scala.jdk.javaapi.CollectionConverters;
 
 import java.util.List;
 
@@ -38,9 +38,9 @@ public class RangePartitionCoalescerUnitTest extends GATKBaseTest {
         RangePartitionCoalescer coalescer = new RangePartitionCoalescer(maxEndPartitionIndexes);
         PartitionGroup[] groups = coalescer.coalesce(rdd.getNumPartitions(), rdd.rdd());
         assertEquals(groups.length, 3);
-        assertEquals(groups[0].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[0])));
-        assertEquals(groups[1].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[1])));
-        assertEquals(groups[2].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[2])));
+        assertEquals(groups[0].partitions(), CollectionConverters.asScala(ImmutableList.of(partitions[0])));
+        assertEquals(groups[1].partitions(), CollectionConverters.asScala(ImmutableList.of(partitions[1])));
+        assertEquals(groups[2].partitions(), CollectionConverters.asScala(ImmutableList.of(partitions[2])));
     }
 
     @Test
@@ -49,8 +49,8 @@ public class RangePartitionCoalescerUnitTest extends GATKBaseTest {
         RangePartitionCoalescer coalescer = new RangePartitionCoalescer(maxEndPartitionIndexes);
         PartitionGroup[] groups = coalescer.coalesce(rdd.getNumPartitions(), rdd.rdd());
         assertEquals(groups.length, 3);
-        assertEquals(groups[0].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[0], partitions[1])));
-        assertEquals(groups[1].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[1], partitions[2])));
-        assertEquals(groups[2].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[2])));
+        assertEquals(groups[0].partitions(), CollectionConverters.asScala(ImmutableList.of(partitions[0], partitions[1])));
+        assertEquals(groups[1].partitions(), CollectionConverters.asScala(ImmutableList.of(partitions[1], partitions[2])));
+        assertEquals(groups[2].partitions(), CollectionConverters.asScala(ImmutableList.of(partitions[2])));
     }
 }

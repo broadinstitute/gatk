@@ -3,12 +3,16 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.IndexUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 
 import java.util.Spliterator;
 import java.util.stream.Stream;
@@ -33,6 +37,11 @@ public abstract class VariantWalkerBase extends WalkerBase {
      * queries on the driving variants).
      */
     public static final int DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES = 100_000;
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME,
+            doc = "Restrict the output variants to ones that match the specified intervals according to the specified matching mode.",
+            optional = true)
+    @Advanced
+    public IntervalFilteringVcfWriter.Mode userOutputVariantIntervalFilteringMode = null;
 
     //Various options for reading from a GenomicsDB
     protected GenomicsDBOptions genomicsDBOptions;
@@ -102,6 +111,16 @@ public abstract class VariantWalkerBase extends WalkerBase {
      * @return VCFHeader to be used for the driving variants.
      */
     public abstract VCFHeader getHeaderForVariants();
+
+    @Override
+    public IntervalFilteringVcfWriter.Mode getVariantOutputFilteringMode() {
+        if (userOutputVariantIntervalFilteringMode != null) {
+            return userOutputVariantIntervalFilteringMode;
+        } else {
+            // Use whatever is the default provided by GATKTool
+            return super.getVariantOutputFilteringMode();
+        }
+    }
 
     /**
      * Return the primary sequence dictionary to be used for the driving variants for this tool. The value returned
