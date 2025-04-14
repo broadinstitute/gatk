@@ -97,7 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -174,7 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1613_merge_and_rescore
          - vs_1641_drop_sample_from_vds
        tags:
          - /.*/
@@ -185,7 +183,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1613_merge_and_rescore
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -195,7 +192,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
@@ -224,7 +220,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -236,7 +231,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -349,7 +343,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1613_merge_and_rescore
              - vs_1641_drop_sample_from_vds
          tags:
              - /.*/
