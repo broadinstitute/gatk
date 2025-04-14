@@ -78,12 +78,12 @@ task GetToolVersions {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Scrape out various workflow / workspace info from the localization and delocalization scripts.
-    if [[ -e /cromwell_root/gcs_delocalization.sh ]]
-    then
-      CROMWELL_ROOT=/cromwell_root
-    elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
+    if [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
     then
       CROMWELL_ROOT=/mnt/disks/cromwell_root
+    elif [[ -e /cromwell_root/gcs_delocalization.sh ]]
+    then
+      CROMWELL_ROOT=/cromwell_root
     else
       echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/disks/cromwell_root (GCP Batch), exiting."
       exit 1
@@ -129,7 +129,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-04-11-alpine-417acbba6b7a"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-04-14-alpine-6c6824322605"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-03-20-gatkbase-728e45646e04"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"

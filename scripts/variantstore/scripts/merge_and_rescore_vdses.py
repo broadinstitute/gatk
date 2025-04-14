@@ -183,7 +183,7 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDSes with updated filter, AC/AN/AF information.')
+                                     description='Given two Hail VDSes and a path to exported Avro files containing the latest filter data, merge the two VDSes to produce a single output VDS with updated filter.')
 
     parser.add_argument('--input-echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
 
