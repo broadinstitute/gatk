@@ -78,12 +78,12 @@ task GetToolVersions {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Scrape out various workflow / workspace info from the localization and delocalization scripts.
-    if [[ -e /cromwell_root/gcs_delocalization.sh ]]
-    then
-      CROMWELL_ROOT=/cromwell_root
-    elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
+    if [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
     then
       CROMWELL_ROOT=/mnt/disks/cromwell_root
+    elif [[ -e /cromwell_root/gcs_delocalization.sh ]]
+    then
+      CROMWELL_ROOT=/cromwell_root
     else
       echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/disks/cromwell_root (GCP Batch), exiting."
       exit 1
