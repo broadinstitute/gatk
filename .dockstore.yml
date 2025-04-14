@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -155,7 +156,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1418_ploidy_for_foxtrot_vds
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -167,6 +167,26 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsMergeAndRescoreVDSes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1613_merge_and_rescore
+       tags:
+         - /.*/
+   - name: GvsTieOutVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieOutVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1613_merge_and_rescore
+       tags:
+         - /.*/
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -174,7 +194,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1590_mem_footprint_part_I
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
@@ -203,6 +223,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -214,6 +235,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -326,7 +348,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1647_batch_root_detection_fixups
+             - vs_1613_merge_and_rescore
          tags:
              - /.*/
    - name: GvsIngestTieout
