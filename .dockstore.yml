@@ -327,6 +327,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1647_batch_root_detection_fixups
+             - gg_VS-1648_InvestigateVatIntegrationTestFailure
          tags:
              - /.*/
    - name: GvsIngestTieout
