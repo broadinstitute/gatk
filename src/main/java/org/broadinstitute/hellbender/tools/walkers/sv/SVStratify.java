@@ -318,12 +318,17 @@ public final class SVStratify extends MultiVariantWalker {
                 final String matchesString = String.join(", ", stratifications.stream().map(SVStatificationEngine.Stratum::getName).collect(Collectors.toList()));
                 throw new GATKException("Record " + record.getId() + " matched multiple groups: " + matchesString + ". Bypass this error using the --" + ALLOW_MULTIPLE_MATCHES_LONG_NAME + " argument");
             }
-            for (final SVStatificationEngine.Stratum stratum : stratifications) {
-                final VariantContextWriter writer = splitOutput ? writers.get(stratum.getName()) : writers.get(DEFAULT_STRATUM);
-                if (writer == null) {
-                    throw new GATKException("Writer not found for group: " + stratum.getName());
+            if (splitOutput) {
+                for (final SVStatificationEngine.Stratum stratum : stratifications) {
+                    final VariantContextWriter writer = writers.get(stratum.getName());
+                    if (writer == null) {
+                        throw new GATKException("Writer not found for group: " + stratum.getName());
+                    }
+                    writer.add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, Collections.singletonList(stratum.getName())).make());
                 }
-                writer.add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, stratum.getName()).make());
+            } else {
+                final VariantContextWriter writer = writers.get(DEFAULT_STRATUM);
+                writer.add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, new ArrayList<>(stratifications).stream().map(SVStatificationEngine.Stratum::getName).sorted().collect(Collectors.toUnmodifiableList())).make());
             }
         }
     }
