@@ -124,8 +124,42 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(outputVcf.getRight().size(), inputVcf.getRight().size());
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test
     public void testBwaMeltCohortRedundant() {
+        final File outputDir = createTempDir("stratify");
+        final File outputFile = outputDir.toPath().resolve("out.vcf.gz").toFile();
+        final String inputVcfPath = getToolTestDataDir() + "bwa_melt.chr22.vcf.gz";
+        final String configFile = getToolTestDataDir() + "test_config_redundant.tsv";
+
+        final String segdupFile = getToolTestDataDir() + "hg38.SegDup.chr22.bed";
+        final String segdupName = "SD";
+        final String repeatmaskerFile = getToolTestDataDir() + "hg38.RM.chr22_subsampled.bed";
+        final String repeatmaskerName = "RM";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(outputFile)
+                .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, configFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile)
+                .add(SVStratificationEngineArgumentsCollection.OVERLAP_FRACTION_LONG_NAME, 0.5)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcfPath);
+
+        runCommandLine(args, SVStratify.class.getSimpleName());
+
+        final List<File> outputFiles = Lists.newArrayList(outputDir.listFiles()).stream().filter(VcfUtils::isVariantFile).collect(Collectors.toUnmodifiableList());
+        Assert.assertEquals(outputFiles.size(), 1);
+        Assert.assertEquals(outputFiles.get(0).getAbsolutePath(), outputFile.getAbsolutePath());
+        final Pair<VCFHeader, List<VariantContext>> inputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(inputVcfPath);
+        final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        // No duplicated records
+        Assert.assertEquals(outputVcf.getRight().size(), inputVcf.getRight().size());
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testBwaMeltCohortRedundantFails() {
         final File outputDir = createTempDir("stratify");
         final String inputVcfPath = getToolTestDataDir() + "bwa_melt.chr22.vcf.gz";
         final String configFile = getToolTestDataDir() + "test_config_redundant.tsv";
@@ -153,7 +187,7 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testBwaMeltCohortBypassRedundant() {
-        final File outputDir = createTempDir("stratify");
+        final File outputDir = createTempDir("stratify_bypass_redundant");
         final String inputVcfPath = getToolTestDataDir() + "bwa_melt.chr22.vcf.gz";
         final String configFile = getToolTestDataDir() + "test_config_redundant.tsv";
 
@@ -177,6 +211,16 @@ public class SVStratifyIntegrationTest extends CommandLineProgramTest {
                 .addFlag(SVStratify.ALLOW_MULTIPLE_MATCHES_LONG_NAME);
 
         runCommandLine(args, SVStratify.class.getSimpleName());
+
+        final List<File> outputFiles = Lists.newArrayList(outputDir.listFiles()).stream().filter(VcfUtils::isVariantFile).collect(Collectors.toUnmodifiableList());
+        Assert.assertEquals(outputFiles.size(), 8);
+        long totalRecords = 0;
+        for (final File outputFile : outputFiles) {
+            final Pair<VCFHeader, List<VariantContext>> inputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(inputVcfPath);
+            final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+            totalRecords += outputVcf.getRight().size();
+        }
+        Assert.assertEquals(totalRecords, 1458);
     }
 
     @Test(expectedExceptions = {GATKException.class})
