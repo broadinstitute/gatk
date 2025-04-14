@@ -173,14 +173,14 @@ public class SVTestUtils {
     }
 
     public static final SVCallRecord makeRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
-        final List<GenotypeBuilder> genotypes = makeDeletionGenotypesWithCarriers(allSamples, carrierSamples, Allele.SV_SIMPLE_DEL);
+        final List<GenotypeBuilder> genotypes = makeGenotypesWithCarriers(allSamples, carrierSamples, Allele.SV_SIMPLE_DEL);
         return makeRecord("", "chr1", 100, Boolean.TRUE, "chr1", 200, Boolean.FALSE,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 List.of(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes);
     }
 
     public static final SVCallRecord makeComplexRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
-        final List<Genotype> genotypes = makeDeletionGenotypesWithCarriers(allSamples, carrierSamples, SVTestUtils.CPX_ALLELE)
+        final List<Genotype> genotypes = makeGenotypesWithCarriers(allSamples, carrierSamples, SVTestUtils.CPX_ALLELE)
                 .stream().map(GenotypeBuilder::make).collect(Collectors.toUnmodifiableList());
         return new SVCallRecord("cpx1", "chr1", 1000, null,
                 "chr1", 2000, null,
@@ -192,7 +192,7 @@ public class SVTestUtils {
                 genotypes, Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
     }
 
-    private static List<GenotypeBuilder> makeDeletionGenotypesWithCarriers(final List<String> allSamples, final Set<String> carrierSamples, final Allele altAllele) {
+    private static List<GenotypeBuilder> makeGenotypesWithCarriers(final List<String> allSamples, final Set<String> carrierSamples, final Allele altAllele) {
         final List<GenotypeBuilder> genotypes = new ArrayList<>(allSamples.size());
         for (final String sample : allSamples) {
             final GenotypeBuilder builder = new GenotypeBuilder(sample);

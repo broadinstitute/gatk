@@ -38,7 +38,8 @@ public class SVConcordanceAnnotator {
     }
 
     /**
-     * Option to enable annotating variants with overlap metrics.
+     * Annotator restricted to specific samples.
+     * @param samples samples to include for concordance computations. If null, all samples in eval records will be used.
      */
     public SVConcordanceAnnotator(final Set<String> samples) {
         this.samples = samples;

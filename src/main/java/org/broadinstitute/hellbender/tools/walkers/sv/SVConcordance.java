@@ -77,6 +77,30 @@ import java.util.stream.Collectors;
  * The "default" stratification group, with clustering parameters specified directly through the clustering program
  * arguments (e.g. --depth-breakend-window, --pesr-interval-overlap, etc.), is always present and given lowest priority.
  *
+ * <ul>
+ *     <li>GENOTYPE_CONCORDANCE</li>
+ *     <li>CNV_CONCORDANCE</li>
+ *     <li>NON_REF_GENOTYPE_CONCORDANCE</li>
+ *     <li>HET_PPV</li>
+ *     <li>HET_SENSITIVITY</li>
+ *     <li>HOMVAR_PPV</li>
+ *     <li>HOMVAR_SENSITIVITY</li>
+ *     <li>VAR_PPV</li>
+ *     <li>VAR_SENSITIVITY</li>
+ *     <li>VAR_SPECIFICITY</li>
+ *     <li>TRUTH_VARIANT_ID</li>
+ *     <li>TRUTH_AC</li>
+ *     <li>TRUTH_AF</li>
+ *     <li>TRUTH_AN</li>
+ *     <li>TRUTH_RECIPROCAL_OVERLAP</li>
+ *     <li>TRUTH_SIZE_SIMILARITY</li>
+ *     <li>TRUTH_DISTANCE_START</li>
+ *     <li>TRUTH_DISTANCE_END</li>
+ * </ul>
+ *
+ * Allele frequency related fields (AF, AC, AN, TRUTH_AF, TRUTH_AC, TRUTH_AN) are passed through if already assigned in
+ * the input VCFs and otherwise recalculated.
+ *
  * Output records determined to be "true positives" are annotated with the following INFO fields according to overlap
  * with the highest priority matching stratification group:
  *
@@ -148,7 +172,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                     "RAM before spilling to disk. Increasing this number reduces the number of file handles needed to sort a " +
                     "VCF file, and increases the amount of RAM needed.",
             optional=true)
-    public int maxRecordsInRam = 10000;
+    public int maxRecordsInRam = 100;
 
     @ArgumentCollection
     protected final SVClusterEngineArgumentsCollection defaultClusteringArgs = new SVClusterEngineArgumentsCollection();
@@ -196,6 +220,10 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples);
 
         // Load stratification groups
+        if ((stratArgs.configFile == null) ^ (strataClusteringConfigFile == null)) {
+            throw new UserException.BadInput("Both --" + OptionalSVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME
+                    + " and --" + GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME + " must be used together, but only one was specified.");
+        }
         final Map<String, ClosestSVFinder> clusterEngineMap = new HashMap<>();
         if (strataClusteringConfigFile != null) {
             try (final TableReader<StratifiedClusteringTableParser.StratumParameters> tableReader = TableUtils.reader(strataClusteringConfigFile.toPath(), StratifiedClusteringTableParser::tableParser)) {
@@ -214,11 +242,6 @@ public final class SVConcordance extends AbstractConcordanceWalker {
             } catch (final IOException e) {
                 throw new GATKException("IO error while reading config table", e);
             }
-        }
-
-        if ((stratArgs.configFile == null) ^ (strataClusteringConfigFile == null)) {
-            throw new UserException.BadInput("Both --" + OptionalSVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME
-                    + " and --" + GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME + " must be used together, but only one was specified.");
         }
         final SVStratificationEngine stratEngine = SVStratify.loadStratificationConfig(stratArgs.configFile, stratArgs, dictionary);
         engine = new StratifiedConcordanceEngine(clusterEngineMap, stratEngine, stratArgs, defaultClusteringArgs, collapser, dictionary);
