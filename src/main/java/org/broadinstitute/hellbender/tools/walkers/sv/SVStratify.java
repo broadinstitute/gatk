@@ -40,7 +40,8 @@ import java.util.stream.Collectors;
  *     <li>Reference track overlap</li>
  * </ul>
  * Records are annotated with their respective strata names in the {@link GATKSVVCFConstants#STRATUM_INFO_KEY} INFO
- * field. Users must provide a stratification configuration .tsv file (tab-delimited table) with the following column
+ * field. SVs that do not match any of the groups will be annotated with the {@link SVStratify#DEFAULT_STRATUM} group.
+ * Users must provide a stratification configuration .tsv file (tab-delimited table) with the following column
  * header on the first line:
  * <ol>
  *     <li>NAME</li>
@@ -78,7 +79,7 @@ import java.util.stream.Collectors;
  * {@link SVStratificationEngineArgumentsCollection#trackNameList} parameters. For example,
  * </p>
  * <pre>
- *     gatk GroupedSVCluster \
+ *     gatk SVStratify \
  *       --track-name RM \
  *       --track-intervals repeatmasker.bed \
  *       --track-name SD \
@@ -104,12 +105,11 @@ import java.util.stream.Collectors;
  * overlap is only defined by {@link SVStratificationEngineArgumentsCollection#numBreakpointOverlapsInterchrom}.
  * </p>
  *
- * <p>By default, each stratification group must be mutually exclusive, meaning that any given SV can only belong to
+ * <p>If using the --split-output option then each stratification group must be mutually exclusive, meaning that any given SV can only belong to
  * one group. An error is thrown if the tool encounters a variant that meets the criteria for more than one group.
- * This restriction can be overridden with the {@link SVStratify#ALLOW_MULTIPLE_MATCHES_LONG_NAME} argument, in which
- * case the record will be written out multiple times: once for each matching stratification group with the corresponding
- * {@link GATKSVVCFConstants#STRATUM_INFO_KEY} value. Furthermore, SVs that do not match any of the groups will be
- * annotated with the {@link SVStratify#DEFAULT_STRATUM} group.</p>
+ * This restriction can be overridden with the {@link SVStratify#ALLOW_MULTIPLE_MATCHES_LONG_NAME} argument, in which case
+ * records belonging to multiple stratification groups will be written to each corresponding file (hence possibly
+ * resulting in duplicated records).</p>
  *
  * <p>If using {@link #SPLIT_OUTPUT_LONG_NAME} then the tool generates a set of VCFs as output with each VCF containing
  * the records of each group.</p>
@@ -322,16 +322,23 @@ public final class SVStratify extends MultiVariantWalker {
         if (stratifications.isEmpty()) {
             writers.get(DEFAULT_STRATUM).add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, DEFAULT_STRATUM).make());
         } else {
-            if (!allowMultipleMatches && stratifications.size() > 1) {
-                final String matchesString = String.join(", ", stratifications.stream().map(SVStratificationEngine.Stratum::getName).collect(Collectors.toList()));
-                throw new GATKException("Record " + record.getId() + " matched multiple groups: " + matchesString + ". Bypass this error using the --" + ALLOW_MULTIPLE_MATCHES_LONG_NAME + " argument");
-            }
-            for (final SVStratificationEngine.Stratum stratum : stratifications) {
-                final VariantContextWriter writer = splitOutput ? writers.get(stratum.getName()) : writers.get(DEFAULT_STRATUM);
-                if (writer == null) {
-                    throw new GATKException("Writer not found for group: " + stratum.getName());
+            final List<String> stratumNames = new ArrayList<>(stratifications).stream().map(SVStratificationEngine.Stratum::getName).sorted().collect(Collectors.toUnmodifiableList());
+            final VariantContext outputVariant = builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, stratumNames).make();
+            if (splitOutput) {
+                if (!allowMultipleMatches && stratifications.size() > 1) {
+                    final String matchesString = String.join(", ", stratumNames);
+                    throw new GATKException("Record " + record.getId() + " matched multiple groups: " + matchesString + ". Bypass this error using the --" + ALLOW_MULTIPLE_MATCHES_LONG_NAME + " argument");
                 }
-                writer.add(builder.attribute(GATKSVVCFConstants.STRATUM_INFO_KEY, stratum.getName()).make());
+                for (final SVStratificationEngine.Stratum stratum : stratifications) {
+                    final VariantContextWriter writer = writers.get(stratum.getName());
+                    if (writer == null) {
+                        throw new GATKException("Writer not found for group: " + stratum.getName());
+                    }
+                    writer.add(outputVariant);
+                }
+            } else {
+                final VariantContextWriter writer = writers.get(DEFAULT_STRATUM);
+                writer.add(outputVariant);
             }
         }
     }
