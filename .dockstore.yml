@@ -329,6 +329,16 @@ workflows:
              - vs_1647_batch_root_detection_fixups
          tags:
              - /.*/
+   - name: HalfBadHetvars
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1615_hetvar_vcfs
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
