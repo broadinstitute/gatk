@@ -245,7 +245,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-1528-n-rounds-update
+             - rc-vs-1457-vat-clinvar
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -348,6 +348,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1457-vat-clinvar
              - vs_1613_merge_and_rescore
          tags:
              - /.*/
