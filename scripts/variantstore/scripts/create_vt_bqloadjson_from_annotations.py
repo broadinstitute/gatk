@@ -249,7 +249,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         phenotypes = [] # ordered alphabetically
         clinvar_ids = [] # For easy validation downstream
         # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for.
-        # We check by making sure the ref and alt are the same including any reverse complements
+        # We check by making sure the ref and alt are the same including any reverse complements.
         for clinvar_obj in clinvar_objs:
             # get only the clinvar objs with right variant and the id that starts with RCV
             if (((clinvar_obj.get("refAllele") == var_ref) and (clinvar_obj.get("altAllele") == var_alt)) \
