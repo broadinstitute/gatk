@@ -257,7 +257,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             and (clinvar_obj.get("id")[:3] == "RCV"):
                 clinvar_obj_star_status = vat_clinvar_review_status_dictionary.get(clinvar_obj.get("reviewStatus")) ## for testing it might make sense to carry these values to BQ and drop them before we make the VAT
 
-                if  clinvar_obj_star_status == None:
+                if clinvar_obj_star_status == None:
                     logging.warning(f"WARNING: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
                     # continue ## we will continue to include these in the VAT for now under the assumption that they are valid Clinvar entries w/o a reviewStatus
                 if clinvar_obj_star_status != "none": # we only want to include the ones that are not terrible
