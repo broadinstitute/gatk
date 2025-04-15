@@ -78,12 +78,12 @@ task GetToolVersions {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Scrape out various workflow / workspace info from the localization and delocalization scripts.
-    if [[ -e /cromwell_root/gcs_delocalization.sh ]]
-    then
-      CROMWELL_ROOT=/cromwell_root
-    elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
+    if [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
     then
       CROMWELL_ROOT=/mnt/disks/cromwell_root
+    elif [[ -e /cromwell_root/gcs_delocalization.sh ]]
+    then
+      CROMWELL_ROOT=/cromwell_root
     else
       echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/disks/cromwell_root (GCP Batch), exiting."
       exit 1
@@ -123,15 +123,15 @@ task GetToolVersions {
     String gvs_version = read_string("version.txt")
     String git_hash = read_string("git_hash.txt")
     String cromwell_root = read_string("cromwell_root.txt")
-    String hail_version = "0.2.126"
+    String hail_version = "0.2.130.post1"
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-03-24-alpine-a34268afaf32"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-04-14-alpine-ea13515a0383"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-03-14-gatkbase-86d43023d53b"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-03-20-gatkbase-728e45646e04"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
