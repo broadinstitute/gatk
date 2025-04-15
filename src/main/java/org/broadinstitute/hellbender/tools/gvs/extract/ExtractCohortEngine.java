@@ -1006,14 +1006,14 @@ public class ExtractCohortEngine {
     boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                               final Map<Allele, Double> remappedVQScoreMap,
                               final Double vqScoreThreshold) {
-        // get the max (best) vqslod of the alleles in this genotype
-        Optional<Double> maxVal =
+        // get the min (worst) vqslod of the alleles in this genotype
+        Optional<Double> minVal =
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
-                        .max(Double::compareTo);
-        // It's a failing site if the maximum vqlod (if found) is less than the threshold
-        return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
+                        .min(Double::compareTo);
+        // It's a failing site if the minimum vqlod (if found) is less than the threshold
+        return minVal.isPresent() && minVal.get() < vqScoreThreshold;
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
