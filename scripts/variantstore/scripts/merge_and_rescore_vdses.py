@@ -153,18 +153,18 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
                 any_yes=acc.any_yes | allele_YES[called_idx - 1],
                 any_snp=acc.any_snp | allele_is_snp[called_idx - 1],
                 any_indel=acc.any_indel | ~allele_is_snp[called_idx - 1],
-                any_snp_ok=acc.any_snp_ok
-                           | (allele_is_snp[called_idx - 1] & allele_OK[called_idx - 1]),
-                any_indel_ok=acc.any_indel_ok
-                             | (~allele_is_snp[called_idx - 1] & allele_OK[called_idx - 1]),
+                all_snps_ok=acc.all_snps_ok
+                            & (~allele_is_snp[called_idx - 1] | allele_OK[called_idx - 1]),
+                all_indels_ok=acc.all_indels_ok
+                              & (allele_is_snp[called_idx - 1] | allele_OK[called_idx - 1]),
             ),
             hl.struct(
                 any_no=False,
                 any_yes=False,
                 any_snp=False,
                 any_indel=False,
-                any_snp_ok=False,
-                any_indel_ok=False,
+                all_snps_ok=True,
+                all_indels_ok=True,
             ),
         )
     )
@@ -173,7 +173,7 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
         FT=~ft.any_no
            & (
                    ft.any_yes
-                   | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))
+                   | ((~ft.any_snp | ft.all_snps_ok) & (~ft.any_indel | ft.all_indels_ok))
            )
     )
 
