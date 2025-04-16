@@ -172,7 +172,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                     "RAM before spilling to disk. Increasing this number reduces the number of file handles needed to sort a " +
                     "VCF file, and increases the amount of RAM needed.",
             optional=true)
-    public int maxRecordsInRam = 100;
+    public int maxRecordsInRam = 1000;
 
     @ArgumentCollection
     protected final SVClusterEngineArgumentsCollection defaultClusteringArgs = new SVClusterEngineArgumentsCollection();
