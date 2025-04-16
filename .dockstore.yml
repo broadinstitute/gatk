@@ -355,6 +355,16 @@ workflows:
          - vs_1615_hetvar_vcfs
        tags:
          - /.*/
+   - name: MakeHetvarVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/MakeHetvarVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1615_hetvar_vcfs
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
