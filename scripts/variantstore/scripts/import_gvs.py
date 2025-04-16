@@ -265,11 +265,12 @@ def import_gvs(refs: 'List[List[str]]',
             # var_ht = var_ht.transmute(GT=hl.or_missing((hl.is_missing(var_ht.GQ) | (var_ht.GQ != 0)), var_ht.GT))
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
                                       local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
-                                      GT=hl.or_missing((hl.is_missing(var_ht.GQ) | (var_ht.GQ != 0)), var_ht.GT),
+                                      # GT=hl.or_missing((hl.is_missing(var_ht.GQ) | (var_ht.GQ != 0)), var_ht.GT),
                                       LGT=hl.parse_call(var_ht.GT),
                                       LAD=var_ht.AD.split(',').map(lambda x: hl.int32(x)),
                                       GQ=hl.int32(var_ht.GQ),
                                       RGQ=hl.int32(var_ht.RGQ))
+            var_ht = var_ht.filter(hl.is_missing(var_ht.GQ) | (var_ht.GQ != 0))
             var_ht = var_ht.key_by('locus')
             var_ht = var_ht.group_by(var_ht.locus).aggregate(data_per_sample=hl.agg.collect(var_ht.row.drop('locus')))
 
