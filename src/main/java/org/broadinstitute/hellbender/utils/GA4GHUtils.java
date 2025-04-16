@@ -24,4 +24,14 @@ public class GA4GHUtils {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(input);
     }
 
+    public static final String NAMESPACE = "ga4gh";
+    public static final String NAMESPACE_SEP = ":";
+    public static final String GA4GH_PREFIX_SEP = ".";
+
+    static final String GA4GH_IDENTIFIER_FORMAT_STRING = NAMESPACE + NAMESPACE_SEP + "%s" + GA4GH_PREFIX_SEP + "%s";
+
+    public static String composeGA4GHIdentifier(String prefix, String digest) {
+        return String.format(GA4GH_IDENTIFIER_FORMAT_STRING, prefix, digest);
+    }
+
 }
