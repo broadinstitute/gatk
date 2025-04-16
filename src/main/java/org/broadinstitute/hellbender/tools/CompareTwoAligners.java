@@ -203,9 +203,11 @@ public class CompareTwoAligners extends CommandLineProgram {
         SimpleInterval interval1;
         SimpleInterval interval2;
 
-        if (requireExactAlignmentMatch && !isSameAlignment(firstRecord, secondRecord)) {
-            // If the alignments are not the same, skip this pair
-            return new IntervalPair(null, null);
+        if (requireExactAlignmentMatch && !firstRecord.getReadUnmappedFlag() && !secondRecord.getReadUnmappedFlag()) {
+            if (!isSameAlignment(firstRecord, secondRecord)) {
+                // If the alignments are not the same, skip this pair
+                return new IntervalPair(null, null);
+            }
         }
 
         if (firstRecord.getReadUnmappedFlag()) {
