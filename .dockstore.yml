@@ -156,6 +156,7 @@ workflows:
          - master
          - ah_var_store
          - vs_1418_ploidy_for_foxtrot_vds
+         - gg_VS-1178_MergeMasterIntoAhVarStoreAgain
        tags:
          - /.*/
    - name: GvsValidateVDS
