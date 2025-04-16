@@ -242,6 +242,10 @@ if __name__ == '__main__':
                 args.input_echo_vds, args.input_unmerged_foxtrot_vds)
 
     tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
+    # Drop any samples that need dropping before patching.
+    if samples_to_remove_table:
+        tmp_merged_vds = hl.vds.filter_samples(tmp_merged_vds, samples_to_remove_table, keep=False,
+                                               remove_dead_alleles=True)
 
     # These globals seem to get dropped after the merge. Add them back as they are required for rescoring.
     vd = tmp_merged_vds.variant_data
@@ -250,8 +254,4 @@ if __name__ == '__main__':
 
     rescored_vd = patch_variant_data(vd, site, vets)
     merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
-    if samples_to_remove_table:
-        merged_and_rescored_vds = hl.vds.filter_samples(merged_and_rescored_vds, samples_to_remove_table, keep=False,
-                                                        remove_dead_alleles=True)
-
     merged_and_rescored_vds.write(args.output_vds_path)
