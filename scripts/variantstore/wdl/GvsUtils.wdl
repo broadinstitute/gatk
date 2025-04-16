@@ -123,13 +123,13 @@ task GetToolVersions {
     String gvs_version = read_string("version.txt")
     String git_hash = read_string("git_hash.txt")
     String cromwell_root = read_string("cromwell_root.txt")
-    String hail_version = "0.2.126"
+    String hail_version = "0.2.130.post1"
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-04-15-alpine-f8455c50ff9c"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-04-16-alpine-de476b1d531f"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-03-20-gatkbase-728e45646e04"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
