@@ -55,7 +55,7 @@ workflow GvsCreateVDS {
             help: "us-central1"
         }
         hail_version: {
-            help: "Optional Hail version, defaults to 0.2.126. Cannot define both this parameter and `hail_wheel`."
+            help: "Optional Hail version, defaults to 0.2.130.post1. Cannot define both this parameter and `hail_wheel`."
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
@@ -119,6 +119,7 @@ workflow GvsCreateVDS {
             gvs_import_script = GetHailScripts.gvs_import_script,
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
+            hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
@@ -160,6 +161,7 @@ task CreateVds {
         String avro_path
         Boolean leave_cluster_running_at_end
         File hail_gvs_import_script
+        File hail_gvs_util_script
         File gvs_import_script
         File gvs_import_ploidy_script
         File run_in_hail_cluster_script
@@ -216,7 +218,7 @@ task CreateVds {
             minInstances: 2
             maxInstances: 2
         secondaryWorkerConfig:
-            maxInstances: 500
+            maxInstances: 200
         basicAlgorithm:
             cooldownPeriod: 120s
             yarnConfig:
@@ -240,6 +242,7 @@ task CreateVds {
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_gvs_import_script} \
             --secondary-script-path-list ~{gvs_import_script} \
+            --secondary-script-path-list ~{hail_gvs_util_script} \
             --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
@@ -290,6 +293,7 @@ task GetHailScripts {
     output {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
         File hail_gvs_import_script = "app/hail_gvs_import.py"
+        File hail_gvs_util_script = "app/hail_gvs_util.py"
         File gvs_import_script = "app/import_gvs.py"
         File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
     }

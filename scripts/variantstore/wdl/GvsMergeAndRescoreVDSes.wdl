@@ -1,17 +1,23 @@
 version 1.0
 
-# This WDL will validate a VDS in Hail running in a Dataproc cluster.
+# This WDL will merge the Echo VDS with a VDS of only samples new to Foxtrot and apply the full Foxtrot filter created
+# from all samples to the merged result.
 import "GvsUtils.wdl" as Utils
+import "GvsValidateVDS.wdl" as ValidateVDS
 
 
-workflow GvsValidateVDS {
+workflow GvsMergeAndRescoreVDSes {
     input {
-        Boolean go = true
-        String vds_path
+        String input_echo_vds_path
+        String input_unmerged_foxtrot_vds_path
+        String input_foxtrot_avro_path
+        String output_merged_and_rescored_foxtrot_vds_path
+        Boolean skip_validate = false
 
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
         String? hail_temp_path
+        Int? intermediate_resume_point
         String region = "us-central1"
 
         Int? cluster_max_idle_minutes
@@ -30,8 +36,17 @@ workflow GvsValidateVDS {
     }
 
     parameter_meta {
-        vds_path: {
-            help: "Location of the VDS to be validated"
+        input_foxtrot_avro_path : {
+            help: "Input location for Foxtrot Avro files including the new Foxtrot filter data"
+        }
+        input_echo_vds_path: {
+            help: "Previous full Echo VDS"
+        }
+        input_unmerged_foxtrot_vds_path: {
+           help: "New unmerged Foxtrot VDS with only the samples new to Foxtrot"
+        }
+        output_merged_and_rescored_foxtrot_vds_path: {
+            help: "Location for the complete merged and rescored Foxtrot VDS with all samples and Foxtrot filters"
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
@@ -41,6 +56,9 @@ workflow GvsValidateVDS {
         }
         hail_temp_path: {
             help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
+        }
+        intermediate_resume_point: {
+            help: "Index at which to resume creating intermediate VDSes."
         }
         region: {
             help: "us-central1"
@@ -77,59 +95,101 @@ workflow GvsValidateVDS {
 
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
+    if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
+        call Utils.TerminateWorkflow as NeedHailTempPath {
+            input:
+                message = "GvsCreateVDS called with an intermediate resume point but no specified hail temp path from which to resume",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    if (!defined(intermediate_resume_point) && defined(hail_temp_path)) {
+        call Utils.TerminateWorkflow as NeedIntermediateResumePoint {
+            input:
+                message = "GvsCreateVDS called with no intermediate resume point but a specified hail temp path, which isn't a known use case",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     call GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
     }
 
-    call ValidateVds {
+    call MergeAndRescoreVDS {
         input:
-            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            vds_validation_script = GetHailScripts.vds_validation_script,
             prefix = cluster_prefix,
-            vds_path = vds_path,
+            input_echo_vds_path = input_echo_vds_path,
+            input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
+            output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
+            input_foxtrot_avro_path = input_foxtrot_avro_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
+            hail_temp_path = hail_temp_path,
+            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            merge_and_rescore_script = GetHailScripts.merge_and_rescore_script,
+            hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
+            intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+    }
+
+    if (!skip_validate) {
+        call ValidateVDS.GvsValidateVDS as ValidateVds {
+            input:
+                go = MergeAndRescoreVDS.done,
+                cluster_prefix = cluster_prefix,
+                vds_path = output_merged_and_rescored_foxtrot_vds_path,
+                hail_version = effective_hail_version,
+                hail_wheel = hail_wheel,
+                workspace_project = effective_google_project,
+                region = region,
+                workspace_bucket = effective_workspace_bucket,
+                gcs_subnetwork_name = gcs_subnetwork_name,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                leave_cluster_running_at_end = leave_cluster_running_at_end,
+        }
     }
 
     output {
-        String cluster_name = ValidateVds.cluster_name
+        String create_cluster_name = MergeAndRescoreVDS.cluster_name
+        String? validate_cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
 }
 
-task ValidateVds {
+task MergeAndRescoreVDS {
     input {
-        Boolean go = true
-        File run_in_hail_cluster_script
-        File vds_validation_script
         String prefix
-        String vds_path
+        String input_echo_vds_path
+        String input_unmerged_foxtrot_vds_path
+        String input_foxtrot_avro_path
+        String output_merged_and_rescored_foxtrot_vds_path
+        Boolean leave_cluster_running_at_end
+        File merge_and_rescore_script
+        File hail_gvs_util_script
+        File run_in_hail_cluster_script
         String? hail_version
         File? hail_wheel
+        String? hail_temp_path
+        Int? intermediate_resume_point
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Float? master_memory_fraction
+
         String workspace_project
         String workspace_bucket
         String region
         String gcs_subnetwork_name
-        String cloud_sdk_slim_docker
-        Boolean leave_cluster_running_at_end
-        Int? cluster_max_idle_minutes
-        Int? cluster_max_age_minutes
-        Float? master_memory_fraction
-    }
 
-    meta {
-        # should always be run
-        volatile: true
+        String cloud_sdk_slim_docker
     }
 
     command <<<
@@ -155,19 +215,46 @@ task ValidateVds {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
-        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+
+        if [[ -z "~{hail_temp_path}" ]]
+        then
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
+
+        # Set up the autoscaling policy
+        cat > auto-scale-policy.yaml <<FIN
+        workerConfig:
+            minInstances: 2
+            maxInstances: 2
+        secondaryWorkerConfig:
+            maxInstances: 200
+        basicAlgorithm:
+            cooldownPeriod: 120s
+            yarnConfig:
+                scaleUpFactor: 1.0
+                scaleDownFactor: 1.0
+                gracefulDecommissionTimeout: 120s
+        FIN
+        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
-            "vds-path": "~{vds_path}",
-            "temp-path": "${hail_temp_path}"
+            "temp-path": "${hail_temp_path}",
+            "input-foxtrot-avro-path": "~{input_foxtrot_avro_path}",
+            "input-echo-vds": "~{input_echo_vds_path}",
+            "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
+            "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
+            ~{', "intermediate-resume-point": ' + intermediate_resume_point}
         }
         FIN
 
-        # Run the hail python script to validate a VDS
+        # Run the hail python script to make a VDS
         python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{vds_validation_script} \
+            --script-path ~{merge_and_rescore_script} \
+            --secondary-script-path-list ~{hail_gvs_util_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -188,8 +275,10 @@ task ValidateVds {
         docker: cloud_sdk_slim_docker
         bootDiskSizeGb: 10
     }
+
     output {
         String cluster_name = read_string("cluster_name.txt")
+        Boolean done = true
     }
 }
 
@@ -214,7 +303,11 @@ task GetHailScripts {
     >>>
     output {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
-        File vds_validation_script = "app/vds_validation.py"
+        File hail_gvs_import_script = "app/hail_gvs_import.py"
+        File hail_gvs_util_script = "app/hail_gvs_util.py"
+        File merge_and_rescore_script = "app/merge_and_rescore_vdses.py"
+        File gvs_import_script = "app/import_gvs.py"
+        File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
     }
     runtime {
         docker: variants_docker
