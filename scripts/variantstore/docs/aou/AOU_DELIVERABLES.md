@@ -92,6 +92,7 @@ GROUP BY
    - The `input_echo_vds_path` is the final VDS for Echo; see the private Variants Slack channel for this location.
    - The `input_unmerged_foxtrot_vds_path` corresponds to the `vds_path` that was given to `GvsCreateVDS` in the preceding step.
    - You can find what the `input_foxtrot_avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
+   - The `samples_to_remove_path` should be a one-column file containing the sample ids to remove from the final output VDS. At the time of this writing at least one sample should be removed as described in VS-1641. The format of the file should be one line per sample, with a header of "research_id".
    - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
