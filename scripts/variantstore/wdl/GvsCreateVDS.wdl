@@ -4,8 +4,6 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
 
-# A comment for tracking XVII
-
 workflow GvsCreateVDS {
     input {
         String avro_path
