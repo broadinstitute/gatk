@@ -4,7 +4,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
 
-# A comment for tracking XV
+# A comment for tracking XVI
 
 workflow GvsCreateVDS {
     input {
