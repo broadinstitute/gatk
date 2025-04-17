@@ -192,6 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-foxtrot-avro-path', type=str,
                         help='Path at which exported Foxtrot GVS Avro files are found, including the filter data to apply in the output merged VDS.',
                         required=True)
+
     parser.add_argument('--output-vds-path', type=str,
                         help='Path to write output VDS', required=True)
 
@@ -202,6 +203,10 @@ if __name__ == '__main__':
     parser.add_argument('--truth-sensitivity-indel-threshold', type=float,
                         help='Sensitivity threshold for indel filtering.',
                         default=0.99)
+
+    parser.add_argument('--samples-to-remove-path', type=str,
+                        help="File with ids of samples to remove, one sample id per line, header should be 'research_id'.",
+                        required=False)
 
     parser.add_argument('--temp-path', type=str, help='Path to temporary directory', required=True)
 
@@ -214,6 +219,12 @@ if __name__ == '__main__':
         tmp_dir=tmp_dir
     )
     hl.default_reference('GRCh38')
+    samples_to_remove_table = None
+
+    # Do this first to fail fast if there's a problem.
+    if args.samples_to_remove_path:
+        samples_to_remove_table = hl.import_table(args.samples_to_remove_path, delimiter=',')
+        samples_to_remove_table = samples_to_remove_table.key_by(s=samples_to_remove_table.research_id)
 
     site_path = os.path.join(tmp_dir, "site_filters.ht")
     vets_path = os.path.join(tmp_dir, "vets_filters.ht")
@@ -231,6 +242,10 @@ if __name__ == '__main__':
                 args.input_echo_vds, args.input_unmerged_foxtrot_vds)
 
     tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
+    # Drop any samples that need dropping before patching.
+    if samples_to_remove_table:
+        tmp_merged_vds = hl.vds.filter_samples(tmp_merged_vds, samples_to_remove_table, keep=False,
+                                               remove_dead_alleles=True)
 
     # These globals seem to get dropped after the merge. Add them back as they are required for rescoring.
     vd = tmp_merged_vds.variant_data
@@ -239,5 +254,4 @@ if __name__ == '__main__':
 
     rescored_vd = patch_variant_data(vd, site, vets)
     merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
-
     merged_and_rescored_vds.write(args.output_vds_path)
