@@ -5,7 +5,8 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
-#..
+
+# aI
 
 workflow GvsQuickstartIntegration {
     input {
