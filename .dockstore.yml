@@ -173,6 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1615_hetvar_vcfs
        tags:
          - /.*/
    - name: GvsTieOutVDS
