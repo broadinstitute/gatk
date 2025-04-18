@@ -6,7 +6,7 @@ import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
 
-# A comment for tracking XXI
+# A comment for tracking XXII
 
 workflow GvsQuickstartIntegration {
     input {
