@@ -12,6 +12,7 @@ workflow GvsMergeAndRescoreVDSes {
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
+        String samples_to_remove_path
         Boolean skip_validate = false
 
         String cluster_prefix = "vds-cluster"
@@ -47,6 +48,9 @@ workflow GvsMergeAndRescoreVDSes {
         }
         output_merged_and_rescored_foxtrot_vds_path: {
             help: "Location for the complete merged and rescored Foxtrot VDS with all samples and Foxtrot filters"
+        }
+        samples_to_remove_path: {
+            help: "File of sample ids to remove from the final output merged and rescored VDS."
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
@@ -123,6 +127,7 @@ workflow GvsMergeAndRescoreVDSes {
             input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
             output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
             input_foxtrot_avro_path = input_foxtrot_avro_path,
+            samples_to_remove_path = samples_to_remove_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
@@ -172,6 +177,7 @@ task MergeAndRescoreVDS {
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
+        String? samples_to_remove_path
         Boolean leave_cluster_running_at_end
         File merge_and_rescore_script
         File hail_gvs_util_script
@@ -248,6 +254,7 @@ task MergeAndRescoreVDS {
             "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
             "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
+            ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
         }
         FIN
 
