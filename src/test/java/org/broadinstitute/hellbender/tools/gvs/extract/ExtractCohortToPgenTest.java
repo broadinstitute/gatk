@@ -112,7 +112,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test(enabled = false)
+  @Test
   public void testFinalVETSPgenfromRangesAvroLowAlleleCountMax() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
@@ -160,7 +160,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test(enabled = false)
+  @Test
   public void testFinalVETSPgenfromRangesAvroSeparateIndex() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
@@ -211,7 +211,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
-  @Test(enabled = false)
+  @Test
   public void testFinalVETSPgenfromRangesAvroEmptyPgenAllow() throws Exception {
     // To generate the Avro input files, create a table for export using the GVS QuickStart Data
     //
