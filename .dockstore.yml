@@ -195,6 +195,16 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: HalfBadHetvarExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1615_hetvar_vcfs
+       tags:
+         - /.*/
    - name: GvsExtractCallsetShard30603
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
