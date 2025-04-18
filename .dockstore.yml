@@ -343,7 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1641_drop_sample_from_vds
+             - vs_1615_baseline_filtered_vqsr_vcf
          tags:
              - /.*/
    - name: GvsIngestTieout
