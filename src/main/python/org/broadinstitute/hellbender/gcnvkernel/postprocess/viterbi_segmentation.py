@@ -13,7 +13,7 @@ from .. import types
 from ..io import io_consts, io_commons, io_denoising_calling, io_intervals_and_counts, io_vcf_parsing
 from ..models.model_denoising_calling import DenoisingModelConfig, CopyNumberCallingConfig, \
     HHMMClassAndCopyNumberBasicCaller
-from ..models.theano_hmm import TheanoForwardBackward, TheanoViterbi
+from ..models.pytensor_hmm import PytensorForwardBackward, PytensorViterbi
 from ..structs.interval import Interval
 from ..structs.metadata import IntervalListMetadata
 from ..structs.metadata import SampleMetadataCollection
@@ -97,8 +97,8 @@ class ViterbiSegmentationEngine:
             self.cnv_stay_prob_t_j[contig] = np.exp(-dist_t / self.calling_config.cnv_coherence_length)
 
         # forward-backward algorithm
-        _logger.info("Compiling theano forward-backward function...")
-        self.theano_forward_backward = TheanoForwardBackward(
+        _logger.info("Compiling pytensor forward-backward function...")
+        self.pytensor_forward_backward = PytensorForwardBackward(
             log_posterior_probs_output_tc=None,
             resolve_nans=False,
             do_thermalization=False,
@@ -107,13 +107,13 @@ class ViterbiSegmentationEngine:
             include_alpha_beta_output=True)
 
         # viterbi algorithm
-        _logger.info("Compiling theano Viterbi function...")
-        self.theano_viterbi = TheanoViterbi()
+        _logger.info("Compiling pytensor Viterbi function...")
+        self.pytensor_viterbi = PytensorViterbi()
 
         # copy-number HMM specs generator
-        _logger.info("Compiling theano variational HHMM...")
+        _logger.info("Compiling pytensor variational HHMM...")
         self.get_copy_number_hmm_specs = HHMMClassAndCopyNumberBasicCaller\
-            .get_compiled_copy_number_hmm_specs_theano_func()
+            .get_compiled_copy_number_hmm_specs_pytensor_func()
 
     def _viterbi_segments_generator(self) -> Generator[IntegerCopyNumberSegment, None, None]:
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
@@ -165,7 +165,7 @@ class ViterbiSegmentationEngine:
             log_trans_contig_tcc = hmm_specs[1]
 
             # run forward-back algorithm
-            fb_result = self.theano_forward_backward.perform_forward_backward(
+            fb_result = self.pytensor_forward_backward.perform_forward_backward(
                 log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
             log_posterior_prob_tc = fb_result.log_posterior_probs_tc
             log_data_likelihood = fb_result.log_data_likelihood
@@ -182,7 +182,7 @@ class ViterbiSegmentationEngine:
                 if bool(self.clustered_vcf is None) != bool(self.intervals_vcf is None):
                     raise Exception("If clustered_vcf is provided, then intervals_vcf must be provided.")
                 # run viterbi algorithm
-                viterbi_path_t_contig = self.theano_viterbi.get_viterbi_path(
+                viterbi_path_t_contig = self.pytensor_viterbi.get_viterbi_path(
                     log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
 
                 # coalesce into piecewise constant copy-number segments

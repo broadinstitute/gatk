@@ -1,0 +1,2 @@
+At position chr1:54682 Variant contexts have different attribute values for END: actual has 207666 and expected has 207668
+Unmatched variant in actual at position chr1:257667

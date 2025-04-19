@@ -126,6 +126,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     /**
      * Output the band lower bound for each GQ block instead of the min GQ -- for better compression
+     * Note that this argument also drops PLS for more efficient storage
      */
     @Advanced
     @Argument(fullName=HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS, doc = "Output the band lower bound for each GQ block regardless of the data it represents", optional = true)
@@ -158,7 +159,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Advanced
     @Argument(fullName=ANNOTATIONS_TO_REMOVE_LONG_NAME, doc="FORMAT level annotations to remove from all genotypes in final GVCF.", optional = true)
-    private List<String> annotationsToRemove = new ArrayList<>();
+    private List<String> formatAnnotationsToRemove = new ArrayList<>();
 
     @Advanced
     @Argument(fullName=QUAL_APPROX_LONG_NAME, shortName=QUAL_APPROX_SHORT_NAME, doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper", optional = true)
@@ -237,9 +238,6 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 + ", but the " + GATKVCFConstants.TREE_SCORE + " annotation is not present in the input GVCF.");
         }
 
-        List<String> missingAnnotationsToRemove = annotationsToRemove.stream().filter(a -> inputHeader.getFormatHeaderLine(a)==null).toList();
-        missingAnnotationsToRemove.forEach(a -> logger.warn("FORMAT level annotation " + a + ", which was requested to be removed by --" + ANNOTATIONS_TO_REMOVE_LONG_NAME + ", not found in input GVCF header."));
-
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeaders);
@@ -247,6 +245,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCFWriter.GVCF_BLOCK) ||
                 (vcfHeaderLine.getKey().equals("INFO")) && ((VCFInfoHeaderLine)vcfHeaderLine).getID().equals(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED) ||  //remove old (maybe wrong type) and add new with deprecated note
                 (vcfHeaderLine.getKey().equals("INFO")) && infoFieldAnnotationKeyNamesToRemove.contains(((VCFInfoHeaderLine)vcfHeaderLine).getID()));
+
+        List<String> missingAnnotationsToRemove = formatAnnotationsToRemove.stream().filter(a -> inputHeader.getFormatHeaderLine(a)==null).toList();
+        missingAnnotationsToRemove.forEach(a -> logger.warn("FORMAT level annotation " + a + ", which was requested to be removed by --" + ANNOTATIONS_TO_REMOVE_LONG_NAME + ", not found in input GVCF header."));
+        headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().equals("FORMAT") &&
+                formatAnnotationsToRemove.contains(((VCFFormatHeaderLine) vcfHeaderLine).getID()));
 
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 
@@ -337,7 +340,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
-        VariantContext newVC = annotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
+        VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
         regenotypeVC(newVC);
     }
 
@@ -350,7 +353,12 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private VariantContext removeVCFFormatAnnotations(final VariantContext vc) {
         final Genotype genotype = vc.getGenotype(0);
         Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
-        for (String annotation : annotationsToRemove) {
+        // If extendedAttributes is empty, we get an unmodifiable empty map, so skip removing any annotations
+        if (extendedAttributes.isEmpty()) {
+            return vc;
+        }
+
+        for (String annotation : formatAnnotationsToRemove) {
             extendedAttributes.remove(annotation);
         }
         final Genotype newGenotype = new GenotypeBuilder(genotype).noAttributes().attributes(extendedAttributes).make();
@@ -479,7 +487,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final Genotype genotype = result.getGenotype(0);
         return (hasGenotypeValuesArray(posteriorsKey, genotype)
                 && (genotype.isHomRef() || isNoCalledHomRef(posteriorsKey, genotype) || (genotype.hasPL() && MathUtils.minElementIndex(genotype.getPL()) == 0))
-                && result.getAlternateAlleles().stream().anyMatch(this::isConcreteAlt));
+                && result.getAlternateAlleles().stream().anyMatch(GATKVariantContextUtils::isConcreteAlt));
     }
 
     /**
@@ -518,24 +526,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(vc.getAlleles());
         return (pls != null && pls[0] < rgqThreshold)
-                || !genotypeHasConcreteAlt(finalAlleles)
+                || !GATKVariantContextUtils.genotypeHasConcreteAlt(finalAlleles)
                 || finalAlleles.stream().anyMatch(a -> a.equals(Allele.NON_REF_ALLELE))
                 || (!genotype.hasPL() && !genotype.hasGQ()
                 // If TREE_SCORE threshold is set to be > 0 then sites without TREE_SCORE should be reblocked.
                 || vc.getAttributeAsDouble(GATKVCFConstants.TREE_SCORE, 0) < treeScoreThreshold);
-    }
-
-    /**
-     * Is there a real ALT allele that's not <NON_REF> or * ?
-     * @param alleles   alleles in the called genotype
-     * @return true if the genotype has a called allele that is a "real" alternate
-     */
-    private boolean genotypeHasConcreteAlt(final List<Allele> alleles) {
-        return alleles.stream().anyMatch(this::isConcreteAlt);
-    }
-
-    private boolean isConcreteAlt(final Allele a) {
-        return !a.isReference() && !a.isSymbolic() && !a.equals(Allele.SPAN_DEL);
     }
 
     /**
@@ -818,7 +813,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             final GenotypeBuilder builderToCallAlleles = new GenotypeBuilder(noCallGT);
             //TODO: update to support DRAGEN posteriors
             GATKVariantContextUtils.makeGenotypeCall(noCallGT.getPloidy(), builderToCallAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
-                    noCallGT.getLikelihoods().getAsVector(), variant.getAlleles(), null);
+                    noCallGT.getLikelihoods().getAsVector(), variant.getAlleles(), noCallGT, null);
             return builderToCallAlleles.make();
         } else {
             return variant.getGenotype(0);
@@ -935,7 +930,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
                                             final boolean allelesNeedSubsetting, final int[] relevantIndices) {
         //copy over info annotations
         final Map<String, Object> origMap = sourceVC.getAttributes();
-        for(final InfoFieldAnnotation annotation : annotationEngine.getInfoAnnotations()) {
+        final List<VariantAnnotation> engineAnnotations = new ArrayList<>();
+        engineAnnotations.addAll(annotationEngine.getInfoAnnotations());
+        engineAnnotations.addAll(annotationEngine.getJumboInfoAnnotations());
+        for(final VariantAnnotation annotation : engineAnnotations) {
             for (final String key : annotation.getKeyNames()) {
                 if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
                     continue;
@@ -944,17 +942,34 @@ public final class ReblockGVCF extends MultiVariantWalker {
                     destinationAttrMap.put(key, origMap.get(key));
                 }
             }
-            if (annotation instanceof ReducibleAnnotation) {
-                for (final String rawKey : ((ReducibleAnnotation)annotation).getRawKeyNames()) {
+            if (annotation instanceof AlleleSpecificAnnotation) {
+                final boolean isReducible = annotation  instanceof ReducibleAnnotation;
+                final List<String> keyNames = isReducible ? ((ReducibleAnnotation)annotation).getRawKeyNames() :
+                        annotation.getKeyNames();
+                for (final String rawKey : keyNames) {
                     if (infoFieldAnnotationKeyNamesToRemove.contains(rawKey)) {
                         continue;
                     }
                     if (origMap.containsKey(rawKey)) {
-                        if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation)) {
-                            final List<String> alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(sourceVC.getAttributeAsString(rawKey, null));
+                        if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation) && AnnotationUtils.isAlleleSpecificGatkKey(rawKey)) {
+                            final List<String> alleleSpecificValues;
+                            if (isReducible) {
+                                alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfStringFromRawData(sourceVC.getAttributeAsString(rawKey, null));
+                            } else {
+                                String value = sourceVC.getAttributeAsString(rawKey, null);
+                                if (value == null) {
+                                    alleleSpecificValues = Collections.emptyList();
+                                } else {
+                                    alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(value);
+                                }
+                            }
                             final List<String> subsetList;
                             if (alleleSpecificValues.size() > 0) {
-                                subsetList = AlleleSubsettingUtils.remapRLengthList(alleleSpecificValues, relevantIndices, "");
+                                if (isReducible) {
+                                    subsetList = AlleleSubsettingUtils.remapRLengthList(alleleSpecificValues, relevantIndices, "");
+                                } else {
+                                    subsetList = AlleleSubsettingUtils.remapALengthList(alleleSpecificValues, relevantIndices, "");
+                                }
                                 if (sourceVC.getAlleles().get(relevantIndices[relevantIndices.length - 1]).equals(Allele.NON_REF_ALLELE)) {
                                     //zero out non-ref value, just in case
                                     subsetList.set(subsetList.size() - 1, ((AlleleSpecificAnnotation) annotation).getEmptyRawValue());
@@ -963,7 +978,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
                                 subsetList = Collections.nCopies(relevantIndices.length, "");
                             }
 
-                            destinationAttrMap.put(rawKey, AnnotationUtils.encodeAnyASListWithRawDelim(subsetList));
+                            if (isReducible) {
+                                destinationAttrMap.put(rawKey, AnnotationUtils.encodeAnyASListWithRawDelim(subsetList));
+                            } else {
+                                destinationAttrMap.put(rawKey, AnnotationUtils.encodeStringList(subsetList));
+                            }
                         } else {
                             destinationAttrMap.put(rawKey, origMap.get(rawKey));
                         }

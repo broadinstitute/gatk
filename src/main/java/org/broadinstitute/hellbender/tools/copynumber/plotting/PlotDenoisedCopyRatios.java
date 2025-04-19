@@ -204,8 +204,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
         //this runs the R statement "source("CNVPlottingLibrary.R")" before the main script runs
         executor.addScript(new Resource(PlottingUtils.CNV_PLOTTING_R_LIBRARY, PlotDenoisedCopyRatios.class));
         executor.addScript(new Resource(PLOT_DENOISED_COPY_RATIOS_R_SCRIPT, PlotDenoisedCopyRatios.class));
-        //--args is needed for Rscript to recognize other arguments properly
-        executor.addArgs("--args",
+        executor.addArgs(
                 "--sample_name=" + sampleName,
                 "--standardized_copy_ratios_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputStandardizedCopyRatiosFile),
                 "--denoised_copy_ratios_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputDenoisedCopyRatiosFile),

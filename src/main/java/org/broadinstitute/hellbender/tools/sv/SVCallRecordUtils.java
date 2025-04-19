@@ -18,14 +18,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static htsjdk.variant.vcf.VCFConstants.MISSING_VALUE_v4;
 import static org.broadinstitute.hellbender.tools.sv.SVCallRecord.UNDEFINED_LENGTH;
 
 public final class SVCallRecordUtils {
 
     private static final Set<String> VALID_TYPES = new HashSet<>(Arrays.asList(GATKSVVCFConstants.StructuralVariantAnnotationType.values()).stream()
             .map(GATKSVVCFConstants.StructuralVariantAnnotationType::name).collect(Collectors.toList()));
-    private static final Set<String> VALID_CPX_SUBTYPES = new HashSet<>(Arrays.asList(GATKSVVCFConstants.ComplexVariantSubtype.values()).stream()
-            .map(GATKSVVCFConstants.ComplexVariantSubtype::name).collect(Collectors.toList()));
+    private static final Set<String> VALID_CPX_SUBTYPES = GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.keySet();
 
     /**
      * Create a builder for a variant from an {@link SVCallRecord} for VCF interoperability
@@ -34,34 +34,18 @@ public final class SVCallRecordUtils {
      */
     public static VariantContextBuilder getVariantBuilder(final SVCallRecord record) {
         Utils.nonNull(record);
-        final int end;
         final GATKSVVCFConstants.StructuralVariantAnnotationType type = record.getType();
-        final GATKSVVCFConstants.ComplexVariantSubtype cpxType = record.getComplexSubtype();
-        final boolean isDispersedDup = cpxType == GATKSVVCFConstants.ComplexVariantSubtype.dDUP
-                || cpxType == GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL;
-        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.INS
-                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
-                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX
-                || isDispersedDup) {
-            end = record.getPositionA();
-        } else {
-            end = record.getPositionB();
-        }
+        final int end;
         final Integer end2;
         final String chr2;
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
-            || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
+            // TODO this may need to be modified in the future to handle complex translocations
+            end = record.getPositionA();
             end2 = record.getPositionB();
             chr2 = record.getContigB();
-        } else if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
-            if (isDispersedDup) {
-                end2 = record.getPositionB();
-                chr2 = record.getContigB();
-            } else {
-                end2 = null;
-                chr2 = null;
-            }
         } else {
+            end = record.getPositionB();
             end2 = null;
             chr2 = null;
         }
@@ -90,16 +74,26 @@ public final class SVCallRecordUtils {
             builder.attribute(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
             builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
         }
+        final GATKSVVCFConstants.ComplexVariantSubtype cpxType = record.getComplexSubtype();
         if (cpxType != null) {
-            builder.attribute(GATKSVVCFConstants.CPX_TYPE, record.getComplexSubtype().toString());
+            builder.attribute(GATKSVVCFConstants.CPX_TYPE, getComplexSubtypeString(cpxType));
+        }
+        final List<SVCallRecord.ComplexEventInterval> cpxIntervals = record.getComplexEventIntervals();
+        if (!cpxIntervals.isEmpty()) {
+            builder.attribute(GATKSVVCFConstants.CPX_INTERVALS, cpxIntervals.stream().map(SVCallRecord.ComplexEventInterval::encode).collect(Collectors.toList()));
         }
 
         builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
         if ((svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
                 || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.INV
-                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.INS)
+                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.INS
+                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX
+                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)
                 && record.getStrandA() != null && record.getStrandB() != null) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
+        }
+        if (!record.getEvidence().isEmpty()) {
+            builder.attribute(GATKSVVCFConstants.EVIDENCE, record.getEvidence());
         }
         if (!record.getFilters().isEmpty()) {
             builder.filters(record.getFilters());
@@ -183,12 +177,12 @@ public final class SVCallRecordUtils {
      */
     public static SVCallRecord copyCallWithNewGenotypes(final SVCallRecord record, final GenotypesContext genotypes) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
-                record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getComplexEventIntervals(), record.getLength(), record.getEvidence(), record.getAlgorithms(), record.getAlleles(),
                 genotypes, record.getAttributes(), record.getFilters(), record.getLog10PError());
     }
     public static SVCallRecord copyCallWithNewAttributes(final SVCallRecord record, final Map<String, Object> attr) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
-                record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getComplexEventIntervals(), record.getLength(), record.getEvidence(), record.getAlgorithms(), record.getAlleles(),
                 record.getGenotypes(), attr, record.getFilters(), record.getLog10PError());
     }
 
@@ -300,20 +294,19 @@ public final class SVCallRecordUtils {
         }
         Utils.validateArg(record.isIntrachromosomal(), "Inversion " + record.getId() + " is not intrachromosomal");
         final SVCallRecord positiveBreakend = new SVCallRecord(record.getId(), record.getContigA(),
-                record.getPositionA(), true, record.getContigB(), record.getPositionB(), true, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,null,
-                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), dictionary);
+                record.getPositionA(), true, record.getContigB(), record.getPositionB(), true, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,record.getComplexEventIntervals(), null,
+                record.getEvidence(), record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), dictionary);
         final SVCallRecord negativeBreakend = new SVCallRecord(record.getId(), record.getContigA(),
-                record.getPositionA(), false, record.getContigB(), record.getPositionB(), false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,null,
-                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), dictionary);
+                record.getPositionA(), false, record.getContigB(), record.getPositionB(), false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,record.getComplexEventIntervals(), null,
+                record.getEvidence(), record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), dictionary);
         return Stream.of(positiveBreakend, negativeBreakend);
     }
 
     /**
      * Creates a new {@link SVCallRecord} from the given {@link VariantContext}, keeping any variant fields.
-     * @see SVCallRecordUtils#create(VariantContext, boolean)
      */
-    public static SVCallRecord create(final VariantContext variant) {
-        return create(variant, true);
+    public static SVCallRecord create(final VariantContext variant, final SAMSequenceDictionary dictionary) {
+        return create(variant, true, dictionary);
     }
 
     /**
@@ -322,16 +315,17 @@ public final class SVCallRecordUtils {
      * @param keepVariantAttributes retain variant attribute fields
      * @return converted record
      */
-    public static SVCallRecord create(final VariantContext variant, boolean keepVariantAttributes) {
+    public static SVCallRecord create(final VariantContext variant, boolean keepVariantAttributes, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(variant);
         final String id = variant.getID();
         final String contigA = variant.getContig();
         final int positionA = variant.getStart();
 
         final GATKSVVCFConstants.StructuralVariantAnnotationType type = inferStructuralVariantType(variant);
-        final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype =
-                type == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX ? getComplexSubtype(variant) : null;
+        final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype = getComplexSubtype(variant);
+        final List<SVCallRecord.ComplexEventInterval> cpxIntervals = parseComplexIntervals(variant, dictionary);
         final List<String> algorithms = getAlgorithms(variant);
+        final List<GATKSVVCFConstants.EvidenceTypes> evidence = getEvidence(variant);
 
         final String strands;
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
@@ -368,21 +362,11 @@ public final class SVCallRecordUtils {
                 || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
             if (!(hasContig2 && hasEnd2)) {
                 throw new UserException.BadInput("Attributes " + GATKSVVCFConstants.END2_ATTRIBUTE +
-                        " and " + GATKSVVCFConstants.CONTIG2_ATTRIBUTE + " are required for BND records (variant " +
-                        variant.getID() + ").");
+                        " and " + GATKSVVCFConstants.CONTIG2_ATTRIBUTE + " are required for BND and CTX records " +
+                        "(variant " + variant.getID() + ").");
             }
             contigB = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
             positionB = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, 0);
-        } else if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
-            // If CHR2/END2 are defined, use them
-            if (hasContig2 && hasEnd2) {
-                contigB = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
-                positionB = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, 0);
-            } else {
-                // Otherwise treat like any other variant
-                contigB = contigA;
-                positionB = variant.getEnd();
-            }
         } else {
             contigB = contigA;
             // Force reset of END coordinate
@@ -395,8 +379,14 @@ public final class SVCallRecordUtils {
         final Double log10PError = variant.hasLog10PError() ? variant.getLog10PError() : null;
 
         final Map<String, Object> sanitizedAttributes = sanitizeAttributes(attributes);
-        return new SVCallRecord(id, contigA, positionA, strand1, contigB, positionB, strand2, type, cpxSubtype, length, algorithms,
-                variant.getAlleles(), variant.getGenotypes(), sanitizedAttributes, variant.getFilters(), log10PError);
+        return new SVCallRecord(id, contigA, positionA, strand1, contigB, positionB, strand2, type, cpxSubtype,
+                cpxIntervals, length, evidence, algorithms, variant.getAlleles(), variant.getGenotypes(), sanitizedAttributes,
+                variant.getFilters(), log10PError);
+    }
+
+    private static List<SVCallRecord.ComplexEventInterval> parseComplexIntervals(final VariantContext variant, final SAMSequenceDictionary dictionary) {
+        return variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null).stream()
+                .map(i -> SVCallRecord.ComplexEventInterval.decode(i, dictionary)).toList();
     }
 
     private static Map<String, Object> sanitizeAttributes(final Map<String, Object> attributes) {
@@ -418,6 +408,19 @@ public final class SVCallRecordUtils {
         return length;
     }
 
+    public static List<GATKSVVCFConstants.EvidenceTypes> getEvidence(final VariantContext variant) {
+        Utils.nonNull(variant);
+        final List<String> value = variant.getAttributeAsStringList(GATKSVVCFConstants.EVIDENCE, null);
+        if (value == null) {
+            return Collections.emptyList();
+        } else {
+            return value.stream()
+                    .filter(v -> v != null && !v.equals(MISSING_VALUE_v4))
+                    .map(GATKSVVCFConstants.EvidenceTypes::valueOf)
+                    .collect(Collectors.toList());
+        }
+    }
+
     public static List<String> getAlgorithms(final VariantContext variant) {
         Utils.nonNull(variant);
         Utils.validateArg(variant.hasAttribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE), "Expected " + GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE + " field for variant " + variant.getID());
@@ -426,15 +429,19 @@ public final class SVCallRecordUtils {
 
     public static GATKSVVCFConstants.ComplexVariantSubtype getComplexSubtype(final VariantContext variant) {
         Utils.nonNull(variant);
-        final String subtypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
+        String subtypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
         if (subtypeString == null) {
             return null;
         }
-        if (!VALID_CPX_SUBTYPES.contains(subtypeString)) {
+        if (!GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.containsKey(subtypeString)) {
             throw new IllegalArgumentException("Invalid CPX subtype: " + subtypeString + ", valid values are: " +
                     String.join(", ", VALID_CPX_SUBTYPES));
         }
-        return GATKSVVCFConstants.ComplexVariantSubtype.valueOf(subtypeString);
+        return GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.get(subtypeString);
+    }
+
+    public static String getComplexSubtypeString(final GATKSVVCFConstants.ComplexVariantSubtype subtype) {
+        return GATKSVVCFConstants.COMPLEX_VARIANT_SUBTYPE_MAP.inverse().get(subtype);
     }
 
     private static String getStrands(final VariantContext variant, final GATKSVVCFConstants.StructuralVariantAnnotationType type) {

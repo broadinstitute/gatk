@@ -1,0 +1,17 @@
+CRAM File Name: thisFileIsCorruptMito.bug8768.cram
+CRAM Version: 3.0
+CRAM ID Contents: ZmlsZTovLy9Vc2Vycy9jbm9ybWE=
+
+**********************!!!!!Possible CORRUPT CONTAINERS DETECTED!!!!!**********************:
+
+Average mismatch rate for presumed good containers: 0.008420
+Average mismatch rate for suspected bad containers: 0.877207
+
+The average base mismatch rate of 0.877207 for suspected bad containers exceeds the threshold rate of 0.05, and indicates this file may be corrupt.
+
+Suspected CORRUPT Containers:
+  Ordinal: 2 (sequenceId=SINGLE_REFERENCE: 0, start=40388, span=35381) Mismatch Rate/Count: 0.877207/1031379
+
+Presumed GOOD Containers:
+  Ordinal: 1 (sequenceId=SINGLE_REFERENCE: 0, start=1, span=40487) Mismatch Rate/Count: 0.008828/1047747
+  Ordinal: 3 (sequenceId=SINGLE_REFERENCE: 0, start=75661, span=10119) Mismatch Rate/Count: 0.008013/293395

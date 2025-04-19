@@ -6,6 +6,8 @@ import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
 
+# A comment for tracking XXVII
+
 workflow GvsQuickstartIntegration {
     input {
         String git_branch_or_tag
@@ -39,8 +41,8 @@ workflow GvsQuickstartIntegration {
     }
 
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2025-03-20/" + expected_subdir
-    File truth_data_prefix = "gs://gvs-internal-quickstart/integration/test_data/2025-01-17/" + expected_subdir
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2025-04-11/" + expected_subdir
+    File truth_data_prefix = "gs://gvs-internal-quickstart/integration/test_data/2025-04-11/" + expected_subdir
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {

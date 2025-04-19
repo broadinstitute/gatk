@@ -13,10 +13,8 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
@@ -102,14 +100,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                {DREAM_1_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.97, false},
-                {DREAM_2_TUMOR, Optional.of(DREAM_2_NORMAL), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
-                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
-                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, true},
-                {DREAM_3_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.90, false},
-                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
-                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, true},
-                {DREAM_4_TUMOR, Optional.empty(), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
+                {DREAM_1_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.98, false},
+                {DREAM_2_TUMOR, Optional.of(DREAM_2_NORMAL), DREAM_2_TRUTH, DREAM_2_MASK, 0.98, false},
+                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.98, false},
+                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.98, true},
+                {DREAM_3_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.95, false},
+                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.8, false},
+                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.7, true},
+                {DREAM_4_TUMOR, Optional.empty(), DREAM_4_TRUTH, DREAM_4_MASK, 0.7, false},
         };
     }
 
@@ -142,8 +140,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
                 args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
-                args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, dataset),
-                args -> args.addFlag(M2ArgumentCollection.MUTECT3_TRAINING_MODE_LONG_NAME),
+                args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset),
                 args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_LONG_NAME, 3.0) : args
         );
 
@@ -203,7 +200,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final long numPassVariants = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
-        Assert.assertTrue(numPassVariants < 10);
+        Assert.assertTrue(numPassVariants < 13);
     }
 
     // tumorBams, normalBam, truthVcf, mask, requiredSensitivity
@@ -307,15 +304,17 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testMutect3Dataset() {
+    public void testPermutectDataset() {
         Utils.resetRandomGenerator();
         final File tumor = new File(NA12878_20_21_WGS_bam);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
-        final File mutect3Dataset = createTempFile("mutect3", ".data");
+        final File trainingDataset = createTempFile("training", ".data");
+        final File testDataset = createTempFile("test", ".data");
 
         runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
                    args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
-                   args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, mutect3Dataset));
+                   args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, trainingDataset),
+                    args -> args.add(M2ArgumentCollection.PERMUTECT_TEST_DATASET_LONG_NAME, testDataset));
     }
 
     // make sure we can call tumor alts when the normal has a different alt at the same site
@@ -414,6 +413,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
                 vc.getAlternateAlleles().stream().filter(a-> a.length() > 0 && BaseUtils.isNucleotide(a.getBases()[0])).forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
             }
+        }
+    }
+
+    // regression test for PR: https://github.com/broadinstitute/gatk/pull/8717, which fixed an issue wherein germline events were
+    // incorrectly contributing to the bad haplotype and clustered events filters.  In order to make the test more stringent we turn
+    // on the genotype-germline-sites flag
+    //  The test is on two variants that caused particular trouble previously in the DREAM 2 sample
+    @Test
+    public void testFilteredHaplotypeAndClusteredEventsFilters() throws Exception {
+        Utils.resetRandomGenerator();
+        final File tumor = DREAM_2_TUMOR;
+        final File normal = DREAM_2_NORMAL;
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        for (final int locus : List.of(4567628, 20870771)) {
+            final String interval = "20:" + (locus - 500) + "-" + (locus + 500);
+            runMutect2(List.of(tumor), List.of(normal), unfilteredVcf, interval, b37Reference, Optional.of(GNOMAD),
+                    args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+            runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
+            final Optional<VariantContext> vcShouldPass = VariantContextTestUtils.streamVcf(filteredVcf).filter(vc -> vc.getStart() == locus).findFirst();
+            Assert.assertTrue(vcShouldPass.isPresent());
+            Assert.assertFalse(vcShouldPass.get().isFiltered());
         }
     }
 
@@ -528,7 +550,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 filteredVariants.get(10).stream().filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME)).count());
 
         final List<VariantContext> missedObviousVariantsAtTenPercent = filteredVariants.get(10).stream()
-                .filter(vc -> !vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                .filter(vc -> !vc.isFiltered())
                 .filter(VariantContext::isBiallelic)
                 .filter(vc -> {
                     final int[] AD = vc.getGenotype(0).getAD();
@@ -1088,7 +1110,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
-        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+
+        // This used to be an exact text match, which cause hours of aggravation when the test passed locally and
+        // failed on the cloud.
+        final double[] outputTlods = VariantContextTestUtils.streamVcf(output)
+                        .flatMap(vc -> vc.getAttributeAsDoubleList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0).stream())
+                .mapToDouble(x -> x).toArray();
+
+        final double[] expectedTlods = VariantContextTestUtils.streamVcf(expected)
+                .flatMap(vc -> vc.getAttributeAsDoubleList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0).stream())
+                .mapToDouble(x -> x).toArray();
+
+        Assert.assertEquals(outputTlods, expectedTlods);
     }
 
     @SafeVarargs

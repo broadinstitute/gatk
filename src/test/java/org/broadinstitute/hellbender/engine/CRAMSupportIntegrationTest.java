@@ -2,14 +2,10 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamFiles;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.*;
+import htsjdk.samtools.cram.ref.ReferenceSource;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -39,6 +35,82 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
     public String getTestedClassName() {
         return PrintReads.class.getSimpleName();
     }
+
+    @DataProvider(name="roundTripCRAMTests")
+    public Object[][] getRoundTripCRAMTests() {
+        return new Object[][] {
+                // we need to use lenient equality for this test because this bam has ~14k reads that fail full
+                // read equality; at least some of which are because they are unmapped/unplaced, but have cigar
+                // strings that both samtools and htsjdk drop when roundtripping
+                {NA12878_20_21_WGS_bam, b37_reference_20_21, true, false},
+                // this cram is the result of converting the above bam to cram using samtools; once the file is
+                // converted, we can use full read equality when roundtripping through cram, so we don't need to
+                // be lenient
+                {NA12878_20_21_WGS_cram, b37_reference_20_21, false, false},
+                // roundtrip a v2.1 file
+                { largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram",
+                        b37_reference_20_21, false, false },
+        };
+    }
+
+    @Test(dataProvider="roundTripCRAMTests")
+    public void testRoundTripToCRAM(
+            final String sourceBamOrCRAM,
+            final String reference,
+            final boolean lenientEquality,
+            final boolean emitDetail) throws IOException {
+        final File outputCram = createTempFile("testRoundTripCRAM", ".cram");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addInput(sourceBamOrCRAM);
+        args.addOutput(outputCram);
+        args.addReference(reference);
+        args.add(ReadFilterArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS, true);
+
+        runCommandLine(args, "PrintReads");
+        assertRoundTripFidelity(new File(sourceBamOrCRAM), outputCram, new File(reference), lenientEquality, emitDetail);
+    }
+
+    public void assertRoundTripFidelity(
+            final File sourceFile,
+            final File targetCRAMFile,
+            final File referenceFile,
+            final boolean lenientEquality,
+            final boolean emitDetail) throws IOException {
+        try (final SamReader sourceReader = SamReaderFactory.makeDefault()
+                .referenceSequence(referenceFile)
+                .validationStringency((ValidationStringency.SILENT))
+                .open(sourceFile);
+             final CRAMFileReader copyReader = new CRAMFileReader(targetCRAMFile, new ReferenceSource(referenceFile))) {
+            final SAMRecordIterator sourceIterator = sourceReader.iterator();
+            final SAMRecordIterator targetIterator = copyReader.getIterator();
+
+            while (sourceIterator.hasNext() && targetIterator.hasNext()) {
+                if (lenientEquality) {
+                    final SAMRecord sourceRec = sourceIterator.next();
+                    final SAMRecord targetRec = targetIterator.next();
+                    Assert.assertEquals(targetRec.getReadName(), sourceRec.getReadName());
+                    Assert.assertEquals(targetRec.getReadBases(), sourceRec.getReadBases());
+                    Assert.assertEquals(targetRec.getBaseQualities(), sourceRec.getBaseQualities());
+                    Assert.assertEquals(targetRec.getAlignmentStart(), sourceRec.getAlignmentStart());
+                    Assert.assertEquals(targetRec.getAlignmentEnd(), sourceRec.getAlignmentEnd());
+                } else if (emitDetail) {
+                    final SAMRecord sourceRec = sourceIterator.next();
+                    final SAMRecord targetRec = targetIterator.next();
+                    if (!sourceRec.equals(targetRec)) {
+                        System.out.println("Difference found:");
+                        System.out.println(sourceRec.getSAMString());
+                        System.out.println(targetRec.getSAMString());
+                    }
+                    Assert.assertEquals(targetRec, sourceRec);
+                } else {
+                    Assert.assertEquals(targetIterator.next(), sourceIterator.next());
+                }
+            }
+            Assert.assertEquals(sourceIterator.hasNext(), targetIterator.hasNext());
+        }
+    }
+
 
     @DataProvider(name = "ReadEntireCramTestData")
     public Object[][] readEntireCramTestData() {

@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-1178_MergeMasterIntoAhVarStoreAgain
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -343,6 +344,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1178_MergeMasterIntoAhVarStoreAgain
              - vs_1641_drop_sample_from_vds
          tags:
              - /.*/

@@ -1,0 +1,1 @@
+At position chrX:66780645 Genotypes have different alleles: actual has [CT, CT] expected has [CT]

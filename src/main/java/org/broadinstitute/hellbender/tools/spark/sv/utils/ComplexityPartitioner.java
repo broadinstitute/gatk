@@ -2,10 +2,12 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import org.apache.spark.Partitioner;
 
+import java.io.Serial;
 import java.util.Arrays;
 
 /** A Spark Partitioner that puts tasks with greater complexities into earlier partitions. */
 public final class ComplexityPartitioner extends Partitioner {
+    @Serial
     private static final long serialVersionUID = 1L;
     private final int[] partitions;
 

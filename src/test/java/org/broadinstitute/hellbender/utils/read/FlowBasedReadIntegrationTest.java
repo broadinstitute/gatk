@@ -39,7 +39,7 @@ public class FlowBasedReadIntegrationTest extends GATKBaseTest {
         // create argument block
         FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
         if ( simulate ) {
-            fbargs.probabilityRatioThreshold = 0.01;
+            fbargs.fillingValue = 0.01;
             //fbargs.remove_longer_than_one_indels = true;
             fbargs.lumpProbs = true;
             fbargs.onlyInsOrDel = true;
@@ -55,7 +55,7 @@ public class FlowBasedReadIntegrationTest extends GATKBaseTest {
                                             new SAMRecordToGATKReadAdapter(i.next()),
                                             reader.getFileHeader());
             fbr.applyAlignment();
-            Assert.assertEquals(fbr.totalKeyBases(), fbr.seqLength());
+            Assert.assertEquals(fbr.totalKeyBases(), fbr.getLength());
 
             if ( limitCount < 1000 && outputPrefix != null ) {
                 try ( final FileWriter fos = new FileWriter(outputPrefix + "." + Integer.toString(count) + ".key.txt") ) {

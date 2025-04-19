@@ -41,6 +41,7 @@ import java.util.Optional;
  *     <li>If there are multiple variants that start at a site, it chooses one of them randomly.</li>
  *     <li>When there are overlapping indels (but with different start positions) only the first will be chosen.</li>
  *     <li>This tool works only for SNPs and for simple indels (but not for things like complex substitutions).</li>
+ *     <li>This tool works only with VCF files. Using GVCF files as input may result in unexpected behavior.</li>
  * </ul>
 
  * <h3>Input</h3>
