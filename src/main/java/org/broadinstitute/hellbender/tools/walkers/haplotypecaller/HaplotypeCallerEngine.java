@@ -664,7 +664,6 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         boolean forceCallFlag = false;
         if (forceCallingAllelesPresent && features.getValues(hcArgs.alleles, ref).stream().anyMatch(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())) {
             forceCallFlag = true;
-            return new ActivityProfileState(ref.getInterval(), 1.0);
         }
 
         if (context == null || context.getBasePileup().isEmpty()) {
