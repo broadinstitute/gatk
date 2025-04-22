@@ -1,14 +1,19 @@
 version 1.0
 
-# This WDL will create a VDS in Hail running in a Dataproc cluster.
+# This WDL will merge the Echo VDS with a VDS of only samples new to Foxtrot and apply the full Foxtrot filter created
+# from all samples to the merged result.
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
 
 
-workflow GvsCreateVDS {
+workflow GvsMergeAndRescoreVDSes {
     input {
-        String avro_path
-        String vds_destination_path
+        String input_echo_vds_path
+        String input_unmerged_foxtrot_vds_path
+        String input_foxtrot_avro_path
+        String output_merged_and_rescored_foxtrot_vds_path
+        String samples_to_remove_path
+        Boolean skip_validate = false
 
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
@@ -32,11 +37,20 @@ workflow GvsCreateVDS {
     }
 
     parameter_meta {
-        avro_path : {
-            help: "Input location for the avro files"
+        input_foxtrot_avro_path : {
+            help: "Input location for Foxtrot Avro files including the new Foxtrot filter data"
         }
-        vds_destination_path: {
-            help: "Location for the final created VDS"
+        input_echo_vds_path: {
+            help: "Previous full Echo VDS"
+        }
+        input_unmerged_foxtrot_vds_path: {
+           help: "New unmerged Foxtrot VDS with only the samples new to Foxtrot"
+        }
+        output_merged_and_rescored_foxtrot_vds_path: {
+            help: "Location for the complete merged and rescored Foxtrot VDS with all samples and Foxtrot filters"
+        }
+        samples_to_remove_path: {
+            help: "File of sample ids to remove from the final output merged and rescored VDS."
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
@@ -106,18 +120,19 @@ workflow GvsCreateVDS {
             variants_docker = effective_variants_docker,
     }
 
-    call CreateVds {
+    call MergeAndRescoreVDS {
         input:
             prefix = cluster_prefix,
-            vds_path = vds_destination_path,
-            avro_path = avro_path,
+            input_echo_vds_path = input_echo_vds_path,
+            input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
+            output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
+            input_foxtrot_avro_path = input_foxtrot_avro_path,
+            samples_to_remove_path = samples_to_remove_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            gvs_import_script = GetHailScripts.gvs_import_script,
-            gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
-            hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
+            merge_and_rescore_script = GetHailScripts.merge_and_rescore_script,
             hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
@@ -131,38 +146,41 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call ValidateVDS.GvsValidateVDS as ValidateVds {
-        input:
-            go = CreateVds.done,
-            cluster_prefix = cluster_prefix,
-            vds_path = vds_destination_path,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            workspace_project = effective_google_project,
-            region = region,
-            workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
+    if (!skip_validate) {
+        call ValidateVDS.GvsValidateVDS as ValidateVds {
+            input:
+                go = MergeAndRescoreVDS.done,
+                cluster_prefix = cluster_prefix,
+                vds_path = output_merged_and_rescored_foxtrot_vds_path,
+                hail_version = effective_hail_version,
+                hail_wheel = hail_wheel,
+                workspace_project = effective_google_project,
+                region = region,
+                workspace_bucket = effective_workspace_bucket,
+                gcs_subnetwork_name = gcs_subnetwork_name,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                leave_cluster_running_at_end = leave_cluster_running_at_end,
+        }
     }
 
     output {
-        String create_cluster_name = CreateVds.cluster_name
-        String validate_cluster_name = ValidateVds.cluster_name
+        String create_cluster_name = MergeAndRescoreVDS.cluster_name
+        String? validate_cluster_name = ValidateVds.cluster_name
         Boolean done = true
     }
 }
 
-task CreateVds {
+task MergeAndRescoreVDS {
     input {
         String prefix
-        String vds_path
-        String avro_path
+        String input_echo_vds_path
+        String input_unmerged_foxtrot_vds_path
+        String input_foxtrot_avro_path
+        String output_merged_and_rescored_foxtrot_vds_path
+        String? samples_to_remove_path
         Boolean leave_cluster_running_at_end
-        File hail_gvs_import_script
+        File merge_and_rescore_script
         File hail_gvs_util_script
-        File gvs_import_script
-        File gvs_import_ploidy_script
         File run_in_hail_cluster_script
         String? hail_version
         File? hail_wheel
@@ -230,19 +248,20 @@ task CreateVds {
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
-            "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
-            "avro-path": "~{avro_path}"
+            "input-foxtrot-avro-path": "~{input_foxtrot_avro_path}",
+            "input-echo-vds": "~{input_echo_vds_path}",
+            "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
+            "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
+            ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
         }
         FIN
 
         # Run the hail python script to make a VDS
         python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{hail_gvs_import_script} \
-            --secondary-script-path-list ~{gvs_import_script} \
+            --script-path ~{merge_and_rescore_script} \
             --secondary-script-path-list ~{hail_gvs_util_script} \
-            --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -293,6 +312,7 @@ task GetHailScripts {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
         File hail_gvs_import_script = "app/hail_gvs_import.py"
         File hail_gvs_util_script = "app/hail_gvs_util.py"
+        File merge_and_rescore_script = "app/merge_and_rescore_vdses.py"
         File gvs_import_script = "app/import_gvs.py"
         File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
     }
