@@ -479,6 +479,9 @@ public final class IOUtils {
 
             // Get the path for the entry on disk and make sure it's OK:
             final Path extractedEntryPath = destDir.resolve(entry.getName()).normalize();
+            if (!extractedEntryPath.startsWith(destDir)) {
+                throw new IOException("Bad zip entry: " + entry.getName());
+            }
             ensurePathIsOkForOutput(extractedEntryPath, overwriteExistingFiles);
 
             // Now we can create the entry in our output location:
