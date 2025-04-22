@@ -173,7 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1615_hetvar_vcfs
+         - vs_1641_drop_sample_from_vds
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -183,7 +183,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1615_hetvar_vcfs
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -195,16 +194,6 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: HalfBadHetvarExtractCallset
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1615_hetvar_vcfs
-       tags:
-         - /.*/
    - name: GvsExtractCallsetShard30603
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -354,29 +343,9 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1615_hetvar_vcfs
+             - vs_1641_drop_sample_from_vds
          tags:
              - /.*/
-   - name: HalfBadHetvars
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1615_hetvar_vcfs
-       tags:
-         - /.*/
-   - name: MakeHetvarVDS
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/MakeHetvarVDS.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1615_hetvar_vcfs
-       tags:
-         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl

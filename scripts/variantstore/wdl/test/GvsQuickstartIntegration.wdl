@@ -178,7 +178,7 @@ workflow GvsQuickstartIntegration {
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
                 use_VETS = false,
-                extract_do_not_filter_override = false,
+                extract_do_not_filter_override = true,
                 dataset_suffix = "vqsr_vcf",
                 use_default_dockers = use_default_dockers,
                 gatk_override = effective_gatk_override,
