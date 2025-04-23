@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-1178_MergeMasterIntoAhVarStoreAgain
        tags:
          - /.*/
    - name: GvsValidateVDS
