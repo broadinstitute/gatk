@@ -1,6 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.Allele;
+
+import java.util.Map;
+
+import static java.util.Map.entry;
 
 public final class GATKSVVCFConstants {
 
@@ -8,6 +13,7 @@ public final class GATKSVVCFConstants {
     // VCF standard keys reserved for sv
     public static final String SVTYPE = "SVTYPE";
     public static final String SVLEN = "SVLEN";
+    public static final String EVIDENCE = "EVIDENCE";
     public static final String IMPRECISE = "IMPRECISE";
     public static final String CIPOS = "CIPOS";
     public static final String CIEND = "CIEND";
@@ -25,6 +31,14 @@ public final class GATKSVVCFConstants {
     // symbolic alt alleles
     public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
     public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
+
+    // Evidence types
+    public enum EvidenceTypes {
+        BAF,
+        PE,
+        RD,
+        SR
+    }
 
     // GATK-SV specific header lines
     // TODO: 10/3/17 the following comment is a goal we are trying to achieve
@@ -76,6 +90,7 @@ public final class GATKSVVCFConstants {
     public static final String CPX_INTERVALS = "CPX_INTERVALS";
     public static final String CPX_TYPE = "CPX_TYPE";
 
+    // keep in sync with map below
     public enum ComplexVariantSubtype {
         delINV,
         INVdel,
@@ -89,8 +104,31 @@ public final class GATKSVVCFConstants {
         piDUP_RF,
         dDUP,
         dDUP_iDEL,
-        INS_iDEL
+        INS_iDEL,
+        CTX_PP_QQ,
+        CTX_PQ_QP,
+        CTX_INV
     }
+
+    // keep in sync with enum above
+    public static final HashBiMap<String, ComplexVariantSubtype> COMPLEX_VARIANT_SUBTYPE_MAP = HashBiMap.create(Map.ofEntries(
+            entry("delINV", ComplexVariantSubtype.delINV),
+            entry("INVdel", ComplexVariantSubtype.INVdel),
+            entry("dupINV", ComplexVariantSubtype.dupINV),
+            entry("INVdup", ComplexVariantSubtype.INVdup),
+            entry("delINVdel", ComplexVariantSubtype.delINVdel),
+            entry("dupINVdup", ComplexVariantSubtype.dupINVdup),
+            entry("delINVdup", ComplexVariantSubtype.delINVdup),
+            entry("dupINVdel", ComplexVariantSubtype.dupINVdel),
+            entry("piDUP_FR", ComplexVariantSubtype.piDUP_FR),
+            entry("piDUP_RF", ComplexVariantSubtype.piDUP_RF),
+            entry("dDUP", ComplexVariantSubtype.dDUP),
+            entry("dDUP_iDEL", ComplexVariantSubtype.dDUP_iDEL),
+            entry("INS_iDEL", ComplexVariantSubtype.INS_iDEL),
+            entry("CTX_PP/QQ", ComplexVariantSubtype.CTX_PP_QQ),
+            entry("CTX_PQ/QP", ComplexVariantSubtype.CTX_PQ_QP),
+            entry("CTX_INV", ComplexVariantSubtype.CTX_INV)
+    ));
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
@@ -107,8 +145,13 @@ public final class GATKSVVCFConstants {
     public static final String BND_DELETION_STRANDS = "+-";
     public static final String BND_DUPLICATION_STRANDS = "-+";
 
+    // SR support
+    public static final String BOTHSIDES_SUPPORT_ATTRIBUTE = "BOTHSIDES_SUPPORT";
+    public static final String HIGH_SR_BACKGROUND_ATTRIBUTE = "HIGH_SR_BACKGROUND";
+
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
+    public static final String DEPTH_GENOTYPE_COPY_NUMBER_FORMAT = "RD_CN";
     public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
@@ -146,6 +189,9 @@ public final class GATKSVVCFConstants {
     public static final String TRUTH_ALLELE_NUMBER_INFO = "TRUTH_AN";
     public static final String TRUTH_ALLELE_FREQUENCY_INFO = "TRUTH_AF";
 
+    // stratification
+    public static final String STRATUM_INFO_KEY = "STRAT";
+
     // functional annotations
     public static final String LOF = "PREDICTED_LOF";
     public static final String INT_EXON_DUP = "PREDICTED_INTRAGENIC_EXON_DUP";
@@ -163,6 +209,7 @@ public final class GATKSVVCFConstants {
     public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
     public static final String NEAREST_TSS = "PREDICTED_NEAREST_TSS";
     public static final String TSS_DUP = "PREDICTED_TSS_DUP";
+    public static final String PARTIAL_DISPERSED_DUP = "PREDICTED_PARTIAL_DISPERSED_DUP";
 
     // SVTYPE classes
     public enum StructuralVariantAnnotationType {

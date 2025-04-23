@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -801,6 +801,7 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(
                 GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
+                GATKVCFConstants.QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.FISHER_STRAND_KEY));
 

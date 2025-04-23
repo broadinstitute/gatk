@@ -28,7 +28,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 /**
  * Apply tranche filtering to VCF based on scores from an annotation in the INFO field.
- * The annotation can come from the {@link CNNScoreVariants} tool (CNNLOD), VQSR (VQSLOD),
+ * The annotation can come from the {@link NVScoreVariants} tool (CNN_1D or CNN_2D), VQSR (VQSLOD),
  * or any other variant scoring tool which adds numeric annotations in a VCF's INFO field.
  *
  * Tranches are specified in percent sensitivity to the variants in the resource files.

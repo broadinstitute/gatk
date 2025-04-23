@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -53,25 +54,25 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="VCFdata")
     public Object[][] getVCFdata() {
         return new Object[][]{
-               /*
+
                 //chrX haploid sample plus diploid sample -- expected results validated with vcf-validator (samtools?)
                 {new File[]{getTestFile("NA12891.chrX.haploid.rb.g.vcf"), getTestFile("NA12892.chrX.diploid.rb.g.vcf")},
-                        getTestFile("haploidPlusDiploid.expected.vcf"), null, Arrays.asList(new SimpleInterval("chrX", 1000000, 5000000)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
+                        getTestFile("haploidPlusDiploid.expected.vcf"), null, Arrays.asList(new SimpleInterval("chrX", 1000000, 5000000)), Arrays.asList("--merge-input-intervals", "--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b38_reference_20_21},
 
                 //8 ALT alleles -- no PLs
                 {new File[]{getTestFile("sample6.vcf"), getTestFile("sample7.vcf"), getTestFile("sample8.vcf"), getTestFile("sample9.vcf")},
-                        getTestFile("lotsOfAltsNoPLs.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 257008, 257008)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
+                        getTestFile("lotsOfAltsNoPLs.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 257008, 257008)), Arrays.asList("--merge-input-intervals", "--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b38_reference_20_21},
                 //6 ALT alleles -- yes PLs
                 {new File[]{getTestFile("sample6.vcf"), getTestFile("sample7.vcf"), getTestFile("sample8.vcf")},
-                        getTestFile("lotsOfAltsYesPLs.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 257008, 257008)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
-        */
+                        getTestFile("lotsOfAltsYesPLs.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 257008, 257008)), Arrays.asList("--merge-input-intervals","--" + StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b38_reference_20_21},
+
         // Simple Test, spanning deletions; standard calling confidence
                 //No variants outside requested intervals; no SNPs with QUAL < 60, no INDELs with QUAL < 69?; has star alleles after deletion at chr20:263497; has AC, AF, AN, DP, ExcessHet, FS, MQ, (MQRankSum), (ReadPosRankSum), SOR, QD; has called genotypes
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
+                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--"+ StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b38_reference_20_21},
                 // Same as above, but with GenomicsDB using BCF2Codec for interchange
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals", "--genomicsdb-use-bcf-codec"), b38_reference_20_21},
+                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--"+ StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString(), "--genomicsdb-use-bcf-codec"), b38_reference_20_21},
                 //lower calling confidence
                 //same as above except (different intervals and) with SNPs with 40 < QUAL < 60 and INDELs with 49 < QUAL < 69
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
@@ -176,7 +177,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         args.addReference(new File(hg38Reference))
                 .add("V", input)
                 .add("L", "chr20:10000000-10030000")
-                .add("only-output-calls-starting-in-intervals", true)
+                .add(StandardArgumentDefinitions.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE_LONG_NAME, IntervalFilteringVcfWriter.Mode.STARTS_IN)
                 .add("keep-all-sites", true)
                 .addOutput(outputPath)
                 .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
@@ -244,5 +245,62 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(g.hasPL());
         Assert.assertEquals(g.getPL().length, 2);
         Assert.assertEquals(g.getPL(), new int[]{83,0});
+    }
+
+    @Test
+    public void testNoReadsOutputAsNoCall() {
+        //note these are b37 data
+        File no_reads = new File(toolsTestDir, "/walkers/GnarlyGenotyper/testNoReads.rb.g.vcf");
+        //this is an artisanal, hand-crafted VCF with a QUAL approx that's been artificially enhanced
+        File fake_variant = new File(toolsTestDir, "/walkers/GnarlyGenotyper/fake_sample2.rb.g.vcf");
+        final SimpleInterval interval =  new SimpleInterval("20", 10000000, 10000000);
+        File tempGdb = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(no_reads, fake_variant), interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGdb);
+
+        final File output = createTempFile("checkNoCall", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(genomicsDBUri)
+                .addInterval(interval)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        Assert.assertEquals(vc.getGenotypes().size(), 2);
+        final Genotype g = vc.getGenotype("GTEX-RVPV-0003");
+        Assert.assertTrue(g.isNoCall()); //most importantly!
+        Assert.assertFalse(g.hasGQ());
+        Assert.assertFalse(g.hasDP());
+        Assert.assertFalse(g.hasAD());
+        Assert.assertFalse(g.hasPL());
+    }
+
+    @Test
+    public void gnarlyHomRefNullPLs() {
+        final File output = createTempFile("nullPLs", ".vcf");
+        final File inputNull = new File(toolsTestDir, "walkers/GnarlyGenotyper/NA20890.rb.g.vcf");
+        final File inputVariant = new File(toolsTestDir, "walkers/GnarlyGenotyper/NA20846.rb.g.vcf");
+        final SimpleInterval interval =  new SimpleInterval("chr1", 13273, 13273);
+
+        File tempGdb = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(inputNull, inputVariant), interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGdb);
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(hg38Reference)
+                .addVCF(genomicsDBUri)
+                .addInterval(interval)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final Genotype nullPlGenotype = outputData.getRight().get(0).getGenotype("NA20890");
+        Assert.assertEquals(nullPlGenotype.getPL(), null);
+        Assert.assertEquals(nullPlGenotype.getAlleles(), Arrays.asList(Allele.create("G", true), Allele.create("G", true)));
+        Assert.assertEquals(nullPlGenotype.getGQ(), 0);
+        Assert.assertEquals(nullPlGenotype.getDP(), 4);
     }
 }
