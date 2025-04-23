@@ -103,7 +103,7 @@ task FuncotateSegments {
       File ref_fasta_dict
       String funcotator_ref_version
       File? gatk4_jar_override
-      File? funcotator_data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+      File? funcotator_data_sources_tar_gz = "gs://gcp-public-data--broad-references/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
       String? transcript_selection_mode = "CANONICAL"
       File? transcript_selection_list
       Array[String]? annotation_defaults

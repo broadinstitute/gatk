@@ -264,7 +264,7 @@ def import_gvs(refs: 'List[List[str]]',
             var_ht = hl.import_avro(var_group)
             var_ht = var_ht.transmute(locus=translate_locus(var_ht.location),
                                       local_alleles=hl.array([var_ht.ref]).extend(var_ht.alt.split(',')),
-                                      LGT=hl.parse_call(var_ht.GT),
+                                      LGT=hl.parse_call(hl.or_missing((hl.is_missing(var_ht.GQ) | (var_ht.GQ != 0)), var_ht.GT)),
                                       LAD=var_ht.AD.split(',').map(lambda x: hl.int32(x)),
                                       GQ=hl.int32(var_ht.GQ),
                                       RGQ=hl.int32(var_ht.RGQ))

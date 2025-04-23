@@ -1,0 +1,8 @@
+file_name	contig_name	container_ordinal	container_is_bad	mismatch_rate	alignment_start	alignment_span
+#Bad containers:
+thisFileIsCorruptMito.3BadContainers.bug8768.cram	Mito	2	1	0.0	1	59
+thisFileIsCorruptMito.3BadContainers.bug8768.cram	Mito	3	1	0.8787713064318008	1	40487
+thisFileIsCorruptMito.3BadContainers.bug8768.cram	Mito	4	1	0.8772071178490157	40388	35381
+#Good containers:
+thisFileIsCorruptMito.3BadContainers.bug8768.cram	Mito	1	0	0.0	1	59
+thisFileIsCorruptMito.3BadContainers.bug8768.cram	Mito	5	0	0.00801308815760323	75661	10119

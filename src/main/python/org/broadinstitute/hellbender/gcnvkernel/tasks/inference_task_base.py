@@ -7,9 +7,9 @@ from abc import abstractmethod
 from typing import List, Callable, Optional, Set, Tuple, Any, Dict
 
 import numpy as np
-import pymc3 as pm
-import theano as th
-import theano.tensor as tt
+import pymc as pm
+import pytensor
+import pytensor.tensor as pt
 import tqdm
 
 from .. import types
@@ -40,7 +40,7 @@ class Sampler:
         """Take a new mean-field approximation and update the sampler routine accordingly.
 
         Args:
-            approx: an instance of PyMC3 mean-field posterior approximation
+            approx: an instance of PyMC mean-field posterior approximation
 
         Returns:
             None
@@ -198,9 +198,9 @@ class HybridInferenceTask(InferenceTask):
 
     The general implementation motif is:
 
-        (a) to store sufficient statistics from q(DRVs) as a shared theano tensor such that the the
+        (a) to store sufficient statistics from q(DRVs) as a shared pytensor tensor such that the the
             model can access it,
-        (b) to store log_emission(DRVs) as a shared theano tensor (or ndarray) such that the caller
+        (b) to store log_emission(DRVs) as a shared pytensor tensor (or ndarray) such that the caller
             can access it, and:
         (c) let the caller directly update the shared sufficient statistics.
     """
@@ -219,7 +219,7 @@ class HybridInferenceTask(InferenceTask):
 
         Args:
             hybrid_inference_params: inference configuration
-            continuous_model: a PyMC3 model representing the continuous sector of the PGM
+            continuous_model: a PyMC model representing the continuous sector of the PGM
             sampler: log emission probability sampler
             caller: discrete RV posterior updater
             **kwargs: extra keywords
@@ -262,7 +262,7 @@ class HybridInferenceTask(InferenceTask):
         with self.continuous_model:
             if not hasattr(self, 'temperature'):
                 initial_temperature = self.hybrid_inference_params.initial_temperature
-                self.temperature: types.TensorSharedVariable = th.shared(
+                self.temperature: types.TensorSharedVariable = pytensor.shared(
                     np.asarray([initial_temperature], dtype=types.floatX))
             initial_temperature = self.temperature.get_value()[0]
             if (np.abs(initial_temperature - 1.0) < self.temperature_tolerance or
@@ -274,7 +274,7 @@ class HybridInferenceTask(InferenceTask):
                 temperature_drop_per_iter = ((initial_temperature - 1.0) /
                                              self.hybrid_inference_params.num_thermal_advi_iters)
                 temperature_update = [(self.temperature,
-                                       tt.maximum(1.0, self.temperature - temperature_drop_per_iter))]
+                                       pt.maximum(1.0, self.temperature - temperature_drop_per_iter))]
 
             self.continuous_model_advi = ADVIDeterministicAnnealing(
                 random_seed=self.hybrid_inference_params.random_seed,
@@ -341,7 +341,7 @@ class HybridInferenceTask(InferenceTask):
     def engage(self):
         try:
             all_converged = False
-            while self.i_epoch <= self.hybrid_inference_params.max_training_epochs:
+            while self.i_epoch <= self.hybrid_inference_params.max_training_epochs: 
                 _logger.debug("Starting epoch {0}...".format(self.i_epoch))
                 converged_continuous = self._update_continuous_posteriors()
                 all_converged = converged_continuous

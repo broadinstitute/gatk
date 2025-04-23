@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.walkers.sv.SVSegment;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT;
 
 public class SVCallRecord implements SVLocatable {
 
@@ -30,11 +32,13 @@ public class SVCallRecord implements SVLocatable {
             VCFConstants.END_KEY,
             GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE,
             GATKSVVCFConstants.SVLEN,
+            GATKSVVCFConstants.EVIDENCE,
             GATKSVVCFConstants.CONTIG2_ATTRIBUTE,
             GATKSVVCFConstants.END2_ATTRIBUTE,
             GATKSVVCFConstants.STRANDS_ATTRIBUTE,
             GATKSVVCFConstants.SVTYPE,
-            GATKSVVCFConstants.CPX_TYPE
+            GATKSVVCFConstants.CPX_TYPE,
+            GATKSVVCFConstants.CPX_INTERVALS
     );
 
     private final String id;
@@ -46,6 +50,7 @@ public class SVCallRecord implements SVLocatable {
     private final Boolean strandB;
     private final GATKSVVCFConstants.StructuralVariantAnnotationType type;
     private final Integer length;
+    private final List<GATKSVVCFConstants.EvidenceTypes> evidence;
     private final List<String> algorithms;
     private final List<Allele> alleles;
     private final Allele refAllele;
@@ -57,6 +62,7 @@ public class SVCallRecord implements SVLocatable {
 
     // CPX related fields
     private final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype;
+    private final List<ComplexEventInterval> cpxIntervals;
 
     public SVCallRecord(final String id,
                         final String contigA,
@@ -67,7 +73,9 @@ public class SVCallRecord implements SVLocatable {
                         final Boolean strandB,
                         final GATKSVVCFConstants.StructuralVariantAnnotationType type,
                         final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype,
+                        final List<ComplexEventInterval> cpxIntervals,
                         final Integer length,
+                        final List<GATKSVVCFConstants.EvidenceTypes> evidence,
                         final List<String> algorithms,
                         final List<Allele> alleles,
                         final List<Genotype> genotypes,
@@ -75,7 +83,7 @@ public class SVCallRecord implements SVLocatable {
                         final Set<String> filters,
                         final Double log10PError,
                         final SAMSequenceDictionary dictionary) {
-        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, cpxSubtype, length, algorithms, alleles, genotypes, attributes, filters, log10PError);
+        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, cpxSubtype, cpxIntervals, length, evidence, algorithms, alleles, genotypes, attributes, filters, log10PError);
         validateCoordinates(dictionary);
     }
 
@@ -88,7 +96,9 @@ public class SVCallRecord implements SVLocatable {
                            final Boolean strandB,
                            final GATKSVVCFConstants.StructuralVariantAnnotationType type,
                            final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype,
+                           final List<ComplexEventInterval> cpxIntervals,
                            final Integer length,
+                           final List<GATKSVVCFConstants.EvidenceTypes> evidence,
                            final List<String> algorithms,
                            final List<Allele> alleles,
                            final List<Genotype> genotypes,
@@ -100,6 +110,8 @@ public class SVCallRecord implements SVLocatable {
         Utils.nonNull(genotypes);
         Utils.nonNull(attributes);
         Utils.nonNull(filters);
+        Utils.nonNull(cpxIntervals);
+        Utils.nonNull(evidence);
         this.id = Utils.nonNull(id);
         this.contigA = contigA;
         this.positionA = positionA;
@@ -107,6 +119,7 @@ public class SVCallRecord implements SVLocatable {
         this.positionB = positionB;
         this.type = Utils.nonNull(type);
         this.cpxSubtype = cpxSubtype;
+        this.cpxIntervals = canonicalizeComplexEventList(cpxIntervals);
         this.algorithms = Collections.unmodifiableList(algorithms);
         this.alleles = Collections.unmodifiableList(alleles);
         this.altAlleles = alleles.stream().filter(allele -> !allele.isNoCall() && !allele.isReference()).collect(Collectors.toList());
@@ -116,6 +129,7 @@ public class SVCallRecord implements SVLocatable {
         this.genotypes = GenotypesContext.copy(genotypes).immutable();
         this.attributes = validateAttributes(attributes);
         this.length = inferLength(type, positionA, positionB, length);
+        this.evidence = evidence;
         final Pair<Boolean, Boolean> strands = inferStrands(type, strandA, strandB);
         this.strandA = strands.getLeft();
         this.strandB = strands.getRight();
@@ -132,8 +146,27 @@ public class SVCallRecord implements SVLocatable {
         Utils.nonNull(dictionary);
         validatePosition(contigA, positionA, dictionary);
         validatePosition(contigB, positionB, dictionary);
-        Utils.validateArg(IntervalUtils.compareLocatables(getPositionAInterval(), getPositionBInterval(), dictionary) <= 0,
-                "End coordinate cannot precede start");
+        // CPX types may have position B precede A, such as dispersed duplications where A is the insertion point and
+        // B references the source sequence.
+        if (type != GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
+            if (IntervalUtils.compareLocatables(getPositionAInterval(), getPositionBInterval(), dictionary) > 0) {
+                throw new IllegalArgumentException("End precedes start in variant " + id);
+            }
+        }
+        for (final ComplexEventInterval interval : cpxIntervals) {
+            Utils.nonNull(interval);
+            validatePosition(interval.getContig(), interval.getStart(), dictionary);
+            validatePosition(interval.getContig(), interval.getEnd(), dictionary);
+        }
+    }
+
+    /**
+     * Sorts complex intervals list so that they can be efficiently compared across records.
+     * @param intervals complex intervals
+     * @return canonicalized list
+     */
+    private static List<ComplexEventInterval> canonicalizeComplexEventList(final List<ComplexEventInterval> intervals) {
+        return intervals.stream().sorted(Comparator.comparing(ComplexEventInterval::encode)).collect(Collectors.toList());
     }
 
     private static void validatePosition(final String contig, final int position, final SAMSequenceDictionary dictionary) {
@@ -144,7 +177,7 @@ public class SVCallRecord implements SVLocatable {
 
     private static Map<String, Object> validateAttributes(final Map<String, Object> attributes) {
         for (final String key : INVALID_ATTRIBUTES) {
-            Utils.validateArg(!attributes.containsKey(key), "Attempted to create record with invalid key: " + key);
+            Utils.validateArg(!attributes.containsKey(key), "Attempted to create record with reserved key: " + key);
         }
         return attributes;
     }
@@ -176,6 +209,7 @@ public class SVCallRecord implements SVLocatable {
                     || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) && inputLength != null) {
                 throw new IllegalArgumentException("Input length should be null for type " + type.name() + " but found " + inputLength);
             }
+            // TODO complex subtypes should be checked and handled properly, but for now we just pass through SVLEN
             return inputLength;
         }
     }
@@ -245,7 +279,8 @@ public class SVCallRecord implements SVLocatable {
         }
 
         // Otherwise, try to infer status if it's a biallelic CNV with a copy number call
-        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT, expectedCopyNumber);
+        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT,
+                VariantContextGetters.getAttributeAsInt(genotype, DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, expectedCopyNumber));
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
             return copyNumber < expectedCopyNumber;
         } else if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
@@ -343,6 +378,10 @@ public class SVCallRecord implements SVLocatable {
         return length;
     }
 
+    public List<GATKSVVCFConstants.EvidenceTypes> getEvidence() {
+        return evidence;
+    }
+
     public List<String> getAlgorithms() {
         return algorithms;
     }
@@ -380,7 +419,45 @@ public class SVCallRecord implements SVLocatable {
         return log10PError;
     }
 
-    public GATKSVVCFConstants.ComplexVariantSubtype getCpxSubtype() {
-        return cpxSubtype;
+    public List<ComplexEventInterval> getComplexEventIntervals() {
+        return cpxIntervals;
+    }
+
+    public static final class ComplexEventInterval extends SVSegment {
+
+        public ComplexEventInterval(final GATKSVVCFConstants.StructuralVariantAnnotationType intervalType,
+                                    final SimpleInterval interval) {
+            super(intervalType, interval);
+        }
+
+        public static ComplexEventInterval decode(final String str, final SAMSequenceDictionary dictionary) {
+            Utils.nonNull(str);
+            final String[] tokens = str.split("_", 2);
+            if (tokens.length < 2) {
+                throw new IllegalArgumentException("Expected complex interval with format \"SVTYPE_chr:pos-end\" but found \"" + str + "\"");
+            }
+            final SimpleInterval interval = new SimpleInterval(tokens[1]);
+            if (!IntervalUtils.intervalIsOnDictionaryContig(interval, dictionary)) {
+                throw new IllegalArgumentException("Invalid CPX interval: " + interval);
+            }
+            return new ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(tokens[0]), interval);
+        }
+
+        public String encode() {
+            return getIntervalSVType().name() + "_" + getInterval().toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ComplexEventInterval that = (ComplexEventInterval) o;
+            return getIntervalSVType() == that.getIntervalSVType() && Objects.equals(getInterval(), that.getInterval());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(getIntervalSVType(), getInterval());
+        }
     }
 }

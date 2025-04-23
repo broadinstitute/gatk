@@ -109,7 +109,7 @@ task Funcotate {
 
     # This should be updated when a new version of the data sources is released
     # TODO: Make this dynamically chosen in the command.
-    File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+    File? data_sources_tar_gz = "gs://gcp-public-data--broad-references/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
 
     String? control_id
     String? case_id
