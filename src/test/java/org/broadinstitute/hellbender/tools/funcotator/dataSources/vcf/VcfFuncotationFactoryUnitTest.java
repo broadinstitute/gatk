@@ -8,7 +8,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -135,7 +135,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         final ArrayList<Object[]> data = new ArrayList<>();
 
         for (int i = 0; i < 20; ++i) {
-            data.add(new Object[]{RandomStringUtils.randomAlphanumeric(i)});
+            data.add(new Object[]{RandomStringUtils.insecure().nextAlphanumeric(i)});
         }
 
         return data.iterator();
