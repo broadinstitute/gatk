@@ -159,12 +159,7 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
         )
     )
 
-    vd = vd.annotate_entries(
-        FT=~ft.any_no
-           & (
-                   ft.any_yes | (ft.all_snps_ok & ft.all_indels_ok)
-           )
-    )
+    vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ft.all_ok))
 
     vd = vd.drop("allele_NO", "allele_YES", "allele_OK")
     return vd
