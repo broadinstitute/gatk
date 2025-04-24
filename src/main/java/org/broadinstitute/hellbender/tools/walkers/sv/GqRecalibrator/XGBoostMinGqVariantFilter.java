@@ -512,7 +512,7 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
                     displayQuantilesFloat(d2Loss, "d2Loss");
                 }
                 try {
-                    booster.boost(dMatrix, d1Loss, d2Loss);
+                    booster.boost(dMatrix, getRound(), d1Loss, d2Loss);
                 } catch(XGBoostError xgBoostError) {
                     throw new GATKException("In " + name + " DataSubset: Boost error", xgBoostError);
                 }
