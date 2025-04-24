@@ -4,8 +4,6 @@ import "../GvsUtils.wdl" as Utils
 import "../../variant-annotations-table/GvsCreateVATfromVDS.wdl" as CreateVATFromVDS
 import "../../variant-annotations-table/GvsValidateVAT.wdl" as ValidateVAT
 
-# Test 1
-
 workflow GvsQuickstartVATIntegration {
     input {
         String git_branch_or_tag
