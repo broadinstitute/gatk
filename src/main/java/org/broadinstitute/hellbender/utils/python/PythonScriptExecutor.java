@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -226,6 +227,20 @@ public class PythonScriptExecutor extends PythonExecutorBase {
             }
         } catch (PythonScriptExecutorException e) {
             throw new RuntimeException(errorMessage, e);
+        }
+    }
+
+    /**
+     * The GATK Lite docker is a docker image that does not include the GATK conda environment.
+     * If running in the GATK Lite docker, this tool will throw a RuntimeException.
+     * 
+     * @param errorMessage Optional error message to include in the exception.
+     */
+    public static void checkIfRunningInGatkLiteDocker(Optional<String> errorMessage) {
+        final boolean inGatkLiteDocker = Boolean.valueOf(System.getProperty("IN_GATKLITE_DOCKER", "false")).booleanValue();
+        if (inGatkLiteDocker) {
+            String message = errorMessage.orElse("Tools requiring Python cannot be run in the Gatk Lite docker image.");
+            throw new RuntimeException(message);
         }
     }
 

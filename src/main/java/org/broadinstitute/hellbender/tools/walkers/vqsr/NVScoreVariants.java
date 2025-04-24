@@ -15,6 +15,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Annotate a VCF with scores from a PyTorch-based Convolutional Neural Network (CNN).
@@ -106,6 +107,7 @@ public class NVScoreVariants extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
         PythonScriptExecutor.checkPythonEnvironmentForPackage(NV_SCORE_VARIANTS_PACKAGE);
     }
 

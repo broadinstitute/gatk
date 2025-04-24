@@ -46,6 +46,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -332,6 +333,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     @Override
     public void onStartup() {
         super.onStartup();
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
         /* check for successful import of gcnvkernel */
         PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
     }
