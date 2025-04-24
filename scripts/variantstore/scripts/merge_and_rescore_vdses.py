@@ -121,7 +121,6 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
         allele_YES=vd.alleles[1:].map(
             lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == "Y", True)
         ),
-        allele_is_snp=is_snp,
         allele_OK=hl._zip_func(
             is_snp,
             vd.alleles[1:],
@@ -142,7 +141,6 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
     allele_NO = vd.allele_NO
     allele_YES = vd.allele_YES
     allele_OK = vd.allele_OK
-    allele_is_snp = vd.allele_is_snp
     ft = (
         hl.range(lgt.ploidy)
         .map(lambda idx: la[lgt[idx]])
@@ -151,16 +149,12 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
             lambda acc, called_idx: hl.struct(
                 any_no=acc.any_no | allele_NO[called_idx - 1],
                 any_yes=acc.any_yes | allele_YES[called_idx - 1],
-                all_snps_ok=acc.all_snps_ok
-                            & (~allele_is_snp[called_idx - 1] | allele_OK[called_idx - 1]),
-                all_indels_ok=acc.all_indels_ok
-                              & (allele_is_snp[called_idx - 1] | allele_OK[called_idx - 1]),
+                all_ok=acc.all_ok & allele_OK[called_idx - 1],
             ),
             hl.struct(
                 any_no=False,
                 any_yes=False,
-                all_snps_ok=True,
-                all_indels_ok=True,
+                all_ok=True,
             ),
         )
     )
@@ -172,7 +166,7 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
            )
     )
 
-    vd = vd.drop("allele_NO", "allele_YES", "allele_is_snp", "allele_OK")
+    vd = vd.drop("allele_NO", "allele_YES", "allele_OK")
     return vd
 
 

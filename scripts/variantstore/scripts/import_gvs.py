@@ -355,7 +355,6 @@ def import_gvs(refs: 'List[List[str]]',
                 lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'N', False)),
             allele_YES=vd.alleles[1:].map(
                 lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'Y', True)),
-            allele_is_snp=is_snp,
             allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
                                    f=lambda is_snp, alt:
                                    hl.coalesce(vd.as_vets.get(alt).calibration_sensitivity <=
@@ -369,20 +368,18 @@ def import_gvs(refs: 'List[List[str]]',
         allele_NO = vd.allele_NO
         allele_YES = vd.allele_YES
         allele_OK = vd.allele_OK
-        allele_is_snp=vd.allele_is_snp
         ft = (hl.range(lgt.ploidy)
               .map(lambda idx: la[lgt[idx]])
               .filter(lambda x: x != 0)
               .fold(lambda acc, called_idx: hl.struct(
             any_no=acc.any_no | allele_NO[called_idx - 1],
             any_yes=acc.any_yes | allele_YES[called_idx - 1],
-            all_snps_ok=acc.all_snps_ok & (~allele_is_snp[called_idx - 1] | allele_OK[called_idx - 1]),
-            all_indels_ok=acc.all_indels_ok & (allele_is_snp[called_idx - 1] | allele_OK[called_idx - 1]),
-        ), hl.struct(any_no=False, any_yes=False, all_snps_ok=True, all_indels_ok=True)))
+            all_ok=acc.all_ok & allele_OK[called_idx - 1],
+        ), hl.struct(any_no=False, any_yes=False, all_ok=True)))
 
-        vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | (ft.all_snps_ok & ft.all_indels_ok)))
+        vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ft.all_ok))
 
-        vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
+        vd = vd.drop('allele_NO', 'allele_YES', 'allele_OK')
         hl.vds.VariantDataset(
             reference_data=rd,
             variant_data=vd,
