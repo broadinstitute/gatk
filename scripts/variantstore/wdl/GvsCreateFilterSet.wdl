@@ -15,6 +15,7 @@ workflow GvsCreateFilterSet {
 
     String reference_name = "hg38"
     String? interval_list
+    String? custom_training_resources
 
     String? basic_docker
     String? cloud_sdk_docker
@@ -35,6 +36,7 @@ workflow GvsCreateFilterSet {
     RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
 
+    String? gatk_docker
     File? training_python_script
     File? scoring_python_script
   }
@@ -131,6 +133,12 @@ workflow GvsCreateFilterSet {
       gatk_docker = effective_gatk_docker,
   }
 
+  # support a custom truth file
+  # Specifying default resources here to make condition below clearer to read
+  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ${GetReference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetReference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetReference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetReference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetReference.reference.axiomPoly_resource_vcf}"
+  # If the user has specified a path to a custom training resource, use that instead
+  String vets_resource_args = if defined(custom_training_resources) then "--resource:user_custom,training=true,calibration=true ${custom_training_resources}" else default_hg38_resources
+
   # From this point, the paths diverge depending on whether they're using VQSR or VETS
   # The first branch here is VETS, and the second is VQSR
   if (use_VETS) {
@@ -142,7 +150,7 @@ workflow GvsCreateFilterSet {
         sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
-        resource_args = "--resource:hapmap,training=true,calibration=true ${GetReference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetReference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetReference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetReference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetReference.reference.axiomPoly_resource_vcf}",
+        resource_args = vets_resource_args,
         extract_extra_args = "-L ${effective_interval_list}",
         score_extra_args = "-L ${effective_interval_list}",
         extract_runtime_attributes = vets_extract_runtime_attributes,

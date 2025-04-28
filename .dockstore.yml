@@ -126,6 +126,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1619
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -174,7 +175,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1616
          tags:
              - /.*/
    - name: GvsImportGenomes
