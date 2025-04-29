@@ -1012,6 +1012,7 @@ public class ExtractCohortEngine {
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
+                        .filter(d -> !Double.isNaN(d)) // "." scores of "*" spanning deletions become NaN Doubles
                         .min(Double::compareTo);
         // It's a failing site if the minimum vqlod (if found) is less than the threshold
         return minVal.isPresent() && minVal.get() < vqScoreThreshold;

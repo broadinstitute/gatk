@@ -135,6 +135,7 @@ public class ExtractCohortVETSEngine extends ExtractCohortEngine {
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
+                        .filter(d -> !Double.isNaN(d)) // "." scores of "*" spanning deletions become NaN Doubles
                         .max(Double::compareTo);
 
         return maxVal.isPresent() && maxVal.get() > vqScoreThreshold;
