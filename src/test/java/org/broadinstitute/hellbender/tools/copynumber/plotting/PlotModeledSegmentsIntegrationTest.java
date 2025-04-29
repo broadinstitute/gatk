@@ -102,6 +102,39 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES / 2);    //allele-fraction-only plot is half the size
     }
 
+    @Test
+    public void testInGatkLieDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+            final File outputDir = createTempDir("testDir");
+            final String[] arguments = {
+                    "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
+                    "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, MODELED_SEGMENTS_FILE.getAbsolutePath(),
+                    "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
+                    "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
+                    "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
+            };
+            try {
+                runCommandLine(arguments);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring R cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testMinimumContigLength() {
         final File outputDir = createTempDir("testDir");

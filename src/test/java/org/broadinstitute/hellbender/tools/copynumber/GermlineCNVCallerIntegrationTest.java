@@ -79,6 +79,43 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     }
 
     /**
+     * Test that it fails properly in the GATK Lite docker
+     */
+    @Test
+    public void testCohortInGatkLiteDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
+            argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
+                    .add("L", SIM_INTERVAL_LIST_SUBSET_FILE)
+                    .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+                            CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                    .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
+                    .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
+            try {
+                runCommandLine(argsBuilder);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring Python cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+    }
+
+    /**
      * Run the tool in the COHORT mode for a case when number of provided intervals is two (minimum number allowed).
      */
     @Test(groups = {"python"})

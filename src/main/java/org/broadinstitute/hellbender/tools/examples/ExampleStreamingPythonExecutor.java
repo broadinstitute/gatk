@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
@@ -15,6 +16,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Example ReadWalker program that uses a Python streaming executor to stream summary data from a BAM
@@ -63,6 +65,7 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
 
         // Start the Python process, and initialize a stream writer for the executor to use to stream data to Python.
         pythonExecutor.start(Collections.emptyList());

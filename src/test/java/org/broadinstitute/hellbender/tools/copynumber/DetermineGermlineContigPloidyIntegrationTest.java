@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.testng.annotations.Test;
+import org.testng.Assert;
 
 import java.io.File;
 import java.util.Arrays;
@@ -35,6 +36,38 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-ploidy-cohort");
         runCommandLine(argsBuilder);
+    }
+
+    @Test
+    public void testCohortInGatkLiteDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
+            argsBuilder.add(DetermineGermlineContigPloidy.CONTIG_PLOIDY_PRIORS_FILE_LONG_NAME,
+                    TEST_CONTIG_PLOIDY_PRIOR_FILE)
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                    .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-ploidy-cohort");
+            try {
+                runCommandLine(argsBuilder);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring Python cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
     }
 
     @Test(groups = {"python"}, expectedExceptions = UserException.BadInput.class)

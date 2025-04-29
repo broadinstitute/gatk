@@ -64,6 +64,41 @@ public final class PlotDenoisedCopyRatiosIntegrationTest extends CommandLineProg
         assertFilesCreated(outputDir);
     }
 
+    //checks that the tool fails correctly when in GATK Lite docker
+    @Test
+    public void testInGatkLiteDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+            final File outputDir = createTempDir("testDir");
+            final String[] arguments = {
+                    "--" + CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, STANDARDIZED_COPY_RATIOS_FILE.getAbsolutePath(),
+                    "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
+                    "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
+                    "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
+                    "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
+            };
+            try {
+                runCommandLine(arguments);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring R cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+        
+    }
+
     //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
     @Test(groups = "R")
     public void testPlottingInfiniteMaximumCopyRatio() {

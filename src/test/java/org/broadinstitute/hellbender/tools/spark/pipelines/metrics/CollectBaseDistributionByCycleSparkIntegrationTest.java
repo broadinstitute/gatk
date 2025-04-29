@@ -79,6 +79,50 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
     }
 
     @Test
+    public void testInGatkLiteDocker() throws IOException {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            final File unsortedBam = new File(TEST_DATA_DIR, "unsortedBamName");
+
+            final File outfile = GATKBaseTest.createTempFile("test", ".metrics");
+            final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
+
+            ArgumentsBuilder args = new ArgumentsBuilder();
+            args.addRaw("-" + "I");
+            args.addRaw(unsortedBam.getCanonicalPath());
+            args.addRaw("-" + "O");
+            args.addRaw(outfile.getCanonicalPath());
+            args.addRaw("--" + "chart");
+            args.addRaw(pdf.getCanonicalPath());
+            args.addRaw("--" + "pf-reads-only");
+            args.addRaw(false);
+            args.addRaw("--" + "aligned-reads-only");
+            args.addRaw(false);
+
+            try {
+                runCommandLine(args.getArgsArray());
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Generating a chart file requires R, which is not available in the GATK Lite Docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+
+    }
+
+    @Test
     public void testGetRScriptResource() {
         // Make sure the RScript resource can be resolved
         Assert.assertNotNull(CollectBaseDistributionByCycleSpark.getBaseDistributionByCycleRScriptResource());

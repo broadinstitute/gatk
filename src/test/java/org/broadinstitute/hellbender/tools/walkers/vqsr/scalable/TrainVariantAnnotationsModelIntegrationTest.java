@@ -261,6 +261,46 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX);
     }
 
+    @Test
+    public void testInGatkLiteDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            final File outputDir = createTempDir("train");
+
+            final String outputPrefixSNPOnly = String.format("%s/test-snp", outputDir);
+            final ArgumentsBuilder argsBuilderSNPOnly = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
+            argsBuilderSNPOnly.addOutput(outputPrefixSNPOnly);
+            final File positiveAnnotationsHDF5SNPOnly = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                    "extract.nonAS.snp.pos" + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
+            final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotationsSNPOnly = ab ->
+                    ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5SNPOnly);
+            addPositiveAnnotationsSNPOnly
+                    .andThen(ADD_SNP_MODE)
+                    .apply(argsBuilderSNPOnly);
+            
+            try {
+                runCommandLine(argsBuilderSNPOnly);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("This tool cannot be run with a Python model in the GATK Lite Docker image.")); 
+            }
+            
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class) // python environment is required to run tool
     public void testPositiveAndUnlabeledAnnotationNamesAreNotIdentical() {
         final File outputDir = createTempDir("train");

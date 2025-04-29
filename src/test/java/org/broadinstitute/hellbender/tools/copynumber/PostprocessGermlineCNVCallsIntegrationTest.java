@@ -222,6 +222,37 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
         runCommandLine(args);
     }
 
+    @Test
+    public void testInGatkLiteDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+            final File segmentsOutput = createTempFile("segments-output-vcf-0", ".vcf");
+            final ArgumentsBuilder args = getArgsWithBreakpoints(CALL_SHARDS, MODEL_SHARDS, 0,
+                    createTempFile("intervals-output-vcf", ".vcf"),
+                    segmentsOutput,
+                    createTempFile("denoised-copy-ratios-output", ".tsv"),
+                    ALLOSOMAL_CONTIGS, 2, new File(TEST_SUB_DIR, "intervals_output_SAMPLE_000.vcf.gz"), CLUSTERED_VCF, null);
+            try {
+                runCommandLine(args);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring Python cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+    }
+
     @Test(groups = {"python"})
     public void testQualScoreCalculationWithBreakpoints() {
         //run one all-reference sample

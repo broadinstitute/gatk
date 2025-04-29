@@ -53,6 +53,39 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY, EPSILON_FOR_2D);
     }
 
+    @Test
+    public void testInGatkLiteDocker() {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+            final File tempVcf = createTempFile("test1DModel", ".vcf");
+
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getAbsolutePath())
+                    .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+
+            try {
+                runCommandLine(argsBuilder);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring Python cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+
+    }
+
     private void assertInfoFieldsAreClose(final File actualVcf, final File expectedVcf, final String infoKey, final double epsilon) {
         Iterator<VariantContext> expectedVi = VariantContextTestUtils.streamVcf(expectedVcf).collect(Collectors.toList()).iterator();
         Iterator<VariantContext> actualVi = VariantContextTestUtils.streamVcf(actualVcf).collect(Collectors.toList()).iterator();
