@@ -346,7 +346,7 @@ task ExtractFilterTask {
     df -h
 
     gatk --java-options "-Xmx4g" ExtractFeatures \
-      --ref-version 38  \
+      --ref-version ~{ref_version}  \
       -R "~{reference}" \
       -O "~{output_file}" \
       --local-sort-max-records-in-ram 1000000 \
