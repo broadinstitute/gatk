@@ -15,6 +15,10 @@ workflow GvsCreateFilterSet {
 
     String reference_name = "hg38"
     String? interval_list
+
+    # for supporting non-hg38 references
+    File? custom_reference
+    File? custom_contig_mapping
     String? custom_training_resources
 
     String? basic_docker
@@ -68,6 +72,7 @@ workflow GvsCreateFilterSet {
       basic_docker = effective_basic_docker,
   }
 
+  File effective_reference = select_first([custom_reference,  GetReference.reference.reference_fasta])
   String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
@@ -93,7 +98,7 @@ workflow GvsCreateFilterSet {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = GetReference.reference.reference_fasta,
+      ref_fasta = effective_reference,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -111,7 +116,7 @@ workflow GvsCreateFilterSet {
       input:
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
-        reference                  = GetReference.reference.reference_fasta,
+        reference                  = effective_reference,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -121,7 +126,8 @@ workflow GvsCreateFilterSet {
         output_file                = "${filter_set_name}_${i}.vcf.gz",
         project_id                 = project_id,
         dataset_id                 = dataset_name,
-        call_set_identifier        = call_set_identifier
+        call_set_identifier        = call_set_identifier,
+        custom_contig_mapping      = custom_contig_mapping
     }
   }
 
@@ -307,6 +313,9 @@ task ExtractFilterTask {
     String output_file
     Int? excess_alleles_threshold
 
+    File? custom_reference
+    File? custom_contig_mapping
+
     # Runtime Options:
     String gatk_docker
     File? gatk_override
@@ -322,6 +331,8 @@ task ExtractFilterTask {
 
   String intervals_name = basename(intervals)
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -343,6 +354,7 @@ task ExtractFilterTask {
       --alt-allele-table ~{fq_alt_allele_table} \
       ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
       -L ~{intervals} \
+      ~{"--contig-mapping-file " + custom_contig_mapping} \
       --dataset-id ~{dataset_id} \
       --project-id ~{project_id} \
       --cost-observability-tablename ~{cost_observability_tablename} \
