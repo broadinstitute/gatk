@@ -764,6 +764,12 @@ task PrepVtAnnotationJson {
         # Kick off the monitoring script
         bash ~{monitoring_script} > monitoring.log &
 
+        if [ ! -s ~{positions_annotation_json} ]; then
+            echo "Input annotations json file is empty. Skipping further prep"
+            touch ~{output_vt_json}
+            exit 0
+        fi
+
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
 
@@ -810,6 +816,12 @@ task PrepGenesAnnotationJson {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
+
+        if [ ! -s ~{genes_annotation_json} ]; then
+            echo "Input annotations json file is empty. Skipping further prep"
+            touch ~{output_genes_json}
+            exit 0
+        fi
 
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
