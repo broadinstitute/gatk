@@ -624,7 +624,9 @@ task AnnotateVCF {
         # custom function to prepend the current datetime to an echo statement
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
+        set +o errexit
         cat ~{custom_annotations_file} | grep -v '^#' > content_check_file.txt
+        set -o errexit
 
         if [ ! -s content_check_file.txt ]; then
             echo_date "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
