@@ -345,6 +345,7 @@ workflows:
              - ah_var_store
              - rc-vs-1457-vat-clinvar
              - vs_1641_drop_sample_from_vds
+             - gg_VS-1648_MakeVatIntegratTestWorkOnChr20OrAll
          tags:
              - /.*/
    - name: GvsIngestTieout

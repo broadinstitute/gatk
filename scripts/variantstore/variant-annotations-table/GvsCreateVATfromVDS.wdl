@@ -621,16 +621,13 @@ task AnnotateVCF {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # custom function to prepend the current datetime to an echo statement
-        echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
-
         set +o errexit
         cat ~{custom_annotations_file} | grep -v '^#' > content_check_file.txt
         set -o errexit
 
         if [ ! -s content_check_file.txt ]; then
-            echo_date "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
-            echo_date "Creating empty ennotation jsons for subsequent tasks"
+            echo "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
+            echo "Creating empty ennotation jsons for subsequent tasks"
             touch ~{gene_annotation_json_name}
             touch ~{positions_annotation_json_name}
             exit 0
@@ -654,7 +651,7 @@ task AnnotateVCF {
               # PAPI mount points
               CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
             else
-              >&2 echo_date "Could not find a mounted volume that looks like a reference disk, exiting."
+              >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
               exit 1
             fi
 
@@ -663,7 +660,7 @@ task AnnotateVCF {
             REFERENCE_FILE="Homo_sapiens.GRCh38.Nirvana.dat"
             REFERENCE_PATH=$(find ${CANDIDATE_MOUNT_POINT} -name "${REFERENCE_FILE}")
             if [[ -z ${REFERENCE_PATH} ]]; then
-                >&2 echo_date "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
+                >&2 echo "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
                 exit 1
             fi
 
@@ -690,7 +687,7 @@ task AnnotateVCF {
         fi
 
         # =======================================
-        echo_date "Creating custom annotations"
+        echo "Creating custom annotations"
         mkdir customannotations_dir
         CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
 
@@ -770,9 +767,6 @@ task PrepVtAnnotationJson {
             exit 0
         fi
 
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
             --annotated_json ~{positions_annotation_json} \
@@ -822,9 +816,6 @@ task PrepGenesAnnotationJson {
             touch ~{output_genes_json}
             exit 0
         fi
-
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_genes_bqloadjson_from_annotations.py \
