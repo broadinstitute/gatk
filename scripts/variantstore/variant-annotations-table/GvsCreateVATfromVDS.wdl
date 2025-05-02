@@ -785,7 +785,6 @@ task PrepVtAnnotationJson {
     }
 
     output {
-        File vat_vt_json="~{output_vt_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
@@ -835,7 +834,6 @@ task PrepGenesAnnotationJson {
     }
 
     output {
-        File vat_genes_json="~{output_genes_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
