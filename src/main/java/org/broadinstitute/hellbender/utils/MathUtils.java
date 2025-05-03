@@ -524,7 +524,7 @@ public final class MathUtils {
 
     public static long sum(final long[] x) {
         Utils.nonNull(x);
-        int total = 0;
+        long total = 0;
         for (long v : x)
             total += v;
         return total;
