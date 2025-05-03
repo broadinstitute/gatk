@@ -231,7 +231,10 @@ dependencies {
     // Library for configuration:
     implementation 'org.aeonbits.owner:owner:1.0.9'
 
-    implementation 'com.github.broadinstitute:picard:' + picardVersion
+    implementation ('com.github.broadinstitute:picard:' + picardVersion) {
+        exclude module: 'gkl'
+    }
+
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
 
     implementation 'org.genomicsdb:genomicsdb:' + genomicsdbVersion
@@ -295,7 +298,8 @@ dependencies {
     implementation 'it.unimi.dsi:fastutil:7.0.13'
 
     implementation 'org.broadinstitute:hdf5-java-bindings:1.2.0-hdf5_2.11.0'
-    implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'
+//    implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'
+    implementation files('libs/gatk-native-bindings_2025_02_05.jar')
 
     implementation 'org.ojalgo:ojalgo:44.0.0'
     implementation('org.ojalgo:ojalgo-commons-math3:1.0.0'){
@@ -335,7 +339,8 @@ dependencies {
     implementation 'com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives'
     implementation 'com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives'
 
-    implementation 'com.intel.gkl:gkl:' + gklVersion
+//  implementation 'com.intel.gkl:gkl:' + gklVersion
+    implementation files('libs/gkl-2025_02_25.jar')
 
     implementation 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     implementation 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
