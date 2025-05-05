@@ -8,7 +8,7 @@ germline copy number variant (gCNV) tools and workflows.
 This module implements inference schemes for read-depth profile denoising, germline
 integer copy number variation discovery, germline contig ploidy determination, associated
 I/O methods, and helper CLI scripts. `gcnvkernel` additionally provides general-purpose
-inference schemas built on the top of `PyMC3` and `theano`.
+inference schemas built on the top of `PyMC` and `pytensor`.
 
 The module is organized as follows::
 
@@ -20,7 +20,7 @@ The module is organized as follows::
         genomic intervals, read count data, global and sample-specific posteriors, and
         sample metadata.
 
-    `gcnvkernel.models`: `PyMC3` model declarations, `theano` symbolic operations (e.g.
+    `gcnvkernel.models`: `PyMC` model declarations, `pytensor` symbolic operations (e.g.
         forward-backward algorithm for HMMs), and custom probability distributions.
 
     `gcnvkernel.preprocess`: Routines for filtering interval lists.

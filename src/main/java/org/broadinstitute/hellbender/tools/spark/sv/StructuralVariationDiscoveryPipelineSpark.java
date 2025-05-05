@@ -41,9 +41,10 @@ import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import scala.Serializable;
 
 import java.io.IOException;
+import java.io.Serial;
+import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
@@ -364,6 +365,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     // parser ==========================================================================================================
 
     public static final class InMemoryAlignmentParser extends AlignedContigGenerator implements Serializable {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         private final JavaSparkContext ctx;

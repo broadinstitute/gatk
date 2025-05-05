@@ -7,10 +7,10 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.CollectF1R2CountsArgumentCollection;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -30,6 +30,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PANEL_OF_NORMALS_SHORT_NAME = "pon";
     public static final String GENOTYPE_PON_SITES_LONG_NAME = "genotype-pon-sites";
     public static final String GENOTYPE_GERMLINE_SITES_LONG_NAME = "genotype-germline-sites";
+    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
@@ -73,18 +74,20 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String FLOW_M2_MODE_LONG_NAME = "flow-mode";
 
     /*
-        Mutect3 parameters
+        Permutect parameters
      */
-    public static final String MUTECT3_TRAINING_MODE_LONG_NAME = "mutect3-training-mode";
-    public static final String MUTECT3_TRAINING_NON_ARTIFACT_RATIO = "mutect3-non-artifact-ratio";
-    public static final String MUTECT3_REF_DOWNSAMPLE_LONG_NAME = "mutect3-ref-downsample";
-    public static final String MUTECT3_ALT_DOWNSAMPLE_LONG_NAME = "mutect3-alt-downsample";
-    public static final String MUTECT3_DATASET_LONG_NAME = "mutect3-dataset";
-    public static final String MUTECT3_TRAINING_TRUTH_LONG_NAME = "mutect3-training-truth";
+    public static final String PERMUTECT_TRAINING_NON_ARTIFACT_RATIO = "permutect-non-artifact-ratio";
+    public static final String PERMUTECT_REF_DOWNSAMPLE_LONG_NAME = "permutect-ref-downsample";
+    public static final String PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME = "permutect-alt-downsample";
+    public static final String PERMUTECT_TRAINING_DATASET_LONG_NAME = "permutect-training-dataset";
+    public static final String PERMUTECT_TEST_DATASET_LONG_NAME = "permutect-test-dataset";
+    public static final String PERMUTECT_TRAINING_TRUTH_LONG_NAME = "permutect-training-truth";
+    public static final String PERMUTECT_TEST_TRUTH_LONG_NAME = "permutect-test-truth";
+    public static final String PERMUTECT_DATASET_MODE_LONG_NAME = "permutect-dataset-mode";
 
-    public static final int DEFAULT_MUTECT3_REF_DOWNSAMPLE = 10;
-    public static final int DEFAULT_MUTECT3_ALT_DOWNSAMPLE = 20;
-    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 20;
+    public static final int DEFAULT_PERMUTECT_REF_DOWNSAMPLE = 10;
+    public static final int DEFAULT_PERMUTECT_ALT_DOWNSAMPLE = 20;
+    public static final int DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO = 1;
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 1; }
@@ -92,18 +95,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Override
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection(){
         return new MutectReadThreadingAssemblerArgumentCollection();
-    }
-
-    @Override
-    public ReadThreadingAssembler createReadThreadingAssembler(){
-        if(mitochondria ) {
-            assemblerArgs.recoverAllDanglingBranches = true;
-            if (assemblerArgs.pruningLogOddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
-                assemblerArgs.pruningLogOddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
-            }
-        }
-
-        return super.createReadThreadingAssembler();
     }
 
     @ArgumentCollection
@@ -148,6 +139,15 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public boolean genotypeGermlineSites = false;
 
     /**
+     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
+     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, etting this parameter to a value less
+     * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
+     * this argument has no effect and no germline sites are genotyped.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped randomly.", optional = true)
+    public double genotypeGermlineSitesFraction = 1.0;
+
+    /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
      */
     @Argument(fullName= GERMLINE_RESOURCE_LONG_NAME, doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
@@ -163,8 +163,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     public double getDefaultAlleleFrequency() {
         return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
-                (mitochondria ? DEFAULT_AF_FOR_MITO_CALLING:
-                (normalSamples.isEmpty() ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING));
+                (normalSamples.isEmpty() ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
     }
 
     /**
@@ -176,42 +175,83 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public Boolean mitochondria = false;
 
     /**
-     * If true, collect Mutect3 data for learning; otherwise collect data for generating calls with a pre-trained model
+     * List of arguments to be set when a user specifies mitochondria mode. Each argument will be displayed in the help message.
      */
-    @Argument(fullName = MUTECT3_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Mutect3 data for learning.")
-    public Boolean mutect3TrainingDataMode = false;
+    public String[] getMitochondriaModeNameValuePairs() {
+        return new String[]{
+                DEFAULT_AF_LONG_NAME, String.valueOf(DEFAULT_AF_FOR_MITO_CALLING),
+                EMISSION_LOD_LONG_NAME, String.valueOf(DEFAULT_MITO_EMISSION_LOD),
+                INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME, String.valueOf(DEFAULT_MITO_INITIAL_LOG_10_ODDS),
+                ReadThreadingAssemblerArgumentCollection.RECOVER_ALL_DANGLING_BRANCHES_LONG_NAME, "true",
+                ReadThreadingAssemblerArgumentCollection.PRUNING_LOD_THRESHOLD_LONG_NAME, String.valueOf(DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD),
+                StandardArgumentDefinitions.ANNOTATION_LONG_NAME, "OriginalAlignment"
+        };
+    }
 
     /**
-     * Downsample ref reads for Mutect3 data
+     * Downsample ref reads for Permutect data
      */
-    @Argument(fullName = MUTECT3_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Mutect3 dataset.")
-    public int maxRefCountForMutect3 = DEFAULT_MUTECT3_REF_DOWNSAMPLE;
+    @Argument(fullName = PERMUTECT_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Permutect dataset.")
+    public int maxPermutectRefCount = DEFAULT_PERMUTECT_REF_DOWNSAMPLE;
 
     /**
-     * Downsample alt reads for Mutect3 data
+     * Downsample alt reads for Permutect data
      */
-    @Argument(fullName = MUTECT3_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Mutect3 training datasets.")
-    public int maxAltCountForMutect3 = DEFAULT_MUTECT3_ALT_DOWNSAMPLE;
+    @Argument(fullName = PERMUTECT_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Permutect training datasets.")
+    public int maxPermutectAltCount = DEFAULT_PERMUTECT_ALT_DOWNSAMPLE;
 
     /**
-     * Number of non-artifact data per artifact datum in Mutect3 training
+     * Number of non-artifact data per artifact datum in Permutect training
      */
-    @Argument(fullName = MUTECT3_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Mutect3 training.")
-    public int mutect3NonArtifactRatio = DEFAULT_MUTECT3_NON_ARTIFACT_RATIO;
+    @Argument(fullName = PERMUTECT_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Permutect training.")
+    public int permutectNonArtifactRatio = DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO;
 
     /**
-     * Destination for Mutect3 data collection
+     * Destination for Permutect data collection (test data)
      */
-    @Argument(fullName = MUTECT3_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
-    public File mutect3Dataset;
+    @Argument(fullName = PERMUTECT_TEST_DATASET_LONG_NAME, optional = true, doc="Destination for Permutect test data collection")
+    public File permutectTestDataset;
 
     /**
-     * VCF of known calls for a sample used for generating a Mutect3 training dataset.  Unfiltered variants (PASS or empty FILTER field)
+     * Destination for Permutect data collection (training data)
+     */
+    @Argument(fullName = PERMUTECT_TRAINING_DATASET_LONG_NAME, optional = true, doc="Destination for Permutect training data collection")
+    public File permutectTrainingDataset;
+
+    @Advanced
+    @Argument(fullName = PERMUTECT_DATASET_MODE_LONG_NAME, optional = true, doc="The type of Permutect dataset.  Depends on sequencing technology.")
+    public PermutectDatasetMode permutectDatasetMode = PermutectDatasetMode.ILLUMINA;
+
+    public enum PermutectDatasetMode {
+        ILLUMINA(9 + FeaturizedReadSets.NUM_RANGED_FEATURES),
+        ULTIMA(9 + FeaturizedReadSets.NUM_RANGED_FEATURES);
+
+        final private int numReadFeatures;
+
+        PermutectDatasetMode(final int numReadFeatures) {
+            this.numReadFeatures = numReadFeatures;
+        }
+
+        public int getNumReadFeatures() {
+            return numReadFeatures;
+        }
+    }
+
+    /**
+     * VCF of known calls for a sample used for generating a Permutect training dataset.  Unfiltered variants (PASS or empty FILTER field)
      * contained in this VCF are considered good; other variants (i.e. filtered in this VCF or absent from it) are considered errors.
      * If this VCF is not given the dataset is generated with an weak-labelling strategy based on allele fractions.
      */
-    @Argument(fullName= MUTECT3_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Mutect3 training data", optional = true)
-    public FeatureInput<VariantContext> mutect3TrainingTruth;
+    @Argument(fullName= PERMUTECT_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Permutect training data", optional = true)
+    public FeatureInput<VariantContext> permutectTrainingTruth;
+
+    /**
+     * Like the above, but used when generating test data for making Permutect calls.  In this case, the test data is
+     * labeled with truth from the VCF.  Permutect makes filtered calls as usual and uses the labels to analyze the quality of its results.
+     */
+    @Argument(fullName= PERMUTECT_TEST_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Permutect test data", optional = true)
+    public FeatureInput<VariantContext> permutectTestTruth;
+
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
@@ -226,7 +266,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {
             return MathUtils.log10ToLog(DEFAULT_GVCF_LOG_10_ODDS);
         }
-        return MathUtils.log10ToLog(mitochondria && emissionLog10Odds == DEFAULT_EMISSION_LOG_10_ODDS ? DEFAULT_MITO_EMISSION_LOD : emissionLog10Odds);
+        return MathUtils.log10ToLog(emissionLog10Odds);
     }
 
     /**
@@ -239,7 +279,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {
             return MathUtils.log10ToLog(DEFAULT_GVCF_LOG_10_ODDS);
         }
-        return MathUtils.log10ToLog(mitochondria && initialLog10Odds == DEFAULT_INITIAL_LOG_10_ODDS ? DEFAULT_MITO_INITIAL_LOG_10_ODDS : initialLog10Odds);
+        return MathUtils.log10ToLog(initialLog10Odds);
     }
 
 

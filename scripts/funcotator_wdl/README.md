@@ -75,7 +75,7 @@ The follwing is an example of a JSON input file.  It will not work as-is but is 
 
   "Funcotator.compress": "false",
   "Funcotator.use_gnomad": "false",
-  "Funcotator.data_sources_tar_gz": "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz",
+  "Funcotator.data_sources_tar_gz": "gs://gcp-public-data--broad-references/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz",
 
   "Funcotator.variant_vcf_to_funcotate": "variants.vcf",
   "Funcotator.variant_vcf_to_funcotate_index": "variants.vcf.idx",
