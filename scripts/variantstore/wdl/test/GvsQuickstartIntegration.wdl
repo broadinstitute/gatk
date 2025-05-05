@@ -302,7 +302,7 @@ workflow GvsQuickstartIntegration {
         String extract_output_gcs_dir = "~{workspace_bucket}/output_vcfs/by_submission_id/~{submission_id}/beta"
         Boolean collect_variant_calling_metrics = true
 
-        call Utils.CreateDatasetForTest {
+        call Utils.CreateDatasetForTest as CreateBetaDataset {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 dataset_prefix = "quickit",
@@ -312,9 +312,9 @@ workflow GvsQuickstartIntegration {
 
         call JointVariantCalling.GvsJointVariantCalling as QuickstartBeta {
             input:
-                go = CreateDatasetForTest.done,
+                go = CreateBetaDataset.done,
                 call_set_identifier = git_branch_or_tag,
-                dataset_name = CreateDatasetForTest.dataset_name,
+                dataset_name = CreateBetaDataset.dataset_name,
                 project_id = project_id,
                 gatk_override = effective_gatk_override,
                 extract_output_file_base_name = "quickit",
