@@ -621,6 +621,18 @@ task AnnotateVCF {
 
         bash ~{monitoring_script} > monitoring.log &
 
+        set +o errexit
+        cat ~{custom_annotations_file} | grep -v '^#' > content_check_file.txt
+        set -o errexit
+
+        if [ ! -s content_check_file.txt ]; then
+            echo "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
+            echo "Creating empty ennotation jsons for subsequent tasks"
+            touch ~{gene_annotation_json_name}
+            touch ~{positions_annotation_json_name}
+            exit 0
+        fi
+
         if [[ "~{use_reference_disk}" == "true" ]]
         then
             # There's an issue with how the projects/broad-dsde-cromwell-dev/global/images/nirvana-3-18-1-references-2023-01-03
@@ -749,8 +761,11 @@ task PrepVtAnnotationJson {
         # Kick off the monitoring script
         bash ~{monitoring_script} > monitoring.log &
 
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
+        if [ ! -s ~{positions_annotation_json} ]; then
+            echo "Input annotations json file is empty. Skipping further prep"
+            touch ~{output_vt_json}
+            exit 0
+        fi
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
@@ -770,7 +785,6 @@ task PrepVtAnnotationJson {
     }
 
     output {
-        File vat_vt_json="~{output_vt_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
@@ -796,8 +810,11 @@ task PrepGenesAnnotationJson {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
+        if [ ! -s ~{genes_annotation_json} ]; then
+            echo "Input annotations json file is empty. Skipping further prep"
+            touch ~{output_genes_json}
+            exit 0
+        fi
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_genes_bqloadjson_from_annotations.py \
@@ -817,7 +834,6 @@ task PrepGenesAnnotationJson {
     }
 
     output {
-        File vat_genes_json="~{output_genes_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
