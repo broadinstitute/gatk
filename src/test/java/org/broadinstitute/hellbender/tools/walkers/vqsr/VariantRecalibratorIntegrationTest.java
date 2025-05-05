@@ -435,6 +435,44 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(Files.size(IOUtils.fileToPath(unrunRscript)) > 0, "Rscript file was empty.");
     }
 
+    @Test
+    public void testInGatkLiteDocker() throws IOException {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            final String inputFile = getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
+            final File unrunRscript = createTempFile("rscriptOutput", ".R");
+            final String args = StringUtils.join(variantRecalibratorSamplingParamsWithDupes, " ");
+
+            final IntegrationTestSpec spec = new IntegrationTestSpec(
+                    args +
+                            " --dont-run-rscript " +
+                            " --rscript-file " + unrunRscript,
+                    Arrays.asList(
+                            modelReportRecal,
+                            modelReportTranches));
+
+            try {
+                spec.executeTest("testVariantRecalibratorRscriptOutput"+  inputFile, this);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Using rscript-file file requires R, which is not available in the GATK Lite Docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+    }
+
 
     @Test(dependsOnMethods = {"testVariantRecalibratorSampling"})
     public void testVariantRecalibratorModelInput() throws IOException {

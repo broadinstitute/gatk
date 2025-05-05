@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -32,6 +33,43 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
                 , Arrays.asList(getExpectedFile(name)));
 
         spec.executeTest(name, this);
+    }
+
+    @Test
+    public void testInGatkLiteDocker() throws IOException {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            String name = "testAFQCIntegration";
+
+            IntegrationTestSpec spec = new IntegrationTestSpec(
+                    " -R " + b37Reference +
+                            " --eval " + evalVcf +
+                            " --comp " + comparisonVcf +
+                            " -eval:thousand_genomes " + comparisonVcf +
+                            " -L " + comparisonVcf +
+                            " -O %s"
+                    , Arrays.asList(getExpectedFile(name)));
+
+            try {
+                spec.executeTest(name, this);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Tools requiring R cannot be run in the Gatk Lite docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
     }
 
 }

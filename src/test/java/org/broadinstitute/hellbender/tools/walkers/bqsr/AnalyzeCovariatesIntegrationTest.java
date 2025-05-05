@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -138,6 +139,36 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
             result.add(new Object[] { true, true, false, false, true });
         }
         return result.iterator();
+    }
+
+    @Test
+    public void testInGatkLiteDocker() throws IOException {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            final List<String> empty = Collections.emptyList();
+            final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(true,true,
+                    false,true,false),empty);
+
+            try {
+                spec.executeTest("testInOutAbsencePresence", this);
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Generating a PDF file requires R, which is not available in the GATK Lite Docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
     }
 
     /**

@@ -83,6 +83,44 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
+    @Test(groups = "spark")
+    public void testInGatkLiteDocker() throws IOException {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            //Note we compare to non-spark outputs
+            final File unsortedBam = new File(TEST_DATA_DIR, "first5000a.bam");
+            final File outfile = GATKBaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
+            final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
+            ArgumentsBuilder args = new ArgumentsBuilder();
+            args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+            args.addRaw(unsortedBam.getCanonicalPath());
+            args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+            args.addRaw(outfile.getCanonicalPath());
+            args.addRaw("--chart");
+            args.addRaw(pdf.getCanonicalPath());
+            
+            try {
+                this.runCommandLine(args.getArgsArray());
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Generating a chart file requires R, which is not available in the GATK Lite Docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+    }
+
     //Disabled due to https://github.com/broadinstitute/gatk/issues/1540
     @Test(enabled=false, groups="spark")
     public void test_ADAM() throws IOException {

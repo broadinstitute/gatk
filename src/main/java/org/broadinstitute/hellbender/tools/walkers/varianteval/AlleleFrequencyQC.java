@@ -50,7 +50,7 @@ public class AlleleFrequencyQC extends VariantEval {
 
     @Override
     public void onTraversalStart() {
-        RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("This tool requires R, which is not available in the GATK Lite Docker image."));
+        RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
         variantEvalArgs.noStandardModules = true;
         variantEvalArgs.modulesToUse = Collections.singletonList("VariantAFEvaluator");
         variantEvalArgs.keepSitesWithAC0 = true;

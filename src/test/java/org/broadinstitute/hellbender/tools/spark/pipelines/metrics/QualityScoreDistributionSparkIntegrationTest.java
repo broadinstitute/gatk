@@ -124,6 +124,51 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
+    @Test(groups = "spark")
+    public void testInGatkLiteDocker() throws IOException {
+        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
+
+        try {
+            System.setProperty("IN_GATKLITE_DOCKER", "true");
+
+            final File unsortedBam = new File(TEST_DATA_DIR, "first5000a.bam");
+
+            //Note we compare to non-spark outputs
+            final File outfile = GATKBaseTest.createTempFile("test", ".metrics");
+            final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
+
+            ArgumentsBuilder args = new ArgumentsBuilder();
+            args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+            args.addRaw(unsortedBam.getCanonicalPath());
+            args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+            args.addRaw(outfile.getCanonicalPath());
+            args.addRaw("--" + "chart");
+            args.addRaw(pdf.getCanonicalPath());
+            args.addRaw("--" + "pfReadsOnly");
+            args.addRaw(false);
+            args.addRaw("--" + "alignedReadsOnly");
+            args.addRaw(false);
+
+            try {
+                this.runCommandLine(args.getArgsArray());
+                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
+            }
+            catch(final RuntimeException e) {
+                Assert.assertTrue(e.getMessage().contains("Generating a chart file requires R, which is not available in the GATK Lite Docker image.")); 
+            }
+
+        }
+        finally {
+            if(gatkLiteDockerProperty != null) {
+                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
+            }
+            else{
+                System.clearProperty("IN_GATKLITE_DOCKER");
+            } 
+        }
+
+    }
+
     @Test
     public void testGetRScriptResource() {
         // Make sure the RScript resource can be resolved
