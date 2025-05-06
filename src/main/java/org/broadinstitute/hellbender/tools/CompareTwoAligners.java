@@ -31,7 +31,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
-import org.broadinstitute.hellbender.utils.CachedOverlapDetector;
+import org.broadinstitute.hellbender.tools.reprocessing.TemplateReadCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -87,15 +87,17 @@ public class CompareTwoAligners extends CommandLineProgram {
     @Argument(doc = "Require exact alignment position match for binned concordance.")
     public boolean requireExactAlignmentMatch = false;
 
+    @Argument(doc= "Minimum mapping quality to consider a read as mapped.")
+    public int minMappingQuality = 0;
+
     @Argument(
             doc = "Output directory to write comparison results to.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     @WorkflowOutput
-    private File outputDir = null;
+    public File outputDir = null;
 
-    // Typically in a GATK or Picard tool you have a logger, e.g.:
     private static final Logger logger = LogManager.getLogger();
 
     private static final ProgressLogger progressLogger = new ProgressLogger(logger, 1_000_000, "Processed", "records");
@@ -120,85 +122,6 @@ public class CompareTwoAligners extends CommandLineProgram {
     @ArgumentCollection
     final ReferenceInputArgumentCollection reference = new RequiredReferenceInputArgumentCollection();
 
-    // This class is used to store and read in a set of records with the same query name from the BAM file, i.e.
-    // reads that come from the same template
-    private static class TemplateReadCollection {
-        private final String queryName;
-        private final List<SAMRecord> records;
-        private final SAMRecord firstInPairRecord;
-        private final SAMRecord secondInPairRecord;
-
-        /**
-         * Note that this constructor changes the state of the iterator passed to it. Should only be used within this class.
-         * @param iterator PeekableIterator of SAMRecords
-         */
-        public TemplateReadCollection(final PeekableIterator<SAMRecord> iterator) {
-            if (!iterator.hasNext()) {
-                // there must be more records in this iterator, throw exception
-                throw new IllegalArgumentException("No more records in the iterator");
-            }
-
-            final SAMRecord firstRecord = iterator.next();
-            this.queryName = firstRecord.getReadName();
-            this.records = new ArrayList<>();
-            this.records.add(firstRecord);
-            progressLogger.record(firstRecord);
-            while (iterator.hasNext()) {
-                final SAMRecord record = iterator.peek();
-                if (record.getReadName().equals(queryName)) {
-                    records.add(iterator.next());
-                    progressLogger.record(record);
-                } else {
-                    break;
-                }
-            }
-
-            SAMRecord localFirstInPairRecord = null;
-            SAMRecord localSecondInPairRecord = null;
-
-            for (final SAMRecord record: records) {
-                if (record.isSecondaryOrSupplementary()) {
-                    continue;
-                }
-
-                if (record.getFirstOfPairFlag()) {
-                    if (localFirstInPairRecord != null) {
-                        throw new IllegalStateException("Multiple first in pair records found for query name: " + queryName);
-                    }
-                    localFirstInPairRecord = record;
-                } else if (record.getSecondOfPairFlag()) {
-                    if (localSecondInPairRecord != null) {
-                        throw new IllegalStateException("Multiple second in pair records found for query name: " + queryName);
-                    }
-                    localSecondInPairRecord = record;
-                }
-            }
-
-            if (localFirstInPairRecord == null || localSecondInPairRecord == null) {
-                throw new IllegalStateException("Missing first or second in pair record for query name: " + queryName);
-            }
-            this.firstInPairRecord = localFirstInPairRecord;
-            this.secondInPairRecord = localSecondInPairRecord;
-        }
-
-        // Getters
-        public String getQueryName() {
-            return queryName;
-        }
-
-        public List<SAMRecord> getRecords() {
-            return records;
-        }
-
-        public SAMRecord getFirstInPairRecord() {
-            return firstInPairRecord;
-        }
-
-        public SAMRecord getSecondInPairRecord() {
-            return secondInPairRecord;
-        }
-    }
-
     private IntervalPair getIntervalPair(final SAMRecord firstRecord, final SAMRecord secondRecord) {
         SimpleInterval interval1;
         SimpleInterval interval2;
@@ -210,13 +133,13 @@ public class CompareTwoAligners extends CommandLineProgram {
             }
         }
 
-        if (firstRecord.getReadUnmappedFlag()) {
+        if (firstRecord.getReadUnmappedFlag() || firstRecord.getMappingQuality() < minMappingQuality) {
             // If either read is unmapped, skip this pair
             interval1 = null;
         } else {
             interval1 = searchableIntervalCollectionBinnedConcordance.getBinForPosition(firstRecord.getContig(), firstRecord.getStart());
         }
-        if (secondRecord.getReadUnmappedFlag()) {
+        if (secondRecord.getReadUnmappedFlag() || secondRecord.getMappingQuality() < minMappingQuality) {
             // If either read is unmapped, skip this pair
             interval2 = null;
         } else {
@@ -226,7 +149,7 @@ public class CompareTwoAligners extends CommandLineProgram {
         return new IntervalPair(interval1, interval2);
     }
 
-private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord secondRecord) {
+    private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord secondRecord) {
         // Check if the alignment start positions are the same
         if (!firstRecord.getContig().equals(secondRecord.getContig())) {
             return false;
@@ -332,26 +255,26 @@ private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord sec
             final Multiset<SimpleInterval> truePositiveCountA,
             final Multiset<SimpleInterval> totalCountB,
             final Multiset<SimpleInterval> truePositiveCountB,
-            final EquallySpacedSearchableIntervalCollection binProvider
+            final EquallySpacedSearchableIntervalCollection binProvider,
+            final int minMappingQuality
     ) {
         // Update for the first BAM
-        if (!readA.getReadUnmappedFlag()) {
+        if (!readA.getReadUnmappedFlag() && readA.getMappingQuality() >= minMappingQuality) {
             final SimpleInterval bin = binProvider.getBinForPosition(readA.getContig(), readA.getStart());
             totalCountA.add(bin);
-
             // If second read is mapped with the same alignment, count it as a true positive
-            if (!readB.getReadUnmappedFlag() && isSameAlignment(readA, readB)) {
+            if (!readB.getReadUnmappedFlag() && readB.getMappingQuality() >= minMappingQuality && isSameAlignment(readA, readB)) {
                 truePositiveCountA.add(bin);
             }
         }
 
         // Update for the second BAM
-        if (!readB.getReadUnmappedFlag()) {
+        if (!readB.getReadUnmappedFlag() && readB.getMappingQuality() >= minMappingQuality) {
             final SimpleInterval bin = binProvider.getBinForPosition(readB.getContig(), readB.getStart());
             totalCountB.add(bin);
 
             // If first read is unmapped but same alignment, count it as a true positive
-            if (!readA.getReadUnmappedFlag() && isSameAlignment(readA, readB)) {
+            if (!readA.getReadUnmappedFlag() && readA.getMappingQuality() >= minMappingQuality &&isSameAlignment(readA, readB)) {
                 truePositiveCountB.add(bin);
             }
         }
@@ -407,8 +330,8 @@ private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord sec
             intervalMultisetTruePositiveCountSecondBam = HashMultiset.create(searchableIntervalCollectionSimpleConcordance.getBins().size());
             // Read in set of records with matching query names, i.e. keep reading in records until the query names changes
             while (firstPeekableIterator.hasNext() && secondPeekableIterator.hasNext()) {
-                final TemplateReadCollection firstTemplateReads = new TemplateReadCollection(firstPeekableIterator);
-                final TemplateReadCollection secondTemplateReads = new TemplateReadCollection(secondPeekableIterator);
+                final TemplateReadCollection firstTemplateReads = new TemplateReadCollection(firstPeekableIterator, progressLogger);
+                final TemplateReadCollection secondTemplateReads = new TemplateReadCollection(secondPeekableIterator, progressLogger);
 
                 // Query names must match
                 if (!firstTemplateReads.getQueryName().equals(secondTemplateReads.getQueryName())) {
@@ -420,7 +343,6 @@ private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord sec
                 final IntervalPair secondInPairResult = getIntervalPair(firstTemplateReads.getSecondInPairRecord(), secondTemplateReads.getSecondInPairRecord());
                 intervalPairCounts.put(secondInPairResult, intervalPairCounts.getOrDefault(secondInPairResult, 0) + 1);
 
-
                 // Update interval counts for both BAMs (first/second in pair)
                 updateIntervalCounts(
                         firstTemplateReads.getFirstInPairRecord(),
@@ -429,7 +351,8 @@ private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord sec
                         intervalMultisetTruePositiveCountFirstBam,
                         intervalMultisetTotalCountSecondBam,
                         intervalMultisetTruePositiveCountSecondBam,
-                        searchableIntervalCollectionSimpleConcordance
+                        searchableIntervalCollectionSimpleConcordance,
+                        minMappingQuality
                 );
                 updateIntervalCounts(
                         firstTemplateReads.getSecondInPairRecord(),
@@ -438,7 +361,8 @@ private boolean isSameAlignment(final SAMRecord firstRecord, final SAMRecord sec
                         intervalMultisetTruePositiveCountFirstBam,
                         intervalMultisetTotalCountSecondBam,
                         intervalMultisetTruePositiveCountSecondBam,
-                        searchableIntervalCollectionSimpleConcordance
+                        searchableIntervalCollectionSimpleConcordance,
+                        minMappingQuality
                 );
 
             }
