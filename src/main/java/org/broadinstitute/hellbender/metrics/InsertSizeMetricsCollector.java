@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Collects InsertSizeMetrics on the specified accumulationLevels
@@ -48,6 +49,11 @@ public final class InsertSizeMetricsCollector
         Utils.nonNull(samHeader);
 
         this.inputArgs = inputArgs;
+
+        if(inputArgs.producePlot) {
+            RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("Generating a plot requires Python, which is not available in the Gatk Lite docker image."));
+        }
+
         setup(inputArgs.metricAccumulationLevel.accumulationLevels, samHeader.getReadGroups());
     }
 

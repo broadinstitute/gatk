@@ -141,10 +141,16 @@ public final class RScriptExecutor extends ScriptExecutor {
      * @param errorMessage Optional error message to include in the exception.
      */
     public static void checkIfRunningInGatkLiteDocker(Optional<String> errorMessage) {
-        final boolean inGatkLiteDocker = Boolean.valueOf(System.getProperty("IN_GATKLITE_DOCKER", "false")).booleanValue();
+        final boolean inGatkLiteDocker = Boolean.parseBoolean(
+            System.getenv("IN_GATKLITE_DOCKER") != null 
+                ? System.getenv("IN_GATKLITE_DOCKER") 
+                : System.getProperty("IN_GATKLITE_DOCKER", "false")
+        );
+
         if (inGatkLiteDocker) {
-            String message = errorMessage.orElse("Tools requiring R cannot be run in the Gatk Lite docker image.");
-            throw new RuntimeException(message);
+            throw new RuntimeException(
+                errorMessage.orElse("Tools requiring R cannot be run in the Gatk Lite docker image.")
+            );
         }
     }
 }
