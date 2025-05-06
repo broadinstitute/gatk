@@ -472,11 +472,22 @@ public final class AlleleSubsettingUtils {
         // create the index mapping, using the <NON-REF> allele whenever such a mapping doesn't exist
         for ( int i = 1; i < targetAlleles.size(); i++ ) {
             // if there's more than 1 spanning deletion (*) allele then we need to use the best one
-            if (targetAlleles.get(i) == Allele.SPAN_DEL && !doSomaticMerge && g.hasPL()) {
+            if (targetAlleles.get(i) == Allele.SPAN_DEL) {
                 final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
                 if (occurrences > 1) {
-                    final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
-                    indexMapping[i] = (indexOfBestDel == -1 ? indexOfNonRef : indexOfBestDel);
+                    // If we have PLs and it's not a somatic merge, use the best spanning deletion based on PLs
+                    if (!doSomaticMerge && g.hasPL()) {
+                        final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
+                        indexMapping[i] = (indexOfBestDel == -1 ? indexOfNonRef : indexOfBestDel);
+                    } else {
+                        // Otherwise, just use the first spanning deletion we find
+                        for (int j = 0; j < remappedAlleles.size(); j++) {
+                            if (remappedAlleles.get(j) == Allele.SPAN_DEL) {
+                                indexMapping[i] = j;
+                                break;
+                            }
+                        }
+                    }
                     continue;
                 }
             }

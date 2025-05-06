@@ -671,6 +671,52 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testGenotypingForSomaticGVCFs_withSQ() throws IOException {
+        // This test verifies that GenotypeGVCFs can handle somatic data with SQ (Somatic Quality) field
+        // instead of TLOD (Tumor LOD) field when the input-is-somatic flag is supplied
+
+        final File output = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(new File("test_somatic_with_sq.vcf"))
+                .addReference(new File(b37Reference))
+                .addOutput(output)
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args);
+
+        final List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
+
+        // Verify that genotypes are called correctly
+        for (final VariantContext vc : results) {
+            Assert.assertTrue(!vc.getAlleles().contains(Allele.NON_REF_ALLELE));
+            Assert.assertTrue(vc.getAlternateAlleles().size() >= 1);
+
+            for (final Genotype g : vc.getGenotypes()) {
+                Assert.assertTrue(g.isCalled());
+            }
+
+            // chrM:263 has SQ values - verify that they are correctly processed
+            if (vc.getStart() == 263) {
+                // Check that we can access SQ values
+                for (int i = 0; i < vc.getGenotypes().size(); i++) {
+                    double[] sampleSQs = VariantContextGetters.getAttributeAsDoubleArray(vc.getGenotype(i), "SQ", () -> null, 0.0);
+                    // Verify that SQ values are above the threshold (using the same threshold as for TLOD)
+                    for (int j = 0; j < vc.getNAlleles() - 1; j++) {
+                        Assert.assertTrue(sampleSQs[j] > TLOD_THRESHOLD);
+                    }
+                }
+            }
+        }
+
+        // Since we're using a new test file, we can't compare to an expected output file
+        // Instead, we'll verify specific properties of the output
+        Assert.assertEquals(results.size(), 1); // Should only have one variant
+        Assert.assertEquals(results.get(0).getContig(), "MT");
+        Assert.assertEquals(results.get(0).getStart(), 263);
+        Assert.assertEquals(results.get(0).getReference().getBaseString(), "A");
+        Assert.assertEquals(results.get(0).getAlternateAllele(0).getBaseString(), "G");
+    }
+
+    @Test
     public void testRawAndFinalizedAlleleSpecificAnnotationsThoroughly() {
         final File output = createTempFile("tmp", ".vcf");
         ArgumentsBuilder args =   new ArgumentsBuilder()

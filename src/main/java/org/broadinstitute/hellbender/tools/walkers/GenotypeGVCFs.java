@@ -152,6 +152,13 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     protected double tlodThreshold = 3.5;  //allow for some lower quality variants
 
     /**
+     * Only variants with somatic quality (SQ) exceeding this threshold will be written to the VCF, regardless of filter status.
+     * Increase argument value to reduce false positives in the callset.
+     */
+    @Argument(fullName="sq-threshold", doc = "SQ threshold to emit variant to VCF.")
+    protected double sqThreshold = 60.0;  //default to a higher threshold for SQ values
+
+    /**
      * Margin of error in allele fraction to consider a somatic variant homoplasmic, i.e. if there is less than a 0.1% reference allele fraction, those reads are likely errors
      */
     @Argument(fullName=CombineGVCFs.ALLELE_FRACTION_DELTA_LONG_NAME, doc = "Margin of error in allele fraction to consider a somatic variant homoplasmic")
@@ -321,7 +328,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final boolean inForceOutputIntervals = forceOutputIntervalsPresent && forceOutputIntervals.overlapsAny(loc);
         final boolean forceOutput = includeNonVariants || inForceOutputIntervals;
-        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance, forceOutput);
+        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, sqThreshold, afTolerance, forceOutput);
 
         if (regenotypedVC != null) {
             if ((forceOutput || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC))) {
