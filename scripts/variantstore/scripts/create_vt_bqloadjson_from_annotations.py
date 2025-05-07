@@ -65,7 +65,9 @@ vat_nirvana_clinvar_dictionary = {
 vat_clinvar_review_status_dictionary = { # https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/
     "no classification for the individual variant": "none",
     "no classification provided": "none",
+    "no assertion provided": "none",        # NB - this was found in clinvar but NOT in the document linked above.
     "no assertion criteria provided": "none",
+    "criteria provided, conflicting interpretations": "one",    # NB - this was found in clinvar but NOT in the document linked above.
     "criteria provided, conflicting classifications": "one",
     "criteria provided, single submitter": "one",
     "criteria provided, multiple submitters, no conflicts": "two",
