@@ -34,13 +34,14 @@ STAGING_CLONE_DIR=${PROJECT}_staging_temp
 #################################################
 # Parsing arguments
 #################################################
-while getopts "e:sd:t:r" option; do
+while getopts "e:sd:t:rm" option; do
 	case "$option" in
 		e) GITHUB_TAG="$OPTARG" ;;
 		s) IS_HASH=true ;;
 		d) STAGING_DIR="$OPTARG" ;;
 		t) DOCKER_IMAGE_TAG="$OPTARG" ;;
 		r) RELEASE=true ;;
+    m) LITE=true;;
 	esac
 done
 
@@ -53,6 +54,7 @@ and <STAGING_DIRECTORY> is a directory in which to clone the repo and stage the 
 Optional arguments:  \n \
 -s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  \n \
 -r \t Build this image with the release flag set to true, causing the version number to not end with SNAPSHOT \n \
+-m \t Build the lite image (which does not contain the conda environment). \n \
 -t <IMAGE_TAG>\t  The tag to assign image once it is finished constructing.  NOTE: currently this MUST be on either GCR or the Google Artifact Registry. \n" "$MESSAGE"
 }
 
@@ -104,15 +106,27 @@ GIT_HASH_FOR_TAG=$(git describe --tags --long)
 
 ## generate the tag if it wasn't explicitly specified
 if [ -z "$DOCKER_IMAGE_TAG" ]; then
-  DOCKER_IMAGE_TAG=${GCR_REPO}:$(whoami)-${GITHUB_TAG}-${GIT_HASH_FOR_TAG}
+  if [ -n "$LITE" ]; then
+    DOCKER_IMAGE_TAG=${GCR_REPO}:lite-$(whoami)-${GITHUB_TAG}-${GIT_HASH_FOR_TAG}
+  else
+    DOCKER_IMAGE_TAG=${GCR_REPO}:$(whoami)-${GITHUB_TAG}-${GIT_HASH_FOR_TAG}
+  fi
 fi
 
 echo "steps:" >> cloudbuild.yaml
 echo "- name: 'gcr.io/cloud-builders/docker'" >> cloudbuild.yaml
 if [ -n "$RELEASE" ]; then
-  echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '--build-arg', 'RELEASE=true', '.' ]" >> cloudbuild.yaml
+  if [ -n "$LITE" ]; then
+    echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '--target', 'gatk-lite', '--build-arg', 'RELEASE=true', '.' ]" >> cloudbuild.yaml
+  else
+    echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '--build-arg', 'RELEASE=true', '.' ]" >> cloudbuild.yaml
+  fi
 else
-  echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '.' ]" >> cloudbuild.yaml
+  if [ -n "$LITE" ]; then
+    echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '--target', 'gatk-lite', '.' ]" >> cloudbuild.yaml
+  else
+    echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '.' ]" >> cloudbuild.yaml
+  fi
 fi
 echo "- name: 'gcr.io/cloud-builders/docker'" >> cloudbuild.yaml
 echo "  args: [ 'push', '${DOCKER_IMAGE_TAG}' ]" >> cloudbuild.yaml

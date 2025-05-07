@@ -29,7 +29,7 @@ RUN ls . && \
     unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts && \
     chmod -R a+rw /gatk/unzippedJar
 
-FROM ${BASE_DOCKER} as gatk-lite
+FROM ${BASE_DOCKER} AS gatk-lite
 
 RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt update && \
@@ -83,7 +83,7 @@ RUN cp -r /root/run_unit_tests.sh /gatk && \
     cp -r /root/gatk.jar /gatk
 ENV CLASSPATH=/gatk/gatk.jar:$CLASSPATH IN_GATKLITE_DOCKER=true PATH=/gatk:$PATH
 
-FROM gatk-lite as gatk
+FROM gatk-lite AS gatk
 
 ENV PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH IN_GATKLITE_DOCKER=false
 
