@@ -85,7 +85,7 @@ ENV CLASSPATH=/gatk/gatk.jar:$CLASSPATH IN_GATKLITE_DOCKER=true PATH=/gatk:$PATH
 
 FROM gatk-lite as gatk
 
-ENV PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
+ENV PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH IN_GATKLITE_DOCKER=false
 
 # Start GATK Python environment
 
