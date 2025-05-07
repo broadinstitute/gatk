@@ -94,12 +94,14 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
 
     def test_clinvar_ordering(self):
         clinvar_swap = [{ 'id': 'RCV01',
+                          "reviewStatus": "practice guideline",
                           'significance': [ 'sleater', 'kinney', 'guitar', 'solo', 'pathogenic'],
                           'refAllele': 'TCT',
                           'altAllele': '-',
                           'phenotypes': ['brunette'],
                       'lastUpdatedDate': '2020-03-01'},
                         { 'id': 'RCV02',
+                          "reviewStatus": "practice guideline",
                           'significance': [ 'pathogenic', 'LikELy paTHoGenIc', 'conflicting data from submitters'],
                           'refAllele': 'TCT',
                           'altAllele': '-',
@@ -122,21 +124,25 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
 
     def test_clinvar_inclusion(self):
         clinvar_swap = [{ 'id': 'RCV01',
+                          "reviewStatus": "practice guideline",
                           'significance': [],
                           'refAllele': 'TCT',
                           'altAllele': '-',
                           'phenotypes': [],
                           'lastUpdatedDate': '2020-03-01'},
                         { 'id': 'nope',
+                          "reviewStatus": "practice guideline",
                           'significance': [ 'carrie'],
                           'refAllele': 'TCT',
                           'altAllele': '-',
                           'phenotypes': ['did this go through?'],
                           'lastUpdatedDate': '2020-03-02'},
                         { 'id': 'RCV02',
+                          "reviewStatus": "practice guideline",
                           'refAllele': 'T',
                           'altAllele': '-'},
                         { 'id': 'RCV03',
+                          "reviewStatus": "practice guideline",
                           'refAllele': 'TCT',
                           'altAllele': 'G'}]
         clinvarInclusionNirvanaOutput = copy.deepcopy(cysticFibrosisNirvanaOutput)
