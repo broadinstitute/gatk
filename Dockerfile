@@ -61,7 +61,7 @@ RUN java -jar gatk.jar -h && \
 WORKDIR /gatk
 
 # Create a simple unit test runner
-ENV CI true
+ENV CI=true
 # "export GATK_DOCKER_CONTAINER=true" is used to allow tests to determine when the're running on the docker
 # (some negative python tests use this to throw skip exceptions). See GATKBaseTest::isGATKDockerContainer.
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
