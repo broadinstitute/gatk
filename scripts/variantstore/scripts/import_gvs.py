@@ -22,7 +22,8 @@ import import_gvs_ploidy
            partitions_per_sample=numeric,
            intermediate_resume_point=int,
            skip_final_merge=bool,
-           ref_block_max_length=int
+           ref_block_max_length=int,
+           skip_scoring=bool
            )
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
@@ -38,7 +39,8 @@ def import_gvs(refs: 'List[List[str]]',
                partitions_per_sample=0.35,
                intermediate_resume_point=0,
                skip_final_merge=False,
-               ref_block_max_length: 'int' = 1000
+               ref_block_max_length: 'int' = 1000,
+               skip_scoring=False
                ):
     """Import a collection of Avro files exported from GVS.
 
@@ -131,6 +133,8 @@ def import_gvs(refs: 'List[List[str]]',
         Skip final merge if true.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
+    skip_scoring : :class:`bool`
+        Skip scoring if true (scoring would be unnecessary if this VDS is going to be merged and rescored later).
 
     Script workflow:
     ---------------
@@ -332,55 +336,56 @@ def import_gvs(refs: 'List[List[str]]',
                                            use_genome_default_intervals=True)
             combiner.run()
 
-        combined = hl.vds.read_vds(merge_tmp, intervals=target_final_intervals)
+        if not skip_scoring:
+            combined = hl.vds.read_vds(merge_tmp, intervals=target_final_intervals)
 
-        rd = combined.reference_data
-        vd = combined.variant_data
+            rd = combined.reference_data
+            vd = combined.variant_data
 
-        # read site and vets data with same intervals for efficient joins
-        site = hl.read_table(site_path, _intervals=target_final_intervals)
-        vets_filter = hl.read_table(vets_filter_path, _intervals=target_final_intervals)
+            # read site and vets data with same intervals for efficient joins
+            site = hl.read_table(site_path, _intervals=target_final_intervals)
+            vets_filter = hl.read_table(vets_filter_path, _intervals=target_final_intervals)
 
-        vd = vd.annotate_rows(filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr)))
+            vd = vd.annotate_rows(filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr)))
 
-        # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
-        vd = vd.annotate_rows(as_vets = hl.dict(vets_filter.index(vd.locus, all_matches=True)
-                                                .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
+            # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
+            vd = vd.annotate_rows(as_vets = hl.dict(vets_filter.index(vd.locus, all_matches=True)
+                                                    .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
-        vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                 truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
-        is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
-        vd = vd.annotate_rows(
-            allele_NO=vd.alleles[1:].map(
-                lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'N', False)),
-            allele_YES=vd.alleles[1:].map(
-                lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'Y', True)),
-            allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                   f=lambda is_snp, alt:
-                                   hl.coalesce(vd.as_vets.get(alt).calibration_sensitivity <=
-                                               hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
-                                               True))
-        )
-        vd = vd.annotate_rows(as_vets=vd.as_vets.map_values(lambda value: value.drop('yng_status')))
+            vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
+            vd = vd.annotate_rows(
+                allele_NO=vd.alleles[1:].map(
+                    lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'N', False)),
+                allele_YES=vd.alleles[1:].map(
+                    lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == 'Y', True)),
+                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
+                                       f=lambda is_snp, alt:
+                                       hl.coalesce(vd.as_vets.get(alt).calibration_sensitivity <=
+                                                   hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
+                                                   True))
+            )
+            vd = vd.annotate_rows(as_vets=vd.as_vets.map_values(lambda value: value.drop('yng_status')))
 
-        lgt = vd.LGT
-        la = vd.LA
-        allele_NO = vd.allele_NO
-        allele_YES = vd.allele_YES
-        allele_OK = vd.allele_OK
-        ft = (hl.range(lgt.ploidy)
-              .map(lambda idx: la[lgt[idx]])
-              .filter(lambda x: x != 0)
-              .fold(lambda acc, called_idx: hl.struct(
-            any_no=acc.any_no | allele_NO[called_idx - 1],
-            any_yes=acc.any_yes | allele_YES[called_idx - 1],
-            all_ok=acc.all_ok & allele_OK[called_idx - 1],
-        ), hl.struct(any_no=False, any_yes=False, all_ok=True)))
+            lgt = vd.LGT
+            la = vd.LA
+            allele_NO = vd.allele_NO
+            allele_YES = vd.allele_YES
+            allele_OK = vd.allele_OK
+            ft = (hl.range(lgt.ploidy)
+                  .map(lambda idx: la[lgt[idx]])
+                  .filter(lambda x: x != 0)
+                  .fold(lambda acc, called_idx: hl.struct(
+                any_no=acc.any_no | allele_NO[called_idx - 1],
+                any_yes=acc.any_yes | allele_YES[called_idx - 1],
+                all_ok=acc.all_ok & allele_OK[called_idx - 1],
+            ), hl.struct(any_no=False, any_yes=False, all_ok=True)))
 
-        vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ft.all_ok))
+            vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ft.all_ok))
 
-        vd = vd.drop('allele_NO', 'allele_YES', 'allele_OK')
-        hl.vds.VariantDataset(
-            reference_data=rd,
-            variant_data=vd,
-        ).write(final_path, overwrite=True)
+            vd = vd.drop('allele_NO', 'allele_YES', 'allele_OK')
+            hl.vds.VariantDataset(
+                reference_data=rd,
+                variant_data=vd,
+            ).write(final_path, overwrite=True)

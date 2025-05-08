@@ -8,6 +8,7 @@ workflow GvsCreateVDS {
     input {
         String avro_path
         String vds_destination_path
+        Boolean skip_scoring
 
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
@@ -57,6 +58,9 @@ workflow GvsCreateVDS {
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
+        }
+        skip_scoring: {
+            help: "Whether to score the output VDS or not. Scoring would be unnecessary here if the VDS is destined to be merged and rescored later."
         }
     }
 
@@ -128,6 +132,7 @@ workflow GvsCreateVDS {
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
+            skip_scoring = skip_scoring,
     }
 
     call ValidateVDS.GvsValidateVDS as ValidateVds {
@@ -163,6 +168,7 @@ task CreateVds {
         File gvs_import_script
         File gvs_import_ploidy_script
         File run_in_hail_cluster_script
+        Boolean skip_scoring
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
@@ -231,7 +237,8 @@ task CreateVds {
         {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
-            "avro-path": "~{avro_path}"
+            "avro-path": "~{avro_path}",
+            "skip-scoring": "~{skip_scoring}"
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
         }
         FIN
