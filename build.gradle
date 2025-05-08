@@ -57,7 +57,7 @@ repositories {
     }
 
     maven {
-        url "https://oss.sonatype.org/content/repositories/comintelgkl-1065/"
+        url "https://oss.sonatype.org/content/repositories/comintelgkl-1066/"
     }
 
     mavenLocal()
