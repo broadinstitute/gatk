@@ -247,6 +247,9 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         updated_dates = [] # grab the most recent
         phenotypes = [] # ordered alphabetically
         clinvar_ids = [] # For easy validation downstream
+        variation_ids = []
+        clinvar_obj_star_statuses = []
+        review_statuses = []
         # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for.
         # We check by making sure the ref and alt are the same including any reverse complements.
         for clinvar_obj in clinvar_objs:
@@ -260,7 +263,6 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                 ## we need to do this with a tuple so that the reviewStatus lines up with the significance (since significance seems to be an array, while star is a single value)
 
                 if clinvar_obj_star_status == None:
-                    print("Couldn't find!")
                     raise ValueError(f"Error: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
                     # We will continue to include these in the VAT for now under the assumption that they are valid Clinvar entries w/o a reviewStatus.
                 if clinvar_obj_star_status != "none": # we only want to include the ones that are not terrible
@@ -268,6 +270,9 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                     significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
                     updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
                     phenotypes.extend(clinvar_obj.get("phenotypes"))
+                    variation_ids.append(clinvar_obj.get("variationId"))
+                    clinvar_obj_star_statuses.append(clinvar_obj_star_status)
+                    review_statuses.append(clinvar_obj.get("reviewStatus"))
 
         if len(clinvar_ids) > 0:
             ordered_significance_values = []
@@ -285,6 +290,9 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
             row["clinvar_last_updated"] = updated_dates[-1] # most recent date
             row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
+            row["variation_id"] = variation_ids # array??
+            row["clinvar_star_status"] = clinvar_obj_star_statuses # array??
+            row["clinvar_review_status"] = review_statuses # TBD.
 
     if variant_line.get("revel") != None:
         row["revel"] = variant_line.get("revel").get("score")

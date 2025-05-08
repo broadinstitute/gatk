@@ -402,6 +402,24 @@
    "mode": "Repeated"
  },
   {
+    "description": "Variation ID from ClinVar",
+    "name": "variation_id",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Number of Gold Stars",
+    "name": "clinvar_star_status",
+    "type": "String",
+    "mode": "Repeated"
+  },
+  {
+    "description": "Clinvar Review Status",
+    "name": "clinvar_review_status",
+    "type": "String",
+    "mode": "Repeated"
+  },
+  {
     "description": "gnomAD: 'Total' frequency",
     "name": "gnomad_all_af",
     "type": "Float",
