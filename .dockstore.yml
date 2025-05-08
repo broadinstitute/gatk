@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-1326-clinvar-rating
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -240,7 +241,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1457-vat-clinvar
+             - rc-vs-1326-clinvar-rating
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -250,6 +251,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1326-clinvar-rating
          tags:
              - /.*/
    - name: GvsValidateVat
@@ -343,8 +345,8 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1457-vat-clinvar
              - vs_1641_drop_sample_from_vds
+             - rc-vs-1326-clinvar-rating
          tags:
              - /.*/
    - name: GvsIngestTieout
