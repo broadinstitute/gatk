@@ -215,6 +215,7 @@ workflow GvsCreateFilterSet {
         snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
         indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
         indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
+        custom_contig_mapping = custom_contig_mapping,
         project_id = project_id,
         useVQSR = false
     }
@@ -254,6 +255,7 @@ workflow GvsCreateFilterSet {
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
       sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
       fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+      custom_contig_mapping = custom_contig_mapping,
       project_id = project_id
   }
 
@@ -392,6 +394,8 @@ task PopulateFilterSetSites {
 
     String project_id
 
+    File? custom_contig_mapping
+
     Int disk_size_gb = ceil(2 * (size(sites_only_variant_filtered_vcf, "GiB") +
                                  size(sites_only_variant_filtered_vcf_index, "GiB"))) + 200
     String gatk_docker
@@ -402,6 +406,8 @@ task PopulateFilterSetSites {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -415,7 +421,8 @@ task PopulateFilterSetSites {
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
       CreateSiteFilteringFiles \
-      --ref-version 38 \
+    --ref-version ~{ref_version}  \
+    ~{"--contig-mapping-file " + custom_contig_mapping} \
       --filter-set-name ~{filter_set_name} \
       -V ~{sites_only_variant_filtered_vcf} \
       -O ~{filter_set_name}.filter_sites_load.tsv
