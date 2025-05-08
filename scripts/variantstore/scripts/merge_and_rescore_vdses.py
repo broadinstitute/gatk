@@ -121,7 +121,6 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
         allele_YES=vd.alleles[1:].map(
             lambda allele: hl.coalesce(vd.as_vets.get(allele).yng_status == "Y", True)
         ),
-        allele_is_snp=is_snp,
         allele_OK=hl._zip_func(
             is_snp,
             vd.alleles[1:],
@@ -142,7 +141,6 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
     allele_NO = vd.allele_NO
     allele_YES = vd.allele_YES
     allele_OK = vd.allele_OK
-    allele_is_snp = vd.allele_is_snp
     ft = (
         hl.range(lgt.ploidy)
         .map(lambda idx: la[lgt[idx]])
@@ -151,33 +149,19 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
             lambda acc, called_idx: hl.struct(
                 any_no=acc.any_no | allele_NO[called_idx - 1],
                 any_yes=acc.any_yes | allele_YES[called_idx - 1],
-                any_snp=acc.any_snp | allele_is_snp[called_idx - 1],
-                any_indel=acc.any_indel | ~allele_is_snp[called_idx - 1],
-                any_snp_ok=acc.any_snp_ok
-                           | (allele_is_snp[called_idx - 1] & allele_OK[called_idx - 1]),
-                any_indel_ok=acc.any_indel_ok
-                             | (~allele_is_snp[called_idx - 1] & allele_OK[called_idx - 1]),
+                all_ok=acc.all_ok & allele_OK[called_idx - 1],
             ),
             hl.struct(
                 any_no=False,
                 any_yes=False,
-                any_snp=False,
-                any_indel=False,
-                any_snp_ok=False,
-                any_indel_ok=False,
+                all_ok=True,
             ),
         )
     )
 
-    vd = vd.annotate_entries(
-        FT=~ft.any_no
-           & (
-                   ft.any_yes
-                   | ((~ft.any_snp | ft.any_snp_ok) & (~ft.any_indel | ft.any_indel_ok))
-           )
-    )
+    vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ft.all_ok))
 
-    vd = vd.drop("allele_NO", "allele_YES", "allele_is_snp", "allele_OK")
+    vd = vd.drop("allele_NO", "allele_YES", "allele_OK")
     return vd
 
 
