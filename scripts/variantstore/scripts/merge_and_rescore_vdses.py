@@ -137,6 +137,9 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
         ),
         as_vets=vd.as_vets.map_values(lambda value: value.drop("yng_status")),
     )
+
+    vd = vd.annotate_entries(LGT=hl.parse_call(hl.or_missing((hl.is_missing(vd.GQ) | (vd.GQ != 0)), vd.LGT)))
+
     lgt = vd.LGT
     la = vd.LA
     allele_NO = vd.allele_NO
