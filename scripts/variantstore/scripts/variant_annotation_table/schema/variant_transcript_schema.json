@@ -408,15 +408,9 @@
    "mode": "Repeated"
  },
   {
-   "description": "Variation ID from clinvar",
-   "name": "variation_id",
-   "type": "String",
-   "mode": "Repeated"
-  },
-  {
-   "description": "Number of Gold Stars",
-   "name": "clinvar_star_status",
-   "type": "String",
+   "description": "ClinVar Number of Gold Stars",
+   "name": "clinvar_num_stars",
+   "type": "Integer",
    "mode": "Repeated"
   },
   {

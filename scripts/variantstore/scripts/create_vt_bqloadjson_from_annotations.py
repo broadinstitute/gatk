@@ -63,16 +63,16 @@ vat_nirvana_clinvar_dictionary = {
 }
 
 vat_clinvar_review_status_dictionary = { # https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/
-    "no classification for the individual variant": "none",
-    "no classification provided": "none",
-    "no assertion provided": "none",        # NB - this was found in clinvar but NOT in the document linked above.
-    "no assertion criteria provided": "none",
-    "criteria provided, conflicting interpretations": "one",    # NB - this was found in clinvar but NOT in the document linked above.
-    "criteria provided, conflicting classifications": "one",
-    "criteria provided, single submitter": "one",
-    "criteria provided, multiple submitters, no conflicts": "two",
-    "reviewed by expert panel": "three",
-    "practice guideline": "four"
+    "no classification for the individual variant": 0,
+    "no classification provided": 0,
+    "no assertion provided": 0,        # NB - this was found in clinvar but NOT in the document linked above.
+    "no assertion criteria provided": 0,
+    "criteria provided, conflicting interpretations": 1,    # NB - this was found in clinvar but NOT in the document linked above.
+    "criteria provided, conflicting classifications": 1,
+    "criteria provided, single submitter": 1,
+    "criteria provided, multiple submitters, no conflicts": 2,
+    "reviewed by expert panel": 3,
+    "practice guideline": 4
 }
 
 vat_nirvana_gnomad_dictionary = {
@@ -247,8 +247,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         updated_dates = [] # grab the most recent
         phenotypes = [] # ordered alphabetically
         clinvar_ids = [] # For easy validation downstream
-        variation_ids = []
-        clinvar_obj_star_statuses = []
+        clinvar_obj_num_stars = []
         review_statuses = []
         # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for.
         # We check by making sure the ref and alt are the same including any reverse complements.
@@ -257,21 +256,20 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             if (((clinvar_obj.get("refAllele") == var_ref) and (clinvar_obj.get("altAllele") == var_alt)) \
             or ((clinvar_obj.get("refAllele") == reverse_complement(variant_line["refAllele"])) and (clinvar_obj.get("altAllele") == reverse_complement(variant_line["altAllele"])))) \
             and (clinvar_obj.get("id")[:3] == "RCV"):
-                clinvar_obj_star_status = vat_clinvar_review_status_dictionary.get(clinvar_obj.get("reviewStatus")) ## for testing it might make sense to carry these values to BQ and drop them before we make the VAT
+                clinvar_num_stars = vat_clinvar_review_status_dictionary.get(clinvar_obj.get("reviewStatus")) ## for testing it might make sense to carry these values to BQ and drop them before we make the VAT
                 ## - NOTE GG - potentially out of date comment!
                 ## TODO add the ("variationId") and the ("reviewStatus")--note that the reviewStatus will need to maintain the ordering of the significance arrays
                 ## we need to do this with a tuple so that the reviewStatus lines up with the significance (since significance seems to be an array, while star is a single value)
 
-                if clinvar_obj_star_status == None:
+                if clinvar_obj_num_stars == None:
                     raise ValueError(f"Error: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
                     # We will continue to include these in the VAT for now under the assumption that they are valid Clinvar entries w/o a reviewStatus.
-                if clinvar_obj_star_status != "none": # we only want to include the ones that are not terrible
+                if clinvar_obj_num_stars != "none": # we only want to include the ones that are not terrible
                     clinvar_ids.append(clinvar_obj.get("id"))
                     significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
                     updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
                     phenotypes.extend(clinvar_obj.get("phenotypes"))
-                    variation_ids.append(clinvar_obj.get("variationId"))
-                    clinvar_obj_star_statuses.append(clinvar_obj_star_status)
+                    clinvar_obj_num_stars.append(clinvar_num_stars)
                     review_statuses.append(clinvar_obj.get("reviewStatus"))
 
         if len(clinvar_ids) > 0:
@@ -290,8 +288,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
             row["clinvar_last_updated"] = updated_dates[-1] # most recent date
             row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
-            row["variation_id"] = variation_ids # array??
-            row["clinvar_star_status"] = clinvar_obj_star_statuses # array??
+            row["clinvar_num_stars"] = clinvar_obj_num_stars # array??
             row["clinvar_review_status"] = review_statuses # TBD.
 
     if variant_line.get("revel") != None:

@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-# D
+# E
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -192,7 +192,7 @@ workflow GvsCreateVATfromVDS {
                 gatk_docker = effective_gatk_docker,
         }
 
-        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
+        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf.bgz")
 
         scatter(i in range(length(SplitIntervals.interval_files))) {
             String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -1040,7 +1040,6 @@ task BigQueryLoadJson {
             v.clinvar_classification,
             v.clinvar_last_updated,
             v.clinvar_phenotype,
-            v.variation_id,
             v.clinvar_star_status,
             v.clinvar_review_status
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
