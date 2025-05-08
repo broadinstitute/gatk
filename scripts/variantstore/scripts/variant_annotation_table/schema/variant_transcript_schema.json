@@ -336,49 +336,49 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_gain_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_gain_distance",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_loss_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_loss_distance",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_gain_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_gain_distance",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_loss_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_loss_distance",
     "type": "Integer",
     "mode": "Nullable"
@@ -407,6 +407,24 @@
    "type": "String",
    "mode": "Repeated"
  },
+  {
+   "description": "Variation ID from clinvar",
+   "name": "variation_id",
+   "type": "String",
+   "mode": "Repeated"
+  },
+  {
+   "description": "Number of Gold Stars",
+   "name": "clinvar_star_status",
+   "type": "String",
+   "mode": "Repeated"
+  },
+  {
+   "description": "Clinvar Review Status",
+   "name": "clinvar_review_status",
+   "type": "String",
+   "mode": "Repeated"
+  },
   {
     "description": "gnomAD: 'Total' frequency",
     "name": "gnomad_all_af",

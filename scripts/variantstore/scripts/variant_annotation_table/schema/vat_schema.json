@@ -336,49 +336,49 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_gain_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_gain_distance",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_loss_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_acceptor_loss_distance",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_gain_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_gain_distance",
     "type": "Integer",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_loss_score",
     "type": "Float",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Splice AI",
     "name": "splice_ai_donor_loss_distance",
     "type": "Integer",
     "mode": "Nullable"
