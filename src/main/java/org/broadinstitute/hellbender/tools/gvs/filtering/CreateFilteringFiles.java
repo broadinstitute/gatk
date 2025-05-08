@@ -67,6 +67,13 @@ public final class CreateFilteringFiles extends VariantWalker {
             optional = true)
     private Boolean useVQSR = null;
 
+    @Argument(
+            fullName = "contig-mapping-file",
+            doc = "Path to the contig mapping file",
+            optional = true
+    )
+    public String contigMappingFile = null;
+
     @Override
     public boolean requiresIntervals() {
         return false;
@@ -86,8 +93,17 @@ public final class CreateFilteringFiles extends VariantWalker {
 
         writer.setHeaderLine(HEADER);
 
-        // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
-        ChromosomeEnum.setRefVersion(refVersion);
+        if (refVersion.equals("CUSTOM")) {
+            // Look for the contig mapping files
+            if (contigMappingFile == null) {
+                throw new IllegalArgumentException("Contig mapping file must be provided when using custom references");
+            }
+
+            ChromosomeEnum.setCustomContigMap(SchemaUtils.loadContigMappingFile(contigMappingFile));
+        } else {
+            // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
+            ChromosomeEnum.setRefVersion(refVersion);
+        }
     }
 
     @Override
