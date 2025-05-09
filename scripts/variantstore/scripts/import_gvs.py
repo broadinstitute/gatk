@@ -181,7 +181,7 @@ def import_gvs(refs: 'List[List[str]]',
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
     vets_filter_path = os.path.join(tmp_dir, 'vets_filters.ht')
 
-    if intermediate_resume_point > 0:
+    if intermediate_resume_point > 0 or skip_scoring:
         info('import_gvs: skipping site and VETS filter import')
     else:
         info('import_gvs: Importing and writing site filters to temporary storage')
@@ -320,7 +320,8 @@ def import_gvs(refs: 'List[List[str]]',
 
     with hl._with_flags(no_whole_stage_codegen='1'):
 
-        merge_tmp = os.path.join(tmp_dir, 'merge_tmp.vds')
+        # If we're skipping scoring then merge directly to the final path as there would be no more work after the merge.
+        merge_tmp = final_path if skip_scoring else os.path.join(tmp_dir, 'merge_tmp.vds')
         from hail.vds import VariantDataset
         ref_success_path = os.path.join(VariantDataset._reference_path(merge_tmp), '_SUCCESS')
         var_success_path = os.path.join(VariantDataset._variants_path(merge_tmp), '_SUCCESS')
