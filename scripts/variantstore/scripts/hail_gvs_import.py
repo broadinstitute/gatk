@@ -68,8 +68,7 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--intermediate-resume-point', type=int, required=False, default=0,
                         help='Intermediate VDS index at which to resume')
-    parser.add_argument('--skip-scoring', type=bool, required=False, default=False,
-                        help='Whether to score the VDS or not')
+    parser.add_argument('--skip-scoring', type=bool, required=True, help='Whether to score the VDS or not')
 
     args = parser.parse_args()
     avro_path, temp_path, vds_path = remove_trailing_slashes(args.avro_path, args.temp_path, args.vds_path)
