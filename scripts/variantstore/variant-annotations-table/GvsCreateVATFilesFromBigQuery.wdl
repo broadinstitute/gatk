@@ -194,7 +194,7 @@ task BigQueryExportVat {
         ARRAY_TO_STRING(clinvar_classification, ", ") as clinvar_classification,
         clinvar_last_updated,
         ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
-        ARRAY_TO_STRING(clinvar_num_stars, ", ") as clinvar_num_stars,
+        (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_num_stars) num_stars) as clinvar_num_stars,
         ARRAY_TO_STRING(clinvar_review_status, ", ") as clinvar_review_status,
         FROM `~{dataset_name}.~{vat_table}`
         WHERE contig="~{contig}"

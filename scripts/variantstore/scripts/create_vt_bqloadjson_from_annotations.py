@@ -274,22 +274,64 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
 
         if len(clinvar_ids) > 0:
             ordered_significance_values = []
-            # We want to collect all the significance values and order them by the significance_ordering list
-            # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
-            # And then anything that did not match will get added at the end of the list (sorted alpha)
-            for value in significance_ordering:
-                if value in significance_values:
-                    ordered_significance_values.append(value) # this adds the id to the end of the list
-            values_not_accounted_for = list(set(significance_values).difference(ordered_significance_values))
-            values_not_accounted_for.sort() # alphabetize this so it is deterministic
-            ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
-            row["clinvar_id"] = clinvar_ids # array
+
+            if len(significance_values) != len(clinvar_ids):
+                raise ValueError(f"Error: Found differing number of significances and ids: vid = {variant_line.get('vid')}")
+
+            significance_to_clinvarinfo= {}
+            for i in range(len(significance_values)):
+                sig_value = significance_values[i]
+                clinvar_info = significance_to_clinvarinfo.get(sig_value)
+                if clinvar_info == None:
+                    # First entry for this significance
+                    clinvar_info = {}
+                    sig_review_statuses = []
+                clinvar_info.setdefault('sig_clinvar_ids', []).append(clinvar_ids.get(i))
+                clinvar_info.setdefault('sig_phenotypes', []).append(phenotypes.get(i))
+                clinvar_info.setdefault('sig_num_stars', []).append(clinvar_obj_num_stars.get(i))
+                clinvar_info.setdefault('sig_review_statuses', []).append(review_statuses.get(i))
+                significance_to_clinvarinfo[sig_value] = clinvar_info
+
+            ordered_significance_values = []
+            ordered_clinvar_ids = []
+            ordered_clinvar_phenotypes = []
+            ordered_clinvar_num_stars = []
+            ordered_clinvar_review_statuses = []
+            for sig_value in significance_ordering:
+                clinvar_info = significance_to_clinvarinfo.get(sig_value)
+                if clinvar_info != None:
+                    ordered_significance_values.append(sig_value)   # TODO - this will ONLY add one entry
+                    ordered_clinvar_ids.extend(clinvar_info.get('sig_clinvar_ids'))
+                    ordered_clinvar_phenotypes.extend(clinvar_info.get('sig_phenotypes'))
+                    ordered_clinvar_num_stars.extend(clinvar_info.get('sig_num_stars'))
+                    ordered_clinvar_review_statuses.extend(clinvar_info.get('ordered_clinvar_review_statuses'))
+
+            row["clinvar_id"] = ordered_clinvar_ids # array
             row["clinvar_classification"] = ordered_significance_values # special sorted array
             updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
             row["clinvar_last_updated"] = updated_dates[-1] # most recent date
-            row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
-            row["clinvar_num_stars"] = clinvar_obj_num_stars # array??
-            row["clinvar_review_status"] = review_statuses # TBD.
+            row["clinvar_phenotype"] = ordered_clinvar_phenotypes
+            # TODO - the phenotpes!!?
+            # row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
+            row["clinvar_num_stars"] = ordered_clinvar_num_stars # array
+            row["clinvar_review_status"] = ordered_clinvar_review_statuses # array
+
+            # We want to collect all the significance values and order them by the significance_ordering list
+            # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
+            # And then anything that did not match will get added at the end of the list (sorted alpha)
+            # for value in significance_ordering:
+            #     if value in significance_values:
+            #         ordered_significance_values.append(value) # this adds the id to the end of the list
+            # values_not_accounted_for = list(set(significance_values).difference(ordered_significance_values))
+            # values_not_accounted_for.sort() # alphabetize this so it is deterministic
+            # ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
+            # row["clinvar_id"] = clinvar_ids # array
+            # row["clinvar_classification"] = ordered_significance_values # special sorted array
+            # updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
+            # row["clinvar_last_updated"] = updated_dates[-1] # most recent date
+            # row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
+            # row["clinvar_num_stars"] = clinvar_obj_num_stars # array??
+            # row["clinvar_review_status"] = review_statuses # TBD.
 
     if variant_line.get("revel") != None:
         row["revel"] = variant_line.get("revel").get("score")
