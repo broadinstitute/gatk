@@ -6,7 +6,7 @@ import utils
 
 # add labels for DSP Cloud Cost Control Labeling and Reporting
 query_labels_map = {'service': 'gvs', 'team': 'variants', 'managedby': 'gvs_process_sample_vcf_headers'}
-default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True)
+default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True, use_legacy_sql=False)
 client = ''
 
 def process_sample_vcf_headers(project_id, dataset_name):

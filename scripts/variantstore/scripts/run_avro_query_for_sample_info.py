@@ -21,7 +21,7 @@ def get_number_of_partitions(dataset_name, project_id):
     # Default QueryJobConfig will be merged into job configs passed in
     # but if a specific default config is being updated (eg labels), new config must be added
     # to the client._default_query_job_config that already exists
-    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True)
+    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True, use_legacy_sql=False)
     client = bigquery.Client(project=project_id,
                              default_query_job_config=default_config)
 
