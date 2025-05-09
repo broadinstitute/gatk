@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1651_skip_scoring
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -238,7 +239,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1615_hetvar_vcfs
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -341,7 +341,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1654_UseLegacySQLEveryWhere
+             - vs_1651_skip_scoring
          tags:
              - /.*/
    - name: GvsIngestTieout
