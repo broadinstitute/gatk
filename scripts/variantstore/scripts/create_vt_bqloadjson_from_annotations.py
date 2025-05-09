@@ -286,10 +286,10 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                     # First entry for this significance
                     clinvar_info = {}
                     sig_review_statuses = []
-                clinvar_info.setdefault('sig_clinvar_ids', []).append(clinvar_ids.get(i))
-                clinvar_info.setdefault('sig_phenotypes', []).append(phenotypes.get(i))
-                clinvar_info.setdefault('sig_num_stars', []).append(clinvar_obj_num_stars.get(i))
-                clinvar_info.setdefault('sig_review_statuses', []).append(review_statuses.get(i))
+                clinvar_info.setdefault('sig_clinvar_ids', []).append(clinvar_ids[i])
+                clinvar_info.setdefault('sig_phenotypes', []).append(phenotypes[i])
+                clinvar_info.setdefault('sig_num_stars', []).append(clinvar_obj_num_stars[i])
+                clinvar_info.setdefault('sig_review_statuses', []).append(review_statuses[i])
                 significance_to_clinvarinfo[sig_value] = clinvar_info
 
             ordered_significance_values = []
