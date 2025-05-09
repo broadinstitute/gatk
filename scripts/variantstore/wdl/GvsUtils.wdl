@@ -1339,7 +1339,8 @@ task PopulateFilterSetInfo {
     echo "Creating INDELs racalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
-        --ref-version 38 \
+        --ref-version ~{ref_version}  \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         --filter-set-name ~{filter_set_name} \
         -mode INDEL \
         --use-vqsr ~{useVQSR} \
