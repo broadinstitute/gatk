@@ -142,7 +142,7 @@ public final class RScriptExecutor extends ScriptExecutor {
      */
     public static void checkIfRunningInGatkLiteDocker(Optional<String> errorMessage) {
         final boolean inGatkLiteDocker = Boolean.parseBoolean(
-            System.getenv("IN_GATKLITE_DOCKER") != null 
+            StringUtils.isNotBlank(System.getenv("IN_GATKLITE_DOCKER"))
                 ? System.getenv("IN_GATKLITE_DOCKER") 
                 : System.getProperty("IN_GATKLITE_DOCKER", "false")
         );

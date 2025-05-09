@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.python;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -238,7 +239,7 @@ public class PythonScriptExecutor extends PythonExecutorBase {
      */
     public static void checkIfRunningInGatkLiteDocker(Optional<String> errorMessage) {
         final boolean inGatkLiteDocker = Boolean.parseBoolean(
-            System.getenv("IN_GATKLITE_DOCKER") != null 
+            StringUtils.isNotBlank(System.getenv("IN_GATKLITE_DOCKER")) 
                 ? System.getenv("IN_GATKLITE_DOCKER") 
                 : System.getProperty("IN_GATKLITE_DOCKER", "false")
         );
