@@ -173,7 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1641_drop_sample_from_vds
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -201,7 +200,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1590_mem_footprint_part_I
        tags:
          - /.*/
    - name: GvsImportGenomes
@@ -240,7 +238,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1457-vat-clinvar
+             - vs_1615_hetvar_vcfs
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -343,8 +341,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1457-vat-clinvar
-             - vs_1641_drop_sample_from_vds
              - gg_VS-1654_UseLegacySQLEveryWhere
          tags:
              - /.*/
@@ -373,7 +369,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1576-avro-update
          tags:
              - /.*/
    - name: GvsCallsetStatistics
