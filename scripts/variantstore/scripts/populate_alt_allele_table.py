@@ -13,7 +13,7 @@ client = None
 def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name, fq_dataset, max_sample_id):
     global client
     # add labels for DSP Cloud Cost Control Labeling and Reporting to default_config
-    default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True,
+    default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True, use_legacy_sql=False,
                                     labels={'service': 'gvs', 'team': 'variants', 'managedby': 'create_alt_allele'})
 
     client = bigquery.Client(project=query_project,

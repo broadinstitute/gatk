@@ -343,7 +343,7 @@ def make_extract_table(call_set_identifier,
         # Default QueryJobConfig will be merged into job configs passed in
         # but if a specific default config is being updated (eg labels), new config must be added
         # to the client._default_query_job_config that already exists
-        default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True)
+        default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True, use_legacy_sql=False)
 
         client = bigquery.Client(project=query_project,
                                  default_query_job_config=default_config)
