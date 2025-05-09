@@ -304,7 +304,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                     ordered_clinvar_ids.extend(clinvar_info.get('sig_clinvar_ids'))
                     ordered_clinvar_phenotypes.extend(clinvar_info.get('sig_phenotypes'))
                     ordered_clinvar_num_stars.extend(clinvar_info.get('sig_num_stars'))
-                    ordered_clinvar_review_statuses.extend(clinvar_info.get('ordered_clinvar_review_statuses'))
+                    ordered_clinvar_review_statuses.extend(clinvar_info.get('sig_review_statuses'))
 
             row["clinvar_id"] = ordered_clinvar_ids # array
             row["clinvar_classification"] = ordered_significance_values # special sorted array
