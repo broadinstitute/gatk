@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-# E
+# F
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -753,7 +753,7 @@ task PrepVtAnnotationJson {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    String output_vt_json = "vat_vt_bq_load" + output_file_suffix
+    String output_vt_json = "vat_vt_bq_load." + output_file_suffix
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -802,7 +802,7 @@ task PrepGenesAnnotationJson {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
+    String output_genes_json = "vat_genes_bq_load." + output_file_suffix
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -1040,7 +1040,7 @@ task BigQueryLoadJson {
             v.clinvar_classification,
             v.clinvar_last_updated,
             v.clinvar_phenotype,
-            v.clinvar_star_status,
+            v.clinvar_num_stars,
             v.clinvar_review_status
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
