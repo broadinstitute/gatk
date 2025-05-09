@@ -8,7 +8,7 @@ workflow GvsCreateVDS {
     input {
         String avro_path
         String vds_destination_path
-        Boolean skip_scoring
+        Boolean? skip_scoring
 
         String cluster_prefix = "vds-cluster"
         String gcs_subnetwork_name = "subnetwork"
@@ -168,7 +168,7 @@ task CreateVds {
         File gvs_import_script
         File gvs_import_ploidy_script
         File run_in_hail_cluster_script
-        Boolean skip_scoring
+        Boolean? skip_scoring
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
@@ -238,7 +238,7 @@ task CreateVds {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}"
-            ~{if (skip_scoring) then ', "--skip-scoring": ""' else ''}
+            ~{if (defined(skip_scoring) && select_first([skip_scoring])) then ', "--skip-scoring": ""' else ''}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
         }
         FIN

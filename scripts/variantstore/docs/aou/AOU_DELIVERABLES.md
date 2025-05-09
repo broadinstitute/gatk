@@ -84,6 +84,7 @@ GROUP BY
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
    - You can find what the `avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
    - The `vds_path` path input to this workflow represents the output path for the VDS. For the Foxtrot callset this is a temporary VDS with only new-to-Foxtrot samples, so it does not need to go to a location under `gs://prod-drc-broad/`. Choose a location under the workspace bucket, naming the VDS descriptively with a run attempt number.
+   - For making the new-to-Foxtrot VDS, set the `skip_scoring` parameter to `true`. This skips needlessly applying scoring data at this point which would only be overwritten later during merge and rescore.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
