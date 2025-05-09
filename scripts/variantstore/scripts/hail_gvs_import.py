@@ -76,5 +76,5 @@ if __name__ == '__main__':
     arguments_fn, is_gcs = determine_arguments_function(args)
 
     references_path = 'gs://hail-common/references' if is_gcs else args.references_path
-    create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point)
+    create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point, args.skip_scoring)
 
