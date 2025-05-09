@@ -181,8 +181,11 @@ def import_gvs(refs: 'List[List[str]]',
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
     vets_filter_path = os.path.join(tmp_dir, 'vets_filters.ht')
 
-    if intermediate_resume_point > 0 or skip_scoring:
+    if intermediate_resume_point:
         info('import_gvs: skipping site and VETS filter import')
+    elif skip_scoring:
+        info('import_gvs: skipping scoring, importing ploidy data only')
+        ploidy = import_gvs_ploidy.import_ploidy(*ploidy_data)
     else:
         info('import_gvs: Importing and writing site filters to temporary storage')
         site = hl.import_avro(site_filtering_data)
@@ -320,7 +323,7 @@ def import_gvs(refs: 'List[List[str]]',
 
     with hl._with_flags(no_whole_stage_codegen='1'):
 
-        # If we're skipping scoring then merge directly to the final path as there would be no more work after the merge.
+        # If we're to skip scoring then merge directly to the final path as there would be no more work after the merge.
         merge_tmp = final_path if skip_scoring else os.path.join(tmp_dir, 'merge_tmp.vds')
         from hail.vds import VariantDataset
         ref_success_path = os.path.join(VariantDataset._reference_path(merge_tmp), '_SUCCESS')
