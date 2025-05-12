@@ -194,8 +194,9 @@ task BigQueryExportVat {
         ARRAY_TO_STRING(clinvar_classification, ", ") as clinvar_classification,
         clinvar_last_updated,
         ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
-        (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_num_stars) num_stars) as clinvar_num_stars,
-        ARRAY_TO_STRING(clinvar_review_status, ", ") as clinvar_review_status,
+        ARRAY_TO_STRING(clinvar_rcv_ids, ", ") as clinvar_rcv_ids,
+        ARRAY_TO_STRING(clinvar_rcv_classifications, ", ") as clinvar_rcv_classifications,
+        (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_rcv_num_stars) num_stars) as clinvar_num_stars,
         FROM `~{dataset_name}.~{vat_table}`
         WHERE contig="~{contig}"
         ORDER BY position
