@@ -181,7 +181,7 @@ def import_gvs(refs: 'List[List[str]]',
     site_path = os.path.join(tmp_dir, 'site_filters.ht')
     vets_filter_path = os.path.join(tmp_dir, 'vets_filters.ht')
 
-    if intermediate_resume_point:
+    if intermediate_resume_point > 0:
         info('import_gvs: skipping site and VETS filter import')
     elif skip_scoring:
         info('import_gvs: skipping scoring, importing ploidy data only')
