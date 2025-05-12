@@ -268,14 +268,14 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                     clinvar_ids.append(clinvar_obj.get("id"))   # TOD - may not need this.
                     sigs = []
                     sigs.extend([x.lower() for x in clinvar_obj.get("significance")])
-                    clinvar_rcv_ids.extend(clinvar_objs.get("id"), len(sigs))
+                    clinvar_rcv_ids.extend(clinvar_obj.get("id"), len(sigs))
                     clinvar_rcv_num_stars.extend(clinvar_num_stars, len(sigs))
                     clinvar_rcv_classifications.extend(sigs)
 
         if len(clinvar_rcv_ids) > 0:
-            if len(significance_values) != len(clinvar_rcv_ids):
+            if len(clinvar_rcv_classifications) != len(clinvar_rcv_ids):
                 raise ValueError(f"Error: Found differing number of significances and clinvar RCV ids: vid = {variant_line.get('vid')}")
-            if len(significance_values) != len(clinvar_obj_num_stars):
+            if len(clinvar_rcv_classifications) != len(clinvar_rcv_num_stars):
                 raise ValueError(f"Error: Found differing number of significances and num_stars: vid = {variant_line.get('vid')}")
 
             ordered_significance_values = []  # ordered by Benign, Likely Benign, Uncertain significance, Likely pathogenic, Pathogenic # https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/
