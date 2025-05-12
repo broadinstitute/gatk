@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber.plotting;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -102,12 +103,12 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES / 2);    //allele-fraction-only plot is half the size
     }
 
-    @Test
-    public void testInGatkLieDocker() {
-        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
-
-        try {
-            System.setProperty("IN_GATKLITE_DOCKER", "true");
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final File outputDir = createTempDir("testDir");
             final String[] arguments = {
                     "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
@@ -116,23 +117,9 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
                     "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
                     "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
             };
-            try {
-                runCommandLine(arguments);
-                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
-            }
-            catch(final RuntimeException e) {
-                Assert.assertTrue(e.getMessage().contains("Tools requiring R cannot be run in the Gatk Lite docker image.")); 
-            }
 
-        }
-        finally {
-            if(gatkLiteDockerProperty != null) {
-                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
-            }
-            else{
-                System.clearProperty("IN_GATKLITE_DOCKER");
-            } 
-        }
+            runCommandLine(arguments);
+        });
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

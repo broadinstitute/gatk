@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -35,13 +37,12 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
         spec.executeTest(name, this);
     }
 
-    @Test
-    public void testInGatkLiteDocker() throws IOException {
-        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
-
-        try {
-            System.setProperty("IN_GATKLITE_DOCKER", "true");
-
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             String name = "testAFQCIntegration";
 
             IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -55,21 +56,11 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
 
             try {
                 spec.executeTest(name, this);
-                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
             }
-            catch(final RuntimeException e) {
-                Assert.assertTrue(e.getMessage().contains("Tools requiring R cannot be run in the Gatk Lite docker image.")); 
+            catch(final IOException e) {
+                Assert.fail("Failed with IOException: " + e.getMessage()); 
             }
-
-        }
-        finally {
-            if(gatkLiteDockerProperty != null) {
-                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
-            }
-            else{
-                System.clearProperty("IN_GATKLITE_DOCKER");
-            } 
-        }
+        });
     }
 
 }

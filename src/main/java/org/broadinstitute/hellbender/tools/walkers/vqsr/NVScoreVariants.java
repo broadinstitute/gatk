@@ -107,7 +107,7 @@ public class NVScoreVariants extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
-        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         PythonScriptExecutor.checkPythonEnvironmentForPackage(NV_SCORE_VARIANTS_PACKAGE);
     }
 

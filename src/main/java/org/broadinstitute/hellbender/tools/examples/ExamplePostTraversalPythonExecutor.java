@@ -52,7 +52,7 @@ public class ExamplePostTraversalPythonExecutor extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         try {
             outputStream = javaOutputFile != null ? new PrintStream(javaOutputFile) : System.out;
         }

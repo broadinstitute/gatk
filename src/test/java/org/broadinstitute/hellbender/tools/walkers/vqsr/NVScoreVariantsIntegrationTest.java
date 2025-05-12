@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -53,12 +55,12 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY, EPSILON_FOR_2D);
     }
 
-    @Test
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
     public void testInGatkLiteDocker() {
-        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
-
-        try {
-            System.setProperty("IN_GATKLITE_DOCKER", "true");
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final File tempVcf = createTempFile("test1DModel", ".vcf");
 
             final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
@@ -66,24 +68,8 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
                     .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getAbsolutePath())
                     .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
 
-            try {
-                runCommandLine(argsBuilder);
-                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
-            }
-            catch(final RuntimeException e) {
-                Assert.assertTrue(e.getMessage().contains("Tools requiring Python cannot be run in the Gatk Lite docker image.")); 
-            }
-
-        }
-        finally {
-            if(gatkLiteDockerProperty != null) {
-                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
-            }
-            else{
-                System.clearProperty("IN_GATKLITE_DOCKER");
-            } 
-        }
-
+            runCommandLine(argsBuilder);
+        });
     }
 
     private void assertInfoFieldsAreClose(final File actualVcf, final File expectedVcf, final String infoKey, final double epsilon) {

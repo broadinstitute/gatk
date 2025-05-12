@@ -384,7 +384,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 indelScorer = deserializeScorerFromSerFiles(VariantType.INDEL);
                 break;
             case PYTHON_IFOREST:
-                PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("This tool cannot be run with a Python model in the GATK Lite Docker image."));
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using PYTHON_IFOREST backend.");
 
@@ -399,7 +399,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
             case PYTHON_SCRIPT:
-                PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("This tool cannot be run with a Python model in the GATK Lite Docker image."));
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 IOUtils.canReadFile(pythonScriptFile);
                 logger.info("Running in PYTHON_SCRIPT mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);

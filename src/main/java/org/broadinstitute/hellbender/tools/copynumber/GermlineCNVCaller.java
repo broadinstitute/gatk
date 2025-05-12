@@ -345,7 +345,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
-        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         /* check for successful import of gcnvkernel */
         PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
     }

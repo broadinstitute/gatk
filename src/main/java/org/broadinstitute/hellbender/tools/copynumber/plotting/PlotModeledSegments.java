@@ -195,7 +195,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
-        RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
+        RScriptExecutor.checkIfRunningInGatkLiteDocker();
     }
 
     @Override

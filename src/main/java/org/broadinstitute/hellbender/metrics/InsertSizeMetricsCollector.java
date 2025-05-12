@@ -51,7 +51,7 @@ public final class InsertSizeMetricsCollector
         this.inputArgs = inputArgs;
 
         if(inputArgs.producePlot) {
-            RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("Generating a plot requires Python, which is not available in the Gatk Lite docker image."));
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a plot requires Python, which is not available in the GATK Lite docker image.");
         }
 
         setup(inputArgs.metricAccumulationLevel.accumulationLevels, samHeader.getReadGroups());

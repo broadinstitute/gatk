@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
@@ -141,34 +142,24 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
         return result.iterator();
     }
 
-    @Test
-    public void testInGatkLiteDocker() throws IOException {
-        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
-
-        try {
-            System.setProperty("IN_GATKLITE_DOCKER", "true");
-
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final List<String> empty = Collections.emptyList();
-            final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(true,true,
-                    false,true,false),empty);
-
             try {
+                final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(true,true,
+                        false,true,false),empty);
+
                 spec.executeTest("testInOutAbsencePresence", this);
-                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
             }
-            catch(final RuntimeException e) {
-                Assert.assertTrue(e.getMessage().contains("Generating a PDF file requires R, which is not available in the GATK Lite Docker image.")); 
+            catch(final IOException e) {
+                Assert.fail("Failed with IOException: " + e.getMessage());
             }
 
-        }
-        finally {
-            if(gatkLiteDockerProperty != null) {
-                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
-            }
-            else{
-                System.clearProperty("IN_GATKLITE_DOCKER");
-            } 
-        }
+        });
     }
 
     /**

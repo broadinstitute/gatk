@@ -65,7 +65,7 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
 
         // Start the Python process, and initialize a stream writer for the executor to use to stream data to Python.
         pythonExecutor.start(Collections.emptyList());

@@ -5,8 +5,10 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CopyNumberTestUtils;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineDenoisingModelArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
@@ -81,12 +83,12 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     /**
      * Test that it fails properly in the GATK Lite docker
      */
-    @Test
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
     public void testCohortInGatkLiteDocker() {
-        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
-
-        try {
-            System.setProperty("IN_GATKLITE_DOCKER", "true");
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
             Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
             argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
@@ -96,23 +98,9 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
                     .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
                     .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
                     .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
-            try {
-                runCommandLine(argsBuilder);
-                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
-            }
-            catch(final RuntimeException e) {
-                Assert.assertTrue(e.getMessage().contains("Tools requiring Python cannot be run in the Gatk Lite docker image.")); 
-            }
+            runCommandLine(argsBuilder);
+        });
 
-        }
-        finally {
-            if(gatkLiteDockerProperty != null) {
-                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
-            }
-            else{
-                System.clearProperty("IN_GATKLITE_DOCKER");
-            } 
-        }
     }
 
     /**

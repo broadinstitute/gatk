@@ -220,7 +220,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
 
         checkOutputFile(PDF_ARG_SHORT_NAME,pdfFile);
         if(pdfFile != null) {
-            RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("Generating a PDF file requires R, which is not available in the GATK Lite Docker image."));
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a PDF file requires R, which is not available in the GATK Lite Docker image.");
         }
         checkOutputFile(CSV_ARG_SHORT_NAME, csvFile);
         checkInputReportFileLMT(beforeFile,afterFile);

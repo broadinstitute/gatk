@@ -6,6 +6,7 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
@@ -13,7 +14,6 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.Python
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModelBackend;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -261,13 +261,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX);
     }
 
-    @Test
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
     public void testInGatkLiteDocker() {
-        final String gatkLiteDockerProperty = System.getProperty("IN_GATKLITE_DOCKER");
-
-        try {
-            System.setProperty("IN_GATKLITE_DOCKER", "true");
-
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final File outputDir = createTempDir("train");
 
             final String outputPrefixSNPOnly = String.format("%s/test-snp", outputDir);
@@ -280,24 +279,9 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
             addPositiveAnnotationsSNPOnly
                     .andThen(ADD_SNP_MODE)
                     .apply(argsBuilderSNPOnly);
-            
-            try {
-                runCommandLine(argsBuilderSNPOnly);
-                Assert.fail("Excepted RuntimeException for running in GATK Lite docker");
-            }
-            catch(final RuntimeException e) {
-                Assert.assertTrue(e.getMessage().contains("This tool cannot be run with a Python model in the GATK Lite Docker image.")); 
-            }
-            
-        }
-        finally {
-            if(gatkLiteDockerProperty != null) {
-                System.setProperty("IN_GATKLITE_DOCKER", gatkLiteDockerProperty);
-            }
-            else{
-                System.clearProperty("IN_GATKLITE_DOCKER");
-            } 
-        }
+
+            runCommandLine(argsBuilderSNPOnly);
+        });
 
     }
 

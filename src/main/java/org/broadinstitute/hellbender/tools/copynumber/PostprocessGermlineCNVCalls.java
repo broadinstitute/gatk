@@ -333,7 +333,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     @Override
     public void onStartup() {
         super.onStartup();
-        PythonScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.empty());
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         /* check for successful import of gcnvkernel */
         PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
     }

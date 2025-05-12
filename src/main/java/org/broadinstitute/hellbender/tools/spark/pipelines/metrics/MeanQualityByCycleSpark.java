@@ -197,7 +197,7 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
     @Override
     protected void onStartup() {
         if(chartOutput != null) {
-            RScriptExecutor.checkIfRunningInGatkLiteDocker(Optional.of("Generating a chart file requires R, which is not available in the GATK Lite Docker image."));
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a chart file requires R, which is not available in the GATK Lite Docker image.");
         }
     }
 
