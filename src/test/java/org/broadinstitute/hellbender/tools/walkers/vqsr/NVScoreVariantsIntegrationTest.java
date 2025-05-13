@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -51,6 +53,23 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsBuilder);
 
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY, EPSILON_FOR_2D);
+    }
+
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final File tempVcf = createTempFile("test1DModel", ".vcf");
+
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getAbsolutePath())
+                    .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+
+            runCommandLine(argsBuilder);
+        });
     }
 
     private void assertInfoFieldsAreClose(final File actualVcf, final File expectedVcf, final String infoKey, final double epsilon) {

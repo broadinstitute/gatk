@@ -404,6 +404,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         dataManager = new VariantDataManager( new ArrayList<>(USE_ANNOTATIONS), VRAC );
 
         if (RSCRIPT_FILE != null) {
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Using rscript-file file requires R, which is not available in the GATK Lite Docker image.");
             rScriptExecutor = new RScriptExecutor();
             if(!rScriptExecutor.externalExecutableExists()) {
                 if(!disableRScriptExecutor) {

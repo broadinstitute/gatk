@@ -29,7 +29,7 @@ RUN ls . && \
     unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts && \
     chmod -R a+rw /gatk/unzippedJar
 
-FROM ${BASE_DOCKER}
+FROM ${BASE_DOCKER} AS gatk-lite
 
 RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt update && \
@@ -61,7 +61,7 @@ RUN java -jar gatk.jar -h && \
 WORKDIR /gatk
 
 # Create a simple unit test runner
-ENV CI true
+ENV CI=true
 # "export GATK_DOCKER_CONTAINER=true" is used to allow tests to determine when the're running on the docker
 # (some negative python tests use this to throw skip exceptions). See GATKBaseTest::isGATKDockerContainer.
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
@@ -81,7 +81,14 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
 
 RUN cp -r /root/run_unit_tests.sh /gatk && \
     cp -r /root/gatk.jar /gatk
-ENV CLASSPATH=/gatk/gatk.jar:$CLASSPATH PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
+ENV CLASSPATH=/gatk/gatk.jar:$CLASSPATH \
+    IN_GATKLITE_DOCKER=true \
+    PATH=/gatk:$PATH
+
+FROM gatk-lite AS gatk
+
+ENV PATH=$CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH \
+    IN_GATKLITE_DOCKER=
 
 # Start GATK Python environment
 
@@ -94,5 +101,3 @@ RUN conda env create -vv -n gatk -f /gatk/gatkcondaenv.yml && \
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
 
 # End GATK Python environment
-
-ENV PATH /gatk:$PATH

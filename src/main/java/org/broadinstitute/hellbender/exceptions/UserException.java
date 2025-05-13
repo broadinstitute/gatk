@@ -485,4 +485,12 @@ public class UserException extends RuntimeException {
         public WarnableAnnotationFailure(String message) { super(message); }
 
     }
+
+    public static final class NotAvailableInGatkLiteDocker extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public NotAvailableInGatkLiteDocker(String message) {
+            super(message);
+        }
+    }
 }

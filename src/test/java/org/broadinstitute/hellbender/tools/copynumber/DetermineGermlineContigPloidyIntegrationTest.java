@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.testng.annotations.Test;
 
@@ -35,6 +36,22 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-ploidy-cohort");
         runCommandLine(argsBuilder);
+    }
+
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testCohortInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
+            argsBuilder.add(DetermineGermlineContigPloidy.CONTIG_PLOIDY_PRIORS_FILE_LONG_NAME,
+                    TEST_CONTIG_PLOIDY_PRIOR_FILE)
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR)
+                    .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-ploidy-cohort");
+            runCommandLine(argsBuilder);
+        });
     }
 
     @Test(groups = {"python"}, expectedExceptions = UserException.BadInput.class)

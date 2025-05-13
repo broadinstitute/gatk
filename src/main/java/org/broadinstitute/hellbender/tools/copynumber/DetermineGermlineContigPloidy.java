@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils.streamOfSubsettedAndValidatedReadCounts;
@@ -295,6 +296,7 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         /* check for successful import of gcnvkernel */
         PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
     }

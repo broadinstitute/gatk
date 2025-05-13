@@ -3,8 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -138,6 +141,22 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
             result.add(new Object[] { true, true, false, false, true });
         }
         return result.iterator();
+    }
+
+    @Test(singleThreaded = true)
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            try {
+                final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(true,true,
+                        false,true,false),0, UserException.NotAvailableInGatkLiteDocker.class);
+
+                spec.executeTest("testInGatkLiteDocker", this);
+            }
+            catch(final IOException e) {
+                Assert.fail("Failed with IOException: " + e.getMessage());
+            }
+
+        });
     }
 
     /**

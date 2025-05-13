@@ -30,6 +30,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Program to generate a data table and chart of mean quality by cycle from a
@@ -190,6 +191,13 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
             useQuals.merge(other.useQuals);
             useOrigQuals.merge(other.useOrigQuals);
             return this;
+        }
+    }
+
+    @Override
+    protected void onStartup() {
+        if(chartOutput != null) {
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a chart file requires R, which is not available in the GATK Lite Docker image.");
         }
     }
 

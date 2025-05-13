@@ -10,7 +10,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
@@ -220,6 +222,24 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                 Collections.singletonList("Z"), /* unknown contig */
                 AUTOSOMAL_REF_COPY_NUMBER);
         runCommandLine(args);
+    }
+
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final File segmentsOutput = createTempFile("segments-output-vcf-0", ".vcf");
+            final ArgumentsBuilder args = getArgsWithBreakpoints(CALL_SHARDS, MODEL_SHARDS, 0,
+                    createTempFile("intervals-output-vcf", ".vcf"),
+                    segmentsOutput,
+                    createTempFile("denoised-copy-ratios-output", ".tsv"),
+                    ALLOSOMAL_CONTIGS, 2, new File(TEST_SUB_DIR, "intervals_output_SAMPLE_000.vcf.gz"), CLUSTERED_VCF, null);
+
+            runCommandLine(args);
+        });
+
     }
 
     @Test(groups = {"python"})

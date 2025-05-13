@@ -30,6 +30,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -356,6 +357,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 logger.info("Running in JAVA_BGMM mode...");
                 break;
             case PYTHON_IFOREST:
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using PYTHON_IFOREST backend.");
 
@@ -372,6 +374,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 logger.info("Running in PYTHON_IFOREST mode...");
                 break;
             case PYTHON_SCRIPT:
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 Utils.validateArg(hyperparametersJSONFile != null,
                         "Hyperparameters JSON must be provided when using PYTHON_SCRIPT backend.");
                 IOUtils.canReadFile(pythonScriptFile);

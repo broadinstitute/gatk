@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -18,6 +19,12 @@ import java.io.File;
  */
 public abstract class ScriptExecutor {
     private static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.utils.runtime.ScriptExecutor.class);
+
+    /**
+     * Name for the environment variable / system property that indicates this is running in the
+     * GATK-Lite Docker image. This is referenced to determine whether Python/R is available.
+     */
+    public static final String GATK_LITE_DOCKER_ENV_VAR = "IN_GATKLITE_DOCKER";
 
     protected final String externalScriptExecutableName;    // external program to run; e.g. "RScript" or "python"
     protected boolean ignoreExceptions = false;
@@ -162,5 +169,36 @@ public abstract class ScriptExecutor {
             }
         }
         return controller.exec(processSettings);
+    }
+
+    /**
+     * The GATK Lite docker is a docker image that does not include the GATK conda environment.
+     * If running in the GATK Lite docker, this tool will throw a NotAvailableInGatkLiteDocker.
+     */
+    public static void checkIfRunningInGatkLiteDocker() throws UserException.NotAvailableInGatkLiteDocker {
+        checkIfRunningInGatkLiteDocker(
+            "It appears that you are running the GATK Lite docker image. This is a " +
+            "reduced size image which doesn't contain the necessary Python and R " +
+            "libraries for some of the tools. If you need to generate plots or run " +
+            "tools that are based on Python, please use the full GATK docker image."
+        );
+    }
+
+    /**
+     * The GATK Lite docker is a docker image that does not include the GATK conda environment.
+     * If running in the GATK Lite docker, this tool will throw a NotAvailableInGatkLiteDocker.
+     * 
+     * @param errorMessage Optional error message to include in the exception.
+     */
+    public static void checkIfRunningInGatkLiteDocker(String errorMessage) throws UserException.NotAvailableInGatkLiteDocker {
+        final boolean inGatkLiteDocker = Boolean.parseBoolean(
+            StringUtils.isNotBlank(System.getenv(GATK_LITE_DOCKER_ENV_VAR)) 
+                ? System.getenv(GATK_LITE_DOCKER_ENV_VAR) 
+                : System.getProperty(GATK_LITE_DOCKER_ENV_VAR, "false")
+        );
+
+        if (inGatkLiteDocker) {
+            throw new UserException.NotAvailableInGatkLiteDocker(errorMessage);
+        }
     }
 }
