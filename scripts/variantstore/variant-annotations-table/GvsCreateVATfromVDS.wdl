@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-# O
+# P
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -1040,8 +1040,9 @@ task BigQueryLoadJson {
             v.clinvar_classification,
             v.clinvar_last_updated,
             v.clinvar_phenotype,
-            v.clinvar_num_stars,
-            v.clinvar_review_status
+            v.clinvar_rcv_ids,
+            v.clinvar_rcv_classifications,
+            v.clinvar_rcv_num_stars
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
