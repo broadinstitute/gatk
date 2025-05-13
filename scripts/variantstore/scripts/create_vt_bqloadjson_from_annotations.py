@@ -268,8 +268,8 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                     clinvar_ids.append(clinvar_obj.get("id"))   # TOD - may not need this.
                     sigs = []
                     sigs.extend([x.lower() for x in clinvar_obj.get("significance")])
-                    clinvar_rcv_ids.extend(clinvar_obj.get("id"), len(sigs))
-                    clinvar_rcv_num_stars.extend(clinvar_num_stars, len(sigs))
+                    clinvar_rcv_ids.extend([clinvar_obj.get("id")] * len(sigs))
+                    clinvar_rcv_num_stars.extend([clinvar_num_stars] * len(sigs))
                     clinvar_rcv_classifications.extend(sigs)
 
         if len(clinvar_rcv_ids) > 0:
