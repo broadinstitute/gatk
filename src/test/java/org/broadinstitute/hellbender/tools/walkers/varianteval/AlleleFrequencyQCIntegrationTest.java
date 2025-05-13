@@ -48,7 +48,7 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
                             " --comp " + comparisonVcf +
                             " -eval:thousand_genomes " + comparisonVcf +
                             " -L " + comparisonVcf +
-                            " -O %s"
+                            " -O " + getExpectedFile(name)
                     ,0, UserException.NotAvailableInGatkLiteDocker.class);
 
             try {
