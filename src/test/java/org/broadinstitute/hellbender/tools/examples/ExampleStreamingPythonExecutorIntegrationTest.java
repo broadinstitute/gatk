@@ -39,17 +39,14 @@ public class ExampleStreamingPythonExecutorIntegrationTest extends CommandLinePr
         testSpec.executeTest("testExampleStreamingPythonExecutor", this);
     }
 
-    @Test(
-        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
-        singleThreaded = true
-    )
+    @Test(singleThreaded = true)
     public void testInGatkLiteDocker() throws IOException {
         EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                     " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
-                            " -O %s" +
+                            " -O " + TEST_OUTPUT_DIRECTORY + "expected_ExampleStreamingPythonExecutorIntegrationTest_output.txt" +
                             " --batchSize " + Integer.toString(2),
-                    Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleStreamingPythonExecutorIntegrationTest_output.txt")
+                    0, UserException.NotAvailableInGatkLiteDocker.class
             );
             
             try {

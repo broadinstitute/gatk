@@ -37,10 +37,7 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
         spec.executeTest(name, this);
     }
 
-    @Test(
-        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
-        singleThreaded = true
-    )
+    @Test(singleThreaded = true)
     public void testInGatkLiteDocker() {
         EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             String name = "testAFQCIntegration";
@@ -52,7 +49,7 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
                             " -eval:thousand_genomes " + comparisonVcf +
                             " -L " + comparisonVcf +
                             " -O %s"
-                    , Arrays.asList(getExpectedFile(name)));
+                    ,0, UserException.NotAvailableInGatkLiteDocker.class);
 
             try {
                 spec.executeTest(name, this);

@@ -107,7 +107,7 @@ GIT_HASH_FOR_TAG=$(git describe --tags --long)
 ## generate the tag if it wasn't explicitly specified
 if [ -z "$DOCKER_IMAGE_TAG" ]; then
   if [ -n "$LITE" ]; then
-    DOCKER_IMAGE_TAG=${GCR_REPO}:lite-$(whoami)-${GITHUB_TAG}-${GIT_HASH_FOR_TAG}
+    DOCKER_IMAGE_TAG=${GCR_REPO}:$(whoami)-${GITHUB_TAG}-${GIT_HASH_FOR_TAG}-lite
   else
     DOCKER_IMAGE_TAG=${GCR_REPO}:$(whoami)-${GITHUB_TAG}-${GIT_HASH_FOR_TAG}
   fi

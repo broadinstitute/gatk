@@ -30,24 +30,18 @@ public class ExamplePostTraversalPythonExecutorIntegrationTest extends CommandLi
         testSpec.executeTest("testExamplePythonExecutor", this);
     }
 
-    @Test(
-        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
-        singleThreaded = true
-    )
+    @Test(singleThreaded = true)
     public void testExamplePythonExecutorInGatkLiteDocker() {
         EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
             final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                     " -R " + hg19MiniReference +
                             " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
-                            " -O %s" +
-                            " -pythonOutputFile %s",
-                    Arrays.asList(
-                            TEST_OUTPUT_DIRECTORY + "expected_ExamplePythonExecutorIntegrationTest_Reads_output.txt",
-                            TEST_OUTPUT_DIRECTORY + "expected_ExamplePythonExecutorIntegrationTest_Python_output.txt"
-                    )
+                            " -O " + TEST_OUTPUT_DIRECTORY + "expected_ExamplePythonExecutorIntegrationTest_Reads_output.txt" +
+                            " -pythonOutputFile " + TEST_OUTPUT_DIRECTORY + "expected_ExamplePythonExecutorIntegrationTest_Python_output.txt",
+                    0, UserException.NotAvailableInGatkLiteDocker.class
             );
             try {
-                testSpec.executeTest("testExamplePythonExecutor", this);
+                testSpec.executeTest("testExamplePythonExecutorInGatkLiteDocker", this);
             }
             catch (final IOException e) {
                 Assert.fail("Failed with IOException: " + e.getMessage());

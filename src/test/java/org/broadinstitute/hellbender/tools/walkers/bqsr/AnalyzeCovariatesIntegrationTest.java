@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -142,18 +143,14 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
         return result.iterator();
     }
 
-    @Test(
-        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
-        singleThreaded = true
-    )
+    @Test(singleThreaded = true)
     public void testInGatkLiteDocker() {
         EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
-            final List<String> empty = Collections.emptyList();
             try {
                 final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(true,true,
-                        false,true,false),empty);
+                        false,true,false),0, UserException.NotAvailableInGatkLiteDocker.class);
 
-                spec.executeTest("testInOutAbsencePresence", this);
+                spec.executeTest("testInGatkLiteDocker", this);
             }
             catch(final IOException e) {
                 Assert.fail("Failed with IOException: " + e.getMessage());

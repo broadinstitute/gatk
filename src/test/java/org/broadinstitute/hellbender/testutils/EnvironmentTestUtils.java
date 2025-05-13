@@ -31,6 +31,7 @@ public class EnvironmentTestUtils {
             properties.forEach(System::setProperty);
             toRun.run();
         } finally {
+            properties.keySet().forEach(System::clearProperty);
             System.setProperties(originalProperties);
         }
     }
