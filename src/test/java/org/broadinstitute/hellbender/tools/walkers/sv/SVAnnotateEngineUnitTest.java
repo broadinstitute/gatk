@@ -294,16 +294,16 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                                 new SimpleInterval("chr1", 248129213, 248520217)}) },
                 { GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL, "DUP_chr2:131488885-131489335,INV_chr2:131488885-131489335,DEL_chr2:130185450-130185720",
                         createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
-                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
-                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
-                        new SimpleInterval[]{new SimpleInterval("chr2", 131488885,131489335),
-                                new SimpleInterval("chr2", 130185450,130185720)}) },
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 130185450,130185720),
+                                new SimpleInterval("chr2", 131488885,131489335)}) },
                 { GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL, "DUP_chr3:95751919-95752156,DEL_chr3:95746923-95749272",
                         createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
-                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
-                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
-                        new SimpleInterval[]{new SimpleInterval("chr3", 95751919,95752156),
-                                new SimpleInterval("chr3", 95746923,95749272)}) },
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP},
+                        new SimpleInterval[]{new SimpleInterval("chr3", 95746923,95749272),
+                                new SimpleInterval("chr3", 95751919,95752156)}) },
                 { GATKSVVCFConstants.ComplexVariantSubtype.INS_iDEL, "DEL_chr3:60521333-60521483",
                         createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
                                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
@@ -354,7 +354,8 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
             final String cpxIntervalsString,
             final List<SVSegment> expectedSVSegments
     ) {
-        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")));
+        final SAMSequenceDictionary sequenceDictionary = SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3"));
+        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")), sequenceDictionary);
         final List<SVSegment> actualSegments = SVAnnotateEngine.getComplexAnnotationIntervals(cpxIntervals,
                 complexType);
         assertSegmentListEqual(actualSegments, expectedSVSegments);
@@ -389,7 +390,8 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         SVAnnotateEngine svAnnotateEngine = new SVAnnotateEngine(gtfTrees, null, sequenceDictionary,
                 -1);
 
-        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")));
+        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")),
+                sequenceDictionary);
         final List<SVSegment> cpxSegments = SVAnnotateEngine.getComplexAnnotationIntervals(cpxIntervals, complexType);
         for (final SVSegment cpxSegment: cpxSegments) {
             svAnnotateEngine.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(), true,
@@ -753,15 +755,18 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
             final List<SVSegment> expectedSVSegments,
             final List<SVSegment> expectedSVSegmentsWithBNDOverlap
     ) {
+        final SAMSequenceDictionary sequenceDictionary = SVAnnotateUnitTest.createSequenceDictionary(
+                Arrays.asList("chr2", "chr4", "chr8", "chr19", "chr22", "chrX"));
+
         GATKSVVCFConstants.StructuralVariantAnnotationType actualSVType = SVAnnotateEngine.getSVType(variant);
         Assert.assertEquals(actualSVType, expectedSVType);
 
         final List<SVSegment> actualSegments = SVAnnotateEngine.getSVSegments(variant,
-                actualSVType, -1, complexType);
+                actualSVType, -1, complexType, sequenceDictionary);
         assertSegmentListEqual(actualSegments, expectedSVSegments);
 
         final List<SVSegment> actualSegmentsWithBNDOverlap = SVAnnotateEngine.getSVSegments(variant,
-                actualSVType, 15000, complexType);
+                actualSVType, 15000, complexType, sequenceDictionary);
         assertSegmentListEqual(actualSegmentsWithBNDOverlap,
                 expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }
