@@ -295,7 +295,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             row["clinvar_last_updated"] = updated_dates[-1] # most recent date
             row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
             row["clinvar_rcv_ids"] = clinvar_rcv_ids    # Array
-            row["clinvar_rcv_classification"] = clinvar_rcv_classifications # Array
+            row["clinvar_rcv_classifications"] = clinvar_rcv_classifications # Array
             row["clinvar_rcv_num_stars"] = clinvar_rcv_num_stars # Array
 
             # We want to collect all the significance values and order them by the significance_ordering list
