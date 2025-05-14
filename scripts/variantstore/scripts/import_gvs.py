@@ -183,9 +183,6 @@ def import_gvs(refs: 'List[List[str]]',
 
     if intermediate_resume_point > 0:
         info('import_gvs: skipping site and VETS filter import')
-    elif skip_scoring:
-        info('import_gvs: skipping scoring, importing ploidy data only')
-        ploidy = import_gvs_ploidy.import_ploidy(*ploidy_data)
     else:
         info('import_gvs: Importing and writing site filters to temporary storage')
         site = hl.import_avro(site_filtering_data)
