@@ -238,7 +238,7 @@ task CreateVds {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}"
-            ~{if (defined(skip_scoring) && select_first([skip_scoring])) then ', "--skip-scoring": ""' else ''}
+            ~{if (defined(skip_scoring) && select_first([skip_scoring])) then ', "skip-scoring": ""' else ''}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
         }
         FIN
