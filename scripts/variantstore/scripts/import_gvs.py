@@ -337,7 +337,9 @@ def import_gvs(refs: 'List[List[str]]',
                                            use_genome_default_intervals=True)
             combiner.run()
 
-        if not skip_scoring:
+        if skip_scoring:
+            info(f'import_gvs: skipping write of scoring data to VDS due to --skip-scoring flag')
+        else:
             combined = hl.vds.read_vds(merge_tmp, intervals=target_final_intervals)
 
             rd = combined.reference_data
