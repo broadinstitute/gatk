@@ -77,7 +77,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
      */
     @Advanced
-    @Argument(fullName = DRAGEN_PD_PAIR_HMM_IMPLEMENTATION_LONG_NAME, shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
+    @Argument(fullName = DRAGEN_PD_PAIR_HMM_IMPLEMENTATION_LONG_NAME, shortName = "pdPpairHMM", doc = "The DRAGEN PDPairHMM implementation to use for genotype likelihood calculations", optional = true)
     public PDPairHMM.Implementation pdPairHMM = PDPairHMM.Implementation.FASTEST_AVAILABLE;
     /**
      * When calculating the likelihood of variants, we can try to correct for PCR errors that cause indel artifacts.
