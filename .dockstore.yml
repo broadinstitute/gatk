@@ -341,7 +341,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1654_UseLegacySQLEveryWhere
+             - vs_1660_upgrade_hail_0_2_134
          tags:
              - /.*/
    - name: GvsIngestTieout
