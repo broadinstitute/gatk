@@ -33,111 +33,36 @@ import java.util.Map;
  */
 public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
 
-    // TODO what should this size be? make this configurable
-    private final int GKL_COMP_BATCH_SIZE = 50;
-
-    /**
-     * Type for implementation of VectorLoglessPairHMM
-     */
-    public enum Implementation {
-        // /**
-        // * AVX-accelerated version of PairHMM
-        // */
-        // AVX,
-        /**
-         * OpenMP multi-threaded AVX-accelerated version of PairHMM
-         */
-        OMP,
-    }
-
     private static final Logger logger = LogManager.getLogger(VectorLoglessPairPDHMM.class);
     private static long pairHMMTime = 0;
     private static long pairHMMSetupTime = 0;
     private static long postProcessingTime = 0;
-    private static long totalCalls = 0;
+    private static long totalComps = 0;
 
     private final IntelPDHMM pairPDHmm;
 
     /**
      * Create a VectorLoglessPairHMM
      *
-     * @param implementation which implementation to use (AVX or OMP)
      * @param args           arguments to the native GKL implementation
      */
-    public VectorLoglessPairPDHMM(Implementation implementation, PairHMMNativeArguments args)
+    public VectorLoglessPairPDHMM(final PDHMMNativeArguments args)
             throws UserException.HardwareFeatureException {
         final boolean isSupported;
 
-        switch (implementation) {
-            // case AVX:
-            // pairHmm = new IntelPairHmm();
-            // isSupported = pairHmm.load(null);
-            // if (!isSupported) {
-            // throw new UserException.HardwareFeatureException("Machine does not support
-            // AVX PairHMM.");
-            // }
-            // break;
-
-            case OMP:
-                pairPDHmm = new IntelPDHMM();
-                isSupported = pairPDHmm.load(null);
-                if (!isSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
-                }
-                break;
-
-            default:
-                throw new UserException.HardwareFeatureException("Unknown PairHMM implementation.");
+        // Check if the native library loads (which internally checks for AVX support)
+        pairPDHmm = new IntelPDHMM();
+        isSupported = pairPDHmm.load(null); // NOTE: the temp dir defaults to Java.IO.File's temp dir
+        if (!isSupported) {
+            throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
         }
-        PDHMMNativeArguments nativeArguments = new PDHMMNativeArguments();
-        nativeArguments.maxNumberOfThreads = 8;
-        nativeArguments.avxLevel = AVXLevel.FASTEST_AVAILABLE;
-        nativeArguments.setMaxMemoryInMB(1024);
-        nativeArguments.openMPSetting = OpenMPSetting.FASTEST_AVAILABLE;
-        pairPDHmm.initialize(nativeArguments);
-        // TODO no initialize argument?
-        // pairPDHmm.initialize(args);
+
+        pairPDHmm.initialize(args);
     }
 
     public void initialize(final int readMaxLength, final int haplotypeMaxLength) {
         super.initialize(readMaxLength, haplotypeMaxLength);
     }
-    // /**
-    // * {@inheritDoc}
-    // */
-    //// @Override
-    // public void initialize(final int readMaxLength, final int haplotypeMaxLength
-    // ) {
-    // super.initialize(readMaxLength, haplotypeMaxLength);
-    //
-    // branchMatchMatrix = new
-    // double[paddedMaxReadLength][paddedMaxHaplotypeLength];
-    // branchInsertionMatrix = new
-    // double[paddedMaxReadLength][paddedMaxHaplotypeLength];
-    // branchDeletionMatrix = new
-    // double[paddedMaxReadLength][paddedMaxHaplotypeLength];
-    // // do not need to call super.initialize()
-    // int numHaplotypes = haplotypes.size();
-    // mHaplotypeDataArray = new HaplotypeDataHolder[numHaplotypes];
-    // int idx = 0;
-    // haplotypeToHaplotypeListIdxMap.clear();
-    // for (final Haplotype currHaplotype : haplotypes) {
-    // mHaplotypeDataArray[idx] = new HaplotypeDataHolder();
-    // mHaplotypeDataArray[idx].haplotypeBases = currHaplotype.getBases();
-    // haplotypeToHaplotypeListIdxMap.put(currHaplotype, idx);
-    // ++idx;
-    // }
-    // }
-
-    // /**
-    // * {@inheritDoc}
-    // */
-    // @Override
-    // public void initialize(final List<Haplotype> haplotypes, final Map<String,
-    // List<GATKRead>> perSampleReadList,
-    // final int readMaxLength, final int haplotypeMaxLength) {
-    //
-    // }
 
     /**
      * {@inheritDoc}
@@ -155,15 +80,10 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
             startTime = System.nanoTime();
         }
         // (re)initialize the pairHMM only if necessary
-        final int readMaxLength = findMaxReadLength(processedReads);
-        final int haplotypeMaxLength = findMaxAlleleLength(logLikelihoods.alleles());
-        final int readCount = processedReads.size();
         final List<PartiallyDeterminedHaplotype> alleles = logLikelihoods.alleles();
+        final int readCount = processedReads.size();
         final int alleleCount = alleles.size();
-        final int totalComps = readCount * alleleCount;
-        // logger.info("Total Reads: " + readCount + "Total Alleles: " + alleleCount +
-        // "Total Comparisons: " + totalComps);
-        // totalCalls += 1;
+        totalComps+= (long) readCount * alleleCount;
 
         ReadDataHolder[] readDataHolders = new ReadDataHolder[readCount];
         for (int readIndex = 0; readIndex < readCount; readIndex++) {
@@ -205,15 +125,16 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
                     PDPairHMMLikelihoodCalculationEngine.UNCLIPPED_ORIGINAL_SPAN_ATTR);
             for (int a = 0; a < alleleCount; a++) {
                 final PartiallyDeterminedHaplotype allele = alleles.get(a);
+                final int likelihoodIndex = readIndex * alleleCount + a;
                 if (rangeForReadOverlapToDeterminedBases < 0 ||
                     allele.getMaximumExtentOfSiteDeterminedAlleles().overlapsWithMargin(
                         unclippedSpan, rangeForReadOverlapToDeterminedBases + 1)) {
                     // Do nothing, keep the computed likelihood
                 } else {
-                    mLogLikelihoodArray[readIndex * alleleCount + a] = Double.NEGATIVE_INFINITY;
+                    mLogLikelihoodArray[likelihoodIndex] = Double.NEGATIVE_INFINITY;
                 }
-                logLikelihoods.set(a, readIndex, mLogLikelihoodArray[readIndex * alleleCount + a]);
-                writeToResultsFileIfApplicable(inputScoreImputator, read, allele, mLogLikelihoodArray[readIndex * alleleCount + a]);
+                logLikelihoods.set(a, readIndex, mLogLikelihoodArray[likelihoodIndex]);
+                writeToResultsFileIfApplicable(inputScoreImputator, read, allele, mLogLikelihoodArray[likelihoodIndex]);
             }
             readIndex++;
         }
@@ -227,19 +148,21 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
 
     @Override
     public void close() {
-        pairPDHmm.done(); // TODO evidently this doesn't have a close command?
+        pairPDHmm.done();
         if (doProfiling) {
             logger.info("Time spent in setup for JNI call : " + (pairHMMSetupTime * 1e-9));
             logger.info("Time spent in JNI call : " + (pairHMMTime * 1e-9));
             logger.info("Time spent in post-processing : " + (postProcessingTime * 1e-9));
-            // logger.info("Total calls : " + totalCalls);
+            logger.info("Total comparisons : " + totalComps);
         }
         super.close();
     }
 
-    protected void writeToResultsFileIfApplicable(final PairHMMInputScoreImputator inputScoreImputator, GATKRead read, PartiallyDeterminedHaplotype allele, double lk)
+    private void writeToResultsFileIfApplicable(final PairHMMInputScoreImputator inputScoreImputator, GATKRead read, PartiallyDeterminedHaplotype allele, double lk)
     {
-        if(debugOutputStream == null) return;
+        if(debugOutputStream == null) {
+            return;
+        }
 
         if (inputScoreImputator == null || read == null || allele == null) {
             logger.warn("Null input provided to writeToResultsFileIfApplicable");
@@ -259,141 +182,8 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
         try {
             debugOutputStream.write("\n" + new String(alleleBases) + "\t" + Arrays.toString(allelePDBases) + "\t" + new String(readBases) + "\t" + SAMUtils.phredToFastq(readQuals) + "\t" + SAMUtils.phredToFastq(readInsQuals) + "\t" + SAMUtils.phredToFastq(readDelQuals) + "\t" + SAMUtils.phredToFastq(overallGCP) + "\t" + String.format("%e",lk));
         } catch (IOException e) {
-            throw new GATKException("Error writing to specified HMM results output stream", e);
+            throw new UserException("Error writing to specified HMM results output stream", e);
         }
 
-    }
-
-    private class GKLSubmissionBatchManager {
-
-        private static long perepTimeStart = doProfiling ? System.nanoTime() : 0;
-        private static long nativeTimeStart = 0;
-
-        // (re)initialize the pairHMM only if necessary
-        final int readMaxLength;// = findMaxReadLength(processedReads);
-        final int haplotypeMaxLength;// = findMaxAlleleLength(logLikelihoods.alleles());
-        private final List<PDHMMComparisonContainer> submissionQueue = new ArrayList<>();
-
-        // Storing the internal submission chunk outputs to hide from consumer
-        private List<double[]> compMatrixOutputChunks = new ArrayList<>(GKL_COMP_BATCH_SIZE);
-
-        GKLSubmissionBatchManager(final int readMaxLength, final int haplotypeMaxLength) {
-            this.readMaxLength = readMaxLength;
-            this.haplotypeMaxLength = haplotypeMaxLength;
-        }
-
-        /**
-         * Method that adds a comparison to the batch to be submitted to the GKL native
-         * PairHMM code.
-         */
-        void addComp(final PDHMMComparisonContainer container) {
-            if (submissionQueue.size() >= GKL_COMP_BATCH_SIZE) {
-                submitBatch();
-            }
-            submissionQueue.add(container);
-        }
-
-        /**
-         * Method that returns the output of the GKL native PairHMM code as a single
-         * array.
-         *
-         * @return the output of the GKL native PairHMM likelihood calculations as a
-         *         merged array in the order they were submitted
-         */
-        double[] getCompMatrixOutput() {
-            // empty the queue if there are any reads left
-            if (!submissionQueue.isEmpty()) {
-                submitBatch();
-            }
-
-            int totalLength = compMatrixOutputChunks.stream().mapToInt(arr -> arr.length).sum();
-            // Create the merged array
-            double[] mergedArray = new double[totalLength];
-            // Copy each array from the list into the merged array
-            int startIndex = 0;
-            for (double[] array : compMatrixOutputChunks) {
-                System.arraycopy(array, 0, mergedArray, startIndex, array.length);
-                startIndex += array.length;
-            }
-            return mergedArray;
-        }
-
-        /**
-         * Method that clears the Queue and actually handles constructing and submitting
-         * the arrays to the GKL native PairHMM code.
-         */
-        private void submitBatch() {
-            final int currentBatchSize = submissionQueue.size();
-
-            final int hapArraySize = currentBatchSize * haplotypeMaxLength;
-            final int readArraySize = currentBatchSize * readMaxLength;
-            byte[] alleleBasesFull = new byte[hapArraySize];
-            byte[] allelePDBasesFull = new byte[hapArraySize];
-            byte[] readBasesFull = new byte[readArraySize];
-            byte[] readQualsFull = new byte[readArraySize];
-            byte[] readInsQualsFull = new byte[readArraySize];
-            byte[] readDelQualsFull = new byte[readArraySize];
-            byte[] overallGCPFull = new byte[readArraySize];
-            long[] hapLengthsFull = new long[currentBatchSize];
-            long[] readLengthsFull = new long[currentBatchSize];
-
-            // Populate the array information from the queued read/haplotype information
-            for (int i = 0; i < submissionQueue.size(); i++) {
-                final PDHMMComparisonContainer container = submissionQueue.get(i);
-                // pull information form the queued reads and alleles (NOTE: the intention is
-                // that none of these operations are copy operations and are fairly
-                // light-weight)
-                final GATKRead read = container.read;
-                final PartiallyDeterminedHaplotype allele = container.allele;
-                final PairHMMInputScoreImputation inputScoreImputation = container.inputScoreImputation;
-                final byte[] readBases = read.getBases();
-                final byte[] readQuals = read.getBaseQualities();
-                final byte[] readInsQuals = inputScoreImputation.insOpenPenalties();
-                final byte[] readDelQuals = inputScoreImputation.delOpenPenalties();
-                final byte[] overallGCP = inputScoreImputation.gapContinuationPenalties();
-                final byte[] alleleBases = allele.getBases();
-
-                // Copy the information into the full arrays that will be submitted to the GKL
-                System.arraycopy(alleleBases, 0, alleleBasesFull, i * haplotypeMaxLength,
-                        alleleBases.length);
-                System.arraycopy(allele.getAlternateBases(), 0, allelePDBasesFull, i * haplotypeMaxLength,
-                        allele.getAlternateBases().length);
-                System.arraycopy(readBases, 0, readBasesFull, i * readMaxLength, readBases.length);
-                System.arraycopy(readQuals, 0, readQualsFull, i * readMaxLength, readQuals.length);
-                System.arraycopy(readInsQuals, 0, readInsQualsFull, i * readMaxLength,
-                        readInsQuals.length);
-                System.arraycopy(readDelQuals, 0, readDelQualsFull, i * readMaxLength,
-                        readDelQuals.length);
-                System.arraycopy(overallGCP, 0, overallGCPFull, i * readMaxLength, overallGCP.length);
-                hapLengthsFull[i] = alleleBases.length;
-                readLengthsFull[i] = readBases.length;
-            }
-
-            if (doProfiling) {
-                pairHMMSetupTime += (System.nanoTime() - perepTimeStart);
-                nativeTimeStart = System.nanoTime();
-            }
-
-            // Call the JNI PairPDHMM
-            compMatrixOutputChunks.add(pairPDHmm.computePDHMM(alleleBasesFull, allelePDBasesFull,
-                    readBasesFull, readQualsFull, readInsQualsFull, readDelQualsFull,
-                    overallGCPFull, hapLengthsFull, readLengthsFull, currentBatchSize, haplotypeMaxLength,
-                    readMaxLength));
-
-            if (doProfiling) {
-                pairHMMTime += (System.nanoTime() - nativeTimeStart);
-                startTime = System.nanoTime(); // count all of the time between batched calls as setup time
-            }
-
-            // Empty the Queues for the next batch
-            submissionQueue.clear();
-        }
-    }
-
-    // Container for holding submission information
-    record PDHMMComparisonContainer(GATKRead read, int readIndex,
-                                    PairHMMInputScoreImputation inputScoreImputation,
-                                    PartiallyDeterminedHaplotype allele,
-                                    int alleleIndex) {
     }
 }

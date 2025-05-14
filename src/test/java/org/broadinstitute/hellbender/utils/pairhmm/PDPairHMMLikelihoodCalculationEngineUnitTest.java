@@ -4,7 +4,9 @@ import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.BufferedLineReader;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PDPairHMMNativeArgumentCollection;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -31,7 +33,7 @@ public class PDPairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTest  
     // This test is intended to make it simple to take the outputs of the PDHMM from one impelementation and test its outputs over another.
     @Test(dataProvider = "PDPairHMMResultsModes")
     public void testInputReconstitutionDRAGEN_GATK_TEST_FILE(PDPairHMM.Implementation implementation) {
-        final PDPairHMM pdPariHMM = implementation.makeNewHMM(new PairHMMNativeArguments());
+        final PDPairHMM pdPariHMM = implementation.makeNewHMM(new PDHMMNativeArguments());
 
         try (final FileInputStream fis= new FileInputStream(DRAGEN_GATK_TEST_ASSERT_FILE);
              final BufferedLineReader br = new BufferedLineReader(fis)) {

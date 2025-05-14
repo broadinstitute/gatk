@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.PDPairHMM;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
 import java.io.Serializable;
@@ -27,6 +28,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public static final String LIKELIHOOD_CALCULATION_ENGINE_FULL_NAME = "likelihood-calculation-engine";
     public static final String PAIR_HMM_GAP_CONTINUATION_PENALTY_LONG_NAME = "pair-hmm-gap-continuation-penalty";
     public static final String PAIR_HMM_IMPLEMENTATION_LONG_NAME = "pair-hmm-implementation";
+    public static final String DRAGEN_PD_PAIR_HMM_IMPLEMENTATION_LONG_NAME = "dragen-pd-pair-hmm-implementation";
     public static final String PCR_INDEL_MODEL_LONG_NAME = "pcr-indel-model";
     public static final String PHRED_SCALED_GLOBAL_READ_MISMAPPING_RATE_LONG_NAME = "phred-scaled-global-read-mismapping-rate";
     public static final String DISABLE_SYMMETRIC_HMM_NORMALIZING_LONG_NAME = "disable-symmetric-hmm-normalizing";
@@ -71,6 +73,12 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName = PAIR_HMM_IMPLEMENTATION_LONG_NAME, shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
     public PairHMM.Implementation pairHMM = PairHMM.Implementation.FASTEST_AVAILABLE;
 
+    /**
+     * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
+     */
+    @Advanced
+    @Argument(fullName = DRAGEN_PD_PAIR_HMM_IMPLEMENTATION_LONG_NAME, shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
+    public PDPairHMM.Implementation pdPairHMM = PDPairHMM.Implementation.FASTEST_AVAILABLE;
     /**
      * When calculating the likelihood of variants, we can try to correct for PCR errors that cause indel artifacts.
      * The correction is based on the reference context, and acts specifically around repetitive sequences that tend
@@ -133,6 +141,8 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @ArgumentCollection
     public PairHMMNativeArgumentCollection pairHMMNativeArgs = new PairHMMNativeArgumentCollection();
 
+    @ArgumentCollection
+    public PDPairHMMNativeArgumentCollection pdPairHMMNativeArgs = new PDPairHMMNativeArgumentCollection();
 
     //TODO all of these are placeholder arguments and should really bbe either generalized or deleted:
     @Hidden

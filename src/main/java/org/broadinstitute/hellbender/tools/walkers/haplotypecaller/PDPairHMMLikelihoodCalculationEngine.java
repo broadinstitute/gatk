@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -85,8 +86,8 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
      */
     public PDPairHMMLikelihoodCalculationEngine(final byte constantGCP,
                                                 final DragstrParams dragstrParams,
-                                                final PairHMMNativeArguments arguments,
-                                                final PairHMM.Implementation hmmType,
+                                                final PDHMMNativeArguments pdPairhmmNativeArguments,
+                                                final PDPairHMM.Implementation hmmType,
                                                 final GATKPath resultsFile,
                                                 final double log10globalReadMismappingRate,
                                                 final PairHMMLikelihoodCalculationEngine.PCRErrorModel pcrErrorModel,
@@ -110,8 +111,8 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         this.constantGCP = constantGCP;
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.pcrErrorModel = this.dragstrParams == null ? pcrErrorModel : PairHMMLikelihoodCalculationEngine.PCRErrorModel.NONE;
-        // TODO later we probably need a LOG and LOGLESS version for parsimony with DRAGEN
-        this.pdPairHMM = new VectorLoglessPairPDHMM(VectorLoglessPairPDHMM.Implementation.OMP , new PairHMMNativeArguments());
+
+        this.pdPairHMM = hmmType.makeNewHMM(pdPairhmmNativeArguments);
         if (resultsFile != null) {
             pdPairHMM.setAndInitializeDebugOutputStream(new OutputStreamWriter(resultsFile.getOutputStream()));
         }
