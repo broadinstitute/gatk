@@ -56,10 +56,6 @@ repositories {
         url "https://oss.sonatype.org/content/repositories/snapshots" //for disq snapshots
     }
 
-    maven {
-        url "https://oss.sonatype.org/content/repositories/comintelgkl-1067/"
-    }
-
     mavenLocal()
 }
 
