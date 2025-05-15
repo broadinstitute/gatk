@@ -153,7 +153,7 @@ workflow GvsCreateVATfromVDS {
                     region = region,
                     gcs_subnetwork_name = gcs_subnetwork_name,
                     leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-                    variants_docker = effective_variants_docker,
+                    variants_docker = effective_cloud_sdk_docker, # intentionally wrong
             }
         }
 
@@ -344,7 +344,8 @@ task GenerateSitesOnlyVcf {
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex=$(od  -vN 6 -An -tx1             /dev/urandom | tr -d " \n" ; echo)
+        # hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
