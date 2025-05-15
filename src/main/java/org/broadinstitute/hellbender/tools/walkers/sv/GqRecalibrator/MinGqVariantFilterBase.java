@@ -555,15 +555,11 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             return true;
         }
         // next check if there are any samples in the truth set that are filterable
-        if(goodVariantSampleIndices != null &&
-           !getFilterableTruthSampleIndices(variantContext, goodVariantSampleIndices, sampleAlleleCounts,
-                                            sampleNoCallCounts).isEmpty()) {
-           //return true;
-           return badVariantSampleIndices != null &&
-                   !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
-                           sampleNoCallCounts).isEmpty();
-        }
-        return false;
+        return (goodVariantSampleIndices != null &&
+                !getFilterableTruthSampleIndices(variantContext, goodVariantSampleIndices, sampleAlleleCounts,
+                        sampleNoCallCounts).isEmpty()) || (badVariantSampleIndices != null &&
+                !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
+                        sampleNoCallCounts).isEmpty());
     }
 
     /**
@@ -930,6 +926,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         numInputNoCall += numVariantInputNoCall;
         numInputRef += numVariantInputRef;
 
+        final boolean isTrainable = getVariantIsTrainable(variantContext, sampleAlleleCounts, sampleNoCallCounts);
+        if (!isTrainable) {
+            if (!"CNV".equals(variantContext.getAttributeAsString("SVTYPE", ""))) {
+                final boolean isTrainable2 = getVariantIsTrainable(variantContext, sampleAlleleCounts, sampleNoCallCounts);
+            }
+        }
         if(runMode == RunMode.Train && !getVariantIsTrainable(variantContext, sampleAlleleCounts, sampleNoCallCounts)) {
             // no need to train on unfilterable variants
             return;
