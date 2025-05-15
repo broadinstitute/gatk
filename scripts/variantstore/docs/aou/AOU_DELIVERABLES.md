@@ -96,6 +96,7 @@ GROUP BY
    - You can find what the `input_foxtrot_avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
    - The `samples_to_remove_path` should be a one-column file containing the sample ids to remove from the final output VDS. At the time of this writing at least one sample should be removed as described in VS-1641. The format of the file should be one line per sample, with a header of "research_id".
    - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
+   - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
