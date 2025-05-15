@@ -334,7 +334,7 @@ task GenerateSitesOnlyVcf {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         # pip3 install --upgrade pip
-        apk install py3-pip
+        apk add py3-pip
 
         python3 -m venv ./localvenv
         . ./localvenv/bin/activate
