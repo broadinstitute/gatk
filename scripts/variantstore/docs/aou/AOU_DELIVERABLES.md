@@ -57,7 +57,7 @@ GROUP BY
   version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
    1. `GvsBulkIngestGenomes` variant and reference data ingest
       - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
-      - Set a `load_data_scatter_width` of 333.
+      - Set a `load_data_scatter_width` of 300.
       - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
       - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
@@ -79,11 +79,13 @@ GROUP BY
    - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
    - This workflow needs to be run with the `filter_set_name` from `GvsCreateFilterSet` step.
    - Set the `new_sample_cutoff` to the maximum sample id for the Echo callset, 414838.
+   - Set `skip_scoring` to `true`.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCreateVDS` workflow
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
    - You can find what the `avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
    - The `vds_path` path input to this workflow represents the output path for the VDS. For the Foxtrot callset this is a temporary VDS with only new-to-Foxtrot samples, so it does not need to go to a location under `gs://prod-drc-broad/`. Choose a location under the workspace bucket, naming the VDS descriptively with a run attempt number.
+   - For making the new-to-Foxtrot VDS, set the `skip_scoring` parameter to `true`. This skips needlessly applying scoring data at this point which would only be overwritten later during merge and rescore.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
@@ -94,6 +96,7 @@ GROUP BY
    - You can find what the `input_foxtrot_avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
    - The `samples_to_remove_path` should be a one-column file containing the sample ids to remove from the final output VDS. At the time of this writing at least one sample should be removed as described in VS-1641. The format of the file should be one line per sample, with a header of "research_id".
    - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
+   - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.

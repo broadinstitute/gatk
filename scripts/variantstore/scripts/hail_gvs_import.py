@@ -10,7 +10,7 @@ import os
 from hail_gvs_util import *
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume_point):
+def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume_point, skip_scoring):
     import hail as hl
     import import_gvs
     from hail.utils.java import Env
@@ -43,7 +43,8 @@ def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume
             # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
             # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
             # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-            intermediate_resume_point=intermediate_resume_point
+            intermediate_resume_point=intermediate_resume_point,
+            skip_scoring=skip_scoring
         )
     finally:
         local_hail_log_path = os.path.realpath(Env.hc()._log)
@@ -67,6 +68,8 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--intermediate-resume-point', type=int, required=False, default=0,
                         help='Intermediate VDS index at which to resume')
+    parser.add_argument('--skip-scoring', action='store_true', required=False, default=False,
+                        help='Whether to score the VDS or not')
 
     args = parser.parse_args()
     avro_path, temp_path, vds_path = remove_trailing_slashes(args.avro_path, args.temp_path, args.vds_path)
@@ -74,5 +77,5 @@ if __name__ == '__main__':
     arguments_fn, is_gcs = determine_arguments_function(args)
 
     references_path = 'gs://hail-common/references' if is_gcs else args.references_path
-    create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point)
+    create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point, args.skip_scoring)
 
