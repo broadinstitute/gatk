@@ -354,8 +354,7 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
             final String cpxIntervalsString,
             final List<SVSegment> expectedSVSegments
     ) {
-        final SAMSequenceDictionary sequenceDictionary = SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3"));
-        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")), sequenceDictionary);
+        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")));
         final List<SVSegment> actualSegments = SVAnnotateEngine.getComplexAnnotationIntervals(cpxIntervals,
                 complexType);
         assertSegmentListEqual(actualSegments, expectedSVSegments);
@@ -390,8 +389,7 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         SVAnnotateEngine svAnnotateEngine = new SVAnnotateEngine(gtfTrees, null, sequenceDictionary,
                 -1);
 
-        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")),
-                sequenceDictionary);
+        final List<SVSegment> cpxIntervals = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(cpxIntervalsString.split(",")));
         final List<SVSegment> cpxSegments = SVAnnotateEngine.getComplexAnnotationIntervals(cpxIntervals, complexType);
         for (final SVSegment cpxSegment: cpxSegments) {
             svAnnotateEngine.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(), true,
@@ -755,18 +753,15 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
             final List<SVSegment> expectedSVSegments,
             final List<SVSegment> expectedSVSegmentsWithBNDOverlap
     ) {
-        final SAMSequenceDictionary sequenceDictionary = SVAnnotateUnitTest.createSequenceDictionary(
-                Arrays.asList("chr2", "chr4", "chr8", "chr19", "chr22", "chrX"));
-
         GATKSVVCFConstants.StructuralVariantAnnotationType actualSVType = SVAnnotateEngine.getSVType(variant);
         Assert.assertEquals(actualSVType, expectedSVType);
 
         final List<SVSegment> actualSegments = SVAnnotateEngine.getSVSegments(variant,
-                actualSVType, -1, complexType, sequenceDictionary);
+                actualSVType, -1, complexType);
         assertSegmentListEqual(actualSegments, expectedSVSegments);
 
         final List<SVSegment> actualSegmentsWithBNDOverlap = SVAnnotateEngine.getSVSegments(variant,
-                actualSVType, 15000, complexType, sequenceDictionary);
+                actualSVType, 15000, complexType);
         assertSegmentListEqual(actualSegmentsWithBNDOverlap,
                 expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }

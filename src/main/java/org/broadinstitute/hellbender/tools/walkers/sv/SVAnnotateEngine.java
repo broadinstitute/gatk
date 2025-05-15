@@ -512,8 +512,7 @@ public class SVAnnotateEngine {
      * @return - List of SVSegments representing components of the complex SV represented in CPX_INTERVALS
      */
     @VisibleForTesting
-    protected static List<SVSegment> parseComplexIntervals(final List<String> cpxIntervals,
-                                                           final SAMSequenceDictionary sequenceDictionary) {
+    protected static List<SVSegment> parseComplexIntervals(final List<String> cpxIntervals) {
         final List<SVSegment> segments = new ArrayList<>(cpxIntervals.size() + 1);
         for (final String cpxInterval : cpxIntervals) {
             final String[] parsed = cpxInterval.split("_");
@@ -644,8 +643,7 @@ public class SVAnnotateEngine {
     protected static List<SVSegment> getSVSegments(final VariantContext variant,
                                                    final GATKSVVCFConstants.StructuralVariantAnnotationType overallSVType,
                                                    final int maxBreakendLen,
-                                                   final GATKSVVCFConstants.ComplexVariantSubtype complexType,
-                                                   final SAMSequenceDictionary sequenceDictionary) {
+                                                   final GATKSVVCFConstants.ComplexVariantSubtype complexType) {
         final List<SVSegment> intervals;
         final String chrom = variant.getContig();
         final int pos = variant.getStart();
@@ -659,7 +657,7 @@ public class SVAnnotateEngine {
             if (complexType == null) {
                 throw new UserException("Complex (CPX) variant must contain CPX_TYPE INFO field");
             }
-            intervals = getComplexAnnotationIntervals(parseComplexIntervals(cpxIntervals, sequenceDictionary), complexType);
+            intervals = getComplexAnnotationIntervals(parseComplexIntervals(cpxIntervals), complexType);
             // add sink site as INS for dDUP (encoded in CHROM and POS instead of INFO/CPX_INTERVALS)
             // no need to add sink site INS for INS_iDEL or dDUP_iDEL because DEL coordinates contain sink site
             if (complexType == GATKSVVCFConstants.ComplexVariantSubtype.dDUP) {
@@ -669,7 +667,7 @@ public class SVAnnotateEngine {
         } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)) {
             // if SVTYPE is CTX and CPX_TYPE is CTX_INV, add INV from CTX_INTERVALS
             if (complexType == GATKSVVCFConstants.ComplexVariantSubtype.CTX_INV && !cpxIntervals.isEmpty()) {
-                intervals = getComplexAnnotationIntervals(parseComplexIntervals(cpxIntervals, sequenceDictionary), complexType);
+                intervals = getComplexAnnotationIntervals(parseComplexIntervals(cpxIntervals), complexType);
             } else {
                 intervals = new ArrayList<>(2);
             }
@@ -836,8 +834,7 @@ public class SVAnnotateEngine {
         final GATKSVVCFConstants.StructuralVariantAnnotationType overallSVType = getSVType(variant);
         final GATKSVVCFConstants.ComplexVariantSubtype complexType = SVCallRecordUtils.getComplexSubtype(variant);
         final boolean includesDispersedDuplication = includesDispersedDuplication(complexType, COMPLEX_SUBTYPES_WITH_DISPERSED_DUP);
-        final List<SVSegment> svSegmentsForGeneOverlaps = getSVSegments(variant, overallSVType, maxBreakendLen,
-                complexType, sequenceDictionary);
+        final List<SVSegment> svSegmentsForGeneOverlaps = getSVSegments(variant, overallSVType, maxBreakendLen, complexType);
 
         // annotate gene overlaps
         if (gtfIntervalTrees != null && gtfIntervalTrees.getTranscriptIntervalTree() != null) {
