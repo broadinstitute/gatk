@@ -33,7 +33,7 @@ public class PDPairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTest  
     // This test is intended to make it simple to take the outputs of the PDHMM from one impelementation and test its outputs over another.
     @Test(dataProvider = "PDPairHMMResultsModes")
     public void testInputReconstitutionDRAGEN_GATK_TEST_FILE(PDPairHMM.Implementation implementation) {
-        final PDPairHMM pdPariHMM = implementation.makeNewHMM(new PDHMMNativeArguments());
+        final PDPairHMM pdPariHMM = implementation.makeNewHMM(PDPairHMMNativeArgumentCollection.getDefaultPDPairHMMArgs());
 
         try (final FileInputStream fis= new FileInputStream(DRAGEN_GATK_TEST_ASSERT_FILE);
              final BufferedLineReader br = new BufferedLineReader(fis)) {
