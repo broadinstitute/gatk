@@ -15,7 +15,7 @@
 # 435.0.0 is the most recent version of the Cloud SDK Docker image that uses Python 3.10. Newer versions use Python 3.11
 # and unfortunately some of our depdendencies are not currently compiling with that.
 #
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
