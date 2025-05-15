@@ -521,7 +521,7 @@ public class SVAnnotateEngine {
             final SimpleInterval interval = new SimpleInterval(parsed[1]);
             segments.add(new SVSegment(svTypeForInterval, interval));
         }
-        return segments.stream().sorted(SVSegment.getSVSegmentComparator(sequenceDictionary)).collect(Collectors.toList());
+        return segments.stream().sorted().collect(Collectors.toList());
     }
 
 

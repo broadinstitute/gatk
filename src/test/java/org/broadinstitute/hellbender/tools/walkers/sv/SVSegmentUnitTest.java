@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -48,6 +47,12 @@ public class SVSegmentUnitTest extends GATKBaseTest {
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr2", 100, 200)),
                         -1
                 },
+                // different contig, same coordinates/SV type, alphabetical order
+                {
+                        new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 200)),
+                        new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr11", 100, 200)),
+                        -1
+                },
                 // different end coordinate only
                 {
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 200)),
@@ -70,9 +75,7 @@ public class SVSegmentUnitTest extends GATKBaseTest {
             final SVSegment second,
             final int expectedComparisonValue)
     {
-        final SAMSequenceDictionary dictionary =
-                SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3", "chr4"));
-        final int actualComparisonValue = SVSegment.compareSVSegments(first, second, dictionary);
+        final int actualComparisonValue = first.compareTo(second);
         Assert.assertEquals(actualComparisonValue, expectedComparisonValue);
     }
 
@@ -88,6 +91,7 @@ public class SVSegmentUnitTest extends GATKBaseTest {
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 200)),
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr2", 100, 200)),
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 300)),
+                        new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr11", 100, 200)),
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 99, 200))
 
                     ), Arrays.asList(
@@ -97,6 +101,7 @@ public class SVSegmentUnitTest extends GATKBaseTest {
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 200)),
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 200)),
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 300)),
+                        new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr11", 100, 200)),
                         new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr2", 100, 200))
                 )
                 },
@@ -109,9 +114,7 @@ public class SVSegmentUnitTest extends GATKBaseTest {
             final List<SVSegment> unsorted,
             final List<SVSegment> expectedOrder)
     {
-        final SAMSequenceDictionary dictionary =
-                SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3", "chr4"));
-        final List<SVSegment> actualOrder = unsorted.stream().sorted(SVSegment.getSVSegmentComparator(dictionary)).collect(Collectors.toList());
+        final List<SVSegment> actualOrder = unsorted.stream().sorted().collect(Collectors.toList());
         Assert.assertEquals(actualOrder, expectedOrder);
     }
 }
