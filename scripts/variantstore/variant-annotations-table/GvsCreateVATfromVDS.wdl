@@ -104,7 +104,7 @@ workflow GvsCreateVATfromVDS {
 
     call Utils.GetHailScripts {
         input:
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.GetReference {
