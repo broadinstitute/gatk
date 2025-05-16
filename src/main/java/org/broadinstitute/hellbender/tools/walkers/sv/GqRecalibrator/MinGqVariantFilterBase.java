@@ -536,24 +536,26 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
         // check if any of the samples have truth data and can be filtered. If so, the variant is trainable.
         // first check if any member of trios are filterable
-        final boolean inheritanceTrainable = Arrays.stream(trioSampleIndices).anyMatch(
-                trioIndices -> {  // trainable if any trio is filterable: all samples present, no no-calls, at least one
-                    //                                      non-ref sample, and at least one filterable allele count
-                    if(Arrays.stream(trioIndices).anyMatch(sampleIndex -> sampleNoCallCounts[sampleIndex] > 0)) {
-                        return false; // trio has no-calls
+        if (trioSampleIndices != null) {
+            final boolean inheritanceTrainable = Arrays.stream(trioSampleIndices).anyMatch(
+                    trioIndices -> {  // trainable if any trio is filterable: all samples present, no no-calls, at least one
+                        //                                      non-ref sample, and at least one filterable allele count
+                        if (Arrays.stream(trioIndices).anyMatch(sampleIndex -> sampleNoCallCounts[sampleIndex] > 0)) {
+                            return false; // trio has no-calls
+                        }
+                        final int fatherAc = sampleAlleleCounts[trioIndices[FATHER_IND]];
+                        final int motherAc = sampleAlleleCounts[trioIndices[MOTHER_IND]];
+                        final int childAc = sampleAlleleCounts[trioIndices[CHILD_IND]];
+                        return (fatherAc > 0 || motherAc > 0 || childAc > 0) &&
+                                (alleleCountIsFilterable(fatherAc) || alleleCountIsFilterable(motherAc) ||
+                                        alleleCountIsFilterable(childAc));
                     }
-                    final int fatherAc = sampleAlleleCounts[trioIndices[FATHER_IND]];
-                    final int motherAc = sampleAlleleCounts[trioIndices[MOTHER_IND]];
-                    final int childAc = sampleAlleleCounts[trioIndices[CHILD_IND]];
-                    return (fatherAc > 0 || motherAc > 0 || childAc > 0) &&
-                            (alleleCountIsFilterable(fatherAc) || alleleCountIsFilterable(motherAc) ||
-                                    alleleCountIsFilterable(childAc));
-                }
-        );
-
-        if(inheritanceTrainable) {
-            return true;
+            );
+            if(inheritanceTrainable) {
+                return true;
+            }
         }
+
         // next check if there are any samples in the truth set that are filterable
         return (goodVariantSampleIndices != null &&
                 !getFilterableTruthSampleIndices(variantContext, goodVariantSampleIndices, sampleAlleleCounts,
