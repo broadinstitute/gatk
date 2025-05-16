@@ -102,6 +102,11 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
+    call Utils.GetHailScripts {
+        input:
+            variants_docker = variants_docker,
+    }
+
     call Utils.GetReference {
         input:
             reference_name = reference_name,
@@ -153,7 +158,10 @@ workflow GvsCreateVATfromVDS {
                     region = region,
                     gcs_subnetwork_name = gcs_subnetwork_name,
                     leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-                    variants_docker = effective_cloud_sdk_docker, # intentionally wrong
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+                    run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+                    create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
+                    hail_create_vat_inputs_script = GetHailScripts.hail_create_vat_inputs_script,
             }
         }
 
@@ -315,6 +323,9 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
+        File run_in_hail_cluster_script
+        File hail_create_vat_inputs_script
+        File create_vat_inputs_script
         File? hail_wheel
         String ancestry_file_path
         String? hail_temp_path
@@ -322,7 +333,7 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String variants_docker
+        String cloud_sdk_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -377,9 +388,9 @@ task GenerateSitesOnlyVcf {
 
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
-        python3 /app/run_in_hail_cluster.py \
-            --script-path /app/hail_create_vat_inputs.py \
-            --secondary-script-path-list /app/create_vat_inputs.py \
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{hail_create_vat_inputs_script} \
+            --secondary-script-path-list ~{create_vat_inputs_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -397,7 +408,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_docker
         bootDiskSizeGb: 10
     }
 
