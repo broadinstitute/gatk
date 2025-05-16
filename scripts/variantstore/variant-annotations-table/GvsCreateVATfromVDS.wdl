@@ -344,11 +344,10 @@ task GenerateSitesOnlyVcf {
 
         account_name=$(gcloud config list account --format "value(core.account)")
 
-        # pip3 install --upgrade pip
-        apk add py3-pip
-
         python3 -m venv ./localvenv
         . ./localvenv/bin/activate
+
+        pip3 install --upgrade pip
 
         if [[ ! -z "~{hail_wheel}" ]]
         then
@@ -360,8 +359,7 @@ task GenerateSitesOnlyVcf {
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        # hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
-        hex=$(od  -vN 6 -An -tx1             /dev/urandom | tr -d " \n" ; echo)
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
