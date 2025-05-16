@@ -7,7 +7,7 @@ if [ $# -lt 1 ]; then
 fi
 
 if [[ ! "$1" == *-build-base ]]; then
-    echo "Specified tag '$1' does end with '-build-base'."
+    echo "Specified tag '$1' does not end with '-build-base'."
     echo "build_build_base_docker.sh is intended for building build base images only."
     exit 1
 fi
