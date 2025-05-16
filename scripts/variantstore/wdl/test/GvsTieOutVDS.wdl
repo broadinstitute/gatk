@@ -92,7 +92,11 @@ task TieOutVDS {
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
         echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
         apt-get -qq update
-        apt -qq install -y temurin-8-jdk
+        apt -qq install --assume-yes temurin-8-jdk
+
+        apt install --assume-yes python3.11-venv
+        python3 -m venv ./localvenv
+        . ./localvenv/bin/activate
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
