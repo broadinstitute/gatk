@@ -88,7 +88,7 @@ task TieOutVDS {
 
         # Versions of Hail near 0.2.117 demand Java 8 or Java 11, and refuse to run on Java 17. (This is because Google Dataproc is still on Java 11)
         # Temurin Java 8
-        apt-get -qq install wget apt-transport-https gnupg
+        apt-get -qq install --assume-yes wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
         echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
         apt-get -qq update

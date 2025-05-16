@@ -497,7 +497,7 @@ task BuildGATKJar {
 
     # git and git-lfs
     apt-get -qq update
-    apt-get -qq install git git-lfs
+    apt-get -qq install --assume-yes git git-lfs
 
     # Temurin Java 17
     # https://adoptium.net/installation/linux/
@@ -506,7 +506,7 @@ task BuildGATKJar {
     wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc
     echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
     apt-get -qq update
-    apt-get -qq install temurin-17-jdk
+    apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
@@ -627,7 +627,7 @@ task BuildGATKJarAndCreateDataset {
 
     # git and git-lfs
     apt-get -qq update
-    apt-get -qq install git git-lfs
+    apt-get -qq install --assume-yes git git-lfs
 
     # Temurin Java 17
     # https://adoptium.net/installation/linux/
@@ -636,7 +636,7 @@ task BuildGATKJarAndCreateDataset {
     wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc
     echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
     apt-get -qq update
-    apt-get -qq install temurin-17-jdk
+    apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
