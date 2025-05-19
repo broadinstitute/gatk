@@ -129,13 +129,15 @@ public class ExtractCohortVETSEngine extends ExtractCohortEngine {
     boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                               final Map<Allele, Double> remappedVQScoreMap,
                               final Double vqScoreThreshold) {
-        // get the minimum (best) calibration sensitivity for all non-Yay sites, and apply the filter
-        Optional<Double> minVal =
+        // Get the maximum (worst) calibration sensitivity for these non-Yay alleles. If there is an allele, and it is
+        // greater than the vqScoreThreshold, fail the genotype.
+        Optional<Double> maxVal =
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
-                        .min(Double::compareTo);
+                        .filter(d -> !Double.isNaN(d)) // "." scores of "*" spanning deletions become NaN Doubles
+                        .max(Double::compareTo);
 
-        return minVal.isPresent() && minVal.get() > vqScoreThreshold;
+        return maxVal.isPresent() && maxVal.get() > vqScoreThreshold;
     }
 }
