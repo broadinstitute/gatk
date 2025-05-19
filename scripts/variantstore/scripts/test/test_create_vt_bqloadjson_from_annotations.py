@@ -86,7 +86,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
             transcript_line=None)
         expected = likelyBenignExpectedVAT
         self.maxDiff=None
-        self.assertIsNone(actual.get('clinvar_id')) # This should not exist---there are no Clinvar values with matching alleles
+        self.assertIsNone(actual.get('clinvar_rcv_ids')) # This should not exist---there are no Clinvar values with matching alleles
         self.assertIsNone(actual.get('clinvar_phenotype')) # No Clinvar values with matching alleles
         self.assertIsNone(actual.get('clinvar_classification')) # No Clinvar values with matching alleles
         self.assertEqual(actual, expected)
@@ -117,7 +117,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
             transcript_line=None)
         self.maxDiff=None
         self.assertEqual(actual.get('clinvar_classification'), ['likely pathogenic', 'pathogenic', 'conflicting data from submitters', 'guitar', 'kinney', 'sleater', 'solo'])
-        self.assertEqual(actual.get('clinvar_id'), ['RCV01', 'RCV02'])
+        self.assertEqual(actual.get('clinvar_rcv_ids'), ['RCV01', 'RCV01', 'RCV01', 'RCV01', 'RCV01', 'RCV02', 'RCV02', 'RCV02'])
         self.assertEqual(actual.get('clinvar_phenotype'), ['blonde', 'brunette'])
         self.assertEqual(actual.get('clinvar_last_updated'), '2020-03-02')
 
@@ -156,7 +156,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
             variant_line=clinvarInclusionNirvanaOutput,
             transcript_line=None)
         self.maxDiff=None
-        self.assertEqual(len(actual.get('clinvar_id')), 1)
+        self.assertEqual(len(actual.get('clinvar_rcv_ids')), 1)
         self.assertFalse(actual.get('clinvar_phenotype')) # Empty lists are false in python
         self.assertEqual(len(actual.get('clinvar_classification')), 1)
         # self.assertFalse(actual.get('clinvar_classification')) # Empty lists are false in python

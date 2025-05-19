@@ -384,12 +384,6 @@
     "mode": "Nullable"
   },
   {
-    "description": "ClinVar Id for Validation",
-    "name": "clinvar_id",
-    "type": "String",
-    "mode": "Repeated"
-  },
-  {
     "description": "ClinVar Classification",
     "name": "clinvar_classification",
     "type": "String",

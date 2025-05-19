@@ -245,7 +245,6 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         var_alt = variant_line["altAllele"]
         updated_dates = [] # grab the most recent
         phenotypes = [] # ordered alphabetically
-        clinvar_ids = [] # For easy validation downstream
         clinvar_rcv_ids = []
         clinvar_rcv_classifications = []
         clinvar_rcv_num_stars = []
@@ -263,9 +262,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
 
                 if clinvar_num_stars == None:
                     raise ValueError(f"Error: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
-                    # We will continue to include these in the VAT for now under the assumption that they are valid Clinvar entries w/o a reviewStatus.
                 if clinvar_num_stars != 0:   # we only want to include the ones that are not terrible
-                    clinvar_ids.append(clinvar_obj.get("id"))   # TOD - may not need this.
                     sigs = []
                     sigs.extend([x.lower() for x in clinvar_obj.get("significance")])
                     updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
@@ -289,7 +286,6 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             values_not_accounted_for.sort() # alphabetize this so it is deterministic
             ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
 
-            row["clinvar_id"] = clinvar_ids # array - TODO - may not need this.
             row["clinvar_classification"] = ordered_significance_values # special sorted array
             updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
             row["clinvar_last_updated"] = updated_dates[-1] # most recent date
