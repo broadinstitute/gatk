@@ -74,8 +74,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
             transcript_line=None)
         expected = cysticFibrosisExpectedVAT
         self.maxDiff=None
-        # TODO - I have disabled this test TEMPORARILY so that I can test elsewhere.
-        # self.assertEqual(actual, expected)
+        self.assertEqual(actual, expected)
 
 
     def test_clinvar_success(self):
@@ -126,7 +125,9 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
     def test_clinvar_inclusion(self):
         clinvar_swap = [{ 'id': 'RCV01',
                           "reviewStatus": "practice guideline",
-                          'significance': [],
+                          'significance': [
+                              "pathogenic"
+                          ],
                           'refAllele': 'TCT',
                           'altAllele': '-',
                           'phenotypes': [],
@@ -157,5 +158,6 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
         self.maxDiff=None
         self.assertEqual(len(actual.get('clinvar_id')), 1)
         self.assertFalse(actual.get('clinvar_phenotype')) # Empty lists are false in python
-        self.assertFalse(actual.get('clinvar_classification')) # Empty lists are false in python
+        self.assertEqual(len(actual.get('clinvar_classification')), 1)
+        # self.assertFalse(actual.get('clinvar_classification')) # Empty lists are false in python
         self.assertEqual(actual.get('clinvar_last_updated'), '2020-03-01')

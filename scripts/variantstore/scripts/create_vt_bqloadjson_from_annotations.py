@@ -264,7 +264,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                 if clinvar_num_stars == None:
                     raise ValueError(f"Error: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
                     # We will continue to include these in the VAT for now under the assumption that they are valid Clinvar entries w/o a reviewStatus.
-                if clinvar_num_stars != "none": # we only want to include the ones that are not terrible
+                if clinvar_num_stars != 0:   # we only want to include the ones that are not terrible
                     clinvar_ids.append(clinvar_obj.get("id"))   # TOD - may not need this.
                     sigs = []
                     sigs.extend([x.lower() for x in clinvar_obj.get("significance")])

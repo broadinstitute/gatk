@@ -47,14 +47,14 @@ docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 # Run unit tests before pushing.
 set +o errexit
 fail=0
-#for test in test/test_*.py
-#do
-#    docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
-#    if [ $? -ne 0 ]; then
-#        fail=1
-#        echo "$test has failed"
-#    fi
-#done
+for test in test/test_*.py
+do
+    docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
+    if [ $? -ne 0 ]; then
+        fail=1
+        echo "$test has failed"
+    fi
+done
 
 if [ $fail -ne 0 ]; then
     echo "One or more unit tests have failed, exiting."
@@ -67,7 +67,7 @@ GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
 docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
 
 # Docker must be configured for GAR before pushes will work:
-# gcloud auth configure-docker us-central1-docker.pkg.dev
+#gcloud auth configure-docker us-central1-docker.pkg.dev
 docker push "${GAR_TAG}"
 
 echo "Docker image pushed to \"${GAR_TAG}\""
