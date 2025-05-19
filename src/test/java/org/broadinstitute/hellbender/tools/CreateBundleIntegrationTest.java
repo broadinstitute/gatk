@@ -21,8 +21,8 @@ public class CreateBundleIntegrationTest extends CommandLineProgramTest {
     // since once a bundle is round-tripped/serialized to JSON, the resources will always contain absolute path names
     // for local files
 
-    //NOTE: These variables are Strings, but they are initialized to Strings obtained by first creating a GATKPath,
-    // and then calling getURIString on the resulting object. This is just  shortcut to normalize them so they
+    //NOTE: These variables are Strings, but they are initialized to values obtained by first creating a GATKPath,
+    // and then calling getURIString on the resulting object. This is just a shortcut to normalize the paths so they
     // match the strings that will be embedded in the bundles created by the CreateBundle tool (i.e., to have
     // full/absolute paths and protocol schemes).
     private final static String LOCAL_VCF = new GATKPath(getTestDataDir() + "/count_variants_withSequenceDict.vcf").getURIString();
