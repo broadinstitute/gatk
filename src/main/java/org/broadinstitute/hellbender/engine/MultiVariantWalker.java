@@ -118,6 +118,9 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                         }
                     } else {
                         final FeatureInput<VariantContext> featureInput = new FeatureInput<>(gatkPath);
+                        if (drivingVariantsFeatureInputs.contains(featureInput)) {
+                            throw new UserException.BadInput("Feature inputs must be unique: " + gatkPath);
+                        }
                         drivingVariantsFeatureInputs.add(featureInput);
                         // Add each driving variants FeatureInput to the feature manager so that it can be queried, using a lookahead value
                         // of 0 to avoid caching because of windowed queries that need to "look behind" as well.
