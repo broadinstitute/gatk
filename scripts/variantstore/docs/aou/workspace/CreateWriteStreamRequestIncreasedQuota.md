@@ -40,8 +40,9 @@ two-streams-per-sample variant and reference data loading phase of the Foxtrot i
 
 ### Requesting a Quota Increase
 
-When the time comes to kick off ingest, request a quota increase from Google. You can point
-to [this ticket](https://console.cloud.google.com/support/cases/detail/v2/47548796?project=broad-dsde-methods)
+When the time comes to kick off ingest, request a quota increase from Google. Unfortunately we don't seem to be able to
+ask for this quota increase in advance; during Echo Google only allowed us to run with the quota we specified for a very
+limited time. You can point to [this ticket](https://console.cloud.google.com/support/cases/detail/v2/47548796?project=broad-dsde-methods)
 as an example. We should ask for our quota of CreateWriteStream requests in us-central1 to be adjusted
 to 45k per 4 hours. Mathematically this is about the same as the 167 requests per minute value, but apparently we had
 issues with the "per minute" granularity due to the "bursty" way our ingest processes run.
