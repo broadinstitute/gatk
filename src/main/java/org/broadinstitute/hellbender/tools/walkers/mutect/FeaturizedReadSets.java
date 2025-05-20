@@ -102,7 +102,8 @@ public class FeaturizedReadSets {
         for (final String sample : samples) {
             for (final AlleleLikelihoods<Fragment, Haplotype>.BestAllele fragmentBestHaplotype : haplotypeLikelihoods.bestAllelesBreakingTies(sample)) {
                 final Haplotype bestHaplotype = fragmentBestHaplotype.allele;
-                haplotypeSupportCounts.putIfAbsent(bestHaplotype, new MutableInt(0)).increment();
+                haplotypeSupportCounts.putIfAbsent(bestHaplotype, new MutableInt(0));
+                haplotypeSupportCounts.get(bestHaplotype).increment();
             }
         }
 
