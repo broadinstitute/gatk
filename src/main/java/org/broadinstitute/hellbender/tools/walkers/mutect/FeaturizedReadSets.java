@@ -109,10 +109,30 @@ public class FeaturizedReadSets {
 
         final Map<Allele, Set<Haplotype>> haplotypesByAllele = new HashMap<>();
 
+        // determine which haplotypes contain which alleles.  Note that the haplotypes' event maps are in trimmed form
+        // while the VC's alleles might not be if there are multiple alt alleles.  For example:
+        // VC ref = GT, alt = G, GTT
+        // the event for the second alt allele is G -> GT
+        // since events' alt alleles are in minimal form and left-aligned, we only have to pad them by whatever difference
+        // there exists at the end of the ref allele.
+        // for example, in the G -> GT event, the ref has one base while the VC ref has two bases, thus we must append
+        // the (2-1) = 1 last base of the VC ref to get GT + T = GTT
+        // There does exist an edge case where the event ref may be longer than the VC if it corresponds to a deletion
+        // that didn't make it into the VC (not enough evidence) that is longer than anything in the VC.  This case is definitely
+        // an event that's not in the VC, though, so we can filter it.
+        final Allele vcRef = vc.getReference();
         for (final Haplotype haplotype : haplotypeLikelihoods.alleles()) {
             final Allele alleleAtThisSite = haplotype.getEventMap().getOverlappingEvents(vc.getStart()).stream()
-                    .filter(e -> e.getStart() == vc.getStart()) // there can be at most one event at the VC sstart
-                    .map(event -> event.altAllele())
+                    .filter(e -> e.getStart() == vc.getStart()) // there can be at most one event at the VC start
+                    .filter(e -> e.refAllele().length() <= vcRef.length())
+                    .map(event -> {
+                        final Allele eventRef = event.refAllele();
+                        final int excess = vcRef.length() - eventRef.length();  // we have ensured that this is non-negative
+                        final String basesToAppend = vcRef.getBaseString().substring(vcRef.length()-excess);
+                        final String altString = event.altAllele().getBaseString() + basesToAppend;
+                        final Allele paddedAllele = Allele.create(altString, false);
+                        return paddedAllele;
+                    })
                     .findFirst()
                     .orElse(vc.getReference());
 
@@ -142,6 +162,7 @@ public class FeaturizedReadSets {
                 haplotypeLikelihoods.removeAllelesToSubset(haplotypesToKeep);
 
 
+        // TODO: left off with need to explore this breakpoint
         final Map<GATKRead, Haplotype> bestHaplotypes = new HashMap<>();
         samples.stream().flatMap(s -> restrictedHaplotypeLikelihoods.bestAllelesBreakingTies(s).stream())
                 .forEach(ba -> ba.evidence.getReads().forEach(read -> bestHaplotypes.put(read, ba.allele)));
