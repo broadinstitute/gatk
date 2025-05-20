@@ -5,8 +5,7 @@
 The GVS bulk ingest process is prone to hitting BigQuery `CreateWriteStream` quota limits when loading large numbers of
 VCFs, which will certainly be the case for AoU callsets. If an ingest job hits this quota it will immediately fail and
 exit with an error. To avoid this, we want to calculate the rate at which a single ingest job issues `CreateWriteStream`
-requests and limit the scattering of ingest tasks to not exceed that rate. Additionally, we may want to request an
-increase in this quota from Google if the resulting scatter would result in prohibitively slow ingestion.
+requests and limit the scattering of ingest tasks to not exceed that rate.
 
 ### Ingest rate
 
