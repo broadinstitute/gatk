@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-1326-clinvar-rating
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -165,6 +164,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1660_upgrade_hail_0_2_134
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
@@ -183,6 +183,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1660_upgrade_hail_0_2_134
        tags:
          - /.*/
    - name: GvsExtractCallset
@@ -240,7 +241,7 @@ workflows:
              - master
              - ah_var_store
              - rc-vs-1326-clinvar-rating
-             - vs_1615_hetvar_vcfs
+             - vs_1660_upgrade_hail_0_2_134
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -345,6 +346,7 @@ workflows:
              - master
              - ah_var_store
              - rc-vs-1326-clinvar-rating
+             - vs_1660_upgrade_hail_0_2_134
          tags:
              - /.*/
    - name: GvsIngestTieout

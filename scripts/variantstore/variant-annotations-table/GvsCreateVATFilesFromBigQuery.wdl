@@ -242,7 +242,7 @@ task MergeVatTSVs {
         bash ~{monitoring_script} > monitoring.log &
 
         apt-get update
-        apt-get install tabix
+        apt-get install --assume-yes tabix
 
         # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
