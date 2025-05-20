@@ -256,9 +256,6 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
             or ((clinvar_obj.get("refAllele") == reverse_complement(variant_line["refAllele"])) and (clinvar_obj.get("altAllele") == reverse_complement(variant_line["altAllele"])))) \
             and (clinvar_obj.get("id")[:3] == "RCV"):
                 clinvar_num_stars = vat_clinvar_review_status_dictionary.get(clinvar_obj.get("reviewStatus")) ## for testing it might make sense to carry these values to BQ and drop them before we make the VAT
-                ## - NOTE GG - potentially out of date comment!
-                ## TODO add the ("variationId") and the ("reviewStatus")--note that the reviewStatus will need to maintain the ordering of the significance arrays
-                ## we need to do this with a tuple so that the reviewStatus lines up with the significance (since significance seems to be an array, while star is a single value)
 
                 if clinvar_num_stars == None:
                     raise ValueError(f"Error: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")

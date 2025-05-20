@@ -67,7 +67,7 @@ GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
 docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
 
 # Docker must be configured for GAR before pushes will work:
-#gcloud auth configure-docker us-central1-docker.pkg.dev
+# gcloud auth configure-docker us-central1-docker.pkg.dev
 docker push "${GAR_TAG}"
 
 echo "Docker image pushed to \"${GAR_TAG}\""
