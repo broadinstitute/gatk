@@ -12,10 +12,9 @@ requests and limit the scattering of ingest tasks to not exceed that rate.
 It cannot be assumed that whatever ingest rate was observed in the previous callset will be the same for the next
 callset. The performance of ingest jobs can vary from callset to callset due to various factors (code changes, protocol
 changes in how jobs are invoked, etc).
-Looking at the rate at which samples were actually loaded during Foxtrot scale testing, it became clear that the
-Echo-era estimates of 10-15 minutes per sample were much too high, as Foxtrot ingest averages fewer than 9 minutes
-per sample. Before kicking off a full callset it's a good idea to do at least a small ingest run to measure ingest
-performance.
+For example, for the Echo callset an ingest process took about 10-15 minutes per sample, while Foxtrot ingest averages
+fewer than 9 minutes per sample. Before kicking off a full callset it's a good idea to do at least a small ingest run to
+measure ingest performance.
 
 Each ingest job takes a group of samples and loads them into BigQuery. In order to calculate the rate at which a single
 ingest job issues `CreateWriteStream` requests, we need to know the rate at which the job loads samples into BigQuery.
