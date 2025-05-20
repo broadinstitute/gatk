@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -82,10 +83,76 @@ public class FeaturizedReadSets {
             }
         }
 
+        // we don't want too many potential "best" haplotypes because otherwise errors may have
+        // their own personal best haplotypes.  That said, we don't want a genuine variant to be missing a haplotype.
+        // In most cases -- diploid germline when generating training data, diploid germline plus one somatic variant for
+        // most tumor calling -- there is a strong prior of at most two germline haplotypes and at most one other
+        // variant haplotype, and thus this isn't actually that delicate of a balance.  In some cases, however, such as
+        // mitochondria where there are many valid haplotypes with low allele fraction, we may eventually need to be
+        // more careful.  For now, here is our heuristic for which haplotypes to keep:
+        // 1) Any allele in the variant context at this locus gets at least one haplotype, the one with the most read
+        //  support among haplotypes containing that allele.
+        // 2) Keep any other haplotype that is best-supported by at least 5 reads and at least 10% of all reads.
+        // TODO: replace this by a simple likelihood calculation so that the percentage required decreases with total
+        // TODO: read support
+        // TODO: distinguish between normal and tumor sample read support
+
+        // count the number of reads that best support each haplotype
+        final Map<Haplotype, MutableInt> haplotypeSupportCounts = new HashMap<>();
+        for (final String sample : samples) {
+            for (final AlleleLikelihoods<Fragment, Haplotype>.BestAllele fragmentBestHaplotype : haplotypeLikelihoods.bestAllelesBreakingTies(sample)) {
+                final Haplotype bestHaplotype = fragmentBestHaplotype.allele;
+                haplotypeSupportCounts.putIfAbsent(bestHaplotype, new MutableInt(0)).increment();
+            }
+        }
+
+        final Map<Allele, Set<Haplotype>> haplotypesByAllele = new HashMap<>();
+
+        for (final Haplotype haplotype : haplotypeLikelihoods.alleles()) {
+            final Allele alleleAtThisSite = haplotype.getEventMap().getOverlappingEvents(vc.getStart()).stream()
+                    .filter(e -> e.getStart() == vc.getStart()) // there can be at most one event at the VC sstart
+                    .map(event -> event.altAllele())
+                    .findFirst()
+                    .orElse(vc.getReference());
+
+            haplotypesByAllele.putIfAbsent(alleleAtThisSite, new HashSet<>()).add(haplotype);
+        }
+
+        final Set<Haplotype> haplotypesToKeep = new HashSet<>();
+
+        // add the best haplotype for each allele, including reference, at this locus
+        for (final Map.Entry<Allele, Set<Haplotype>> entry : haplotypesByAllele.entrySet()) {
+            final Optional<Haplotype> mostSupportedHaplotype = entry.getValue().stream()
+                    .max(Comparator.comparingInt(h -> haplotypeSupportCounts.getOrDefault(h, new MutableInt(0)).intValue()));
+            mostSupportedHaplotype.ifPresent(h -> haplotypesToKeep.add(h));
+        }
+
+        // TODO: HEURISTIC -- IMPROVE THIS!!!
+        // add any haplotype supported by at least 5 reads AND 10% of reads
+        for (final Map.Entry<Haplotype, MutableInt> haplotypeAndSupportCount : haplotypeSupportCounts.entrySet()) {
+            if (haplotypeAndSupportCount.getValue().intValue() >= 5) {
+                haplotypesToKeep.add(haplotypeAndSupportCount.getKey());
+            }
+        }
+
+        // create likelihoods of just the haplotypes we believe in
+        final AlleleLikelihoods<Fragment, Haplotype> restrictedHaplotypeLikelihoods =
+                haplotypeLikelihoods.removeAllelesToSubset(haplotypesToKeep);
+
+
         final Map<GATKRead, Haplotype> bestHaplotypes = new HashMap<>();
-        samples.stream().flatMap(s -> haplotypeLikelihoods.bestAllelesBreakingTies(s).stream())
+        samples.stream().flatMap(s -> restrictedHaplotypeLikelihoods.bestAllelesBreakingTies(s).stream())
                 .forEach(ba -> ba.evidence.getReads().forEach(read -> bestHaplotypes.put(read, ba.allele)));
 
+        // Step 1: find the most-supported haplotype containing each alt allele at this locus, i.e. if it's multiallelic
+        // with A->C and A->G substitutions, get the most-supported C and the most supported G haplotpyes.  Do this regardless
+        // of support.
+        // Step 2: find all haplotypes with sufficient support to think they could be germline.
+        // Step 3: restrict haplotypeLikelihoods to just these haplotypes
+        // Step 4: featurize with respect to best haplotypes as before
+
+        // In the VC's allele order (careful, this might be different from the likelihoods' order!), for each allele
+        // take all reads
         return vc.getAlleles().stream()
                 .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, permutectDatasetMode, readGroupIndices)).collect(Collectors.toList()))
                 .collect(Collectors.toList());
