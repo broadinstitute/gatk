@@ -116,7 +116,8 @@ public class FeaturizedReadSets {
                     .findFirst()
                     .orElse(vc.getReference());
 
-            haplotypesByAllele.putIfAbsent(alleleAtThisSite, new HashSet<>()).add(haplotype);
+            haplotypesByAllele.putIfAbsent(alleleAtThisSite, new HashSet<>());
+            haplotypesByAllele.get(alleleAtThisSite).add(haplotype);
         }
 
         final Set<Haplotype> haplotypesToKeep = new HashSet<>();
