@@ -18,7 +18,7 @@ RUN apk update && apk upgrade
 # Add all required build tools. These will not be added to the main stage as they are only required to build PyArrow
 # and bcftools but not to use them.
 RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev zlib-dev xz-dev bzip2-dev curl-dev re2 re2-dev
-RUN python3 -m venv ./localvenv && . ./localvenv/bin/activate && python3 -m ensurepip --upgrade
+RUN python3 -m venv /localvenv && . /localvenv/bin/activate && python3 -m ensurepip --upgrade
 
 # Unfortunately neither pyarrow nor google-cloud-bigquery will fetch or build Apache Arrow when `pip install`ed from
 # this base image. Therefore we do the Apache Arrow build ourselves. In order to keep the final image size small this
@@ -41,7 +41,7 @@ RUN cd / && \
 # - Use `ninja` to build the C++ libraries as the `make` system doesn't seem to work as of Arrow 10.0.0.
 # - Install PyArrow and its dependencies
 ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION
-RUN . ./localvenv/bin/activate && pip3 install -r $ARROW_SRC_DIR/python/requirements-build.txt
+RUN . /localvenv/bin/activate && pip3 install -r $ARROW_SRC_DIR/python/requirements-build.txt
 
 RUN mkdir /dist
 RUN mkdir $ARROW_SRC_DIR/cpp/build && \
@@ -54,7 +54,7 @@ ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
 ARG PYARROW_PARALLEL=4
 RUN cd $ARROW_SRC_DIR/python && \
-    . ./localvenv/bin/activate && \
+    . /localvenv/bin/activate && \
     python3 setup.py build_ext --inplace && \
     pip3 install wheel && \
     python3 setup.py build_ext --build-type=release \
