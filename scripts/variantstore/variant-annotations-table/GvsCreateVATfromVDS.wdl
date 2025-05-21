@@ -7,7 +7,7 @@ workflow GvsCreateVATfromVDS {
     input {
         String project_id
         String dataset_name
-        String reference_name
+        String reference_name = "hg38"
         File ancestry_file
         String filter_set_name
         File? sites_only_vcf
@@ -85,6 +85,8 @@ workflow GvsCreateVATfromVDS {
 
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
+    String variant_transcripts_output_path = effective_output_path + 'variant_transcripts/'
+    String genes_output_path = effective_output_path + 'genes/'
 
     if ((defined(sites_only_vcf)) && (defined(vds_path))) {
         call Utils.TerminateWorkflow as IfSitesOnlyVcfSetDontSetCreateParameters {
@@ -198,7 +200,7 @@ workflow GvsCreateVATfromVDS {
                 gatk_docker = effective_gatk_docker,
         }
 
-        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
+        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf.bgz")
 
         scatter(i in range(length(SplitIntervals.interval_files))) {
             String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -244,7 +246,7 @@ workflow GvsCreateVATfromVDS {
                 input:
                     positions_annotation_json = AnnotateVCF.positions_annotation_json,
                     output_file_suffix = "${vcf_filename}.json.gz",
-                    output_path = effective_output_path,
+                    output_path = variant_transcripts_output_path,
                     variants_docker = effective_variants_docker,
             }
 
@@ -252,7 +254,7 @@ workflow GvsCreateVATfromVDS {
                 input:
                     genes_annotation_json = AnnotateVCF.genes_annotation_json,
                     output_file_suffix = "${vcf_filename}.json.gz",
-                    output_path = effective_output_path,
+                    output_path = genes_output_path,
                     variants_docker = effective_variants_docker,
             }
 
@@ -267,12 +269,13 @@ workflow GvsCreateVATfromVDS {
 
         call BigQueryLoadJson {
             input:
-                nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
-                vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
+                vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+                variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
-                output_path = effective_output_path,
+                variant_transcripts_path = variant_transcripts_output_path,
+                genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
                 prep_vt_json_done = PrepVtAnnotationJson.done,
                 prep_genes_json_done = PrepGenesAnnotationJson.done,
@@ -283,7 +286,7 @@ workflow GvsCreateVATfromVDS {
             input:
                 input_vat_table_name = BigQueryLoadJson.vat_table,
                 output_vat_table_name = effective_vat_table_name,
-                nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+                vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -423,7 +426,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         String schema_filepath = "/data/variant_annotation_table/schema/"
         String vat_schema_json_filename = "vat_schema.json"
-        String variant_transcript_schema_json_filename = "vt_schema.json"
+        String variant_transcript_schema_json_filename = "variant_transcript_schema.json"
         String genes_schema_json_filename = "genes_schema.json"
         String variants_docker
     }
@@ -765,8 +768,7 @@ task PrepVtAnnotationJson {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    String output_vt_json = "vat_vt_bq_load" + output_file_suffix
-    String output_vt_gcp_path = output_path + 'vt/'
+    String output_vt_json = "vat_vt_bq_load." + output_file_suffix
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -787,7 +789,7 @@ task PrepVtAnnotationJson {
             --annotated_json ~{positions_annotation_json} \
             --output_vt_json ~{output_vt_json}
 
-        gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
+        gsutil cp ~{output_vt_json} '~{output_path}'
 
     >>>
 
@@ -815,8 +817,7 @@ task PrepGenesAnnotationJson {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
-    String output_genes_gcp_path = output_path + 'genes/'
+    String output_genes_json = "vat_genes_bq_load." + output_file_suffix
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -836,7 +837,7 @@ task PrepGenesAnnotationJson {
             --annotated_json ~{genes_annotation_json} \
             --output_genes_json ~{output_genes_json}
 
-        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
+        gsutil cp ~{output_genes_json} '~{output_path}'
 
     >>>
 
@@ -863,12 +864,13 @@ task BigQueryLoadJson {
 
     input {
         String base_vat_table_name
-        File? nirvana_schema
-        File? vt_schema
-        File? genes_schema
+        File vat_schema
+        File variant_transcript_schema
+        File genes_schema
         String project_id
         String dataset_name
-        String output_path
+        String variant_transcripts_path
+        String genes_path
         Array[Boolean] prep_vt_json_done
         Array[Boolean] prep_genes_json_done
         String cloud_sdk_docker
@@ -881,8 +883,8 @@ task BigQueryLoadJson {
     String variant_transcript_table = base_vat_table_name + "_variants"
     String genes_table = base_vat_table_name + "_genes"
 
-    String vt_path = output_path + 'vt/*'
-    String genes_path = output_path + 'genes/*'
+    String variant_transcripts_wildcarded_path = variant_transcripts_path + '*'
+    String genes_wildcarded_path = genes_path + '*'
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -900,13 +902,12 @@ task BigQueryLoadJson {
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{variant_transcript_schema}
         fi
 
-        echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-        echo ~{vt_path}
-        echo ~{genes_path}
-        bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
+        echo "Loading variant_transcript data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        echo ~{variant_transcripts_wildcarded_path}
+        bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
@@ -918,8 +919,9 @@ task BigQueryLoadJson {
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
         fi
 
-        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-        bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
+        echo "Loading genes data into a pre-vat table ~{dataset_name}.~{genes_table}"
+        echo ~{genes_wildcarded_path}
+        bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_wildcarded_path}
 
         set +e
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} > /dev/null
@@ -934,7 +936,7 @@ task BigQueryLoadJson {
         fi
 
         CLUSTERING_STRING="--clustering_fields=contig"
-        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
+        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{vat_schema}
         echo "Loading data into it"
 
 
@@ -1053,6 +1055,9 @@ task BigQueryLoadJson {
             v.clinvar_classification,
             v.clinvar_last_updated,
             v.clinvar_phenotype,
+            v.clinvar_rcv_ids,
+            v.clinvar_rcv_classifications,
+            v.clinvar_rcv_num_stars
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
@@ -1082,7 +1087,7 @@ task DeduplicateVatInBigQuery {
     input {
         String input_vat_table_name
         String output_vat_table_name
-        File? nirvana_schema
+        File vat_schema
 
         String project_id
         String dataset_name
@@ -1109,7 +1114,7 @@ task DeduplicateVatInBigQuery {
         else
             bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name}
         fi
-        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} ~{nirvana_schema}
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} ~{vat_schema}
         echo "Loading data into it"
 
         # Now we query the original VAT table and recreate it, but remove any rows that appear twice.
