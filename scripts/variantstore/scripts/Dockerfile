@@ -8,16 +8,17 @@
 # should make building the final image much faster in most cases.
 FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-21-alpine-build-base as build
 
-# Install all of our variantstore Python requirements.
+# Install all of our variantstore Python requirements. We need that specific version of setuptools to avoid as it was
+# the last to include the 'package_index' module required by our 'firecloud' (FISS) dependency.
 COPY requirements.txt requirements.txt
 RUN . /localvenv/bin/activate && \
+    pip3 install setuptools==80.2.0 && \
     pip3 install -r requirements.txt
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine as main
 
 RUN apk update && apk upgrade
-RUN python3 -m ensurepip --upgrade
 
 # Add any generally useful Alpine packages here.
 RUN apk add --no-cache perl jq
