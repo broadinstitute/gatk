@@ -13,9 +13,9 @@ It cannot be assumed that whatever ingest rate was observed in the previous call
 callset. The performance of ingest jobs can vary from callset to callset due to various factors (code changes,
 changes in how jobs are invoked, etc).
 For example, in the Echo callset an ingest process took about 10-15 minutes per sample (headers + references +
-variants). Foxtrot ingest breaks up ingestion into a header phase at about 3:30 per sample, followed by a reference and
-variant phase at under 9 minutes per sample. Before kicking off a full callset it's a good idea to do at least a
-small ingest run to measure ingest performance.
+variants). Foxtrot ingest breaks up ingestion into a header phase at about 3:30 per sample, followed by a references +
+variants + ploidy phase at under 9 minutes per sample. Before kicking off a full callset it's a good idea to do at least
+a small ingest run to measure ingest performance.
 
 Each ingest job takes a group of samples and loads them into BigQuery. In order to calculate the rate at which a single
 ingest job issues `CreateWriteStream` requests, we need to know the rate at which the job loads samples into BigQuery.
@@ -34,9 +34,10 @@ This corresponds to the same point in the ingest process for each sample, so by 
 
 The code in the GVS ingest process has evolved over time, using different numbers of write streams at different points
 in its history. In Delta and earlier two write streams were used per sample, while Echo added a third write stream for
-header data. We still intend to load header data for Foxtrot, but now headers are loaded in a separate phase before the
-variant and reference data. So for Foxtrot we will estimate write stream consumption based on the more intensive
-two-streams-per-sample variant and reference data loading phase of the Foxtrot ingest process.
+header data. We still intend to load header data for Foxtrot, but now headers are loaded in a separate phase. In Foxtrot
+we have also added ploidy data, which is loaded along with the variant and reference data. So for Foxtrot we will
+estimate write stream consumption based on the more intensive three-streams-per-sample variant and reference data
+loading phase of the Foxtrot ingest process.
 
 ### Requesting a Quota Increase
 
