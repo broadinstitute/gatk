@@ -3,7 +3,7 @@ version 1.0
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
-# 1
+# 2
 workflow GvsCreateVDS {
     input {
         String avro_path
@@ -243,27 +243,27 @@ task CreateVds {
             ~{'--master-memory-fraction ' + master_memory_fraction} \
             --leave-cluster-running-at-end
 
-        # construct a JSON of arguments for python script to be run in the hail cluster
-        cat > validation-script-arguments.json <<FIN
-        {
-            "vds-path": "~{vds_path}",
-            "temp-path": "${hail_temp_path}"
-        }
-        FIN
-
-        # Run the hail python script to validate a VDS
-        python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{vds_validation_script} \
-            --script-arguments-json-path validation-script-arguments.json \
-            --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
-            --region ~{region} \
-            --gcs-project ~{workspace_project} \
-            --cluster-name ${cluster_name} \
-            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
-            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
-            ~{'--master-memory-fraction ' + master_memory_fraction} \
-            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
+#        # construct a JSON of arguments for python script to be run in the hail cluster
+#        cat > validation-script-arguments.json <<FIN
+#        {
+#            "vds-path": "~{vds_path}",
+#            "temp-path": "${hail_temp_path}"
+#        }
+#        FIN
+#
+#        # Run the hail python script to validate a VDS
+#        python3 ~{run_in_hail_cluster_script} \
+#            --script-path ~{vds_validation_script} \
+#            --script-arguments-json-path validation-script-arguments.json \
+#            --account ${account_name} \
+#            --autoscaling-policy gvs-autoscaling-policy \
+#            --region ~{region} \
+#            --gcs-project ~{workspace_project} \
+#            --cluster-name ${cluster_name} \
+#            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+#            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+#            ~{'--master-memory-fraction ' + master_memory_fraction} \
+#            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 
     runtime {

@@ -60,6 +60,17 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             exit_code = os.waitstatus_to_exitcode(wait_status)
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
+        run_on_existing_cluster(cluster_name, account, region, gcs_project,
+                        script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end)
+
+    except Exception as e:
+        info(e)
+        raise
+
+def run_on_existing_cluster(cluster_name, account, region, gcs_project,
+                   script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end):
+
+    try:
         cluster_client = dataproc.ClusterControllerClient(
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
         )
@@ -73,8 +84,10 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             arguments = items.__next__();
             custom_script_args = [f"--{key} {arguments.get(key)}" for key in arguments.keys()]
 
+        found_cluster = False
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
+                found_cluster = True
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
@@ -96,6 +109,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                     exit_code = os.waitstatus_to_exitcode(wait_status)
                     raise RuntimeError(f"Unexpected exit code running submitted job: {exit_code}")
                 break
+        if not found_cluster:
+            raise RuntimeError(f"Unable to find cluster: {cluster_name}")
     except Exception as e:
         info(e)
         raise
