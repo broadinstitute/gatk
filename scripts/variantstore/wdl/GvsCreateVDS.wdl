@@ -3,7 +3,7 @@ version 1.0
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
-
+# 1
 workflow GvsCreateVDS {
     input {
         String avro_path
@@ -118,6 +118,7 @@ workflow GvsCreateVDS {
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
             hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
+            vds_validation_script = GetHailScripts.vds_validation_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
@@ -130,24 +131,8 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call ValidateVDS.GvsValidateVDS as ValidateVds {
-        input:
-            go = CreateVds.done,
-            cluster_prefix = cluster_prefix,
-            vds_path = vds_destination_path,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            workspace_project = effective_google_project,
-            region = region,
-            workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
-    }
-
     output {
-        String create_cluster_name = CreateVds.cluster_name
-        String validate_cluster_name = ValidateVds.cluster_name
+        String cluster_name = CreateVds.cluster_name
         Boolean done = true
     }
 }
@@ -158,11 +143,12 @@ task CreateVds {
         String vds_path
         String avro_path
         Boolean leave_cluster_running_at_end
+        File run_in_hail_cluster_script
         File hail_gvs_import_script
         File hail_gvs_util_script
         File gvs_import_script
         File gvs_import_ploidy_script
-        File run_in_hail_cluster_script
+        File vds_validation_script
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
@@ -247,6 +233,28 @@ task CreateVds {
             --secondary-script-path-list ~{hail_gvs_util_script} \
             --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
+            --account ${account_name} \
+            --autoscaling-policy gvs-autoscaling-policy \
+            --region ~{region} \
+            --gcs-project ~{workspace_project} \
+            --cluster-name ${cluster_name} \
+            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+            ~{'--master-memory-fraction ' + master_memory_fraction} \
+            --leave-cluster-running-at-end
+
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > validation-script-arguments.json <<FIN
+        {
+            "vds-path": "~{vds_path}",
+            "temp-path": "${hail_temp_path}"
+        }
+        FIN
+
+        # Run the hail python script to validate a VDS
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{vds_validation_script} \
+            --script-arguments-json-path validation-script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \

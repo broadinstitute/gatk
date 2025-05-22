@@ -154,6 +154,7 @@ workflow GvsMergeAndRescoreVDSes {
                 vds_path = output_merged_and_rescored_foxtrot_vds_path,
                 hail_version = effective_hail_version,
                 hail_wheel = hail_wheel,
+                hail_temp_path = hail_temp_path,
                 workspace_project = effective_google_project,
                 region = region,
                 workspace_bucket = effective_workspace_bucket,
