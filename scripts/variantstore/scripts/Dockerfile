@@ -12,8 +12,18 @@ FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-21-alpine-build-base as b
 # the last to include the 'package_index' module required by our 'firecloud' (FISS) dependency.
 COPY requirements.txt requirements.txt
 RUN . /localvenv/bin/activate && \
-    pip3 install setuptools==80.2.0 && \
+    pip3 install 'setuptools<80.3.0' && \
     pip3 install -r requirements.txt
+
+# Install FISS from source and patch for this issue https://github.com/broadinstitute/fiss/issues/194
+COPY fiss_configparser.patch /fiss_configparser.patch
+RUN mkdir /gitrepos && \
+    cd gitrepos && \
+    git clone https://github.com/broadinstitute/fiss.git && \
+    cd fiss && \
+    git apply /fiss_configparser.patch && \
+    . /localvenv/bin/activate && \
+    python setup.py install
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine as main

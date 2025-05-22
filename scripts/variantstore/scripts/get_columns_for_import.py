@@ -156,11 +156,11 @@ def get_column_values(columnSamples, numSamples, user_defined_vcf, user_defined_
     contains_reblocked = set()
 
     # match path that end with ".vcf.gz"
-    path_ends_in_vcf_gz_pattern = "^.*\.vcf\.gz$"
+    path_ends_in_vcf_gz_pattern = "^.*\\.vcf\\.gz$"
     path_ends_in_vcf_gz = set()
 
     # match path that end with ".vcf.gz.tbi"
-    path_ends_in_vcf_gz_tbi_pattern = "^.*\.vcf\.gz\.tbi$"
+    path_ends_in_vcf_gz_tbi_pattern = "^.*\\.vcf\\.gz\\.tbi$"
     path_ends_in_vcf_gz_tbi = set()
 
     # start sorting the columns that we've seen into buckets to be compared later
