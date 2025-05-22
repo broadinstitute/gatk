@@ -247,6 +247,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1326-clinvar-rating
          tags:
              - /.*/
    - name: GvsValidateVat
