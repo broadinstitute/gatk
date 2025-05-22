@@ -434,6 +434,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         cp ~{schema_filepath}* .
 
@@ -480,6 +481,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -523,6 +525,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -772,6 +775,7 @@ task PrepVtAnnotationJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         # Kick off the monitoring script
         bash ~{monitoring_script} > monitoring.log &
@@ -822,6 +826,7 @@ task PrepGenesAnnotationJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         bash ~{monitoring_script} > monitoring.log &
 

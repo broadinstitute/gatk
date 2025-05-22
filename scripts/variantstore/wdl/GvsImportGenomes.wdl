@@ -424,6 +424,7 @@ task ProcessVCFHeaders {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+    . /localvenv/bin/activate
 
     python3 /app/process_sample_vcf_headers.py \
       --project_id=~{project_id} \
@@ -621,6 +622,7 @@ task CurateInputLists {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+    . /localvenv/bin/activate
 
     python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
                                              --sample_name_list_file_name ~{input_sample_name_list} \

@@ -49,6 +49,7 @@ task FindAvroExtractDirectories {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         # Searching for Avros might fail and that's okay
         set +o errexit
@@ -104,6 +105,7 @@ task FindHailTempDirectories {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         set +o errexit
         gsutil ls "~{workspace_bucket}/hail-temp/hail-temp-*" > temp_temp_dirs.txt 2> err.txt

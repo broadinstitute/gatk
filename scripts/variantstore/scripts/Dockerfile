@@ -42,7 +42,4 @@ COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/sch
 ENV PERL5LIB=/vcftools/share/perl5/site_perl/:$PERL5LIB
 ENV PATH=/bcftools/bin\:/vcftools/bin\:$PATH
 
-COPY activate_localvenv.sh /root/.ashrc
-ENV ENV=/root/.ashrc
-RUN . $ENV
 WORKDIR /app

@@ -36,6 +36,7 @@ task Tieout {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+        . /localvenv/bin/activate
 
         mkdir unfiltered filtered compare
 

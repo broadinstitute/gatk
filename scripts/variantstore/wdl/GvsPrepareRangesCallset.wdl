@@ -143,6 +143,7 @@ task PrepareRangesCallsetTask {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+    . /localvenv/bin/activate
 
       echo ~{sample_list_param}
 
