@@ -3,7 +3,7 @@ version 1.0
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
-# 3
+# 4
 workflow GvsCreateVDS {
     input {
         String avro_path
@@ -241,7 +241,7 @@ task CreateVds {
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
-            --leave-cluster-running-at-end
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 
     runtime {

@@ -88,6 +88,8 @@ def run_on_existing_cluster(cluster_name, account, region, gcs_project,
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
                 found_cluster = True
+                info("Found cluster: " + cluster_name)
+
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
