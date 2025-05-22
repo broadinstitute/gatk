@@ -352,16 +352,6 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: GvsBaseImage
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBaseImage.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1665_variants_docker_base_image_update
-       tags:
-         - /nope/
    - name: GvsCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetCost.wdl
