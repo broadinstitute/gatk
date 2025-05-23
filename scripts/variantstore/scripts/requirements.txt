@@ -3,5 +3,4 @@ ijson
 numpy
 google-cloud-storage
 terra-notebook-utils
-pybedtools
 biopython

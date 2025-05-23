@@ -26,6 +26,17 @@ RUN mkdir /gitrepos && \
     . /localvenv/bin/activate && \
     python setup.py install
 
+# Install pysam and pybedtools from source. The pybedtools from `pip install` is broken.
+RUN cd /gitrepos && \
+    git clone https://github.com/pysam-developers/pysam.git && \
+    cd pysam && \
+    . /localvenv/bin/activate && \
+    python setup.py install && \
+    cd /gitrepos && \
+    git clone https://github.com/daler/pybedtools.git && \
+    cd pybedtools && \
+    python setup.py install
+
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine as main
 
