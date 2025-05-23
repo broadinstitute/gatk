@@ -53,4 +53,8 @@ COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/sch
 ENV PERL5LIB=/vcftools/share/perl5/site_perl/:$PERL5LIB
 ENV PATH=/bcftools/bin\:/vcftools/bin\:$PATH
 
+# Have the bash shell of the command script automatically activate the localvenv Python virtual environment.
+COPY activate_localvenv.sh /root/.bashrc
+ENV BASH_ENV /root/.bashrc
+
 WORKDIR /app
