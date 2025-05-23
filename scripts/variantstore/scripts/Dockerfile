@@ -8,8 +8,9 @@
 # should make building the final image much faster in most cases.
 FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-21-alpine-build-base as build
 
-# Install all of our variantstore Python requirements. We need that specific version of setuptools to avoid as it was
-# the last to include the 'package_index' module required by our 'firecloud' (FISS) dependency.
+# Install all of our variantstore Python requirements. We need to constrain the version of setuptools
+# to have a 'package_index' module required by our 'firecloud' (FISS) dependency.
+# See https://github.com/broadinstitute/fiss/issues/192.
 COPY requirements.txt requirements.txt
 RUN . /localvenv/bin/activate && \
     pip3 install 'setuptools<80.3.0' && \
