@@ -1,20 +1,6 @@
 import argparse
-from logging import info
 
 from run_in_hail_cluster import *
-
-def configure_logging():
-    import logging
-    import sys
-    # https://stackoverflow.com/a/14058475
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    root.addHandler(handler)
-
 
 if __name__ == "__main__":
     configure_logging()
@@ -35,7 +21,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    run_on_existing_cluster(cluster_name=args.cluster_name,
+    run_in_existing_cluster(cluster_name=args.cluster_name,
                    account=args.account,
                    region=args.region,
                    gcs_project=args.gcs_project,

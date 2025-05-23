@@ -60,14 +60,14 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             exit_code = os.waitstatus_to_exitcode(wait_status)
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
-        run_on_existing_cluster(cluster_name, account, region, gcs_project,
+        run_in_existing_cluster(cluster_name, account, region, gcs_project,
                         script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end)
 
     except Exception as e:
         info(e)
         raise
 
-def run_on_existing_cluster(cluster_name, account, region, gcs_project,
+def run_in_existing_cluster(cluster_name, account, region, gcs_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end):
 
     try:

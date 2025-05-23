@@ -3,7 +3,7 @@ version 1.0
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
-# 7
+# 8
 workflow GvsCreateVDS {
     input {
         String avro_path
@@ -114,7 +114,7 @@ workflow GvsCreateVDS {
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            run_on_hail_cluster_script = GetHailScripts.run_on_hail_cluster_script,
+            run_in_existing_hail_cluster_script = GetHailScripts.run_in_existing_hail_cluster_script,
             gvs_import_script = GetHailScripts.gvs_import_script,
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
@@ -145,7 +145,7 @@ task CreateVds {
         String avro_path
         Boolean leave_cluster_running_at_end
         File run_in_hail_cluster_script
-        File run_on_hail_cluster_script
+        File run_in_existing_hail_cluster_script
         File hail_gvs_import_script
         File hail_gvs_util_script
         File gvs_import_script
@@ -254,7 +254,7 @@ task CreateVds {
         FIN
 
         # Run the hail python script to validate a VDS
-        python3 ~{run_on_hail_cluster_script} \
+        python3 ~{run_in_existing_hail_cluster_script} \
             --script-path ~{vds_validation_script} \
             --script-arguments-json-path validation-script-arguments.json \
             --account ${account_name} \
