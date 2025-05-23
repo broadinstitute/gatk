@@ -31,6 +31,7 @@ if __name__ == "__main__":
                         help='List of paths to secondary scripts to run in Hail cluster')
     parser.add_argument('--script-arguments-json-path', type=str, required=True,
                         help='JSON file of arguments for script')
+    parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
 
     args = parser.parse_args()
 
