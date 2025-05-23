@@ -129,7 +129,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-05-22-alpine-e3268b6ca862"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-05-23-alpine-1a7dd325c56d"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-04-29-gatkbase-99aac5f90069"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -1446,6 +1446,7 @@ task GetHailScripts {
     >>>
     output {
         File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
+        File run_on_hail_cluster_script = "app/run_on_hail_cluster.py"
         File hail_gvs_import_script = "app/hail_gvs_import.py"
         File hail_gvs_util_script = "app/hail_gvs_util.py"
         File merge_and_rescore_script = "app/merge_and_rescore_vdses.py"
