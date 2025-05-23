@@ -316,7 +316,6 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
-    . /localvenv/bin/activate
 
     python3 /app/add_max_as_vqs_score.py ~{input_vcf} > ~{output_basename}.vcf
   >>>

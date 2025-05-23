@@ -174,7 +174,6 @@ task ExtractFromSampleInfoTable {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
@@ -222,7 +221,6 @@ task ExtractFromFilterTables {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
@@ -282,7 +280,6 @@ task ExtractFromPloidyTable {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
@@ -347,7 +344,6 @@ task ExtractFromSuperpartitionedTables {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 

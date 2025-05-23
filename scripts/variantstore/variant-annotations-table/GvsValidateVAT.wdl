@@ -1364,11 +1364,6 @@ task CheckForNullColumns {
     String results_file = "results.txt"
 
     command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
-
         python3 /app/check_vat_columns.py --fq_vat_table ~{fq_vat_table} \
             --query_project ~{project_id} \
             --schema_file_input /data/variant_annotation_table/schema/vat_schema.json \

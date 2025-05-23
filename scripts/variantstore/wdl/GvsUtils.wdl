@@ -736,7 +736,6 @@ task ScaleXYBedValues {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -1262,7 +1261,6 @@ task SummarizeTaskMonitorLogs {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         python3 /app/summarize_task_monitor_logs.py --fofn_input ~{log_fofn} \
             --output monitoring_summary.txt
@@ -1439,7 +1437,6 @@ task GetHailScripts {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-      . /localvenv/bin/activate
 
         # Not sure why this is required but without it:
         # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD

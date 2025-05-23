@@ -106,7 +106,6 @@ task FullCosts {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        . /localvenv/bin/activate
 
         cat ~{cost_observability_json} | jq '.| map(
         (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}),
