@@ -94,16 +94,16 @@ ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
 ARG PYSAM_VERSION=0.23.0
 RUN mkdir /pysam-build && \
     cd /pysam-build && \
-    curl -L -O https://github.com/pysam-developers/pysam/archive/refs/tags/v$PYSAM_VERSION.zip && \
-    unzip v$PYSAM_VERSION.zip && \
-    cd pysam && \
+    curl -L -O https://github.com/pysam-developers/pysam/archive/refs/tags/v${PYSAM_VERSION}.zip && \
+    unzip v${PYSAM_VERSION}.zip && \
+    cd pysam-${PYSAM_VERSION} && \
     . /localvenv/bin/activate && \
     python setup.py install
 
 ARG PYBEDTOOLS_VERSION=0.12.0
 RUN mkdir /pybedtools-build && \
     cd /pybedtools-build && \
-    curl -L -O https://github.com/daler/pybedtools/archive/refs/tags/v$PYBEDTOOLS_VERSION.zip && \
-    unzip v$PYBEDTOOLS_VERSION.zip && \
-    cd pybedtools && \
+    curl -L -O https://github.com/daler/pybedtools/archive/refs/tags/v${PYBEDTOOLS_VERSION}.zip && \
+    unzip v${PYBEDTOOLS_VERSION}.zip && \
+    cd pybedtools-${PYBEDTOOLS_VERSION} && \
     python setup.py install
