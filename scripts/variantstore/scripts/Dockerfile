@@ -24,7 +24,7 @@ RUN mkdir /fiss-build && \
     cd /fiss-build && \
     curl -L -O https://github.com/broadinstitute/fiss/archive/refs/tags/v$FISS_VERSION.zip && \
     unzip v$FISS_VERSION.zip && \
-    cd fiss && \
+    cd fiss-${FISS_VERSION} && \
     git apply /fiss_configparser.patch && \
     . /localvenv/bin/activate && \
     python setup.py install
