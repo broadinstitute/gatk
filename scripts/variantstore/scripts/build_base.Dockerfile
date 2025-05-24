@@ -92,7 +92,7 @@ ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
 # Install pysam and pybedtools from source. The pybedtools from `pip install` no longer works with the
 # upgraded Google Cloud SDK image.
 ARG PYSAM_VERSION=0.23.0
-RUN mkdir /pysam-build \
+RUN mkdir /pysam-build && \
     cd /pysam-build && \
     curl -L -O https://github.com/pysam-developers/pysam/archive/refs/tags/v$PYSAM_VERSION.zip && \
     unzip v$PYSAM_VERSION.zip && \
