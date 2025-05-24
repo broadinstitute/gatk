@@ -43,7 +43,6 @@ RUN cd / && \
 ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION
 RUN . /localvenv/bin/activate && pip3 install -r $ARROW_SRC_DIR/python/requirements-build.txt
 
-RUN mkdir /dist
 RUN mkdir $ARROW_SRC_DIR/cpp/build && \
     cd $ARROW_SRC_DIR/cpp/build && \
     cmake .. --preset ninja-release-python && \
@@ -79,8 +78,8 @@ RUN mkdir /bcftools bcftools-build && \
 # Build vcf-tools following this example:
 # https://github.com/overcookedfrog/vcftools/blob/master/Dockerfile
 ARG VCFTOOLS_VERSION=0.1.17
-RUN mkdir /vcftools vcftools-build && \
-    cd vcftools-build && \
+RUN mkdir /vcftools /vcftools-build && \
+    cd /vcftools-build && \
     curl -L -O https://github.com/vcftools/vcftools/releases/download/v$VCFTOOLS_VERSION/vcftools-$VCFTOOLS_VERSION.tar.gz && \
     tar zxf vcftools-$VCFTOOLS_VERSION.tar.gz && \
     cd vcftools-$VCFTOOLS_VERSION && \
@@ -89,6 +88,3 @@ RUN mkdir /vcftools vcftools-build && \
     make install
 
 ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
-
-
-
