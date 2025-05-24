@@ -8,42 +8,11 @@
 # should make building the final image much faster in most cases.
 FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-21-alpine-build-base as build
 
-# Install all of our variantstore Python requirements. We need to constrain the version of setuptools
-# to have a 'package_index' module required by our 'firecloud' (FISS) dependency.
-# See https://github.com/broadinstitute/fiss/issues/192.
+# Install all of our variantstore Python requirements.
 COPY requirements.txt requirements.txt
 RUN . /localvenv/bin/activate && \
-    pip3 install 'setuptools<80.3.0' && \
     pip3 install -r requirements.txt
 
-# Install FISS from source and patch for this issue https://github.com/broadinstitute/fiss/issues/194
-COPY fiss_configparser.patch /fiss_configparser.patch
-RUN mkdir /gitrepos && \
-    cd gitrepos && \
-    git clone https://github.com/broadinstitute/fiss.git && \
-    cd fiss && \
-    git apply /fiss_configparser.patch && \
-    . /localvenv/bin/activate && \
-    python setup.py install
-
-# Install pysam and pybedtools from source. The pybedtools from `pip install` no longer works with the
-# upgraded Google Cloud SDK image.
-ARG PYSAM_VERSION=0.23.0
-RUN mkdir /pysam-build \
-    cd /pysam-build && \
-    curl -L -O https://github.com/pysam-developers/pysam/archive/refs/tags/v$PYSAM_VERSION.zip && \
-    unzip v$PYSAM_VERSION.zip && \
-    cd pysam && \
-    . /localvenv/bin/activate && \
-    python setup.py install
-
-ARG PYBEDTOOLS_VERSION=0.12.0
-RUN mkdir /pybedtools-build && \
-    cd /pybedtools-build && \
-    curl -L -O https://github.com/daler/pybedtools/archive/refs/tags/v$PYBEDTOOLS_VERSION.zip && \
-    unzip v$PYBEDTOOLS_VERSION.zip && \
-    cd pybedtools && \
-    python setup.py install
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine as main
