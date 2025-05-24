@@ -6,12 +6,28 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-21-alpine-build-base as build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-24-alpine-build-base as build
 
 # Install all of our variantstore Python requirements.
+# We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
+# See https://github.com/broadinstitute/fiss/issues/192.
 COPY requirements.txt requirements.txt
 RUN . /localvenv/bin/activate && \
+    pip3 install 'setuptools<80.3.0' && \
     pip3 install -r requirements.txt
+
+# Install FISS from source and patch for a `ConfigParser` issue.
+# See https://github.com/broadinstitute/fiss/issues/194.
+ARG FISS_VERSION=0.16.38
+COPY fiss_configparser.patch /fiss_configparser.patch
+RUN mkdir /fiss-build && \
+    cd /fiss-build && \
+    curl -L -O https://github.com/broadinstitute/fiss/archive/refs/tags/v$FISS_VERSION.zip && \
+    unzip v$FISS_VERSION.zip && \
+    cd fiss && \
+    git apply /fiss_configparser.patch && \
+    . /localvenv/bin/activate && \
+    python setup.py install
 
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.

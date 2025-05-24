@@ -89,22 +89,6 @@ RUN mkdir /vcftools /vcftools-build && \
 
 ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
 
-# Install FISS from source and patch for a `ConfigParser` issue.
-# See https://github.com/broadinstitute/fiss/issues/194.
-# We also need to constrain the version of setuptools to so that it still has the 'package_index' module.
-# See https://github.com/broadinstitute/fiss/issues/192.
-ARG FISS_VERSION=0.16.38
-COPY fiss_configparser.patch /fiss_configparser.patch
-RUN mkdir /fiss-build && \
-    cd /fiss-build && \
-    curl -L -O https://github.com/broadinstitute/fiss/archive/refs/tags/v$FISS_VERSION.zip && \
-    unzip v$FISS_VERSION.zip && \
-    cd fiss && \
-    git apply /fiss_configparser.patch && \
-    . /localvenv/bin/activate && \
-    pip3 install 'setuptools<80.3.0' && \
-    python setup.py install
-
 # Install pysam and pybedtools from source. The pybedtools from `pip install` no longer works with the
 # upgraded Google Cloud SDK image.
 ARG PYSAM_VERSION=0.23.0
