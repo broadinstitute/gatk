@@ -6,7 +6,6 @@
   - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
   - There is a quota that needs to be upgraded for the process of Bulk Ingest.
     When we ingest data, we use the Write API, which is part of BQ’s Storage API. Since we are hitting this API with so much data all at once, we want to increase our CreateWriteStream quota. Follow the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md).
-    Once that quota has been increased, the `load_data_scatter_width` value needs to be updated based on that new quota (for information on what we did for Echo, see the "Calculate Quota To be Requested" section in the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md) doc).
   - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
     - Update the .dockstore.yml file on that feature branch to add the feature branch for all the WDLs that will be loaded into the workspace in the next step.
 - Once the requested workspace has been created and permissioned, populate with the following WDLs:
@@ -33,13 +32,14 @@
 - **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
 - Create a dataset in the Google project. Make sure that when you are creating the dataset that you set the `location type` to be `Multi-Region`.
 - Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name (e.g. "aou_wgs" — if it does not exist be sure to create one before running any workflows) and callset identifier (e.g. "echo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
-- Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately
+- Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately.
 
 ## The Main Pipeline
 1. `GvsBulkIngestGenomes` workflow
+   - When we're ready to ingest samples, request a quota increase for the `CreateWriteStream` API as described in [this document](workspace/CreateWriteStreamRequestIncreasedQuota.md). Per the Echo ticket linked in this doc, Google seems to only allow us to run with this quota for a limited time, so it's not something we can ask for long in advance.
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - Set `sample_id_column_name` to "research_id" to use the shorter unique ID from AoU for the `sample_name` column.
-   - Set a `load_data_scatter_width` of 600.
+   - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
    1. `GvsBulkIngestGenomes` header ingest and validation
@@ -57,7 +57,7 @@ GROUP BY
   version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
    1. `GvsBulkIngestGenomes` variant and reference data ingest
       - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
-      - Set a `load_data_scatter_width` of 333.
+      - Set a `load_data_scatter_width` of 333. (~10000 CreateWriteRequest tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
       - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
       - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
