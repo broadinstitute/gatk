@@ -63,9 +63,6 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
         run_in_existing_cluster(cluster_name, account, region, gcs_project,
                         script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end)
 
-    except Exception as e:
-        info(e)
-        raise
 
 def run_in_existing_cluster(cluster_name, account, region, gcs_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end):
@@ -113,9 +110,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
                 break
         if not found_cluster:
             raise RuntimeError(f"Unable to find cluster: {cluster_name}")
-    except Exception as e:
-        info(e)
-        raise
+
     finally:
         if leave_cluster_running_at_end:
             info(f"Leaving cluster {cluster_name} running as `leave_cluster_running_at_end` option is True.")
