@@ -22,11 +22,13 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
+import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSparkIntegrationTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -74,7 +76,13 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         }
     }
 
-    public void doFileToFileUsingReferenceBundle(String fileIn, String extOut, String reference, boolean testMD5) throws Exception {
+    public void doFileToFileUsingReferenceBundle(final String fileIn, final String extOut, final String reference, final boolean testMD5) throws Exception {
+        // this is ugly, but we need to skip this test in Spark tools because they don't support bundles, and
+        // if I put an override of this method in PrintReadsSparkIntegrationTest, it results in dependency injection
+        // errors when the tests are run
+        if (this.getClass().equals(PrintReadsSparkIntegrationTest.class)) {
+            throw new SkipException("Bundles are not supported in Spark tools");
+        }
         final String referenceToUse;
         if (reference != null) {
             // create the bundle, using inference to find the sibling files, then write the bundle out to a temp file
@@ -103,11 +111,6 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final String expectedMD5 = Utils.calculateFileMD5(outFile);
         final String actualMD5 = FileUtils.readFileToString(md5File, StandardCharsets.UTF_8);
         Assert.assertEquals(actualMD5, expectedMD5);
-    }
-
-    @Test(dataProvider="testingData")
-    public void testFileToFileWithReferenceBundle(String fileIn, String extOut, String reference) throws Exception {
-        doFileToFileUsingReferenceBundle(fileIn, extOut, reference, false);
     }
 
     @DataProvider(name="testingData")
@@ -153,7 +156,7 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
     }
 
     @Test(dataProvider="testingData")
-    public void testFileToFileUsingReferenceBundle(String fileIn, String extOut, String reference) throws Exception {
+    public void testFileToFileUsingReferenceBundle(final String fileIn, final String extOut, final String reference) throws Exception {
         if (reference != null) {
             doFileToFileUsingReferenceBundle(fileIn, extOut, reference, false);
         }

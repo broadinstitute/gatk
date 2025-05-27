@@ -157,4 +157,11 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         Assert.assertEquals(count, 8);
     }
 
+    // only do reference bundle tests for non-spark tools, since for now the spark tools don't support reference bundles
+    // (since they use 2-bit and hadoop references)
+    @Test(dataProvider="testingData")
+    public void testFileToFileWithReferenceBundle(final String fileIn, final String extOut, final String reference) throws Exception {
+        doFileToFileUsingReferenceBundle(fileIn, extOut, reference, false);
+    }
+
 }
