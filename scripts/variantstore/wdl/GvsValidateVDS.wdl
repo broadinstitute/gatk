@@ -90,6 +90,7 @@ workflow GvsValidateVDS {
             vds_path = vds_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
+            hail_temp_path = hail_temp_path,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
@@ -116,6 +117,7 @@ task ValidateVds {
         String vds_path
         String? hail_version
         File? hail_wheel
+        String? hail_temp_path
         String workspace_project
         String workspace_bucket
         String region
@@ -159,7 +161,13 @@ task ValidateVds {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
-        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+
+        if [[ -z "~{hail_temp_path}" ]]
+        then
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
