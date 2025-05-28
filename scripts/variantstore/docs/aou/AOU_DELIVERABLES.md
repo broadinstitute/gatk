@@ -47,8 +47,8 @@
          ON e.sample_name = f.research_id
          WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
       ```
-      If there's anything in this output file other than `HG-00X` [GIAB](https://www.nist.gov/programs-projects/genome-bottle)
-      controls, reach out to Lee et al. in the Variants channel with this information.
+      It is expected that there will be HG-00X GIAB controls "missing" as those samples do not normally appear in the
+      callset sample list.
   - Reach out in the `#dsp-variants` channel with the findings from the preceding step. Additionally, ask if there are any
     samples that currently appear in the Foxtrot sample list that should be withdrawn (e.g. any of the samples implicated
     in the issues raised by the gnomAD team).
