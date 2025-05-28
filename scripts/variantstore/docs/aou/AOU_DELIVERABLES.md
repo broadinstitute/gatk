@@ -29,13 +29,13 @@
       this comes from the original unreblocked input files. Reblocked file names have historically looked something like
       `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
     - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
-      - Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
+      Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
         ```
         cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
         ```
     - Push this to a table in the Foxtrot data set:
       ```
-      bq load --project_id aou-genomics-curation-prod --source_format=CSV --use_legacy_sql=false \
+      bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
          --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
          foxtrot_research_ids.txt research_id:STRING
       ```
