@@ -23,6 +23,36 @@
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+- Once the Foxtrot sample list becomes available, perform some checks:
+    - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
+      `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
+      this comes from the original unreblocked input files. Reblocked file names have historically looked something like
+      `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
+    - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
+      - Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
+        ```
+        cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
+        ```
+    - Push this to a table in the Foxtrot data set:
+      ```
+      bq load --project_id aou-genomics-curation-prod --source_format=CSV --use_legacy_sql=false \
+         --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
+         foxtrot_research_ids.txt research_id:STRING
+      ```
+    - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
+      ```
+      bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
+         SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
+         LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_research_ids` f
+         ON e.sample_name = f.research_id
+         WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
+      ```
+      If there's anything in this output file other than `HG-00X` [GIAB](https://www.nist.gov/programs-projects/genome-bottle)
+      controls, reach out to Lee et al. in the Variants channel with this information.
+  - If it is confirmed that there are samples that have been intentionally omitted from the Foxtrot sample list that
+    were present in Echo, they will need to be withdrawn from the Foxtrot callset using the `GvsWithdrawSamples`
+    workflow. One of the parameters to this workflow is `withdrawn_timestamp`; ask in the Variants channel for the
+    timestamp to use.
 - Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
   - Place the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Run the steps in the notebook:

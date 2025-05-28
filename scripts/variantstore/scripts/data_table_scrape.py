@@ -20,7 +20,7 @@ with open(OUTPUT_FILE, 'w') as f:
         if i == NUM_SAMPLES_TO_SCRAPE:
             break
         if i == 0:
-            f.write('\t'.join(['sample_id'] + keys))
+            f.write('\t'.join(['entity:sample_id'] + keys))
             f.write('\n')
 
         values = [s.name] + [str(s.attributes[k]) for k in keys]
