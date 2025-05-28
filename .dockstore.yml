@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-1505_MoveVDSValidation
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -341,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1505_MoveVDSValidation
              - vs_1665_variants_docker_base_image_update
          tags:
              - /.*/
