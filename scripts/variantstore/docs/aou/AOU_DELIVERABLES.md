@@ -96,8 +96,8 @@ GROUP BY
       - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
-   - Run if there are any samples to withdraw from the last callset. Note that this workflow accepts only a single
-     timestamp, so if there are multiple timestamps to be specified, the workflow will need to be run multiple times.
+   - Run if there are any samples to withdraw. Note that this workflow accepts only a single timestamp, so if there are
+     multiple timestamps to be specified, the workflow will need to be run multiple times.
    - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
      - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
      - If the workflow fails, it may have failed if the list of samples that was supplied to it includes samples that have not yet been ingested. To determine if this is the case, inspect the output (STDOUT) of the workflow and if it includes a list of samples that need to be ingested, then do so (or investigate the discrepancy). Note that there is a boolean variable `allow_uningested_samples` for this workflow that will allow it to pass if this condition occurs.
