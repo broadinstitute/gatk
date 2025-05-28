@@ -52,10 +52,11 @@
   - Reach out in the `#dsp-variants` channel with the findings from the preceding step. Additionally, ask if there are any
     samples that currently appear in the Foxtrot sample list that should be withdrawn (e.g. any of the samples implicated
     in the issues raised by the gnomAD team).
-  - If there are samples to withdraw, the `GvsWithdrawSamples` workflow will need to be run to withdraw them. Echo
+  - If there are Echo samples to withdraw, the `GvsWithdrawSamples` workflow will need to be run to withdraw them. Echo
     samples are already loaded into the `foxtrot.sample_info` table and could be withdrawn at this stage. Any
     new-to-Foxtrot samples would not have been loaded yet; ask for clarification in the `#dsp-variants` channel whether
     these should be ingested and then withdrawn or if they should be removed from the Foxtrot sample list before ingestion.
+    See the `GvsWithdrawSamples` workflow documentation below for more details on how to run this workflow.
 - Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
   - Place the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Run the steps in the notebook:
