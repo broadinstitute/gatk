@@ -11,14 +11,13 @@ For any WDL that is to be run for the FoxTrot release:
 
 1. Create a branch off of ah_var_store at the point you are ready to run the WDL. 
    - Foxtrot release branches should be of the form: `FoxtrotRelease_20250528_1` (where 20250528 is the calendar date in the format YYYYMMDD and `_1` uniqueifies the branch if you branch more than once per date (e.g. `_2`, `_3`, …)
-1. Add the branch name to the .dockstore.yml in the branch you have just created / are using.
+1. Note the githash of the branch IMMEDIATELY as it was created. This is the hash that also exists on ah_var_store and this will be used to keep track of exactly what version of the WDL was used.
+2. Add the branch name to the .dockstore.yml in the branch you have just created / are using.
 1. Commit and push the branch to GitHub
 1. In Terra, run that branched version of the WDL (by selecting the branch from the workflow drop down)
 1. Document your work!
-   - Include the branch name in the Terra workflow comment (when launching the WDL, or after the fact by editing it)
-   - Indicate the branch name in the Jira for the task you ran
-   - Update the Foxtrot tracking document to inclue the branch name.
-1. Modify your branch to remove the branch name from the .dockstore.yml
-1. Commit and push your update to GitHub
-1. DO NOT DELETE the branch. It will live on in perpetuity as a record of the WDL that was run.
+   - Include the branch name and the original githash of the branch in the Terra workflow comment (when launching the WDL, or after the fact by editing it)
+   - Indicate the branch name and the original githash of the branch in the Jira for the task you ran
+   - Update the Foxtrot tracking document to inclue the branch name and the original githash of the branch.
+1. After your workflow has completed, you can delete the branch from GitHub.
 
