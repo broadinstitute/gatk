@@ -3,7 +3,7 @@
 ## Overview/Background
 This document describes how we will track the provenance of WDLs used during the generation of the AoU Foxtrot and later releases. We wish to be able to track the provenance of the WDLs used at all stages of the generation of the Foxtrot release in order to be able to determine the state of the code used at a particular point in time.
 
-As we have discussed, we had wanted to rely on git tagging to track the provenance, but due to issues with dockstore, we have decided to use long-lived one-off branches as a substitute for tags. Note that in the Echo release we used a specific branch for all Echo-related work but this proved to be very cumbersome and hard to use in practice as we were managing making changes to the Echo call set branch and the ah_var_store itself.
+As we have discussed, we had wanted to rely on git tagging to track the provenance, but due to issues with dockstore, we have decided to use long-lived one-off branches as a substitute for tags. Note that in the Echo release we used a specific branch for all Echo-related work but this proved to be very cumbersome and hard to use in practice as we were managing making changes to the Echo call set branch and ah_var_store.
 
 ## Steps:
 
