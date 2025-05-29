@@ -24,31 +24,31 @@
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
 - Once the Foxtrot sample list becomes available, perform some checks:
-    - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
-      `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
-      this comes from the original unreblocked input files. Reblocked file names have historically looked something like
-      `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
-    - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
-      Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
-        ```
-        cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
-        ```
-    - Push this to a table in the Foxtrot data set:
+  - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
+    `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
+    this comes from the original unreblocked input files. Reblocked file names have historically looked something like
+    `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
+  - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
+    Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
       ```
-      bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
-         --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
-         foxtrot_research_ids.txt research_id:STRING
+      cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
       ```
-    - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
-      ```
-      bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
-         SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
-         LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_research_ids` f
-         ON e.sample_name = f.research_id
-         WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
-      ```
-      It is expected that `HG-00X` [GIAB](https://www.coriell.org/1/NIGMS/Collections/NIST-Reference-Materials)
-      controls will be listed in this output as those samples do not normally appear in the callset sample list.
+  - Push this to a table in the Foxtrot data set:
+    ```
+    bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
+       --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
+       foxtrot_research_ids.txt research_id:STRING
+    ```
+  - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
+    ```
+    bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
+       SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
+       LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_research_ids` f
+       ON e.sample_name = f.research_id
+       WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
+    ```
+    It is expected that `HG-00X` [GIAB](https://www.coriell.org/1/NIGMS/Collections/NIST-Reference-Materials)
+    controls will be listed in this output as those samples do not normally appear in the callset sample list.
   - Reach out in the `#dsp-variants` channel with the findings from the preceding step. Additionally, ask if there are any
     samples that currently appear in the Foxtrot sample list that should be withdrawn (e.g. any of the samples implicated
     in the issues raised by the gnomAD team).
