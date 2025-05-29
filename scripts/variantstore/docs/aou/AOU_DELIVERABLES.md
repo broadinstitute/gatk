@@ -23,6 +23,40 @@
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+- Once the Foxtrot sample list becomes available, perform some checks:
+  - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
+    `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
+    this comes from the original unreblocked input files. Reblocked file names have historically looked something like
+    `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
+  - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
+    Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
+      ```
+      cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
+      ```
+  - Push this to a table in the Foxtrot data set:
+    ```
+    bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
+       --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
+       foxtrot_research_ids.txt research_id:STRING
+    ```
+  - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
+    ```
+    bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
+       SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
+       LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_research_ids` f
+       ON e.sample_name = f.research_id
+       WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
+    ```
+    It is expected that `HG-00X` [GIAB](https://www.coriell.org/1/NIGMS/Collections/NIST-Reference-Materials)
+    controls will be listed in this output as those samples do not normally appear in the callset sample list.
+  - Reach out in the `#dsp-variants` channel with the findings from the preceding step. Additionally, ask if there are any
+    samples that currently appear in the Foxtrot sample list that should be withdrawn (e.g. any of the samples implicated
+    in the issues raised by the gnomAD team).
+  - If there are Echo samples to withdraw, the `GvsWithdrawSamples` workflow will need to be run to withdraw them. Echo
+    samples are already loaded into the `foxtrot.sample_info` table and could be withdrawn at this stage. Any
+    new-to-Foxtrot samples would not have been loaded yet; ask for clarification in the `#dsp-variants` channel whether
+    these should be ingested and then withdrawn or if they should be removed from the Foxtrot sample list before ingestion.
+    See the `GvsWithdrawSamples` workflow documentation below for more details on how to run this workflow.
 - Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
   - Place the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Run the steps in the notebook:
@@ -62,7 +96,8 @@ GROUP BY
       - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
-   - Run if there are any samples to withdraw from the last callset.
+   - Run if there are any samples to withdraw. Note that this workflow accepts only a single timestamp, so if there are
+     multiple timestamps to be specified, the workflow will need to be run multiple times.
    - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
      - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
      - If the workflow fails, it may have failed if the list of samples that was supplied to it includes samples that have not yet been ingested. To determine if this is the case, inspect the output (STDOUT) of the workflow and if it includes a list of samples that need to be ingested, then do so (or investigate the discrepancy). Note that there is a boolean variable `allow_uningested_samples` for this workflow that will allow it to pass if this condition occurs.
