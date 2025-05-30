@@ -28,22 +28,22 @@
     `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
     this comes from the original unreblocked input files. Reblocked file names have historically looked something like
     `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
-  - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
-    Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
+  - Select out the fields of interest (`research_id`, `reblocked_gvcf`, `reblocked_gvcf_index`) from the sample list,
+    adjusting the arguments to `awk` as necessary:
       ```
-      cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
+      sed 1d foxtrot_sample_list.tsv | awk -F "\t" '{print $2"\t"$15"\t"$16}' > foxtrot_all_samples_fofn.txt
       ```
   - Push this to a table in the Foxtrot data set:
     ```
     bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
-       --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
-       foxtrot_research_ids.txt research_id:STRING
+       foxtrot.foxtrot_all_samples_fofn \
+       foxtrot_all_samples_fofn.txt research_id:STRING reblocked_gvcf:STRING reblocked_gvcf_index:STRING
     ```
   - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
     ```
     bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
        SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
-       LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_research_ids` f
+       LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f
        ON e.sample_name = f.research_id
        WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
     ```
@@ -57,14 +57,25 @@
     new-to-Foxtrot samples would not have been loaded yet; ask for clarification in the `#dsp-variants` channel whether
     these should be ingested and then withdrawn or if they should be removed from the Foxtrot sample list before ingestion.
     See the `GvsWithdrawSamples` workflow documentation below for more details on how to run this workflow.
-- Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
-  - Place the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
-  - Run the steps in the notebook:
-      - In section 1.2, Set the `sample_list_file_path` variable in that notebook to the path of the file
-      - Run the cells up to and through, section 1.4 ("Perform the copy, in batches")
-      - If you want to automatically break up the new samples into smaller sample sets, then run the "now that the data have been copied, you can make sample sets if you wish" step. Set the `SUBSET_SIZE` and `set_name` variables to customize.
+- Create a FOFN of new-to-Foxtrot samples to be ingested. Referencing the BigQuery table created in the preceding step:
+```
+# Specify a GCS path for the output file that will contain the FOFN of new-to-Foxtrot samples.
+FOXTROT_BULK_INGEST_FOFN=gs://<workspace_bucket>/foxtrot_new_samples_fofn.txt
+
+bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod \
+    'EXPORT DATA OPTIONS(
+    uri="'${FOXTROT_BULK_INGEST_FOFN}'",
+    format="CSV",
+    overwrite=true,
+    header=false,
+    field_delimiter="\t") AS
+    SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
+        `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
+        `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
+        WHERE e.sample_name IS NULL'
+```
+  This FOFN will be used in the invocations of `GvsBulkIngestGenomes` workflow below.
 - **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
-- Create a dataset in the Google project. Make sure that when you are creating the dataset that you set the `location type` to be `Multi-Region`.
 - Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name (e.g. "aou_wgs" — if it does not exist be sure to create one before running any workflows) and callset identifier (e.g. "echo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 - Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately.
 
@@ -72,12 +83,12 @@
 1. `GvsBulkIngestGenomes` workflow
    - When we're ready to ingest samples, request a quota increase for the `CreateWriteStream` API as described in [this document](workspace/CreateWriteStreamRequestIncreasedQuota.md). Per the Echo ticket linked in this doc, Google seems to only allow us to run with this quota for a limited time, so it's not something we can ask for long in advance.
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
-   - Set `sample_id_column_name` to "research_id" to use the shorter unique ID from AoU for the `sample_name` column.
-   - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
+   - For the `bulk_ingest_fofn` input, specify the FOFN of new-to-Foxtrot samples created in the preceding step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
    1. `GvsBulkIngestGenomes` header ingest and validation
       - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
+      - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
       - Once these headers have been loaded, run a sanity checking query on the DRAGEN version ```
   SELECT
   REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
@@ -91,8 +102,8 @@ GROUP BY
   version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
    1. `GvsBulkIngestGenomes` variant and reference data ingest
       - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
-      - Set a `load_data_scatter_width` of 333. (~10000 CreateWriteRequest tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
       - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
+      - Set a `load_data_scatter_width` of 333. (~10000 CreateWriteRequest tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
       - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow

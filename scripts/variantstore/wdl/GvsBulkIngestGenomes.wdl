@@ -83,7 +83,7 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
     if (defined(bulk_ingest_fofn) && (defined(sample_id_column_name) || defined(vcf_files_column_name) || defined(vcf_index_files_column_name) || defined(sample_set_name))) {
-        call Utils.TerminateWorkflow as MustNotSpecifyDataTableParams {
+        call Utils.TerminateWorkflow as MustNotSpecifyDataTableParamsWhenBulkIngestFofnSpecified {
             input:
                 message = "GvsBulkIngestGenomes called with bulk_ingest_fofn specified, but also with at least one data table parameter specified (sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name, sample_set_name).",
                 basic_docker = effective_basic_docker,
