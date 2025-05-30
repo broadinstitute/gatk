@@ -3,7 +3,7 @@
 ## Setup
 - Create a Terra workspace
   - Request a new AoU workspace as described in Section 3.D. of [AoU DRC Protocols](https://docs.google.com/document/d/1ooK0wbHLgSueiepjTTyLLI6Zz7vi1-GhKTjmCd8ZHwU/edit?usp=sharing).
-  - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
+  - As described in the "Getting Started" section of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Mary to request this access as part of setting up the new workspace.
   - There is a quota that needs to be upgraded for the process of Bulk Ingest.
     When we ingest data, we use the Write API, which is part of BQ’s Storage API. Since we are hitting this API with so much data all at once, we want to increase our CreateWriteStream quota. Follow the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md).
   - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
@@ -29,7 +29,7 @@
     this comes from the original unreblocked input files. Reblocked file names have historically looked something like
     `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
   - Select out the fields of interest (`research_id`, `reblocked_gvcf`, `reblocked_gvcf_index`) from the sample list,
-    adjusting the numerical arguments to `awk` as necessary:
+    adjusting the numerical values in the `awk` invocation as necessary to pick out these fields:
       ```
       sed 1d foxtrot_sample_list.tsv | awk -F "\t" '{print $2"\t"$15"\t"$16}' > foxtrot_all_samples_fofn.txt
       ```
@@ -58,22 +58,22 @@
     these should be ingested and then withdrawn or if they should be removed from the Foxtrot sample list before ingestion.
     See the `GvsWithdrawSamples` workflow documentation below for more details on how to run this workflow.
 - Create a FOFN of new-to-Foxtrot samples to be ingested. Referencing the BigQuery table created in the preceding step:
-```
-# Specify a GCS path for the output file that will contain the FOFN of new-to-Foxtrot samples.
-FOXTROT_BULK_INGEST_FOFN=gs://<workspace_bucket>/foxtrot_new_samples_fofn.txt
+  ```
+  # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples.
+  FOXTROT_BULK_INGEST_FOFN=gs://<workspace_bucket>/foxtrot_new_samples_fofn.txt
 
-bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod \
-    'EXPORT DATA OPTIONS(
-    uri="'${FOXTROT_BULK_INGEST_FOFN}'",
-    format="CSV",
-    overwrite=true,
-    header=false,
-    field_delimiter="\t") AS
-    SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
-        `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
-        `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
-        WHERE f.withdrawn IS NULL and e.sample_name IS NULL'
-```
+  bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod \
+      'EXPORT DATA OPTIONS(
+      uri="'${FOXTROT_BULK_INGEST_FOFN}'",
+      format="CSV",
+      overwrite=true,
+      header=false,
+      field_delimiter="\t") AS
+      SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
+          `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
+          `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
+          WHERE f.withdrawn IS NULL and e.sample_name IS NULL'
+  ```
   This FOFN will be used in the invocations of `GvsBulkIngestGenomes` workflow below.
 - Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately.
 
