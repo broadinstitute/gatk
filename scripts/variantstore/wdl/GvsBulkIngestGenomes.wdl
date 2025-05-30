@@ -13,7 +13,10 @@ workflow GvsBulkIngestGenomes {
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
         String? vcf_index_files_column_name
-        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        ## NOTE: currently we only allow the loading of one sample set at a time.
+        String? sample_set_name
+        # Optional FOFN of VCFs to ingest. If specified, the workflow will not generate a fofn from the data table.
+        File? bulk_ingest_fofn
         # End GenerateImportFofnFromDataTable
 
         # Begin GvsAssignIds
@@ -59,6 +62,7 @@ workflow GvsBulkIngestGenomes {
         vcf_files_column_name: "The column that supplies the path for the GVCFs to be ingested. If not specified, the workflow will attempt to derive the column name."
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested. If not specified, the workflow will attempt to derive the column name."
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
+        bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested; If specified, the workflow will not generate a fofn from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
     }
 
     if (!defined(git_hash) ||
@@ -78,6 +82,14 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
+    if (defined(bulk_ingest_fofn) && (defined(sample_id_column_name) || defined(vcf_files_column_name) || defined(vcf_index_files_column_name) || defined(sample_set_name))) {
+        call Utils.TerminateWorkflow as MustNotSpecifyDataTableParams {
+            input:
+                message = "GvsBulkIngestGenomes called with bulk_ingest_fofn specified, but also with at least one data table parameter specified (sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name, sample_set_name).",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     if (!load_vcf_headers && !load_vet_and_ref_ranges) {
         call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
             input:
@@ -86,21 +98,24 @@ workflow GvsBulkIngestGenomes {
         }
     }
 
-    call GenerateImportFofnFromDataTable {
-        input:
-            variants_docker = effective_variants_docker,
-            sample_set_name = sample_set_name,
-            data_table_name = data_table_name,
-            user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: the user needs to define this, or it will default to the <entity>_id column
-            vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name,
-            workspace_id = effective_workspace_id,
-            workspace_bucket = effective_workspace_bucket,
+    if (!defined(bulk_ingest_fofn)) {
+        # If the user has not specified a fofn, we will generate one from the data table.
+        call GenerateImportFofnFromDataTable {
+            input:
+                variants_docker = effective_variants_docker,
+                sample_set_name = sample_set_name,
+                data_table_name = data_table_name,
+                user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: the user needs to define this, or it will default to the <entity>_id column
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
+                workspace_id = effective_workspace_id,
+                workspace_bucket = effective_workspace_bucket,
+        }
     }
 
     call SplitBulkImportFofn {
         input:
-            import_fofn = GenerateImportFofnFromDataTable.output_fofn,
+            import_fofn = select_first([GenerateImportFofnFromDataTable.output_fofn, bulk_ingest_fofn]),
             basic_docker = effective_basic_docker,
     }
 

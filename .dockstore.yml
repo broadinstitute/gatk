@@ -218,6 +218,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1185_foxtrot_data_table
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
