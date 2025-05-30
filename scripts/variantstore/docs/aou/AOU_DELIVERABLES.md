@@ -29,7 +29,7 @@
     this comes from the original unreblocked input files. Reblocked file names have historically looked something like
     `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
   - Select out the fields of interest (`research_id`, `reblocked_gvcf`, `reblocked_gvcf_index`) from the sample list,
-    adjusting the arguments to `awk` as necessary:
+    adjusting the numerical arguments to `awk` as necessary:
       ```
       sed 1d foxtrot_sample_list.tsv | awk -F "\t" '{print $2"\t"$15"\t"$16}' > foxtrot_all_samples_fofn.txt
       ```
@@ -72,11 +72,9 @@ bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-pr
     SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
         `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
         `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
-        WHERE e.sample_name IS NULL'
+        WHERE f.withdrawn IS NULL and e.sample_name IS NULL'
 ```
   This FOFN will be used in the invocations of `GvsBulkIngestGenomes` workflow below.
-- **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
-- Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name (e.g. "aou_wgs" — if it does not exist be sure to create one before running any workflows) and callset identifier (e.g. "echo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 - Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately.
 
 ## The Main Pipeline
