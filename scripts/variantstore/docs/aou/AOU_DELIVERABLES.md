@@ -35,9 +35,9 @@
       ```
   - Push this to a table in the Foxtrot data set:
     ```
-    bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
+    bq load --project_id aou-genomics-curation-prod --source_format=CSV --field_delimiter="\t" \
        foxtrot.foxtrot_all_samples_fofn \
-       foxtrot_all_samples_fofn.txt research_id:STRING reblocked_gvcf:STRING reblocked_gvcf_index:STRING
+       foxtrot_all_samples_fofn.txt research_id:STRING,reblocked_gvcf:STRING,reblocked_gvcf_index:STRING
     ```
   - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
     ```
@@ -59,11 +59,13 @@
     See the `GvsWithdrawSamples` workflow documentation below for more details on how to run this workflow.
 - Create a FOFN of new-to-Foxtrot samples to be ingested. Referencing the BigQuery table created in the preceding step:
   ```
-  # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples.
-  FOXTROT_BULK_INGEST_FOFN=gs://<workspace_bucket>/foxtrot_new_samples_fofn.txt
+  # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples. The BQ export command requires this to be a
+  # wildcarded path, but at this scale it should only produce a single file. If for some reason multiple output files
+  # are produced, they should be concatenated together for downstream processing.
+  FOXTROT_BULK_INGEST_FOFN='gs://<workspace_bucket>/foxtrot_new_samples_fofn/*.tsv'
 
-  bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod \
-      'EXPORT DATA OPTIONS(
+  bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod '
+      EXPORT DATA OPTIONS(
       uri="'${FOXTROT_BULK_INGEST_FOFN}'",
       format="CSV",
       overwrite=true,
@@ -72,7 +74,7 @@
       SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
           `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
           `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
-          WHERE f.withdrawn IS NULL and e.sample_name IS NULL'
+          WHERE e.sample_name IS NULL'
   ```
   This FOFN will be used in the invocations of `GvsBulkIngestGenomes` workflow below.
 - Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately.
