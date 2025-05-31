@@ -31,7 +31,7 @@ RUN mkdir /fiss-build && \
 
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine as main
 
 RUN apk update && apk upgrade
 

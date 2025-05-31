@@ -56,7 +56,7 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine"
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
@@ -128,7 +128,7 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-slim"
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-05-27-alpine-17c40e4ba193"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-04-29-gatkbase-99aac5f90069"
