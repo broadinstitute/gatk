@@ -9,13 +9,14 @@ workflow GvsBulkIngestGenomes {
     input {
         # Begin GenerateImportFofnFromDataTable
         # for now set the entity type names with a default
-        String data_table_name = "sample" ## Note that it is possible an advanced user has a different name for the table. We could glean some information from the sample_set name if that has been defined, but this has not, and try to use that information instead of simply using the default "sample"
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String data_table_name = "sample"
+        # Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to
+        # specify an alternate column for the sample_name during ingest
+        String? sample_id_column_name
         String? vcf_files_column_name
         String? vcf_index_files_column_name
-        ## NOTE: currently we only allow the loading of one sample set at a time.
         String? sample_set_name
-        # Optional FOFN of VCFs to ingest. If specified, the workflow will not generate a fofn from the data table.
+        # Optional FOFN of VCFs to ingest. If specified, the workflow will use this and not generate a FOFN from the data table.
         File? bulk_ingest_fofn
         # End GenerateImportFofnFromDataTable
 
@@ -62,7 +63,7 @@ workflow GvsBulkIngestGenomes {
         vcf_files_column_name: "The column that supplies the path for the GVCFs to be ingested. If not specified, the workflow will attempt to derive the column name."
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested. If not specified, the workflow will attempt to derive the column name."
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
-        bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested; If specified, the workflow will not generate a fofn from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
+        bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested. If specified, the workflow will not generate a FOFN from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
     }
 
     if (!defined(git_hash) ||
@@ -99,7 +100,7 @@ workflow GvsBulkIngestGenomes {
     }
 
     if (!defined(bulk_ingest_fofn)) {
-        # If the user has not specified a fofn, we will generate one from the data table.
+        # If the user has not specified a FOFN, we will generate one from the data table.
         call GenerateImportFofnFromDataTable {
             input:
                 variants_docker = effective_variants_docker,
