@@ -156,12 +156,29 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1418_ploidy_for_foxtrot_vds
        tags:
          - /.*/
    - name: GvsValidateVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsMergeAndRescoreVDSes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsTieOutVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieOutVDS.wdl
      filters:
        branches:
          - master
@@ -178,6 +195,15 @@ workflows:
              - VS-1619
          tags:
              - /.*/
+   - name: GvsExtractCallsetShard30603
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -215,7 +241,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-1528-n-rounds-update
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -318,7 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1609_edge_case
+             - vs_1665_variants_docker_base_image_update
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -346,7 +371,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1418_ploidy_for_foxtrot_vds
          tags:
              - /.*/
    - name: GvsCallsetStatistics

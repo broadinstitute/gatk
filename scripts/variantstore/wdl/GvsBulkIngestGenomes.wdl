@@ -154,16 +154,6 @@ workflow GvsBulkIngestGenomes {
             is_wgs = is_wgs,
     }
 
-    if (!load_vet_and_ref_ranges && load_vcf_headers) {
-        # TODO Insert judgy header logic (aka VS-1215) here, then:
-        call Utils.TerminateWorkflow as HeadersLoaded {
-            input:
-                message = "Header data successfully loaded, exiting.",
-                go = ImportGenomes.done,
-                basic_docker = effective_basic_docker,
-        }
-    }
-
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash

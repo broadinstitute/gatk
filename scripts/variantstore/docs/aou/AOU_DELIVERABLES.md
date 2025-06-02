@@ -6,7 +6,6 @@
   - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
   - There is a quota that needs to be upgraded for the process of Bulk Ingest.
     When we ingest data, we use the Write API, which is part of BQ’s Storage API. Since we are hitting this API with so much data all at once, we want to increase our CreateWriteStream quota. Follow the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md).
-    Once that quota has been increased, the `load_data_scatter_width` value needs to be updated based on that new quota (for information on what we did for Echo, see the "Calculate Quota To be Requested" section in the [Quota Request Template](workspace/CreateWriteStreamRequestIncreasedQuota.md) doc).
   - Create and push a feature branch (e.g. `EchoCallset`) based off the `ah_var_store` branch to the GATK GitHub repo.
     - Update the .dockstore.yml file on that feature branch to add the feature branch for all the WDLs that will be loaded into the workspace in the next step.
 - Once the requested workspace has been created and permissioned, populate with the following WDLs:
@@ -24,6 +23,40 @@
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+- Once the Foxtrot sample list becomes available, perform some checks:
+  - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
+    `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
+    this comes from the original unreblocked input files. Reblocked file names have historically looked something like
+    `AB_A123456789_12345678901_1234567890_1.hard-filtered.gvcf.gz.reblocked.g.vcf.gz`.
+  - Look for any samples that have sneakily been omitted from the Foxtrot sample list that were present in Echo.
+    Select out the research id from the sample list, adjusting the argument to `cut` as necessary:
+      ```
+      cut -f 2 foxtrot_sample_list.tsv > foxtrot_research_ids.txt
+      ```
+  - Push this to a table in the Foxtrot data set:
+    ```
+    bq load --project_id aou-genomics-curation-prod --use_legacy_sql=false --source_format=CSV \
+       --skip_leading_rows=1 foxtrot.foxtrot_research_ids \
+       foxtrot_research_ids.txt research_id:STRING
+    ```
+  - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
+    ```
+    bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
+       SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
+       LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_research_ids` f
+       ON e.sample_name = f.research_id
+       WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
+    ```
+    It is expected that `HG-00X` [GIAB](https://www.coriell.org/1/NIGMS/Collections/NIST-Reference-Materials)
+    controls will be listed in this output as those samples do not normally appear in the callset sample list.
+  - Reach out in the `#dsp-variants` channel with the findings from the preceding step. Additionally, ask if there are any
+    samples that currently appear in the Foxtrot sample list that should be withdrawn (e.g. any of the samples implicated
+    in the issues raised by the gnomAD team).
+  - If there are Echo samples to withdraw, the `GvsWithdrawSamples` workflow will need to be run to withdraw them. Echo
+    samples are already loaded into the `foxtrot.sample_info` table and could be withdrawn at this stage. Any
+    new-to-Foxtrot samples would not have been loaded yet; ask for clarification in the `#dsp-variants` channel whether
+    these should be ingested and then withdrawn or if they should be removed from the Foxtrot sample list before ingestion.
+    See the `GvsWithdrawSamples` workflow documentation below for more details on how to run this workflow.
 - Install the [Fetch WGS metadata for samples from list](./workspace/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) python notebook in the workspace that has been created.
   - Place the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Run the steps in the notebook:
@@ -33,24 +66,24 @@
 - **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
 - Create a dataset in the Google project. Make sure that when you are creating the dataset that you set the `location type` to be `Multi-Region`.
 - Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name (e.g. "aou_wgs" — if it does not exist be sure to create one before running any workflows) and callset identifier (e.g. "echo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
-- Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately
+- Once the **non-control** samples have been fully ingested into BQ using the `GvsBulkIngestGenomes` workflow, the **control** samples can be manually added to the workspace and loaded in separately.
 
 ## The Main Pipeline
 1. `GvsBulkIngestGenomes` workflow
+   - When we're ready to ingest samples, request a quota increase for the `CreateWriteStream` API as described in [this document](workspace/CreateWriteStreamRequestIncreasedQuota.md). Per the Echo ticket linked in this doc, Google seems to only allow us to run with this quota for a limited time, so it's not something we can ask for long in advance.
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - Set `sample_id_column_name` to "research_id" to use the shorter unique ID from AoU for the `sample_name` column.
-   - Set a `load_data_scatter_width` of 600.
+   - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
    1. `GvsBulkIngestGenomes` header ingest and validation
       - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
-      - Note that when run with these parameters the workflow is expected to call `TerminateWorkflow` with a message that header data has been successfully loaded. In the Terra UI this will look like a failure but in this particular case is the desired outcome.
       - Once these headers have been loaded, run a sanity checking query on the DRAGEN version ```
   SELECT
   REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
   COUNT(*)
 FROM
-  `aou-genomics-curation-prod.echo.vcf_header_lines` AS header_lines
+  `aou-genomics-curation-prod.foxtrot.vcf_header_lines` AS header_lines
 WHERE
   header_lines.is_expected_unique = TRUE
   AND CONTAINS_SUBSTR(vcf_header_lines, 'DRAGENCommandLine=<ID=dragen,')
@@ -58,12 +91,13 @@ GROUP BY
   version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
    1. `GvsBulkIngestGenomes` variant and reference data ingest
       - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
-      - Set a `load_data_scatter_width` of 333.
+      - Set a `load_data_scatter_width` of 333. (~10000 CreateWriteRequest tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
       - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
       - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
-   - Run if there are any samples to withdraw from the last callset.
+   - Run if there are any samples to withdraw. Note that this workflow accepts only a single timestamp, so if there are
+     multiple timestamps to be specified, the workflow will need to be run multiple times.
    - When you run the `GvsWithdrawSamples` workflow, you should inspect the output of the workflow.
      - The output `num_samples_withdrawn` indicates the number of samples that have been withdrawn. This number should agree with that which you expect.
      - If the workflow fails, it may have failed if the list of samples that was supplied to it includes samples that have not yet been ingested. To determine if this is the case, inspect the output (STDOUT) of the workflow and if it includes a list of samples that need to be ingested, then do so (or investigate the discrepancy). Note that there is a boolean variable `allow_uningested_samples` for this workflow that will allow it to pass if this condition occurs.
@@ -79,14 +113,22 @@ GROUP BY
    - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VETS filter set data.
    - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
    - This workflow needs to be run with the `filter_set_name` from `GvsCreateFilterSet` step.
+   - Set the `new_sample_cutoff` to the maximum sample id for the Echo callset, 414838.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCreateVDS` workflow
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
    - You can find what the `avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
-   - The `vds_path` path input to this workflow represents the output path for the VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
+   - The `vds_path` path input to this workflow represents the output path for the VDS. For the Foxtrot callset this is a temporary VDS with only new-to-Foxtrot samples, so it does not need to go to a location under `gs://prod-drc-broad/`. Choose a location under the workspace bucket, naming the VDS descriptively with a run attempt number.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
+1. `GvsMergeAndRescoreVDSes.wdl` workflow
+   - This step takes as input both the full Echo VDS from the previous AoU callset and the partial Foxtrot VDS generated in the step above, as well as Avro files from the step before that.
+   - The `input_echo_vds_path` is the final VDS for Echo; see the private Variants Slack channel for this location.
+   - The `input_unmerged_foxtrot_vds_path` corresponds to the `vds_path` that was given to `GvsCreateVDS` in the preceding step.
+   - You can find what the `input_foxtrot_avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
+   - The `samples_to_remove_path` should be a one-column file containing the sample ids to remove from the final output VDS. At the time of this writing at least one sample should be removed as described in VS-1641. The format of the file should be one line per sample, with a header of "research_id".
+   - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.

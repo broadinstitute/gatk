@@ -2,9 +2,10 @@ import logging
 from typing import Callable, Optional
 
 import numpy as np
-import pymc3 as pm
-import theano as th
+import pymc as pm
+import pytensor
 
+from ..models import commons
 from .inference_task_base import Sampler, Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
 from .. import config, types
 from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig, \
@@ -12,6 +13,9 @@ from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfi
     DenoisingCallingWorkspace, CopyNumberCallingConfig, HHMMClassAndCopyNumberBasicCaller
 
 _logger = logging.getLogger(__name__)
+
+
+_eps = commons.eps
 
 
 class HHMMClassAndCopyNumberCaller(Caller):
@@ -53,15 +57,15 @@ class HHMMClassAndCopyNumberCaller(Caller):
         # admix q_c_stc with the snapshot
         self.shared_workspace.log_q_c_stc.set_value(
             np.logaddexp(
-                log_q_c_stc_latest + np.log(self.hybrid_inference_params.caller_external_admixing_rate),
-                self.log_q_c_stc_snapshot + np.log(1 - self.hybrid_inference_params.caller_external_admixing_rate)),
+                log_q_c_stc_latest + np.log(np.maximum(self.hybrid_inference_params.caller_external_admixing_rate, _eps)),
+                self.log_q_c_stc_snapshot + np.log(np.maximum(1 - self.hybrid_inference_params.caller_external_admixing_rate, _eps))),
             borrow=True)
 
         # admix q_tau_tk with the snapshot
         self.shared_workspace.log_q_tau_tk.set_value(
             np.logaddexp(
-                log_q_tau_tk_latest + np.log(self.hybrid_inference_params.caller_external_admixing_rate),
-                self.log_q_tau_tk_snapshot + np.log(1 - self.hybrid_inference_params.caller_external_admixing_rate)),
+                log_q_tau_tk_latest + np.log(np.maximum(self.hybrid_inference_params.caller_external_admixing_rate, _eps)),
+                self.log_q_tau_tk_snapshot + np.log(np.maximum(1 - self.hybrid_inference_params.caller_external_admixing_rate, _eps))),
             borrow=True)
 
     def update_auxiliary_vars(self):
@@ -173,7 +177,7 @@ class CohortDenoisingAndCallingMainTask(HybridInferenceTask):
         else:
             _logger.info("Instantiating the copy number caller...")
             initial_temperature = hybrid_inference_params.initial_temperature
-            self.temperature: types.TensorSharedVariable = th.shared(
+            self.temperature: types.TensorSharedVariable = pytensor.shared(
                 np.asarray([initial_temperature], dtype=types.floatX))
             copy_number_caller = HHMMClassAndCopyNumberCaller(
                 calling_config, hybrid_inference_params, shared_workspace, self.temperature)

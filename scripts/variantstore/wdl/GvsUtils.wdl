@@ -56,7 +56,7 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
@@ -78,12 +78,12 @@ task GetToolVersions {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Scrape out various workflow / workspace info from the localization and delocalization scripts.
-    if [[ -e /cromwell_root/gcs_delocalization.sh ]]
-    then
-      CROMWELL_ROOT=/cromwell_root
-    elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
+    if [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
     then
       CROMWELL_ROOT=/mnt/disks/cromwell_root
+    elif [[ -e /cromwell_root/gcs_delocalization.sh ]]
+    then
+      CROMWELL_ROOT=/cromwell_root
     else
       echo "Could not find Cromwell root under /cromwell_root (PAPI v2) or /mnt/disks/cromwell_root (GCP Batch), exiting."
       exit 1
@@ -123,15 +123,15 @@ task GetToolVersions {
     String gvs_version = read_string("version.txt")
     String git_hash = read_string("git_hash.txt")
     String cromwell_root = read_string("cromwell_root.txt")
-    String hail_version = "0.2.126"
+    String hail_version = "0.2.134"
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-03-03-alpine-3de322e309ea"
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-slim"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-05-27-alpine-17c40e4ba193"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-03-05-gatkbase-afa18f7ab47f"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-04-29-gatkbase-99aac5f90069"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -497,7 +497,7 @@ task BuildGATKJar {
 
     # git and git-lfs
     apt-get -qq update
-    apt-get -qq install git git-lfs
+    apt-get -qq install --assume-yes git git-lfs
 
     # Temurin Java 17
     # https://adoptium.net/installation/linux/
@@ -506,7 +506,7 @@ task BuildGATKJar {
     wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc
     echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
     apt-get -qq update
-    apt-get -qq install temurin-17-jdk
+    apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
@@ -627,7 +627,7 @@ task BuildGATKJarAndCreateDataset {
 
     # git and git-lfs
     apt-get -qq update
-    apt-get -qq install git git-lfs
+    apt-get -qq install --assume-yes git git-lfs
 
     # Temurin Java 17
     # https://adoptium.net/installation/linux/
@@ -636,7 +636,7 @@ task BuildGATKJarAndCreateDataset {
     wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc
     echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
     apt-get -qq update
-    apt-get -qq install temurin-17-jdk
+    apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
@@ -1429,4 +1429,40 @@ task CopyFile {
     preemptible: 3
     cpu: 1
   }
+}
+
+task GetHailScripts {
+    input {
+        String variants_docker
+    }
+    meta {
+        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
+        # the script content should also stay the same.
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Not sure why this is required but without it:
+        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
+
+        mkdir app
+        cp /app/*.py app
+    >>>
+    output {
+        File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
+        File run_in_existing_hail_cluster_script = "app/run_in_existing_hail_cluster.py"
+        File hail_gvs_import_script = "app/hail_gvs_import.py"
+        File hail_gvs_util_script = "app/hail_gvs_util.py"
+        File merge_and_rescore_script = "app/merge_and_rescore_vdses.py"
+        File gvs_import_script = "app/import_gvs.py"
+        File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
+        File create_vat_inputs_script = "app/create_vat_inputs.py"
+        File hail_create_vat_inputs_script = "app/hail_create_vat_inputs.py"
+        File vds_validation_script = "app/vds_validation.py"
+    }
+    runtime {
+        docker: variants_docker
+    }
 }

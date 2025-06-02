@@ -7,7 +7,7 @@ workflow GvsCreateVATfromVDS {
     input {
         String project_id
         String dataset_name
-        String reference_name
+        String reference_name = "hg38"
         File ancestry_file
         String filter_set_name
         File? sites_only_vcf
@@ -85,6 +85,8 @@ workflow GvsCreateVATfromVDS {
 
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
+    String variant_transcripts_output_path = effective_output_path + 'variant_transcripts/'
+    String genes_output_path = effective_output_path + 'genes/'
 
     if ((defined(sites_only_vcf)) && (defined(vds_path))) {
         call Utils.TerminateWorkflow as IfSitesOnlyVcfSetDontSetCreateParameters {
@@ -100,6 +102,11 @@ workflow GvsCreateVATfromVDS {
                 message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path'",
                 basic_docker = effective_basic_docker,
         }
+    }
+
+    call Utils.GetHailScripts {
+        input:
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.GetReference {
@@ -153,7 +160,10 @@ workflow GvsCreateVATfromVDS {
                     region = region,
                     gcs_subnetwork_name = gcs_subnetwork_name,
                     leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
-                    variants_docker = effective_variants_docker,
+                    cloud_sdk_docker = effective_cloud_sdk_docker,
+                    run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+                    create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
+                    hail_create_vat_inputs_script = GetHailScripts.hail_create_vat_inputs_script,
             }
         }
 
@@ -190,7 +200,7 @@ workflow GvsCreateVATfromVDS {
                 gatk_docker = effective_gatk_docker,
         }
 
-        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf")
+        String sites_only_vcf_basename = basename(CopySitesOnlyVcf.output_file_path, ".sites-only.vcf.bgz")
 
         scatter(i in range(length(SplitIntervals.interval_files))) {
             String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
@@ -236,7 +246,7 @@ workflow GvsCreateVATfromVDS {
                 input:
                     positions_annotation_json = AnnotateVCF.positions_annotation_json,
                     output_file_suffix = "${vcf_filename}.json.gz",
-                    output_path = effective_output_path,
+                    output_path = variant_transcripts_output_path,
                     variants_docker = effective_variants_docker,
             }
 
@@ -244,7 +254,7 @@ workflow GvsCreateVATfromVDS {
                 input:
                     genes_annotation_json = AnnotateVCF.genes_annotation_json,
                     output_file_suffix = "${vcf_filename}.json.gz",
-                    output_path = effective_output_path,
+                    output_path = genes_output_path,
                     variants_docker = effective_variants_docker,
             }
 
@@ -259,12 +269,13 @@ workflow GvsCreateVATfromVDS {
 
         call BigQueryLoadJson {
             input:
-                nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
-                vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
+                vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+                variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
-                output_path = effective_output_path,
+                variant_transcripts_path = variant_transcripts_output_path,
+                genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
                 prep_vt_json_done = PrepVtAnnotationJson.done,
                 prep_genes_json_done = PrepGenesAnnotationJson.done,
@@ -275,7 +286,7 @@ workflow GvsCreateVATfromVDS {
             input:
                 input_vat_table_name = BigQueryLoadJson.vat_table,
                 output_vat_table_name = effective_vat_table_name,
-                nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+                vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -315,6 +326,9 @@ task GenerateSitesOnlyVcf {
         String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
+        File run_in_hail_cluster_script
+        File hail_create_vat_inputs_script
+        File create_vat_inputs_script
         File? hail_wheel
         String ancestry_file_path
         String? hail_temp_path
@@ -322,7 +336,7 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
 
-        String variants_docker
+        String cloud_sdk_docker
     }
     String prefix = "sites-only-vcf"
 
@@ -333,7 +347,11 @@ task GenerateSitesOnlyVcf {
 
         account_name=$(gcloud config list account --format "value(core.account)")
 
+        python3 -m venv ./localvenv
+        . ./localvenv/bin/activate
+
         pip3 install --upgrade pip
+
         if [[ ! -z "~{hail_wheel}" ]]
         then
             pip3 install ~{hail_wheel}
@@ -344,7 +362,7 @@ task GenerateSitesOnlyVcf {
         pip3 install --upgrade google-cloud-dataproc ijson
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
@@ -371,9 +389,9 @@ task GenerateSitesOnlyVcf {
 
         # Run the hail python script to make a sites-only VCF from a VDS
         # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
-        python3 /app/run_in_hail_cluster.py \
-            --script-path /app/hail_create_vat_inputs.py \
-            --secondary-script-path-list /app/create_vat_inputs.py \
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{hail_create_vat_inputs_script} \
+            --secondary-script-path-list ~{create_vat_inputs_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -391,7 +409,7 @@ task GenerateSitesOnlyVcf {
         disks: "local-disk 100 SSD"
         cpu: 1
         preemptible: 0
-        docker: variants_docker
+        docker: cloud_sdk_docker
         bootDiskSizeGb: 10
     }
 
@@ -408,7 +426,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         String schema_filepath = "/data/variant_annotation_table/schema/"
         String vat_schema_json_filename = "vat_schema.json"
-        String variant_transcript_schema_json_filename = "vt_schema.json"
+        String variant_transcript_schema_json_filename = "variant_transcript_schema.json"
         String genes_schema_json_filename = "genes_schema.json"
         String variants_docker
     }
@@ -621,6 +639,18 @@ task AnnotateVCF {
 
         bash ~{monitoring_script} > monitoring.log &
 
+        set +o errexit
+        cat ~{custom_annotations_file} | grep -v '^#' > content_check_file.txt
+        set -o errexit
+
+        if [ ! -s content_check_file.txt ]; then
+            echo "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
+            echo "Creating empty ennotation jsons for subsequent tasks"
+            touch ~{gene_annotation_json_name}
+            touch ~{positions_annotation_json_name}
+            exit 0
+        fi
+
         if [[ "~{use_reference_disk}" == "true" ]]
         then
             # There's an issue with how the projects/broad-dsde-cromwell-dev/global/images/nirvana-3-18-1-references-2023-01-03
@@ -630,14 +660,14 @@ task AnnotateVCF {
 
             # Find where the reference disk should have been mounted on this VM.  Note this is referred to as a "candidate
             # mount point" because we do not actually confirm this is a reference disk until the following code block.
-            if [[ -e /cromwell_root/gcs_delocalization.sh ]]
-            then
-              # PAPI mount points
-              CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
-            elif [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
+            if [[ -e /mnt/disks/cromwell_root/gcs_delocalization.sh ]]
             then
               # GCP Batch mount points
               CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/disks/[a-f0-9]+).*!\1!p')
+            elif [[ -e /cromwell_root/gcs_delocalization.sh ]]
+            then
+              # PAPI mount points
+              CANDIDATE_MOUNT_POINT=$(lsblk | grep -v cromwell_root | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
             else
               >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
               exit 1
@@ -738,8 +768,7 @@ task PrepVtAnnotationJson {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    String output_vt_json = "vat_vt_bq_load" + output_file_suffix
-    String output_vt_gcp_path = output_path + 'vt/'
+    String output_vt_json = "vat_vt_bq_load." + output_file_suffix
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -749,15 +778,18 @@ task PrepVtAnnotationJson {
         # Kick off the monitoring script
         bash ~{monitoring_script} > monitoring.log &
 
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
+        if [ ! -s ~{positions_annotation_json} ]; then
+            echo "Input annotations json file is empty. Skipping further prep"
+            touch ~{output_vt_json}
+            exit 0
+        fi
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
             --annotated_json ~{positions_annotation_json} \
             --output_vt_json ~{output_vt_json}
 
-        gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
+        gsutil cp ~{output_vt_json} '~{output_path}'
 
     >>>
 
@@ -770,7 +802,6 @@ task PrepVtAnnotationJson {
     }
 
     output {
-        File vat_vt_json="~{output_vt_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
@@ -786,8 +817,7 @@ task PrepGenesAnnotationJson {
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
-    String output_genes_gcp_path = output_path + 'genes/'
+    String output_genes_json = "vat_genes_bq_load." + output_file_suffix
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -796,15 +826,18 @@ task PrepGenesAnnotationJson {
 
         bash ~{monitoring_script} > monitoring.log &
 
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
+        if [ ! -s ~{genes_annotation_json} ]; then
+            echo "Input annotations json file is empty. Skipping further prep"
+            touch ~{output_genes_json}
+            exit 0
+        fi
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_genes_bqloadjson_from_annotations.py \
             --annotated_json ~{genes_annotation_json} \
             --output_genes_json ~{output_genes_json}
 
-        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
+        gsutil cp ~{output_genes_json} '~{output_path}'
 
     >>>
 
@@ -817,7 +850,6 @@ task PrepGenesAnnotationJson {
     }
 
     output {
-        File vat_genes_json="~{output_genes_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
@@ -832,12 +864,13 @@ task BigQueryLoadJson {
 
     input {
         String base_vat_table_name
-        File? nirvana_schema
-        File? vt_schema
-        File? genes_schema
+        File vat_schema
+        File variant_transcript_schema
+        File genes_schema
         String project_id
         String dataset_name
-        String output_path
+        String variant_transcripts_path
+        String genes_path
         Array[Boolean] prep_vt_json_done
         Array[Boolean] prep_genes_json_done
         String cloud_sdk_docker
@@ -850,8 +883,8 @@ task BigQueryLoadJson {
     String variant_transcript_table = base_vat_table_name + "_variants"
     String genes_table = base_vat_table_name + "_genes"
 
-    String vt_path = output_path + 'vt/*'
-    String genes_path = output_path + 'genes/*'
+    String variant_transcripts_wildcarded_path = variant_transcripts_path + '*'
+    String genes_wildcarded_path = genes_path + '*'
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -869,13 +902,12 @@ task BigQueryLoadJson {
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{variant_transcript_schema}
         fi
 
-        echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-        echo ~{vt_path}
-        echo ~{genes_path}
-        bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
+        echo "Loading variant_transcript data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        echo ~{variant_transcripts_wildcarded_path}
+        bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
@@ -887,8 +919,9 @@ task BigQueryLoadJson {
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
         fi
 
-        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-        bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
+        echo "Loading genes data into a pre-vat table ~{dataset_name}.~{genes_table}"
+        echo ~{genes_wildcarded_path}
+        bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_wildcarded_path}
 
         set +e
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} > /dev/null
@@ -903,7 +936,7 @@ task BigQueryLoadJson {
         fi
 
         CLUSTERING_STRING="--clustering_fields=contig"
-        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{nirvana_schema}
+        bq --apilog=false mk ${CLUSTERING_STRING} --expiration=$DATE --project_id=~{project_id} ~{dataset_name}.~{vat_table_name} ~{vat_schema}
         echo "Loading data into it"
 
 
@@ -1022,6 +1055,9 @@ task BigQueryLoadJson {
             v.clinvar_classification,
             v.clinvar_last_updated,
             v.clinvar_phenotype,
+            v.clinvar_rcv_ids,
+            v.clinvar_rcv_classifications,
+            v.clinvar_rcv_num_stars
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
@@ -1051,7 +1087,7 @@ task DeduplicateVatInBigQuery {
     input {
         String input_vat_table_name
         String output_vat_table_name
-        File? nirvana_schema
+        File vat_schema
 
         String project_id
         String dataset_name
@@ -1078,7 +1114,7 @@ task DeduplicateVatInBigQuery {
         else
             bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name}
         fi
-        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} ~{nirvana_schema}
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}.~{output_vat_table_name} ~{vat_schema}
         echo "Loading data into it"
 
         # Now we query the original VAT table and recreate it, but remove any rows that appear twice.

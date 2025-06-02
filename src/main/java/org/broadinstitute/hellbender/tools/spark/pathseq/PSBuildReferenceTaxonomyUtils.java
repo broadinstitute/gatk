@@ -313,13 +313,13 @@ public final class PSBuildReferenceTaxonomyUtils {
         try {
             InputStream result = null;
             final TarArchiveInputStream tarStream = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(tarPath)));
-            TarArchiveEntry entry = tarStream.getNextTarEntry();
+            TarArchiveEntry entry = tarStream.getNextEntry();
             while (entry != null) {
                 if (entry.getName().equals(fileName)) {
                     result = tarStream;
                     break;
                 }
-                entry = tarStream.getNextTarEntry();
+                entry = tarStream.getNextEntry();
             }
             if (result == null) {
                 throw new UserException.BadInput("Could not find file " + fileName + " in tarball " + tarPath);

@@ -2,6 +2,6 @@ google-cloud-bigquery
 ijson
 numpy
 google-cloud-storage
-firecloud
 terra-notebook-utils
 pybedtools
+biopython
