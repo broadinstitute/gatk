@@ -176,6 +176,11 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     )
     public static boolean overrideMinGq = false;
 
+    @Argument(fullName="disable-af-binning", optional=true,
+            doc="If true, disables weight binning on allele frequency."
+    )
+    public static boolean disableAfBinning = false;
+
     @Argument(fullName="omit-property", optional=true,
               doc="Don't collect specified property for use in either training or filtering."
                   +" May specify multiple properties by passing --omit-property multiple times."
@@ -477,7 +482,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         FAILING_GQ = (short)(probToPhred(scaledLogitsToP(minScaledLogits)) - 1);
         // set propertyBinsMap bins
         propertyBinsMap.put(SVLEN_KEY, new double[] {50.0, 500.0, 5000.0});
-        propertyBinsMap.put(VCFConstants.ALLELE_FREQUENCY_KEY, new double[] {maxInheritanceAf, 1.0 - maxInheritanceAf});
+        if (!disableAfBinning) {
+            propertyBinsMap.put(VCFConstants.ALLELE_FREQUENCY_KEY, new double[]{maxInheritanceAf, 1.0 - maxInheritanceAf});
+        }
 
         loadTrainedModel();  // load model and saved properties stats
         trackOverlapDetectors = genomeTrackFiles.stream()  // load genome tracks
