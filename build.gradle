@@ -49,7 +49,7 @@ repositories {
     mavenCentral()
 
     maven {
-        url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
+        url "https://us-central1-maven.pkg.dev/dsp-artifact-registry/libs-snapshot/" //for htsjdk snapshots
     }
 
     maven {
@@ -1129,7 +1129,7 @@ publishing {
     repositories {
         maven {
             name = isRelease ? "SonaType" : "Artifactory"
-            url =  isRelease ? "https://oss.sonatype.org/service/local/staging/deploy/maven2/" : "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
+            url =  isRelease ? "https://oss.sonatype.org/service/local/staging/deploy/maven2/" : "https://us-central1-maven.pkg.dev/dsp-artifact-registry/libs-snapshot/"
             credentials {
                 username = isRelease ? project.findProperty("sonatypeUsername") : System.env.ARTIFACTORY_USERNAME
                 password = isRelease ? project.findProperty("sonatypePassword") : System.env.ARTIFACTORY_PASSWORD
