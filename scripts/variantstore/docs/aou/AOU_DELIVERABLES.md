@@ -41,7 +41,7 @@
     ```
   - Look for research ids that are in the Echo callset but not in the Foxtrot sample list:
     ```
-    bq query --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
+    bq query --max_rows 10000000 --project_id aou-genomics-curation-prod --use_legacy_sql=false --format=csv '
        SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
        LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f
        ON e.sample_name = f.research_id
