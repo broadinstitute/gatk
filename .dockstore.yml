@@ -286,6 +286,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1670_release_0_6_3
          tags:
              - /.*/
    - name: GvsBeta
@@ -341,7 +342,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1670_release_0_6_3
          tags:
              - /.*/
    - name: GvsIngestTieout
