@@ -46,7 +46,7 @@ workflow GvsValidateVDS {
             help: "us-central1"
         }
         hail_version: {
-            help: "Optional Hail version, defaults to 0.2.126. Cannot define both this parameter and `hail_wheel`."
+            help: "Optional Hail version, defaults to 0.2.130.post1. Cannot define both this parameter and `hail_wheel`."
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
@@ -77,7 +77,7 @@ workflow GvsValidateVDS {
 
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    call GetHailScripts {
+    call Utils.GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
     }
@@ -90,6 +90,7 @@ workflow GvsValidateVDS {
             vds_path = vds_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
+            hail_temp_path = hail_temp_path,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
@@ -116,6 +117,7 @@ task ValidateVds {
         String vds_path
         String? hail_version
         File? hail_wheel
+        String? hail_temp_path
         String workspace_project
         String workspace_bucket
         String region
@@ -139,6 +141,10 @@ task ValidateVds {
 
         account_name=$(gcloud config list account --format "value(core.account)")
 
+        apt install --assume-yes python3.11-venv
+        python3 -m venv ./localvenv
+        . ./localvenv/bin/activate
+
         pip3 install --upgrade pip
 
         if [[ ! -z "~{hail_wheel}" ]]
@@ -155,7 +161,13 @@ task ValidateVds {
 
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
-        hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+
+        if [[ -z "~{hail_temp_path}" ]]
+        then
+            hail_temp_path="~{workspace_bucket}/hail-temp/hail-temp-${hex}"
+        else
+            hail_temp_path="~{hail_temp_path}"
+        fi
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -190,33 +202,5 @@ task ValidateVds {
     }
     output {
         String cluster_name = read_string("cluster_name.txt")
-    }
-}
-
-task GetHailScripts {
-    input {
-        String variants_docker
-    }
-    meta {
-        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
-        # the script content should also stay the same.
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        # Not sure why this is required but without it:
-        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
-
-        mkdir app
-        cp /app/*.py app
-    >>>
-    output {
-        File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
-        File vds_validation_script = "app/vds_validation.py"
-    }
-    runtime {
-        docker: variants_docker
     }
 }

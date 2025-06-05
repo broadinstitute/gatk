@@ -4,7 +4,6 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "GvsValidateVDS.wdl" as ValidateVDS
 
-
 workflow GvsCreateVDS {
     input {
         String avro_path
@@ -54,7 +53,7 @@ workflow GvsCreateVDS {
             help: "us-central1"
         }
         hail_version: {
-            help: "Optional Hail version, defaults to 0.2.126. Cannot define both this parameter and `hail_wheel`."
+            help: "Optional Hail version, defaults to 0.2.130.post1. Cannot define both this parameter and `hail_wheel`."
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
@@ -101,7 +100,7 @@ workflow GvsCreateVDS {
         }
     }
 
-    call GetHailScripts {
+    call Utils.GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
     }
@@ -115,9 +114,12 @@ workflow GvsCreateVDS {
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            run_in_existing_hail_cluster_script = GetHailScripts.run_in_existing_hail_cluster_script,
             gvs_import_script = GetHailScripts.gvs_import_script,
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
+            hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
+            vds_validation_script = GetHailScripts.vds_validation_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
@@ -130,24 +132,8 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
     }
 
-    call ValidateVDS.GvsValidateVDS as ValidateVds {
-        input:
-            go = CreateVds.done,
-            cluster_prefix = cluster_prefix,
-            vds_path = vds_destination_path,
-            hail_version = effective_hail_version,
-            hail_wheel = hail_wheel,
-            workspace_project = effective_google_project,
-            region = region,
-            workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
-    }
-
     output {
-        String create_cluster_name = CreateVds.cluster_name
-        String validate_cluster_name = ValidateVds.cluster_name
+        String cluster_name = CreateVds.cluster_name
         Boolean done = true
     }
 }
@@ -158,10 +144,13 @@ task CreateVds {
         String vds_path
         String avro_path
         Boolean leave_cluster_running_at_end
+        File run_in_hail_cluster_script
+        File run_in_existing_hail_cluster_script
         File hail_gvs_import_script
+        File hail_gvs_util_script
         File gvs_import_script
         File gvs_import_ploidy_script
-        File run_in_hail_cluster_script
+        File vds_validation_script
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
@@ -184,6 +173,10 @@ task CreateVds {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         account_name=$(gcloud config list account --format "value(core.account)")
+
+        apt install --assume-yes python3.11-venv
+        python3 -m venv ./localvenv
+        . ./localvenv/bin/activate
 
         pip3 install --upgrade pip
 
@@ -215,7 +208,7 @@ task CreateVds {
             minInstances: 2
             maxInstances: 2
         secondaryWorkerConfig:
-            maxInstances: 500
+            maxInstances: 200
         basicAlgorithm:
             cooldownPeriod: 120s
             yarnConfig:
@@ -239,6 +232,7 @@ task CreateVds {
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_gvs_import_script} \
             --secondary-script-path-list ~{gvs_import_script} \
+            --secondary-script-path-list ~{hail_gvs_util_script} \
             --secondary-script-path-list ~{gvs_import_ploidy_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
@@ -249,6 +243,24 @@ task CreateVds {
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
+            --leave-cluster-running-at-end
+
+        # construct a JSON of arguments for python script to be run in the hail cluster
+        cat > validation-script-arguments.json <<FIN
+        {
+            "vds-path": "~{vds_path}",
+            "temp-path": "${hail_temp_path}"
+        }
+        FIN
+
+        # Run the hail python script to validate a VDS
+        python3 ~{run_in_existing_hail_cluster_script} \
+            --script-path ~{vds_validation_script} \
+            --script-arguments-json-path validation-script-arguments.json \
+            --account ${account_name} \
+            --region ~{region} \
+            --gcs-project ~{workspace_project} \
+            --cluster-name ${cluster_name} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 
@@ -264,35 +276,5 @@ task CreateVds {
     output {
         String cluster_name = read_string("cluster_name.txt")
         Boolean done = true
-    }
-}
-
-task GetHailScripts {
-    input {
-        String variants_docker
-    }
-    meta {
-        # OK to cache this as the scripts are drawn from the stringified Docker image and as long as that stays the same
-        # the script content should also stay the same.
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        # Not sure why this is required but without it:
-        # Absolute path /app/run_in_hail_cluster.py doesn't appear to be under any mount points: local-disk 10 SSD
-
-        mkdir app
-        cp /app/*.py app
-    >>>
-    output {
-        File run_in_hail_cluster_script = "app/run_in_hail_cluster.py"
-        File hail_gvs_import_script = "app/hail_gvs_import.py"
-        File gvs_import_script = "app/import_gvs.py"
-        File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
-    }
-    runtime {
-        docker: variants_docker
     }
 }

@@ -4,6 +4,7 @@ import "../GvsUtils.wdl" as Utils
 import "../GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
 import "../GvsCreateVDS.wdl" as CreateVds
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
+import "GvsTieOutVDS.wdl" as TieOutVDS
 
 workflow GvsQuickstartHailIntegration {
     input {
@@ -130,7 +131,7 @@ workflow GvsQuickstartHailIntegration {
             leave_cluster_running_at_end = false,
     }
 
-    call TieOutVds {
+    call TieOutVDS.TieOutVDS {
         input:
             go = GvsCreateVDS.done,
             git_branch_or_tag = git_branch_or_tag,
@@ -181,7 +182,7 @@ task TieOutVds {
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/scripts"
-        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py import_gvs_ploidy.py
+        for script in hail_gvs_import.py hail_gvs_util.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py import_gvs_ploidy.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
@@ -205,13 +206,17 @@ task TieOutVds {
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
-        # Versions of Hail near 0.2.117 demand Java 8 or Java 11, and refuse to run on Java 17. (This is because Google Dataproc is still on Java 11)
-        # Temurin Java 8
-        apt-get -qq install wget apt-transport-https gnupg
+        # Hail 0.2.134 appears to want at least Java 11.
+        # Temurin Java 11
+        apt-get -qq install --assume-yes wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
         echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
         apt-get -qq update
-        apt -qq install -y temurin-8-jdk
+        apt -qq install -y temurin-11-jdk
+
+        apt install --assume-yes python3.11-venv
+        python3 -m venv ./localvenv
+        . ./localvenv/bin/activate
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip

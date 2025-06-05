@@ -8,8 +8,7 @@ import org.broadinstitute.hellbender.tools.gvs.common.VetRangesExtractVersionEnu
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -19,6 +18,24 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   private final String quickstart10mbRefRangesAvroFile = prefix + "quickstart_10mb_ref_ranges.avro";
   private final String quickstart10mbVetAvroFile = prefix + "quickstart_10mb_vet.avro";
   private final String quickstartSampleListFile = prefix + "quickstart.sample.list";
+
+  private File removeSelectedHeaderLinesFromFile(final File vcfFile) {
+    File filteredVcfFile = createTempFile(vcfFile.getName(), ".vcf");
+    try (BufferedReader reader = new BufferedReader(new FileReader(vcfFile));
+         BufferedWriter writer = new BufferedWriter(new FileWriter(filteredVcfFile))) {
+
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line.startsWith("##reference"))
+          continue;
+        writer.write(line);
+        writer.newLine();
+      }
+    } catch (IOException e) {
+      System.err.println("Error processing file: " + e.getMessage());
+    }
+    return filteredVcfFile;
+  }
 
   @AfterTest
   public void afterTest() {
@@ -65,7 +82,9 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
             .add("L", "chr20:10000000-20000000");
 
     runCommandLine(args);
-    IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
+    // Remove line(s) from the generated VCF that are specific to testing environment
+    final File scrubbedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
+    IntegrationTestSpec.assertEqualTextFiles(scrubbedVCF, expectedVCF);
   }
 
   @Test
@@ -102,7 +121,9 @@ public class ExtractCohortToVcfTest extends CommandLineProgramTest {
         .add("L", "chr20:10000000-20000000");
 
     runCommandLine(args);
-    IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
+    // Remove line(s) from the generated VCF that are specific to testing environment
+    final File scrubbedVCF = removeSelectedHeaderLinesFromFile(outputVCF);
+    IntegrationTestSpec.assertEqualTextFiles(scrubbedVCF, expectedVCF);
   }
 
   @Test(expectedExceptions = UserException.class)

@@ -36,7 +36,8 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
       while (pvarZstdReader.ready()) {
         final String nextLine = pvarZstdReader.readLine();
         // Skip the source header line because some weirdness in the way the gatk build works makes that not match
-        if(nextLine.startsWith("##source"))
+        // Skip the reference header line because the file path is local on where the test is run.
+        if ((nextLine.startsWith("##source")) || (nextLine.startsWith("##reference")))
           continue;
 
         decompressedPvarWriter.write(nextLine);
@@ -84,13 +85,12 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     final File expectedPsam = getTestFile("ranges_extract.expected_vets.psam");
     final File expectedPvar = getTestFile("ranges_extract.expected_vets.pvar");
 
-    // Create a temp dif for the output
+    // Create a temp dir for the output
     final File outputDir = createTempDir("extract_output");
     final String outputBasePath = outputDir.getAbsolutePath() + "/extract_output";
     final File outputPgen = new File(outputBasePath + ".pgen");
     final File outputPsam = new File(outputBasePath + ".psam");
     final File outputPvar = new File(outputBasePath + ".pvar.zst");
-
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args

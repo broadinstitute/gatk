@@ -140,7 +140,8 @@ import java.util.*;
  * <h3>Additional notes</h3>
  * <ul>
  *     <li>This tool only accepts a single input variant file unlike earlier version of GATK, which accepted multiple
- *     input variant files.</li>
+ *     input variant files. </li>
+ *     <li>The input VCF must be genotyped, raw GVCF files will not work correctly.</li>
  *     <li>SNPs and indels must be recalibrated in separate runs, but it is not necessary to separate them into different
  * files. See the tutorial linked above for an example workflow. Note that mixed records are treated as indels.</li>
  *     <li></li>
@@ -1117,7 +1118,7 @@ private GATKReportTable makeVectorTable(final String tableName,
                 stream.println("dummyData$x <- NaN");
                 stream.println("dummyData$y <- NaN");
                 stream.println("p <- ggplot(data=" + surfaceFrame + ", aes(x=x, y=y)) +theme(panel.background = element_rect(fill = \"white\"), panel.grid.minor = element_line(colour = \"white\"), panel.grid.major = element_line(colour = \"white\"))");
-                stream.println("p1 = p +ggtitle(\"model PDF\") + labs(x=\""+ annotationKeys[iii] +"\", y=\""+ annotationKeys[jjj] +"\") + geom_tile(aes(fill = lod)) + scale_fill_gradient(high=\"green\", low=\"red\", space=\"rgb\")");
+                stream.println("p1 = p +ggtitle(\"model PDF\") + labs(x=\""+ annotationKeys[iii] +"\", y=\""+ annotationKeys[jjj] +"\") + geom_tile(aes(fill = lod)) + scale_fill_gradient(high=\"green\", low=\"red\", space=\"Lab\")");
                 stream.println("p <- qplot(x,y,data=" + dataFrame + ", color=retained, alpha=I(1/7),legend=FALSE) +theme(panel.background = element_rect(fill = \"white\"), panel.grid.minor = element_line(colour = \"white\"), panel.grid.major = element_line(colour = \"white\"))");
                 stream.println("q <- geom_point(aes(x=x,y=y,color=retained),data=dummyData, alpha=1.0, na.rm=TRUE)");
                 stream.println("p2 = p + q + labs(x=\""+ annotationKeys[iii] +"\", y=\""+ annotationKeys[jjj] +"\") + scale_colour_gradient(name=\"outcome\", high=\"black\", low=\"red\",breaks=c(-1,1),guide=\"legend\",labels=c(\"filtered\",\"retained\"))");

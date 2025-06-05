@@ -65,7 +65,6 @@ public class SchemaUtils {
     //Ploidy table
     public static final String CHROMOSOME = "chromosome";
     public static final String SAMPLE_ID = "sample_id";
-    public static final String GENOTYPE = "genotype";
     public static final String PLOIDY = "ploidy";
 
     // Site filtering table
@@ -102,6 +101,10 @@ public class SchemaUtils {
         return chromosomeIndex * chromAdjustment + (long) position;
     }
 
+    public static long encodeLocation(short chromosomeIndex, int position) {
+        return (long) chromosomeIndex * chromAdjustment + (long) position;
+    }
+
     /*
         Dense packing scheme for ref table:
         Top 16 - chromosome (65,536 values)
@@ -123,8 +126,16 @@ public class SchemaUtils {
         return ChromosomeEnum.stringValueOfIndex((int)(location/chromAdjustment));
     }
 
+    public static short decodeChromosomeIndex(Long location) {
+        return (short) (location / chromAdjustment);
+    }
+
     public static int decodePosition(long location) {
-        return (int)(location % chromAdjustment);
+        return Math.toIntExact(location % chromAdjustment);
+    }
+
+    public static String decodeContigFromIndex(short chromosomeIndex) {
+        return ChromosomeEnum.stringValueOfIndex(chromosomeIndex);
     }
 
     public final static Comparator<GenericRecord> LOCATION_AND_ALLELES_COMPARATOR = (o1, o2) -> {

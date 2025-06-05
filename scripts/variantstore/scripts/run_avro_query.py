@@ -9,7 +9,7 @@ def run_avro_query(call_set_identifier, dataset_name, table_name, project_id, sq
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     query_labels_map = {'service': 'gvs', 'team': 'variants', 'managedby': 'gvs_extract_avro_files_for_hail'}
 
-    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True)
+    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True, use_legacy_sql=False)
     client = bigquery.Client(project=project_id,
                              default_query_job_config=default_config)
     query_return = utils.execute_with_retry(client, table_name, sql)

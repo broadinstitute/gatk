@@ -605,7 +605,7 @@ task ExportToCSV {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # bq query --max_rows check: max rows set to at least the number of samples
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
+        bq --apilog=false query --use_legacy_sql=false --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
           SELECT * FROM `~{project_id}.~{dataset_name}.~{statistics_table}` ORDER BY SAMPLE_NAME
 

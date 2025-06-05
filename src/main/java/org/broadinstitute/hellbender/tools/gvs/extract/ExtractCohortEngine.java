@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -801,6 +801,7 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(
                 GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
+                GATKVCFConstants.QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.FISHER_STRAND_KEY));
 
@@ -1006,14 +1007,15 @@ public class ExtractCohortEngine {
     boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                               final Map<Allele, Double> remappedVQScoreMap,
                               final Double vqScoreThreshold) {
-        // get the max (best) vqslod of the alleles in this genotype
-        Optional<Double> maxVal =
+        // get the min (worst) vqslod of the alleles in this genotype
+        Optional<Double> minVal =
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
-                        .max(Double::compareTo);
-        // It's a failing site if the maximum vqlod (if found) is less than the threshold
-        return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
+                        .filter(d -> !Double.isNaN(d)) // "." scores of "*" spanning deletions become NaN Doubles
+                        .min(Double::compareTo);
+        // It's a failing site if the minimum vqlod (if found) is less than the threshold
+        return minVal.isPresent() && minVal.get() < vqScoreThreshold;
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
@@ -1377,6 +1379,11 @@ public class ExtractCohortEngine {
     public static class InferredReferenceRecord extends ReferenceRecord {
         public InferredReferenceRecord(GQStateEnum inferredState) {
             super(SchemaUtils.chromAdjustment + 1, -1, -1, inferredState.getValue());
+        }
+
+        @Override
+        public boolean isInferredReferenceRecord() {
+            return true;
         }
     }
 

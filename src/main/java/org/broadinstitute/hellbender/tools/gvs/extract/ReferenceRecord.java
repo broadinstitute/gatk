@@ -3,76 +3,93 @@ package org.broadinstitute.hellbender.tools.gvs.extract;
 import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+
+import javax.validation.constraints.NotNull;
+
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
-    private final long location;
-    private final long sampleId;
-    private final String contig;
-    private final Integer start;
-    private final Integer end;
-    private final Long endLocation;
-
-    private final String state;
+    // All the "real" `ReferenceRecord`s in a single invocation of an extract tool should be on the same chromosome.
+    // There is a weird singleton instance of an `InferredReferenceRecord` type that inherits from `ReferenceRecord` and
+    // falsely claims to be on chromosome 1, which the code in this class handles specially.
+    private static short chromosomeIndex = -1;
+    private final int position; // No chromosome encoded here so fits in an int for humans, dogs, cats.
+    private final short length;
+    private final int sampleId;
+    private final short stateOrdinal;
 
     public ReferenceRecord(GenericRecord genericRecord) {
-        this.location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
-        this.sampleId = (Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
-        this.contig = SchemaUtils.decodeContig(location);
-        this.start = SchemaUtils.decodePosition(location);
+        Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
+        this.position = SchemaUtils.decodePosition(location);
+        setChromosome(location);
+        this.sampleId = Math.toIntExact((Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME));
 
-        int length = Math.toIntExact((Long) genericRecord.get("length"));
-        this.end = this.start + length - 1;
-        this.endLocation = this.location + length - 1;
-        this.state = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
+        this.length = (short) Math.toIntExact((Long) genericRecord.get("length"));
+        String stringState = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
+        this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
     }
 
-    public ReferenceRecord(long location, long sampleId, int length, String state) {
-        this.location = location;
-        this.sampleId = sampleId;
-        this.contig = SchemaUtils.decodeContig(location);
-        this.start = SchemaUtils.decodePosition(location);
+    public ReferenceRecord(long location, long sampleId, int length, String stringState) {
+        this.position = SchemaUtils.decodePosition(location);
+        this.length = (short) length;
+        setChromosome(location);
+        this.sampleId = (int) sampleId;
+        this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
+    }
 
-        this.end = this.start + length - 1;
-        this.endLocation = this.location + length - 1;
+    private void setChromosome(Long location) {
+        if (isInferredReferenceRecord()) {
+            // Do not set chromosome based on an inferred reference record, it's just arbitrarily claiming to be on
+            // chromosome 1.
+            return;
+        }
 
-        this.state = state;
+        short thisChromosomeIndex = SchemaUtils.decodeChromosomeIndex(location);
+        if (chromosomeIndex == -1) {
+            chromosomeIndex = thisChromosomeIndex;
+        }
     }
 
     @Override
-    public String getContig() { return this.contig; }
+    public String getContig() { return SchemaUtils.decodeContigFromIndex(chromosomeIndex); }
 
     @Override
-    public int getStart() { return this.start; }
+    public int getStart() { return this.position; }
 
     @Override
-    public int getEnd() { return this.end; }
+    public int getEnd() { return this.position + this.length - 1; }
 
-    public long getLocation() { return this.location; }
-    public long getEndLocation() { return this.endLocation; }
+    public long getLocation() { return SchemaUtils.encodeLocation(chromosomeIndex, position); }
+    public long getEndLocation() { return SchemaUtils.encodeLocation(chromosomeIndex, position + length - 1); }
 
     public long getSampleId() { return this.sampleId; }
 
-    public String getState() { return this.state; }
+    public String getState() { return GQStateEnum.fromOrdinal(stateOrdinal).getValue(); }
 
     public String toString() {
         return ReflectionToStringBuilder.toString(this);
     }
 
-    @Override
-    public int compareTo(ReferenceRecord o) {
-        final long firstPosition = this.location;
-        final long secondPosition = o.location;
+    public boolean isInferredReferenceRecord() {
+        return false;
+    }
 
-        final int result = Long.compare(firstPosition, secondPosition);
-        if (result != 0) {
-            return result;
-        } else {
-            final long firstSample = this.location;
-            final long secondSample = o.location;
-            return Long.compare(firstSample, secondSample);
+    @Override
+    public int compareTo(@NotNull ReferenceRecord o) {
+        boolean thisInferred = isInferredReferenceRecord();
+        boolean thatInferred = o.isInferredReferenceRecord();
+        if (thisInferred && thatInferred) return 0;
+        if (thisInferred) return -1;
+        if (thatInferred) return 1;
+
+        final int positionResult = this.position - o.position;
+        if (positionResult != 0) {
+            return positionResult;
         }
+
+        return this.sampleId - o.sampleId;
     }
 }
