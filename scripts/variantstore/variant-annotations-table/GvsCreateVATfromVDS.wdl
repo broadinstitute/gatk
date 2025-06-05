@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-
+# Alpha
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -141,6 +141,15 @@ workflow GvsCreateVATfromVDS {
         }
 
         Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
+
+        call LoadManeDataIntoBigQuery {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                mane_table_name = "mane_annotations",
+                mane_data_file = "gs://gvs-internal-quickstart/ggrant_test/MANE.GRCh38.v1.4.summary.txt", # TODO - pipe this through / store this in a better way.
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
 
         call MakeSubpopulationFilesAndReadSchemaFiles {
             input:
@@ -855,6 +864,49 @@ task PrepGenesAnnotationJson {
     }
 }
 
+task LoadManeDataIntoBigQuery {
+    input {
+        String project_id
+        String dataset_name
+        String mane_table_name
+        File mane_data_file
+        String cloud_sdk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
+        sed -i 's/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file}
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{mane_table_name} ~{mane_data_file}
+        fi
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String mane_table = mane_table_name
+        Boolean done = true
+    }
+}
 
 task BigQueryLoadJson {
     meta {
