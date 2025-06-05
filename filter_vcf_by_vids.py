@@ -55,7 +55,7 @@ def process_vcf(vcf_filename, vids):
                 vid = construct_vid_from_vcf_line(chrom, pos, ref, alt)
                 
                 if vid in vids:
-                    print(vid)
+                    print(line)
 
 
 def main():
