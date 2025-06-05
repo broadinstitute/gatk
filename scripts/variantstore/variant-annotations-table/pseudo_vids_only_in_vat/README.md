@@ -2,7 +2,7 @@
 
 The following is a procedure for mapping the "pseudo vids" in the VAT that don't connect to `alt_allele` or `filter_info` 
 entries in GVS. The `.prompt` files in this directory were used with Claude Sonnet 4 to generate the similarly named
-sibling scripts. Please consult these files for more details on the purpose of each script.
+sibling scripts. Please consult these files for more details on each script.
 
 # Pseudo VID resolution procedure on a Terra notebook terminal
 
@@ -64,5 +64,5 @@ sibling scripts. Please consult these files for more details on the purpose of e
     ```shell
     bq load --project_id aou-genomics-curation-prod --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
         echo.pseudo_vid_mapping pseudo_vid_mappings.tsv \
-        vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING```
+        vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
     ```
