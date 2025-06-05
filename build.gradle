@@ -59,8 +59,8 @@ repositories {
     mavenLocal()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','4.3.0')
-final picardVersion = System.getProperty('picard.version','3.4.1')
+final htsjdkVersion = System.getProperty('htsjdk.version','4.3.0-SNAPSHOT')
+final picardVersion = System.getProperty('picard.version','3.4.1-SNAPSHOT')
 final barclayVersion = System.getProperty('barclay.version','5.0.0')
 final sparkVersion = System.getProperty('spark.version', '3.5.0')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.6')
