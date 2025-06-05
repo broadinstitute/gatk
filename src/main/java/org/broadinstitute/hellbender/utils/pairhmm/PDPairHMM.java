@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PDPairHMMLikelihoodCalculationEngine;
@@ -47,20 +48,34 @@ public abstract class PDPairHMM implements Closeable{
         /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
         LOGLESS_CACHING(args -> {
             final PDPairHMM hmm = new LoglessPDPairHMM();
-            logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PairHMM implementation");
+            logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PDPairHMM implementation");
+            return hmm;
+        }),
+        /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
+        AVX_LOGLESS_CACHING(args -> {
+            final PDPairHMM hmm = new VectorLoglessPairPDHMM( args);
+            logger.info("Using the hardware-accelerated Java LOGLESS_CACHING PDPairHMM implementation");
             return hmm;
         }),
         FASTEST_AVAILABLE(args -> {
-                return new LoglessPDPairHMM();
+            try {
+                final PDPairHMM hmm = new VectorLoglessPairPDHMM(args);
+                logger.info("Using the hardware-accelerated AVX_LOGLESS_CACHING PDPairHMM implementation");
+                return hmm;
+            } catch (final UserException.HardwareFeatureException e) {
+                final PDPairHMM hmm = new LoglessPDPairHMM();
+                logger.info("Falling back to the non-hardware-accelerated Java LOGLESS_CACHING PDPairHMM implementation");
+                return hmm;
+            }
         });
 
-        private final Function<PairHMMNativeArguments, PDPairHMM> makeHmm;
+        private final Function<PDHMMNativeArguments, PDPairHMM> makeHmm;
 
-        private Implementation(final Function<PairHMMNativeArguments, PDPairHMM> makeHmm){
+        private Implementation(final Function<PDHMMNativeArguments, PDPairHMM> makeHmm){
             this.makeHmm = makeHmm;
         }
 
-        public PDPairHMM makeNewHMM(PairHMMNativeArguments args) {
+        public PDPairHMM makeNewHMM(PDHMMNativeArguments args) {
             return makeHmm.apply(args);
         }
     }
@@ -120,7 +135,7 @@ public abstract class PDPairHMM implements Closeable{
         initialize(readMaxLength, haplotypeMaxLength);
     }
 
-    private static int findMaxAlleleLength(final List<? extends Allele> alleles) {
+    static int findMaxAlleleLength(final List<? extends Allele> alleles) {
         int max = 0;
         for (final Allele allele : alleles) {
             final int alleleLength = allele.length();
