@@ -291,7 +291,7 @@ dependencies {
     implementation 'org.apache.commons:commons-configuration2:2.10.1'
 
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
-    implementation 'commons-beanutils:commons-beanutils:1.9.4'
+    implementation 'commons-beanutils:commons-beanutils:1.11.0'
     implementation 'commons-io:commons-io:2.14.0'
     implementation 'org.reflections:reflections:0.9.10'
 
