@@ -62,7 +62,7 @@ RUN cd $ARROW_SRC_DIR/python && \
 
 # Straightforward bcftools build following these instructions:
 # https://github.com/samtools/bcftools/blob/develop/INSTALL
-ARG BCFTOOLS_VERSION=1.21
+ARG BCFTOOLS_VERSION=1.22
 RUN mkdir /bcftools bcftools-build && \
     cd bcftools-build && \
     git clone --recurse-submodules https://github.com/samtools/htslib.git && \
