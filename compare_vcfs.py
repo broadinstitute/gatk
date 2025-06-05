@@ -38,6 +38,23 @@ def create_vid(chrom, pos, ref, alt):
     return f"{chrom_clean}-{pos}-{ref}-{alt}"
 
 
+def get_chromosome_number(chrom):
+    """Convert chromosome name to number (X=23, Y=24)."""
+    chrom_clean = chrom.replace('chr', '') if chrom.startswith('chr') else chrom
+    if chrom_clean == 'X':
+        return 23
+    elif chrom_clean == 'Y':
+        return 24
+    else:
+        return int(chrom_clean)
+
+
+def calculate_location(chrom, pos):
+    """Calculate location as chromosome_number * 1000000000000 + position."""
+    chrom_num = get_chromosome_number(chrom)
+    return chrom_num * 1000000000000 + int(pos)
+
+
 def load_vcf_to_dict(vcf_file):
     """Load VCF file into dictionary with composite keys."""
     vcf_dict = {}
@@ -66,7 +83,7 @@ def main():
     left_aligned_variants = load_vcf_to_dict(args.left_aligned_vcf)
     
     # Print header
-    print("vid\tinput_position\tinput_ref\tinput_alt\tleft_aligned_position\tleft_aligned_ref\tleft_aligned_alt\tinfo_field")
+    print("vid\tchr\tinput_location\tinput_position\tinput_ref\tinput_alt\tleft_aligned_location\tleft_aligned_position\tleft_aligned_ref\tleft_aligned_alt\tinfo_field")
     
     # Iterate through left-aligned variants and find matches in input variants
     for key, left_variant in left_aligned_variants.items():
@@ -79,8 +96,12 @@ def main():
         # Create VID using left-aligned variant data
         vid = create_vid(left_variant['CHROM'], left_variant['POS'], left_variant['REF'], left_variant['ALT'])
         
+        # Calculate locations
+        input_location = calculate_location(input_variant['CHROM'], input_variant['POS'])
+        left_aligned_location = calculate_location(left_variant['CHROM'], left_variant['POS'])
+        
         # Output tab-delimited row
-        print(f"{vid}\t{input_variant['POS']}\t{input_variant['REF']}\t{input_variant['ALT']}\t{left_variant['POS']}\t{left_variant['REF']}\t{left_variant['ALT']}\t{input_variant['INFO']}")
+        print(f"{vid}\t{input_variant['CHROM']}\t{input_location}\t{input_variant['POS']}\t{input_variant['REF']}\t{input_variant['ALT']}\t{left_aligned_location}\t{left_variant['POS']}\t{left_variant['REF']}\t{left_variant['ALT']}\t{input_variant['INFO']}")
 
 
 if __name__ == '__main__':
