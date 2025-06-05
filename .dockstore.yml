@@ -211,6 +211,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             -
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -343,7 +344,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1665_variants_docker_base_image_update
+             - VS-1619
          tags:
              - /.*/
    - name: GvsIngestTieout
