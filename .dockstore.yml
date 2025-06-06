@@ -341,7 +341,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1185_foxtrot_data_table
+             - vs_1672_fix_gatk_jar_building
          tags:
              - /.*/
    - name: GvsIngestTieout
