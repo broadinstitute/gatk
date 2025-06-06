@@ -135,7 +135,7 @@ public class SchemaUtils {
     }
 
     public static String decodeContigFromIndex(short chromosomeIndex) {
-        return ChromosomeEnum.valueOfIndex(chromosomeIndex).getContigName();
+        return ChromosomeEnum.stringValueOfIndex(chromosomeIndex);
     }
 
     public final static Comparator<GenericRecord> LOCATION_AND_ALLELES_COMPARATOR = (o1, o2) -> {
