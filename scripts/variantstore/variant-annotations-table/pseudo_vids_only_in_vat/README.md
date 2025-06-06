@@ -30,9 +30,9 @@ sibling scripts. Please consult these files for more details on each script.
     python generate_bcftools_commands.py pseudo_vids_file.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
     ```
 
-  - Initialize a "to_search.vcf" with a VCF header. Something like this works, though probably most of our hg38 VCFs will work:
+  - Initialize a "to_search.vcf" with a VCF header. Probably any of our hg38 VCFs will work, but the sites-only VCF should be handy:
     ```shell
-    grep -E '^#' sites_only_vcf.vcf > to_search.vcf
+    bcftools head sites_only.vcf > to_search.vcf
     ```
   - Run the generated bcftools commands to extract the relevant variants from the sites only VCF and add the to this "to_search.vcf" file:
     ```shell
