@@ -181,4 +181,5 @@ produces:
 
 recovering the original VID we were looking for.
 
-When examining the gVCFs, both files show exactly the same data recorded in GVS, i.e. unlike the previous example this site was not a hetvar in the unreblocked gVCF.
+When examining the gVCFs, both files show exactly the same data recorded in GVS, i.e. unlike the previous example this
+site was not a hetvar in the unreblocked gVCF.
