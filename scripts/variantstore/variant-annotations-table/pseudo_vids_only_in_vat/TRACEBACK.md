@@ -2,14 +2,13 @@
 
 ## Introduction
 
-Investigation done in a Terra notebook terminal.
-The procedure described in this section can be applied to any of the unmapped VIDs, although the example is worked with
+This investigation was done in a Terra notebook terminal within the AoU security perimeter.
 one particular VID.
 
-## General procedure
+## General procedure - `2-15219938-C-CTATA`
 
-This first example will utilize VID `2-15219938-C-CTATA`, a small insertion. Search for variants with the same "shape"
-(insert/deletion size) nearby, downstream in the sites-only VCF. In this particular case we search for an insertion
+This first detailed example will utilize VID `2-15219938-C-CTATA`, a small insertion. Search for variants with the same
+"shape" (insert/deletion size) nearby, downstream in the sites-only VCF. In this particular case we search for an insertion
 of four bases within 10 bases of the VID position:
 
 ```shell
@@ -44,7 +43,7 @@ Let's confirm that the left-aligned form of this variant corresponds to our VID 
 and left align:
 
 ```shell
-bcftools view --include "(ILEN=${ilen})" --regions chr${chr}:${start_pos}-${end_pos} sites-only.vcf |
+bcftools view --include "(ILEN=${insert_len})" --regions chr${chr}:${start_pos}-${end_pos} sites-only.vcf |
     bcftools norm -f Homo_sapiens_assembly38.fasta  | bgzip > left_aligned.vcf.gz
 ```
 
@@ -136,3 +135,34 @@ chr2    15219939        TGGCCGGGCAGAGGGCTCCTCACTTCCCAGTAGGGGCGGCCGGGCAGAGGCGCCCC
 ```
 
 So apparently this was a hetvar site in the original unreblocked gVCF, but in the reblocking process the alleles seem to have been assigned different positions.
+
+## Large deletion 21-10769701-TCCTGAAA...-T
+
+This example happens to be the largest deletion among the orphaned VIDs.
+
+```shell
+search_range=200
+insert_len=$((${#alt}-${#ref}))
+start_pos=$((pos + 1))
+end_pos=$((pos + search_range - 1))
+# The `ILEN` filter is used to select out variants of a specific size, insertions being positive and deletions being negative.
+bcftools query --include "(ILEN=${insert_len})" --format "${chr}\-%POS\-%REF\-%ALT" \
+  --regions chr${chr}:${start_pos}-${end_pos} sites-only.vcf
+```
+
+Produces output:
+```
+21-10769704-TGAAA...-T
+```
+
+So this finds a deletion of the same size as what we're looking for 3 bases downstream of the VID position.
+
+Applying the same left alignment steps and querying as above:
+
+```
+21-10769701-TCCTGAAA...-T
+```
+
+recovering the original VID we were looking for.
+
+When examining the gVCFs, both files show exactly the same data recorded in GVS, i.e. unlike the previous example this is not a hetvar situation.
