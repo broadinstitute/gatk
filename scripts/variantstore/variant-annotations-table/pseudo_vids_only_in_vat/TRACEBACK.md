@@ -90,7 +90,7 @@ This prints a "pretty" JSON object while also saving it to a file called `gvcfs.
 }
 ```
 
-To copy these files and their indexes to the :
+To copy these files and their indexes to the Terminal environment:
 
 ```shell
 
@@ -98,11 +98,42 @@ for gvcf in $(jq -r '.[] | values' gvcfs.json)
 do
     gcloud storage cp "${gvcf}*" .
 done
+# Make sure to give the indexes a more recent modification time than the gVCFs so bcftools doesn't get upset.
+touch *.tbi
 ```
 
-Assign these variables for convenience:
+Assign gVCF variables for convenience:
 
 ```shell
 reblocked_gvcf=$(basename $(jq -r '.reblocked_gvcf' gvcfs.json))
 unreblocked_gvcf=$(basename $(jq -r '.gvcf_path' gvcfs.json))
 ```
+
+Now look in these files using queries similar to the ones we ran before against the sites-only VCF. First look in the
+reblocked gVCF that is the actual input to GVS:
+
+```shell
+bcftools query --regions chr${chr}:${pos} --format "%CHROM\t%POS\t%REF\t%ALT" ${reblocked_gvcf}
+```
+
+This returns:
+
+```
+chr2    15219939        T       TATAT,<NON_REF>
+```
+
+So we can see that the reblocked gVCF has the same position, ref, and alt as in the `alt_allele` table in GVS. Next the
+unreblocked gVCF:
+
+```shell
+bcftools query --regions chr${chr}:${pos} --format "%CHROM\t%POS\t%REF\t%ALT" ${unreblocked_gvcf}
+```
+
+This produces:
+
+```
+chr2    15219939        TGGCCGGGCAGAGGGCTCCTCACTTCCCAGTAGGGGCGGCCGGGCAGAGGCGCCCCTCACCTCCCGGACGGGGCGGCTGGCCAGGCGGGGGGCTGATCCCCCCACCTCCCTCCCGGACGGGGCGGCTGGCCGGGCGGGGGGCTGACCCCCCCCACCTCCCTCCTGGACGGGGCGGCTGGCCGGGCGGGGGGCTGACCCCCCCACCTCCCTCCCGGACGGGGCGGCTGGCCGGGC
+GGGGGGCTGACCCCCCCACCTCCCTCCCGGACGGGGCGGCTGGCCGGGCAGAGGGGCTCCTCACTTCCCAGTAGGGGCGGCCGGGCAGAGGCGCCCCTCACCTCCCGGACGGGGCGGCTATAT     T,TATATGGCCGGGCAGAGGGCTCCTCACTTCCCAGTAGGGGCGGCCGGGCAGAGGCGCCCCTCACCTCCCGGACGGGGCGGCTGGCCAGGCGGGGGGCTGATCCCCCCACCTCCCTCCCGGACGGGGCGGCTGGCCGGGCGGGGGGCTGACCCCCCCCACCTCCCTCCTGGACGGGGCGGCTGGCCGGGCGGGGGGCTGACCCCCCCACCTCCCTCCCGGACGGGGCGGCTGGCCGGGCGGGGGGCTGACCCCCCCACCTCCCTCCCGGACGGGGCGGCTGGCCGGGCAGAGGGGCTCCTCACTTCCCAGTAGGGGCGGCCGGGCAGAGGCGCCCCTCACCTCCCGGACGGGGCGGCTATAT,<NON_REF>
+```
+
+So apparently this was a hetvar site in the original unreblocked gVCF, but in the reblocking process the alleles seem to have been assigned different positions.
