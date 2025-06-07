@@ -54,6 +54,9 @@ This returns:
 2-15219939-T-TATAT
 ```
 
+Note that this particular example returns a single value, but there are several of these "pseudo vids" in Echo that will
+return multiple results. Each of these "pseudo vids" would need to be processed separately per the process described below.
+
 Let's confirm that the left-aligned form of this variant corresponds to our VID of interest. Select out the variant
 and left align:
 
@@ -87,6 +90,16 @@ parse_vid $gvs_vid
 download_gvcfs() {
     # Use the handy `sample_data_table` in BigQuery (scraped from the Echo callset's `sample` Terra data table) to find
     # paths to input reblocked gVCFs and the unreblocked gVCFs from which they were made:
+    if [[ "${chr}" == "X" ]]
+    then
+        alt_allele_chr=23
+    elif [[ "${chr}" == "Y" ]]
+    then
+        alt_allele_chr=24
+    else
+        alt_allele_chr=${chr}
+    fi
+
     bq --apilog=false query --project_id=aou-genomics-curation-prod --format=prettyjson --use_legacy_sql=false "
 
         SELECT dt.reblocked_gvcf, dt.gvcf_path
@@ -94,7 +107,7 @@ download_gvcfs() {
         JOIN echo.sample_info si ON aa.sample_id = si.sample_id
         JOIN echo.sample_data_table dt ON dt.research_id = si.sample_name
         WHERE
-            location = ${chr} * 1000000000000 + ${pos}
+            location = ${alt_allele_chr} * 1000000000000 + ${pos}
             AND ref = '${ref}'
             AND allele='${alt}'
 
