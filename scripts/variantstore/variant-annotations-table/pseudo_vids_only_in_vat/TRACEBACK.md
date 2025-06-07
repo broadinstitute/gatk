@@ -5,8 +5,9 @@
 The working hypothesis behind this investigation was that the orphaned "pseudo vids" that did not correspond to entries
 in the GVS `alt_allele` or `filter_set_info` tables existed somewhere in synonymous but non-left aligned form in these tables.
 As part of the VAT making process it became necessary to insert a left alignment step when Nirvana complained about
-non-left aligned inputs, suggesting the variant representations in GVS tables were not left-aligned. The goal of this
-analysis was to confirm (or refute) this hypothesis and if confirmed, identify the source(s) of non-left aligned representations.
+non-left aligned inputs, suggesting at least some of the variant representations in GVS tables were not left-aligned.
+The goal of this analysis was to confirm (or refute) this hypothesis and if confirmed, identify the source(s) of
+non-left aligned representations.
 
 All analysis described below was done in a Terra notebook terminal within the AoU security perimeter.
 
@@ -77,7 +78,9 @@ This returns:
 2-15219938-C-CTATA
 ```
 
-Which is the VID we were looking for. Now 
+Which is the VID we were looking for. Now download the input reblocked gVCF and the unreblocked gVCF from which it was made
+and see how the data appears there:
+
 ```shell
 # From our findings above
 gvs_vid="2-15219939-T-TATAT"
@@ -124,6 +127,7 @@ Now look in these files using queries similar to the ones we ran before against 
 reblocked gVCF that is the actual input to GVS:
 
 ```shell
+download_gvcfs
 search_reblocked_gvcf
 ```
 
