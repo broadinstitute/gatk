@@ -2,14 +2,12 @@
 
 ## Introduction
 
-The working hypothesis behind this investigation was that the orphaned "pseudo vids" that did not correspond to entries
-in the GVS `alt_allele` or `filter_set_info` tables existed somewhere in synonymous but non-left aligned form in these tables.
-As part of the VAT making process it became necessary to insert a left alignment step when Nirvana complained about
-non-left aligned inputs, suggesting at least some of the variant representations in GVS tables were not left-aligned.
-The goal of this analysis was to confirm (or refute) this hypothesis and if confirmed, identify the source(s) of
-non-left aligned representations.
+Early in this investigation it became clear that the orphaned "pseudo vids" that did not correlate with entries in the
+GVS `alt_allele` or `filter_set_info` tables actually existed elsewhere in these tables in synonymous but non-left
+aligned forms. The goal of this analysis was to confirm if all the "pseudo vids" had non-left aligned representations
+and to establish the correspondences between them and the existing entries in GVS tables.
 
-All analysis described below was done in a Terra notebook terminal within the AoU security perimeter.
+All the steps described below were performed in a Terra notebook terminal within the AoU security perimeter.
 
 ## General procedure - `2-15219938-C-CTATA`
 
@@ -28,7 +26,7 @@ parse_vid() {
     start_pos=$((pos + 1))
     end_pos=$((pos + search_range))
 
-    # The "pseudo vid"s are either short (< 10 base) inserts, or longer (~400 base) deletions.
+    # The "pseudo vid"s are either short (< 10 base) inserts, or longer (up to ~400 base) deletions.
     # Choose the search range accordingly.
     if [[ ${insert_len} -gt 0 ]]
     then
