@@ -2,12 +2,18 @@
 
 ## Introduction
 
-Early in this investigation it became clear that the orphaned "pseudo vids" that did not correlate with entries in the
+Early in this investigation it became clear that many orphaned "pseudo vids" that did not correlate with entries in the
 GVS `alt_allele` or `filter_set_info` tables actually existed elsewhere in these tables in synonymous but non-left
 aligned forms. The goal of this analysis was to confirm if all the "pseudo vids" had non-left aligned representations
 and to establish the correspondences between them and the existing entries in GVS tables.
 
 All the steps described below were performed in a Terra notebook terminal within the AoU security perimeter.
+
+This investigation found correspondences found in GVS for all "pseudo vids". The data describing the relation to
+existing GVS entries uploaded to the table `aou-genomics-curation-prod.echo.pseudo_vid_mapping`. It appears that in all
+cases the non-left aligned variants came directly from the reblocked gVCFs, which in turn drew this data from the
+unreblocked gVCFs. The `README.md` file that is a sibling to this document describes the procedure used to populate
+this `pseudo_vid_mapping` table.
 
 ## General procedure - `2-15219938-C-CTATA`
 
