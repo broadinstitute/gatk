@@ -34,7 +34,7 @@ parse_vid() {
     then
         search_range=20
     else
-        search_range=1000
+        search_range=200
     fi
 
     echo "chr=$chr pos=$pos ref=$ref alt=$alt insert_len=$insert_len start_pos=$start_pos end_pos=$end_pos search_range=$search_range"

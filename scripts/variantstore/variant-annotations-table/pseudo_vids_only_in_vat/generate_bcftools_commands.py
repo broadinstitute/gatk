@@ -35,13 +35,16 @@ def generate_bcftools_command(vid):
     chromosome, position, ref_allele, var_allele = parse_vid(vid)
     
     insert_size = calculate_insert_size(ref_allele, var_allele)
-    abs_size = abs(insert_size)
-    
-    start = position - abs_size
-    end = position + abs_size
-    
-    # Ensure start is at least 1 (genomic coordinates are 1-based)
-    start = max(1, start)
+
+    # The "pseudo vid"s are either short (< 10 base) inserts, or longer (~400 base) deletions.
+    # Choose the search range accordingly.
+    if insert_size > 0:
+        search_range = 20
+    else:
+        search_range = 200
+
+    start = position + 1
+    end = position + search_range
     
     command = f"bcftools view --no-header -i '(ILEN = {insert_size})' --regions chr{chromosome}:{start}-{end} sites-only.vcf"
     
