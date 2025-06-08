@@ -6,7 +6,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2025-06-05-alpine-build-base AS build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2025-06-08-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
