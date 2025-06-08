@@ -69,7 +69,7 @@ RUN mkdir /htslib /htslib-build && \
     bunzip2 htslib-${HTSLIB_VERSION}.tar.bz2 && \
     tar xf htslib-${HTSLIB_VERSION}.tar && \
     cd htslib-${HTSLIB_VERSION} && \
-    configure --enable-libcurl --enable-gcs --prefix=/htslib && \
+    ./configure --enable-libcurl --enable-gcs --prefix=/htslib && \
     make && \
     make install && \
     cd / && \
