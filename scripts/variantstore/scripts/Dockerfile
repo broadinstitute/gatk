@@ -40,6 +40,8 @@ RUN apk add --no-cache perl jq
 
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /localvenv /localvenv
+# Copy htslib artifacts
+COPY --from=build /htslib /htslib
 # Copy bcftools artifacts
 COPY --from=build /bcftools /bcftools
 # Copy vcftools artifacts
