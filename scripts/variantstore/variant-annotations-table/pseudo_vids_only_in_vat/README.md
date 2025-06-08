@@ -59,8 +59,8 @@ sibling scripts. Please consult these files for more details on each script.
     ```
 
   - At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
-    to search a range of positions, they are prone to matching some variants that do not correspond to "pseudo vids".
-    Run the following command to clean out non-"pseudo vid" entries from this file:
+    to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
+    Run the following to clean out non-"pseudo vid" entries from this file:
     ```shell
     python filter_vcf_by_vids.py pseudo_vids_file.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
     ```

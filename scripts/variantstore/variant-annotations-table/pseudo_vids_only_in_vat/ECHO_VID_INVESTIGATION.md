@@ -5,21 +5,21 @@
 Early in this investigation it became clear that many orphaned "pseudo vids" that did not correlate with entries in the
 GVS `alt_allele` or `filter_set_info` tables actually existed elsewhere in these tables in synonymous but non-left
 aligned forms. The goal of this analysis was to confirm if all the "pseudo vids" had non-left aligned representations
-and to establish the correspondences between them and the existing entries in GVS tables.
+and to establish the correspondences between them.
+
+In fact correspondences were found in GVS for all "pseudo vids", with the data describing their relation to existing GVS
+entries uploaded to the table `aou-genomics-curation-prod.echo.pseudo_vid_mapping`. In all cases it appears that the
+non-left aligned variants came directly from the reblocked gVCFs used as input to GVS, which in turn took this data from
+the original unreblocked gVCFs. The `README.md` file that is a sibling to this document describes the procedure used to
+populate this `pseudo_vid_mapping` table.
 
 All the steps described below were performed in a Terra notebook terminal within the AoU security perimeter.
 
-This investigation found correspondences found in GVS for all "pseudo vids". The data describing the relation to
-existing GVS entries uploaded to the table `aou-genomics-curation-prod.echo.pseudo_vid_mapping`. It appears that in all
-cases the non-left aligned variants came directly from the reblocked gVCFs, which in turn drew this data from the
-unreblocked gVCFs. The `README.md` file that is a sibling to this document describes the procedure used to populate
-this `pseudo_vid_mapping` table.
-
 ## General procedure - `2-15219938-C-CTATA`
 
-This first detailed example will utilize VID `2-15219938-C-CTATA`, a small insertion. Search for variants with the same
-"shape" (insert/deletion size) nearby, downstream in the sites-only VCF. In this particular case we search for an insertion
-of four bases within 20 bases of the VID position:
+This first detailed example uses VID `2-15219938-C-CTATA`, a small insertion. Search for variants with the same "shape"
+(insert/deletion size) nearby, downstream in the sites-only VCF. In this particular case we search for an insertion of
+four bases within 20 bases of the VID position:
 
 ```shell
 # Parse a VID into components.
@@ -60,8 +60,8 @@ This returns:
 2-15219939-T-TATAT
 ```
 
-Note that this particular example returns a single value, but there are several of these "pseudo vids" in Echo that will
-return multiple results. Each of these "pseudo vids" would need to be processed separately per the process described below.
+Note that this particular example returns a single value, but several of these "pseudo vids" in Echo will return
+multiple results. Each "pseudo vid" would need to be processed separately per the process described below.
 
 Let's confirm that the left-aligned form of this variant corresponds to our VID of interest. Select out the variant
 and left align:
@@ -96,6 +96,7 @@ parse_vid $gvs_vid
 download_gvcfs() {
     # Use the handy `sample_data_table` in BigQuery (scraped from the Echo callset's `sample` Terra data table) to find
     # paths to input reblocked gVCFs and the unreblocked gVCFs from which they were made:
+    # TODO: is there a GCS-savvy way of searching these gVCFS without needing to download them?
     if [[ "${chr}" == "X" ]]
     then
         alt_allele_chr=23
@@ -184,7 +185,7 @@ Produces output:
 21-10769704-TGAAA...-T
 ```
 
-So this finds a deletion of the same size as what we're looking for 3 bases downstream of the VID position.
+So this finds a deletion of the same size as what we're looking for 3 bases downstream of the left-aligned position.
 
 Applying the same left alignment steps and querying as above:
 
@@ -202,5 +203,5 @@ produces:
 
 recovering the original VID we were looking for.
 
-When examining the gVCFs, both files show exactly the same data recorded in GVS, i.e. unlike the previous example this
-site was not a hetvar in the unreblocked gVCF.
+In this case, both files show exactly the same data recorded in GVS, i.e. unlike the previous example this site was not
+a hetvar in the unreblocked gVCF.
