@@ -47,7 +47,8 @@ RUN mkdir $ARROW_SRC_DIR/cpp/build && \
     cd $ARROW_SRC_DIR/cpp/build && \
     cmake .. --preset ninja-release-python && \
     cmake --build . && \
-    cmake --install .
+    cmake --install . && \
+    rm /apache-arrow-$ARROW_VERSION.tar.gz
 
 ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
@@ -60,20 +61,33 @@ RUN cd $ARROW_SRC_DIR/python && \
               --bundle-arrow-cpp bdist_wheel && \
     pip3 install /apache-arrow-$ARROW_VERSION/python/dist/pyarrow-$ARROW_VERSION-*.whl
 
-# Straightforward bcftools build following these instructions:
-# https://github.com/samtools/bcftools/blob/develop/INSTALL
-ARG BCFTOOLS_VERSION=1.22
-RUN mkdir /bcftools bcftools-build && \
-    cd bcftools-build && \
-    git clone --recurse-submodules https://github.com/samtools/htslib.git && \
-    git clone https://github.com/samtools/bcftools.git && \
-    cd bcftools && \
-    git checkout tags/$BCFTOOLS_VERSION -b $BCFTOOLS_VERSION && \
-    autoheader && \
-    autoconf && \
-    ./configure --prefix /bcftools && \
+
+ARG HTSLIB_VERSION=1.22
+RUN mkdir /htslib /htslib-build && \
+    cd /htslib-build && \
+    curl -L -O https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 && \
+    bunzip2 htslib-${HTSLIB_VERSION}.tar.bz2 && \
+    tar xf htslib-${HTSLIB_VERSION}.tar && \
+    cd htslib-${HTSLIB_VERSION} && \
+    configure --enable-libcurl --enable-gcs --prefix=/htslib && \
     make && \
-    make install
+    make install && \
+    cd / && \
+    rm -rf /htslib-build
+
+
+ARG BCFTOOLS_VERSION=1.22
+RUN mkdir /bcftools /bcftools-build && \
+    cd /bcftools-build && \
+    curl -L -O https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
+    bunzip2 bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
+    tar xf bcftools-${BCFTOOLS_VERSION}.tar && \
+    cd bcftools-${BCFTOOLS_VERSION} && \
+    ./configure --prefix /bcftools --with-htslib=/htslib && \
+    make && \
+    make install && \
+    cd / && \
+    rm -rf /bcftools-build
 
 # Build vcf-tools following this example:
 # https://github.com/overcookedfrog/vcftools/blob/master/Dockerfile
@@ -85,6 +99,8 @@ RUN mkdir /vcftools /vcftools-build && \
     cd vcftools-$VCFTOOLS_VERSION && \
     ./configure --prefix=/vcftools && \
     make && \
-    make install
+    make install && \
+    cd / && \
+    rm -rf /vcftools-build
 
 ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
