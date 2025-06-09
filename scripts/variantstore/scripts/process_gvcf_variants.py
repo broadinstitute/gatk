@@ -25,7 +25,7 @@ def run_bcftools(gvcf_path, chr_name, position, ref, alt):
         String containing the bcftools output line
     """
     cmd = [
-        'bcftools', 'view',
+        'bcftools', 'view', '--no-header',
         '--include', f'(REF="{ref}"&ALT[0]="{alt}")',
         '--regions', f'{chr_name}:{position}',
         gvcf_path

@@ -20,6 +20,7 @@ workflow SearchGVCFsForUnmappedVIDs {
 
     output {
         File unmapped_vids_gvcf_json = SearchGVCFsForUnmappedVIDsTask.unmapped_vids_gvcf_json
+        File unmapped_vids_gvcf_paths_json = SearchGVCFsForUnmappedVIDsTask.unmapped_vids_gvcf_paths_json
     }
 }
 
@@ -64,17 +65,18 @@ task SearchGVCFsForUnmappedVIDsTask {
             AND psi.ref = map.input_ref
             AND psi.alt = map.input_alt
 
-        ' > unmapped_vid_gvcfs.json
+        ' > unmapped_vid_gvcf_paths.json
 
         # Required for htslib in bcftools to access GCS.
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
 
-        python3 /app/process_gvcf_variants.py unmapped_vid_gvcfs.json
+        python3 /app/process_gvcf_variants.py unmapped_vid_gvcf_paths.json > unmapped_vid_gvcfs.json
     >>>
     runtime {
         docker: variants_docker
     }
     output {
+        File unmapped_vids_gvcf_paths_json = "unmapped_vid_gvcf_paths.json"
         File unmapped_vids_gvcf_json = "unmapped_vid_gvcfs.json"
     }
 }
