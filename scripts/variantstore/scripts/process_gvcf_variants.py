@@ -26,7 +26,7 @@ def run_bcftools(gvcf_path, chr_name, position, ref, alt):
     """
     cmd = [
         'bcftools', 'view', '--no-header',
-        '--include', f'(REF="{ref}"&ALT[*]="{alt}")',
+        '--include', f'(ILEN={len(alt) - len(ref)})',
         '--regions', f'{chr_name}:{position}',
         gvcf_path
     ]
