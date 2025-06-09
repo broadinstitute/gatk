@@ -66,6 +66,9 @@ task SearchGVCFsForUnmappedVIDsTask {
 
         ' > unmapped_vid_gvcfs.json
 
+        # Required for htslib in bcftools to access GCS.
+        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+
         python3 /app/process_gvcf_variants.py unmapped_vid_gvcfs.json
     >>>
     runtime {
