@@ -57,6 +57,8 @@ task SearchGVCFsForUnmappedVIDsTask {
         ON
             si.sample_name = dt.research_id
         ' > unmapped_vid_gvcfs.json
+
+        python3 /app/process_gvcfs.py unmapped_vid_gvcfs.json
     >>>
     runtime {
         docker: variants_docker

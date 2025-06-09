@@ -474,3 +474,10 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: SearchGVCFsForUnmappedVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/pseudo_vids_only_in_vat/SearchGVCFsForUnmappedVIDs.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - vs_1671_vat_discrepancies
