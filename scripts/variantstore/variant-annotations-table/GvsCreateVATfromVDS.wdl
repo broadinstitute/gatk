@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-# Charlie
+# Delta
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -281,6 +281,7 @@ workflow GvsCreateVATfromVDS {
                 vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
+                mane_table_name = LoadManeDataIntoBigQuery.mane_table,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 variant_transcripts_path = variant_transcripts_output_path,
@@ -891,6 +892,8 @@ task LoadManeDataIntoBigQuery {
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
             bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{mane_table_name} ~{mane_data_file}
+        else
+            echo "Found existing MANE annotations table ~{dataset_name}.~{mane_table_name}. Using it"
         fi
     >>>
 
@@ -919,6 +922,7 @@ task BigQueryLoadJson {
         File vat_schema
         File variant_transcript_schema
         File genes_schema
+        String mane_table_name
         String project_id
         String dataset_name
         String variant_transcripts_path
@@ -937,6 +941,8 @@ task BigQueryLoadJson {
 
     String variant_transcripts_wildcarded_path = variant_transcripts_path + '*'
     String genes_wildcarded_path = genes_path + '*'
+
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:create_vat"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -960,6 +966,14 @@ task BigQueryLoadJson {
         echo "Loading variant_transcript data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
+
+        # Add the Mane SELECT annotation data to the variant_transcript_table.
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name} mane WHERE vat.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vat.transcript is not null;'
+
+        # Add the Mane Plus Clinical annotation data to the variant_transcript_table.
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name} mane WHERE vat.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vat.transcript is not null;'
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null

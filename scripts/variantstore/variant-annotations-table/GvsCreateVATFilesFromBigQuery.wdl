@@ -197,6 +197,8 @@ task BigQueryExportVat {
         ARRAY_TO_STRING(clinvar_rcv_ids, ", ") as clinvar_rcv_ids,
         ARRAY_TO_STRING(clinvar_rcv_classifications, ", ") as clinvar_rcv_classifications,
         (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_rcv_num_stars) num_stars) as clinvar_num_stars,
+        mane_select_name,
+        mane_plus_clinical_name
         FROM `~{dataset_name}.~{vat_table}`
         WHERE contig="~{contig}"
         ORDER BY position
