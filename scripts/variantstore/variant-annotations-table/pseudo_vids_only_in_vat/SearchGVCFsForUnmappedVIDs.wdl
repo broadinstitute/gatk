@@ -41,21 +41,29 @@ task SearchGVCFsForUnmappedVIDsTask {
         SELECT
             si.sample_id,
             si.sample_name,
-            psi.location as input_location,
-            psi.ref as input_ref,
-            psi.alt as input_alt,
+            map.chr,
+            map.input_position,
+            map.input_ref,
+            map.input_alt,
             dt.reblocked_gvcf,
             dt.gvcf_path
         FROM
-            `~{dataset_name}.pseudo_vid_sample_id` psi
+            `echo.pseudo_vid_sample_id` psi
         JOIN
-            `~{dataset_name}.sample_info` si
+            `echo.sample_info` si
         ON
             psi.sample_id = si.sample_id
         JOIN
-            `~{dataset_name}.sample_data_table` dt
+            `echo.sample_data_table` dt
         ON
             si.sample_name = dt.research_id
+        JOIN
+            `echo.pseudo_vid_mapping` map
+        ON
+            psi.location = map.input_location
+            AND psi.ref = map.input_ref
+            AND psi.alt = map.input_alt
+
         ' > unmapped_vid_gvcfs.json
 
         python3 /app/process_gvcfs.py unmapped_vid_gvcfs.json
