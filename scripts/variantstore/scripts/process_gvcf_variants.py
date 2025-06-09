@@ -103,6 +103,8 @@ def main():
         print(f"Processing variant {i+1}/{len(variants)}...", file=sys.stderr)
         result = process_variant(variant)
         results.append(result)
+        if i > 3:
+            break
     
     # Output results
     if args.output:
