@@ -11,7 +11,7 @@
 # under ideal circumstances, potentially much longer on low memory and/or non-x86 build hosts). Since this image isn't
 # expected to change often it's broken out into a separate "build-base" image that can effectively be globally cached
 # and referenced from the main Dockerfile.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine
 
 RUN apk update && apk upgrade
 
@@ -88,13 +88,3 @@ RUN mkdir /vcftools /vcftools-build && \
     make install
 
 ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
-
-# Install pysam from source, HEAD of master branch. The fix for the issue below is not yet in a release.
-# https://github.com/pysam-developers/pysam/issues/1339
-# https://github.com/pysam-developers/pysam/commit/9fe6ca913ebc7b096c91a3d8467c97edf7989555
-RUN mkdir /gitrepos && \
-    cd /gitrepos && \
-    git clone https://github.com/pysam-developers/pysam.git && \
-    cd pysam && \
-    . /localvenv/bin/activate && \
-    python setup.py install

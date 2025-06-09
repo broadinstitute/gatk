@@ -6,7 +6,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-24-alpine-build-base as build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-31-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
@@ -31,7 +31,7 @@ RUN mkdir /fiss-build && \
 
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:522.0.0-alpine as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine AS main
 
 RUN apk update && apk upgrade
 
@@ -54,11 +54,11 @@ COPY *.sql /app/
 RUN mkdir -p /data/variant_annotation_table/schema
 COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
-ENV PERL5LIB=/vcftools/share/perl5/site_perl/:$PERL5LIB
-ENV PATH=/bcftools/bin\:/vcftools/bin\:$PATH
+ENV PERL5LIB=/vcftools/share/perl5/site_perl/
+ENV PATH=/bcftools/bin:/vcftools/bin:$PATH
 
 # Have the bash shell of the command script automatically activate the Python virtual environment.
 COPY activate_localvenv.sh /root/.bashrc
-ENV BASH_ENV /root/.bashrc
+ENV BASH_ENV=/root/.bashrc
 
 WORKDIR /app
