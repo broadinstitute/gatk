@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-# Delta
+# Echo
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -967,13 +967,13 @@ task BigQueryLoadJson {
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
 
-        # Add the Mane SELECT annotation data to the variant_transcript_table.
+        echo "Adding the Mane SELECT annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name} mane WHERE vat.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vat.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vat.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vat.transcript is not null;'
 
-        # Add the Mane Plus Clinical annotation data to the variant_transcript_table.
+        echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name} mane WHERE vat.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vat.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vat.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vat.transcript is not null;'
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
