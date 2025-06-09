@@ -66,7 +66,7 @@ task SearchGVCFsForUnmappedVIDsTask {
 
         ' > unmapped_vid_gvcfs.json
 
-        python3 /app/process_gvcfs.py unmapped_vid_gvcfs.json
+        python3 /app/process_gvcf_variants.py unmapped_vid_gvcfs.json
     >>>
     runtime {
         docker: variants_docker
