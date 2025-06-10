@@ -314,8 +314,7 @@ task ExtractFilterTask {
 
     String output_file
     Int? excess_alleles_threshold
-
-    File? custom_reference
+    
     File? custom_contig_mapping
 
     # Runtime Options:
