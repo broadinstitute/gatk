@@ -90,15 +90,12 @@ task QueryGVCFPaths {
             AND psi.ref = map.input_ref
             AND psi.alt = map.input_alt
 
-        -- DEBUG
-        LIMIT 200
-
         ' | jq '.[]' | jq --compact-output . > paths.json
 
         # The above query returns a JSON array which we reformat into a file with one JSON object per line so it can be
         # split and scattered over downstream.
 
-        split -l 100 paths.json path_shard_.
+        split -l 300 paths.json path_shard_.
     >>>
     runtime {
         docker: variants_docker
