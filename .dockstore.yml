@@ -221,6 +221,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1619
+             - VS-1611
              - vs_1185_foxtrot_data_table
          tags:
              - /.*/
