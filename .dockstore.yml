@@ -126,6 +126,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1619
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -191,7 +192,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1616
+             - VS-1619
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
@@ -219,6 +220,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1619
              - VS-1611
              - vs_1185_foxtrot_data_table
          tags:
@@ -326,6 +328,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1619
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -344,6 +347,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1619
          tags:
              - /.*/
    - name: GvsIngestTieout

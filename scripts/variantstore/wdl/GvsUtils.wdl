@@ -1293,6 +1293,8 @@ task PopulateFilterSetInfo {
     File indel_recal_file
     File indel_recal_file_index
 
+    File? custom_contig_mapping
+
     String project_id
 
     Int memory_mb = 7500
@@ -1312,6 +1314,8 @@ task PopulateFilterSetInfo {
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
 
+  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
+
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -1324,7 +1328,8 @@ task PopulateFilterSetInfo {
     echo "Creating SNPs recalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
-        --ref-version 38 \
+        --ref-version ~{ref_version}  \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         --filter-set-name ~{filter_set_name} \
         -mode SNP \
         --use-vqsr ~{useVQSR} \
@@ -1334,7 +1339,8 @@ task PopulateFilterSetInfo {
     echo "Creating INDELs racalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
-        --ref-version 38 \
+        --ref-version ~{ref_version}  \
+        ~{"--contig-mapping-file " + custom_contig_mapping} \
         --filter-set-name ~{filter_set_name} \
         -mode INDEL \
         --use-vqsr ~{useVQSR} \
