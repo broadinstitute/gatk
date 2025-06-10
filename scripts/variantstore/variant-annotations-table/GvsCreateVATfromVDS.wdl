@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-# India
+# Juliett
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -62,6 +62,7 @@ workflow GvsCreateVATfromVDS {
 
     String region = "us-central1"
     String gcs_subnetwork_name = "subnetwork"
+    File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -147,7 +148,7 @@ workflow GvsCreateVATfromVDS {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 mane_table_name = "mane_annotations",
-                mane_data_file = "gs://gvs-internal-quickstart/ggrant_test/MANE.GRCh38.v1.4.summary.txt", # TODO - pipe this through / store this in a better way.
+                mane_data_file = mane_annotation_file,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
