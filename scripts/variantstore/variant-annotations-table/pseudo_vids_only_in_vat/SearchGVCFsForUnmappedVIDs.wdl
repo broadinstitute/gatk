@@ -17,17 +17,17 @@ workflow SearchGVCFsForUnmappedVIDs {
             variants_docker = GetToolVersions.variants_docker,
     }
 
-    scatter (json_shard in QueryGVCFPaths.unmapped_vids_gvcf_shards) {
+    scatter (path_shard in QueryGVCFPaths.path_shards) {
         call ReadGVCFs {
             input:
-                unmapped_vid_gcf_paths_json = json_shard,
+                paths_json = path_shard,
                 variants_docker = GetToolVersions.variants_docker,
         }
     }
 
     call GvsUtils.MergeJSONs {
         input:
-            input_files = ReadGVCFs.unmapped_vids_gvcf_json,
+            input_files = ReadGVCFs.gvcf_content_json,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -81,23 +81,23 @@ task QueryGVCFPaths {
         -- DEBUG
         LIMIT 200
 
-        ' | jq '.[]' | jq --compact-output . > unmapped_vid_gvcf_paths.json
+        ' | jq '.[]' | jq --compact-output . > paths.json
 
-        split -l 100 unmapped_vid_gvcf_paths.json unmapped_vid_gvcf_shard_
+        split -l 100 paths.json path_shard_
     >>>
     runtime {
         docker: variants_docker
     }
     output {
-        File unmapped_vids_gvcf_paths_json = "unmapped_vid_gvcf_paths.json"
-        Array[File] unmapped_vids_gvcf_shards = glob("unmapped_vid_gvcf_shard_*")
+        File paths_json = "paths.json"
+        Array[File] path_shards = glob("path_shard_*")
     }
 }
 
 task ReadGVCFs {
     input {
         String variants_docker
-        File unmapped_vid_gcf_paths_json
+        File paths_json
     }
 
     command <<<
@@ -105,15 +105,19 @@ task ReadGVCFs {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Required for htslib in bcftools to access GCS.
+        # For htslib in bcftools to access GCS. Note this token will only work for a limited time. If a persistent
+        # solution is required, see https://broadinstitute.slack.com/archives/C0544AAC70D/p1696360070640409
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
 
-        python3 /app/process_gvcf_variants.py ~{unmapped_vid_gcf_paths_json} > unmapped_vid_gvcfs.json
+        # Wrap the JSON objects in an array to make a valid JSON file.
+        jq --slurp '.' ~{paths_json} > array.json
+
+        python3 /app/process_gvcf_variants.py array.json > gvcf_content.json
     >>>
     runtime {
         docker: variants_docker
     }
     output {
-        File unmapped_vids_gvcf_json = "unmapped_vid_gvcfs.json"
+        File gvcf_content_json = "gvcf_content.json"
     }
 }
