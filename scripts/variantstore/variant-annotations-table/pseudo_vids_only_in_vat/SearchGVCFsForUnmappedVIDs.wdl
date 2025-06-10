@@ -8,6 +8,10 @@ workflow SearchGVCFsForUnmappedVIDs {
         String dataset_name
     }
 
+    meta {
+        description: "Reads relevant lines of GVCFs for samples with unmapped VIDs in the VAT, creates a TSV suitable for loading into BigQuery."
+    }
+
     call GvsUtils.GetToolVersions {}
 
     call QueryGVCFPaths {
@@ -83,14 +87,17 @@ task QueryGVCFPaths {
 
         ' | jq '.[]' | jq --compact-output . > paths.json
 
-        split -l 100 paths.json path_shard_
+        # The above query returns a JSON array which we reformat into a file with one JSON object per line so it can be
+        # split and scattered over downstream.
+
+        split -l 100 paths.json path_shard_.
     >>>
     runtime {
         docker: variants_docker
     }
     output {
         File paths_json = "paths.json"
-        Array[File] path_shards = glob("path_shard_*")
+        Array[File] path_shards = glob("path_shard_.*")
     }
 }
 
@@ -105,8 +112,9 @@ task ReadGVCFs {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # For htslib in bcftools to access GCS. Note this token will only work for a limited time. If a persistent
-        # solution is required, see https://broadinstitute.slack.com/archives/C0544AAC70D/p1696360070640409
+        # Specify a GCS auth token for htslib/bcftools. Note this token only works for a limited time, but that's fine
+        # for this use case. If a persistent solution is required, see
+        # https://broadinstitute.slack.com/archives/C0544AAC70D/p1696360070640409
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
 
         # Wrap the JSON objects in an array to make a valid JSON file.

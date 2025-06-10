@@ -1228,11 +1228,9 @@ task MergeJSONs {
 
       jq --slurp 'add' ~{sep=' ' input_files} > output.json
 
-      # Also output TSV
-      # header
-      jq --raw-output '[ .[0] | keys[] ] | @tsv' > output.tsv
-      # body
-      jq '[ .[] | [.[]] ]' output.json | jq --raw-output '.[] | @tsv' >> output.tsv
+      # Also output TSV. The code below is adjusted for JSON vs JSONL input format:
+      # https://gist.github.com/sloanlance/6b648e51c3c2a69ae200c93c6a310cb6#first-row-keys-only
+      jq --raw-output '(.[0] | keys_unsorted) as $keys | $keys, map([.[ $keys[] ]|tostring])[] | @tsv' output.json > output.tsv
     >>>
 
     runtime {
