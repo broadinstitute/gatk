@@ -420,8 +420,8 @@ task PopulateFilterSetSites {
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
       CreateSiteFilteringFiles \
-    --ref-version ~{ref_version}  \
-    ~{"--contig-mapping-file " + custom_contig_mapping} \
+      --ref-version ~{ref_version}  \
+      ~{"--contig-mapping-file " + custom_contig_mapping} \
       --filter-set-name ~{filter_set_name} \
       -V ~{sites_only_variant_filtered_vcf} \
       -O ~{filter_set_name}.filter_sites_load.tsv
