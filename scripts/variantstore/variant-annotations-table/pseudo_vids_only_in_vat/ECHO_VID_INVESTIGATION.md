@@ -13,7 +13,12 @@ non-left aligned variants came directly from the reblocked gVCFs used as input t
 the original unreblocked gVCFs. The `README.md` file that is a sibling to this document describes the procedure used to
 populate this `pseudo_vid_mapping` table.
 
-All the steps described below were performed in a Terra notebook terminal within the AoU security perimeter.
+Further analysis allowed for the creation of the `aou-genomics-curation-prod.echo.pseudo_vid_sample_id` table which
+links orphaned "pseudo vids" to referring `sample_id`s in the `echo.alt_allele` table. This in turn enabled the
+`SearchGVCFsForUnmappedVIDs.wdl` workflow to be created, which captured relevant lines in associated gVCFs to create
+the `aou-genomics-curation-prod.echo.pseudo_vid_gvcf_content` table.
+
+All the investigation steps described below were performed in a Terra notebook terminal within the AoU security perimeter.
 
 ## General procedure - `2-15219938-C-CTATA`
 
@@ -94,9 +99,6 @@ gvs_vid="2-15219939-T-TATAT"
 parse_vid $gvs_vid
 
 download_gvcfs() {
-    # Use the handy `sample_data_table` in BigQuery (scraped from the Echo callset's `sample` Terra data table) to find
-    # paths to input reblocked gVCFs and the unreblocked gVCFs from which they were made:
-    # TODO: is there a GCS-savvy way of searching these gVCFS without needing to download them?
     if [[ "${chr}" == "X" ]]
     then
         alt_allele_chr=23
@@ -107,6 +109,8 @@ download_gvcfs() {
         alt_allele_chr=${chr}
     fi
 
+    # Use the handy `sample_data_table` in BigQuery (scraped from the Echo callset's `sample` Terra data table) to find
+    # paths to input reblocked gVCFs and the unreblocked gVCFs from which they were made:
     bq --apilog=false query --project_id=aou-genomics-curation-prod --format=prettyjson --use_legacy_sql=false "
 
         SELECT dt.reblocked_gvcf, dt.gvcf_path
@@ -120,6 +124,8 @@ download_gvcfs() {
 
     " | jq '.[0]' | tee gvcfs.json
 
+    # A GCS-enabled htslib/bcftools can query GCS-hosted gVCFs directly (see SearchGVCFsForUnmappedVIDs.wdl
+    # as an example), but the bcftools currently in the default Terra environment does not support GCS.
     for gvcf in $(jq -r '.[] | values' gvcfs.json)
     do
         gcloud storage cp "${gvcf}*" .

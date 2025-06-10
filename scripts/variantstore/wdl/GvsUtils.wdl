@@ -129,7 +129,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-06-09-alpine-424138ed7570"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-06-10-alpine-056e1322174a"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-04-29-gatkbase-99aac5f90069"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -1226,6 +1226,7 @@ task MergeJSONs {
 
       bash ~{monitoring_script} > monitoring.log &
 
+      # Join all JSON array files into a single JSON array file.
       jq --slurp 'add' ~{sep=' ' input_files} > output.json
 
       # Also output TSV. The code below is adjusted for JSON vs JSONL input format:
@@ -1239,7 +1240,7 @@ task MergeJSONs {
 
     output {
       File merged_json = "output.json"
-      File? merged_tsv = "output.tsv"
+      File merged_tsv = "output.tsv"
       File monitoring_log = "monitoring.log"
     }
 }

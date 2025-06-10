@@ -35,6 +35,14 @@ workflow SearchGVCFsForUnmappedVIDs {
             variants_docker = GetToolVersions.variants_docker,
     }
 
+    call UploadGVCFContent {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            merged_tsv = MergeJSONs.merged_tsv,
+            variants_docker = GetToolVersions.variants_docker,
+    }
+
     output {
         File merged_json = MergeJSONs.merged_json
         File? merged_tsv = MergeJSONs.merged_tsv
@@ -127,5 +135,34 @@ task ReadGVCFs {
     }
     output {
         File gvcf_content_json = "gvcf_content.json"
+    }
+}
+
+task UploadGVCFContent {
+    input {
+        String project_id
+        String dataset_name
+        File merged_tsv
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        python /app/reorder_gvcf_content_cols.py ~{merged_tsv} > reordered.tsv
+
+        bq --apilog=false load --source_format=CSV --field_delimiter="\t" --skip_leading_rows=1 \
+            --project_id=~{project_id} \
+            --schema "sample_name:STRING,sample_id:INTEGER,chr:STRING,input_position:INTEGER,input_ref:STRING,input_alt:STRING,gvcf_path:STRING,reblocked_gvcf:STRING,gvcf_line:STRING,reblocked_gvcf_line:STRING" \
+            ~{dataset_name}.pseudo_vid_gvcf_content \
+            ~{merged_tsv}
+    >>>
+    runtime {
+        docker: variants_docker
+    }
+    output {
+        Boolean done = true
     }
 }
