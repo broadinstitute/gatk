@@ -1211,6 +1211,41 @@ task SelectVariants {
     }
 }
 
+task MergeJSONs {
+    input {
+        Array[File] input_files
+        String variants_docker
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    command <<<
+      # Prepend date, time and pwd to xtrace log entries.
+      PS4='\D{+%F %T} \w $ '
+      set -o errexit -o nounset -o pipefail -o xtrace
+
+      bash ~{monitoring_script} > monitoring.log &
+
+      jq --slurp 'add' ~{sep=' ' input_files} > output.json
+
+      # Also output TSV
+      # header
+      jq --raw-output '[ .[0] | keys[] ] | @tsv' > output.tsv
+      # body
+      jq '[ .[] | [.[]] ]' output.json | jq --raw-output '.[] | @tsv' >> output.tsv
+    >>>
+
+    runtime {
+      docker: variants_docker
+    }
+
+    output {
+      File merged_json = "output.json"
+      File? merged_tsv = "output.tsv"
+      File monitoring_log = "monitoring.log"
+    }
+}
+
 task MergeTsvs {
     input {
         Array[File] input_files
