@@ -157,7 +157,7 @@ task UploadGVCFContent {
             --project_id=~{project_id} \
             --schema "sample_name:STRING,sample_id:INTEGER,chr:STRING,input_position:INTEGER,input_ref:STRING,input_alt:STRING,gvcf_path:STRING,reblocked_gvcf:STRING,gvcf_line:STRING,reblocked_gvcf_line:STRING" \
             ~{dataset_name}.pseudo_vid_gvcf_content \
-            ~{merged_tsv}
+            reordered.tsv
     >>>
     runtime {
         docker: variants_docker
