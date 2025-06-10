@@ -81,7 +81,7 @@ task QueryGVCFPaths {
         -- DEBUG
         LIMIT 200
 
-        ' > | jq '.[]' | jq --compact-output . > unmapped_vid_gvcf_paths.json
+        ' | jq '.[]' | jq --compact-output . > unmapped_vid_gvcf_paths.json
 
         # Required for htslib in bcftools to access GCS.
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
