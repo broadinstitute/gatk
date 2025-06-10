@@ -62,6 +62,7 @@ workflow GvsCreateVATfromVDS {
 
     String region = "us-central1"
     String gcs_subnetwork_name = "subnetwork"
+    File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -141,6 +142,15 @@ workflow GvsCreateVATfromVDS {
         }
 
         Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
+
+        call LoadManeDataIntoBigQuery {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                mane_table_name = "mane_annotations",
+                mane_data_file = mane_annotation_file,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
 
         call MakeSubpopulationFilesAndReadSchemaFiles {
             input:
@@ -272,6 +282,7 @@ workflow GvsCreateVATfromVDS {
                 vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
+                mane_table_name = LoadManeDataIntoBigQuery.mane_table,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 variant_transcripts_path = variant_transcripts_output_path,
@@ -855,6 +866,51 @@ task PrepGenesAnnotationJson {
     }
 }
 
+task LoadManeDataIntoBigQuery {
+    input {
+        String project_id
+        String dataset_name
+        String mane_table_name
+        File mane_data_file
+        String cloud_sdk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
+        sed -i 's/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file}
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{mane_table_name} ~{mane_data_file}
+        else
+            echo "Found existing MANE annotations table ~{dataset_name}.~{mane_table_name}. Using it"
+        fi
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String mane_table = mane_table_name
+        Boolean done = true
+    }
+}
 
 task BigQueryLoadJson {
     meta {
@@ -867,6 +923,7 @@ task BigQueryLoadJson {
         File vat_schema
         File variant_transcript_schema
         File genes_schema
+        String mane_table_name
         String project_id
         String dataset_name
         String variant_transcripts_path
@@ -885,6 +942,8 @@ task BigQueryLoadJson {
 
     String variant_transcripts_wildcarded_path = variant_transcripts_path + '*'
     String genes_wildcarded_path = genes_path + '*'
+
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:create_vat"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -908,6 +967,14 @@ task BigQueryLoadJson {
         echo "Loading variant_transcript data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
+
+        echo "Adding the Mane SELECT annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
+
+        echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
@@ -1057,7 +1124,9 @@ task BigQueryLoadJson {
             v.clinvar_phenotype,
             v.clinvar_rcv_ids,
             v.clinvar_rcv_classifications,
-            v.clinvar_rcv_num_stars
+            v.clinvar_rcv_num_stars,
+            v.mane_select_name,
+            v.mane_plus_clinical_name
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
