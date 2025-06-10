@@ -9,7 +9,7 @@ workflow SearchGVCFsForUnmappedVIDs {
     }
 
     meta {
-        description: "Reads relevant lines of GVCFs for samples with unmapped VIDs in the VAT, creates a TSV suitable for loading into BigQuery."
+        description: "Reads relevant lines of GVCFs for samples with unmapped VIDs in the VAT and loads into BigQuery."
     }
 
     call GvsUtils.GetToolVersions {}

@@ -9,8 +9,8 @@ def main():
 
     args = parser.parse_args()
 
-    # Load input JSON
     try:
+        # Load input TSV
         # https://stackoverflow.com/a/33002011
         with open(args.tsv_file, 'r') as infile:
             fieldnames = ["sample_name", "sample_id", "chr", "input_position", "input_ref",
