@@ -519,7 +519,7 @@ task BuildGATKJar {
     short_hash=$(git rev-parse --short HEAD)
 
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
-    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${short_hash}-SNAPSHOT-local.jar"
+    mv build/libs/gatk.jar "build/libs/gatk-${branch}-${short_hash}-SNAPSHOT-local.jar"
 
     git rev-parse HEAD > ../git_hash.txt
   >>>
@@ -649,7 +649,7 @@ task BuildGATKJarAndCreateDataset {
     hash=$(git rev-parse --short HEAD)
 
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
-    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
+    mv build/libs/gatk.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
 
     # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
     # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete

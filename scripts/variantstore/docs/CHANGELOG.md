@@ -1,5 +1,15 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.3 - 2025-06-02
+
+### Fixed
+- Fixed an incompatibility issue with GCP Batch.
+- Merged in many recent GATK `master` branch changes, including a fix for the representation of genotypes with GQ 0 as `./.` no-calls.
+- Corrected the handling of hetvar genotypes (e.g. `1/2`) such that genotypes where either of the alleles is filtered now fail.
+
+### Added
+- Reference tag now added to the VCF header for all GVS-produced VCFs.
+
 ## 0.6.2 - 2025-3-7
 
 ### Fixed
