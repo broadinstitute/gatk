@@ -324,6 +324,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1566_AddManesToVAT
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -333,6 +334,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1566_AddManesToVAT
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -343,6 +345,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1185_foxtrot_data_table
+             - gg_VS-1566_AddManesToVAT
          tags:
              - /.*/
    - name: GvsIngestTieout
