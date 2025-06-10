@@ -83,12 +83,7 @@ task QueryGVCFPaths {
 
         ' | jq '.[]' | jq --compact-output . > unmapped_vid_gvcf_paths.json
 
-        # Required for htslib in bcftools to access GCS.
-        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-
-        python3 /app/process_gvcf_variants.py unmapped_vid_gvcf_paths.json > unmapped_vid_gvcfs.json
-
-        split -l 100 unmapped_vid_gvcfs.json unmapped_vid_gvcfs.json unmapped_vid_gvcf_shard_
+        split -l 100 unmapped_vid_gvcf_paths.json unmapped_vid_gvcf_shard_
     >>>
     runtime {
         docker: variants_docker
