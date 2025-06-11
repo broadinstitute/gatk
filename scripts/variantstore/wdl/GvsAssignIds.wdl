@@ -148,7 +148,7 @@ workflow GvsAssignIds {
 
   if (load_vet_and_ref_ranges) {
     call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
-      input:
+      input
         project_id = project_id,
         git_branch_or_tag = git_branch_or_tag,
         git_hash = effective_git_hash,
