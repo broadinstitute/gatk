@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * The read bases preceding and including the base in question (as opposed to reference bases).
  */
-public final class ContextCovariate implements DefaultCovariate {
+public final class ContextCovariate implements StandardCovariate {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(ContextCovariate.class);
 
