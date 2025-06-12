@@ -17,11 +17,19 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
+import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
+import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.RecalDatum;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.QualityScoreCovariate;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -30,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -368,4 +377,175 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         //output has a GATK ApplyBQSR in headers
         Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK ApplyBQSR"));
     }
+
+    @Test
+    public void testCustomCovariates() {
+        final File inputBam = new File(resourceDir + WGS_B37_CH20_1M_1M1K_BAM);
+        final File knownSites = new File(resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF);
+
+        //*** BaseRecalibrator with custom covariates ***//
+        final File recalTableOutput = createTempFile("recal_table", ".txt");
+        final ArgumentsBuilder recalibratorArgs = getArgumentsForRecalibration(inputBam, recalTableOutput,
+                knownSites, Arrays.asList("RepeatLengthCovariate"));
+        runCommandLine(recalibratorArgs, BaseRecalibrator.class.getSimpleName());
+
+        //*** Apply BQSR with customCovariates ***//
+        final File recalibratedBam = createTempFile("customCovariateTest", ".bam");
+        final ArgumentsBuilder argsForApplyBQSR = getArgumentsForApplyBQSR(inputBam, recalibratedBam, recalTableOutput);
+        runCommandLine(argsForApplyBQSR, ApplyBQSR.class.getSimpleName());
+
+        //*** Baseline BaseRecalibrator ***//
+        final File baselineRecalTableOutput = createTempFile("baseline_recal_table", ".txt");
+        final ArgumentsBuilder recalibratorArgsBaseline = getArgumentsForRecalibration(inputBam, baselineRecalTableOutput,
+                knownSites, Collections.<String>emptyList());
+        runCommandLine(recalibratorArgsBaseline, BaseRecalibrator.class.getSimpleName());
+
+        //*** Baseline ApplyBQSR ***//
+        final File baselineRecalibratedBam = createTempFile("baseline_customCovariateTest", ".bam");
+        final ArgumentsBuilder baselineArgsForApplyBQSR = getArgumentsForApplyBQSR(inputBam, baselineRecalibratedBam, baselineRecalTableOutput);
+        runCommandLine(baselineArgsForApplyBQSR, ApplyBQSR.class.getSimpleName());
+
+        //*** Validation ***//
+        // Check that...the output is the same for the rest of the other covariates when this special covariates are not used.
+        final RecalibrationReport evalRecalReport = new RecalibrationReport(recalTableOutput);
+        final RecalibrationReport baselineRecalReport = new RecalibrationReport(baselineRecalTableOutput);
+
+        // worry about porting this to recalibrator test class later
+        final RecalibrationTables evalTables = evalRecalReport.getRecalibrationTables();
+        final NestedIntegerArray<RecalDatum> evalReadGroupTable =  evalTables.getReadGroupTable();
+        final NestedIntegerArray<RecalDatum> evalQualityScoreTable =  evalTables.getQualityScoreTable();
+        final NestedIntegerArray<RecalDatum> evalContextTable =  evalTables.getTable(BQSRCovariateList.CONTEXT_COVARIATE_DEFAULT_INDEX);
+        final NestedIntegerArray<RecalDatum> evalCycleTable =  evalTables.getTable(BQSRCovariateList.CYCLE_COVARIATE_DEFAULT_INDEX);
+        final NestedIntegerArray<RecalDatum> evalRepeatLengthTable =  evalTables.getTable(BQSRCovariateList.CYCLE_COVARIATE_DEFAULT_INDEX + 1);
+
+
+        final RecalibrationTables baselineTables = baselineRecalReport.getRecalibrationTables();
+        final NestedIntegerArray<RecalDatum> baselineReadGroupTable =  baselineTables.getReadGroupTable();
+        final NestedIntegerArray<RecalDatum> baselineQualityScoreTable =  baselineTables.getQualityScoreTable();
+        // tsato: The dimension for context is something like 1000, this has got to be so wasteful.
+        final NestedIntegerArray<RecalDatum> baselineContextTable =  baselineTables.getTable(BQSRCovariateList.CONTEXT_COVARIATE_DEFAULT_INDEX);
+        final NestedIntegerArray<RecalDatum> baselineCycleTable =  baselineTables.getTable(BQSRCovariateList.CYCLE_COVARIATE_DEFAULT_INDEX);
+        int d = 3; // I forget --- are cycle and context tables separate? But printed as the same in the file?
+
+        // Read groups shouldn't have changed...
+        int numReadGroups = new ReadsPathDataSource(inputBam.toPath()).getHeader().getReadGroups().size();
+        long readGroupCount = 0;
+        for (final NestedIntegerArray.Leaf<RecalDatum> leaf : baselineReadGroupTable.getAllLeaves()) {
+            int[] keys = leaf.keys;
+            RecalDatum baselineReadGroupDatum = leaf.value;
+            RecalDatum evalReadGroupDatum = evalReadGroupTable.get2Keys(keys[0], BQSRReadTransformer.BASE_SUBSTITUTION_INDEX); // Ah, this is probably the right thing to do. 0 indexes the event --- get snp
+            Assert.assertEquals(evalReadGroupDatum, baselineReadGroupDatum);
+            readGroupCount += baselineReadGroupDatum.getNumObservations();
+        }
+
+        long reportedQualityCount = 0;
+        for (final NestedIntegerArray.Leaf<RecalDatum> leaf : baselineQualityScoreTable.getAllLeaves()) {
+            int[] keys = leaf.keys;
+            RecalDatum baselineQualityScoreDatum = leaf.value;
+            RecalDatum evalQualityScoreDatum = evalQualityScoreTable.get3Keys(keys[0], keys[1], BQSRReadTransformer.BASE_SUBSTITUTION_INDEX); // Ah, this is probably the right thing to do. 0 indexes the event --- get snp
+            Assert.assertEquals(evalQualityScoreDatum, baselineQualityScoreDatum);
+            reportedQualityCount += baselineQualityScoreDatum.getNumObservations();
+        }
+
+
+
+        // Check that the context covariate did not change after adding a custom covariate
+        long contextCount = 0L;
+        for (final NestedIntegerArray.Leaf<RecalDatum> leaf : baselineContextTable.getAllLeaves()) {
+            int[] keys = leaf.keys;
+            final RecalDatum baselineContextDatum = leaf.value;
+            final RecalDatum evalContextDatum = evalContextTable.get4Keys(keys[0], keys[1], keys[2], BQSRReadTransformer.BASE_SUBSTITUTION_INDEX);
+            Assert.assertEquals(evalContextDatum, baselineContextDatum);
+            contextCount += baselineContextDatum.getNumObservations();
+        }
+
+        // Ditto cycle covariate
+        long cycleCount = 0L;
+        for (final NestedIntegerArray.Leaf<RecalDatum> leaf : baselineCycleTable.getAllLeaves()) {
+            int[] keys = leaf.keys;
+            final RecalDatum baselineCycleDatum = leaf.value;
+            final RecalDatum evalCycleDatum = evalCycleTable.get4Keys(keys[0], keys[1], keys[2], BQSRReadTransformer.BASE_SUBSTITUTION_INDEX);
+            Assert.assertEquals(evalCycleDatum, baselineCycleDatum);
+            cycleCount += baselineCycleDatum.getNumObservations();
+        }
+
+        // Some basics checks on the repeat length covariates
+        long repeatLengthCount = 0;
+        for (final NestedIntegerArray.Leaf<RecalDatum> leaf : evalRepeatLengthTable.getAllLeaves()) {
+            RecalDatum datum = leaf.value;
+            repeatLengthCount += datum.getNumObservations();
+        }
+
+        // TODO: contextCount isn't the same as the rest. Investigate.
+        Assert.assertEquals(repeatLengthCount, readGroupCount);
+    }
+
+    private ArgumentsBuilder getArgumentsForRecalibration(final File inputBam, final File outputBam,
+                                                          final File knownSites, final List<String> customCovariates){
+        final ArgumentsBuilder result = new ArgumentsBuilder();
+        result.addInput(inputBam);
+        result.addOutput(outputBam);
+        result.add(BaseRecalibrator.KNOWN_SITES_ARG_FULL_NAME, knownSites);
+        result.addReference(GCS_b37_CHR20_21_REFERENCE);
+        result.add(ApplyBQSRArgumentCollection.USE_ORIGINAL_QUALITIES_LONG_NAME, true);
+        for (String customCovariate : customCovariates){
+            result.add(RecalibrationArgumentCollection.COVARIATES_LONG_NAME, customCovariate);
+        }
+
+        return result;
+    }
+
+    private ArgumentsBuilder getArgumentsForApplyBQSR(final File inputBam, final File outputBam, final File recalTable){
+        final ArgumentsBuilder result = new ArgumentsBuilder();
+        result.addInput(inputBam);
+        result.add(StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, recalTable);
+        result.addOutput(outputBam);
+        result.add(ApplyBQSRArgumentCollection.ALLOW_MISSING_READ_GROUPS_LONG_NAME, true);
+        // per the warp pipeline
+        result.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 10);
+        result.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 20);
+        result.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 30);
+        result.add(ApplyBQSRUniqueArgumentCollection.STATIC_QUANTIZED_QUALS_LONG_NAME, 40);
+        result.add(ApplyBQSRArgumentCollection.USE_ORIGINAL_QUALITIES_LONG_NAME, true);
+        return result;
+    }
+//
+//        // Validation //
+//        final ReadsPathDataSource originalReads = new ReadsPathDataSource(Path.of(inputBam));
+//        final Iterator<GATKRead> originalReadsIterator = originalReads.iterator();
+//
+//        final ReadsPathDataSource recalibratedReads = new ReadsPathDataSource(recalibratedBam.toPath());
+//        final Iterator<GATKRead> recalibratedReadsIterator = recalibratedReads.iterator();
+//
+//        // Counts the number of times (new qual) != (old qual) to detect the pathological case where none of the bases is recalibrated.
+//        int numDifferingQualBases = 0;
+//
+//        while (recalibratedReadsIterator.hasNext()) {
+//            final GATKRead originalRead = originalReadsIterator.next();
+//            final GATKRead recalibratedRead = recalibratedReadsIterator.next();
+//
+//            Assert.assertEquals(originalRead.getReadGroup(), recalibratedRead.getReadGroup());
+//            final SAMFileHeader originalBamHeader = originalReads.getHeader();
+//
+//            final byte[] newQuals = recalibratedRead.getBaseQualities();
+//            final byte[] oldQuals = ReadUtils.getOriginalBaseQualities(originalRead);
+//
+//            if (ReadUtils.getPlatformUnit(originalRead, originalBamHeader).equals(readGroupToFilterOut)) {
+//                // These are the read groups that are not in the recal table.
+//                final List<Byte> possibleQuals = Arrays.asList((byte) 2, (byte) 6, (byte) 10, (byte) 20, (byte) 30, (byte) 40);
+//                for (int i = 0; i < originalRead.getLength(); i++){
+//                    final byte newQual = newQuals[i];
+//                    final byte oldQual = oldQuals[i];
+//                    final int diff = Math.abs(newQual - oldQual);
+//                    // When the read group is missing we simply round to the closest bin (static bin in this particular test).
+//                    // But rounding is done in probability space, so let's set the allowable difference to be 10.
+//                    Assert.assertTrue(diff <= 10);
+//                    Assert.assertTrue(possibleQuals.contains(newQual), "newQual = " + newQual);
+//                    if (newQual != oldQual){
+//                        numDifferingQualBases++;
+//                    }
+//                }
+//            }
+//        }
+//    }
 }

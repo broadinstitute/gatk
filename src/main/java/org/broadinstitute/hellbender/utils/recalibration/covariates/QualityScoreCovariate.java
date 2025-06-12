@@ -13,6 +13,7 @@ import java.util.List;
  */
 public final class QualityScoreCovariate implements RequiredCovariate {
     private static final long serialVersionUID = 1L;
+    public static final int MAX_QUAL_SCORE_KEY = QualityUtils.MAX_SAM_QUAL_SCORE;
 
     @Override
     public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
@@ -54,7 +55,7 @@ public final class QualityScoreCovariate implements RequiredCovariate {
     }
 
     @Override
-    public int maximumKeyValue() {
+    public int maximumKeyValue() { // shouldn't this be a static method or a constant?
         return QualityUtils.MAX_SAM_QUAL_SCORE;
     }
 }

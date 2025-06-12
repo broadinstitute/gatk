@@ -26,25 +26,31 @@ public final class RecalibrationArgumentCollection implements Serializable {
     //It makes no sense to run BQSR without sites. so we remove this option.
     public static final boolean RUN_WITHOUT_DBSNP = false;
 
+    public static final String LIST_ONLY_LONG_NAME = "list-covariates";
+    public static final String COVARIATES_LONG_NAME = "covariate";
+    public static final String COVARIATES_SHORT_NAME = "cov";
+    public static final String DO_NOT_USE_STANDARD_COVARIATES_LONG_NAME = "no-standard-covariates";
     /**
      * Note that the --list-covariates argument requires a fully resolved and correct command-line to work.
      */
-    @Argument(fullName = "list-covariates", shortName = "list-covariates", doc = "List the available covariates and exit", optional = true)
+    @Argument(fullName = LIST_ONLY_LONG_NAME, doc = "List the available covariates and exit", optional = true)
     public boolean LIST_ONLY = false;
 
     /**
      * Note that the ReadGroup and QualityScore covariates are required and do not need to be specified.
      * Also, unless --no-standard-covariates is specified, the Cycle and Context covariates are standard and are included by default.
      * Use the --list argument to see the available covariates.
+     *
+     * e.g.
      */
-    @Argument(fullName = "covariate", shortName = "cov", doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
+    @Argument(fullName = COVARIATES_LONG_NAME, shortName = COVARIATES_SHORT_NAME, doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
     public List<String> COVARIATES = new ArrayList<>();
 
     /**
      * The Cycle and Context covariates are standard and are included by default unless this argument is provided.
      * Note that the ReadGroup and QualityScore covariates are required and cannot be excluded.
      */
-    @Argument(fullName = "no-standard-covariates", shortName = "no-standard-covariates", doc = "Do not use the standard set of covariates, but rather just the ones listed using the -cov argument", optional = true)
+    @Argument(fullName = DO_NOT_USE_STANDARD_COVARIATES_LONG_NAME, doc = "Do not use the standard set of covariates, but rather just the ones listed using the -cov argument", optional = true)
     public boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**

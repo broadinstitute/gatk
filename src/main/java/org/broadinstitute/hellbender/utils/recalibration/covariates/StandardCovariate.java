@@ -3,5 +3,5 @@ package org.broadinstitute.hellbender.utils.recalibration.covariates;
 /**
  * TODO: copy doc from Custom
  */
-public interface RequiredCovariate extends Covariate {
+public interface StandardCovariate extends Covariate {
 }

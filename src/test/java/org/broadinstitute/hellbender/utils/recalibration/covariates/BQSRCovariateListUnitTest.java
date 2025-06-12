@@ -10,7 +10,6 @@ import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public final class BQSRCovariateListUnitTest extends GATKBaseTest {
 
@@ -41,9 +40,8 @@ public final class BQSRCovariateListUnitTest extends GATKBaseTest {
         BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.getReadGroupCovariate().parseNameForReport(), "ReadGroup");
         Assert.assertEquals(scl.getQualityScoreCovariate().parseNameForReport(), "QualityScore");
-        final List<Covariate> additionalCovars = Utils.stream(scl.getAdditionalCovariates()).collect(Collectors.toList());
-        Assert.assertEquals(additionalCovars.get(0).parseNameForReport(), "Context");
-        Assert.assertEquals(additionalCovars.get(1).parseNameForReport(), "Cycle");
+        Assert.assertEquals(scl.getAdditionalCovariates().get(0).parseNameForReport(), "Context");
+        Assert.assertEquals(scl.getAdditionalCovariates().get(1).parseNameForReport(), "Cycle");
     }
 
     @Test
