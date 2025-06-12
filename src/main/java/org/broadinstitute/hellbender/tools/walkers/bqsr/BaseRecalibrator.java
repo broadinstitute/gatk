@@ -200,7 +200,7 @@ public final class BaseRecalibrator extends ReadWalker {
         recalibrationEngine.finalizeData();
 
         logger.info("Calculating quantized quality scores...");
-        quantizeQualityScores(); // tsato: what does this quantization do? I see, then this will be used later in apply step.
+        quantizeQualityScores();
 
         logger.info("Writing recalibration report...");
         generateReport();

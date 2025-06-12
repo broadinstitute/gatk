@@ -934,10 +934,7 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * (tsato: to delete) Finds number of repetitions a string consists of.
-     *
-     *
-     *
+     * Finds the number of repetitions a string consists of.
      * For example, for string ATAT and repeat unit AT, number of repetitions = 2
      * @param repeatUnit             The repeat unit to count e.g. AT in ATATAT
      * @param targetString           The sequence in which we count the number of repeatUnit. May be empty.

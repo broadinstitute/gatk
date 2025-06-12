@@ -166,7 +166,7 @@ public final class RecalUtils {
         }
         final RecalibrationReport firstReport = reports.values().iterator().next();
         final BQSRCovariateList covariates = firstReport.getCovariates();
-
+        // (*** The following comment block is left by David Roazen ***)
         // TODO: this method need to generate the minimum common set of covariates.
         // Legacy code to do this:
         /*
