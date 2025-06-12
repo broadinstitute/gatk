@@ -115,6 +115,11 @@ public class VetIndelRealigner extends ExtractTool {
     private ArrayList<Integer> shiftedIndelQualities = new ArrayList<>();
     private Map<Long, Integer> positionBucketHistogram = new java.util.HashMap<>();
     private Map<Long, Integer> shiftedIndelsPerSample = new java.util.HashMap<>();
+    
+    // CSV output buffering for realigned variants
+    private ArrayList<String> realignedVariantsCsvBuffer = new ArrayList<>();
+    private static final int CSV_BUFFER_SIZE = 1000;
+    private static final String REALIGNED_VARIANTS_CSV_FILENAME = "realigned_variants.csv";
 
     @Override
     protected void onStartup() {
@@ -122,6 +127,9 @@ public class VetIndelRealigner extends ExtractTool {
         super.onStartup();
 
         logger.info("Starting VET indel realignment for table: " + vetTableName);
+        
+        // Initialize CSV file with headers
+        initializeRealignedVariantsCsv();
         
         if (hasReference()) {
             logger.info("Reference is available for left-alignment checks");
@@ -355,12 +363,67 @@ public class VetIndelRealigner extends ExtractTool {
             totalIndelsWithShiftedPositions++;
         }
 
-        // TODO: Use these location values to write shift data to file for database updates later
+        // Add realigned variant data to CSV buffer
+        addRealignedVariantToCsv(sampleId, original, realigned);
+
+    }
+    
+    /**
+     * Initialize the realigned variants CSV file with headers
+     */
+    private void initializeRealignedVariantsCsv() {
+        try (FileWriter writer = new FileWriter(REALIGNED_VARIANTS_CSV_FILENAME)) {
+            writer.write("sample_id,original_location,original_ref,original_alt,realigned_location,realigned_ref,realigned_alt\n");
+            logger.info("Initialized realigned variants CSV file: " + REALIGNED_VARIANTS_CSV_FILENAME);
+        } catch (IOException e) {
+            logger.warn("Failed to initialize realigned variants CSV file: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Add a realigned variant to the CSV buffer and flush if buffer is full
+     */
+    private void addRealignedVariantToCsv(Long sampleId, VariantContext original, VariantContext realigned) {
+        // Create CSV line using encoded location format
         long originalLocation = SchemaUtils.encodeLocation(original.getContig(), original.getStart());
         long realignedLocation = SchemaUtils.encodeLocation(realigned.getContig(), realigned.getStart());
-
-        // write out this shift to a file to update the db later
-
+        
+        String csvLine = String.format("%d,%d,%s,%s,%d,%s,%s",
+            sampleId,
+            originalLocation,
+            original.getReference().getDisplayString(),
+            original.getAlternateAllele(0).getDisplayString(),
+            realignedLocation,
+            realigned.getReference().getDisplayString(),
+            realigned.getAlternateAllele(0).getDisplayString()
+        );
+        
+        // Add to buffer
+        realignedVariantsCsvBuffer.add(csvLine);
+        
+        // Flush buffer if it's full
+        if (realignedVariantsCsvBuffer.size() >= CSV_BUFFER_SIZE) {
+            flushRealignedVariantsCsvBuffer();
+        }
+    }
+    
+    /**
+     * Flush the CSV buffer to file
+     */
+    private void flushRealignedVariantsCsvBuffer() {
+        if (realignedVariantsCsvBuffer.isEmpty()) {
+            return;
+        }
+        
+        try (FileWriter writer = new FileWriter(REALIGNED_VARIANTS_CSV_FILENAME, true)) { // append mode
+            for (String line : realignedVariantsCsvBuffer) {
+                writer.write(line + "\n");
+            }
+            logger.debug("Flushed " + realignedVariantsCsvBuffer.size() + " entries to realigned variants CSV");
+            realignedVariantsCsvBuffer.clear();
+        } catch (IOException e) {
+            logger.warn("Failed to flush realigned variants CSV buffer: " + e.getMessage());
+        }
     }
     
     /**
@@ -436,6 +499,9 @@ public class VetIndelRealigner extends ExtractTool {
         if (!shiftedIndelQualities.isEmpty()) {
             calculateAndLogQualityStatistics();
         }
+        
+        // Flush any remaining realigned variants to CSV
+        flushRealignedVariantsCsvBuffer();
         
         // Write CSV files for analysis
         writePositionBucketHistogramCsv();
