@@ -58,63 +58,7 @@ public class RepeatLengthCovariate implements CustomCovariate {
         read.setBases(originalBases);
     }
 
-    // tsato: vs GATKVariatnContextUtils.getNumTandemRepeatUnits
-    // *** START GPT *** //
     /**
-     * Detects if a given offset is in the middle of a Short Tandem Repeat (STR).
-     *
-     * @param dnaSequence The DNA sequence represented as a byte array.
-     * @param offset The position in the sequence to check.
-     * @param maxRepeatUnitSize The maximum length of repeat units to check.
-     * @return A string describing the repeat unit and its length, or "No STR detected".
-     */
-    public static Pair<byte[], Integer> detectSTR(byte[] dnaSequence, int offset, int maxRepeatUnitSize) {
-        int n = dnaSequence.length;
-
-        // Check for repeat units of size 1 to maxRepeatUnitSize
-        for (int unitSize = 1; unitSize <= maxRepeatUnitSize; unitSize++) {
-            if (offset < unitSize) continue; // Ensure offset is valid for checking
-
-            byte[] candidateUnit = Arrays.copyOfRange(dnaSequence, offset - unitSize + 1, offset + 1);
-            int left = offset, right = offset + 1;
-
-            // Expand leftward
-            while (left - unitSize >= 0 && matches(candidateUnit, dnaSequence, left - unitSize)) {
-                left -= unitSize;
-            }
-
-            // Expand rightward
-            while (right + unitSize <= n && matches(candidateUnit, dnaSequence, right)) {
-                right += unitSize;
-            }
-
-            int repeatLength = right - left;
-            if (repeatLength > unitSize) {
-                System.out.println("Repeat Unit: " + new String(candidateUnit) + ", Repeat Length: " + repeatLength);
-                return new MutablePair<>(candidateUnit , repeatLength);
-                // return "Repeat Unit: " + new String(candidateUnit) + ", Repeat Length: " + repeatLength;
-            }
-        }
-
-        // str not found
-        return new MutablePair<>(Arrays.copyOfRange(dnaSequence, offset, offset+1), 1); // tsato: handle this better
-    }
-
-    /**
-     * Checks if a given segment in the sequence matches the repeat unit.
-     */
-    private static boolean matches(byte[] unit, byte[] sequence, int start) {
-        for (int i = 0; i < unit.length; i++) {
-            if (start + i >= sequence.length || sequence[start + i] != unit[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-    // *** END GPT *** //
-
-    /**
-     *
      *
      * [A,C,G,A,C,G,(T),A,C,G,A,C,G]
      * [T,T,T,A,C,T,(A),C,T,A,A,A,A]
@@ -251,7 +195,4 @@ public class RepeatLengthCovariate implements CustomCovariate {
         // so we have 4^MAX_STR_UNIT_LENGTH * MAX_REPEAT_LENGTH possible values
         return (1+MAX_REPEAT_LENGTH);
     }
-
-
-
 }

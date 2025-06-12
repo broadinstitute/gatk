@@ -30,7 +30,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private static final long serialVersionUID = 1L;
 
     private final RecalibrationTables recalibrationTables;
-    private final BQSRCovariateList covariates; // list of all covariates to be used in this calculation // tsato: rename to bqsrCovariateList?
+    private final BQSRCovariateList covariates; // list of all covariates to be used in this calculation
     private final SAMFileHeader header;
 
     private final int preserveQLessThan;

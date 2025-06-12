@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 /**
- * TODO: copy doc from Custom
+ * See {@link CustomCovariate} for the classification of covariates.
  */
 public interface StandardCovariate extends Covariate {
 }
