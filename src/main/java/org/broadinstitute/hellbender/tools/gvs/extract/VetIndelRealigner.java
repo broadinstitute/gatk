@@ -284,7 +284,7 @@ public class VetIndelRealigner extends ExtractTool {
                     positionBucketHistogram.put(bucket, positionBucketHistogram.getOrDefault(bucket, 0) + 1);
 
                     // Process the realigned variant
-                    processRealignedVariant(originalVariant, leftAlignedVariant, vetRecord);
+                    processRealignedVariant(originalVariant, leftAlignedVariant, vetRecord, sampleId);
                 } else {
                     totalIndelsAlreadyLeftAligned++;
                     logger.debug(String.format("Indel at location %d was already left-aligned: %s->%s", 
@@ -298,7 +298,7 @@ public class VetIndelRealigner extends ExtractTool {
                     totalIndelsRealigned++;
                     logger.debug(String.format("Simulated realignment needed for indel at location %d: %s->%s", 
                         location, ref, alt));
-                    processRealignedVariant(originalVariant, originalVariant, vetRecord);
+                    processRealignedVariant(originalVariant, originalVariant, vetRecord, sampleId);
                 } else {
                     totalIndelsAlreadyLeftAligned++;
                     logger.debug(String.format("Indel at location %d appears already left-aligned: %s->%s", 
@@ -336,7 +336,7 @@ public class VetIndelRealigner extends ExtractTool {
     /**
      * Process a variant that was successfully realigned
      */
-    private void processRealignedVariant(VariantContext original, VariantContext realigned, GenericRecord vetRecord) {
+    private void processRealignedVariant(VariantContext original, VariantContext realigned, GenericRecord vetRecord, Long sampleId) {
         // Here you can implement what to do with realigned variants
         // Examples:
         // - Write to output file
@@ -345,20 +345,22 @@ public class VetIndelRealigner extends ExtractTool {
         // - Update VET record with new coordinates
         // Would write this to file... later
         if (original.getStart() != realigned.getStart() ) {
-            logger.info(String.format("Position shifted in realigned variant: %s:%d %s->%s became %s:%d %s->%s",
+            logger.info(String.format("Position shifted in realigned variant: %s:%d %s->%s became %s:%d %s->%s (sample: %d)",
                 original.getContig(), original.getStart(),
                 original.getReference().getDisplayString(), original.getAlternateAllele(0).getDisplayString(),
                 realigned.getContig(), realigned.getStart(),
-                realigned.getReference().getDisplayString(), realigned.getAlternateAllele(0).getDisplayString()));
+                realigned.getReference().getDisplayString(), realigned.getAlternateAllele(0).getDisplayString(),
+                sampleId));
+
             totalIndelsWithShiftedPositions++;
         }
-        /*
-        logger.info(String.format("Realigned variant: %s:%d %s->%s became %s:%d %s->%s",
-            original.getContig(), original.getStart(), 
-            original.getReference().getDisplayString(), original.getAlternateAllele(0).getDisplayString(),
-            realigned.getContig(), realigned.getStart(),
-            realigned.getReference().getDisplayString(), realigned.getAlternateAllele(0).getDisplayString()));
-         */
+
+        // TODO: Use these location values to write shift data to file for database updates later
+        long originalLocation = SchemaUtils.encodeLocation(original.getContig(), original.getStart());
+        long realignedLocation = SchemaUtils.encodeLocation(realigned.getContig(), realigned.getStart());
+
+        // write out this shift to a file to update the db later
+
     }
     
     /**
