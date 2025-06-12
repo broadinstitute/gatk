@@ -509,43 +509,4 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         result.add(ApplyBQSRArgumentCollection.USE_ORIGINAL_QUALITIES_LONG_NAME, true);
         return result;
     }
-//
-//        // Validation //
-//        final ReadsPathDataSource originalReads = new ReadsPathDataSource(Path.of(inputBam));
-//        final Iterator<GATKRead> originalReadsIterator = originalReads.iterator();
-//
-//        final ReadsPathDataSource recalibratedReads = new ReadsPathDataSource(recalibratedBam.toPath());
-//        final Iterator<GATKRead> recalibratedReadsIterator = recalibratedReads.iterator();
-//
-//        // Counts the number of times (new qual) != (old qual) to detect the pathological case where none of the bases is recalibrated.
-//        int numDifferingQualBases = 0;
-//
-//        while (recalibratedReadsIterator.hasNext()) {
-//            final GATKRead originalRead = originalReadsIterator.next();
-//            final GATKRead recalibratedRead = recalibratedReadsIterator.next();
-//
-//            Assert.assertEquals(originalRead.getReadGroup(), recalibratedRead.getReadGroup());
-//            final SAMFileHeader originalBamHeader = originalReads.getHeader();
-//
-//            final byte[] newQuals = recalibratedRead.getBaseQualities();
-//            final byte[] oldQuals = ReadUtils.getOriginalBaseQualities(originalRead);
-//
-//            if (ReadUtils.getPlatformUnit(originalRead, originalBamHeader).equals(readGroupToFilterOut)) {
-//                // These are the read groups that are not in the recal table.
-//                final List<Byte> possibleQuals = Arrays.asList((byte) 2, (byte) 6, (byte) 10, (byte) 20, (byte) 30, (byte) 40);
-//                for (int i = 0; i < originalRead.getLength(); i++){
-//                    final byte newQual = newQuals[i];
-//                    final byte oldQual = oldQuals[i];
-//                    final int diff = Math.abs(newQual - oldQual);
-//                    // When the read group is missing we simply round to the closest bin (static bin in this particular test).
-//                    // But rounding is done in probability space, so let's set the allowable difference to be 10.
-//                    Assert.assertTrue(diff <= 10);
-//                    Assert.assertTrue(possibleQuals.contains(newQual), "newQual = " + newQual);
-//                    if (newQual != oldQual){
-//                        numDifferingQualBases++;
-//                    }
-//                }
-//            }
-//        }
-//    }
 }
