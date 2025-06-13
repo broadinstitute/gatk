@@ -481,10 +481,11 @@ workflows:
        branches:
          - ah_var_store
          - vs_1671_vat_discrepancies
-   - name: ReproAnvil3K
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/ReproAnvil3K.wdl
-     filters:
-       branches:
-         - ah_var_store
-         - vs_1676_AnVIL_3K
+#   - name: ReproAnvil3K
+#     subclass: WDL
+#     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/ReproAnvil3K.wdl
+#     filters:
+#       branches:
+#         - ah_var_store
+#         - vs_1676_AnVIL_3K
+#
