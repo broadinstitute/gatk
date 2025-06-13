@@ -283,8 +283,8 @@ public class GenotypeGVCFsEngine
             // First try to get SQ (Somatic Quality) values, if not available fall back to TLOD
             double[] likelihoodArray;
             boolean isSQ = false;
-            if (g.hasExtendedAttribute("SQ")) {
-                likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, "SQ", () -> null, 0.0);
+            if (g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY)) {
+                likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.SOMATIC_QUALITY_KEY, () -> null, 0.0);
                 isSQ = true;
             } else {
                 likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
