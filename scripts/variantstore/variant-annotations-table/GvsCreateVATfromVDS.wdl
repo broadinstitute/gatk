@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
-
+# A
 workflow GvsCreateVATfromVDS {
     input {
         String project_id
@@ -631,7 +631,7 @@ task AnnotateVCF {
         Boolean use_reference_disk
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script_new.sh"
 
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String gene_annotation_json_name = output_annotated_file_name + ".genes.json.gz"
@@ -648,7 +648,7 @@ task AnnotateVCF {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        bash ~{monitoring_script} > monitoring.log &
+        bash ~{monitoring_script} -s 5 > monitoring.log &
 
         set +o errexit
         cat ~{custom_annotations_file} | grep -v '^#' > content_check_file.txt
@@ -777,7 +777,7 @@ task PrepVtAnnotationJson {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script_new.sh"
 
     String output_vt_json = "vat_vt_bq_load." + output_file_suffix
 
@@ -787,7 +787,7 @@ task PrepVtAnnotationJson {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Kick off the monitoring script
-        bash ~{monitoring_script} > monitoring.log &
+        bash ~{monitoring_script} -m > monitoring.log &
 
         if [ ! -s ~{positions_annotation_json} ]; then
             echo "Input annotations json file is empty. Skipping further prep"
@@ -826,7 +826,7 @@ task PrepGenesAnnotationJson {
         String variants_docker
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script_new.sh"
 
     String output_genes_json = "vat_genes_bq_load." + output_file_suffix
 
@@ -835,7 +835,7 @@ task PrepGenesAnnotationJson {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        bash ~{monitoring_script} > monitoring.log &
+        bash ~{monitoring_script} -m > monitoring.log &
 
         if [ ! -s ~{genes_annotation_json} ]; then
             echo "Input annotations json file is empty. Skipping further prep"
