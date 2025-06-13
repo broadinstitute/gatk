@@ -738,6 +738,11 @@ task AnnotateVCF {
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -o ~{output_annotated_file_name}
 
+        # Nirvana does not seem to be escaping double quotes in JSON strings, so we fix that here
+        temp_file=$(mktemp)
+        sed 's/""/"/g' ~{annotation_json_name} > ${temp_file}
+        mv ${temp_file} ~{annotation_json_name}
+
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Parse out the Genes section into a separate annotated json
         dotnet  ~{jasix_location} \

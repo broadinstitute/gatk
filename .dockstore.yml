@@ -239,6 +239,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1676_AnVIL_3K
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
