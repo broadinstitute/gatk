@@ -745,15 +745,15 @@ task AnnotateVCF {
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Parse out the Genes section into a separate annotated json
         dotnet ~{jasix_location} \
-            --in ~{annotation_json_name} \
+            --in ${cleaned_annotation_json} \
             --section genes \
             --out ~{gene_annotation_json_name}
 
         # Parse out the Positions section into a separate annotated json
-        dotnet  ~{jasix_location} \
-        --in ~{annotation_json_name} \
-        --section positions \
-        --out ~{positions_annotation_json_name}
+        dotnet ~{jasix_location} \
+            --in ${cleaned_annotation_json} \
+            --section positions \
+            --out ~{positions_annotation_json_name}
 
     >>>
 
