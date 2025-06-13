@@ -15,6 +15,10 @@ workflow repro {
             custom_annotations_file = custom_annotations_file,
             cromwell_root = cromwell_root
     }
+
+    output {
+        Boolean done = true
+    }
 }
 
 
