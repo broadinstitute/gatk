@@ -763,6 +763,8 @@ task AnnotateVCF {
     }
 
     output {
+        File? output_annotated_file_name = "~{output_annotated_file_name}"
+        File? annotation_json_name = "~{annotation_json_name}"
         File genes_annotation_json = "~{gene_annotation_json_name}"
         File positions_annotation_json = "~{positions_annotation_json_name}"
         File monitoring_log = "monitoring.log"
