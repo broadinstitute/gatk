@@ -1,0 +1,60 @@
+Write a Python script that accepts two VCFs as inputs and writes to standard output. One VCF file represents “input variants”, the other represents “left aligned variants”. Read each VCF line by line and create a dictionary for each file having keys that combine the following fields:
+
+- CHROM
+- length(REF)
+- length(ALT)
+- INFO
+
+The values of the dictionary should be objects that contain:
+
+- CHROM
+- REF
+- ALT
+- INFO
+
+Iterate the entries of the  “left aligned variants” dictionary. Find an entry in the “input variants” dictionary with the same key. There should always be a matching “input variants” entry here, if there isn’t this is an error. 
+
+Use the “left aligned variants” value and “input variants” value to write a tab delimited row as follows:
+
+
+- vid (format described below)
+- input_position (POS field of “input variants” object)
+- input_ref (REF field of “input variants” object)
+- input_alt (ALT field of “input variants” object)
+- info_field (INFO field of “input variants” object)
+- left_aligned_position (POS field of “left aligned variants” object)
+- left_aligned_ref (REF field of “left aligned variants” object)
+- left_aligned_alt (ALT field of “left aligned variants” object)
+
+
+The vid format looks as follows:
+
+<CHROM without the “chr” prefix>-<POS>-<REF>-<ALT>
+
+With the quantities between angle brackets replaced the values from the “left aligned variants” object.
+
+For example, with this VCF data:
+
+CHROM POS ID  REF ALT
+chr1  373959  . TTCTCTCCATCCCCCCTCCATCCCCGTCTCCTTTCTCCTCTCCATCC T
+
+The vid would look like:
+
+1-373959-TTCTCTCCATCCCCCCTCCATCCCCGTCTCCTTTCTCCTCTCCATCC-T
+
+
+------------------------------------------------------------
+
+Please modify the script to put the "info" field at the end of output rows. 
+
+------------------------------------------------------------
+
+Please modify the script to include three new columns in the output. The code to print the updated header line would look like:
+
+    print("vid\tchr\tinput_location\tinput_position\tinput_ref\tinput_alt\tleft_aligned_location\tleft_aligned_position\tleft_aligned_ref\tleft_aligned_alt\tinfo_field")
+
+The three new columns are:
+
+- chr: This is just the CHROM value for the "input variant", e.g. chr1 or chrX or whatever.
+- input_location: This is the numerical part of the "input variant" CHROM multiplied by 1000000000000 plus "input variant" position. If CHROM is chrX use 23, if CHROM is chrY use 24. For example if CHROM is chrX and position is 1326731 for an "input variant", its input_location would be 23000001326731.
+- left_aligned_location: This is the numerical part of the "left aligned variant" CHROM multiplied by 1000000000000 plus "left aligned variant" position. If CHROM is chrX use 23, if CHROM is chrY use 24.

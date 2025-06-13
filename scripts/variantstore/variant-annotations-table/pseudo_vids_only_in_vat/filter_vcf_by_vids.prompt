@@ -1,0 +1,16 @@
+Write a script that accepts two filenames as arguments and writes to standard output.
+
+The first input file will contain VIDs, one per line. Read all of these VIDs into a set in memory.
+
+The second input file contains a VCF. Every header line of the VCF (lines that begin with a # character) should be written to standard output. Every non-header line will be tab-delimited and the first five columns will contain data with values CHROM, POS, ID, REF, and ALT. 
+
+For example:
+
+chr1  373959  . TTCTCTCCATCCCCCCTCCATCCCCGTCTCCTTTCTCCTCTCCATCC T
+
+Construct a string using the value of the first CHROM column minus the leading ‘chr’, the second POS column, fourth REF column, and fifth ALT column, all separated by dashes. For this example the string would be:
+
+1-373959-TTCTCTCCATCCCCCCTCCATCCCCGTCTCCTTTCTCCTCTCCATCC-T
+
+If this string has a match within the set of VIDs, print the string to standard output. If the string does not have a match with the set of VIDs, do not print it out and continue reading lines from the second input file.
+

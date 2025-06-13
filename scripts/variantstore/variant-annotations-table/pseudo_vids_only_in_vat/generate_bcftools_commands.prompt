@@ -1,0 +1,38 @@
+VIDs, or “Variant IDs” describe genetic variation observed in genomic sequencing data. Here are three example VIDs:
+
+1. 1-668638-G-GA
+2. 16-88461103-AGGCCCTGGTGAGGACCCAGGGATGGGGCGGGAGACCTGGTGAGGACCGAGG-A
+3. Y-56694638-G-GA
+
+A VID consists of four components separated by dashes. From left to right these are chromosome, position, reference allele, and variant allele.
+
+In the first example above, the variant described by the VID is on chromosome 1 (chr1 in hg38 terms), position 668638, with a reference allele of G and a variant allele of GA. Because the variant allele is longer than the reference allele, this variant represents an insertion.
+
+In the second example the variant is on chromosome 16 (chr16) at position 88461103 with a reference allele of AGGCCCTGGTGAGGACCCAGGGATGGGGCGGGAGACCTGGTGAGGACCGAGG and a variant allele of A. Because the variant allele is shorter than the reference allele, this represents a deletion.
+
+In the third example, the variant is on chromosome Y (chrY) at position 56694638 with a reference allele of G and a variant allele of GA. Again this is an insertion.
+
+It is possible for VIDs to have reference and variant alleles of the same length, but there aren’t any of those in this particular list of VIDs.
+
+We want to write bcftools expressions (one per VID) that will allow us to pick narrow areas around the variants described by a VID out of a genome-wide VCF (Variant Context Format) file. A sample bcftools invocation would look like:
+
+bcftools view –no-header -i ‘(ILEN = <insert size>)’ –regions chr<chromosome>:<start>-<end> sites-only.vcf
+
+The elements between angle brackets represent variables defined as follows:
+
+* <size> represents the size of an insert as defined by the length of the alternate allele minus the length of the reference allele. If the alternate allele is shorter than the reference allele this value will be negative.
+* <chromosome> represents the first component of the VID, e.g. 1, 16, X etc.
+* <start> is the position (second component of the VID) minus the absolute value of <size>.
+* <end> is the position plus the absolute value of <size>.
+
+Write a Python script that will iterate a file containing one VID per line and write the corresponding bcftools invocation for each line.
+
+------------------------------------------------------------
+
+Please modify the script so that for single base insertions (e.g. a reference allele of “A” and a variant allele of “AG”), the --regions argument of the bcftools invocation specifies a range of 20 bases around the position of the VID. For example for this VID:
+
+1-668638-G-GA
+
+The bcftools invocation should be:
+
+bcftools view –no-header -i ‘(ILEN = 1)’ --regions chr1:668628-668648 sites-only.vcf
