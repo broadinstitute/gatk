@@ -126,7 +126,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1619
+             - gvs_expanded_references
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -192,7 +192,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1619
+             - gvs_expanded_references
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
@@ -220,8 +220,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1619
-             - VS-1611
+             - gvs_expanded_references
              - vs_1185_foxtrot_data_table
          tags:
              - /.*/
