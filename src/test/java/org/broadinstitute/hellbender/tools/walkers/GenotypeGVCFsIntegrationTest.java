@@ -767,9 +767,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(hetNonRefVC.getGenotype(0).getGenotypeString(), "A/AC");
         Assert.assertEquals(hetNonRefVC.getGenotype(2).getGenotypeString(), "A/ACC/AC");
 
-        //do exact match?
-        List<VariantContext> expected = VariantContextTestUtils.getVariantContexts(getTestFile("threeDragenSamples_expected.vcf"));
-
         final File output2 = createTempFile("tmp", ".vcf");
         ArgumentsBuilder args2 =   new ArgumentsBuilder()
                 .addVCF(new File(getToolTestDataDir() + "../CombineGVCFs/testCombineDragenMtGvcfs_expected.g.vcf"))
