@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsCreateVATFromVDS.wdl"
+import "../variant-annotations-table/GvsCreateVATFromVDS.wdl"
 
 workflow repro {
     File input_vcf = "gs://fc-34a42a2b-29aa-43f8-a6dd-2a50f7f3408b/submissions/bef81325-9321-4b4f-a741-b5d151122ceb/GvsCreateVATfromVDS/35a55d99-84e3-4cd4-ad57-1929d99f350c/call-StripCustomAnnotationsFromSitesOnlyVCF/shard-44/0000000044-scattered.sites-only-vcf-c05be276-20b4.unannotated.sites_only.vcf"
