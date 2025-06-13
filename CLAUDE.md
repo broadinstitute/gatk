@@ -6,6 +6,8 @@ as an extension of the Genome Analysis Toolkit (GATK), GVS enables joint calling
 across thousands of samples and provides fast cohort extraction capabilities for
 population genomics studies.
 
+For a very high level overview see `gvs-product-sheet.pdf`.
+
 ## Key Features
 
 - **Scalable Storage**: Leverages Google BigQuery for petabyte-scale genomic
@@ -14,8 +16,24 @@ population genomics studies.
   cohorts
 - **Cohort Extraction**: Rapid extraction of variant subsets for specific sample
   cohorts
-- **Integration with GATK**: Built upon proven GATK tools and algorithms
 - **Cloud-Native**: Designed for Terra platform with WDL-based workflows
+
+## Usage Scenarios
+
+GVS supports two primary usage scenarios as described below:
+
+### GVS Beta
+
+GVS Beta is intended for end users to be able to run their own joint calling
+using the `GvsJointVariantCalling.wdl` as a top-level orchestrating workflow.
+See all the documentation in the `beta_docs` directory for more information on
+GVS Beta usage.
+
+### GVS for AoU
+
+The All of Us Research Program implementation represents a production-scale
+deployment optimized for the specific requirements of this national precision
+medicine initiative.
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
