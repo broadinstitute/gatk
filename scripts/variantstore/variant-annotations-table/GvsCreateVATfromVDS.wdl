@@ -740,6 +740,7 @@ task AnnotateVCF {
 
         # Nirvana doesn't seem to be escaping double quotes in JSON string values, producing invalid JSON.
         # The most general solution seems to be just to remove them.
+        cleaned_annotation_json="$(mktemp).json.gz"
         gzip --decompress --stdout ~{annotation_json_name} | sed -E 's/""/"/g' |
             gzip --stdout > ${cleaned_annotation_json}
 
