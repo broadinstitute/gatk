@@ -26,7 +26,8 @@ During the GVS joint calling process variants are evaluated for quality at both
 the site and allele level. By default GVS evaluates variant quality scores using
 a machine learning model called VETS (Variant Extract-Train-Score). GVS formerly
 used a machine learning model called VQSR (Variant Quality Score Recalibration)
-for this purpose, but VQSR is rarely used in making GVS callsets today.
+for this purpose. While still supported in GVS, VQSR is rarely used in making
+GVS callsets today.
 
 GVS stores all variants and their associated quality scores in its BigQuery
 schema, regardless of whether these variants pass or fail quality filters. GVS
@@ -44,9 +45,9 @@ GVS supports two primary usage scenarios as described below:
 ### GVS Beta
 
 GVS Beta is intended for end users to be able to run their own joint calling
-using the `GvsJointVariantCalling.wdl` as a top-level orchestrating workflow.
-See all the documentation in the `beta_docs` directory for more information on
-GVS Beta usage.
+using the `GvsJointVariantCalling.wdl` as a top-level workflow. See the
+documentation in the `beta_docs` directory for more information on GVS Beta
+usage.
 
 ### GVS for AoU
 
@@ -56,7 +57,8 @@ not suited for the `GvsJointVariantCalling.wdl` workflow. Instead, more narrowly
 scoped GVS workflows are invoked following an AoU specific protocol as described
 in `AOU_DELIVERABLES.md`. Mostly for scale reasons, the core deliverable of an
 AoU callset is a Hail VDS (Variant Dataset) rather than the collection of VCF
-files that is produced with GVS Beta.
+files that is produced with GVS Beta. More AoU-specific documentation can be
+found under `scripts/variantstore/docs/aou`.
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
