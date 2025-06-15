@@ -1,6 +1,7 @@
 # Creating the Variant Annotations Table
 
-The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
+The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in BigQuery, and outputs a bgzipped TSV
+file containing the contents of that table.
 
 
 ### VAT WDLs

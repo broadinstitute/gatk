@@ -22,14 +22,14 @@ For a very high level overview see `gvs-product-sheet.pdf`.
 
 GVS supports two primary usage scenarios as described below:
 
-### GVS Beta
+### GVS Beta Callsets
 
 GVS Beta is intended for end users to be able to run their own joint calling
 using the `GvsJointVariantCalling.wdl` as a top-level workflow. See the
 documentation in the `beta_docs` directory for more information on GVS Beta
 usage.
 
-### GVS for AoU
+### AoU Callsets
 
 GVS is used to produce joint callsets for the All of Us Research Program at the
 scale of 400,000+ samples. These callsets push the scale limits of GVS and are
@@ -40,6 +40,14 @@ in `AOU_DELIVERABLES.md`. The core deliverable of an AoU callset is a Hail VDS
 GVS Beta (VCFs are not really usable at the scale of hundreds of thousands of
 samples). More AoU-specific documentation can be found under
 `scripts/variantstore/docs/aou`.
+
+Conceptually an AoU callset is similar to a GVS Beta callset up to the point of
+extraction. While a Beta callset would run `GvsExtractCallset.wdl` to extract a
+set of VCF files, an AoU callset will run `GvsExtractAvroFilesForHail.wdl` and
+then `GvsCreateVDS.wdl` to generate a Hail VDS. This Hail VDS is the main AoU
+deliverable; the data within the VDS is used to generate an ancestry file TSV
+for creating the VAT (Variant Annotations Table) and the "small callsets"
+described later in this document.
 
 ## Key Concepts
 
@@ -117,6 +125,13 @@ BigQuery using a single partitionable value.
 
 ## Variant Annotation Table (VAT)
 
+### Overview
+
+The Variant Annotation Table (VAT) is an artifact that is currently only
+delivered as part of AoU callsets. See the documentation in
+`scripts/variantstore/variant-annotations-table/README.md` for more information
+on the VAT.
+
 ### VIDs
 
 VIDs, or “Variant IDs” are the primary key of the VAT table describe genetic
@@ -143,3 +158,8 @@ a deletion.
 In the third example, the variant is on chromosome Y (chrY) at position 56694638
 with a reference allele of G and a variant allele of A. This VID represents a
 SNP (single nucleotide polymorphism).
+
+### VID to Participant ID Mapping Table.
+
+See the documentation in `AOU_DELIVERABLES.md` for information on how to
+generate the VID to Participant ID Mapping Table.
