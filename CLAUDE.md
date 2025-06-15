@@ -1,12 +1,16 @@
 # Overview of the Genomic Variant Store (GVS)
 
 The Genomic Variant Store (GVS) is a scalable cloud-based platform designed to
-efficiently store, manage, and process large-scale genomic variant data. Built
-as an extension of the Genome Analysis Toolkit (GATK), GVS enables joint calling
-across thousands of samples and provides fast cohort extraction capabilities for
-population genomics studies.
+efficiently store, manage, and process large-scale genomic variant data. GVS
+enables joint calling across hundreds of thousands of samples and provides fast
+cohort extraction capabilities for population genomics studies. For a high level
+overview see `gvs-product-sheet.pdf`.
 
-For a very high level overview see `gvs-product-sheet.pdf`.
+GVS was created as a branch of the Genome Analysis Toolkit (GATK), though years
+later it is not clear if or when GVS will be merged back into the main GATK
+branch. The principal GVS branch in git is called `ah_var_store`. Although GVS
+does build upon some of the GATK codebase, the majority of the code in this
+repository is not related to GVS.
 
 ## Key Features
 
@@ -34,20 +38,18 @@ usage.
 GVS is used to produce joint callsets for the All of Us Research Program at the
 scale of 400,000+ samples. These callsets push the scale limits of GVS and are
 not suited for the `GvsJointVariantCalling.wdl` workflow. Instead, more narrowly
-scoped GVS workflows are invoked following an AoU specific protocol as described
-in `AOU_DELIVERABLES.md`. The core deliverable of an AoU callset is a Hail VDS
-(Variant Dataset) rather than the collection of VCF files that is produced with
-GVS Beta (VCFs are not really usable at the scale of hundreds of thousands of
-samples). More AoU-specific documentation can be found under
-`scripts/variantstore/docs/aou`.
+scoped GVS workflows are run by the engineers of the Variants team following an
+AoU-specific protocol as described in `AOU_DELIVERABLES.md`. Rather than the
+collection of VCF files that is produced from GVS Beta, the core deliverable of
+an AoU callset is a Hail VDS (Variant Dataset). More AoU-specific documentation
+can be found under `scripts/variantstore/docs/aou`.
 
 Conceptually an AoU callset is similar to a GVS Beta callset up to the point of
 extraction. While a Beta callset would run `GvsExtractCallset.wdl` to extract a
 set of VCF files, an AoU callset will run `GvsExtractAvroFilesForHail.wdl` and
-then `GvsCreateVDS.wdl` to generate a Hail VDS. This Hail VDS is the main AoU
-deliverable; the data within the VDS is used to generate an ancestry file TSV
-for creating the VAT (Variant Annotations Table) and the "small callsets"
-described later in this document.
+then `GvsCreateVDS.wdl` to generate a Hail VDS. The data within the VDS is used
+to generate an ancestry file for creating the VAT (Variant Annotations Table)
+and interval lists for the "small callsets" described later in this document.
 
 ## Key Concepts
 
@@ -71,7 +73,7 @@ variants in downstream analysis.
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
-## Core BigQuery concepts
+## BigQuery locations
 
 GVS leverages BigQuery partitioning and clustering to optimize query performance
 and cost. The core tables are either partitioned by sample ID or location,
@@ -81,7 +83,9 @@ depending on the access pattern for which they are optimized. GVS uses the term
 chromosome 1 position 1000 becomes `1000000000000 + 1000 = 1000000001000`. GVS
 locations use a chromosome number of 23 for the X chromosome and 24 for the Y
 chromosome. This location encoding allows for efficient storage and querying in
-BigQuery using a single partitionable value.
+BigQuery using a single partitionable value. References in GVS code to
+"position" usually refer to position on a given chromosome and do not mean the
+same thing as "location".
 
 ## Core BigQuery Tables
 
@@ -95,9 +99,9 @@ BigQuery using a single partitionable value.
   per-chromosome of the ploidy observed in its input GVCF file.
 - **`vet_%`**: Primary variant information (sample id, location, alleles,
   annotations). These tables are partitioned by sample id. Due to BigQuery's
-  4000 partition limit must be many of these tables (named `vet_001`, `vet_002`,
-  etc) in a GVS dataset. Schema information for vet tables can be found in the
-  `CreateBQTables.wdl` workflow in the variable `vet_schema_json`.
+  4000 partition limit there can be many `vet_%` tables in a GVS dataset, named
+  `vet_001`, `vet_002`, etc. Schema information for vet tables can be found in
+  the `CreateBQTables.wdl` workflow in the variable `vet_schema_json`.
 - **`ref_ranges_%`**: Reference genome locations, lengths, and qualities.
   Similar to vet, this table is partitioned by sample id and can hold at most
   4000 samples, so there will be multiple `ref_ranges_%` for larger datasets.
@@ -134,8 +138,8 @@ on the VAT.
 
 ### VIDs
 
-VIDs, or “Variant IDs” are the primary key of the VAT table describe genetic
-variation observed in genomic sequencing data. Here are three example VIDs:
+VIDs, or “Variant IDs” are the primary key of the VAT table. Here are three
+example VIDs:
 
 1. 1-668638-G-GA
 2. 16-88461103-AGGCCCTGGTGAGGACCCAGGGATGGGGCGGGAGACCTGGTGAGGACCGAGG-A
@@ -163,3 +167,8 @@ SNP (single nucleotide polymorphism).
 
 See the documentation in `AOU_DELIVERABLES.md` for information on how to
 generate the VID to Participant ID Mapping Table.
+
+Note that for the past Echo callset there may need to be an additional step to
+patch this table for a set of VIDs that did not have corresponding Participant
+IDs. See the directory `pseudo_vids_only_in_vat` for more information on
+unmatched VIDs what were discovered in the VATs of the Delta and Echo callsets.
