@@ -76,7 +76,53 @@ variants in downstream analysis.
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
-## BigQuery locations
+## Java Artifacts
+
+GVS is written in a mixture of Java, Python, WDL (Workflow Description
+Language), and shell scripts. The Java code can be built from the repository
+root using the `./gradlew clean shadowJar` command. This compilation requires a
+JDK of at least version 17.
+
+## Docker Versioning
+
+The `GvsUtils.wdl` workflow's `GetToolVersions` task is used to retrieve the
+version of various Docker images used by GVS. This task is usually run at the
+start of a GVS workflow to ensure that the correct versions of tools are being
+used.
+
+## Reference Versioning
+
+The `GvsUtils.wdl` workflow's `GetReference` task is used to retrieve the
+canonical paths to references used by GVS. This task is usually run at the start
+of a GVS workflow to ensure that the correct references are being used.
+
+## Docker artifacts
+
+GVS uses multiple Docker images to run its workflows. Some of these are specific
+to GVS as documented below.
+
+### GATK Docker Image
+
+This builds a GATK Docker image based on the GVS branch of the GATK codebase.
+Instructions for building this image can be found in the
+`scripts/variantstore/docs/Build Docker from VM/building_gatk_docker_on_a_vm.md`
+file. An x86 cloud-based VM is used to build this x86 Docker image, which is
+then pushed to the Broad's GAR (Google Artifact Registry) repository.
+
+### Variants Docker Image
+
+This is a Google Cloud SDK Alpine-based Docker image to which many useful tools,
+Python packages, and scripts have been added. This can be built on a developer's
+local machine using the `scripts/variantstore/scripts/build_docker.sh` script.
+
+### Nirvana Docker Image
+
+This is an Illumina Nirvana-based Docker image build from
+`scripts/variantstore/variant-annotations-table/build_docker.sh`. Since Nirvana
+is no longer being updated this image hopefully will also not need to be updated
+in the future.
+
+## "location" versus "position"
 
 GVS leverages BigQuery partitioning and clustering to optimize query performance
 and cost. The core tables are either partitioned by sample ID or location,
@@ -147,10 +193,10 @@ extensively documented in `gvs-bulk-ingest-details.md`. This workflow is called
 by `GvsJointVariantCalling.wdl` for Beta callsets and is called directly for AoU
 callsets. One significant change for the Foxtrot callset is that this workflow
 will now be directly supplied with a "FOFN" (File of Files Name) TSV rather than
-being tasked with reading from Terra data tables. This change was necessitated
-by Terra data tables' inability to handle the large number of samples in the AoU
-callset, but is also just simpler than the previous TSV to Terra data table to
-TSV approach.
+reading from Terra data tables. This change was motivated by hitting the scale
+limits of Terra data tables and being unable to read AoU-sized sample sets, but
+providing this workflow with a FOFN TSV directly is also much simpler than the
+previous TSV to Terra data table to TSV approach.
 
 ### GvsPopulateAltAllele.wdl
 
@@ -164,6 +210,20 @@ with split multi-allelics to support efficient querying and filtering.
 This workflow reads the `alt_allele` tables, scattering widely over locations to
 generate a filter model and populate the `filter_set_sites` and
 `filter_set_info` tables.
+
+### GvsPrepareCallset.wdl
+
+This workflow prepares a GVS callset for VCF or PGEN extraction. Sample,
+reference, and variant data is copied to a set of "prepare tables" that are read
+by GVS extract tools.
+
+### GvsExtractCallset.wdl
+
+This workflow extracts a GVS callset into VCF or PGEN files. It reads the
+prepare tables created by `GvsPrepareCallset.wdl` and generates the requested
+output files. Output files are partitioned at a minimum by chromosome, but for
+"wide" extracts (callsets with many large numbers of samples), there may be
+hundreds of output files per chromosome.
 
 ## Variant Annotation Table (VAT)
 
