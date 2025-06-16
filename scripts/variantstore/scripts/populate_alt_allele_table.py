@@ -1,5 +1,6 @@
 import os
 import argparse
+import sys
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
@@ -24,6 +25,7 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     alt_allele_positions = Path('alt_allele_positions.sql').read_text()
     fq_vet_table = f"{fq_dataset}.{vet_table_name}"
     fq_sample_info = f"{fq_dataset}.sample_info"
+    fq_alt_allele = f"{fq_dataset}.alt_allele"
 
     query_with = f"""
 
@@ -47,7 +49,50 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     query_return = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
     utils.write_job_stats([{'job': query_return['job'], 'label': query_return['label']}], client, fq_dataset,
                           call_set_identifier, 'CreateAltAlleles', 'PopulateAltAlleleTable', vet_table_name)
+
+    # Verify that the number of distinct samples is correct
+    verify_distinct_samples(fq_alt_allele, fq_sample_info)
+
     return query_return['results']
+
+
+def verify_distinct_samples(fq_alt_allele_table, fq_sample_info_table):
+    """
+    Verify that the number of distinct samples in the alt_allele table
+    matches the number of samples in the sample_info table for whom withdrawn is NULL.
+
+    Args:
+        fq_alt_allele_table: Fully qualified alt_allele table name
+        fq_sample_info_table: Fully qualified sample_info table name
+    """
+    # Query to count distinct samples in alt_allele
+    alt_allele_query = f"""
+    SELECT COUNT(DISTINCT sample_id) AS alt_allele_sample_count
+    FROM `{fq_alt_allele_table}`
+    """
+
+    # Query to count non-withdrawn samples in sample_info
+    sample_info_query = f"""
+    SELECT COUNT(sample_id) AS sample_info_count
+    FROM `{fq_sample_info_table}`
+    WHERE withdrawn IS NULL
+    """
+
+    # Execute queries
+    alt_allele_count_job = client.query(alt_allele_query)
+    sample_info_count_job = client.query(sample_info_query)
+
+    # Get results
+    alt_allele_count = list(alt_allele_count_job)[0].alt_allele_sample_count
+    sample_info_count = list(sample_info_count_job)[0].sample_info_count
+
+    # Compare counts and raise error if they don't match
+    if alt_allele_count != sample_info_count:
+        print(f"ERROR: Sample count mismatch! Alt allele table contains {alt_allele_count} distinct samples, "
+              f"but sample_info table contains {sample_info_count} non-withdrawn samples.")
+        sys.exit(1)
+    else:
+        print(f"Verification passed: Both tables contain {sample_info_count} samples.")
 
 
 if __name__ == '__main__':
