@@ -97,8 +97,8 @@ task RealignSingleSample {
     
     # Resource parameters
     Int? memory_gb = 8
-    Int? disk_gb = 50
-    Int? cpu_count = 2
+    Int? disk_gb = 500
+    Int? cpu_count = 3
     Int? preemptible_tries = 3
   }
 
@@ -150,6 +150,7 @@ task RealignSingleSample {
       --vet-table ~{fq_vet_table} \
       -R ~{reference_fasta} \
       --sample-id-filter "~{sample_filter}" \
+      --log-cadence 50 \
       --max-records ~{max_records}
     
     # Rename output files to include sample and table information

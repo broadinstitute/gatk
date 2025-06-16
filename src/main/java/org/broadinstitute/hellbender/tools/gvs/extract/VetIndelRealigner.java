@@ -74,6 +74,13 @@ public class VetIndelRealigner extends ExtractTool {
     private Long maxRecords = null;
 
     @Argument(
+            fullName = "log-cadence",
+            doc = "How often to report progress (every N records)",
+            optional = true
+    )
+    private int logCadence = 100000;
+
+    @Argument(
             fullName = "cost-observability-table",
             doc = "Fully qualified name of the cost observability table for monitoring BigQuery usage",
             optional = true
@@ -188,7 +195,7 @@ public class VetIndelRealigner extends ExtractTool {
                 totalRecordsProcessed++;
 
                 // Progress reporting
-                if (totalRecordsProcessed % 100000 == 0) {
+                if (totalRecordsProcessed % logCadence == 0) {
                     long currentTime = System.currentTimeMillis();
                     double recordsPerSecond = totalRecordsProcessed / ((currentTime - startTime) / 1000.0);
                     logger.info(String.format("Processed %d records (%.2f records/sec)",
