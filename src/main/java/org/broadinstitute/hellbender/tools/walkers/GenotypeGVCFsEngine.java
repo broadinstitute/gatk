@@ -281,21 +281,16 @@ public class GenotypeGVCFsEngine
         for(final Genotype g : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(g);
             // First try to get SQ (Somatic Quality) values, if not available fall back to TLOD
-            double[] likelihoodArray;
-            boolean isSQ = false;
-            if (g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY)) {
-                likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.SOMATIC_QUALITY_KEY, () -> null, 0.0);
-                isSQ = true;
-            } else {
-                likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
-            }
+            final boolean hasSQ = g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY);
+            final String likelihoodKey = hasSQ ? GATKVCFConstants.SOMATIC_QUALITY_KEY : GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY;
+            final double[] likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, likelihoodKey, () -> null, 0.0);
             final double[] variantAFArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
             double variantAFtotal = 0;
             final List<Allele> calledAlleles = new ArrayList<>();
             for(int i = 0; i < vc.getAlleles().size()-1; i++) {
                 variantAFtotal += variantAFArray[i];
                 // Use sqThreshold for SQ values and tlodThreshold for TLOD values
-                double threshold = isSQ ? sqThreshold : tlodThreshold;
+                double threshold = hasSQ ? sqThreshold : tlodThreshold;
                 if (likelihoodArray[i] > threshold) {
                     calledAlleles.add(vc.getAlternateAllele(i));
                     perAlleleLikelihoodSums[i+1] += likelihoodArray[i];
