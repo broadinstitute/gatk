@@ -43,13 +43,13 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
                 // read equality; at least some of which are because they are unmapped/unplaced, but have cigar
                 // strings that both samtools and htsjdk drop when roundtripping
                 {NA12878_20_21_WGS_bam, b37_reference_20_21, true, false},
+                // roundtrip a v3.0 file
                 // this cram is the result of converting the above bam to cram using samtools; once the file is
                 // converted, we can use full read equality when roundtripping through cram, so we don't need to
                 // be lenient
                 {NA12878_20_21_WGS_cram, b37_reference_20_21, false, false},
-                // roundtrip a v2.1 file
-                { largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram",
-                        b37_reference_20_21, false, false },
+                // roundtrip a v3.1 file
+                {NA12878_20_21_WGS_cram_31, b37_reference_20_21, false, false },
         };
     }
 
