@@ -20,26 +20,26 @@ usage() {
   echo "Usage: $0 [options]"
   echo " This script monitors system resources and (optionally) GATK heap usage."
   echo " Output from the script is printed to stdout and can be redirected to a file."
-  echo "  -m, --monitor_heap     Enable GATK heap monitoring (optional)"
-  echo "  -s, --sleep_time N     Set sleep interval in seconds (default: 10). This is the amount of time between logging statements."
+  echo "  -m, --monitor-heap     Enable GATK heap monitoring (optional)"
+  echo "  -s, --sleep-time N     Set sleep interval in seconds (default: 10). This is the amount of time between logging statements."
   echo "  -h, --help             Show this help message and exit"
 }
 
-# Parse arguments for monitor_heap and sleep_time
+# Parse arguments for monitor-heap and sleep-time
 MONITOR_HEAP=false
 SLEEP_TIME=10
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --monitor_heap|-m)
+    --monitor-heap|-m)
       MONITOR_HEAP=true
       shift
       ;;
-    --sleep_time|-s)
+    --sleep-time|-s)
       if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
         SLEEP_TIME=$2
         shift 2
       else
-        echo "Error: --sleep_time|-s requires a numeric argument." >&2
+        echo "Error: --sleep-time|-s requires a numeric argument." >&2
         usage
         exit 1
       fi
