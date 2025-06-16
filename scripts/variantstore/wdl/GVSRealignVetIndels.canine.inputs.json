@@ -1,0 +1,13 @@
+{
+  "GVSRealignVetIndels.dataset_name": "canine_gvs_dataset",
+  "GVSRealignVetIndels.project_id": "my-canine-project",
+  "GVSRealignVetIndels.vet_table_number": 1,
+  "GVSRealignVetIndels.reference_fasta": "gs://my-bucket/references/UU_Cfam_GSD_1.0_ROSY.fasta",
+  "GVSRealignVetIndels.samples_per_vet_table": 4000,
+  "GVSRealignVetIndels.max_records_per_sample": 500000,
+  "GVSRealignVetIndels.gatk_docker": "broadinstitute/gatk:latest",
+  "GVSRealignVetIndels.RealignSingleSample.memory_gb": 16,
+  "GVSRealignVetIndels.RealignSingleSample.disk_gb": 100,
+  "GVSRealignVetIndels.RealignSingleSample.cpu_count": 4,
+  "GVSRealignVetIndels.RealignSingleSample.preemptible_tries": 2
+}

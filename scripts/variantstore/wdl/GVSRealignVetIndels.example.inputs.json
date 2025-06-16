@@ -1,0 +1,13 @@
+{
+  "GVSRealignVetIndels.dataset_name": "my_gvs_dataset",
+  "GVSRealignVetIndels.project_id": "my-gcp-project",
+  "GVSRealignVetIndels.vet_table_number": 7,
+  "GVSRealignVetIndels.reference_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "GVSRealignVetIndels.samples_per_vet_table": 4000,
+  "GVSRealignVetIndels.max_records_per_sample": 1000000,
+  "GVSRealignVetIndels.gatk_docker": "broadinstitute/gatk:latest",
+  "GVSRealignVetIndels.RealignSingleSample.memory_gb": 8,
+  "GVSRealignVetIndels.RealignSingleSample.disk_gb": 50,
+  "GVSRealignVetIndels.RealignSingleSample.cpu_count": 2,
+  "GVSRealignVetIndels.RealignSingleSample.preemptible_tries": 3
+}

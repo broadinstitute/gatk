@@ -473,3 +473,16 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: GVSRealignVetIndels
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GVSRealignVetIndels.wdl
+     testParameterFiles:
+         - /scripts/variantstore/wdl/GVSRealignVetIndels.example.inputs.json
+         - /scripts/variantstore/wdl/GVSRealignVetIndels.canine.inputs.json
+     filters:
+         branches:
+             - master
+             - ah_var_store
+             - hatcher_testing_alignment
+         tags:
+             - /.*/
