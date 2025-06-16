@@ -6,10 +6,10 @@ enables joint calling across hundreds of thousands of samples and provides fast
 cohort extraction capabilities for population genomics studies. For a high level
 overview see `gvs-product-sheet.pdf`.
 
-GVS was created as a branch of the Genome Analysis Toolkit (GATK), though years
-later it is not clear if or when GVS will be merged back into the main GATK
-branch. The principal GVS branch in git is called `ah_var_store`. Although GVS
-does build upon some of the GATK codebase, the majority of the code in this
+GVS was created as a branch of the Genome Analysis Toolkit (GATK), though now
+years later it is not clear if or when GVS will be merged back into the main
+GATK branch. The principal GVS branch in git is called `ah_var_store`. Although
+GVS does build upon some of the GATK codebase, the majority of the code in this
 repository is not related to GVS.
 
 ## Key Features
@@ -36,20 +36,21 @@ usage.
 ### AoU Callsets
 
 GVS is used to produce joint callsets for the All of Us Research Program at the
-scale of 400,000+ samples. These callsets push the scale limits of GVS and are
-not suited for the `GvsJointVariantCalling.wdl` workflow. Instead, more narrowly
+scale of 400,000+ samples. AoU callsets push the scale limits of GVS and are not
+suited for the `GvsJointVariantCalling.wdl` workflow. Instead, more narrowly
 scoped GVS workflows are run by the engineers of the Variants team following an
 AoU-specific protocol as described in `AOU_DELIVERABLES.md`. Rather than the
-collection of VCF files that is produced from GVS Beta, the core deliverable of
-an AoU callset is a Hail VDS (Variant Dataset). More AoU-specific documentation
-can be found under `scripts/variantstore/docs/aou`.
+collection of VCF files produced from GVS Beta, the core deliverable of an AoU
+callset is a Hail VDS (Variant Dataset). More AoU-specific documentation can be
+found under `scripts/variantstore/docs/aou`.
 
 Conceptually an AoU callset is similar to a GVS Beta callset up to the point of
-extraction. While a Beta callset would run `GvsExtractCallset.wdl` to extract a
-set of VCF files, an AoU callset will run `GvsExtractAvroFilesForHail.wdl` and
-then `GvsCreateVDS.wdl` to generate a Hail VDS. The data within the VDS is used
-to generate an ancestry file for creating the VAT (Variant Annotations Table)
-and interval lists for the "small callsets" described later in this document.
+extraction. While a Beta callset would run `GvsPrepareCallset.wdl` and then
+`GvsExtractCallset.wdl` to extract a set of VCF files, an AoU callset will run
+`GvsExtractAvroFilesForHail.wdl` and then `GvsCreateVDS.wdl` to generate a Hail
+VDS. The data within the VDS is used to generate an ancestry file for creating
+the VAT (Variant Annotations Table) and interval lists for the "small callsets"
+described in `AOU_DELIVERABLES.md`.
 
 ## Key Concepts
 
@@ -60,7 +61,9 @@ the site and allele level. By default GVS evaluates variant quality scores using
 a machine learning model called VETS (Variant Extract-Train-Score). GVS formerly
 used a machine learning model called VQSR (Variant Quality Score Recalibration)
 for this purpose. While still supported in GVS, VQSR is rarely used in making
-GVS callsets today.
+GVS callsets today. See
+`scripts/variantstore/docs/release_notes/VETS_Release.pdf` for more information
+on VETS and the transition away from VQSR.
 
 GVS stores all variants and their associated quality scores in its BigQuery
 schema, regardless of whether these variants pass or fail quality filters. GVS
@@ -126,6 +129,41 @@ same thing as "location".
   level, including the VQSR model and other metadata.
 - **`cost_observability`**: Operation cost tracking, written to by the various
   tools that comprise the GVS pipeline.
+
+## Key Workflows
+
+### GvsJointVariantCalling.wdl
+
+This is the top-level workflow for GVS Beta joint calling. It orchestrates the
+joint calling process, including sample ingestion, variant calling, and
+filtering. The workflow is designed to be run on the Terra platform and can be
+customized for specific datasets. This workflow is _not_ used for AoU callsets,
+which use a different set of workflows as described in `AOU_DELIVERABLES.md`.
+
+### GvsBulkIngest.wdl
+
+This workflow is used to ingest large sets of samples into GVS and is
+extensively documented in `gvs-bulk-ingest-details.md`. This workflow is called
+by `GvsJointVariantCalling.wdl` for Beta callsets and is called directly for AoU
+callsets. One significant change for the Foxtrot callset is that this workflow
+will now be directly supplied with a "FOFN" (File of Files Name) TSV rather than
+being tasked with reading from Terra data tables. This change was necessitated
+by Terra data tables' inability to handle the large number of samples in the AoU
+callset, but is also just simpler than the previous TSV to Terra data table to
+TSV approach.
+
+### GvsPopulateAltAllele.wdl
+
+This workflow populates the `alt_allele` table with allele information from the
+`vet_%` tables. This table will enable the creation of a filter model in joint
+calling in subsequent steps. The `alt_allele` table is partitioned by location
+with split multi-allelics to support efficient querying and filtering.
+
+### GvsCreateFilterSet.wdl
+
+This workflow reads the `alt_allele` tables, scattering widely over locations to
+generate a filter model and populate the `filter_set_sites` and
+`filter_set_info` tables.
 
 ## Variant Annotation Table (VAT)
 
