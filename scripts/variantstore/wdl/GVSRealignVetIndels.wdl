@@ -96,9 +96,9 @@ task RealignSingleSample {
     File? gatk_override
     
     # Resource parameters
-    Int? memory_gb = 8
+    Int? memory_gb = 16
     Int? disk_gb = 500
-    Int? cpu_count = 3
+    Int? cpu_count = 4
     Int? preemptible_tries = 3
   }
 
