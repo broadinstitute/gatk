@@ -598,12 +598,13 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         echo_date "VAT: Calculating number of sites with Ns"
 
         ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
-        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+        # The "2>/dev/null" is to suppress the profuse and useless "pass=0" stderr output from bcftools view.
+        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf 2>/dev/null | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
         ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
         ##       determined by examining the sites-only VCF provided to this WDL.
-        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
+        bcftools view --threads 4 -e 'REF~"N" 2>/dev/null || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
