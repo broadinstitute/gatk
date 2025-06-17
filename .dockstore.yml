@@ -343,7 +343,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1671_vat_discrepancies
-             - gg_VS-1388_VerifySampleCountInAltAlleleTable
          tags:
              - /.*/
    - name: GvsIngestTieout
