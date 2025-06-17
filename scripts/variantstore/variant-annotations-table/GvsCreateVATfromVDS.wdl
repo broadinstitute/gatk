@@ -181,14 +181,23 @@ workflow GvsCreateVATfromVDS {
             }
         }
 
+        if (defined(sites_to_exclude)) {
+            call ExcludeSitesFromSitesOnlyVcf {
+                input:
+                    sites_to_exclude = select_first([sites_to_exclude]),
+                    input_sites_only_vcf = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                    variants_docker = effective_variants_docker,
+            }
+        }
+
         call Utils.CopyFile as CopySitesOnlyVcf {
             input:
-                input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                input_file = select_first([ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf, sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
                 output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
+        if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index) || defined(sites_to_exclude)) {
             call Utils.IndexVcf {
                 input:
                     input_vcf = CopySitesOnlyVcf.output_file_path,
