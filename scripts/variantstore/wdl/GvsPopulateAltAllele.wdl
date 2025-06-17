@@ -322,8 +322,8 @@ task VerifySampleCount {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
+#    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+#
     # Determine the number of distinct sample_ids in the alt_allele table
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
       'SELECT COUNT(DISTINCT sample_id) AS num_samples FROM `~{dataset_name}.alt_allele`' | sed 1d > num_samples_in_aa.csv
@@ -338,9 +338,10 @@ task VerifySampleCount {
     rc=$?
     set -o errexit
     if [[ $rc -ne 0 ]]; then
-      echo "The count of samples in ~{dataset_name}.alt_allele differs from that in ~{dataset_name}.sample_info!"
+      echo "The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele differs from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
       exit 1;
     fi
+    echo "The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele does NOT differ from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
   >>>
 
   output {
