@@ -37,14 +37,6 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
 
     private final Map<Class<? extends Covariate>, Integer> indexByClass;
 
-    // tsato: START EXPERIMENTATION
-    Reflections reflections = new Reflections("org.broadinstitute.hellbender.utils.recalibration.covariates");
-    // tsato: why are these null?
-    Set<Class<? extends RequiredCovariate>> requiredCovariateClasses = reflections.getSubTypesOf(RequiredCovariate.class);
-    Set<Class<? extends StandardCovariate>> standardCovariateClasses = reflections.getSubTypesOf(StandardCovariate.class);
-    Set<Class<? extends CustomCovariate>> customCovariateClasses = reflections.getSubTypesOf(CustomCovariate.class);
-    // tsato: END EXPERIMENTATION
-
     private static final List<String> REQUIRED_COVARIATE_NAMES =
             Collections.unmodifiableList(Arrays.asList("ReadGroupCovariate", "QualityScoreCovariate")); // TODO: can I replace these with regex so the
 
