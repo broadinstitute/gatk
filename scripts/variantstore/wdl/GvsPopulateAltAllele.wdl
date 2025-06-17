@@ -330,10 +330,7 @@ task VerifySampleCount {
 
     # Determine the number of distinct sample_ids in the sample_info table
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-    'SELECT COUNT(DISTINCT sample_id) AS num_samples FROM `~{dataset_name}.sample_info` WHERE withdrawn IS NULL' > num_samples_in_si.csv
-
-    # remove the header row from the CSV file
-    sed -i 1d num_samples_in_si.csv
+    'SELECT COUNT(DISTINCT sample_id) AS num_samples FROM `~{dataset_name}.sample_info` WHERE withdrawn IS NULL' | sed 1d > num_samples_in_si.csv
 
     # Compare the two counts
     set +o errexit
