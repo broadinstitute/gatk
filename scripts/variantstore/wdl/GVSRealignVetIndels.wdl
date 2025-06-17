@@ -11,6 +11,8 @@ workflow GVSRealignVetIndels {
     
     # Reference genome.  This should use a reference disk
     File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    File reference_fasta_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+    File reference_dictionary = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     # For keeping track of whether to look for mounted references
     Boolean use_reference_disk = false
 
@@ -92,6 +94,8 @@ task RealignSingleSample {
     Int sample_id
     # Reference genome.  This should use a reference disk
     File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    File reference_fasta_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+    File reference_dictionary = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     # For keeping track of whether to look for mounted references
     Boolean use_reference_disk = false
     Int max_records
