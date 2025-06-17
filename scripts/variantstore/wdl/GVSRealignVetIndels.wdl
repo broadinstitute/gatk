@@ -9,13 +9,15 @@ workflow GVSRealignVetIndels {
     Int vet_table_number
     File? gatk_override
     
-    # Reference genome parameters
-    String reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    
+    # Reference genome.  This should use a reference disk
+    File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    # For keeping track of whether to look for mounted references
+    Boolean use_reference_disk = false
+
     # VET table configuration
     Int samples_per_vet_table = 4000
     Int? max_records_per_sample = 1000000
-    
+
     # Optional runtime parameters
     String? gatk_docker
     String? git_branch_or_tag
@@ -88,7 +90,10 @@ task RealignSingleSample {
     String project_id
     String vet_table_name
     Int sample_id
-    String reference_fasta
+    # Reference genome.  This should use a reference disk
+    File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    # For keeping track of whether to look for mounted references
+    Boolean use_reference_disk = false
     Int max_records
     
     # Runtime parameters
@@ -96,9 +101,9 @@ task RealignSingleSample {
     File? gatk_override
     
     # Resource parameters
-    Int? memory_gb = 16
+    Int? memory_gb = 8
     Int? disk_gb = 500
-    Int? cpu_count = 4
+    Int? cpu_count = 3
     Int? preemptible_tries = 3
   }
 
@@ -143,14 +148,14 @@ task RealignSingleSample {
     
     echo "Processing sample ~{sample_id} from VET table ~{fq_vet_table}"
     echo "Using sample filter: ~{sample_filter}"
-    
+    echo "Reference genome: ~{reference_fasta}"
+
     # Run VetIndelRealigner
     gatk --java-options "-Xmx~{memory_gb - 1}g" VetIndelRealigner \
       --project-id ~{project_id} \
       --vet-table ~{fq_vet_table} \
       -R ~{reference_fasta} \
       --sample-id-filter "~{sample_filter}" \
-      --log-cadence 50 \
       --max-records ~{max_records}
     
     # Rename output files to include sample and table information
