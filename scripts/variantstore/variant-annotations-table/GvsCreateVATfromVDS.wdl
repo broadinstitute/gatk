@@ -13,6 +13,7 @@ workflow GvsCreateVATfromVDS {
         File? sites_only_vcf
         File? sites_only_vcf_index
         File? vds_path
+        File? sites_to_exclude
         String output_path
 
         String? basic_docker
@@ -57,6 +58,9 @@ workflow GvsCreateVATfromVDS {
         }
         vds_path: {
             help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
+        }
+        sites_to_exclude: {
+            help: "An optional file of sites to exclude from the sites-only VCF. It may be become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
         }
     }
 
@@ -324,6 +328,42 @@ workflow GvsCreateVATfromVDS {
         File? dropped_sites_file = MergeTsvs.output_file
         File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
+    }
+}
+
+
+task ExcludeSitesFromSitesOnlyVcf {
+    input {
+        File sites_to_exclude
+        File input_sites_only_vcf
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        regions_to_exclude=$(cat ~{sites_to_exclude} | tr '\n' ',' | tr -d '[:space:]' | sed 's/,$//g')
+
+        # Exclude sites from the sites-only VCF that are listed in the sites_to_exclude file.
+        bcftools view --threads 4 --targets ^${regions_to_exclude} ~{input_sites_only_vcf} -O z -o excluded.vcf.gz
+
+        # Index the resulting VCF.
+        bcftools index --tbi --threads 4 excluded.vcf.gz
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "4 GB"
+        preemptible: 2
+        cpu: "1"
+        disk: "local-disk 500 HDD"
+    }
+
+    output {
+        File output_sites_only_vcf = "excluded.vcf.gz"
+        File output_sites_only_vcf_index = "excluded.vcf.gz.tbi"
     }
 }
 
