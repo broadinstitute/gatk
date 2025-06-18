@@ -163,7 +163,7 @@ as "location".
 - **`vcf_header_lines`**: Contains all unique VCF header seen while ingesting
   all samples.
 - **`sample_vcf_header`**: Contains header information on a per-sample basis,
-  referencing enries in the `vcf_header_lines` table.
+  referencing entries in the `vcf_header_lines` table.
 - **`vcf_header_lines_scratch`**: Scratch table for temporary storage of VCF
   header lines during ingestion. This table is used to avoid duplicate entries
   in the `vcf_header_lines` table.
@@ -195,7 +195,7 @@ This workflow is used to ingest large sets of samples into GVS and is
 extensively documented in `gvs-bulk-ingest-details.md`. This workflow is called
 by `GvsJointVariantCalling.wdl` for Beta callsets and is called directly for AoU
 callsets. One significant change for the Foxtrot callset is that this workflow
-will now be directly supplied with a "FOFN" (File of Files Name) TSV rather than
+will now be directly supplied with a "FOFN" (File of File Names) TSV rather than
 reading from Terra data tables. This change was motivated by hitting the scale
 limits of Terra data tables and being unable to read AoU-sized sample sets, but
 providing this workflow with a FOFN TSV directly is also much simpler than the
