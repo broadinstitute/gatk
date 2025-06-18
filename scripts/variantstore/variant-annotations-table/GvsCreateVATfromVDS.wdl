@@ -53,6 +53,9 @@ workflow GvsCreateVATfromVDS {
         sites_only_vcf: {
             help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped. If defined, then 'vds_path' must NOT be defined."
         }
+        sites_only_vcf_index: {
+            help: "Index to accompany sites-only VCF file documented above."
+        }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
         }
@@ -105,6 +108,14 @@ workflow GvsCreateVATfromVDS {
         call Utils.TerminateWorkflow as MustSetSitesOnlyVcfCreationParameters {
             input:
                 message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path'",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    if (defined(sites_only_vcf_index) && !defined(sites_only_vcf)) {
+        call Utils.TerminateWorkflow as IfSitesOnlyVcfIndexSpecifiedMustSpecifySitesOnlyVcf {
+            input:
+                message = "Error: If 'sites_only_vcf_index' is set as an input, you must also set 'sites_only_vcf'",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -197,7 +208,7 @@ workflow GvsCreateVATfromVDS {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        if (!defined(sites_only_vcf_index) || !defined(ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index)) {
+        if (!defined(ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index) && !defined(sites_only_vcf_index)) {
             call Utils.IndexVcf {
                 input:
                     input_vcf = CopySitesOnlyVcf.output_file_path,
