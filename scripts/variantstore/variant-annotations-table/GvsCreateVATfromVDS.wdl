@@ -604,7 +604,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
         ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
         ##       determined by examining the sites-only VCF provided to this WDL.
-        bcftools view --threads 4 -e 'REF~"N" 2>/dev/null || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
+        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf 2>/dev/null
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
