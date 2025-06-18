@@ -1,7 +1,6 @@
 # Creating the Variant Annotations Table
 
-The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates a queryable table in BigQuery, and outputs a bgzipped TSV
-file containing the contents of that table.
+The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table.
 
 
 ### VAT WDLs
