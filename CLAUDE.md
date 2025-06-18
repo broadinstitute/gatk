@@ -273,4 +273,4 @@ generate the VID to Participant ID Mapping Table.
 Note that for the past Echo callset there may need to be an additional step to
 patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
-unmatched VIDs what were discovered in the VATs of the Delta and Echo callsets.
+unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
