@@ -197,7 +197,7 @@ workflow GvsCreateVATfromVDS {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index) || defined(sites_to_exclude)) {
+        if (!defined(sites_only_vcf_index) || !defined(ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index)) {
             call Utils.IndexVcf {
                 input:
                     input_vcf = CopySitesOnlyVcf.output_file_path,
@@ -207,7 +207,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.CopyFile as CopySitesOnlyVcfIndex {
             input:
-                input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
+                input_file = select_first([ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index, sites_only_vcf_index, IndexVcf.output_vcf_index]),
                 output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
