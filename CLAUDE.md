@@ -6,11 +6,12 @@ enables joint calling across hundreds of thousands of samples and provides fast
 cohort extraction capabilities for population genomics studies. For a high level
 overview see `gvs-product-sheet.pdf`.
 
-GVS was created as a branch of the Genome Analysis Toolkit (GATK), though now
-years later it is not clear if or when GVS will be merged back into the main
-GATK branch. The principal GVS branch in git is called `ah_var_store`. Although
-GVS does build upon some of the GATK codebase, the majority of the code in this
-repository is not related to GVS.
+GVS was created as a branch of the Genome Analysis Toolkit (GATK). The principal
+GVS branch in git is called `ah_var_store`. While this GVS branch has been
+updated from GATK `master` periodically, it is not clear if GVS will ever be
+merged back into the main GATK branch. While GVS does build upon some of the
+GATK codebase, the majority of the code in the GATK repository (even on the
+`ah_var_store` branch) is not related to GVS.
 
 ## Key Features
 
@@ -37,7 +38,7 @@ usage.
 
 GVS is used to produce joint callsets for the All of Us Research Program at the
 scale of 400,000+ samples. AoU callsets push the scale limits of GVS and are not
-suited for the `GvsJointVariantCalling.wdl` workflow. Instead, more narrowly
+suited for the `GvsJointVariantCalling.wdl` workflow. For AoU, more narrowly
 scoped GVS workflows are run by the engineers of the Variants team following an
 AoU-specific protocol as described in `AOU_DELIVERABLES.md`. Rather than the
 collection of VCF files produced from GVS Beta, the core deliverable of an AoU
@@ -81,7 +82,9 @@ variants in downstream analysis.
 GVS is written in a mixture of Java, Python, WDL (Workflow Description
 Language), and shell scripts. The Java code can be built from the repository
 root using the `./gradlew clean shadowJar` command. This compilation requires a
-JDK of at least version 17.
+JDK of at least version 17. For local compilation, if
+[SDKMAN!](https://sdkman.io/) is available, one of the Java 17 versions can be
+used (most GATK builds seem to use Temurin).
 
 ## Docker Versioning
 
@@ -132,9 +135,9 @@ depending on the access pattern for which they are optimized. GVS uses the term
 chromosome 1 position 1000 becomes `1000000000000 + 1000 = 1000000001000`. GVS
 locations use a chromosome number of 23 for the X chromosome and 24 for the Y
 chromosome. This location encoding allows for efficient storage and querying in
-BigQuery using a single partitionable value. References in GVS code to
-"position" usually refer to position on a given chromosome and do not mean the
-same thing as "location".
+BigQuery using a single partitionable value. GVS references to "position"
+usually refer to position on a given chromosome and do not mean the same thing
+as "location".
 
 ## Core BigQuery Tables
 
@@ -217,10 +220,10 @@ This workflow prepares a GVS callset for VCF or PGEN extraction. Sample,
 reference, and variant data is copied to a set of "prepare tables" that are read
 by GVS extract tools.
 
-### GvsExtractCallset.wdl
+### GvsExtractCallset.wdl / GvsExtractCallsetPgenMerged.wdl
 
-This workflow extracts a GVS callset into VCF or PGEN files. It reads the
-prepare tables created by `GvsPrepareCallset.wdl` and generates the requested
+These workflows extract a GVS callset into VCF or PGEN files. They read the
+prepare tables created by `GvsPrepareCallset.wdl` and generate the requested
 output files. Output files are partitioned at a minimum by chromosome, but for
 "wide" extracts (callsets with many large numbers of samples), there may be
 hundreds of output files per chromosome.
@@ -232,7 +235,8 @@ hundreds of output files per chromosome.
 The Variant Annotation Table (VAT) is an artifact that is currently only
 delivered as part of AoU callsets. See the documentation in
 `scripts/variantstore/variant-annotations-table/README.md` for more information
-on the VAT.
+on the VAT. The core workflow for generating the VAT is
+`GvsCreateVATFromVDS.wdl`, which is run after the AoU callset has been created.
 
 ### VIDs
 
