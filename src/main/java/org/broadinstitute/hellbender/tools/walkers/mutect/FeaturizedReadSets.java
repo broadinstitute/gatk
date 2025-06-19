@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 
+import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -11,7 +12,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -20,6 +22,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentC
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * For each sample and for each allele a list feature vectors of supporting reads
@@ -33,6 +36,11 @@ public class FeaturizedReadSets {
     public static final int DEFAULT_BASE_QUALITY = 25;
 
     private static final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA);
+    private static final int FEATURES_PER_RANGE = 5;
+    private static final List<Integer> RANGES = List.of(5, 10, 20);
+    public static final int NUM_RANGED_FEATURES = FEATURES_PER_RANGE * RANGES.size();
+    private static final int VERY_BAD_QUAL_THRESHOLD = 10;
+    private static final int BAD_QUAL_THRESHOLD = 20;
 
     private FeaturizedReadSets() { }
 
@@ -42,8 +50,9 @@ public class FeaturizedReadSets {
                                                            final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods,
                                                            final int refDownsample,
                                                            final int altDownsample,
-                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
-        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), mutect3DatasetMode);
+                                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
+                                                           final Map<String, Integer> readGroupIndices) {
+        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), permutectDatasetMode, readGroupIndices);
     }
 
     // returns Lists (in allele order) of lists of read vectors supporting each allele
@@ -54,7 +63,8 @@ public class FeaturizedReadSets {
                                                            final int refDownsample,
                                                            final int altDownsample,
                                                            final Map<Allele, Integer> altDownsampleMap,
-                                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
+                                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
+                                                           final Map<String, Integer> readGroupIndices) {
         final Map<Allele, List<GATKRead>> readsByAllele = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new ArrayList<>()));
 
@@ -77,29 +87,38 @@ public class FeaturizedReadSets {
                 .forEach(ba -> ba.evidence.getReads().forEach(read -> bestHaplotypes.put(read, ba.allele)));
 
         return vc.getAlleles().stream()
-                .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, mutect3DatasetMode)).collect(Collectors.toList()))
+                .map(allele -> readsByAllele.get(allele).stream().map(read -> featurize(read, vc, bestHaplotypes, permutectDatasetMode, readGroupIndices)).collect(Collectors.toList()))
                 .collect(Collectors.toList());
     }
 
 
     private static List<Integer> featurize(final GATKRead read, final VariantContext vc,
                                            final Map<GATKRead, Haplotype> bestHaplotypes,
-                                           final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
+                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
+                                           final Map<String, Integer> readGroupIndices) {
         final List<Integer> result = new ArrayList<>();
+        result.add(readGroupIndices.get(read.getReadGroup()));  // this is read group metadata rather than part of the tensor
         result.add(read.getMappingQuality());
+
+        // TODO: why not add BQ before and after as well -- especially useful for indels
         result.add(BaseQuality.getBaseQuality(read, vc).orElse(DEFAULT_BASE_QUALITY));
         result.add(read.isFirstOfPair() ? 1 : 0);
         result.add(read.isReverseStrand() ? 1 : 0);
 
         // distances from ends of read
-        final int readPosition = ReadPosition.getPosition(read, vc).orElse(0);
-        result.add(readPosition);
-        result.add(read.getLength() - readPosition);
+        // this DOES account for the hard clips due to fitting the read inside the assembly window!!
+        final int readPositionOfVariantStart = ReadPosition.getPosition(read, vc).orElse(0);
+        result.add(readPositionOfVariantStart);
+
+        // read.getLength(), however, does not account for hard clips and we need to add the length of any leading or trailing hard clips in the read's CIGAR
+        final int totalHardClips = read.getCigarElements().stream().filter(el -> el.getOperator() == CigarOperator.HARD_CLIP).mapToInt(el -> el.getLength()).sum();
+        final int actualReadLength = read.getLength() + totalHardClips;
+        result.add(actualReadLength - readPositionOfVariantStart);
 
 
         result.add(Math.abs(read.getFragmentLength()));
 
-        if (mutect3DatasetMode == M2ArgumentCollection.Mutect3DatasetMode.ILLUMINA) {
+        if (permutectDatasetMode == M2ArgumentCollection.PermutectDatasetMode.ILLUMINA) {
             // distances from ends of fragment
             final int fragmentStart = Math.min(read.getMateStart(), read.getUnclippedStart());
             final int fragmentEnd = fragmentStart + Math.abs(read.getFragmentLength());
@@ -108,7 +127,7 @@ public class FeaturizedReadSets {
         }
 
         // Ultima-specific read tags
-        if (mutect3DatasetMode == M2ArgumentCollection.Mutect3DatasetMode.ULTIMA) {
+        if (permutectDatasetMode == M2ArgumentCollection.PermutectDatasetMode.ULTIMA) {
             result.add(read.getAttributeAsInteger("si"));   // si is an integer on the order of 100s or 1000s
             result.add((int) (1000*read.getAttributeAsFloat("rq")));    // rq is a float from 0 and 1, so we multiply by 1000 and round
         }
@@ -121,19 +140,69 @@ public class FeaturizedReadSets {
         if (!bestHaplotypes.containsKey(read)) {
             logger.warn(String.format("Best haplotypes don't contain read %s at position %s:%d.", read.getName(),
                     vc.getContig(), vc.getStart()));
-            result.add(3);
-            result.add(2);
+            //result.add(3);
+            //result.add(2);
+
+            for (int n = 0; n < NUM_RANGED_FEATURES; n++) {
+                result.add(0);
+            }
         } else {
-            final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotype.getBases(), read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+            byte[] haplotypeBases = haplotype.getBases();
+            final SmithWatermanAlignment readToHaplotypeAlignment = aligner.align(haplotypeBases, read.getBases(), SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
             final GATKRead copy = read.copy();
             copy.setCigar(readToHaplotypeAlignment.getCigar());
-            final int mismatchCount = AlignmentUtils.getMismatchCount(copy, haplotype.getBases(), readToHaplotypeAlignment.getAlignmentOffset()).numMismatches;
-            result.add(mismatchCount);
+            //final int mismatchCount = AlignmentUtils.getMismatchCount(copy, haplotypeBases, readToHaplotypeAlignment.getAlignmentOffset()).numMismatches;
+            //result.add(mismatchCount);
 
-            final long indelsVsBestHaplotype = readToHaplotypeAlignment.getCigar().getCigarElements().stream().filter(el -> el.getOperator().isIndel()).count();
-            result.add((int) indelsVsBestHaplotype);
+            //final long indelsVsBestHaplotype = readToHaplotypeAlignment.getCigar().getCigarElements().stream().filter(el -> el.getOperator().isIndel()).count();
+            //result.add((int) indelsVsBestHaplotype);
+
+            final int readStartInHaplotype = readToHaplotypeAlignment.getAlignmentOffset();
+            final AlignmentStateMachine asm = new AlignmentStateMachine(copy);
+            asm.stepForwardOnGenome();
+            final List<int[]> rangedFeatures = RANGES.stream().map(range -> new int[FEATURES_PER_RANGE]).toList();
+
+            while (!asm.isRightEdge()) {
+                final PileupElement pe = asm.makePileupElement();
+                final int distanceFromVariant = Math.abs(asm.getReadOffset() - readPositionOfVariantStart);
+
+                // pick which array's features we are accounting.  If the ranges are 5, 10, 20, and the distance is, say 8, then the '<= 10' range is relevant
+                final OptionalInt relevantRange = IntStream.range(0, RANGES.size()).filter(n -> distanceFromVariant <= RANGES.get(n)).findFirst();
+                if (relevantRange.isPresent()) {
+                    final int[] featuresToAddTo = rangedFeatures.get(relevantRange.getAsInt());
+                    if (pe.isBeforeInsertion()) {
+                        featuresToAddTo[0] += pe.getLengthOfImmediatelyFollowingIndel();
+                    }
+
+                    if (pe.isDeletion()) {
+                        featuresToAddTo[1]++;
+                    } else {
+                        final byte base = pe.getBase();
+                        final byte qual = pe.getQual();
+                        final byte haplotypeBase = haplotypeBases[asm.getGenomeOffset() + readStartInHaplotype];
+
+                        if (base != haplotypeBase) {
+                            featuresToAddTo[2]++;
+                        }
+
+                        if (qual < VERY_BAD_QUAL_THRESHOLD) {
+                            featuresToAddTo[3]++;
+                        } else if (qual < BAD_QUAL_THRESHOLD) {
+                            featuresToAddTo[4]++;
+                        }
+                    }
+                }
+                asm.stepForwardOnGenome();
+            }
+
+            for (final int[] featuresToAdd : rangedFeatures) {
+                for (final int val : featuresToAdd) {
+                    result.add(val);
+                }
+            }
         }
-        Utils.validate(result.size() == mutect3DatasetMode.getNumReadFeatures(), "Wrong number of features");
+        // the +1 is for the read group index that comes before the features
+        Utils.validate(result.size() == permutectDatasetMode.getNumReadFeatures() + 1, "Wrong number of features");
 
         return result;
     }

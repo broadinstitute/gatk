@@ -236,8 +236,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Parse the user provided custom ploidy regions into ploidyRegions object containing SimpleCounts
         if (this.hcArgs.ploidyRegions != null) {
-            FeatureDataSource<NamedFeature> ploidyDataSource = new FeatureDataSource<>(this.hcArgs.ploidyRegions, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, NamedFeature.class);
-            ploidyDataSource.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+            try (FeatureDataSource<NamedFeature> ploidyDataSource = new FeatureDataSource<>(this.hcArgs.ploidyRegions, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, NamedFeature.class)) {
+                ploidyDataSource.forEach(r -> this.ploidyRegions.add(new SimpleCount(r)));
+            }
         }
 
         for (SimpleCount region : this.ploidyRegions) {
@@ -351,7 +352,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 : null);
         pdhmmLikelihoodCalculationEngine = (hcArgs.pileupDetectionArgs.generatePDHaplotypes?
                 new PDPairHMMLikelihoodCalculationEngine((byte) hcArgs.likelihoodArgs.gcpHMM, hcArgs.likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(hcArgs.likelihoodArgs.dragstrParams),
-                        hcArgs.likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), hcArgs.likelihoodArgs.pairHMM, hcArgs.pileupDetectionArgs.pdhmmDebugOutputResults, AssemblyBasedCallerUtils.getGlobalMismatchingRateFromArgs(hcArgs.likelihoodArgs), hcArgs.likelihoodArgs.pcrErrorModel,
+                        hcArgs.likelihoodArgs.pdPairHMMNativeArgs.getPDPairHMMArgs(), hcArgs.likelihoodArgs.pdPairHMM, hcArgs.pileupDetectionArgs.pdhmmDebugOutputResults, AssemblyBasedCallerUtils.getGlobalMismatchingRateFromArgs(hcArgs.likelihoodArgs), hcArgs.likelihoodArgs.pcrErrorModel,
                         hcArgs.likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD, hcArgs.likelihoodArgs.enableDynamicReadDisqualification, hcArgs.likelihoodArgs.readDisqualificationThresholdConstant,
                         hcArgs.likelihoodArgs.expectedErrorRatePerBase, !hcArgs.likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, hcArgs.likelihoodArgs.disableCapReadQualitiesToMapQ, !hcArgs.softClipLowQualityEnds,
                         hcArgs.pileupDetectionArgs.pdhmmOptimization? hcArgs.informativeReadOverlapMargin : -1) //Logic to control whether we apply the pdhmm optimization
@@ -758,6 +759,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final List<Event> givenAlleles = features.getValues(hcArgs.alleles).stream()
                 .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())
                 .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
+                .filter(event -> event.getStart() >= region.getSpan().getStart()) // filter out events that do not start within the region. This approach works because events that begin upstream of the calling window cannot be called by this region calling code in the frist place. 
                 .collect(Collectors.toList());
 
         if( givenAlleles.isEmpty() && region.size() == 0 ) {

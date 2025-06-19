@@ -10,9 +10,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedHMME
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
-import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
-import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 
@@ -29,17 +26,17 @@ import java.util.*;
  * is coded in the tags of the BAM and is given in flow space). This code is not used in production, but was used in
  * development and testing
  *
- * A common usage pattern is to covert a GATKRead into a FlowBasedRead. Additionally
+ * A common usage pattern is to covert a GATKRead into a FlowBasedRead. Additionally,
  * a SAMRecord can also be converted into a FlowBasedRead. Follows a common usage pattern:
  *
- * For a self contained example of a usage pattern, see {@link FlowBasedReadUtils#convertToFlowBasedRead(GATKRead, SAMFileHeader)}
+ * For a self-contained example of a usage pattern, see {@link FlowBasedReadUtils#convertToFlowBasedRead(GATKRead, SAMFileHeader)}
  *
  **/
 
 public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     public static final int  MAX_CLASS = 12; //note - this is a historical value to support files with max class is not defined in the header, it is expected that mc tag exists in the CRAM
-    public static final String     DEFAULT_FLOW_ORDER = "TGCA";
+    public static final String DEFAULT_FLOW_ORDER = "TGCA";
     private static final long serialVersionUID = 42L;
     private static final Logger logger = LogManager.getLogger(FlowBasedRead.class);
     private static final OneShotLogger vestigialOneShotLogger = new OneShotLogger(FlowBasedRead.class);
@@ -75,22 +72,17 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     /**
      * The sam record from which this flow based read originated
      */
-    private SAMRecord samRecord;
+    private final SAMRecord samRecord;
 
     /**
-     * The read's sequence, always in forward direction
-     */
-    private byte[] forwardSequence;
-
-    /**
-     * The flow key for the read - i.e. lengths of hmers in an flow order.
+     * The flow key for the read - i.e. lengths of hmers in flow order.
      *
      * For example, assuming a flow order of TGCA, and a forward sequence of GGAAT, the key will be 0,2,0,2,1
      */
     private int[] key;
 
     /**
-     * the maping of key elements to their origin locations in the sequence. Entry n contains the offset in the sequence
+     * the mapping of key elements to their origin locations in the sequence. Entry n contains the offset in the sequence
      * where the hmer described by this key element starts.
      */
     private int [] flow2base;
@@ -98,23 +90,29 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     /**
      * The maximal length of an hmer that can be encoded (normally in the 10-12 range)
      */
-    private int maxHmer;
+    private final int maxHmer;
 
     /**
-     * The order in which flow key in encoded (See decription for key field). Flow order may be wrapped if a longer one
+     * The value to fill the flow matrix with. Normally 0.001
+     */
+    private double totalMinErrorProb;
+    private double perHmerMinErrorProb;
+
+    /**
+     * The order in which flow key in encoded (See description for key field). Flow order may be wrapped if a longer one
      * needed.
      */
     private byte[] flowOrder;
 
     /**
-     * The probability matrix for this read. [n][m] position represents that probablity that an hmer of n length will be
-     * present at the m key position. Therefore, the first dimention is in the maxHmer order, where the second dimension
+     * The probability matrix for this read. [n][m] position represents that probability that an hmer of n length will be
+     * present at the m key position. Therefore, the first dimension is in the maxHmer order, where the second dimension
      * is length(key).
      */
     private double[][] flowMatrix;
 
     /**
-     * The validity status of the key. Certain operations may produce undefined/errornous results. This is signaled by
+     * The validity status of the key. Certain operations may produce undefined/erroneous results. This is signaled by
      * the read being marked with a validKey == false
      */
     private boolean validKey = true;
@@ -196,7 +194,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * @param samRecord record from SAM file
      * @param flowOrder flow order (single cycle)
      * @param maxHmer maximal hmer to keep in the flow matrix
-     * @param fbargs arguments that control resoltion of the flow matrix
+     * @param fbargs arguments that control resolution of the flow matrix
      */
     public FlowBasedRead(final SAMRecord samRecord, final String flowOrder, final int maxHmer, final FlowBasedArgumentCollection fbargs) {
         super(samRecord);
@@ -205,11 +203,11 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         this.fbargs = fbargs;
         this.maxHmer = maxHmer;
         this.samRecord = samRecord;
-        forwardSequence = getForwardSequence();
 
-        // read flow matrix in. note that below code contains accomodates for old formats
+        // read flow matrix in. note that below code contains accommodates for old formats
         if ( samRecord.hasAttribute(FLOW_MATRIX_TAG_NAME) ) {
-
+            perHmerMinErrorProb = fbargs.fillingValue;
+            totalMinErrorProb = perHmerMinErrorProb;
             // this path is the production path. A flow read should contain a FLOW_MATRIX_TAG_NAME tag
             readFlowMatrix(flowOrder);
 
@@ -230,10 +228,10 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         //Spread boundary flow probabilities when the read is unclipped
         //in this case the value of the hmer is uncertain
         if ( !fbargs.keepBoundaryFlows ) {
-            if (CigarUtils.countClippedBases(samRecord.getCigar(), Tail.LEFT, CigarOperator.HARD_CLIP) == 0) {
+            if (samRecord.getReadUnmappedFlag() || CigarUtils.countClippedBases(samRecord.getCigar(), Tail.LEFT, CigarOperator.HARD_CLIP) == 0) {
                 spreadFlowLengthProbsAcrossCountsAtFlow(findFirstNonZero(key));
             }
-            if (CigarUtils.countClippedBases(samRecord.getCigar(), Tail.RIGHT, CigarOperator.HARD_CLIP) == 0) {
+            if (samRecord.getReadUnmappedFlag() || CigarUtils.countClippedBases(samRecord.getCigar(), Tail.RIGHT, CigarOperator.HARD_CLIP) == 0) {
                 spreadFlowLengthProbsAcrossCountsAtFlow(findLastNonZero(key));
             }
         }
@@ -265,7 +263,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         double total = 0;
         for (int i = call; i < maxHmer+1; i++)
             total += flowMatrix[i][flowToSpread];
-        final double fillProb = Math.max(total / numberToFill, fbargs.fillingValue);
+        final double fillProb = Math.max(total / numberToFill, perHmerMinErrorProb);
         for (int i = call; i < maxHmer+1; i++){
             flowMatrix[i][flowToSpread] = fillProb;
         }
@@ -283,17 +281,25 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         flow2base = FlowBasedKeyCodec.getKeyToBase(key);
         flowOrder = FlowBasedKeyCodec.getFlowToBase(_flowOrder, key.length);
 
-        // initialize matrix
+        if (perHmerMinErrorProb == 0){
+            // estimate the lowest possible error probability and fill the matrix with it
+            // it is not recommended to do this in the M2 or HaplotypeCaller, since obviously the error are not
+            // equally distributed over the homopolymers
+            totalMinErrorProb = estimateMinErrorProb();
+            perHmerMinErrorProb = totalMinErrorProb/maxHmer;
+        }
+
+        // initialize matrix. fill first line, copy subsequent lines from first
         flowMatrix = new double[maxHmer+1][key.length];
-        for (int i = 0 ; i < maxHmer+1; i++) {
-            for (int j = 0 ; j < key.length; j++ ){
-                flowMatrix[i][j] = fbargs.fillingValue;
-            }
+        Arrays.fill(flowMatrix[0], perHmerMinErrorProb);
+        for (int i = 1 ; i < maxHmer+1; i++) {
+            System.arraycopy(flowMatrix[0], 0, flowMatrix[i], 0, key.length);
         }
 
         // access qual, convert to flow representation
         final byte[]      quals = samRecord.getBaseQualities();
         final byte[]      tp = samRecord.getSignedByteArrayAttribute(FLOW_MATRIX_TAG_NAME);
+
         boolean specialTreatmentForZeroCalls = false;
         final byte[]      t0 = SAMUtils.fastqToPhred(samRecord.getStringAttribute(FLOW_MATRIX_T0_TAG_NAME));
         final double[]     t0probs = new double[quals.length];
@@ -348,7 +354,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         for (int i = qualOfs ; i < qualOfs+flowCall; i++) {
             if (tp[i]!=0) {
                 final int loc = Math.max(Math.min(flowCall+tp[i], maxHmer),0);
-                if (flowMatrix[loc][flowIdx] == fbargs.fillingValue) {
+                if (flowMatrix[loc][flowIdx] == perHmerMinErrorProb) {
                     flowMatrix[loc][flowIdx] = probs[i];
                 } else {
                     flowMatrix[loc][flowIdx]    += probs[i];
@@ -367,7 +373,15 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         if ((qualOfs == 0) | (qualOfs==probs.length)){ // do not report zero error probability on the edge of the read
             return;
         }
-        flowMatrix[1][flowIdx] = Math.max(flowMatrix[1][flowIdx], Math.min(probs[qualOfs-1],probs[qualOfs]));
+
+        double prob0 = Math.min(probs[qualOfs-1],probs[qualOfs]);
+        // cases where t0 actually does not report anything. This awkward situation comes because
+        // if fbargs.fillingValue is zero, the empty cell probability is maximalQuality / getMaxHmer()
+        // while if not, the empty cell probability is fbargs.fillingValue.
+        if (prob0 <= totalMinErrorProb * 3) {
+            prob0 = 0;
+        }
+        flowMatrix[1][flowIdx] = Math.max(flowMatrix[1][flowIdx], prob0);
     }
 
     public String getFlowOrder() {
@@ -385,18 +399,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
 
     public Direction getDirection(){
         return direction;
-    }
-
-
-    private byte[] getForwardSequence(){
-        if (!isReverseStrand()) {
-            return samRecord.getReadBases();
-        } else {
-            final byte[] result = new byte[samRecord.getReadBases().length];
-            System.arraycopy(samRecord.getReadBases(), 0, result, 0, result.length);
-            SequenceUtil.reverseComplement(result);
-            return result;
-        }
     }
 
 
@@ -440,7 +442,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      * @return
      */
     public double getProb(final int flow, final int hmer) {
-        double prob = flowMatrix[hmer < maxHmer ? hmer : maxHmer][flow];
+        double prob = flowMatrix[Math.min(hmer, maxHmer)][flow];
         return (prob <= 1) ? prob : 1;
     }
 
@@ -505,7 +507,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
                             flowMatrix[hmer2][pos] = flowMatrix[hmer][pos];
                         }
 
-                        // if we are copying bacwards, zero out source
+                        // if we are copying backwards, zero out source
                         if (hmer > hmer2)
                             flowMatrix[hmer][pos] = 0;
                     }
@@ -700,7 +702,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
      */
     protected void writeMatrix(final OutputStreamWriter oos)
             throws IOException {
-        final DecimalFormat formatter = new DecimalFormat("0.0000", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+        final DecimalFormat formatter = new DecimalFormat("0.000000", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
 
         final byte[]      bases = samRecord.getReadBases();
         int         basesOfs = 0;
@@ -763,9 +765,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         return sum;
     }
 
-    public int seqLength(){
-        return forwardSequence.length;
-    }
     public boolean isBaseClipped() {
         return baseClipped;
     }
@@ -815,14 +814,17 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     }
 
     /**
-     * clip probability values to fbargs.probabilityRatioThreshold
+     * clip probability values in a way that probability between perHmerMinErrorProb and 3*perHmerMinErrorProb
+     * is automatically clipped to perHmerMinErrorProb. This is done to avoid issues with rounding of
+     * small error probabilities in the basecalling
      */
     private void clipProbs() {
+        double probabilityThreshold = perHmerMinErrorProb*3;
         for ( int i = 0 ; i < getMaxHmer(); i++ ) {
             for ( int j =0; j < getNFlows(); j++) {
-                if ((flowMatrix[i][j] <= fbargs.probabilityRatioThreshold) &&
+                if ((flowMatrix[i][j] <= probabilityThreshold) &&
                         (key[j]!=i)) {
-                    flowMatrix[i][j] = fbargs.fillingValue;
+                    flowMatrix[i][j] = perHmerMinErrorProb;
                 }
             }
         }
@@ -849,7 +851,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         for ( int i = 0 ; i < getNFlows(); i++ ) {
             for (int j = 0; j < getMaxHmer()+1; j++){
                 if (Math.abs(j-key_kh[i])>1){
-                    flowMatrix[j][i] = fbargs.fillingValue;
+                    flowMatrix[j][i] = perHmerMinErrorProb;
                 }
             }
         }
@@ -863,7 +865,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         for (int i = 0 ; i < getNFlows(); i++){
             if (key_kh[i] == 0){
                 for (int j = 1; j < getMaxHmer()+1; j++){
-                    flowMatrix[j][i]=fbargs.fillingValue;
+                    flowMatrix[j][i] = perHmerMinErrorProb;
                 }
             }
         }
@@ -910,9 +912,9 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         for ( int i = 0 ; i < kr.length; i++ ){
             final int idx = kr[i];
             if (( idx > 1 ) && ( idx < maxHmer) ) {
-                if ((flowMatrix[idx-1][i] > fbargs.fillingValue) && (flowMatrix[idx+1][i] > fbargs.fillingValue)) {
+                if ((flowMatrix[idx-1][i] > perHmerMinErrorProb) && (flowMatrix[idx+1][i] > perHmerMinErrorProb)) {
                     final int fixCell = flowMatrix[idx-1][i] > flowMatrix[idx+1][i] ? idx+1 : idx-1;
-                    flowMatrix[fixCell][i] = fbargs.fillingValue;
+                    flowMatrix[fixCell][i] = perHmerMinErrorProb;
                 }
             }
         }
@@ -927,15 +929,15 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         for (int i = 0; i < getMaxHmer(); i++) {
             for (int j = 0 ; j < getNFlows(); j ++ ) {
                 final int fkey = key[j];
-                if (flowMatrix[i][j]<=fbargs.fillingValue) {
+                if (flowMatrix[i][j]<=perHmerMinErrorProb) {
                     continue;
                 } else {
                     if ( (i - fkey) < -1 ){
                         flowMatrix[fkey-1][j]+=flowMatrix[i][j];
-                        flowMatrix[i][j] = fbargs.fillingValue;
+                        flowMatrix[i][j] = perHmerMinErrorProb;
                     } else if ((i-fkey) > 1) {
                         flowMatrix[fkey+1][j]+=flowMatrix[i][j];
-                        flowMatrix[i][j] = fbargs.fillingValue;
+                        flowMatrix[i][j] = perHmerMinErrorProb;
                     }
 
                 }
@@ -960,7 +962,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
             final double kth_highest = findKthLargest(tmpContainer, k+1);
             for (int j = 0 ; j < maxHmer; j++)
                 if (flowMatrix[j][i] < kth_highest)
-                    flowMatrix[j][i] = fbargs.fillingValue;
+                    flowMatrix[j][i] = perHmerMinErrorProb;
         }
 
     }
@@ -983,7 +985,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         final double [] result = new double[kq.length];
         for (int i = 0 ; i < kq.length; i++ ) {
             //disallow probabilities below fillingValue
-            result[i] = Math.max(Math.pow(10, ((double)-kq[i])/fbargs.probabilityScalingFactor), fbargs.fillingValue);
+            result[i] = Math.max(Math.pow(10, ((double)-kq[i])/fbargs.probabilityScalingFactor), perHmerMinErrorProb);
         }
         return result;
     }
@@ -1008,7 +1010,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         flowMatrix = new double[maxHmer+1][key.length];
         for (int i = 0 ; i < maxHmer+1; i++) {
             for (int j = 0 ; j < key.length; j++ ){
-                flowMatrix[i][j] = fbargs.fillingValue;
+                flowMatrix[i][j] = perHmerMinErrorProb;
             }
         }
 
@@ -1076,7 +1078,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         flowMatrix = new double[maxHmer+1][key.length];
         for (int i = 0 ; i < maxHmer+1; i++) {
             for (int j = 0 ; j < key.length; j++ ){
-                flowMatrix[i][j] = fbargs.fillingValue;
+                flowMatrix[i][j] = perHmerMinErrorProb;
             }
         }
 
@@ -1100,7 +1102,23 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         fillFlowMatrix( kh, kf, kdProbs);
         applyFilteringFlowMatrix();
     }
+    //Finds the quality that is being set when the probability of error is very low
+    private double estimateMinErrorProb(){
+        final byte[] quals = samRecord.getBaseQualities();
+        double maxQual = 0;
 
+        for (int i = 0; i < quals.length; i++) {
+            if (quals[i] > maxQual){
+                maxQual = quals[i];
+            }
+        }
+
+        // in the very rare case when there is no qualities
+        if (maxQual==0){
+            maxQual = 40;
+        }
+        return Math.pow(10, -maxQual / 10);
+    }
 }
 
 

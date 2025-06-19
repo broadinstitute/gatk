@@ -5,8 +5,10 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CopyNumberTestUtils;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineDenoisingModelArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
@@ -46,8 +48,8 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     private static final File SIM_INTERVAL_LIST_SHARD_0_ANNOTATED_FILE = new File(GCNV_SIM_DATA_DIR + "sim_intervals_shard_0.annotated.tsv");
     private static final double ALLOWED_DELTA_FOR_DOUBLE_VALUES = 1E-6;
 
-    final List<String> MODEL_FILES_TO_COMPARE = Arrays.asList("log_q_tau_tk.tsv", "mu_ard_u_log__.tsv", "mu_psi_t_log__.tsv",
-            "std_ard_u_log__.tsv", "std_psi_t_log__.tsv", "mu_W_tu.tsv", "mu_log_mean_bias_t.tsv", "std_W_tu.tsv", "std_log_mean_bias_t.tsv");
+    final List<String> MODEL_FILES_TO_COMPARE = Arrays.asList("log_q_tau_tk.tsv", "mu_ard_u_interval__.tsv", "mu_psi_t_log__.tsv",
+            "std_ard_u_interval__.tsv", "std_psi_t_log__.tsv", "mu_W_tu.tsv", "mu_log_mean_bias_t.tsv", "std_W_tu.tsv", "std_log_mean_bias_t.tsv");
     final List<String> CALLS_FILES_TO_COMPARE = Arrays.asList("baseline_copy_number_t.tsv", "log_c_emission_tc.tsv",
             "log_q_c_tc.tsv", "mu_psi_s_log__.tsv", "mu_read_depth_s_log__.tsv",
             "mu_z_su.tsv", "sample_name.txt", "std_psi_s_log__.tsv",
@@ -76,6 +78,29 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
                 .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
         runCommandLine(argsBuilder);
+    }
+
+    /**
+     * Test that it fails properly in the GATK Lite docker
+     */
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testCohortInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
+            argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
+                    .add("L", SIM_INTERVAL_LIST_SUBSET_FILE)
+                    .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+                            CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                    .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
+                    .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
+            runCommandLine(argsBuilder);
+        });
+
     }
 
     /**
@@ -182,7 +207,7 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
             } catch (final IOException ex) {
                 throw new GATKException("Could not remove GermlineCNVCaller tracking files.");
             }
-            IntStream.range(1, 20).forEach(
+            IntStream.range(1, TEST_COUNT_FILES.length).forEach(
                     s -> {
                         try {
                             FileUtils.deleteDirectory(new File(Paths.get(GCNV_TEST_OUTPUT_DIR, outputPrefix + "-calls", "SAMPLE_" + s).toString()));

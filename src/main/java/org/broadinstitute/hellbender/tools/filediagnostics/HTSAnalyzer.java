@@ -4,7 +4,6 @@ import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.engine.GATKPath;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 
 /**
@@ -13,11 +12,11 @@ import java.io.IOException;
 public abstract class HTSAnalyzer implements Closeable {
 
     protected GATKPath inputPath;
-    protected File outputFile;
+    protected GATKPath outputPath;
 
-    public HTSAnalyzer(final GATKPath filePath, final File outputFile) {
+    public HTSAnalyzer(final GATKPath filePath, final GATKPath outputPath) {
         this.inputPath = filePath;
-        this.outputFile = outputFile;
+        this.outputPath = outputPath;
     }
 
     /**

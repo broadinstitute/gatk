@@ -5,6 +5,7 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -68,10 +69,10 @@ public class TrimmedReadsReaderUnitTest extends GATKBaseTest {
         Assert.assertNotNull(reader.getHeader(null));
 
         // reads
-        Map<SamReader, Collection<FlowBasedRead>> reads = reader.getReads(span, vcLoc);
+        Map<SamReader, Collection<GATKRead>> reads = reader.getReads(span, vcLoc);
         Assert.assertEquals(reads.size(), bamSources.length);
         int             bamSourceIndex = 0;
-        for ( Map.Entry<SamReader, Collection<FlowBasedRead>> entry : reads.entrySet() ) {
+        for ( Map.Entry<SamReader, Collection<GATKRead>> entry : reads.entrySet() ) {
 
             final BamSource       bamSource = bamSources[bamSourceIndex++];
 
@@ -83,8 +84,8 @@ public class TrimmedReadsReaderUnitTest extends GATKBaseTest {
             Assert.assertEquals(entry.getValue().size(), bamSource.readCount);
 
             // verify first and last
-            FlowBasedRead       firstRead = entry.getValue().iterator().next();
-            FlowBasedRead       lastRead = entry.getValue().stream().reduce((prev, next) -> next).orElse(null);
+            FlowBasedRead       firstRead = (FlowBasedRead) entry.getValue().iterator().next();
+            FlowBasedRead       lastRead = (FlowBasedRead) entry.getValue().stream().reduce((prev, next) -> next).orElse(null);
             Assert.assertEquals(firstRead.getName(), bamSource.firstReadName);
             Assert.assertEquals(lastRead.getName(), bamSource.lastReadName);
         }

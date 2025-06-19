@@ -102,7 +102,6 @@ import java.util.stream.Collectors;
         oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
         programGroup = VariantManipulationProgramGroup.class
 )
-@BetaFeature
 public final class GatherVcfsCloud extends CommandLineProgram {
 
     public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignore-safety-checks";
@@ -128,6 +127,10 @@ public final class GatherVcfsCloud extends CommandLineProgram {
             "works when you have both bgzipped inputs and outputs, while CONVENTIONAL gather is much slower but should work on all vcf files. " +
             "AUTOMATIC chooses BLOCK if possible and CONVENTIONAL otherwise.")
     public GatherType gatherType = GatherType.AUTOMATIC;
+
+    @Argument(fullName = "progress-logger-frequency",
+            doc = "The frequency with which the progress is logged to output (i.e. every N records)")
+    public Integer progressLoggerFrequency = 10000;
 
     @Advanced
     @Argument(fullName = IGNORE_SAFETY_CHECKS_LONG_NAME, doc = "Disable sanity checks to improve performance, may result in silently creating corrupted outputs data")
@@ -188,7 +191,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
                 break;
             case CONVENTIONAL:
                 log.info("Gathering by conventional means.");
-                gatherConventionally(sequenceDictionary, createIndex, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck);
+                gatherConventionally(sequenceDictionary, createIndex, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck, progressLoggerFrequency);
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Invalid gather type: " + gatherType + ".  Please report this bug to the developers.");
@@ -299,13 +302,14 @@ public final class GatherVcfsCloud extends CommandLineProgram {
                                              final List<Path> inputFiles,
                                              final File outputFile,
                                              final int cloudPrefetchBuffer,
-                                             final boolean disableContigOrderingCheck) {
+                                             final boolean disableContigOrderingCheck,
+                                             final int progressLoggerFrequency) {
         final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
         if (createIndex) options.add(Options.INDEX_ON_THE_FLY); else options.remove(Options.INDEX_ON_THE_FLY);
         try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(outputFile)
                 .setReferenceDictionary(sequenceDictionary).setOptions(options).build()) {
 
-            final ProgressLogger progress = new ProgressLogger(log, 10000);
+            final ProgressLogger progress = new ProgressLogger(log, progressLoggerFrequency);
             VariantContext lastContext = null;
             Path lastFile = null;
             VCFHeader firstHeader = null;

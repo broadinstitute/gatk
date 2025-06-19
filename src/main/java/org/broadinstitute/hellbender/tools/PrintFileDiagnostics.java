@@ -8,8 +8,6 @@ import org.broadinstitute.hellbender.tools.filediagnostics.HTSAnalyzer;
 import org.broadinstitute.hellbender.tools.filediagnostics.HTSAnalyzerFactory;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
-import java.io.File;
-
 /**
  * A diagnostic tool that prints meta information about a GATK input file.
  *
@@ -43,8 +41,8 @@ public class PrintFileDiagnostics extends CommandLineProgram {
             doc = "Outut file for diagnostics (must be a local file)",
             optional = false,
             common = true)
-    @WorkflowInput
-    public File outputFile;
+    @WorkflowOutput
+    public GATKPath outputPath;
 
     @Argument(shortName="count-limit",
             fullName="count-limit",
@@ -56,7 +54,7 @@ public class PrintFileDiagnostics extends CommandLineProgram {
     @Override
     protected void onStartup() {
         super.onStartup();
-        htsAnalyzer = HTSAnalyzerFactory.getFileAnalyzer(inputPath, outputFile, countLimit);
+        htsAnalyzer = HTSAnalyzerFactory.getFileAnalyzer(inputPath, outputPath, countLimit);
     }
 
     @Override

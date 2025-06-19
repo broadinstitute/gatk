@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -132,9 +135,9 @@ import java.util.*;
  * </pre>
  *
  * <h4>(iii) Mitochondrial mode</h4>
- * <p>Mutect2 automatically sets parameters appropriately for calling on mitochondria with the <nobr>--mitochondria</nobr> flag.
+ * <p>Mutect2 automatically sets parameters appropriately for calling on mitochondria with the <nobr>--mitochondria-mode</nobr> flag.
  * Specifically, the mode sets <nobr>--initial-tumor-lod</nobr> to 0, <nobr>--tumor-lod-to-emit</nobr> to 0, <nobr>--af-of-alleles-not-in-resource</nobr> to
- * 4e-3, and the advanced parameter <nobr>--pruning-lod-threshold</nobr> to -4.</p>
+ * 4e-3, and the advanced parameter <nobr>--pruning-lod-threshold</nobr> to -4*ln(10).</p>
  *
  * <pre>
  *  gatk Mutect2 \
@@ -262,7 +265,8 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Override
     public void onTraversalStart() {
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
-        m2Engine = new Mutect2Engine(MTAC, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceSpecifier(), annotatorEngine);
+        m2Engine = new Mutect2Engine(MTAC, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(),
+                getBestAvailableSequenceDictionary(), referenceArguments.getReferenceSpecifier(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
         if (m2Engine.emitReferenceConfidence()) {
             logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
@@ -279,17 +283,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
             throw new UserException.CouldNotCreateOutputFile(MTAC.f1r2TarGz, M2ArgumentCollection.F1R2_TAR_GZ_NAME + " file must end in .tar.gz");
         }
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());
-    }
-
-    @Override
-    public Collection<Annotation> makeVariantAnnotations(){
-        final Collection<Annotation> annotations = super.makeVariantAnnotations();
-
-        if (MTAC.mitochondria) {
-            annotations.add(new OriginalAlignment());
-        }
-
-        return annotations;
     }
 
     @Override
@@ -320,6 +313,12 @@ public final class Mutect2 extends AssemblyRegionWalker {
      */
     @Override
     protected String[] customCommandLineValidation() {
+        if (MTAC.mitochondria) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    MTAC.getMitochondriaModeNameValuePairs(),
+                    M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME);
+        }
         if (MTAC.flowMode != M2ArgumentCollection.FlowMode.NONE) {
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),

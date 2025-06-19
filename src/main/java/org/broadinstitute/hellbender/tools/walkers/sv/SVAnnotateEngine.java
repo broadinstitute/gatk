@@ -9,10 +9,10 @@ import org.apache.commons.compress.utils.Sets;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfTranscriptFeature;
 import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
@@ -56,36 +56,6 @@ public class SVAnnotateEngine {
                     GATKSVVCFConstants.ComplexVariantSubtype.dupINVdel,
                     GATKSVVCFConstants.ComplexVariantSubtype.delINVdup,
                     GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL);
-
-    // Mini class to package SV type and interval into one object
-    @VisibleForTesting
-    protected static final class SVSegment {
-        private final GATKSVVCFConstants.StructuralVariantAnnotationType intervalSVType;
-        private final SimpleInterval interval;
-        protected SVSegment(final GATKSVVCFConstants.StructuralVariantAnnotationType svType, final SimpleInterval interval) {
-            this.intervalSVType = svType;
-            this.interval = interval;
-        }
-        public GATKSVVCFConstants.StructuralVariantAnnotationType getIntervalSVType() {
-            return intervalSVType;
-        }
-        public SimpleInterval getInterval() {
-            return interval;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            final SVSegment svSegment = (SVSegment) o;
-            return intervalSVType == svSegment.intervalSVType && interval.equals(svSegment.interval);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(intervalSVType, interval);
-        }
-    }
 
     // Container class for all SVIntervalTree trees created from the GTF
     @VisibleForTesting
@@ -550,7 +520,7 @@ public class SVAnnotateEngine {
             final SimpleInterval interval = new SimpleInterval(parsed[1]);
             segments.add(new SVSegment(svTypeForInterval, interval));
         }
-        return segments;
+        return segments.stream().sorted().collect(Collectors.toList());
     }
 
 
@@ -570,9 +540,9 @@ public class SVAnnotateEngine {
      *      protein-coding consequences
      */
     @VisibleForTesting
-    protected static List<SVSegment> getComplexAnnotationIntervals(final List<SVSegment> cpxIntervals,
-                                                                   final GATKSVVCFConstants.ComplexVariantSubtype complexType) {
-        final List<SVSegment> segments = new ArrayList<>(cpxIntervals.size());
+    protected static ArrayList<SVSegment> getComplexAnnotationIntervals(final List<SVSegment> cpxIntervals,
+                                                                        final GATKSVVCFConstants.ComplexVariantSubtype complexType) {
+        final ArrayList<SVSegment> segments = new ArrayList<>(cpxIntervals.size());
         final List<SimpleInterval> dupIntervals = new ArrayList<>(cpxIntervals.size());
         SimpleInterval inversionIntervalToAdjust = null;
         boolean keepSegment;
@@ -679,8 +649,8 @@ public class SVAnnotateEngine {
         final int pos = variant.getStart();
         final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
         final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos);
+        final List<String> cpxIntervals = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null);
         if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CPX)) {
-            final List<String> cpxIntervals = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null);
             if (cpxIntervals.isEmpty()) {
                 throw new UserException("Complex (CPX) variant must contain CPX_INTERVALS INFO field");
             }
@@ -695,14 +665,22 @@ public class SVAnnotateEngine {
                         new SimpleInterval(chrom, pos, pos + 1)));
             }
         } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)) {
-            intervals = new ArrayList<>(2);
-            intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));  // CHROM:POS-POS+1
-            // annotate both breakpoints of translocation - CHR2:END2-END2+1
+            // if SVTYPE is CTX and CPX_TYPE is CTX_INV, add INV from CTX_INTERVALS
+            if (complexType == GATKSVVCFConstants.ComplexVariantSubtype.CTX_INV && !cpxIntervals.isEmpty()) {
+                intervals = getComplexAnnotationIntervals(parseComplexIntervals(cpxIntervals), complexType);
+            } else {
+                intervals = new ArrayList<>(2);
+            }
+            // annotate POS and END separately in case END != POS+1, such as in the case of CTX_INV
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chrom, pos, pos)));
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chrom, variant.getEnd(), variant.getEnd())));
+            // annotate breakpoints of translocation on CHR2 - END2 and END2+1
+            // TODO: update if POS2 is added to accommodate complex translocations
             if (chr2 == null) {
                 throw new UserException("Translocation (CTX) variant represented as a single record must contain CHR2 INFO field");
             }
-            intervals.add(new SVSegment(overallSVType,
-                    new SimpleInterval(chr2, end2, end2 + 1)));
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chr2, end2, end2)));
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chr2, end2 + 1, end2 + 1)));
         } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)){
             intervals = new ArrayList<>(2);
             final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
@@ -854,12 +832,7 @@ public class SVAnnotateEngine {
     protected Map<String, Object> annotateStructuralVariant(final VariantContext variant) {
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         final GATKSVVCFConstants.StructuralVariantAnnotationType overallSVType = getSVType(variant);
-        final String complexTypeString = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
-        GATKSVVCFConstants.ComplexVariantSubtype complexType = null;
-        if (complexTypeString != null) {
-            // replace / in CTX_PP/QQ and CTX_PQ/QP with _ to match ComplexVariantSubtype constants which cannot contain slashes
-            complexType = GATKSVVCFConstants.ComplexVariantSubtype.valueOf(complexTypeString.replace("/", "_"));
-        }
+        final GATKSVVCFConstants.ComplexVariantSubtype complexType = SVCallRecordUtils.getComplexSubtype(variant);
         final boolean includesDispersedDuplication = includesDispersedDuplication(complexType, COMPLEX_SUBTYPES_WITH_DISPERSED_DUP);
         final List<SVSegment> svSegmentsForGeneOverlaps = getSVSegments(variant, overallSVType, maxBreakendLen, complexType);
 

@@ -123,7 +123,7 @@ public class GenotypeGVCFsEngine
 
     public VariantContext callRegion(Locatable loc, List<VariantContext> variants, ReferenceContext ref, FeatureContext features,
                                      ReferenceConfidenceVariantContextMerger merger, boolean somaticInput, double tlodThreshold,
-                                     double afTolerance, final boolean outputNonVariants) //do work for apply
+                                     double sqThreshold, double afTolerance, final boolean outputNonVariants) //do work for apply
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
@@ -134,7 +134,7 @@ public class GenotypeGVCFsEngine
         }
         genotypingEngine.setReferenceContext(ref);
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
-        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, afTolerance) :
+        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, sqThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, outputNonVariants);
 
         return regenotypedVC;
@@ -150,8 +150,9 @@ public class GenotypeGVCFsEngine
 
         final VariantContext result;
 
+        // only re-genotype polymorphic sites
         if ( originalVC.isVariant()  && originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 ) {
-            // only re-genotype polymorphic sites
+            // note that the calculateGenotypes method also calculates the QUAL score
             final VariantContext regenotypedVC = calculateGenotypes(originalVC, includeNonVariants);
             if (regenotypedVC == null) {
                 return null;
@@ -186,7 +187,7 @@ public class GenotypeGVCFsEngine
             //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
             vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
             VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
-            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false, keepSB)).make();
+            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(annotated, false, keepSB)).make();
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true, false)).make();
@@ -251,12 +252,12 @@ public class GenotypeGVCFsEngine
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeSomaticVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants, double tlodThreshold, double afTolerance) {
+    private VariantContext regenotypeSomaticVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants, double tlodThreshold, double sqThreshold, double afTolerance) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;
         if ( originalVC.isVariant()  && originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 ) {
-            result = callSomaticGenotypes(originalVC, tlodThreshold, afTolerance);
+            result = callSomaticGenotypes(originalVC, tlodThreshold, sqThreshold, afTolerance);
         } else if (includeNonVariants) {
             result = originalVC;
         } else {
@@ -272,22 +273,27 @@ public class GenotypeGVCFsEngine
      * @param vc input VariantContext with no-called genotypes
      * @return a VC with called genotypes and low quality alleles removed, may be null
      */
-    private VariantContext callSomaticGenotypes(final VariantContext vc, double tlodThreshold, double afTolerance) {
+    private VariantContext callSomaticGenotypes(final VariantContext vc, double tlodThreshold, double sqThreshold, double afTolerance) {
         final List<Genotype> newGenotypes = new ArrayList<>();
         final GenotypesContext genotypes = vc.getGenotypes();
         final double[] perAlleleLikelihoodSums = new double[vc.getAlleles().size()];  //needs the ref for the subsetting utils
 
         for(final Genotype g : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(g);
-            final double[] tlodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+            // First try to get SQ (Somatic Quality) values, if not available fall back to TLOD
+            final boolean hasSQ = g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY);
+            final String likelihoodKey = hasSQ ? GATKVCFConstants.SOMATIC_QUALITY_KEY : GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY;
+            final double[] likelihoodArray = VariantContextGetters.getAttributeAsDoubleArray(g, likelihoodKey, () -> null, 0.0);
             final double[] variantAFArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
             double variantAFtotal = 0;
             final List<Allele> calledAlleles = new ArrayList<>();
             for(int i = 0; i < vc.getAlleles().size()-1; i++) {
                 variantAFtotal += variantAFArray[i];
-                if (tlodArray[i] > tlodThreshold) {
+                // Use sqThreshold for SQ values and tlodThreshold for TLOD values
+                double threshold = hasSQ ? sqThreshold : tlodThreshold;
+                if (likelihoodArray[i] > threshold) {
                     calledAlleles.add(vc.getAlternateAllele(i));
-                    perAlleleLikelihoodSums[i+1] += tlodArray[i];
+                    perAlleleLikelihoodSums[i+1] += likelihoodArray[i];
                 }
             }
             //hack for weird Mutect2 ploidy -- if the variant is non-homoplasmic, call the reference allele too
@@ -306,11 +312,13 @@ public class GenotypeGVCFsEngine
         final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.maxAlternateAlleles;
         List<Allele> allelesToKeep;
 
-        //we need to make sure all alleles pass the tlodThreshold
+        //we need to make sure all alleles pass the threshold
         allelesToKeep = new ArrayList<>(perAlleleLikelihoodSums.length-1);
         allelesToKeep.add(vc.getReference());
+        // Use the minimum of the two thresholds since perAlleleLikelihoodSums could contain a mix of SQ and TLOD values
+        double minThreshold = Math.min(tlodThreshold, sqThreshold);
         for (int i = 1; i < perAlleleLikelihoodSums.length; i++) {
-            if (perAlleleLikelihoodSums[i] > tlodThreshold) {
+            if (perAlleleLikelihoodSums[i] > minThreshold) {
                 allelesToKeep.add(vc.getAlternateAllele(i-1));
             }
         }
@@ -461,24 +469,29 @@ public class GenotypeGVCFsEngine
                 attrs.put(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, GenotypeGVCFs.PHASED_HOM_VAR_STRING);
             }
 
-            // create AD if it's not there
-            if ( !oldGT.hasAD() && vc.isVariant() ) {
+            // create AD if it's not there, but only if there's data
+            if ( !oldGT.hasAD() && vc.isVariant() && depth > 0) {
                 final int[] AD = new int[vc.getNAlleles()];
                 AD[0] = depth;
                 builder.AD(AD);
             }
 
             if ( createRefGTs ) {
-                // move the GQ to RGQ
-                if (oldGT.hasGQ()) {
+                 //keep 0 depth samples and 0 GQ samples as no-call
+                if (depth > 0 && oldGT.hasGQ()) {
+                    if (oldGT.getGQ() > 0) {
+                        final List<Allele> refAlleles = Collections.nCopies(oldGT.getPloidy(), vc.getReference());
+                        builder.alleles(refAlleles);
+                    } else {
+                        builder.alleles(Collections.nCopies(oldGT.getPloidy(),Allele.NO_CALL));
+                    }
+
+                    // move the GQ to RGQ
                     builder.noGQ();
                     attrs.put(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, oldGT.getGQ());
-                }
-
-                //keep 0 depth samples and 0 GQ samples as no-call
-                if (depth > 0 && oldGT.hasGQ() && oldGT.getGQ() > 0) {
-                    final List<Allele> refAlleles = Collections.nCopies(oldGT.getPloidy(), vc.getReference());
-                    builder.alleles(refAlleles);
+                } else {
+                    builder.alleles(Collections.nCopies(oldGT.getPloidy(),Allele.NO_CALL));
+                    builder.noGQ().noDP();
                 }
 
                 // also, the PLs are technically no longer usable
@@ -494,8 +507,8 @@ public class GenotypeGVCFsEngine
      *  Does this genotype look like it has no reads and should be excluded from annotations?
      */
     static boolean excludeFromAnnotations(Genotype oldGT) {
-        return oldGT.isHomRef() && !oldGT.hasPL()
-                && ((oldGT.hasDP() && oldGT.getDP() == 0) || !oldGT.hasDP())
+        return (oldGT.isHomRef() || oldGT.isNoCall())
+                && (!oldGT.hasDP() || oldGT.getDP() == 0)
                 && oldGT.hasGQ() && oldGT.getGQ() == 0;
     }
 

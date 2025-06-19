@@ -300,7 +300,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return A {@link List} of the features represented in this {@link GencodeGtfFeature}.
      */
     @VisibleForTesting
-    List<GencodeGtfFeature> getAllFeatures() {
+    public List<GencodeGtfFeature> getAllFeatures() {
         final List<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
         return list;

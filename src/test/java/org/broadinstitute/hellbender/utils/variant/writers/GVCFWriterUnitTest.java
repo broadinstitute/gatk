@@ -37,45 +37,9 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     private static final String CHR1 = "1";
     private static final String CHR2 = "2";
-    private static final Allele REF = Allele.create("G", true);
-    private static final Allele ALT = Allele.create("A");
-    private static final List<Allele> ALLELES = ImmutableList.of(REF, Allele.NON_REF_ALLELE);
+    private static final List<Allele> ALLELES = ImmutableList.of(Allele.REF_G, Allele.NON_REF_ALLELE);
     private static final String SAMPLE_NAME = "XXYYZZ";
 
-
-    static public final class MockWriter implements VariantContextWriter {
-        final List<VariantContext> emitted = new ArrayList<>();
-        boolean headerWritten = false;
-        boolean closed = false;
-        boolean error = false;
-        boolean headerSet = false;
-
-        @Override
-        public void writeHeader(VCFHeader header) {
-            headerSet = true;
-            headerWritten = true;
-        }
-
-        @Override
-        public void close() {
-            closed = true;
-        }
-
-        @Override
-        public boolean checkError() {
-            return error;
-        }
-
-        @Override
-        public void add(VariantContext vc) {
-            emitted.add(vc);
-        }
-
-        @Override
-        public void setHeader(VCFHeader header) {
-            headerSet = true;
-        }
-    }
 
     private static final List<Number> standardPartition = ImmutableList.of(1, 10, 20);
     private static final List<Number> highConfLowConf = ImmutableList.of(20,100);
@@ -83,7 +47,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testHeaderWriting() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
         writer.writeHeader(new VCFHeader());
         Assert.assertTrue(mockWriter.headerSet);
@@ -92,7 +56,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testHeaderSetting(){
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
         writer.setHeader(new VCFHeader());
         Assert.assertTrue(mockWriter.headerSet);
@@ -101,17 +65,15 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testClose() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
         writer.close();
         Assert.assertTrue(mockWriter.closed);
     }
 
-
-
     @Test
     public void testCloseEmitsLastVariant() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -124,7 +86,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCloseDoesntEmitsLastVariantWhenNonRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeNonRef(CHR1, 1));
@@ -137,7 +99,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCrossingContigBoundaryRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -154,7 +116,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCrossingContigBoundaryToLowerPositionsRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(30));
@@ -171,7 +133,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCrossingContigBoundaryFromNonRefToLowerPositionsRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeNonRef(CHR1, 20));
@@ -187,7 +149,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCrossingContigBoundaryNonRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -201,7 +163,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCrossingContigBoundaryNonRefThenNonRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeNonRef(CHR1, 1));
@@ -250,7 +212,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testVariantForcesNonRef() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -268,7 +230,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testEmittingTwoBands() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -285,14 +247,14 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testBandingUsingPP() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         int[] PPs1 = {0,63,128};
         int[] PPs2 = {0,67,145};
         writer.add(makeVariantContext(new VariantContextBuilder("test", CHR1, 10000, 10000,
-                ALLELES), Arrays.asList(REF, REF), 2, PPs1));
-        writer.add(makeVariantContext(new VariantContextBuilder("test", CHR1, 10001, 10001, ALLELES), Arrays.asList(REF, REF), 21, PPs2));
+                ALLELES), Arrays.asList(Allele.REF_G, Allele.REF_G), 2, PPs1));
+        writer.add(makeVariantContext(new VariantContextBuilder("test", CHR1, 10001, 10001, ALLELES), Arrays.asList(Allele.REF_G, Allele.REF_G), 21, PPs2));
         writer.close();
         Assert.assertEquals(mockWriter.emitted.size(), 1);
         assertGoodVCwithPPs(mockWriter.emitted.get(0), CHR1, 10000, 10001, false);
@@ -301,7 +263,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testNonContiguousBlocks() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -316,7 +278,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testInputBlocks() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, highConfLowConf);
 
         writer.add(makeHomRef("20", 1, 16, 600));
@@ -328,7 +290,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testDeletion() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -347,7 +309,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testHomRefAlt() {
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
 
         writer.add(makeHomRef(1));
@@ -406,7 +368,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testCheckError(){
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter gvcfWriter = new GVCFWriter(mockWriter, standardPartition);
         mockWriter.error = false;
         Assert.assertEquals(gvcfWriter.checkError(), mockWriter.checkError());
@@ -636,7 +598,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
                 .genotypes(gb.make()).attribute(VCFConstants.END_KEY, 10025);
         final VariantContext block2 = (new HomRefBlock(vcb.make(), 20, 100, 2).toVariantContext(SAMPLE_NAME, false));
 
-        final MockWriter mockWriter = new MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, Arrays.asList(20,100));
         writer.add(deletion1);
         writer.add(block2);

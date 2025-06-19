@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -193,6 +194,11 @@ public final class PlotModeledSegments extends CommandLineProgram {
     private ModeledSegmentCollection modeledSegments;
 
     @Override
+    protected void onStartup() {
+        RScriptExecutor.checkIfRunningInGatkLiteDocker();
+    }
+
+    @Override
     protected Object doWork() {
         validateArguments();
 
@@ -285,8 +291,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
         //this runs the R statement "source("CNVPlottingLibrary.R")" before the main script runs
         executor.addScript(new Resource(PlottingUtils.CNV_PLOTTING_R_LIBRARY, PlotModeledSegments.class));
         executor.addScript(new Resource(PLOT_MODELED_SEGMENTS_R_SCRIPT, PlotModeledSegments.class));
-        //--args is needed for Rscript to recognize other arguments properly
-        executor.addArgs("--args",
+        executor.addArgs(
                 "--sample_name=" + sampleName,
                 "--denoised_copy_ratios_file=" + (inputDenoisedCopyRatiosFile == null ? null : CopyNumberArgumentValidationUtils.getCanonicalPath(inputDenoisedCopyRatiosFile)),
                 "--allelic_counts_file=" + (inputAllelicCountsFile == null ? null : CopyNumberArgumentValidationUtils.getCanonicalPath(inputAllelicCountsFile)),

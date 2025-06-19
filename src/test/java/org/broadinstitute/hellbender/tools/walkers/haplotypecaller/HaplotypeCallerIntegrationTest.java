@@ -671,7 +671,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     public Object[][] getForceCallingInputs() {
         return new Object[][] {
                 {NA12878_20_21_WGS_bam, new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf"), "20:10000000-10010000"},
-                {NA12878_20_21_WGS_bam, new File(toolsTestDir, "mutect/gga_mode.vcf"), "20:9998500-10010000"}
+                {NA12878_20_21_WGS_bam, new File(toolsTestDir, "mutect/gga_mode.vcf"), "20:9998500-10010000"},
+                {NA12878_20_21_WGS_bam, new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles_ExtremeLengthDeletion.vcf"), "20:9998500-10010000"} // This is designed to test https://github.com/broadinstitute/gatk/issues/8675, which stemmed from an edge case in the force calling logic where a deletion allele that is longer than the assembly window padding spans into the assembly window. This tests that we do not see an exception in this case.
         };
     }
 
@@ -2157,7 +2158,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider="HaplotypeCallerTestInputs")
+    @Test(dataProvider="HaplotypeCallerTestInputs", groups={"bucket"})
     public void testPileupCallingDRAGEN378OptimizedModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 

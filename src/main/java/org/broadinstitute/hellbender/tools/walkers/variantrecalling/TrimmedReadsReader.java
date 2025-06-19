@@ -26,8 +26,6 @@ public class TrimmedReadsReader {
 
     private final List<SamReader>         samReaders = new LinkedList<>();
     private CountingReadFilter            readFilter;
-    private final Map<String, Integer>    readGroupMaxClass = new LinkedHashMap<>();
-    private final Map<String, String>     readGroupFlowOrder = new LinkedHashMap<>();
     private final FlowBasedArgumentCollection fbArgs = new FlowBasedArgumentCollection();
 
     public TrimmedReadsReader(final List<Path> readsFiles, final Path referencePath, final int cloudPrefetchBuffer) {
@@ -44,11 +42,12 @@ public class TrimmedReadsReader {
         return ((samReader != null) ? samReader : samReaders.get(0)).getFileHeader().getSequenceDictionary();
     }
 
-    public Map<SamReader, Collection<FlowBasedRead>>  getReads(final Locatable span, final Locatable vcLoc) {
 
-        final Map<SamReader, Collection<FlowBasedRead>>   readsByReader = new LinkedHashMap<>();
+    public Map<SamReader, Collection<GATKRead>>  getReads(final Locatable span, final Locatable vcLoc) {
+
+        final Map<SamReader, Collection<GATKRead>>   readsByReader = new LinkedHashMap<>();
         for ( SamReader samReader : samReaders ) {
-            final List<FlowBasedRead>     reads = new LinkedList<>();
+            final List<GATKRead>     reads = new LinkedList<>();
             final SAMRecordIterator iter = samReader.query(span.getContig(), span.getStart(), span.getEnd(), false);
             while (iter.hasNext()) {
 
@@ -72,7 +71,10 @@ public class TrimmedReadsReader {
                 gatkRead = ReadClipper.hardClipToRegion(gatkRead, span.getStart(), span.getEnd());
                 if (gatkRead.isUnmapped() || gatkRead.getCigar().isEmpty())
                     continue;
-
+                if (!FlowBasedReadUtils.isFlowPlatform(samReader.getFileHeader(), gatkRead)){
+                    reads.add(gatkRead);
+                    continue;
+                }
                 // convert to a flow based read
                 FlowBasedReadUtils.ReadGroupInfo rgInfo = FlowBasedReadUtils.getReadGroupInfo(samReader.getFileHeader(), gatkRead);
                 final FlowBasedRead fbr = new FlowBasedRead(gatkRead, rgInfo.flowOrder, rgInfo.maxClass, fbArgs);

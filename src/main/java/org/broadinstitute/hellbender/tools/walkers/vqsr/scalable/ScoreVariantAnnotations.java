@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -383,6 +384,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 indelScorer = deserializeScorerFromSerFiles(VariantType.INDEL);
                 break;
             case PYTHON_IFOREST:
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using PYTHON_IFOREST backend.");
 
@@ -397,6 +399,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
             case PYTHON_SCRIPT:
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 IOUtils.canReadFile(pythonScriptFile);
                 logger.info("Running in PYTHON_SCRIPT mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);
@@ -539,12 +542,14 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                                                   final List<Boolean> isVariantType,
                                                                   final VariantAnnotationsScorer variantTypeScorer,
                                                                   final List<Double> allScores) {
-        final File variantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isVariantType);
-        final File variantTypeScoresFile = IOUtils.createTempFile("temp", ".scores.hdf5");
-        variantTypeScorer.score(variantTypeAnnotationsFile, variantTypeScoresFile); // TODO we do not fail until here in the case of mismatched annotation names; we could fail earlier
-        final double[] variantTypeScores = VariantAnnotationsScorer.readScores(variantTypeScoresFile);
-        final Iterator<Double> variantTypeScoresIterator = Arrays.stream(variantTypeScores).iterator();
-        IntStream.range(0, allScores.size()).filter(isVariantType::get).forEach(i -> allScores.set(i, variantTypeScoresIterator.next()));
+        if (isVariantType.stream().anyMatch(x -> x)) {
+            final File variantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isVariantType);
+            final File variantTypeScoresFile = IOUtils.createTempFile("temp", ".scores.hdf5");
+            variantTypeScorer.score(variantTypeAnnotationsFile, variantTypeScoresFile); // TODO we do not fail until here in the case of mismatched annotation names; we could fail earlier
+            final double[] variantTypeScores = VariantAnnotationsScorer.readScores(variantTypeScoresFile);
+            final Iterator<Double> variantTypeScoresIterator = Arrays.stream(variantTypeScores).iterator();
+            IntStream.range(0, allScores.size()).filter(isVariantType::get).forEach(i -> allScores.set(i, variantTypeScoresIterator.next()));
+        }
     }
 
     @Override
