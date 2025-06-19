@@ -239,6 +239,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1676_AnVIL_3K
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -342,7 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1671_vat_discrepancies
+             - vs_1676_AnVIL_3K
          tags:
              - /.*/
    - name: GvsIngestTieout
