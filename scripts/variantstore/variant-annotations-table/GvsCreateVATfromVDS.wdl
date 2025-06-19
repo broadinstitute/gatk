@@ -63,7 +63,7 @@ workflow GvsCreateVATfromVDS {
             help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
         }
         sites_to_exclude: {
-            help: "An optional file of sites to exclude from the sites-only VCF. It may be become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
+            help: "An optional file of sites to exclude from the sites-only VCF. It may become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
         }
     }
 
