@@ -22,12 +22,16 @@ public final class PerReadCovariateMatrixUnitTest extends GATKBaseTest {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
         final String[] readGroups = {"RG1", "RG2", "RGbla"};
-        ReadGroupCovariate rgCov = new ReadGroupCovariate(Arrays.asList(readGroups));
-        QualityScoreCovariate qsCov = new QualityScoreCovariate(RAC);
-        ContextCovariate coCov = new ContextCovariate(RAC);
-        CycleCovariate cyCov = new CycleCovariate(RAC);
+        ReadGroupCovariate rgCov = new ReadGroupCovariate();
+        rgCov.initialize(RAC, Arrays.asList(readGroups));
+        QualityScoreCovariate qsCov = new QualityScoreCovariate();
+        qsCov.initialize(RAC, Arrays.asList(readGroups));
+        ContextCovariate coCov = new ContextCovariate();
+        coCov.initialize(RAC, Arrays.asList(readGroups));
+        CycleCovariate cyCov = new CycleCovariate();
+        cyCov.initialize(RAC, Arrays.asList(readGroups));
 
-        StandardCovariateList covariates = new StandardCovariateList(RAC, Arrays.asList(readGroups));
+        BQSRCovariateList covariates = new BQSRCovariateList(RAC, Arrays.asList(readGroups));
 
         final int NUM_READS = 100;
         final Random rnd = Utils.getRandomGenerator();
