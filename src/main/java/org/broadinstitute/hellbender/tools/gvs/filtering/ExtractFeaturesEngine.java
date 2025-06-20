@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 
 import org.apache.avro.generic.GenericRecord;
@@ -15,11 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
-import org.broadinstitute.hellbender.tools.walkers.annotator.FisherStrand;
-import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StrandOddsRatio;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
@@ -285,12 +282,33 @@ public class ExtractFeaturesEngine {
 
         final int[][] refAltTable = new int[][]{new int[]{sb_ref_plus, sb_ref_minus}, new int[]{ sb_alt_plus, sb_alt_minus}};
 
+        // Create the SB_TABLE annotation - an array of the four strand bias values
+        final List<Integer> sbValues = Arrays.asList(sb_ref_plus, sb_ref_minus, sb_alt_plus, sb_alt_minus);
+
+        // Create the AS_SB_TABLE annotation - allele-specific strand bias information
+        final String asSbTable = String.format("%d,%d|%d,%d", sb_ref_plus, sb_ref_minus, sb_alt_plus, sb_alt_minus);
+
+        // Calculate the simple SB (Strand Bias) value
+        // This is typically a Phred-scaled value - we'll use the Fisher's Exact Test p-value
+        double sbValue = QualityUtils.phredScaleErrorRate(FisherStrand.pValueForContingencyTable(refAltTable));
+
         double fs = QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), AS_StrandBiasTest.MIN_PVALUE));
         double sor = StrandOddsRatio.calculateSOR(refAltTable);
 
         double mq = Math.sqrt( raw_mq / raw_ad);
 
         double qualapprox = rec.getQualApprox();
+
+        // Calculate VarDP (variant depth) - the informative depth over variant genotypes
+        // For our biallelic case, this is the alternate allele depth
+        int varDP = (int)Math.round(raw_ad);
+
+        // Calculate AS_VarDP (allele-specific variant depth)
+        // For biallelic sites, this includes both reference and alternate allele depths
+        String asVarDP = raw_ref_ad.intValue() + AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM + varDP;
+
+        // Calculate RAW_MAPPING_QUALITY_WITH_DEPTH - sum of squared MQs and total depth
+        String rawMQandDP = String.format("%d,%d", raw_mq.longValue(), raw_ad.intValue());
 
         builder.attribute(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY, String.format("%.2f", as_qd) );
         builder.attribute(GATKVCFConstants.AS_FISHER_STRAND_KEY, String.format("%.3f", fs));
@@ -299,8 +317,20 @@ public class ExtractFeaturesEngine {
         builder.attribute(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY, AS_ReadPosRankSum==null?".":String.format("%.3f", AS_ReadPosRankSum));
         builder.attribute(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY, String.format("%.3f", sor));
         builder.attribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY, String.format("%.3f", qualapprox));
+        // Add the SB_TABLE annotation
+        builder.attribute(GATKVCFConstants.SB_TABLE_KEY, sbValues);
+        // Add the AS_SB_TABLE annotation
+        builder.attribute(GATKVCFConstants.AS_SB_TABLE_KEY, asSbTable);
+        // Add the simple SB annotation
+        builder.attribute(VCFConstants.STRAND_BIAS_KEY, String.format("%.3f", sbValue));
+        // Add the VarDP annotation
+        builder.attribute(GATKVCFConstants.VARIANT_DEPTH_KEY, varDP);
+        // Add the AS_VarDP annotation
+        builder.attribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, asVarDP);
+        // Add the RAWMQ_andDP annotation
+        builder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, rawMQandDP);
 
-//        From the warp JointGenotyping pipeline
+        //        From the warp JointGenotyping pipeline
 //        # ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
 //        # than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
         double excess_het_threshold = 54.69;
