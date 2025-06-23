@@ -116,6 +116,7 @@ public class VetIndelRealigner extends ExtractTool {
     private long totalIndelsRealigned = 0;
     private long totalIndelsAlreadyLeftAligned = 0;
     private long totalIndelsWithShiftedPositions = 0;
+    private long totalMultiAllelicIndelsRealigned = 0;
     private long unexplainedErrors = 0;
 
     // for most in depth statistics
@@ -188,8 +189,10 @@ public class VetIndelRealigner extends ExtractTool {
 
                 // To account for multi-allelic indels
                 String [] altAlleles = alt.split(",");
+                boolean isMultiAllelic = altAlleles.length > 1;
+
                 for (String altAllele : altAlleles) {
-                    processVetRecord(vetRecord, sampleId, location, ref, altAllele);
+                    processVetRecord(vetRecord, sampleId, location, ref, altAllele, isMultiAllelic);
                 }
 
                 totalRecordsProcessed++;
@@ -231,7 +234,7 @@ public class VetIndelRealigner extends ExtractTool {
      * @param ref The reference allele (extracted for convenience)
      * @param alt The alternate allele (extracted for convenience)
      */
-    private void processVetRecord(GenericRecord vetRecord, Long sampleId, Long location, String ref, String alt) {
+    private void processVetRecord(GenericRecord vetRecord, Long sampleId, Long location, String ref, String alt, boolean isMultiAllelic) {
         if (ref.length() == 1 && alt.length() == 1) {
             // This is a SNP, not an indel
             return; // Skip SNPs for indel realignment
@@ -275,7 +278,10 @@ public class VetIndelRealigner extends ExtractTool {
                 
                 if (wasRealigned) {
                     totalIndelsRealigned++;
-                    
+
+                    if (isMultiAllelic) {
+                        totalMultiAllelicIndelsRealigned++;
+                    }
                     // Log the realignment for debugging/verification
                     logger.debug(String.format("Realigned indel at location %d: %s->%s became %s->%s at position %d", 
                         location, ref, alt, 
@@ -491,6 +497,9 @@ public class VetIndelRealigner extends ExtractTool {
         logger.info("Total bytes scanned: " + totalBytesScanned);
         logger.info("Total indels identified: " + totalIndels);
         logger.info("Total indels realigned: " + totalIndelsRealigned);
+        logger.info("Total multi-allelic indels realigned: " + totalMultiAllelicIndelsRealigned);
+        logger.info("Multi-allelic percentage: " +
+            (totalIndels > 0 ? (double) totalMultiAllelicIndelsRealigned / totalIndelsRealigned * 100.0 : 0.0) + "%");
         logger.info("Total indels already left-aligned: " + totalIndelsAlreadyLeftAligned);
         logger.info("Total indels with shifted positions: " + totalIndelsWithShiftedPositions);
         logger.info("Unexplained errors encountered: " + unexplainedErrors);
@@ -591,6 +600,9 @@ public class VetIndelRealigner extends ExtractTool {
             writer.write(String.format("total_indels_identified,%d\n", totalIndels));
             writer.write(String.format("total_indels_realigned,%d\n", totalIndelsRealigned));
             writer.write(String.format("total_indels_already_left_aligned,%d\n", totalIndelsAlreadyLeftAligned));
+            writer.write(String.format("Total multi-allelic indels realigned,%d\n", totalMultiAllelicIndelsRealigned));
+            writer.write(String.format("Multi-allelic percentage,%.2f\n",
+                    totalIndels > 0 ? (double) totalMultiAllelicIndelsRealigned / totalIndelsRealigned * 100.0 : 0.0));
             
             if (totalIndels > 0) {
                 double realignmentRate = (double) totalIndelsRealigned / totalIndels * 100.0;
