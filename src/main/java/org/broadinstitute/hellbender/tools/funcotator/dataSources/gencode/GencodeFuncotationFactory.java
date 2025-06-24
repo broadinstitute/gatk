@@ -886,8 +886,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         List<GencodeGtfTranscriptFeature> transcriptList;
 
         // Only get basic transcripts if we're using data from Gencode:
-        if ( gtfFeature.getGtfSourceFileType().equals(GencodeGtfCodec.GTF_FILE_TYPE_STRING) ||
-             gtfFeature.getGtfSourceFileType().equals(EnsemblGtfCodec.GTF_FILE_TYPE_STRING)) {
+        if ( gtfFeature.getGtfSourceFileType().equals(GencodeGtfCodec.GTF_FILE_TYPE_STRING) ) {
             if (preferMANETranscripts) {
                 // Filter out the non-MANE_Select/Mane_Plus_Clinical transcripts if we're only using MANE transcripts:
                 transcriptList = retreiveMANESelectModeTranscriptsCriteria(gtfFeature.getTranscripts());
@@ -895,9 +894,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 transcriptList = retrieveBasicTranscripts(gtfFeature);
             }
         } else {
-            transcriptList = gtfFeature.getTranscripts();
+            // GENCODE GRCh37 liftover GTF files (>=v43) are in ENSEMBL format
+            // We still want to be able to prefer MANE transcripts with the hg19 data source, hence the condition below
+            if (preferMANETranscripts && gtfFeature.getGtfSourceFileType().equals(EnsemblGtfCodec.GTF_FILE_TYPE_STRING))
+            {
+                transcriptList = retreiveMANESelectModeTranscriptsCriteria(gtfFeature.getTranscripts());
+            }
+            else {
+                transcriptList = gtfFeature.getTranscripts();
+            }
         }
-
 
         return createFuncotationsHelper(variant, altAllele, reference, transcriptList);
     }
