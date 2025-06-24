@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-Usage: python extract_flt_flags.py <input_file> <output_file>
+Usage: python extract_flt_flags.py <input_file> [output_file]
 
 Script to extract research_id and flt_ flag columns from a tab-delimited "soft-filtered" AoU manifest file, producing an
 output TSV of research_id and flt_ column names.  For each row, if any flt_ column has a value of True, the script will
@@ -23,13 +23,13 @@ import sys
 import csv
 import argparse
 
-def extract_flt_flags(input_file, output_file):
+def extract_flt_flags(input_file, output_file=None):
     """
     Read input TSV file and extract research_id and flt_ flags where value is True.
     
     Args:
         input_file (str): Path to input tab-separated file
-        output_file (str): Path to output tab-separated file
+        output_file (str, optional): Path to output tab-separated file. If None, writes to stdout.
     """
     try:
         # Read the input file
@@ -74,9 +74,21 @@ def extract_flt_flags(input_file, output_file):
                         })
 
         # Write output file
-        with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+        if output_file:
+            # Write to file
+            with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = ['research_id', 'flt_flag']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter='\t')
+
+                # Write header
+                writer.writeheader()
+
+                # Write data rows
+                writer.writerows(output_rows)
+        else:
+            # Write to stdout
             fieldnames = ['research_id', 'flt_flag']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter='\t')
+            writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames, delimiter='\t')
 
             # Write header
             writer.writeheader()
@@ -85,9 +97,15 @@ def extract_flt_flags(input_file, output_file):
             writer.writerows(output_rows)
 
         if output_rows:
-            print(f"Successfully wrote {len(output_rows)} flag records to {output_file}")
+            if output_file:
+                print(f"Successfully wrote {len(output_rows)} flag records to {output_file}")
+            else:
+                print(f"Successfully wrote {len(output_rows)} flag records to stdout", file=sys.stderr)
         else:
-            print(f"No True flags found. Created empty output file: {output_file}")
+            if output_file:
+                print(f"No True flags found. Created empty output file: {output_file}")
+            else:
+                print(f"No True flags found. Wrote empty output to stdout", file=sys.stderr)
 
     except FileNotFoundError:
         print(f"Error: Input file '{input_file}' not found")
@@ -103,6 +121,7 @@ def main():
         epilog="""
 Example:
   python extract_flt_flags.py input.tsv output.tsv
+  python extract_flt_flags.py input.tsv  # writes to stdout
 
 Input file format:
   Tab-separated file with 'research_id' column and columns starting with 'flt_'
@@ -116,7 +135,8 @@ Output file format:
     parser.add_argument('input_file', 
                        help='Input tab-separated file')
     parser.add_argument('output_file', 
-                       help='Output tab-separated file')
+                       nargs='?',
+                       help='Output tab-separated file (optional, writes to stdout if not specified)')
     parser.add_argument('--verbose', '-v', 
                        action='store_true',
                        help='Print verbose output')
@@ -124,8 +144,11 @@ Output file format:
     args = parser.parse_args()
     
     if args.verbose:
-        print(f"Reading input file: {args.input_file}")
-        print(f"Writing output file: {args.output_file}")
+        print(f"Reading input file: {args.input_file}", file=sys.stderr)
+        if args.output_file:
+            print(f"Writing output file: {args.output_file}", file=sys.stderr)
+        else:
+            print("Writing output to stdout", file=sys.stderr)
 
     extract_flt_flags(args.input_file, args.output_file)
 if __name__ == "__main__":
