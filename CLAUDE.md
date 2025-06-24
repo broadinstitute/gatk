@@ -139,6 +139,14 @@ BigQuery using a single partitionable value. GVS references to "position"
 usually refer to position on a given chromosome and do not mean the same thing
 as "location".
 
+The canonical GVS location encoding and decoding logic lives in
+`SchemaUtils.java`. Of particular interest are the following methods:
+
+- `encodeLocation` encodes a chromosome and position into a single location
+  value.
+- `decodeContig`, `decodeChromosomeIndex` and `decodePosition` decode a location
+  value to obtain contig, chromosome index or position respectively.
+
 ## Core BigQuery Tables
 
 - **`sample_info`**: Holds sample name, control / non-control status, and a
@@ -157,9 +165,16 @@ as "location".
 - **`ref_ranges_%`**: Reference genome locations, lengths, and qualities.
   Similar to vet, this table is partitioned by sample id and can hold at most
   4000 samples, so there will be multiple `ref_ranges_%` for larger datasets.
+
   Note that `ref_ranges_%` tables have two alternate schemas, compressed and
   uncompressed, to accommodate different data storage needs. Both schemas are
-  described in the `CreateBQTables.wdl` workflow.
+  described in the `CreateBQTables.wdl` workflow. The canonical implementation
+  of reference compression can be found in
+  `SchemaUtils#encodeCompressedRefBlock`. Implementations of reference
+  decompression can be found in `create_ranges_cohort_extract_data_table.py` and
+  `GvsExtractAvroFilesForHail.wdl`, both relying on a BigQuery temporary
+  function called `UnpackRefRangeInfo`.
+
 - **`vcf_header_lines`**: Contains all unique VCF header seen while ingesting
   all samples.
 - **`sample_vcf_header`**: Contains header information on a per-sample basis,
