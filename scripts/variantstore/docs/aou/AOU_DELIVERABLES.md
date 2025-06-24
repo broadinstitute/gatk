@@ -59,9 +59,8 @@
 - Create a FOFN of new-to-Foxtrot samples to be ingested. Referencing the BigQuery table created in the preceding step:
   ```
   # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples. The BQ export command requires this to be a
-  # wildcarded path, but at this scale it should only produce a single file. If for some reason multiple output files
-  # are produced, they should be concatenated together for downstream processing.
-  FOXTROT_BULK_INGEST_FOFN='gs://<workspace_bucket>/foxtrot_new_samples_fofn/*.tsv'
+  # wildcarded path. If multiple output files are produced, they should be concatenated together for downstream processing.
+  FOXTROT_BULK_INGEST_FOFN='gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_new_samples_fofn/*.tsv'
 
   bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod '
       EXPORT DATA OPTIONS(
