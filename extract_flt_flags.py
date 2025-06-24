@@ -17,6 +17,12 @@ Note this script will produce multiple research_id/flt_column rows if the same c
 True value exists multple times in the input, a frequent occurrence in the Foxtrot "soft-filtered" manifest (see occurrences of
 the flt_is_rid_duped flag).
 
+Loading the output of this script into BigQuery would look like:
+
+bq load --project_id aou-genomics-curation-prod --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
+    foxtrot.foxtrot_flt_flags flt_flags.tsv \
+    research_id:STRING,flt_flag:STRING
+
 """
 
 import sys
