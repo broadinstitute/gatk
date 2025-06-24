@@ -343,7 +343,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1671_vat_discrepancies
-             - gg_VS-1657_EasySitesOnlyVcfYeah
          tags:
              - /.*/
    - name: GvsIngestTieout
