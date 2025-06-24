@@ -9,7 +9,7 @@ Usage: python extract_flt_flags.py <input_file> <output_file>
 """
 
 import sys
-import pandas as pd
+import csv
 import argparse
 
 def extract_flt_flags(input_file, output_file):
@@ -22,61 +22,65 @@ def extract_flt_flags(input_file, output_file):
     """
     try:
         # Read the input file
-        df = pd.read_csv(input_file, sep='\t')
-        
-        # Check if research_id column exists
-        if 'research_id' not in df.columns:
-            raise ValueError("Input file must contain a 'research_id' column")
-        
-        # Find all columns that start with 'flt_'
-        flt_columns = [col for col in df.columns if col.startswith('flt_')]
-        
-        if not flt_columns:
-            print("Warning: No columns starting with 'flt_' found in input file")
-        
-        # Convert flt_ columns to boolean, handling string representations
-        for col in flt_columns:
-            # Convert string representations of boolean to actual boolean
-            df[col] = df[col].astype(str).str.strip().str.lower().map({
-                'true': True,
-                'false': False,
-                '1': True,
-                '0': False,
-                'yes': True,
-                'no': False
-            })
-        
-        # Prepare output data
-        output_rows = []
-        
-        # Iterate through each row
-        for idx, row in df.iterrows():
-            research_id = row['research_id']
+        with open(input_file, 'r', newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter='\t')
             
-            # Check each flt_ column
-            for flt_col in flt_columns:
-                if row[flt_col] is True:  # Explicitly check for True
-                    output_rows.append({
-                        'research_id': research_id,
-                        'flt_flag': flt_col
-                    })
+            # Get column names
+            fieldnames = reader.fieldnames
+            if not fieldnames:
+                raise ValueError("Input file appears to be empty or has no headers")
+            
+            # Check if research_id column exists
+            if 'research_id' not in fieldnames:
+                raise ValueError("Input file must contain a 'research_id' column")
+            
+            # Find all columns that start with 'flt_'
+            flt_columns = [col for col in fieldnames if col.startswith('flt_')]
+            
+            if not flt_columns:
+                print("Warning: No columns starting with 'flt_' found in input file")
+            
+            # Helper function to convert string to boolean
+            def str_to_bool(value):
+                """Convert string representations of boolean to actual boolean"""
+                if value is None:
+                    return False
+                value_str = str(value).strip().lower()
+                return value_str in ('true', '1', 'yes')
+            
+            # Prepare output data
+            output_rows = []
+            
+            # Iterate through each row
+            for row in reader:
+                research_id = row['research_id']
+                
+                # Check each flt_ column
+                for flt_col in flt_columns:
+                    if str_to_bool(row.get(flt_col, '')):
+                        output_rows.append({
+                            'research_id': research_id,
+                            'flt_flag': flt_col
+                        })
         
-        # Create output DataFrame and write to file
+        # Write output file
+        with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['research_id', 'flt_flag']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter='\t')
+            
+            # Write header
+            writer.writeheader()
+            
+            # Write data rows
+            writer.writerows(output_rows)
+        
         if output_rows:
-            output_df = pd.DataFrame(output_rows)
-            output_df.to_csv(output_file, sep='\t', index=False)
             print(f"Successfully wrote {len(output_rows)} flag records to {output_file}")
         else:
-            # Create empty output file with headers
-            output_df = pd.DataFrame(columns=['research_id', 'flt_flag'])
-            output_df.to_csv(output_file, sep='\t', index=False)
             print(f"No True flags found. Created empty output file: {output_file}")
             
     except FileNotFoundError:
         print(f"Error: Input file '{input_file}' not found")
-        sys.exit(1)
-    except pd.errors.EmptyDataError:
-        print(f"Error: Input file '{input_file}' is empty")
         sys.exit(1)
     except Exception as e:
         print(f"Error processing file: {e}")
