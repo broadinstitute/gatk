@@ -9,9 +9,12 @@ output a line like:
 
 <research_id><tab><flt_column_name>
 
-This output should be suitable for loading to a BigQuery table for further analysis. This script is intended for a
-"soft-filtered" manifest, which will have flt_ columns that contain True values; this is not the same as the "hard-filtered"
-manifest which is usually distributed via email and whose flt_ columns are all False.
+This output should be suitable for loading to a BigQuery table for further analysis. For the Foxtrot callset, this data
+is useful for analyzing why samples that were present in the Echo callset do not appear in the "hard filtered" manifest
+for the Foxtrot callset.
+
+This script is intended for a "soft-filtered" manifest, which will have flt_ columns that contain True values. This is
+not the same as the "hard-filtered" manifest which is usually distributed via email and whose flt_ columns are all False.
 
 Note this script will produce multiple research_id/flt_column rows if the same combination of research_id and flt_ column with a
 True value exists multple times in the input, a frequent occurrence in the Foxtrot "soft-filtered" manifest (see occurrences of
