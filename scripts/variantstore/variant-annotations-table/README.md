@@ -1,11 +1,11 @@
-# Creating the Variant Annotations Table
+# Creating the Variant Annotations Table (VAT)
 
-The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table.
+The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates a queryable table in BigQuery, and outputs a bgzipped TSV file with the contents of that table.
 
 
 ### VAT WDLs
 
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS if no input sites only VCF is specified, and then uses that and an ancestry file TSV to build the variant annotations table.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS if no input sites only VCF is specified, and then uses that and an ancestry file TSV to build the VAT.
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
 ### Run GvsCreateVATfromVDS
