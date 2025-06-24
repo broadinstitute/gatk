@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 """
-Script to extract research_id and flt_ flag columns from a tab-separated file.
-
-For each row, if any flt_ column has a value of True, output a line with:
-<research_id><tab><flt_column_name>
 
 Usage: python extract_flt_flags.py <input_file> <output_file>
+
+Script to extract research_id and flt_ flag columns from a tab-delimited "soft-filtered" AoU manifest file, producing an
+output TSV of research_id and flt_ column names.  For each row, if any flt_ column has a value of True, the script will
+output a line like:
+
+<research_id><tab><flt_column_name>
+
+This output should be suitable for loading to a BigQuery table for further analysis. This script is intended for a
+"soft-filtered" manifest, which will have flt_ columns that contain True values; this is not the same as the "hard-filtered"
+manifest which is usually distributed via email and whose flt_ columns are all False.
+
+Note this script will produce multiple research_id/flt_column rows if the same combination of research_id and flt_ column with a
+True value exists multple times in the input, a frequent occurrence in the Foxtrot "soft-filtered" manifest (see occurrences of
+the flt_is_rid_duped flag).
+
 """
 
 import sys
