@@ -7,18 +7,18 @@ the "hard-filtered" Foxtrot manifest.
 Usage: python extract_flt_flags.py <input_file> [output_file]
 
 The script will extract research_id and flt_ flag columns from a tab-delimited "soft-filtered" AoU manifest file, producing an
-output TSV of research_id and flt_ column names. For each row, if any flt_ column has a value of True, the script will
+output TSV of research_id and flt_ column names. For each row, if any flt_ column has a value of `True`, the script will
 output a line like:
 
 <research_id><tab><flt_column_name>
 
 One output row will be produced for every flt_ column with `True` in the input. This output should be suitable for loading to
 a BigQuery table for further analysis.  This script is intended for a "soft-filtered" manifest, which will have flt_ columns
-that contain True values. A "soft-filtered" manifest is not the same as the "hard-filtered" manifest usually distributed via
+that contain `True` values. A "soft-filtered" manifest is not the same as the "hard-filtered" manifest usually distributed via
 email and whose flt_ columns are all `False`.
 
 Note this script will produce multiple research_id/flt_column rows if the same combination of research_id and flt_ column with a
-True value exists multple times in the input. This is a frequent occurrence in the Foxtrot "soft-filtered" manifest (see
+`True` value exists multple times in the input. This is a frequent occurrence in the Foxtrot "soft-filtered" manifest (see
 occurrences of the `flt_is_rid_duped` flag).
 
 Loading the output of this script into BigQuery would look like:
@@ -35,7 +35,7 @@ import argparse
 
 def extract_flt_flags(input_file, output_file=None):
     """
-    Read input TSV file and extract research_id and flt_ flags where value is True.
+    Read input TSV file and extract research_id and flt_ flags where value is `True`.
     
     Args:
         input_file (str): Path to input tab-separated file
@@ -113,9 +113,9 @@ def extract_flt_flags(input_file, output_file=None):
                 print(f"Successfully wrote {len(output_rows)} flag records to stdout", file=sys.stderr)
         else:
             if output_file:
-                print(f"No True flags found. Created empty output file: {output_file}")
+                print(f"No `True` flags found. Created empty output file: {output_file}")
             else:
-                print(f"No True flags found. Wrote empty output to stdout", file=sys.stderr)
+                print(f"No `True` flags found. Wrote empty output to stdout", file=sys.stderr)
 
     except FileNotFoundError:
         print(f"Error: Input file '{input_file}' not found")
@@ -138,7 +138,7 @@ Input file format:
 
 Output file format:
   Two columns: 'research_id' and 'flt_flag'
-  One row for each True value in any flt_ column
+  One row for each `True` value in any flt_ column
         """
     )
 
