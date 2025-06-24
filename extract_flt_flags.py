@@ -39,7 +39,6 @@ def extract_flt_flags(input_file, output_file):
             
             if not flt_columns:
                 print("Warning: No columns starting with 'flt_' found in input file")
-            
             # Helper function to convert string to boolean
             def str_to_bool(value):
                 """Convert string representations of boolean to actual boolean"""
@@ -47,14 +46,14 @@ def extract_flt_flags(input_file, output_file):
                     return False
                 value_str = str(value).strip().lower()
                 return value_str in ('true', '1', 'yes')
-            
+
             # Prepare output data
             output_rows = []
-            
+
             # Iterate through each row
             for row in reader:
                 research_id = row['research_id']
-                
+
                 # Check each flt_ column
                 for flt_col in flt_columns:
                     if str_to_bool(row.get(flt_col, '')):
@@ -62,23 +61,23 @@ def extract_flt_flags(input_file, output_file):
                             'research_id': research_id,
                             'flt_flag': flt_col
                         })
-        
+
         # Write output file
         with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
             fieldnames = ['research_id', 'flt_flag']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter='\t')
-            
+
             # Write header
             writer.writeheader()
-            
+
             # Write data rows
             writer.writerows(output_rows)
-        
+
         if output_rows:
             print(f"Successfully wrote {len(output_rows)} flag records to {output_file}")
         else:
             print(f"No True flags found. Created empty output file: {output_file}")
-            
+
     except FileNotFoundError:
         print(f"Error: Input file '{input_file}' not found")
         sys.exit(1)
@@ -96,13 +95,13 @@ Example:
 
 Input file format:
   Tab-separated file with 'research_id' column and columns starting with 'flt_'
-  
+
 Output file format:
   Two columns: 'research_id' and 'flt_flag'
   One row for each True value in any flt_ column
         """
     )
-    
+
     parser.add_argument('input_file', 
                        help='Input tab-separated file')
     parser.add_argument('output_file', 
@@ -110,14 +109,13 @@ Output file format:
     parser.add_argument('--verbose', '-v', 
                        action='store_true',
                        help='Print verbose output')
-    
+
     args = parser.parse_args()
     
     if args.verbose:
         print(f"Reading input file: {args.input_file}")
         print(f"Writing output file: {args.output_file}")
-    
-    extract_flt_flags(args.input_file, args.output_file)
 
+    extract_flt_flags(args.input_file, args.output_file)
 if __name__ == "__main__":
     main()
