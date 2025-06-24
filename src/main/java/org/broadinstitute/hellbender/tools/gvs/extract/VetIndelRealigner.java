@@ -117,6 +117,7 @@ public class VetIndelRealigner extends ExtractTool {
     private long totalIndelsAlreadyLeftAligned = 0;
     private long totalIndelsWithShiftedPositions = 0;
     private long totalMultiAllelicIndelsRealigned = 0;
+    private long trueAlignmentDiffersFromQuick = 0;
     private long unexplainedErrors = 0;
 
     // for most in depth statistics
@@ -157,6 +158,7 @@ public class VetIndelRealigner extends ExtractTool {
             logger.info("Will process maximum " + maxRecords + " records");
         }
     }
+
 
     @Override
     public void traverse() {
@@ -282,6 +284,26 @@ public class VetIndelRealigner extends ExtractTool {
                     if (isMultiAllelic) {
                         totalMultiAllelicIndelsRealigned++;
                     }
+
+                    // try the alt allele minimization to see if it matches, and calculate if it does
+                    String[] quickMinimized = altAlleleMinimize(ref, alt);
+                    String minimizedRef = quickMinimized[0];
+                    String minimizedAlt = quickMinimized[1];
+                    if (!minimizedRef.equals(leftAlignedVariant.getReference().getDisplayString()) ||
+                        !minimizedAlt.equals(leftAlignedVariant.getAlternateAllele(0).getDisplayString())) {
+                        logger.warn(String.format("Left-aligned variant mismatch: original %s->%s, minimized %s->%s at position %d",
+                            ref, alt, minimizedRef, minimizedAlt, location));
+                        trueAlignmentDiffersFromQuick++;
+
+                        if (!isMultiAllelic) {
+                            logger.info(String.format("bi-allelic variant realigned in unique way.  Indel at location %d: %s->%s became %s->%s at position %d",
+                                    location, ref, alt,
+                                    leftAlignedVariant.getReference().getDisplayString(),
+                                    leftAlignedVariant.getAlternateAllele(0).getDisplayString(),
+                                    leftAlignedVariant.getStart()));
+                        }
+                    }
+
                     // Log the realignment for debugging/verification
                     logger.debug(String.format("Realigned indel at location %d: %s->%s became %s->%s at position %d", 
                         location, ref, alt, 
@@ -488,6 +510,21 @@ public class VetIndelRealigner extends ExtractTool {
         return restriction.length() > 0 ? restriction.toString() : null;
     }
 
+    private String[] altAlleleMinimize(String ref, String allele) {
+        boolean done = false;
+        while (!done && ref.length() != 1 && allele.length() != 1) {
+            if (ref.substring(ref.length() - 1).equals(allele.substring(allele.length() - 1))) {
+                // Both end with the same base, trim it
+                ref = ref.substring(0, ref.length() - 1);
+                allele = allele.substring(0, allele.length() - 1);
+            } else {
+                done = true; // No more trimming possible
+            }
+        }
+        // Return the minimized alleles
+        return new String[] { ref, allele };
+    }
+
     @Override
     protected void onShutdown() {
         super.onShutdown();
@@ -502,6 +539,7 @@ public class VetIndelRealigner extends ExtractTool {
             (totalIndels > 0 ? (double) totalMultiAllelicIndelsRealigned / totalIndelsRealigned * 100.0 : 0.0) + "%");
         logger.info("Total indels already left-aligned: " + totalIndelsAlreadyLeftAligned);
         logger.info("Total indels with shifted positions: " + totalIndelsWithShiftedPositions);
+        logger.info("Total indels where true alignment differs from quick minimization: " + trueAlignmentDiffersFromQuick);
         logger.info("Unexplained errors encountered: " + unexplainedErrors);
         
         if (totalIndels > 0) {
