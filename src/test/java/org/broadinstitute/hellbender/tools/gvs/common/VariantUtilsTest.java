@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
-public class VariantMinimizationUtilsTest {
+public class VariantUtilsTest {
 
     @Test
     public void testMinimizeBasicExample1() {
@@ -15,7 +15,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "ACGTACGT";
         final Pair<String, String> expected = Pair.of("CA", "A");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -25,7 +25,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "GGACGTACGT";
         final Pair<String, String> expected = Pair.of("A", "GGA");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -35,7 +35,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "TTTT";
         final Pair<String, String> expected = Pair.of("AAAA", "TTTT");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -45,7 +45,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "T";
         final Pair<String, String> expected = Pair.of("A", "T");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -55,7 +55,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "GGATCG";
         final Pair<String, String> expected = Pair.of("ATC", "G");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -65,7 +65,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "GCCC";
         final Pair<String, String> expected = Pair.of("AAATTT", "G");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "GGTCGATCGATCG";
         final Pair<String, String> expected = Pair.of("AA", "GG");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -85,7 +85,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "TTG";
         final Pair<String, String> expected = Pair.of("G", "TTG");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -95,7 +95,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "ATCG";
         final Pair<String, String> expected = Pair.of("A", "ATCG");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -105,7 +105,7 @@ public class VariantMinimizationUtilsTest {
         final String allele = "A";
         final Pair<String, String> expected = Pair.of("ATCG", "A");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test
@@ -115,36 +115,36 @@ public class VariantMinimizationUtilsTest {
         final String allele = "GGCGATCGATCGATCG";
         final Pair<String, String> expected = Pair.of("AT", "GG");
 
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
+        assertEquals(VariantUtils.minimize(reference, allele), expected);
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testMinimizeNullReference() {
-        VariantMinimizationUtils.minimize(null, "ATCG");
+        VariantUtils.minimize(null, "ATCG");
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testMinimizeNullAllele() {
-        VariantMinimizationUtils.minimize("ATCG", null);
+        VariantUtils.minimize("ATCG", null);
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testMinimizeEmptyReference() {
-        VariantMinimizationUtils.minimize("", "ATCG");
+        VariantUtils.minimize("", "ATCG");
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testMinimizeEmptyAllele() {
-        VariantMinimizationUtils.minimize("ATCG", "");
+        VariantUtils.minimize("ATCG", "");
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testMinimizeBothEmpty() {
-        VariantMinimizationUtils.minimize("", "");
+        VariantUtils.minimize("", "");
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testMinimizeBothNull() {
-        VariantMinimizationUtils.minimize(null, null);
+        VariantUtils.minimize(null, null);
     }
 }

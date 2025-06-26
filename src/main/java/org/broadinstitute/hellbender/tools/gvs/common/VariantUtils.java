@@ -6,12 +6,12 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 /**
- * Utility class for variant sequence minimization operations.
+ * Utility class for variant sequence operations.
  * Provides methods to minimize genomic sequences by removing redundant parts
  * from the right sides of both reference and allele sequences.
  */
-public class VariantMinimizationUtils {
-    static final Logger logger = LogManager.getLogger(VariantMinimizationUtils.class);
+public class VariantUtils {
+    static final Logger logger = LogManager.getLogger(VariantUtils.class);
 
     /**
      * Minimizes variant genomic sequences by removing redundant parts from the right sides
