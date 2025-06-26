@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -19,10 +20,10 @@ public class VariantMinimizationUtils {
      *
      * @param reference the reference sequence
      * @param allele the allele sequence
-     * @return a string in the format "minimized_reference,minimized_allele"
+     * @return a Pair where the left element is the minimized reference and the right element is the minimized allele
      * @throws UserException if either input is null or empty
      */
-    public static String minimize(final String reference, final String allele) {
+    public static Pair<String, String> minimize(final String reference, final String allele) {
         if (reference == null || reference.isEmpty()) {
             throw new UserException("Reference sequence cannot be null or empty");
         }
@@ -58,6 +59,6 @@ public class VariantMinimizationUtils {
         String minimizedRef = reference.substring(0, refLength - actualRemoval);
         String minimizedAllele = allele.substring(0, alleleLength - actualRemoval);
 
-        return minimizedRef + "," + minimizedAllele;
+        return Pair.of(minimizedRef, minimizedAllele);
     }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.Test;
 
@@ -12,7 +13,7 @@ public class VariantMinimizationUtilsTest {
         // Test case 1 from the prompt
         final String reference = "CACGTACGT";
         final String allele = "ACGTACGT";
-        final String expected = "CA,A";
+        final Pair<String, String> expected = Pair.of("CA", "A");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -22,7 +23,7 @@ public class VariantMinimizationUtilsTest {
         // Test case 2 from the prompt
         final String reference = "ACGTACGT";
         final String allele = "GGACGTACGT";
-        final String expected = "A,GGA";
+        final Pair<String, String> expected = Pair.of("A", "GGA");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -32,7 +33,7 @@ public class VariantMinimizationUtilsTest {
         // No common suffix, sequences should remain unchanged
         final String reference = "AAAA";
         final String allele = "TTTT";
-        final String expected = "AAAA,TTTT";
+        final Pair<String, String> expected = Pair.of("AAAA", "TTTT");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -42,7 +43,7 @@ public class VariantMinimizationUtilsTest {
         // Single character sequences should remain unchanged
         final String reference = "A";
         final String allele = "T";
-        final String expected = "A,T";
+        final Pair<String, String> expected = Pair.of("A", "T");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -52,7 +53,7 @@ public class VariantMinimizationUtilsTest {
         // Partial common suffix
         final String reference = "ATCGATCG";
         final String allele = "GGATCG";
-        final String expected = "ATC,G";
+        final Pair<String, String> expected = Pair.of("ATC", "G");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -62,7 +63,7 @@ public class VariantMinimizationUtilsTest {
         // Different length sequences with common suffix
         final String reference = "AAATTTCCC";
         final String allele = "GCCC";
-        final String expected = "AAATTT,G";
+        final Pair<String, String> expected = Pair.of("AAATTT", "G");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -72,7 +73,7 @@ public class VariantMinimizationUtilsTest {
         // Long common suffix that gets truncated to preserve minimum length
         final String reference = "AATCGATCGATCG";
         final String allele = "GGTCGATCGATCG";
-        final String expected = "AA,GG";
+        final Pair<String, String> expected = Pair.of("AA", "GG");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -82,7 +83,7 @@ public class VariantMinimizationUtilsTest {
         // One sequence is single character, other has matching suffix
         final String reference = "G";
         final String allele = "TTG";
-        final String expected = "G,TTG";
+        final Pair<String, String> expected = Pair.of("G", "TTG");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -92,7 +93,7 @@ public class VariantMinimizationUtilsTest {
         // Simulates an insertion variant
         final String reference = "A";
         final String allele = "ATCG";
-        final String expected = "A,ATCG";
+        final Pair<String, String> expected = Pair.of("A", "ATCG");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -102,7 +103,7 @@ public class VariantMinimizationUtilsTest {
         // Simulates a deletion variant
         final String reference = "ATCG";
         final String allele = "A";
-        final String expected = "ATCG,A";
+        final Pair<String, String> expected = Pair.of("ATCG", "A");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
@@ -112,7 +113,7 @@ public class VariantMinimizationUtilsTest {
         // Complex variant with substitution and common suffix
         final String reference = "ATCGATCGATCGATCG";
         final String allele = "GGCGATCGATCGATCG";
-        final String expected = "AT,GG";
+        final Pair<String, String> expected = Pair.of("AT", "GG");
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
