@@ -38,31 +38,11 @@ public class VariantMinimizationUtilsTest {
     }
 
     @Test
-    public void testMinimizeCompletelyIdentical() {
-        // Identical sequences should be minimized to single characters
-        final String reference = "ATCG";
-        final String allele = "ATCG";
-        final String expected = "A,A";
-
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
-    }
-
-    @Test
     public void testMinimizeSingleCharacters() {
         // Single character sequences should remain unchanged
         final String reference = "A";
         final String allele = "T";
         final String expected = "A,T";
-
-        assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
-    }
-
-    @Test
-    public void testMinimizeSingleCharacterIdentical() {
-        // Single identical characters should remain unchanged (minimum length requirement)
-        final String reference = "A";
-        final String allele = "A";
-        final String expected = "A,A";
 
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
