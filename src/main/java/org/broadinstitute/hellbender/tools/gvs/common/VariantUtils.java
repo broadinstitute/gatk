@@ -14,16 +14,16 @@ public class VariantUtils {
     static final Logger logger = LogManager.getLogger(VariantUtils.class);
 
     /**
-     * Minimizes variant genomic sequences by removing redundant parts from the right sides
-     * of both the reference and allele sequences. The minimum length of either the minimized
+     * Right-trims variant genomic sequences by removing redundant parts from the right sides
+     * of both the reference and allele sequences. The minimum length of either the trimmed
      * allele or the reference sequence will be 1.
      *
      * @param reference the reference sequence
      * @param allele the allele sequence
-     * @return a Pair where the left element is the minimized reference and the right element is the minimized allele
+     * @return a Pair where the left element is the right-trimmed reference and the right element is the right-trimmed allele
      * @throws UserException if either input is null or empty
      */
-    public static Pair<String, String> minimize(final String reference, final String allele) {
+    public static Pair<String, String> rightTrim(final String reference, final String allele) {
         if (reference == null || reference.isEmpty()) {
             throw new UserException("Reference sequence cannot be null or empty");
         }
