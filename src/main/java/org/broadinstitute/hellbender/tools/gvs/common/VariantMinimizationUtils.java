@@ -32,32 +32,32 @@ public class VariantMinimizationUtils {
 
         int refLength = reference.length();
         int alleleLength = allele.length();
-        
+
         // Find the longest common suffix by comparing characters from the end
         int commonSuffixLength = 0;
         int maxComparable = Math.min(refLength, alleleLength);
-        
+
         // Work backwards from the end, comparing characters at the same positions from the end
         for (int i = 1; i <= maxComparable; i++) {
             char refChar = reference.charAt(refLength - i);
             char alleleChar = allele.charAt(alleleLength - i);
-            
+
             if (refChar == alleleChar) {
                 commonSuffixLength = i;
             } else {
                 break; // Stop at first mismatch
             }
         }
-        
+
         // Determine how much we can actually remove while keeping at least 1 character in each
         int maxRemovableFromRef = refLength - 1;
         int maxRemovableFromAllele = alleleLength - 1;
         int actualRemoval = Math.min(commonSuffixLength, Math.min(maxRemovableFromRef, maxRemovableFromAllele));
-        
+
         // Remove the determined amount from both sequences
         String minimizedRef = reference.substring(0, refLength - actualRemoval);
         String minimizedAllele = allele.substring(0, alleleLength - actualRemoval);
-        
+
         return minimizedRef + "," + minimizedAllele;
     }
 }

@@ -289,3 +289,8 @@ Note that for the past Echo callset there may need to be an additional step to
 patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
+
+# Coding Standards
+
+Source files should generally not contain lines that are whitespace only, nor
+should there be trailing whitespace.

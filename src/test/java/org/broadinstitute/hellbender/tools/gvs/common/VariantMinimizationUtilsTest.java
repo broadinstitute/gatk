@@ -13,7 +13,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "CACGTACGT";
         final String allele = "ACGTACGT";
         final String expected = "CA,A";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -23,7 +23,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "ACGTACGT";
         final String allele = "GGACGTACGT";
         final String expected = "A,GGA";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -33,7 +33,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "AAAA";
         final String allele = "TTTT";
         final String expected = "AAAA,TTTT";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -43,7 +43,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "ATCG";
         final String allele = "ATCG";
         final String expected = "A,A";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -53,7 +53,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "A";
         final String allele = "T";
         final String expected = "A,T";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -63,7 +63,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "A";
         final String allele = "A";
         final String expected = "A,A";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -73,7 +73,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "ATCGATCG";
         final String allele = "GGATCG";
         final String expected = "ATC,G";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -83,7 +83,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "AAATTTCCC";
         final String allele = "GCCC";
         final String expected = "AAATTT,G";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -93,7 +93,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "AATCGATCGATCG";
         final String allele = "GGTCGATCGATCG";
         final String expected = "AA,GG";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -103,7 +103,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "G";
         final String allele = "TTG";
         final String expected = "G,TTG";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -113,17 +113,17 @@ public class VariantMinimizationUtilsTest {
         final String reference = "A";
         final String allele = "ATCG";
         final String expected = "A,ATCG";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
     @Test
     public void testMinimizeDeletion() {
-        // Simulates a deletion variant  
+        // Simulates a deletion variant
         final String reference = "ATCG";
         final String allele = "A";
         final String expected = "ATCG,A";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
@@ -133,7 +133,7 @@ public class VariantMinimizationUtilsTest {
         final String reference = "ATCGATCGATCGATCG";
         final String allele = "GGCGATCGATCGATCG";
         final String expected = "AT,GG";
-        
+
         assertEquals(VariantMinimizationUtils.minimize(reference, allele), expected);
     }
 
