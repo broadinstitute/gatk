@@ -13,6 +13,7 @@ workflow GvsCreateVATfromVDS {
         File? sites_only_vcf
         File? sites_only_vcf_index
         File? vds_path
+        File? sites_to_exclude
         String output_path
 
         String? basic_docker
@@ -52,11 +53,17 @@ workflow GvsCreateVATfromVDS {
         sites_only_vcf: {
             help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped. If defined, then 'vds_path' must NOT be defined."
         }
+        sites_only_vcf_index: {
+            help: "Index to accompany sites-only VCF file documented above."
+        }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
         }
         vds_path: {
             help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
+        }
+        sites_to_exclude: {
+            help: "An optional file of sites to exclude from the sites-only VCF. It may become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
         }
     }
 
@@ -101,6 +108,14 @@ workflow GvsCreateVATfromVDS {
         call Utils.TerminateWorkflow as MustSetSitesOnlyVcfCreationParameters {
             input:
                 message = "Error: If 'sites_only_vcf' is not set as an input, you MUST set 'vds_path'",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    if (defined(sites_only_vcf_index) && !defined(sites_only_vcf)) {
+        call Utils.TerminateWorkflow as IfSitesOnlyVcfIndexSpecifiedMustSpecifySitesOnlyVcf {
+            input:
+                message = "Error: If 'sites_only_vcf_index' is set as an input, you must also set 'sites_only_vcf'",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -177,14 +192,23 @@ workflow GvsCreateVATfromVDS {
             }
         }
 
+        if (defined(sites_to_exclude)) {
+            call ExcludeSitesFromSitesOnlyVcf {
+                input:
+                    sites_to_exclude = select_first([sites_to_exclude]),
+                    input_sites_only_vcf = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                    variants_docker = effective_variants_docker,
+            }
+        }
+
         call Utils.CopyFile as CopySitesOnlyVcf {
             input:
-                input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                input_file = select_first([ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf, sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
                 output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
+        if (!defined(ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index) && !defined(sites_only_vcf_index)) {
             call Utils.IndexVcf {
                 input:
                     input_vcf = CopySitesOnlyVcf.output_file_path,
@@ -194,7 +218,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.CopyFile as CopySitesOnlyVcfIndex {
             input:
-                input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
+                input_file = select_first([ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index, sites_only_vcf_index, IndexVcf.output_vcf_index]),
                 output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -324,6 +348,42 @@ workflow GvsCreateVATfromVDS {
         File? dropped_sites_file = MergeTsvs.output_file
         File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
+    }
+}
+
+
+task ExcludeSitesFromSitesOnlyVcf {
+    input {
+        File sites_to_exclude
+        File input_sites_only_vcf
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        regions_to_exclude=$(cat ~{sites_to_exclude} | tr '\n' ',' | tr -d '[:space:]' | sed 's/,$//g')
+
+        # Exclude sites from the sites-only VCF that are listed in the sites_to_exclude file.
+        bcftools view --threads 4 --targets ^${regions_to_exclude} ~{input_sites_only_vcf} -O z -o excluded.vcf.gz
+
+        # Index the resulting VCF.
+        bcftools index --tbi --threads 4 excluded.vcf.gz
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "4 GB"
+        preemptible: 2
+        cpu: "1"
+        disk: "local-disk 500 HDD"
+    }
+
+    output {
+        File output_sites_only_vcf = "excluded.vcf.gz"
+        File output_sites_only_vcf_index = "excluded.vcf.gz.tbi"
     }
 }
 
@@ -549,12 +609,13 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         echo_date "VAT: Calculating number of sites with Ns"
 
         ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
-        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+        # The "2>/dev/null" is to suppress the profuse and useless "pass=0" stderr output from bcftools view.
+        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf 2>/dev/null | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
         ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
         ##       determined by examining the sites-only VCF provided to this WDL.
-        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
+        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf 2>/dev/null
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
