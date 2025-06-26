@@ -1,0 +1,27 @@
+The alt_allele_temp_function.sql file contains a BigQuery temporary function called minimize().
+The purpose of this function is to formulate the minimal expression of a variant genomic sequence
+by removing redundant parts of the right sides of both the reference and allele sequences. The minimum
+length of either the minimized allele or the reference sequence should be 1. This function should
+minimize the allele and reference sequences and return a string in the form:
+
+<minimized_reference>,<minimized_allele>
+
+
+For example, given the following inputs:
+- reference: "CACGTACGT"
+- allele: "ACGTACGT"
+
+The minimize() function should return:
+
+"CA,A"
+
+And for these inputs:
+- reference: "ACGTACGT"
+- allele: "GGACGTACGT"
+
+The minimize() function should return:
+
+"A,GGA"
+
+Write an implementation of the minimize() function in Java that adheres to the above requirements,
+along with some unit test cases to validate its functionality.
