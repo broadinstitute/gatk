@@ -345,9 +345,8 @@ task ExtractFilterTask {
       --call-set-identifier ~{call_set_identifier} \
       --wdl-step GvsCreateFilterSet \
       --wdl-call ExtractFilterTask \
-      --shard-identifier ~{intervals_name} ]
-      --add-additional-annotations ~{add_additional_annotations} \
-
+      --shard-identifier ~{intervals_name} \
+      --add-additional-annotations ~{add_additional_annotations}
   >>>
 
   runtime {
