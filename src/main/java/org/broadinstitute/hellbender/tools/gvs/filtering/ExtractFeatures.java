@@ -86,6 +86,12 @@ public class ExtractFeatures extends ExtractTool {
     private List<String> queryLabels = new ArrayList<>();
 
     @Argument(
+            fullName = "add-additional-annotations",
+            doc = "If true, add additional annotations to the VCF. These annotations are not used in the model training, but are requested by some users.",
+            optional = true)
+    private boolean addAdditionalAnnotations = false;
+
+    @Argument(
             fullName = "cost-observability-tablename",
             doc = "Name of the bigquery table in which to store cost observability metadata",
             optional = true)
@@ -146,7 +152,7 @@ public class ExtractFeatures extends ExtractTool {
         reference = directlyAccessEngineReferenceDataSource();
 
         VCFHeader header = generateVcfHeader(
-                new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
+                reference.getSequenceDictionary(), extraHeaderLines, addAdditionalAnnotations);
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
@@ -175,7 +181,6 @@ public class ExtractFeatures extends ExtractTool {
                 minLocation,
                 maxLocation,
                 localSortMaxRecordsInRam,
-                printDebugInformation,
                 useBatchQueries,
                 progressMeter,
                 sampleList.size(),
@@ -183,7 +188,8 @@ public class ExtractFeatures extends ExtractTool {
                 hqGenotypeDepthThreshold,
                 hqGenotypeABThreshold,
                 excessAllelesThreshold,
-                queryLabels);
+                queryLabels,
+                addAdditionalAnnotations);
 
         vcfWriter.writeHeader(header);
     }
@@ -220,80 +226,40 @@ public class ExtractFeatures extends ExtractTool {
         }
     }
 
-    private static VCFHeader generateVcfHeader(Set<String> sampleNames,
-                                              final SAMSequenceDictionary sequenceDictionary,
-                                              final Set<VCFHeaderLine> extraHeaders) {
+    private static VCFHeader generateVcfHeader(final SAMSequenceDictionary sequenceDictionary,
+                                              final Set<VCFHeaderLine> extraHeaders,
+                                               boolean addAdditionalAnnotations) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
-
-        headerLines.addAll( getEvoquerVcfHeaderLines() );
-        headerLines.addAll( extraHeaders );
-        final VCFHeader header = new VCFHeader(headerLines, sampleNames);
-        header.setSequenceDictionary(sequenceDictionary);
-
-        return header;
-    }
-
-    private static Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
-        final Set<VCFHeaderLine> headerLines = new HashSet<>();
-        // Add standard VCF fields first:
-        VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
-                VCFConstants.STRAND_BIAS_KEY,
-                VCFConstants.DEPTH_KEY,
-                VCFConstants.RMS_MAPPING_QUALITY_KEY,
-                VCFConstants.ALLELE_COUNT_KEY,
-                VCFConstants.ALLELE_FREQUENCY_KEY,
-                VCFConstants.ALLELE_NUMBER_KEY,
-                VCFConstants.END_KEY
-        );
-
-        VCFStandardHeaderLines.addStandardFormatLines(headerLines, true,
-                VCFConstants.GENOTYPE_KEY,
-                VCFConstants.GENOTYPE_QUALITY_KEY,
-                VCFConstants.DEPTH_KEY,
-                VCFConstants.GENOTYPE_PL_KEY,
-                VCFConstants.GENOTYPE_ALLELE_DEPTHS
-        );
-
-        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-
-        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
-        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
-        headerLines.add(GATKVCFHeaderLines.getFormatLine(VCFConstants.PHASE_SET_KEY, true));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_SB_TABLE_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
-
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY));
-
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_FISHER_STRAND_KEY));
-
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
-
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
-
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
 
-        return headerLines;
+        if (addAdditionalAnnotations) {
+            VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
+                    VCFConstants.STRAND_BIAS_KEY
+            );
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_SB_TABLE_KEY));
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
+        }
+
+        headerLines.addAll( extraHeaders );
+        final VCFHeader header = new VCFHeader(headerLines);
+        header.setSequenceDictionary(sequenceDictionary);
+
+        return header;
     }
 
 }
