@@ -49,7 +49,9 @@ repositories {
     mavenCentral()
 
     maven {
-        url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
+        // Note: We are still publishing to JFrog, but consuming artifacts from GAR. This interim state works because
+        // a background kubernetes job syncs new artifacts from JFrog to GAR within 5 minutes.
+        url "https://us-central1-maven.pkg.dev/dsp-artifact-registry/libs-snapshot/" //for htsjdk snapshots
     }
 
     maven {
