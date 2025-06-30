@@ -120,6 +120,7 @@ GROUP BY
    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `filter_set_name`, which you will need to keep track of for the `GvsExtractAvroFilesForHail` WDL. If, for some reason, this step needs to be run multiple times, be sure to use a different `filter_set_name` (the doc has guidance for this, as well).
    - Run this workflow with the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - Set `add_additional_annotations_to_sites_only_vcf` to `true` to have the sites-only VCF that is generated as part of the model creation be loaded with additional annotations that are requested by external users.
 1. `GvsExtractAvroFilesForHail` workflow
    - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VETS filter set data.
    - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
