@@ -25,7 +25,8 @@ workflow GvsCreateFilterSet {
     File? gatk_override
 
     Boolean use_VETS = true
-    Boolean add_additional_annotations_to_sites_only_vcf = false
+    # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
+    Boolean add_additional_annotations_to_sites_only_vcf = true
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
