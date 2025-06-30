@@ -177,6 +177,7 @@ def parse_disk_usage_line(line):
     m = re.match(p, line)
     if m is None:
         eprint(f"ERROR: Line '{line}' does not look like a Disk usage line. Is this a monitoring_log file?")
+        sys.exit(0)
     disk = float(m.group(1))
     disk_pct = float(m.group(2))
     global MaxDisk
