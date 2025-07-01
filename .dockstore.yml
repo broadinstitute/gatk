@@ -344,7 +344,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1676_AnVIL_3K
-             - gg_VS-1684_DontFailOnMonitoringLogFormat
          tags:
              - /.*/
    - name: GvsIngestTieout
