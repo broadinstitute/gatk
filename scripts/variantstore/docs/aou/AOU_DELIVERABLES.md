@@ -45,10 +45,9 @@
        SELECT sample_name FROM `aou-genomics-curation-prod.foxtrot.sample_info` e
        LEFT OUTER JOIN `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f
        ON e.sample_name = f.research_id
-       WHERE e.withdrawn IS NULL AND f.research_id IS NULL' > echo_research_ids_missing_from_foxtrot.txt
+       WHERE e.withdrawn IS NULL AND f.research_id IS NULL AND e.is_control = FALSE
+       ORDER by sample_name' > echo_research_ids_missing_from_foxtrot.txt
     ```
-    It is expected that `HG-00X` [GIAB](https://www.coriell.org/1/NIGMS/Collections/NIST-Reference-Materials)
-    controls will be listed in this output as those samples do not normally appear in the callset sample list.
   - Reach out in the `#dsp-variants` channel with the findings from the preceding step. Additionally, ask if there are any
     samples that currently appear in the Foxtrot sample list that should be withdrawn (e.g. any of the samples implicated
     in the issues raised by the gnomAD team).
@@ -60,9 +59,8 @@
 - Create a FOFN of new-to-Foxtrot samples to be ingested. Referencing the BigQuery table created in the preceding step:
   ```
   # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples. The BQ export command requires this to be a
-  # wildcarded path, but at this scale it should only produce a single file. If for some reason multiple output files
-  # are produced, they should be concatenated together for downstream processing.
-  FOXTROT_BULK_INGEST_FOFN='gs://<workspace_bucket>/foxtrot_new_samples_fofn/*.tsv'
+  # wildcarded path. If multiple output files are produced, they should be concatenated together for downstream processing.
+  FOXTROT_BULK_INGEST_FOFN='gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_new_samples_fofn/*.tsv'
 
   bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod '
       EXPORT DATA OPTIONS(
