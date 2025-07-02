@@ -13,6 +13,7 @@ workflow GvsCreateVATfromVDS {
         File? sites_only_vcf
         File? sites_only_vcf_index
         File? vds_path
+        File? sites_to_exclude
         String output_path
 
         String? basic_docker
@@ -52,16 +53,23 @@ workflow GvsCreateVATfromVDS {
         sites_only_vcf: {
             help: "Optional sites-only VCF file. If defined, generation of a sites-only VCF from the VDS will be skipped. If defined, then 'vds_path' must NOT be defined."
         }
+        sites_only_vcf_index: {
+            help: "Index to accompany sites-only VCF file documented above."
+        }
         output_path: {
             help: "GCS location (with a trailing '/') to put temporary and output files for the VAT pipeline"
         }
         vds_path: {
             help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
         }
+        sites_to_exclude: {
+            help: "An optional file of sites to exclude from the sites-only VCF. It may become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
+        }
     }
 
     String region = "us-central1"
     String gcs_subnetwork_name = "subnetwork"
+    File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -104,6 +112,14 @@ workflow GvsCreateVATfromVDS {
         }
     }
 
+    if (defined(sites_only_vcf_index) && !defined(sites_only_vcf)) {
+        call Utils.TerminateWorkflow as IfSitesOnlyVcfIndexSpecifiedMustSpecifySitesOnlyVcf {
+            input:
+                message = "Error: If 'sites_only_vcf_index' is set as an input, you must also set 'sites_only_vcf'",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     call Utils.GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
@@ -142,6 +158,15 @@ workflow GvsCreateVATfromVDS {
 
         Int effective_scatter_count = select_first([split_intervals_scatter_count, calculated_scatter_count])
 
+        call LoadManeDataIntoBigQuery {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                mane_table_name = "mane_annotations",
+                mane_data_file = mane_annotation_file,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
         call MakeSubpopulationFilesAndReadSchemaFiles {
             input:
                 input_ancestry_file = ancestry_file,
@@ -167,14 +192,23 @@ workflow GvsCreateVATfromVDS {
             }
         }
 
+        if (defined(sites_to_exclude)) {
+            call ExcludeSitesFromSitesOnlyVcf {
+                input:
+                    sites_to_exclude = select_first([sites_to_exclude]),
+                    input_sites_only_vcf = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                    variants_docker = effective_variants_docker,
+            }
+        }
+
         call Utils.CopyFile as CopySitesOnlyVcf {
             input:
-                input_file = select_first([sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
+                input_file = select_first([ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf, sites_only_vcf, GenerateSitesOnlyVcf.sites_only_vcf]),
                 output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        if (!defined(sites_only_vcf) || !defined(sites_only_vcf_index)) {
+        if (!defined(ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index) && !defined(sites_only_vcf_index)) {
             call Utils.IndexVcf {
                 input:
                     input_vcf = CopySitesOnlyVcf.output_file_path,
@@ -184,7 +218,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.CopyFile as CopySitesOnlyVcfIndex {
             input:
-                input_file = select_first([sites_only_vcf_index, IndexVcf.output_vcf_index]),
+                input_file = select_first([ExcludeSitesFromSitesOnlyVcf.output_sites_only_vcf_index, sites_only_vcf_index, IndexVcf.output_vcf_index]),
                 output_gcs_dir = effective_output_path + "sites_only_vcf",
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -272,6 +306,7 @@ workflow GvsCreateVATfromVDS {
                 vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
+                mane_table_name = LoadManeDataIntoBigQuery.mane_table,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 variant_transcripts_path = variant_transcripts_output_path,
@@ -313,6 +348,42 @@ workflow GvsCreateVATfromVDS {
         File? dropped_sites_file = MergeTsvs.output_file
         File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
+    }
+}
+
+
+task ExcludeSitesFromSitesOnlyVcf {
+    input {
+        File sites_to_exclude
+        File input_sites_only_vcf
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        regions_to_exclude=$(cat ~{sites_to_exclude} | tr '\n' ',' | tr -d '[:space:]' | sed 's/,$//g')
+
+        # Exclude sites from the sites-only VCF that are listed in the sites_to_exclude file.
+        bcftools view --threads 4 --targets ^${regions_to_exclude} ~{input_sites_only_vcf} -O z -o excluded.vcf.gz
+
+        # Index the resulting VCF.
+        bcftools index --tbi --threads 4 excluded.vcf.gz
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "4 GB"
+        preemptible: 2
+        cpu: "1"
+        disk: "local-disk 500 HDD"
+    }
+
+    output {
+        File output_sites_only_vcf = "excluded.vcf.gz"
+        File output_sites_only_vcf_index = "excluded.vcf.gz.tbi"
     }
 }
 
@@ -538,12 +609,13 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         echo_date "VAT: Calculating number of sites with Ns"
 
         ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
-        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+        # The "2>/dev/null" is to suppress the profuse and useless "pass=0" stderr output from bcftools view.
+        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf 2>/dev/null | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
         ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
         ##       determined by examining the sites-only VCF provided to this WDL.
-        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
+        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf 2>/dev/null
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
@@ -855,6 +927,51 @@ task PrepGenesAnnotationJson {
     }
 }
 
+task LoadManeDataIntoBigQuery {
+    input {
+        String project_id
+        String dataset_name
+        String mane_table_name
+        File mane_data_file
+        String cloud_sdk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
+        sed -i 's/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file}
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{mane_table_name} ~{mane_data_file}
+        else
+            echo "Found existing MANE annotations table ~{dataset_name}.~{mane_table_name}. Using it"
+        fi
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String mane_table = mane_table_name
+        Boolean done = true
+    }
+}
 
 task BigQueryLoadJson {
     meta {
@@ -867,6 +984,7 @@ task BigQueryLoadJson {
         File vat_schema
         File variant_transcript_schema
         File genes_schema
+        String mane_table_name
         String project_id
         String dataset_name
         String variant_transcripts_path
@@ -885,6 +1003,8 @@ task BigQueryLoadJson {
 
     String variant_transcripts_wildcarded_path = variant_transcripts_path + '*'
     String genes_wildcarded_path = genes_path + '*'
+
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:create_vat"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -908,6 +1028,14 @@ task BigQueryLoadJson {
         echo "Loading variant_transcript data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
+
+        echo "Adding the Mane SELECT annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
+
+        echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
@@ -1057,7 +1185,9 @@ task BigQueryLoadJson {
             v.clinvar_phenotype,
             v.clinvar_rcv_ids,
             v.clinvar_rcv_classifications,
-            v.clinvar_rcv_num_stars
+            v.clinvar_rcv_num_stars,
+            v.mane_select_name,
+            v.mane_plus_clinical_name
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g

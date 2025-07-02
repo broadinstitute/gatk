@@ -46,8 +46,6 @@ def parse_monitoring_log_files(file_input, fofn_input, output_file):
 
 
 
-
-
 def parse_monitoring_log_file(mlog_file, output):
     eprint(f"Parsing: {mlog_file}")
 
@@ -62,7 +60,7 @@ def parse_monitoring_log_file(mlog_file, output):
         tokens = line.split(": ")
         if tokens[0] != '#CPU':
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
-            sys.exit(1)
+            sys.exit(0)
         num_cpus = tokens[1]
         eprint(f"Num CPUs: {num_cpus}")
 
@@ -70,11 +68,11 @@ def parse_monitoring_log_file(mlog_file, output):
         tokens = line.split(": ")
         if tokens[0] != 'Total Memory':
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
-            sys.exit(1)
+            sys.exit(0)
         subtokens = tokens[1].split()
         if len(subtokens) != 2:
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
-            sys.exit(1)
+            sys.exit(0)
         total_memory = float(subtokens[0])
         total_memory_units = subtokens[1]
         eprint(f"Total Memory: {total_memory} {total_memory_units}")
@@ -83,11 +81,11 @@ def parse_monitoring_log_file(mlog_file, output):
         tokens = line.split(": ")
         if tokens[0] != 'Total Disk space':
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
-            sys.exit(1)
+            sys.exit(0)
         subtokens = tokens[1].split()
         if len(subtokens) != 2:
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
-            sys.exit(1)
+            sys.exit(0)
         total_disk = float(subtokens[0])
         total_disk_units = subtokens[1]
         eprint(f"Total Disk space: {total_disk} {total_disk_units}")
@@ -156,7 +154,7 @@ def parse_cpu_usage_line(line):
             m3 = re.match(p3, line)
             if m3 is None:
                 eprint(f"ERROR: Line '{line}' does not look like a CPU usage line. Is this a monitoring_log file?")
-                sys.exit(1)
+                sys.exit(0)
 
 
 def parse_memory_usage_line(line):
@@ -164,7 +162,7 @@ def parse_memory_usage_line(line):
     m = re.match(p, line)
     if m is None:
         eprint(f"ERROR: Line '{line}' does not look like a Memory usage line. Is this a monitoring_log file?")
-        sys.exit(1)
+        sys.exit(0)
     mem = float(m.group(1))
     mem_pct = float(m.group(2))
     global MaxMem
@@ -179,7 +177,7 @@ def parse_disk_usage_line(line):
     m = re.match(p, line)
     if m is None:
         eprint(f"ERROR: Line '{line}' does not look like a Disk usage line. Is this a monitoring_log file?")
-        sys.exit(1)
+        sys.exit(0)
     disk = float(m.group(1))
     disk_pct = float(m.group(2))
     global MaxDisk

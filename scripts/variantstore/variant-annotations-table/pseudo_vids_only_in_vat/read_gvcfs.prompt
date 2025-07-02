@@ -1,0 +1,29 @@
+Write a Python script that takes a JSON file formatted as an array of objects, each containing the following fields:
+
+{
+  "sample_id": "111111",
+  "sample_name": "22222",
+  "chr": "chr1",
+  "input_position": "3333",
+  "input_ref": "A",
+  "input_alt": "ACCG",
+  "reblocked_gvcf": "gs://path/to/reblocked.gvcf.gz",
+  "gvcf_path": "gs://different/path/to/gvcf.gz"
+}
+
+for each object, invoke bcftools as follows:
+
+bcftools view --include='(REF="{input_ref}"&ALT[0]="{input_alt}")' --regions {chr}:{input_position} {gvcf_path}
+
+This should produce a single line of output to stdout which should be captured.
+
+Then invoke bcftools a second time like:
+
+bcftools view --include='(REF="{input_ref}"&ALT[0]="{input_alt}")' --regions {chr}:{input_position} {reblocked_gvcf}
+
+This should also produce a single line of output to stdout which should be captured.
+
+Finally, print the results back out in JSON format, where each object contains the original fields plus two additional fields:
+
+  "reblocked_gvcf_line": "<output from bcftools invocation on reblocked_gvcf>",
+  "gvcf_line": "<output from bcftools invocation on gvcf_path>"
