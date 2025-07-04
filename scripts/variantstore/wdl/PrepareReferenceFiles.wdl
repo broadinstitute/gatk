@@ -95,25 +95,25 @@ task GenerateBgzSequenceDictionaryAndIndex {
       bgzip ~{reference_fasta} --stdout > output/${base}.bgz
     fi
 
-    # Ensure a trailing slash on the GCS output directory
+    # Ensure no trailing slash on the GCS output directory
     output_gcs_dir="~{output_gcs_dir}"
-    output_gcs_dir="${output_gcs_dir%/}/"
+    output_gcs_dir="${output_gcs_dir%/}"
 
     base=$(basename output/${base}.bgz)
 
     # Generate sequence dictionary using samtools. Make sure to specify the URI corresponding to where the bgzipped
     # FASTA will be stored in the GCS output directory.
-    samtools dict --uri ${output_gcs_dir}${base} output/*.bgz > output/$(basename output/*.bgz).dict
+    samtools dict --uri ${output_gcs_dir}/${base} output/*.bgz > output/$(basename output/*.bgz).dict
 
     # Generate FASTA index using samtools
     samtools faidx output/*.bgz
 
-    gcloud storage cp output/*.bgz output/*.fai output/*.dict $output_gcs_dir
+    gcloud storage cp output/*.bgz output/*.fai output/*.dict ${output_gcs_dir}/
 
     echo "{
-        \"fasta_bgz\": \"$output_gcs_dir$(basename output/*.bgz)\",
-        \"fasta_index\": \"$output_gcs_dir$(basename output/*.fai)\",
-        \"sequence_dictionary\": \"$output_gcs_dir$(basename output/*.dict)\"
+        \"fasta_bgz\": \"$output_gcs_dir/$(basename output/*.bgz)\",
+        \"fasta_index\": \"$output_gcs_dir/$(basename output/*.fai)\",
+        \"sequence_dictionary\": \"$output_gcs_dir/$(basename output/*.dict)\"
     }" > reference_files.json
   >>>
 
@@ -148,14 +148,14 @@ task GenerateContigMapping {
     python3 /app/generate_custom_reference_mappings.py \
       ~{sequence_dictionary} > ${base}.contig_mapping.tsv
 
-    # Ensure a trailing slash on the GCS output directory
+    # Ensure no trailing slash on the GCS output directory
     output_gcs_dir="~{output_gcs_dir}"
-    output_gcs_dir="${output_gcs_dir%/}/"
+    output_gcs_dir="${output_gcs_dir%/}"
 
-    gcloud storage cp ${base}.contig_mapping.tsv ${output_gcs_dir}
+    gcloud storage cp ${base}.contig_mapping.tsv ${output_gcs_dir}/
 
     # Update the reference files JSON with the contig mapping file
-    cloud_contig_mapping_file="${output_gcs_dir}$(basename ${base}.contig_mapping.tsv)"
+    cloud_contig_mapping_file="${output_gcs_dir}/$(basename ${base}.contig_mapping.tsv)"
 
     jq " . += {
         \"contig_mapping\": \"$cloud_contig_mapping_file\"
@@ -202,15 +202,15 @@ task CreateWeightedBedFile {
       --contig-mapping ~{contig_mapping} \
       > weighted.bed
 
-    # Ensure a trailing slash on the GCS output directory
+    # Ensure no trailing slash on the GCS output directory
     output_gcs_dir="~{output_gcs_dir}"
-    output_gcs_dir="${output_gcs_dir%/}/"
+    output_gcs_dir="${output_gcs_dir%/}"
 
     base=$(basename ~{reference_dictionary} .dict)
-    cloud_weight_bins_file="${output_gcs_dir}${base}.vet_weight_bins.tsv"
+    cloud_weight_bins_file="${output_gcs_dir}/${base}.vet_weight_bins.tsv"
     gcloud storage cp vet_weight_bins.tsv ${cloud_weight_bins_file}
 
-    cloud_weighted_bed_file="${output_gcs_dir}${base}.weighted.bed"
+    cloud_weighted_bed_file="${output_gcs_dir}/${base}.weighted.bed"
     gcloud storage cp weighted.bed ${cloud_weighted_bed_file}
 
     jq " . += {
