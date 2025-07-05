@@ -97,7 +97,8 @@ public final class ApplyBQSR extends ReadWalker{
      */
     @ArgumentCollection
     public ApplyBQSRArgumentCollection bqsrArgs = new ApplyBQSRArgumentCollection();
-    
+
+    private BQSRReadTransformer bqsrTransformer;
     private SAMFileGATKReadWriter outputWriter;
 
     /**
@@ -111,7 +112,12 @@ public final class ApplyBQSR extends ReadWalker{
     @Override
     public void onTraversalStart() {
         outputWriter = createSAMWriter(output, true);
+        bqsrTransformer = new BQSRReadTransformer(getHeaderForReads(), bqsrRecalFile, bqsrArgs);
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
+
+        logger.info(String.format("Loaded covariates %s from recalibration table %s",
+                bqsrTransformer.getCovariates().covariateNames(),
+                bqsrRecalFile.getAbsolutePath()));
     }
 
     @Override

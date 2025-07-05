@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
@@ -35,7 +35,7 @@ public final class RecalibrationReport {
     private static final Logger logger = LogManager.getLogger(RecalibrationReport.class);
     private QuantizationInfo quantizationInfo; // histogram containing the counts for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables; // quick access reference to the tables
-    private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
+    private final BQSRCovariateList covariates; // list of all covariates to be used in this calculation
 
     private final GATKReportTable argumentTable; // keep the argument table untouched just for output purposes
     private final RecalibrationArgumentCollection RAC; // necessary for quantizing qualities with the same parameter
@@ -59,7 +59,7 @@ public final class RecalibrationReport {
         final GATKReportTable quantizedTable = report.getTable(RecalUtils.QUANTIZED_REPORT_TABLE_TITLE);
         quantizationInfo = initializeQuantizationTable(quantizedTable);
 
-        covariates = new StandardCovariateList(RAC, new ArrayList<>(allReadGroups));
+        covariates = new BQSRCovariateList(RAC, new ArrayList<>(allReadGroups));
 
         recalibrationTables = new RecalibrationTables(covariates, allReadGroups.size());
 
@@ -175,7 +175,7 @@ public final class RecalibrationReport {
         return recalibrationTables;
     }
 
-    public StandardCovariateList getCovariates() {
+    public BQSRCovariateList getCovariates() {
         return covariates;
     }
 
@@ -325,7 +325,7 @@ public final class RecalibrationReport {
     private static RecalibrationArgumentCollection initializeArgumentCollectionTable(GATKReportTable table) {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
-        final List<String> standardCovariateClassNames = new StandardCovariateList(RAC, Collections.emptyList()).getStandardCovariateClassNames();
+        final List<String> standardCovariateClassNames = new BQSRCovariateList(RAC, Collections.emptyList()).getCovariateClassNames();
 
         for ( int i = 0; i < table.getNumRows(); i++ ) {
             final String argument = table.get(i, "Argument").toString();
@@ -335,15 +335,9 @@ public final class RecalibrationReport {
             }
 
             if (argument.equals("covariate") && value != null) {
-                final List<String> covs = new ArrayList<>(Arrays.asList(value.toString().split(",")));
-                if (!covs.equals(standardCovariateClassNames)) {
-                    throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but was " + covs);
-                }
+                RAC.COVARIATES = Arrays.asList(value.toString().split(","));
             } else if (argument.equals("no_standard_covs")) {
-                final boolean no_standard_covs = decodeBoolean(value);
-                if (no_standard_covs){
-                    throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but no_standard_covs was true");
-                }
+                RAC.DO_NOT_USE_STANDARD_COVARIATES = decodeBoolean(value);
             } else if (argument.equals("solid_recal_mode")) {
                 final String solid_recal_mode = (String) value;
                 if (!RecalibrationArgumentCollection.SOLID_RECAL_MODE.equals(solid_recal_mode)){

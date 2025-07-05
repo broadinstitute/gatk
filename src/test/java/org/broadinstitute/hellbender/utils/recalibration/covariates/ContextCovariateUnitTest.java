@@ -18,6 +18,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Collections;
 import java.util.Random;
 
 public final class ContextCovariateUnitTest extends GATKBaseTest {
@@ -27,9 +28,9 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
     @BeforeClass
     public void init() {
         RAC = new RecalibrationArgumentCollection();
-        covariate = new ContextCovariate(RAC);
         Utils.resetRandomGenerator();
-
+        covariate = new ContextCovariate();
+        covariate.initialize(RAC, Collections.emptyList());
     }
 
     @Test

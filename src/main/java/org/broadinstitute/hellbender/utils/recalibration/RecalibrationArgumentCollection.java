@@ -9,8 +9,12 @@ import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * A collection of the arguments that are used for BQSR. Used to be common to both CovariateCounterWalker and TableRecalibrationWalker.
@@ -20,15 +24,38 @@ import java.util.Map;
 public final class RecalibrationArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // We always use the same covariates. The field is retained for compatibility with GATK3 reports.
-    public static final boolean DO_NOT_USE_STANDARD_COVARIATES = false;
-
     //We don't support SOLID. The field is retained for compatibility with GATK3 reports.
     public static final String SOLID_RECAL_MODE = "SET_Q_ZERO";
     public static final String SOLID_NOCALL_STRATEGY = "THROW_EXCEPTION";
 
     //It makes no sense to run BQSR without sites. so we remove this option.
     public static final boolean RUN_WITHOUT_DBSNP = false;
+
+    public static final String LIST_ONLY_LONG_NAME = "list-covariates";
+    public static final String COVARIATES_LONG_NAME = "covariate";
+    public static final String COVARIATES_SHORT_NAME = "cov";
+    public static final String DO_NOT_USE_STANDARD_COVARIATES_LONG_NAME = "no-standard-covariates";
+    /**
+     * Note that the --list-covariates argument requires a fully resolved and correct command-line to work.
+     */
+    @Argument(fullName = LIST_ONLY_LONG_NAME, doc = "List the available covariates and exit", optional = true)
+    public boolean LIST_ONLY = false;
+
+    /**
+     * Note that the ReadGroup and QualityScore covariates are required and do not need to be specified.
+     * Also, unless --no-standard-covariates is specified, the Cycle and Context covariates are standard and are included by default.
+     * Use the --list argument to see the available covariates.
+     *
+     */
+    @Argument(fullName = COVARIATES_LONG_NAME, shortName = COVARIATES_SHORT_NAME, doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
+    public List<String> COVARIATES = new ArrayList<>();
+
+    /**
+     * The Cycle and Context covariates are standard and are included by default unless this argument is provided.
+     * Note that the ReadGroup and QualityScore covariates are required and cannot be excluded.
+     */
+    @Argument(fullName = DO_NOT_USE_STANDARD_COVARIATES_LONG_NAME, doc = "Do not use the standard set of covariates, but rather just the ones listed using the -cov argument", optional = true)
+    public boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base mismatches. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
@@ -207,7 +234,8 @@ public final class RecalibrationArgumentCollection implements Serializable {
      */
     public Map<String,? extends CharSequence> compareReportArguments(final RecalibrationArgumentCollection other,final String thisRole, final String otherRole) {
         final Map<String,String> result = new LinkedHashMap<>(15);
-        compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
+        compareRequestedCovariates(result, other, thisRole, otherRole);
+        compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, other.DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
         compareSimpleReportArgument(result,"run_without_dbsnp",RUN_WITHOUT_DBSNP, RUN_WITHOUT_DBSNP,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, SOLID_RECAL_MODE,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_nocall_strategy", SOLID_NOCALL_STRATEGY, SOLID_NOCALL_STRATEGY,thisRole,otherRole);
@@ -224,6 +252,52 @@ public final class RecalibrationArgumentCollection implements Serializable {
         return result;
     }
 
+    /**
+     * A helper method for {@link #compareReportArguments}.
+     * Compares the covariate report lists and update <code>diffs</code> with
+     * key = "covariate" and
+     * value = a message that explains the difference to the end user.
+     *
+     * @param diffs the map to be updated by side-effect by this method.
+     * @param other the argument collection to compare against.
+     * @param thisRole the name for this argument collection that makes sense to the user.
+     * @param otherRole  the name for the other argument collection that makes sense to the end user.
+     *
+     * @return <code>true</code> if a difference was found.
+     */
+    private boolean compareRequestedCovariates(final Map<String,String> diffs, final RecalibrationArgumentCollection other,
+                                               final String thisRole, final String otherRole) {
+
+        final Set<String> beforeNames = new HashSet<>(this.COVARIATES.size());
+        final Set<String> afterNames = new HashSet<>(other.COVARIATES.size());
+        beforeNames.addAll(this.COVARIATES);
+        afterNames.addAll(other.COVARIATES);
+        final Set<String> intersection = new HashSet<>(Math.min(beforeNames.size(), afterNames.size()));
+        intersection.addAll(beforeNames);
+        intersection.retainAll(afterNames);
+
+        String diffMessage = null;
+        if (intersection.size() == 0) { // In practice this is not possible due to required covariates but...
+            diffMessage = String.format("There are no common covariates between '%s' and '%s'"
+                            + " recalibrator reports. Covariates in '%s': {%s}. Covariates in '%s': {%s}.", thisRole, otherRole,
+                    thisRole, String.join(", ", this.COVARIATES),
+                    otherRole, String.join(",", other.COVARIATES));
+        } else if (intersection.size() != beforeNames.size() || intersection.size() != afterNames.size()) {
+            beforeNames.removeAll(intersection);
+            afterNames.removeAll(intersection);
+            diffMessage = String.format("There are differences in the set of covariates requested in the"
+                            + " '%s' and '%s' recalibrator reports. "
+                            + " Exclusive to '%s': {%s}. Exclusive to '%s': {%s}.", thisRole, otherRole,
+                    thisRole, String.join(", ", beforeNames),
+                    otherRole, String.join(", ", afterNames));
+        }
+        if (diffMessage != null) {
+            diffs.put("covariate",diffMessage);
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     /**
      * Annotates a map with any difference encountered in a simple value report argument that differs between this an
