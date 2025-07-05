@@ -38,7 +38,7 @@ public final class BaseRecalibratorSparkFn {
             return Iterators.singletonIterator(bqsr.getRecalibrationTables());
         });
 
-        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new BQSRCovariateList(recalArgs, header));
+        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new BQSRCovariateList(recalArgs, header)); // tsato: Potentially here!
         final RecalibrationTables combinedTables = unmergedTables.treeAggregate(emptyRecalibrationTable,
                 RecalibrationTables::inPlaceCombine,
                 RecalibrationTables::inPlaceCombine,

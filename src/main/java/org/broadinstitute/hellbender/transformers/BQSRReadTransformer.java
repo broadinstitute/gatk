@@ -39,7 +39,6 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
     //These fields are created to avoid redoing these calculations for every read
     private final int totalCovariateCount;
-    private final int additionalCovariateCount;
 
     public static final int BASE_SUBSTITUTION_INDEX = EventType.BASE_SUBSTITUTION.ordinal();
 
@@ -101,7 +100,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
         this.quantizedQuals = quantizationInfo.getQuantizedQuals();
         this.totalCovariateCount = bqsrCovariateList.size();
-        additionalCovariateCount = bqsrCovariateList.getAdditionalCovariates().size();
+        final int additionalCovariateCount = bqsrCovariateList.getAdditionalCovariates().size();
 
         //Note: We pre-create the varargs arrays that will be used in the calls. Otherwise we're spending a lot of time allocating those int[] objects
         this.recalDatumsForAdditionalCovariates = new RecalDatum[additionalCovariateCount];

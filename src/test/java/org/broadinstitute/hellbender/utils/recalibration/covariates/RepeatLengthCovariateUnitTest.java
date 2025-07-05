@@ -51,20 +51,16 @@ public class RepeatLengthCovariateUnitTest extends GATKBaseTest {
         // remove the characters that were put in to make the input string easier to read
         final byte[] readBases = readBaseString.replaceAll("[()_]", "").getBytes();
         RepeatLengthCovariate repeatLengthCovariate = new RepeatLengthCovariate();
-        // tsato: do I really need to initialize this...
         repeatLengthCovariate.initialize(new RecalibrationArgumentCollection(), Arrays.asList("yo"));
 
         Pair<byte[], Integer> ans = repeatLengthCovariate.findTandemRepeatUnits(readBases, offset);
-        // Pair<byte[], Integer> ans = RepeatLengthCovariate.detectSTR(readBases, offset, 8);
         byte[] repeatUnit =  ans.getLeft();
         int repeatLength = ans.getRight();
 
         // for debugging
         String repeatUnitStr = new String(repeatUnit, StandardCharsets.UTF_8);
 
-        int d = 3;
         Assert.assertEquals(repeatUnitStr, expectedRepeatUnit);
         Assert.assertEquals(repeatLength, expectedRepeatLength);
     }
-
 }

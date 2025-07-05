@@ -143,7 +143,7 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testNonStandardCovariates(){ // tsato: study this test
+    public void testNonStandardCovariates(){
         File file = new File(toolsTestDir + "nonstandard-covariates.table.gz");
         final RecalibrationReport report = new RecalibrationReport(file);
         final BQSRCovariateList covariates = report.getCovariates();
