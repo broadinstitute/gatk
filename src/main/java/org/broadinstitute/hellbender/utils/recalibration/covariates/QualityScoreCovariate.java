@@ -55,7 +55,7 @@ public final class QualityScoreCovariate implements RequiredCovariate {
     }
 
     @Override
-    public int maximumKeyValue() { // shouldn't this be a static method or a constant?
+    public int maximumKeyValue() {
         return QualityUtils.MAX_SAM_QUAL_SCORE;
     }
 }

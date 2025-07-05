@@ -9,7 +9,12 @@ import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * A collection of the arguments that are used for BQSR. Used to be common to both CovariateCounterWalker and TableRecalibrationWalker.
@@ -41,7 +46,6 @@ public final class RecalibrationArgumentCollection implements Serializable {
      * Also, unless --no-standard-covariates is specified, the Cycle and Context covariates are standard and are included by default.
      * Use the --list argument to see the available covariates.
      *
-     * e.g.
      */
     @Argument(fullName = COVARIATES_LONG_NAME, shortName = COVARIATES_SHORT_NAME, doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
     public List<String> COVARIATES = new ArrayList<>();
@@ -249,35 +253,38 @@ public final class RecalibrationArgumentCollection implements Serializable {
     }
 
     /**
-     * Compares the covariate report lists.
+     * A helper method for {@link #compareReportArguments}.
+     * Compares the covariate report lists and update <code>diffs</code> with
+     * key = "covariate" and
+     * value = a message that explains the difference to the end user.
      *
-     * @param diffs map where to annotate the difference.
+     * @param diffs the map to be updated by side-effect by this method.
      * @param other the argument collection to compare against.
      * @param thisRole the name for this argument collection that makes sense to the user.
      * @param otherRole  the name for the other argument collection that makes sense to the end user.
      *
      * @return <code>true</code> if a difference was found.
      */
-    private boolean compareRequestedCovariates(final Map<String,String> diffs,
-                                               final RecalibrationArgumentCollection other, final String thisRole, final String otherRole) {
+    private boolean compareRequestedCovariates(final Map<String,String> diffs, final RecalibrationArgumentCollection other,
+                                               final String thisRole, final String otherRole) {
 
         final Set<String> beforeNames = new HashSet<>(this.COVARIATES.size());
         final Set<String> afterNames = new HashSet<>(other.COVARIATES.size());
         beforeNames.addAll(this.COVARIATES);
         afterNames.addAll(other.COVARIATES);
-        final Set<String> intersect = new HashSet<>(Math.min(beforeNames.size(), afterNames.size()));
-        intersect.addAll(beforeNames);
-        intersect.retainAll(afterNames);
+        final Set<String> intersection = new HashSet<>(Math.min(beforeNames.size(), afterNames.size()));
+        intersection.addAll(beforeNames);
+        intersection.retainAll(afterNames);
 
         String diffMessage = null;
-        if (intersect.size() == 0) { // In practice this is not possible due to required covariates but...
+        if (intersection.size() == 0) { // In practice this is not possible due to required covariates but...
             diffMessage = String.format("There are no common covariates between '%s' and '%s'"
                             + " recalibrator reports. Covariates in '%s': {%s}. Covariates in '%s': {%s}.", thisRole, otherRole,
                     thisRole, String.join(", ", this.COVARIATES),
                     otherRole, String.join(",", other.COVARIATES));
-        } else if (intersect.size() != beforeNames.size() || intersect.size() != afterNames.size()) {
-            beforeNames.removeAll(intersect);
-            afterNames.removeAll(intersect);
+        } else if (intersection.size() != beforeNames.size() || intersection.size() != afterNames.size()) {
+            beforeNames.removeAll(intersection);
+            afterNames.removeAll(intersection);
             diffMessage = String.format("There are differences in the set of covariates requested in the"
                             + " '%s' and '%s' recalibrator reports. "
                             + " Exclusive to '%s': {%s}. Exclusive to '%s': {%s}.", thisRole, otherRole,

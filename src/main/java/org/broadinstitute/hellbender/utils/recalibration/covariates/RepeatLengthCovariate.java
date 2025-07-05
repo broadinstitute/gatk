@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -68,7 +67,7 @@ public class RepeatLengthCovariate implements CustomCovariate {
      * @return a pair of byte array (the repeat unit) and integer (the number of repetitions).
      */ // should really be a static method
     public Pair<byte[], Integer> findTandemRepeatUnits(byte[] readBases, int offset) {
-        int numRepetitions = 0; // tsato: BW? backward?
+        int numRepetitions = 0;
         byte[] bestBWRepeatUnit = new byte[]{readBases[offset]};
         for (int strSize = 1; strSize <= MAX_STR_UNIT_LENGTH; strSize++) {
             // fix repeat unit length
@@ -107,10 +106,10 @@ public class RepeatLengthCovariate implements CustomCovariate {
             for (int strLength = 1; strLength <= MAX_STR_UNIT_LENGTH; strLength++) {
                 // fix repeat unit length
                 // edge case: if candidate tandem repeat unit falls beyond edge of read, skip
-                if (offset+strLength+1 > readBases.length)  // tsato: is +1 needed...
+                if (offset+strLength+1 > readBases.length)
                     break;
 
-                // get forward repeat unit and # repeats (tsato: offset + 1 .... so we don't include the base at offset...)
+                // get forward repeat unit and # repeats (offset + 1 .... so we don't include the base at offset...)
                 byte[] forwardRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset + strLength + 1);
                 String forwardRepeatUnitStr = new String(forwardRepeatUnit, StandardCharsets.UTF_8);
                 maxFW = GATKVariantContextUtils.findNumberOfRepetitions(forwardRepeatUnit, Arrays.copyOfRange(readBases, offset + 1, readBases.length), true);

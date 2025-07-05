@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Represents a list of BQSR covariates.
+ * Represents a list of BQSR covariates. Formerly called StandardCovariateList.
  *
  * Note: the first two covariates ({@link ReadGroupCovariate} and {@link QualityScoreCovariate})
  * are special in the way that they are represented in the BQSR recalibration table, and are
@@ -23,7 +23,9 @@ import java.util.stream.Collectors;
  *
  * The remaining covariates are called "additional covariates". The default additional covariates
  * are the context and cycle covariates, but the client can request others and/or disable the default
- * additional covariates. TSATO: non required? additional?
+ * additional covariates.
+ *
+ * Also see the documentation in: {@link CustomCovariate}.
  */
 public final class BQSRCovariateList implements Iterable<Covariate>, Serializable {
     private static final long serialVersionUID = 1L;
@@ -32,22 +34,21 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
 
     private final ReadGroupCovariate readGroupCovariate;
     private final QualityScoreCovariate qualityScoreCovariate;
-    private final List<Covariate> additionalCovariates; // additional covariates are [context, cycle, (custom covariates)]
+    private final List<Covariate> additionalCovariates; // additional covariates are [context, cycle, { custom covariates }]
     private final List<Covariate> allCovariates;
 
     private final Map<Class<? extends Covariate>, Integer> indexByClass;
 
     private static final List<String> REQUIRED_COVARIATE_NAMES =
-            Collections.unmodifiableList(Arrays.asList("ReadGroupCovariate", "QualityScoreCovariate")); // TODO: can I replace these with regex so the
+            Collections.unmodifiableList(Arrays.asList("ReadGroupCovariate", "QualityScoreCovariate"));
 
     private static final List<String> STANDARD_COVARIATE_NAMES =
             Collections.unmodifiableList(Arrays.asList("ContextCovariate", "CycleCovariate"));
 
     public static final List<String> COVARIATE_PACKAGES =
             Collections.unmodifiableList(Arrays.asList("org.broadinstitute.hellbender.utils.recalibration.covariates"));
-    public static final Set<Class<?>> DISCOVERED_COVARIATES; // tsato: can replace with ? extends Covariate right?
+    public static final Set<Class<?>> DISCOVERED_COVARIATES;
 
-    // tsato: ported from StandardCovariateList; may not need this, or might be better to remove them
     public static final int READ_GROUP_COVARIATE_DEFAULT_INDEX = 0;
     public static final int BASE_QUALITY_COVARIATE_DEFAULT_INDEX = 1;
     public static final int CONTEXT_COVARIATE_DEFAULT_INDEX = 2;
@@ -61,7 +62,8 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
             classFinder.find(covariatePackage, Covariate.class);
         }
 
-        DISCOVERED_COVARIATES = Collections.unmodifiableSet(classFinder.getConcreteClasses()); // TODO: somehow this also finds BQSRCovariateListUnitTest
+        DISCOVERED_COVARIATES = Collections.unmodifiableSet(classFinder.getConcreteClasses().stream()
+                .filter(cl -> !cl.getSimpleName().isEmpty()).collect(Collectors.toSet())); // Filter out the annonymous UnitTest classes.
     }
 
     public static List<String> getAllDiscoveredCovariateNames() {
@@ -119,7 +121,7 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
             result.addAll(createStandardCovariates(rac, allReadGroups));
         }
 
-        for ( final String customCovariates : rac.COVARIATES ) { // tsato: how did COVARIATES get populated?
+        for ( final String customCovariates : rac.COVARIATES ) {
             if ( isRequiredCovariate(customCovariates) ) {
                 logger.warn("Covariate " + customCovariates + " is a required covariate that is always on. Ignoring explicit request for it.");
             }
@@ -154,7 +156,7 @@ public final class BQSRCovariateList implements Iterable<Covariate>, Serializabl
             if ( covariateName.equals(covariateClass.getSimpleName()) ) {
                 try {
                     @SuppressWarnings("unchecked")
-                    final Covariate covariate = ((Class<? extends Covariate>)covariateClass).getDeclaredConstructor().newInstance(); // tsato: understand what's going on here
+                    final Covariate covariate = ((Class<? extends Covariate>)covariateClass).getDeclaredConstructor().newInstance();
                     covariate.initialize(rac, allReadGroups);
                     return covariate;
                 }
