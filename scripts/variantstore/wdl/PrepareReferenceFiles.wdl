@@ -196,6 +196,10 @@ task CreateWeightedBedFile {
       FROM ~{dataset_name}.vet_001
       GROUP BY bin ORDER BY bin' > vet_weight_bins.tsv
 
+    echo "Vet weight bins generated."
+    ls -l vet_weight_bins.tsv
+    echo "That's the file"
+
     python /app/weighted_bed_from_vet_bins.py \
       --input-bin-data vet_weight_bins.tsv \
       --reference-dict ~{reference_dictionary} \
