@@ -15,7 +15,7 @@ workflow PrepareReferenceFiles {
   input {
     File reference_fasta
     String output_gcs_dir
-    String project
+    String project_id
     String dataset_name
   }
 
@@ -38,7 +38,7 @@ workflow PrepareReferenceFiles {
 
   call CreateWeightedBedFile {
     input:
-      project = project,
+      project_id = project_id,
       dataset_name = dataset_name,
       reference_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
       contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
@@ -177,7 +177,7 @@ task GenerateContigMapping {
 
 task CreateWeightedBedFile {
   input {
-    String project
+    String project_id
     String dataset_name
     String output_gcs_dir
     String variants_docker
@@ -191,7 +191,7 @@ task CreateWeightedBedFile {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    bq --apilog=false --project_id=~{project} query --max_rows 1000000000 --format=csv --use_legacy_sql=false '
+    bq --apilog=false --project_id=~{project_id} query --max_rows 1000000000 --format=csv --use_legacy_sql=false '
       SELECT CAST(TRUNC(location / 1000) * 1000 AS INT64) bin, count(*) entries
       FROM ~{dataset_name}.vet_001
       GROUP BY bin ORDER BY bin' > vet_weight_bins.tsv
