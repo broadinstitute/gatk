@@ -99,7 +99,7 @@ task GenerateBgzSequenceDictionaryAndIndex {
     output_gcs_dir="~{output_gcs_dir}"
     output_gcs_dir="${output_gcs_dir%/}"
 
-    base=$(basename output/${base}.bgz)
+    base=$(basename output/*.bgz)
 
     # Generate sequence dictionary using samtools. Make sure to specify the URI corresponding to where the bgzipped
     # FASTA will be stored in the GCS output directory.
