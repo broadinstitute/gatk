@@ -8,7 +8,7 @@ import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
-# Here we go again. 3
+# Here we go again. 4
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -121,6 +121,7 @@ workflow GvsJointVariantCalling {
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     call Utils.GetReference {
         input:
@@ -137,7 +138,7 @@ workflow GvsJointVariantCalling {
     call PrepareReferenceFiles.GenerateBgzSequenceDictionaryAndIndex {
         input:
             reference_fasta = select_first([reference]),
-            output_gcs_dir = effective_workspace_bucket,        # Not sure about this.
+            output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
             gatk_docker = effective_gatk_docker,
     }
 
@@ -145,7 +146,7 @@ workflow GvsJointVariantCalling {
         input:
             sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
             in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
-            output_gcs_dir = effective_workspace_bucket,        # Still not sure about this.
+            output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
             variants_docker = effective_variants_docker,
     }
 
@@ -186,7 +187,7 @@ workflow GvsJointVariantCalling {
             reference_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
             contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
             in_reference_json = GenerateContigMapping.reference_files_json,
-            output_gcs_dir = effective_workspace_bucket,        # Still not sure about this.
+            output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
             variants_docker = effective_variants_docker,
     }
 
