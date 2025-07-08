@@ -34,9 +34,8 @@ def main(args, bed_list):
     interval_size = binsize_kb * 1000
 
     def maybe_say(s):
-        if False:
-            print(s, sys.stderr)
-
+        if args.verbose:
+            print(s, file=sys.stderr)
 
     output = open(args.outfile, 'w') if args.outfile else sys.stdout
     # logic is simple.  For every row, print it to the new file.  EXCEPT, we also want to
@@ -139,6 +138,8 @@ def parse_args():
                         help='Reference sequence dictionary file')
     parser.add_argument('--contig-mapping', type=str, required=True,
                         help='Contig mapping file')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Enable verbose logging')
     return parser.parse_args()
 
 
