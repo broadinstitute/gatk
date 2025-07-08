@@ -143,7 +143,7 @@ workflow GvsJointVariantCalling {
 
     call PrepareReferenceFiles.GenerateContigMapping {
         input:
-            sequence_dictionary = GenerateBgzSequenceDictionaryAndIndex.reference_files_json.sequence_dictionary,
+            sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
             in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
             output_gcs_dir = effective_workspace_bucket,        # Still not sure about this.
             variants_docker = effective_variants_docker,
@@ -162,8 +162,8 @@ workflow GvsJointVariantCalling {
             gatk_override = gatk_override,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
-            custom_ref_dictionary = GenerateBgzSequenceDictionaryAndIndex.reference_files_json.sequence_dictionary,
-            custom_contig_mapping = GenerateContigMapping.reference_files_json.contig_mapping,
+            custom_ref_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
+            custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -215,7 +215,7 @@ workflow GvsJointVariantCalling {
             reference_name = reference_name,
             interval_list = interval_list_to_use,
             custom_reference = reference,
-            custom_contig_mapping = GenerateContigMapping.reference_files_json.contig_mapping,
+            custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
             custom_training_resources = "gs://fc-59f20e4b-b37a-4506-8b09-1eae66d3b0e4/fake_sites_only.vcf",
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
