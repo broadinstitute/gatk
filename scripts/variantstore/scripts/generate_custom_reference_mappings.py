@@ -6,7 +6,7 @@ import sys
 # Gather all the contigs from the sequence dictionary
 def map_contigs(args):
     # Grab whatever is identified as SN:contig_name in the file
-    contig_matcher = re.compile("SN:(\\S+)")
+    contig_matcher = re.compile(r"SN:(\S+)")
 
     all_raw_contigs = []
     with open(args.sequence_dictionary) as sequence_dictionary:
