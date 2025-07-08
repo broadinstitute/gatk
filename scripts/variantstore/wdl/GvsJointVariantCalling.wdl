@@ -8,6 +8,7 @@ import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
+# Here we go again. 1.
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -154,8 +155,8 @@ workflow GvsJointVariantCalling {
             gatk_override = gatk_override,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
-            custom_ref_dictionary = PrepareReferenceFiles.sequence_dictionary,
-            custom_contig_mapping = PrepareReferenceFiles.contig_mapping,
+            custom_ref_dictionary = PrepareReferenceFiles.reference_files.sequence_dictionary,
+            custom_contig_mapping = PrepareReferenceFiles.reference_files.contig_mapping,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -196,7 +197,7 @@ workflow GvsJointVariantCalling {
             reference_name = reference_name,
             interval_list = interval_list_to_use,
             custom_reference = reference,
-            custom_contig_mapping = PrepareReferenceFiles.contig_mapping,
+            custom_contig_mapping = PrepareReferenceFiles.reference_files.contig_mapping,
             custom_training_resources = "gs://fc-59f20e4b-b37a-4506-8b09-1eae66d3b0e4/fake_sites_only.vcf",
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
@@ -244,9 +245,9 @@ workflow GvsJointVariantCalling {
             scatter_count = extract_scatter_count,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
-            interval_weights_bed = PrepareReferenceFiles.weighted_bed,
+            interval_weights_bed = PrepareReferenceFiles.reference_files.weighted_bed,
             custom_reference = reference,
-            custom_contig_mapping = PrepareReferenceFiles.contig_mapping,
+            custom_contig_mapping = PrepareReferenceFiles.reference_files.contig_mapping,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
