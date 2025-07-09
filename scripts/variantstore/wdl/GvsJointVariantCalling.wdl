@@ -8,7 +8,7 @@ import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
-# Here we go again. 7
+# Here we go again. 8
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -182,7 +182,7 @@ workflow GvsJointVariantCalling {
 
     call PrepareReferenceFiles.CreateWeightedBedFile {
         input:
-#            go = BulkIngestGenomes.done,
+            go = BulkIngestGenomes.done,
             project_id = project_id,
             dataset_name = dataset_name,
             reference_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,

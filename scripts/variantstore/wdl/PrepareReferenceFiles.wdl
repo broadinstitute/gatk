@@ -193,7 +193,6 @@ task CreateWeightedBedFile {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Check if the vet_001 table exists
-    echo "Checking if vet_001 table exists in dataset ~{dataset_name} in project ~{project_id}..."
     if ! bq --apilog=false --project_id=~{project_id} show ~{dataset_name}.vet_001 &> /dev/null; then
       echo "ERROR: Table ~{dataset_name}.vet_001 does not exist. Please ensure the table exists before running this task."
       exit 1
