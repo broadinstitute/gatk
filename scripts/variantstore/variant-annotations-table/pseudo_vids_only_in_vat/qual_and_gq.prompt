@@ -1,0 +1,36 @@
+Write a Python script that takes as input a TSV with a header row and will output a different TSV to standard output. In each line of the input there will be fields called "gvcf_line" and "reblocked_gvcf_line" which are themselves lines encoded from TSV files.
+
+The output lines should look as follows. The first four columns are taken directly from each input line, explanations for the "%_qual" and "%_gq" columns follow below:
+
+- chr
+- input_position
+- input_ref
+- input_alt
+- gvcf_qual
+- gvcf_gq
+- reblocked_qual
+- reblocked_gq
+
+
+The "%_qual" columns correspond to the fifth element (0-based) of the TSV lines held by gvcf_line and reblocked_gvcf_line. e.g. for a reblocked_gvcf_line like
+
+
+chr19\t147780\t.\tCATTCGATTTGATGATGATTTCAATAAATTTCATTCGATGATTCCATTCGAATCCATTCGATGATGAGTCCATCCATTTCAGTTTCATGATAATTCCATTTGTTTCAATTCGATGGTGTTCC\tC,<NON_REF>\t0.2\t.\tAS_QUALapprox=|17|0;AS_VarDP=0|0|0;DP=3;MQ=10.3;QUALapprox=17;RAW_GT_COUNT=0,0,1;RAW_MQandDP=318,3;VarDP=2\tGT:AD:AF:DP:F1R2:F2R1:GP:GQ:ICNT:MB:PL:PRI:PS:SB:SPL\t1|1:2,0,0:0,0:2:1,0,0:1,0,0:0.19957,16.278,16.706,134.97,164.97,137.98:3:5,0:0,2,0,0:17,3,0,117,117,117:0,30,33.01,34.77,64.77,37.78:143247694:1,1,0,0:0,24,255
+
+Here the reblocked_qual value would be 0.2. The same thing should be done with gvcf_line to determine gvcf_qual.
+
+
+The next-to-last element of gvcf_lines and reblocked_gvcf_lines should be a colon-delimited value. In the example above this would be
+
+
+GT:AD:AF:DP:F1R2:F2R1:GP:GQ:ICNT:MB:PL:PRI:PS:SB:SPL
+
+
+One of these elements should be "GQ". Determine the index of "GQ". In this example the index of GQ is 7 (0-based).
+
+
+The last element of gvcf_lines and reblocked_gvcf_lines should also be a colon-delimited value. In the example above this would be
+
+1|1:2,0,0:0,0:2:1,0,0:1,0,0:0.19957,16.278,16.706,134.97,164.97,137.98:3:5,0:0,2,0,0:17,3,0,117,117,117:0,30,33.01,34.77,64.77,37.78:143247694:1,1,0,0:0,24,255
+
+Subscript into this with the index of "GQ" determined above to find the GQ value. In this example it would be 3, so reblocked_gq would be 3. The same thing should be done with gvcf_line to determine gvcf_gq.

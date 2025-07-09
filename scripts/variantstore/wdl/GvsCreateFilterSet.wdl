@@ -30,6 +30,8 @@ workflow GvsCreateFilterSet {
     File? gatk_override
 
     Boolean use_VETS = true
+    # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
+    Boolean add_additional_annotations_to_sites_only_vcf = true
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
@@ -123,6 +125,7 @@ workflow GvsCreateFilterSet {
         fq_alt_allele_table        = fq_alt_allele_table,
         alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
         excess_alleles_threshold   = 100,
+        add_additional_annotations = add_additional_annotations_to_sites_only_vcf,
         output_file                = "${filter_set_name}_${i}.vcf.gz",
         project_id                 = project_id,
         dataset_id                 = dataset_name,
@@ -314,8 +317,8 @@ task ExtractFilterTask {
 
     String output_file
     Int? excess_alleles_threshold
-    
     File? custom_contig_mapping
+    Boolean add_additional_annotations = false
 
     # Runtime Options:
     String gatk_docker
@@ -362,7 +365,8 @@ task ExtractFilterTask {
       --call-set-identifier ~{call_set_identifier} \
       --wdl-step GvsCreateFilterSet \
       --wdl-call ExtractFilterTask \
-      --shard-identifier ~{intervals_name}
+      --shard-identifier ~{intervals_name} \
+      --add-additional-annotations ~{add_additional_annotations}
   >>>
 
   runtime {

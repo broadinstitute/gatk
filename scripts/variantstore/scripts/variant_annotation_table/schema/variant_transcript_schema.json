@@ -420,6 +420,18 @@
     "mode": "Repeated"
   },
   {
+    "description": "MANE Select Transcript Name",
+    "name": "mane_select_name",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "MANE Plus Clinical Transcript Name",
+    "name": "mane_plus_clinical_name",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
     "description": "gnomAD: 'Total' frequency",
     "name": "gnomad_all_af",
     "type": "Float",

@@ -1,11 +1,11 @@
-# Creating the Variant Annotations Table
+# Creating the Variant Annotations Table (VAT)
 
-The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
+The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates a queryable table in BigQuery, and outputs a bgzipped TSV file with the contents of that table.
 
 
 ### VAT WDLs
 
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS and then uses that and an ancestry file TSV to build the variant annotations table.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS if no input sites only VCF is specified, and then uses that and an ancestry file TSV to build the VAT.
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
 ### Run GvsCreateVATfromVDS
@@ -60,7 +60,3 @@ useful to avoid having to download tens of GiBs of Nirvana references in each sh
 In order to use this reference disk, the 'Use reference disk' option in Terra must be selected as shown below:
 
 ![Terra Use reference disks](Reference%20Disk%20Terra%20Opt%20In.png)
-
-**Note:** this Nirvana reference image was not available in time for it to be used to create the Delta VAT. The
-`GvsCreateVATfromVDS` WDL has been updated to take advantage of references loaded from an attached
-reference image and should be ready to use starting with the AoU Echo callset.

@@ -74,8 +74,16 @@ workflow GvsPopulateAltAllele {
     }
   }
 
+  call VerifySampleCount {
+    input:
+      go = PopulateAltAlleleTable.done[0],
+      dataset_name = dataset_name,
+      project_id = project_id,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   output {
-    Boolean done = PopulateAltAlleleTable.done[0]
+    Boolean done = VerifySampleCount.done
     String recorded_git_hash = effective_git_hash
   }
 }
@@ -294,5 +302,54 @@ task PopulateAltAlleleTable {
 
   output {
     Boolean done = true
+  }
+}
+
+task VerifySampleCount {
+  input {
+    Boolean go = true
+    String dataset_name
+    String project_id
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine the current state of the GVS database, never use call cache
+    volatile: true
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Determine the number of distinct sample_ids in the alt_allele table
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+      'SELECT COUNT(DISTINCT sample_id) AS num_samples FROM `~{dataset_name}.alt_allele`' | sed 1d > num_samples_in_aa.csv
+
+    # Determine the number of distinct sample_ids in the sample_info table
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    'SELECT COUNT(DISTINCT sample_id) AS num_samples FROM `~{dataset_name}.sample_info` WHERE withdrawn IS NULL' | sed 1d > num_samples_in_si.csv
+
+    # Compare the two counts
+    set +o errexit
+    diff num_samples_in_aa.csv num_samples_in_si.csv
+    rc=$?
+    set -o errexit
+    if [[ $rc -ne 0 ]]; then
+      echo "The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele differs from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
+      exit 1;
+    fi
+  >>>
+
+  output {
+    Boolean done = true
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }

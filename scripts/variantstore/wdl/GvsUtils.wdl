@@ -127,11 +127,11 @@ task GetToolVersions {
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
-    # there are a handlful of tasks that require the larger GNU libc-based `slim`.
+    # there are a handful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-06-02-alpine-e0bed0288145"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-06-30-alpine-61f482e29ee5"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-04-29-gatkbase-99aac5f90069"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-06-26-gatkbase-f51a86f2644a"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -1208,6 +1208,40 @@ task SelectVariants {
         File output_vcf = output_vcf_name
         File output_vcf_index = output_vcf_index_name
         File monitoring_log = "monitoring.log"
+    }
+}
+
+task MergeJSONs {
+    input {
+        Array[File] input_files
+        String variants_docker
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    command <<<
+      # Prepend date, time and pwd to xtrace log entries.
+      PS4='\D{+%F %T} \w $ '
+      set -o errexit -o nounset -o pipefail -o xtrace
+
+      bash ~{monitoring_script} > monitoring.log &
+
+      # Join all JSON array files into a single JSON array file.
+      jq --slurp 'add' ~{sep=' ' input_files} > output.json
+
+      # Also output TSV. The code below is adjusted for JSON vs JSONL input format:
+      # https://gist.github.com/sloanlance/6b648e51c3c2a69ae200c93c6a310cb6#first-row-keys-only
+      jq --raw-output '(.[0] | keys_unsorted) as $keys | $keys, map([.[ $keys[] ]|tostring])[] | @tsv' output.json > output.tsv
+    >>>
+
+    runtime {
+      docker: variants_docker
+    }
+
+    output {
+      File merged_json = "output.json"
+      File merged_tsv = "output.tsv"
+      File monitoring_log = "monitoring.log"
     }
 }
 
