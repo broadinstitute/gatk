@@ -6,7 +6,9 @@ import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
+import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
+# Here we go again. 6
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -52,6 +54,10 @@ workflow GvsJointVariantCalling {
         File? gatk_override
 
         String reference_name = "hg38"
+
+        # for supporting custom references... for now. Later map the references and use the reference_name above
+        File? reference
+
         Boolean is_wgs = true
         File? interval_list
 
@@ -115,6 +121,7 @@ workflow GvsJointVariantCalling {
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     call Utils.GetReference {
         input:
@@ -127,6 +134,21 @@ workflow GvsJointVariantCalling {
     File default_interval_list = if (is_wgs) then GetReference.reference.wgs_calling_interval_list
                                  else GetReference.reference.exome_calling_interval_list
     File interval_list_to_use = select_first([interval_list, default_interval_list])
+
+    call PrepareReferenceFiles.GenerateBgzSequenceDictionaryAndIndex {
+        input:
+            reference_fasta = select_first([reference]),
+            output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
+            gatk_docker = effective_gatk_docker,
+    }
+
+    call PrepareReferenceFiles.GenerateContigMapping {
+        input:
+            sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
+            in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
+            output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
+            variants_docker = effective_variants_docker,
+    }
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
@@ -141,6 +163,8 @@ workflow GvsJointVariantCalling {
             gatk_override = gatk_override,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
+            custom_ref_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
+            custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -154,6 +178,17 @@ workflow GvsJointVariantCalling {
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
             is_wgs = is_wgs,
+    }
+
+    call PrepareReferenceFiles.CreateWeightedBedFile {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            reference_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
+            contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
+            in_reference_json = GenerateContigMapping.reference_files_json,
+            output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
+            variants_docker = effective_variants_docker,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -180,6 +215,9 @@ workflow GvsJointVariantCalling {
             use_VETS = !use_VQSR,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
+            custom_reference = reference,
+            custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
+            custom_training_resources = "gs://fc-59f20e4b-b37a-4506-8b09-1eae66d3b0e4/fake_sites_only.vcf",
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
@@ -226,6 +264,9 @@ workflow GvsJointVariantCalling {
             scatter_count = extract_scatter_count,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
+            interval_weights_bed = read_json(CreateWeightedBedFile.updated_reference_files_json).weighted_bed,
+            custom_reference = reference,
+            custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
