@@ -191,6 +191,8 @@ task CreateWeightedBedFile {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
+    echo "Generating vet weight bins from BigQuery dataset ~{dataset_name} in project ~{project_id}."
+
     bq --apilog=false --project_id=~{project_id} query --max_rows 1000000000 --format=csv --use_legacy_sql=false '
       SELECT CAST(TRUNC(location / 1000) * 1000 AS INT64) bin, count(*) entries
       FROM ~{dataset_name}.vet_001

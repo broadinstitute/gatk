@@ -8,7 +8,7 @@ import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
-# Here we go again. 5
+# Here we go again. 6
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
