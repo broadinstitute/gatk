@@ -358,6 +358,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1619
+             - vs_1691_wdl_for_the_dogs
          tags:
              - /.*/
    - name: GvsIngestTieout

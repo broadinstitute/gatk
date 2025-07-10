@@ -126,6 +126,9 @@ task GenerateBgzSequenceDictionaryAndIndex {
 
   output {
     File reference_files_json = "reference_files.json"
+    File ref_fasta = "output/$(basename output/*.bgz)"
+    File ref_index = "output/$(basename output/*.fai)"
+    File ref_dict = "output/$(basename output/*.dict)"
   }
 }
 
@@ -144,9 +147,11 @@ task GenerateContigMapping {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     base=$(basename ~{sequence_dictionary} .dict)
+    contig_mapping_file="${base}.contig_mapping.tsv"
 
     python3 /app/generate_custom_reference_mappings.py \
       ~{sequence_dictionary} > ${base}.contig_mapping.tsv
+    echo ${base}.contig_mapping.tsv > contig_mapping_file_name.txt
 
     # Ensure no trailing slash on the GCS output directory
     output_gcs_dir="~{output_gcs_dir}"
@@ -172,6 +177,7 @@ task GenerateContigMapping {
 
   output {
     File reference_files_json = "updated_reference_files.json"
+    File contig_mapping_file = read_string("contig_mapping_file_name.txt")
   }
 }
 
@@ -242,5 +248,7 @@ task CreateWeightedBedFile {
 
   output {
     File updated_reference_files_json = "updated_reference_files.json"
+    File vet_weight_bins = "vet_weight_bins.tsv"
+    File weighted_bed = "weighted.bed"
   }
 }
