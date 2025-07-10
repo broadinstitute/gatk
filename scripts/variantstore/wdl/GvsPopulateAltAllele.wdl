@@ -336,8 +336,8 @@ task VerifySampleCount {
     rc=$?
     set -o errexit
     if [[ $rc -ne 0 ]]; then
-      echo "The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele differs from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
-      exit 1;
+      # Just log this, don't fail the task. Because we may withdraw samples at any time, it's reasonable that the counts may not match.
+      echo "Note: The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele differs from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
     fi
   >>>
 
