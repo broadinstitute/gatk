@@ -40,7 +40,6 @@ workflow GvsCreateFilterSet {
     RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
 
-    String? gatk_docker
     File? training_python_script
     File? scoring_python_script
   }

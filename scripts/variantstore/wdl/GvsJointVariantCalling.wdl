@@ -8,7 +8,7 @@ import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
-# Here we go again. 8
+# Here we go again. 9
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -56,7 +56,8 @@ workflow GvsJointVariantCalling {
         String reference_name = "hg38"
 
         # for supporting custom references... for now. Later map the references and use the reference_name above
-        File? reference
+        File? custom_reference
+        String? custom_training_resources
 
         Boolean is_wgs = true
         File? interval_list
@@ -137,7 +138,7 @@ workflow GvsJointVariantCalling {
 
     call PrepareReferenceFiles.GenerateBgzSequenceDictionaryAndIndex {
         input:
-            reference_fasta = select_first([reference]),
+            reference_fasta = select_first([custom_reference]),
             output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
             gatk_docker = effective_gatk_docker,
     }
@@ -216,9 +217,9 @@ workflow GvsJointVariantCalling {
             use_VETS = !use_VQSR,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
-            custom_reference = reference,
+            custom_reference = custom_reference,
             custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
-            custom_training_resources = "gs://fc-59f20e4b-b37a-4506-8b09-1eae66d3b0e4/fake_sites_only.vcf",
+            custom_training_resources = custom_training_resources,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
@@ -266,7 +267,7 @@ workflow GvsJointVariantCalling {
             reference_name = reference_name,
             interval_list = interval_list_to_use,
             interval_weights_bed = read_json(CreateWeightedBedFile.updated_reference_files_json).weighted_bed,
-            custom_reference = reference,
+            custom_reference = custom_reference,
             custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
