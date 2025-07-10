@@ -2,6 +2,41 @@ version 1.0
 
 import "../structs/Reference.wdl" as Reference
 
+task GetReferenceNew {
+  input {
+    String reference_name
+    String basic_docker
+  }
+
+  command <<<
+    if reference_name == "hg38" {
+      echo "Using Standard hg38 reference files."
+
+      echo "{
+        \"reference_fasta\": \"gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta\",
+        \"reference_fasta_index\": \"gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai\",
+        \"reference_dict\": \"gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai\",
+      }" > reference_files.json
+
+    } else {
+      echo "Reference name not recognized: ~{reference_name}"
+      exit 1
+    }
+  >>>
+
+  runtime {
+    docker: basic_docker
+    memory: "1 GiB"
+    disks: "local-disk 100 HDD"
+    preemptible: 0
+    cpu: 1
+  }
+
+  output {
+    File reference_files_json = "reference_files.json"
+  }
+}
+
 task GetReference {
   input {
     String reference_name
