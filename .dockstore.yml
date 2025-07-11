@@ -212,7 +212,6 @@ workflows:
          - master
          - ah_var_store
          - vs_1691_wdl_for_the_dogs
-         - gg_VS-1691_DogWdl
        tags:
          - /.*/
    - name: GvsImportGenomes
@@ -302,7 +301,6 @@ workflows:
              - ah_var_store
              - vs_1670_release_0_6_3
              - vs_1691_wdl_for_the_dogs
-             - gg_VS-1691_DogWdl
          tags:
              - /.*/
    - name: GvsBeta
@@ -360,7 +358,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1619
-             - gg_VS-1691_DogWdl
+             - vs_1691_wdl_for_the_dogs
          tags:
              - /.*/
    - name: GvsIngestTieout
