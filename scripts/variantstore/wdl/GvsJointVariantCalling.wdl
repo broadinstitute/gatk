@@ -196,7 +196,7 @@ workflow GvsJointVariantCalling {
                 dataset_name = dataset_name,
                 reference_dictionary = select_first([custom_sequence_dictionary]),
                 contig_mapping = select_first([custom_contig_mapping]),
-                in_reference_json = GenerateContigMapping.reference_files_json,
+                in_reference_json = select_first([GenerateContigMapping.reference_files_json]),
                 output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
                 variants_docker = effective_variants_docker,
         }
