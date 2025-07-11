@@ -372,7 +372,7 @@ dependencies {
         implementation 'org.scala-lang:scala-library:2.13.14'
         implementation 'com.nimbusds:nimbus-jose-jwt:9.41.2'
         implementation 'org.codehaus.janino:janino:3.1.12'
-        implementation 'org.apache.zookeeper:zookeeper:3.9.2'
+        implementation 'org.apache.zookeeper:zookeeper:3.9.3'
         implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.25'
         implementation 'com.squareup.okio:okio:3.9.1'
         implementation 'org.codehaus.jettison:jettison:1.5.4'
