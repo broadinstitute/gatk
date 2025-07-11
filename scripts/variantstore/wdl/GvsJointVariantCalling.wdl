@@ -148,7 +148,7 @@ workflow GvsJointVariantCalling {
 
         call PrepareReferenceFiles.GenerateContigMapping {
             input:
-                sequence_dictionary = custom_sequence_dictionary,
+                sequence_dictionary = select_first([custom_sequence_dictionary]),
                 in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
                 output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
                 variants_docker = effective_variants_docker,
@@ -194,8 +194,8 @@ workflow GvsJointVariantCalling {
                 go = BulkIngestGenomes.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
-                reference_dictionary = custom_sequence_dictionary,
-                contig_mapping = custom_contig_mapping,
+                reference_dictionary = select_first([custom_sequence_dictionary]),
+                contig_mapping = select_first([custom_contig_mapping]),
                 in_reference_json = GenerateContigMapping.reference_files_json,
                 output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
                 variants_docker = effective_variants_docker,
