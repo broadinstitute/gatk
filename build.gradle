@@ -280,7 +280,7 @@ dependencies {
     implementation 'org.osgi:org.osgi.annotation.bundle'
 
 
-    implementation 'org.apache.commons:commons-lang3:3.14.0'
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
     implementation('org.apache.commons:commons-math3'){
         version {
             strictly '3.5' // changing this breaks ModelSegmentsIntegrationTests, they're quite brittle
