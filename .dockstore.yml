@@ -343,7 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1676_AnVIL_3K
+             - sanity_check_ref_ranges_schema
          tags:
              - /.*/
    - name: GvsIngestTieout
