@@ -221,9 +221,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         String tableNumber = String.format("%03d", sampleTableNumber);
 
-        boolean refRangesRowsExist = false;
-        boolean vetRowsExist = false;
-        boolean vcfHeaderRowsExist = false;
+        // The boxed Boolean existence check variables below indicate one of three possible states:
+        // 1. No existence check was performed (null). If there is a load status row that indicates that this class of
+        //    data has already been loaded, the existence check will be skipped.
+        // 2. The existence check was performed, and rows exist (true).
+        // 3. The existence check was performed, and no rows exist (false).
+        Boolean refRangesRowsExist = null;
+        Boolean vetRowsExist = null;
+        Boolean vcfHeaderRowsExist = null;
 
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
@@ -288,7 +293,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // some class members that the CreateVariantIngestFilesTest expects to be initialized.
         SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
 
-        if (enableReferenceRanges && !refRangesRowsExist) {
+        if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
             RefCreator.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
 
@@ -297,10 +302,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
         }
 
-        if (enableVet && !vetRowsExist) {
+        if (enableVet && vetRowsExist == Boolean.FALSE) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
-        if (enableVCFHeaders && !vcfHeaderRowsExist) {
+        if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             buildAllVcfLineHeaders();
             vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
         }
