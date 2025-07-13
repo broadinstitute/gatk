@@ -241,6 +241,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 if (state.areReferencesLoaded()) {
                     logger.info("Sample ID {}: Reference ranges writing enabled but REFERENCES_LOADED status row found, skipping.", sampleId);
                 } else {
+                    RefCreator.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
                     refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
