@@ -43,16 +43,15 @@ public final class RefCreator {
     // for easily calculating percentages later
     private long totalRefEntries = 0L;
 
-    private static final String COMPRESSED_REF_RANGES_COLUMN = "packed_ref_data";
-
     public static void sanityCheckRefRangesSchemaForCompressedReferences(String projectID, String datasetName, Long sampleId, boolean storeCompressedReferences) {
-        BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
-        int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
-        String tableName = REF_RANGES_FILETYPE_PREFIX + String.format("%03d", sampleTableNumber);
-        TableId tableId = TableId.of(projectID, datasetName, tableName);
+        final BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+        final int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
+        final String tableName = REF_RANGES_FILETYPE_PREFIX + String.format("%03d", sampleTableNumber);
+        final TableId tableId = TableId.of(projectID, datasetName, tableName);
 
-        Table table = bigquery.getTable(tableId);
+        final Table table = bigquery.getTable(tableId);
         table.getDefinition().getSchema();
+        final String COMPRESSED_REF_RANGES_COLUMN = "packed_ref_data";
 
         boolean foundCompressedColumn = false;
         for (com.google.cloud.bigquery.Field field : table.getDefinition().getSchema().getFields()) {
@@ -62,9 +61,12 @@ public final class RefCreator {
             }
         }
         if (foundCompressedColumn ^ storeCompressedReferences) {
-            throw new UserException("reference ranges table " + tableName + " in dataset " + datasetName + " in project " + projectID +
-                    " has an incompatible schema for the storeCompressedReferences value. " +
-                    "Found column '" + COMPRESSED_REF_RANGES_COLUMN + "' = " + foundCompressedColumn + ", but storeCompressedReferences = " + storeCompressedReferences + ". ");
+            throw new UserException("reference ranges table " + projectID + "." + datasetName + "." + tableName +
+                    " has an schema incompatible with the invocation of this tool with respect to compressed references. " +
+                    "This tool was invoked with storeCompressedReferences = " + storeCompressedReferences + ", but a check for " +
+                    "compressed references column '" + COMPRESSED_REF_RANGES_COLUMN + "' returned " + foundCompressedColumn + ".");
+
+
         }
     }
 
