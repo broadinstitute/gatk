@@ -294,7 +294,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
 
         if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
-            RefCreator.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
 
             // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
