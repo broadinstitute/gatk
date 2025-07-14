@@ -126,6 +126,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1679_DontLetCreateFilterSetReuseFilterSetName
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -288,6 +289,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1670_release_0_6_3
+             - gg_VS-1679_DontLetCreateFilterSetReuseFilterSetName
          tags:
              - /.*/
    - name: GvsBeta
@@ -344,6 +346,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1676_AnVIL_3K
+             - gg_VS-1679_DontLetCreateFilterSetReuseFilterSetName
          tags:
              - /.*/
    - name: GvsIngestTieout

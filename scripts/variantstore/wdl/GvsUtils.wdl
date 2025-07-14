@@ -852,7 +852,6 @@ task ValidateFilterSetName {
         String project_id
         String fq_filter_set_info_table
         String filter_set_name
-        String filter_set_info_timestamp = ""
         String cloud_sdk_docker
     }
     meta {
@@ -1354,6 +1353,31 @@ task PopulateFilterSetInfo {
     bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+    # Check if table exists and contains rows with the same filter_set_name
+    echo "Checking if filter set '~{filter_set_name}' already exists in ~{fq_filter_set_info_destination_table}"
+
+    # Convert table name for bq command (replace . with :)
+    bq_table_check=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
+
+    # Check if table exists and query for existing filter_set_name
+    set +o errexit
+    existing_count=$(bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1 \
+    "SELECT COUNT(*) as count FROM \`~{fq_filter_set_info_destination_table}\` WHERE filter_set_name = '~{filter_set_name}'" 2>/dev/null | tail -1)
+    query_exit_code=$?
+    set -o errexit
+
+    if [[ $query_exit_code -eq 0 ]]; then
+      # Table exists, check if filter_set_name already exists
+      if [[ "$existing_count" != "0" ]]; then
+        echo "ERROR: Filter set '~{filter_set_name}' already exists in table ~{fq_filter_set_info_destination_table}"
+        echo "Found $existing_count existing rows with this filter_set_name"
+        exit 1
+      fi
+      echo "Table ~{fq_filter_set_info_destination_table} exists but filter_set_name '~{filter_set_name}' not found. Proceeding..."
+    else
+      echo "Table ~{fq_filter_set_info_destination_table} does not exist yet. Proceeding..."
+    fi
 
     echo "Creating SNPs recalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
