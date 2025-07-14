@@ -62,11 +62,9 @@ public final class RefCreator {
         }
         if (foundCompressedColumn ^ storeCompressedReferences) {
             throw new UserException("reference ranges table " + projectID + "." + datasetName + "." + tableName +
-                    " has an schema incompatible with the invocation of this tool with respect to compressed references. " +
+                    " has a schema incompatible with the invocation of this tool. " +
                     "This tool was invoked with storeCompressedReferences = " + storeCompressedReferences + ", but a check for " +
                     "compressed references column '" + COMPRESSED_REF_RANGES_COLUMN + "' returned " + foundCompressedColumn + ".");
-
-
         }
     }
 
