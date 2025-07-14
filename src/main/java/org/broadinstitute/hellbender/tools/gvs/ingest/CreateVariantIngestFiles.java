@@ -246,11 +246,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 if (state.areReferencesLoaded()) {
                     logger.info("Sample ID {}: Reference ranges writing enabled but REFERENCES_LOADED status row found, skipping.", sampleId);
                 } else {
+                    logger.info("Sample ID {}: Reference ranges writing enabled and no REFERENCES_LOADED status row found, looking for existing rows.", sampleId);
                     RefCreator.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
                     refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
                                 sampleId, sampleName);
+                    } else {
+                        logger.info("Sample ID {}: No preexisting ref_ranges rows found.", sampleId);
                     }
                     shouldWriteReferencesLoadedStatusRow = true;
                 }
@@ -260,10 +263,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 if (state.areVariantsLoaded()) {
                     logger.info("Sample ID {}: Variant writing enabled but VARIANTS_LOADED status row found, skipping.", sampleId);
                 } else {
+                    logger.info("Sample ID {}: Variant writing enabled and no VARIANTS_LOADED status row found, looking for existing rows.", sampleId);
                     vetRowsExist = VetCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (vetRowsExist) {
                         logger.warn("Vet enabled for sample id = {}, name = {} but preexisting vet rows found, skipping vet writes.",
                                 sampleId, sampleName);
+                    } else {
+                        logger.info("Sample ID {}: No preexisting vet rows found.", sampleId);
                     }
                     shouldWriteVariantsLoadedStatusRow = true;
                 }
@@ -294,17 +300,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
 
         if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
+            logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
 
             // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
             // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
+            logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
             samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
         }
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
+            logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
+            logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);
             buildAllVcfLineHeaders();
             vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
         }
