@@ -13,9 +13,47 @@ then
 else
   MONITOR_MOUNT_POINT_DEFAULT=/cromwell_root
 fi
-
 MONITOR_MOUNT_POINT=${MONITOR_MOUNT_POINT:-$MONITOR_MOUNT_POINT_DEFAULT}
-SLEEP_TIME=${SLEEP_TIME:-"10"}
+
+# Usage block
+usage() {
+  echo "Usage: $0 [options]"
+  echo " This script monitors system resources and (optionally) GATK heap usage."
+  echo " Output from the script is printed to stdout and can be redirected to a file."
+  echo "  -m, --monitor-heap     Enable GATK heap monitoring (optional)"
+  echo "  -s, --sleep-time N     Set sleep interval in seconds (default: 10). This is the amount of time between logging statements."
+  echo "  -h, --help             Show this help message and exit"
+}
+
+# Parse arguments for monitor-heap and sleep-time
+MONITOR_HEAP=false
+SLEEP_TIME=10
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --monitor-heap|-m)
+      MONITOR_HEAP=true
+      shift
+      ;;
+    --sleep-time|-s)
+      if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+        SLEEP_TIME=$2
+        shift 2
+      else
+        echo "Error: --sleep-time|-s requires a numeric argument." >&2
+        usage
+        exit 1
+      fi
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+ done
 
 function getCpuUsage() {
     # get the summary cpu statistics (i.e. for all cpus) since boot
@@ -239,12 +277,25 @@ function getBlockDeviceIO() {
 }
 
 
+function getGATKheapDump() {
+    GATK_PID=$(jps -l | grep 'gatk.jar' | awk '{print $1}')
+    if [[ -z "$GATK_PID" ]]; then
+        echo "GATK process not found in list of running java processes."
+        jps -l
+    else
+        jmap -histo $GATK_PID | head -n 50
+    fi
+}
+
 function runtimeInfo() {
     echo [$(date)]
     echo \* CPU usage: $(getCpuUsage)
     echo \* Memory usage: $(getMemUnavailable)
     echo \* Disk usage: $(getDisk Used $MONITOR_MOUNT_POINT) $(getDisk Use% $MONITOR_MOUNT_POINT)
     echo \* Read/Write IO: $(getBlockDeviceIO "$BLOCK_DEVICE_STAT_FILE")
+    if [[ "$MONITOR_HEAP" == "true" ]]; then
+        echo \* GATK heap dump: $(getGATKheapDump)
+    fi
 }
 
 # print out header info

@@ -6,7 +6,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2025-05-31-alpine-build-base AS build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2025-06-08-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
@@ -40,6 +40,8 @@ RUN apk add --no-cache perl jq
 
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /localvenv /localvenv
+# Copy htslib artifacts
+COPY --from=build /htslib /htslib
 # Copy bcftools artifacts
 COPY --from=build /bcftools /bcftools
 # Copy vcftools artifacts
@@ -56,6 +58,7 @@ COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/sch
 
 ENV PERL5LIB=/vcftools/share/perl5/site_perl/
 ENV PATH=/bcftools/bin:/vcftools/bin:$PATH
+ENV LD_LIBRARY_PATH=/htslib/lib
 
 # Have the bash shell of the command script automatically activate the Python virtual environment.
 COPY activate_localvenv.sh /root/.bashrc

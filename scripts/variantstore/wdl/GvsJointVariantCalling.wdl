@@ -24,6 +24,8 @@ workflow GvsJointVariantCalling {
         Boolean collect_variant_calling_metrics = false
         String drop_state = "FORTY"
         Boolean use_VQSR = false
+        Boolean add_additional_annotations_to_sites_only_vcf = false
+
         Boolean use_compressed_references = false
         Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
@@ -225,6 +227,7 @@ workflow GvsJointVariantCalling {
             call_set_identifier = call_set_identifier,
             filter_set_name = effective_filter_set_name,
             use_VETS = !use_VQSR,
+            add_additional_annotations_to_sites_only_vcf = add_additional_annotations_to_sites_only_vcf,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
             custom_reference = custom_reference,

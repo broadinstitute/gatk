@@ -252,6 +252,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1676_AnVIL_3K
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -359,6 +360,7 @@ workflows:
              - ah_var_store
              - VS-1619
              - vs_1691_wdl_for_the_dogs
+             - vs_1676_AnVIL_3K
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -490,3 +492,10 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: SearchGVCFsForUnmappedVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/pseudo_vids_only_in_vat/SearchGVCFsForUnmappedVIDs.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - vs_1671_vat_discrepancies
