@@ -204,6 +204,16 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: PrepareReferenceFiles
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/PrepareReferenceFiles.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1691_wdl_for_the_dogs
+       tags:
+         - /.*/
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -291,6 +301,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1670_release_0_6_3
+             - vs_1691_wdl_for_the_dogs
          tags:
              - /.*/
    - name: GvsBeta
@@ -348,6 +359,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1619
+             - vs_1691_wdl_for_the_dogs
              - vs_1676_AnVIL_3K
          tags:
              - /.*/
