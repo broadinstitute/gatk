@@ -636,17 +636,32 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @return
      */
     @VisibleForTesting
-    static List<GencodeGtfTranscriptFeature> retreiveMANESelectModeTranscriptsCriteria(final List<GencodeGtfTranscriptFeature> transcripts) {
-        final List<GencodeGtfTranscriptFeature> plusClincal = transcripts.stream()
-                .filter(g -> hasTag(g, MANE_PLUS_CLINICAL)).toList();
-        if (plusClincal.size() > 0) {
-            return plusClincal;
+    static List<GencodeGtfTranscriptFeature> retrieveMANESelectModeTranscriptsCriteria(final VariantContext variant, final List<GencodeGtfTranscriptFeature> transcripts) {
+        final List<GencodeGtfTranscriptFeature> plusClinical = transcripts.stream().filter(g -> hasTag(g, MANE_PLUS_CLINICAL)).toList();
+
+        boolean plusClinicalContainsVariant = false;
+        for(GencodeGtfTranscriptFeature plusClinicalTranscript : plusClinical) {
+            if(plusClinicalTranscript.contains(variant)) {
+                plusClinicalContainsVariant = true;
+                break;
+            }
         }
 
-        final List<GencodeGtfTranscriptFeature> maneSelectTranscripts = transcripts.stream()
-                .filter(g -> hasTag(g, MANE_SELECT)).toList();
+        if(plusClinical.size() > 0 && plusClinicalContainsVariant) {
+            return plusClinical;
+        }
 
-        if (maneSelectTranscripts.size() > 0) {
+        final List<GencodeGtfTranscriptFeature> maneSelectTranscripts = transcripts.stream().filter(g -> hasTag(g, MANE_SELECT)).toList();
+
+        boolean maneSelectContainsVariant = false;
+        for(GencodeGtfTranscriptFeature maneSelectTranscript : maneSelectTranscripts) {
+            if(maneSelectTranscript.contains(variant)) {
+                maneSelectContainsVariant = true;
+                break;
+            }
+        }
+
+        if(maneSelectTranscripts.size() > 0 && maneSelectContainsVariant) {
             return maneSelectTranscripts;
         }
 
@@ -889,7 +904,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( gtfFeature.getGtfSourceFileType().equals(GencodeGtfCodec.GTF_FILE_TYPE_STRING) ) {
             if (preferMANETranscripts) {
                 // Filter out the non-MANE_Select/Mane_Plus_Clinical transcripts if we're only using MANE transcripts:
-                transcriptList = retreiveMANESelectModeTranscriptsCriteria(gtfFeature.getTranscripts());
+                transcriptList = retrieveMANESelectModeTranscriptsCriteria(variant, gtfFeature.getTranscripts());
             } else {
                 transcriptList = retrieveBasicTranscripts(gtfFeature);
             }
@@ -898,7 +913,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // We still want to be able to prefer MANE transcripts with the hg19 data source, hence the condition below
             if (preferMANETranscripts && gtfFeature.getGtfSourceFileType().equals(EnsemblGtfCodec.GTF_FILE_TYPE_STRING))
             {
-                transcriptList = retreiveMANESelectModeTranscriptsCriteria(gtfFeature.getTranscripts());
+                transcriptList = retrieveMANESelectModeTranscriptsCriteria(variant, gtfFeature.getTranscripts());
             }
             else {
                 transcriptList = gtfFeature.getTranscripts();
