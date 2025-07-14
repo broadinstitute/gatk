@@ -44,7 +44,7 @@ public final class RefCreator {
     private long totalRefEntries = 0L;
 
     public static void sanityCheckRefRangesSchemaForCompressedReferences(String projectID, String datasetName, Long sampleId, boolean storeCompressedReferences) {
-        final BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+        final BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
         final int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         final String tableName = REF_RANGES_FILETYPE_PREFIX + String.format("%03d", sampleTableNumber);
         final TableId tableId = TableId.of(projectID, datasetName, tableName);
