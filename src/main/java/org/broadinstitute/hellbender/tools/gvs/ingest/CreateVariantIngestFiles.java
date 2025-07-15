@@ -347,8 +347,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
                 enableReferenceRanges, enableVet, enableVCFHeaders);
-        logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
-                shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
+        logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}, shouldWritePloidiesLoadedStatus = {}",
+                shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow, shouldWritePloidiesLoadedStatusRow);
 
         if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null && samplePloidyCreator == null &&
                 !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow && !shouldWritePloidiesLoadedStatusRow) {
