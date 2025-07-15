@@ -262,12 +262,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 }
 
                 if (state.arePloidiesLoaded()) {
-                    logger.info("Sample ID {}: Reference ranges writing enabled but PLOIDIES_LOADED status row found, skipping ploidy data writes.", sampleId);
+                    logger.info("Sample ID {}: Reference ranges writing enabled but PLOIDIES_LOADED status row found, skipping.", sampleId);
                 } else {
                     logger.info("Sample ID {}: Reference ranges writing enabled and no PLOIDIES_LOADED status row found, looking for existing rows.", sampleId);
-                    ploidyRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
+                    ploidyRowsExist = SamplePloidyCreator.doRowsExistFor(outputType, projectID, datasetName, sampleId);
                     if (ploidyRowsExist) {
-                        logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ploidy found, skipping ploidy data writes.",
+                        logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ploidy rows found, skipping ploidy data writes.",
                                 sampleId, sampleName);
                     } else {
                         logger.info("Sample ID {}: No preexisting ploidy rows found.", sampleId);
