@@ -314,9 +314,6 @@ task CheckIfFilterSetNameIsInUse {
     # Check if table exists and contains rows with the same filter_set_name
     echo "Checking if filter set '~{filter_set_name}' already exists in ~{fq_filter_sites_destination_table}"
 
-    # Convert table name for bq command (replace . with :)
-    bq_table_check=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
-
     # Check if table exists and query for existing filter_set_name
     set +o errexit
     existing_count=$(bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1 \
@@ -339,9 +336,6 @@ task CheckIfFilterSetNameIsInUse {
     ## Filter_set_info table check
     # Check if table exists and contains rows with the same filter_set_name
     echo "Checking if filter set '~{filter_set_name}' already exists in ~{fq_filter_set_info_destination_table}"
-
-    # Convert table name for bq command (replace . with :)
-    bq_table_check=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
 
     # Check if table exists and query for existing filter_set_name
     set +o errexit
