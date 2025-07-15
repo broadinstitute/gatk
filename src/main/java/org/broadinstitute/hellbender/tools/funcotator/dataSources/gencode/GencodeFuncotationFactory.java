@@ -1029,6 +1029,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE);
 
+        // Needed for some special cases to know whether this is a MANE transcript
+        gencodeFuncotationBuilder.setManeTranscript(hasTag(transcript, MANE_SELECT) || hasTag(transcript, MANE_PLUS_CLINICAL));
+
         gencodeFuncotationBuilder.setDataSourceName(dataSourceName);
 
         return gencodeFuncotationBuilder.build();
@@ -1243,6 +1246,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set the VariantClassification through a simple equivalency on the gene type (since we have no transcript info):
         gencodeFuncotationBuilder.setVariantClassification( convertGeneTranscriptTypeToVariantClassification(exon.getGeneType()) );
 
+        // Needed for some special cases to know whether this is a MANE transcript
+        gencodeFuncotationBuilder.setManeTranscript(hasTag(transcript, MANE_SELECT) || hasTag(transcript, MANE_PLUS_CLINICAL));
+
         // Set our data source name:
         gencodeFuncotationBuilder.setDataSourceName(getName());
 
@@ -1384,6 +1390,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // We should have sequence information but we don't... this is not good, but we have to put something here:
             gencodeFuncotationBuilder.setVariantClassification( convertGeneTranscriptTypeToVariantClassification(exon.getGeneType()) );
         }
+
+        // Needed for some special cases to know whether this is a MANE transcript
+        gencodeFuncotationBuilder.setManeTranscript(hasTag(transcript, MANE_SELECT) || hasTag(transcript, MANE_PLUS_CLINICAL));
 
         // Set our data source name:
         gencodeFuncotationBuilder.setDataSourceName(getName());
@@ -1766,6 +1775,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR);
         }
 
+        // Needed for some special cases to know whether this is a MANE transcript
+        gencodeFuncotationBuilder.setManeTranscript(hasTag(transcript, MANE_SELECT) || hasTag(transcript, MANE_PLUS_CLINICAL));
+
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
 
@@ -1844,6 +1856,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         strandCorrectedAltAllele.getBaseString()
                 )
         );
+
+        // Needed for some special cases to know whether this is a MANE transcript
+        gencodeFuncotationBuilder.setManeTranscript(hasTag(transcript, MANE_SELECT) || hasTag(transcript, MANE_PLUS_CLINICAL));
 
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
@@ -2636,7 +2651,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 .setReferenceContext(referenceBasesString)
                 .setGcContent(gcContent)
                 .setNcbiBuild(ncbiBuildVersion)
-                .setGeneTranscriptType(transcript.getTranscriptType());
+                .setGeneTranscriptType(transcript.getTranscriptType())
+                .setManeTranscript(hasTag(transcript, MANE_SELECT) || hasTag(transcript, MANE_PLUS_CLINICAL));
 
         // Set our version:
         funcotationBuilder.setVersion(version);
@@ -2708,8 +2724,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
 
-        // Set our reference context in the the FuncotatonBuilder:
+        // Set our reference context in the FuncotationBuilder:
         funcotationBuilder.setReferenceContext( referenceBases.getBaseString() );
+
+        // Needed for some special cases to know whether this is a MANE transcript
+        funcotationBuilder.setManeTranscript(hasTag(annotationTranscript, MANE_SELECT) || hasTag(annotationTranscript, MANE_PLUS_CLINICAL));
 
         // Set our version:
         funcotationBuilder.setVersion(version);
@@ -2769,8 +2788,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
 
-        // Set our reference context in the the FuncotatonBuilder:
+        // Set our reference context in the FuncotationBuilder:
         funcotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
+
+        // Needed for some special cases to know whether this is a MANE transcript
+        funcotationBuilder.setManeTranscript(hasTag(annotationTranscript, MANE_SELECT) || hasTag(annotationTranscript, MANE_PLUS_CLINICAL));
 
         // Set our version:
         funcotationBuilder.setVersion(version);

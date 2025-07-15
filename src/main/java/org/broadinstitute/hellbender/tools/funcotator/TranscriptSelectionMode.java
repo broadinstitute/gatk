@@ -199,6 +199,24 @@ public enum TranscriptSelectionMode {
         }
     }
 
+    private static class ComparatorByManeStatus implements Comparator<GencodeFuncotation> {
+
+        public ComparatorByManeStatus() {}
+
+        @Override
+        public int compare(final GencodeFuncotation a, final GencodeFuncotation b) {
+            if((a.isManeTranscript()) && (!b.isManeTranscript())) {
+                return -1;
+            }
+            else if((!a.isManeTranscript()) && (b.isManeTranscript())) {
+                return 1;
+            }
+            else {
+                return 0;
+            }
+        }
+    }
+
     private static class ComparatorByIgrStatus implements Comparator<GencodeFuncotation> {
 
         public ComparatorByIgrStatus(){}
@@ -360,6 +378,7 @@ public enum TranscriptSelectionMode {
     static class BestEffectGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
 
         private final Comparator<GencodeFuncotation> byUserTranscript;
+        private final Comparator<GencodeFuncotation> byManeStatus;
         private final Comparator<GencodeFuncotation> byIgrStatus;
         private final Comparator<GencodeFuncotation> byVariantClassification;
         private final Comparator<GencodeFuncotation> byProteinCodingStatus;
@@ -372,6 +391,7 @@ public enum TranscriptSelectionMode {
 
         public BestEffectGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
             byUserTranscript = new ComparatorByUserTranscript(userRequestedTranscripts);
+            byManeStatus = new ComparatorByManeStatus();
             byIgrStatus = new ComparatorByIgrStatus();
             byVariantClassification = new ComparatorByVariantClassification();
             byProteinCodingStatus = new ComparatorByProteinCodingStatus();
@@ -381,6 +401,7 @@ public enum TranscriptSelectionMode {
             byTranscriptName = new ComparatorByTranscriptName();
 
             chainedComparator = byUserTranscript
+                    .thenComparing(byManeStatus)
                     .thenComparing(byIgrStatus)
                     .thenComparing(byVariantClassification)
                     .thenComparing(byProteinCodingStatus)
