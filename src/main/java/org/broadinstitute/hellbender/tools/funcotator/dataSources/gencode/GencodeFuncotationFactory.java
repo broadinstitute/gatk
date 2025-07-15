@@ -631,7 +631,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * If MANE_Plus_Clinical transcripts are avalible, only return them, followed by MANE_Select transcripts, followed by only the basic transcripts if none were MANE_Plus_Clinical or MANE_Select.
+     * If MANE_Plus_Clinical transcripts are available, only return them, followed by MANE_Select transcripts, followed by only the basic transcripts if none were MANE_Plus_Clinical or MANE_Select.
      * @param transcripts of gencode transcripts to possibly filter
      * @return
      */
