@@ -345,8 +345,8 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1676_AnVIL_3K
              - gg_VS-1679_DontLetCreateFilterSetReuseFilterSetName
+             - sanity_check_ref_ranges_schema
          tags:
              - /.*/
    - name: GvsIngestTieout
