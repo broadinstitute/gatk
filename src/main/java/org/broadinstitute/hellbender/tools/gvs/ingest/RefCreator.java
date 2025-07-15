@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import htsjdk.samtools.SAMSequenceDictionary;
