@@ -852,7 +852,6 @@ task ValidateFilterSetName {
         String project_id
         String fq_filter_set_info_table
         String filter_set_name
-        String filter_set_info_timestamp = ""
         String cloud_sdk_docker
     }
     meta {
