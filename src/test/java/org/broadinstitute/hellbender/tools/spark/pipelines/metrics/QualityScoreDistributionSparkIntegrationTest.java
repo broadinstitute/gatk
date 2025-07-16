@@ -4,10 +4,12 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.QualityScoreDistributionSpark.Counts;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
@@ -122,6 +124,30 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test(
+        groups = "spark",
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() throws IOException {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final File unsortedBam = new File(TEST_DATA_DIR, "first5000a.bam");
+
+            //Note we compare to non-spark outputs
+            final File outfile = GATKBaseTest.createTempFile("test", ".metrics");
+            final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
+
+            ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(unsortedBam)
+                .addOutput(outfile)
+                .add("chart", pdf)
+                .add("pfReadsOnly", false)
+                .add("alignedReadsOnly", false);
+
+            this.runCommandLine(args.getArgsArray());
+        });
     }
 
     @Test

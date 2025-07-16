@@ -84,7 +84,7 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
-    name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
+    name: ${{ matrix.testType }} build and test Java ${{ matrix.Java }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -158,7 +158,7 @@ jobs:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
 
-    name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
+    name: ${{ matrix.testType }} test on docker Java ${{ matrix.Java }}
     steps:
       - uses: actions/checkout@v4
         with:
