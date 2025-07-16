@@ -255,6 +255,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         builder.setLocusLevel( locusLevel );
         builder.setVariantClassification( variantClassification );
         builder.setTranscriptLength( transcriptLength );
+        builder.setManeTranscript(false);
 
         return builder.build();
     }
@@ -849,6 +850,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                             .setTranscriptLength(0)
                             .setVersion(versionString)
                             .setGeneTranscriptType(transcript1.getTranscriptType())
+                            .setManeTranscript(false)
                             .setNcbiBuild("TEST")
                             .build()
                 },
