@@ -127,15 +127,15 @@ fi
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
     if [ -n "${LITE}" ]; then
-        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} --target gatk-lite --squash .  --iidfile /tmp/idfile.txt
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} --target gatk-lite --squash . --iidfile /tmp/idfile.txt
     else
-        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash .
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash . --iidfile
     fi
 else
     if [ -n "${LITE}" ]; then
-        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} --target gatk-lite .  --iidfile /tmp/idfile.txt
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} --target gatk-lite . --iidfile /tmp/idfile.txt
     else
-        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} .
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} . --iidfile
     fi
 fi
 # Since we build the docker image with stages, the first build stage for GATK will be leftover in
