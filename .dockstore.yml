@@ -344,7 +344,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - sanity_check_ref_ranges_schema
+             - master_merge_2025_07_16
          tags:
              - /.*/
    - name: GvsIngestTieout
