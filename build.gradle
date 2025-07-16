@@ -386,6 +386,8 @@ dependencies {
     implementation platform('org.eclipse.jetty:jetty-bom:9.4.56.v20240826')
     /************************************************************************************************/
 
+    // pgen jni
+    implementation('org.broadinstitute:pgenjni:1.0.1')
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
