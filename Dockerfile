@@ -24,8 +24,7 @@ RUN ls . && \
     rm -rf /var/lib/apt/lists/* && \
     git lfs install --force && \
     git lfs pull --include src/main/resources/large && \
-    export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean && \
-    /gatk/gradlew --debug collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE && \
+    export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE && \
     cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/ && \
     unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts && \
     chmod -R a+rw /gatk/unzippedJar
