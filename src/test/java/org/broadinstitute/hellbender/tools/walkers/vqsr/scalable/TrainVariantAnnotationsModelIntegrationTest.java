@@ -6,6 +6,7 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
@@ -13,7 +14,6 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.Python
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModelBackend;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -259,6 +259,30 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         SystemCommandUtilsTest.runH5Diff(
                 outputPrefixSNPOnly + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX,
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX);
+    }
+
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final File outputDir = createTempDir("train");
+
+            final String outputPrefixSNPOnly = String.format("%s/test-snp", outputDir);
+            final ArgumentsBuilder argsBuilderSNPOnly = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
+            argsBuilderSNPOnly.addOutput(outputPrefixSNPOnly);
+            final File positiveAnnotationsHDF5SNPOnly = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                    "extract.nonAS.snp.pos" + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
+            final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotationsSNPOnly = ab ->
+                    ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5SNPOnly);
+            addPositiveAnnotationsSNPOnly
+                    .andThen(ADD_SNP_MODE)
+                    .apply(argsBuilderSNPOnly);
+
+            runCommandLine(argsBuilderSNPOnly);
+        });
+
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class) // python environment is required to run tool

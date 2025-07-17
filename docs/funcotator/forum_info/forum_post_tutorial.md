@@ -111,7 +111,7 @@ Conversely, if you have a <strong>somatic VCF</strong>, the <strong>somatic data
 ### 1.1.2.1 - Downloading Pre-Packaged Data Sources
 Versioned gzip archives of data source files are provided here:
 ● FTP: [ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/](ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/)
-● Google Cloud Bucket: [gs://gcp-public-data--broad-references/funcotator/](https://console.cloud.google.com/storage/browser/broad-public-datasets/funcotator)
+● Google Cloud Bucket: [gs://gcp-public-data--broad-references/funcotator/](https://console.cloud.google.com/storage/browser/gcp-public-data--broad-references/funcotator)
 
 <a name="1.1.2.2"></a>
 ### 1.1.2.2 - gnomAD
