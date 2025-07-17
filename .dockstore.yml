@@ -344,7 +344,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - master_merge_2025_07_16
+             - ploidy_status_rows
          tags:
              - /.*/
    - name: GvsIngestTieout

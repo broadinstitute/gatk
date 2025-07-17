@@ -24,7 +24,7 @@ public class LoadStatus {
 
     // Preserve legacy 'STARTED' and 'FINISHED' states in the enum so this code doesn't crash if asked to convert one
     // of these states from a stringified representation.
-    private enum LoadStatusValue { STARTED, FINISHED, REFERENCES_LOADED, VARIANTS_LOADED, HEADERS_LOADED }
+    private enum LoadStatusValue { STARTED, FINISHED, REFERENCES_LOADED, VARIANTS_LOADED, HEADERS_LOADED, PLOIDIES_LOADED }
     public static class LoadState {
         private final Set<LoadStatusValue> statusValues;
 
@@ -48,6 +48,10 @@ public class LoadStatus {
 
         public boolean areHeadersLoaded() {
             return statusValues.contains(LoadStatusValue.HEADERS_LOADED);
+        }
+
+        public boolean arePloidiesLoaded() {
+            return statusValues.contains(LoadStatusValue.PLOIDIES_LOADED);
         }
     }
 
@@ -105,6 +109,10 @@ public class LoadStatus {
 
     public void writeHeadersLoadedStatus(long sampleId) {
         writeLoadStatus(LoadStatusValue.HEADERS_LOADED, sampleId);
+    }
+
+    public void writePloidiesLoadedStatus(long sampleId) {
+        writeLoadStatus(LoadStatusValue.PLOIDIES_LOADED, sampleId);
     }
 
     protected void writeLoadStatus(LoadStatusValue status, long sampleId) {

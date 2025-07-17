@@ -6,14 +6,12 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.BitSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 public class SamplePloidyCreator {
@@ -52,6 +50,10 @@ public class SamplePloidyCreator {
         }
     }
 
+    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, Long sampleId) {
+        if (outputType != CommonCode.OutputType.BQ) return false;
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, SAMPLE_PLOIDY_TABLE_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
+    }
 
     public void apply(Map<String, Map<Integer, Long>> ploidyData, long totalRefEntries) throws IOException {
         for (final Map.Entry<String, Map<Integer, Long>> ploidyLine : ploidyData.entrySet()) {

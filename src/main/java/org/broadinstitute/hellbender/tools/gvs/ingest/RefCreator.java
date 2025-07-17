@@ -85,22 +85,20 @@ public final class RefCreator {
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
         try {
-            if (writeReferenceRanges) {
-                final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
-                switch (outputType) {
-                    case BQ:
-                        if (projectId == null || datasetName == null) {
-                            throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
-                        }
-                        refRangesWriter = new RefRangesBQWriter(projectId, datasetName,REF_RANGES_FILETYPE_PREFIX + tableNumber);
-                        break;
-                    case TSV:
-                        refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
-                        break;
-                    case AVRO:
-                        refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
-                        break;
-                }
+            final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
+            switch (outputType) {
+                case BQ:
+                    if (projectId == null || datasetName == null) {
+                        throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
+                    }
+                    refRangesWriter = new RefRangesBQWriter(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber);
+                    break;
+                case TSV:
+                    refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
+                    break;
+                case AVRO:
+                    refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
+                    break;
             }
         } catch (final IOException ioex) {
             throw new UserException("Could not create reference range outputs", ioex);
@@ -130,36 +128,37 @@ public final class RefCreator {
                 setCoveredInterval(variantChr, start, end);
 
                 // if we are writing ref ranges, and this is a reference block, write it!
-                if (writeReferenceRanges) {
-                    if (variant.isReferenceBlock()) {
+                if (variant.isReferenceBlock()) {
 
-                        // Record reference ploidy if this is not in a PAR
-                        if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
-                            // create the bitset for this ploidy if it isn't there
-                            if (!ploidiesCountPerChromosome.containsKey(variant.getContig())) {
-                                ploidiesCountPerChromosome.put(variant.getContig(), new HashMap<>());
-                            }
-                            // set the bit for this ploidy so we record having seen it
-                            Map<Integer, Long> ploidyCounts = ploidiesCountPerChromosome.get(variant.getContig());
+                    // Record reference ploidy if this is not in a PAR
+                    if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
+                        // create the bitset for this ploidy if it isn't there
+                        if (!ploidiesCountPerChromosome.containsKey(variant.getContig())) {
+                            ploidiesCountPerChromosome.put(variant.getContig(), new HashMap<>());
+                        }
+                        // set the bit for this ploidy so we record having seen it
+                        Map<Integer, Long> ploidyCounts = ploidiesCountPerChromosome.get(variant.getContig());
 
-                            int ploidy = variant.getMaxPloidy(1);
+                        int ploidy = variant.getMaxPloidy(1);
 
-                            Long currentCount = 0L;
-                            if (ploidyCounts.containsKey(ploidy)) {
-                                currentCount = ploidyCounts.get(ploidy);
-                            }
-
-                            // increment counts for this one and put it back
-                            ++currentCount;
-                            ploidyCounts.put(ploidy, currentCount);
-
-                            ++totalRefEntries;
+                        Long currentCount = 0L;
+                        if (ploidyCounts.containsKey(ploidy)) {
+                            currentCount = ploidyCounts.get(ploidy);
                         }
 
+                        // increment counts for this one and put it back
+                        ++currentCount;
+                        ploidyCounts.put(ploidy, currentCount);
 
+                        ++totalRefEntries;
+                    }
+                }
+
+                if (writeReferenceRanges) {
+                    if (variant.isReferenceBlock()) {
                         // break up reference blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
                         int localStart = start;
-                        while ( localStart <= end ) {
+                        while (localStart <= end) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
                             if (storeCompressedReferences) {
                                 refRangesWriter.writeCompressed(
@@ -175,12 +174,11 @@ public final class RefCreator {
                                 );
                             }
 
-                            localStart = localStart + length ;
+                            localStart = localStart + length;
                         }
-
-                    // Write out no-calls as a single-base GQ0 reference.
-                    // UNLESS we are ignoring GQ0, in which case ignore them too.
                     } else if (CreateVariantIngestFiles.isNoCall(variant) && (!this.gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
+                        // Write out no-calls as a single-base GQ0 reference.
+                        // UNLESS we are ignoring GQ0, in which case ignore them too.
                         if (storeCompressedReferences) {
                             refRangesWriter.writeCompressed(
                                     SchemaUtils.encodeCompressedRefBlock(variantChr, start, 1,
@@ -201,16 +199,18 @@ public final class RefCreator {
     }
 
     public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) throws IOException {
-        GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
-        logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
-        logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
-        // for each block of uncovered locations
-        for (GenomeLoc genomeLoc : uncoveredIntervals) {
-            final String contig = genomeLoc.getContig();
-            // write all positions in this block
-            writeMissingPositions(
-                    SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
-                    SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()));
+        if (writeReferenceRanges) {
+            GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
+            logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
+            logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
+            // for each block of uncovered locations
+            for (GenomeLoc genomeLoc : uncoveredIntervals) {
+                final String contig = genomeLoc.getContig();
+                // write all positions in this block
+                writeMissingPositions(
+                        SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
+                        SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()));
+            }
         }
     }
 
