@@ -973,10 +973,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideDataForTestGencodeFuncotationComparatorUnitTest() {
-
         final String transcriptId1 = "ENST0000123456";
         final String transcriptId2 = "ENST0000987654";
         final Set<String> transcriptSet = new HashSet<>( Arrays.asList(transcriptId1, transcriptId2) );
+        final boolean preferMANETranscripts = false;
 
         return new Object[][] {
                 // ==================================================================================================
@@ -984,152 +984,152 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Transcript list:
                 {
                         // Goes down to Locus Level:
-                        TranscriptSelectionMode.CANONICAL.getComparator(new HashSet<>()),
+                        TranscriptSelectionMode.CANONICAL.getComparator(new HashSet<>(), preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
                         // Goes down to Locus Level:
-                        TranscriptSelectionMode.CANONICAL.getComparator(new HashSet<>(Collections.singletonList("TEST"))),
+                        TranscriptSelectionMode.CANONICAL.getComparator(new HashSet<>(Collections.singletonList("TEST")), preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest("", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest("", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 // Locus Level:
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL,  null, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, null, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 // IGR / non-IGR:
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.IGR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.IGR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 // Variant Classification:
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.SILENT, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.SILENT, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 // Appris Annotation:
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", null, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", null, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL.ordinal() - GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE.ordinal()
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE.ordinal() - GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL.ordinal()
                 },
                 // Transcript Length:
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, null),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, null),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 500),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 500),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 // ABC Order of Transcript ID:
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(null, GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(null, GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         transcriptId1.compareTo(transcriptId2)
                 },
                 {
-                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
+                        TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         transcriptId2.compareTo(transcriptId1)
@@ -1141,152 +1141,152 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Transcript list:
                 {
                         // Goes down to Locus Level:
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(new HashSet<>()),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(new HashSet<>(), preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
                         // Goes down to Locus Level:
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(new HashSet<>(Collections.singletonList("TEST"))),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(new HashSet<>(Collections.singletonList("TEST")), preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest("NOT_USER_REQUESTED", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest("NOT_USER_REQUESTED", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 // IGR / non-IGR:
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.IGR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.IGR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 // Variant Classification:
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.SILENT, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.SILENT, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 // Locus Level:
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL,  null, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, null, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 2, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 5000),
                         1
                 },
                 // Appris Annotation:
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", null, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", null, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL.ordinal() - GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE.ordinal()
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         GencodeGTFFieldConstants.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE.ordinal() - GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL.ordinal()
                 },
                 // Transcript Length:
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, null),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, null),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 500),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 500),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 // ABC Order of Transcript ID:
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(null, GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         -1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(null, GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         transcriptId1.compareTo(transcriptId2)
                 },
                 {
-                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
+                        TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet, preferMANETranscripts),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGTFFieldConstants.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         transcriptId2.compareTo(transcriptId1)
@@ -2014,15 +2014,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider = "provideSortingOfUserRequestedTranscripts")
     public void testSortingOfUserRequestedTranscripts(final List<GencodeFuncotation> gencodeFuncotations, final Set<String> userRequestedTranscripts, final String gtFirstTranscript) {
-
         final List<TranscriptSelectionMode> transcriptSelectionModes = Arrays.asList(TranscriptSelectionMode.ALL, TranscriptSelectionMode.BEST_EFFECT, TranscriptSelectionMode.CANONICAL);
+        final boolean preferManeTranscripts = false;
+
         for (final TranscriptSelectionMode transcriptSelectionMode : transcriptSelectionModes) {
-            final Comparator<GencodeFuncotation> comparator = transcriptSelectionMode.getComparator(userRequestedTranscripts);
+            final Comparator<GencodeFuncotation> comparator = transcriptSelectionMode.getComparator(userRequestedTranscripts, preferManeTranscripts);
             gencodeFuncotations.sort(comparator);
             Assert.assertEquals(gencodeFuncotations.get(0).getAnnotationTranscript(), gtFirstTranscript, " Failed on " + transcriptSelectionMode.toString());
         }
     }
-
 
     /**
      * This test (of {@link GencodeFuncotationFactory#createFuncotationsOnVariant}) makes sure that if multiple gene features are detected, there is still only one transcript returned
