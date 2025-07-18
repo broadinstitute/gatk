@@ -136,6 +136,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250718_1
          tags:
              - /.*/
    - name: GvsCreateTables
