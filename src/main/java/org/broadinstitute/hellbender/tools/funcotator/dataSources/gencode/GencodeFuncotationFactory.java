@@ -425,7 +425,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Set our comparator for outputting our funcotations in the right order with the correct "best" transcript:
-        gencodeFuncotationComparator = transcriptSelectionMode.getComparator(userRequestedTranscripts, preferMANETranscripts);
+        gencodeFuncotationComparator = transcriptSelectionMode.getComparator(userRequestedTranscripts, preferMANETranscriptsWhereApplicable);
 
         // Initialize segment metadata.  This will only be used if funcotating segments.  If we are not doing that create
         //  an empty set of metadata for segments.
