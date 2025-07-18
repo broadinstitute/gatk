@@ -92,7 +92,7 @@ workflow GvsJointVariantCalling {
       Int extract_maxretries_override = ""
       Int extract_preemptible_override = ""
       Int extract_scatter_count = ""
-      Int load_data_batch_size = ""
+      Int load_data_scatter_width = ""
       Int load_data_preemptible_override = ""
       Int load_data_maxretries_override = ""
       Array[String] query_labels = []
@@ -156,6 +156,9 @@ workflow GvsJointVariantCalling {
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
             is_wgs = is_wgs,
+            load_data_preemptible_override = load_data_preemptible_override,
+            load_data_maxretries_override = load_data_maxretries_override,
+            load_data_scatter_width = load_data_scatter_width,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
