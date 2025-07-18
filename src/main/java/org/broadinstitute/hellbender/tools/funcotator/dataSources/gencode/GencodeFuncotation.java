@@ -79,6 +79,7 @@ public class GencodeFuncotation implements Funcotation {
     private Integer                              transcriptLength;
     private String                               version;
     private String                               geneTranscriptType;
+    private Boolean                              isManeTranscript;
 
     //------------------------------------------------------------
     // Fields for overriding serialized values:
@@ -150,6 +151,7 @@ public class GencodeFuncotation implements Funcotation {
         this.transcriptLength = that.transcriptLength;
         this.version = that.version;
         this.geneTranscriptType = that.geneTranscriptType;
+        this.isManeTranscript = that.isManeTranscript;
         this.hugoSymbolSerializedOverride = that.hugoSymbolSerializedOverride;
         this.ncbiBuildSerializedOverride = that.ncbiBuildSerializedOverride;
         this.chromosomeSerializedOverride = that.chromosomeSerializedOverride;
@@ -702,6 +704,10 @@ public class GencodeFuncotation implements Funcotation {
     public void setGeneTranscriptType(final String geneTranscriptType) {
         this.geneTranscriptType = geneTranscriptType;
     }
+
+    public Boolean isManeTranscript() { return isManeTranscript; }
+
+    public void setManeTranscript(final Boolean isManeTranscript) { this.isManeTranscript = isManeTranscript; }
 
     public void setDataSourceName(final String dataSourceName) {
         this.dataSourceName = dataSourceName;
