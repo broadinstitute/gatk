@@ -74,6 +74,17 @@ workflow GvsJointVariantCalling {
         File? scoring_python_script
 
         Int? maximum_alternate_alleles
+
+        Int? extract_maxretries_override
+        Int? extract_preemptible_override
+        Int? extract_scatter_count
+        Int? load_data_scatter_width
+        Int? load_data_preemptible_override
+        Int? load_data_maxretries_override
+        Array[String]? query_labels
+        File? sample_names_to_extract
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
     }
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
@@ -87,19 +98,6 @@ workflow GvsJointVariantCalling {
     String destination_dataset = dataset_name
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
     String ploidy_table_name = "sample_chromosome_ploidy"
-
-    if (false) {
-      Int extract_maxretries_override = ""
-      Int extract_preemptible_override = ""
-      Int extract_scatter_count = ""
-      Int load_data_scatter_width = ""
-      Int load_data_preemptible_override = ""
-      Int load_data_maxretries_override = ""
-      Array[String] query_labels = []
-      File sample_names_to_extract = ""
-      Int split_intervals_disk_size_override = ""
-      Int split_intervals_mem_override = ""
-    }
 
     if (!defined(git_hash) ||
         !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
