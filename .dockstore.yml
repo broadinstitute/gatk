@@ -288,7 +288,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1670_release_0_6_3
+             - vs_1710_cost_estimates
          tags:
              - /.*/
    - name: GvsBeta
