@@ -165,7 +165,7 @@ task GetVetTableNames {
           table_name
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
         WHERE
-          table_name LIKE "vet_%" AND
+          REGEXP_CONTAINS(table_name, "^vet_[0-9]+$") AND
           CAST(SUBSTRING(table_name, length("vet_") + 1) AS INT64) >= '"${min_vat_table_num}" > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
