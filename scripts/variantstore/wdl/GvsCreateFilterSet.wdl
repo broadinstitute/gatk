@@ -83,6 +83,15 @@ workflow GvsCreateFilterSet {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  call CheckIfFilterSetNameIsInUse {
+    input:
+      filter_set_name = filter_set_name,
+      fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+      fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
+      project_id = project_id,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
@@ -115,9 +124,8 @@ workflow GvsCreateFilterSet {
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractFilterTask {
       input:
-        gatk_docker                = effective_gatk_docker,
-        gatk_override              = gatk_override,
-        reference                  = effective_reference,
+        go                         = CheckIfFilterSetNameIsInUse.done,
+        reference                  = GetReference.reference.reference_fasta,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -129,7 +137,9 @@ workflow GvsCreateFilterSet {
         project_id                 = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier,
-        custom_contig_mapping      = custom_contig_mapping
+        custom_contig_mapping      = custom_contig_mapping,
+        gatk_docker                = effective_gatk_docker,
+        gatk_override              = gatk_override,
     }
   }
 
@@ -296,8 +306,88 @@ workflow GvsCreateFilterSet {
 
 ################################################################################
 
+task CheckIfFilterSetNameIsInUse {
+  input {
+    String filter_set_name
+    String fq_filter_sites_destination_table
+    String fq_filter_set_info_destination_table
+
+    String project_id
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    ## Filter_set_sites table check
+    # Check if table exists and contains rows with the same filter_set_name
+    echo "Checking if filter set '~{filter_set_name}' already exists in ~{fq_filter_sites_destination_table}"
+
+    # Check if table exists and query for existing filter_set_name
+    set +o errexit
+    existing_count=$(bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1 \
+    "SELECT COUNT(*) as count FROM \`~{fq_filter_sites_destination_table}\` WHERE filter_set_name = '~{filter_set_name}'" 2>/dev/null | tail -1)
+    query_exit_code=$?
+    set -o errexit
+
+    if [[ $query_exit_code -eq 0 ]]; then
+      # Table exists, check if filter_set_name already exists
+      if [[ "$existing_count" != "0" ]]; then
+        echo "ERROR: Filter set '~{filter_set_name}' already exists in table ~{fq_filter_sites_destination_table}"
+        echo "Found $existing_count existing rows with this filter_set_name"
+        exit 1
+      fi
+      echo "Table ~{fq_filter_sites_destination_table} exists but filter_set_name '~{filter_set_name}' not found. Proceeding..."
+    else
+      echo "Table ~{fq_filter_sites_destination_table} does not exist yet. Proceeding..."
+    fi
+
+    ## Filter_set_info table check
+    # Check if table exists and contains rows with the same filter_set_name
+    echo "Checking if filter set '~{filter_set_name}' already exists in ~{fq_filter_set_info_destination_table}"
+
+    # Check if table exists and query for existing filter_set_name
+    set +o errexit
+    existing_count=$(bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1 \
+    "SELECT COUNT(*) as count FROM \`~{fq_filter_set_info_destination_table}\` WHERE filter_set_name = '~{filter_set_name}'" 2>/dev/null | tail -1)
+    query_exit_code=$?
+    set -o errexit
+
+    if [[ $query_exit_code -eq 0 ]]; then
+      # Table exists, check if filter_set_name already exists
+      if [[ "$existing_count" != "0" ]]; then
+        echo "ERROR: Filter set '~{filter_set_name}' already exists in table ~{fq_filter_set_info_destination_table}"
+        echo "Found $existing_count existing rows with this filter_set_name"
+        exit 1
+      fi
+        echo "Table ~{fq_filter_set_info_destination_table} exists but filter_set_name '~{filter_set_name}' not found. Proceeding..."
+      else
+        echo "Table ~{fq_filter_set_info_destination_table} does not exist yet. Proceeding..."
+    fi
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+
+  output {
+    Boolean done = true
+  }
+}
+
 task ExtractFilterTask {
   input {
+    Boolean go = true
     String project_id
     String dataset_id
     String call_set_identifier

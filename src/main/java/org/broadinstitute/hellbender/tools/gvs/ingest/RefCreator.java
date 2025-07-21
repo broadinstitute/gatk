@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.Table;
+import com.google.cloud.bigquery.TableId;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -38,6 +41,31 @@ public final class RefCreator {
 
     // for easily calculating percentages later
     private long totalRefEntries = 0L;
+
+    public static void sanityCheckRefRangesSchemaForCompressedReferences(String projectID, String datasetName, Long sampleId, boolean storeCompressedReferences) {
+        final BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
+        final int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
+        final String tableName = REF_RANGES_FILETYPE_PREFIX + String.format("%03d", sampleTableNumber);
+        final TableId tableId = TableId.of(projectID, datasetName, tableName);
+
+        final Table table = bigquery.getTable(tableId);
+        table.getDefinition().getSchema();
+        final String COMPRESSED_REF_RANGES_COLUMN = "packed_ref_data";
+
+        boolean foundCompressedColumn = false;
+        for (com.google.cloud.bigquery.Field field : table.getDefinition().getSchema().getFields()) {
+            if (field.getName().equals(COMPRESSED_REF_RANGES_COLUMN)) {
+                foundCompressedColumn = true;
+                break;
+            }
+        }
+        if (foundCompressedColumn ^ storeCompressedReferences) {
+            throw new UserException("reference ranges table " + projectID + "." + datasetName + "." + tableName +
+                    " has a schema incompatible with the invocation of this tool. " +
+                    "This tool was invoked with storeCompressedReferences = " + storeCompressedReferences + ", but a check for " +
+                    "compressed references column '" + COMPRESSED_REF_RANGES_COLUMN + "' returned " + foundCompressedColumn + ".");
+        }
+    }
 
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;

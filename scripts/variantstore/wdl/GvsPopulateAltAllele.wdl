@@ -165,7 +165,7 @@ task GetVetTableNames {
           table_name
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
         WHERE
-          table_name LIKE "vet_%" AND
+          REGEXP_CONTAINS(table_name, "^vet_[0-9]+$") AND
           CAST(SUBSTRING(table_name, length("vet_") + 1) AS INT64) >= '"${min_vat_table_num}" > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
@@ -336,8 +336,8 @@ task VerifySampleCount {
     rc=$?
     set -o errexit
     if [[ $rc -ne 0 ]]; then
-      echo "The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele differs from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
-      exit 1;
+      # Just log this, don't fail the task. Because we may withdraw samples at any time, it's reasonable that the counts may not match.
+      echo "Note: The number of samples (`cat num_samples_in_aa.csv`) in ~{dataset_name}.alt_allele differs from that (`cat num_samples_in_si.csv`) in ~{dataset_name}.sample_info!"
     fi
   >>>
 

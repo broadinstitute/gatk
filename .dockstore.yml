@@ -361,6 +361,7 @@ workflows:
              - VS-1619
              - vs_1691_wdl_for_the_dogs
              - vs_1676_AnVIL_3K
+             - master_merge_2025_07_16
          tags:
              - /.*/
    - name: GvsIngestTieout

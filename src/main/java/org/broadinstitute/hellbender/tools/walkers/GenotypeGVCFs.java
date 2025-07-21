@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.CombineGVCFs;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
@@ -118,6 +119,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
     public static final String FORCE_OUTPUT_INTERVALS_NAME = "force-output-intervals";
+    public static final String SOMATIC_QUALITY_THRESHOLD_NAME = "somatic-quality-threshold";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -150,6 +152,14 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Argument(fullName=M2ArgumentCollection.EMISSION_LOD_LONG_NAME, shortName = M2ArgumentCollection.EMISSION_LOG_SHORT_NAME,
     doc = "LOD threshold to emit variant to VCF.")
     protected double tlodThreshold = 3.5;  //allow for some lower quality variants
+
+    /**
+     * Only variants with somatic quality (SQ) exceeding this threshold will be written to the VCF, regardless of filter status.
+     * Use with --{@value CombineGVCFs#SOMATIC_INPUT_LONG_NAME}
+     * Increase argument value to reduce false positives in the callset.
+     */
+    @Argument(fullName=SOMATIC_QUALITY_THRESHOLD_NAME, doc = "SQ threshold to emit variant to VCF.")
+    protected double sqThreshold = 3.0;  //default to threshold used by DRAGEN https://support-docs.illumina.com/SW/DRAGEN_v40/Content/SW/DRAGEN/MitochondrialCalling.htm
 
     /**
      * Margin of error in allele fraction to consider a somatic variant homoplasmic, i.e. if there is less than a 0.1% reference allele fraction, those reads are likely errors
@@ -321,7 +331,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final boolean inForceOutputIntervals = forceOutputIntervalsPresent && forceOutputIntervals.overlapsAny(loc);
         final boolean forceOutput = includeNonVariants || inForceOutputIntervals;
-        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance, forceOutput);
+        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, sqThreshold, afTolerance, forceOutput);
 
         if (regenotypedVC != null) {
             if ((forceOutput || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC))) {

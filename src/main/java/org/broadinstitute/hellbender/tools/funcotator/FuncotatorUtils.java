@@ -2111,7 +2111,13 @@ public final class FuncotatorUtils {
      * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
      */
     public static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
-        return transcriptId.replaceAll("\\.\\d+$", "");
+        final int end = transcriptId.indexOf('.');
+        if(end != -1) {
+            return transcriptId.substring(0, end);
+        }
+        else {
+            return transcriptId;
+        }
     }
 
     /**

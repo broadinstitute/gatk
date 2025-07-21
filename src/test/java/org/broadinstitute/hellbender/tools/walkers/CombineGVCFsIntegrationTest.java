@@ -528,6 +528,23 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testCombineDragenMtGvcfs() throws Exception {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference)).addOutput(output)
+                .addVCF(getTestFile("T-NGS_9008.chrM.gvcf.gz"))
+                .addVCF(getTestFile("T-NGS_9009.chrM.gvcf.gz"))
+                .addVCF(getTestFile("T-NGS_9010.chrM.gvcf.gz"))
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args);
+
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        final List<VariantContext> expectedVC = getVariantContexts(getTestFile("testCombineDragenMtGvcfs_expected.g.vcf"));
+        final VCFHeader header = getHeaderFromFile(output);
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), Collections.emptyList(), header));
+    }
+
+    @Test
     public void testDropSomaticFilteringAnnotations() throws IOException {
         final File output = createTempFile("combinegvcfs", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();

@@ -101,6 +101,9 @@ public final class GATKVCFConstants {
 
     public static final String TREE_SCORE =                         "TREE_SCORE";
 
+    //DRAGEN mitochondria
+    public static final String SOMATIC_QUALITY_KEY =              "SQ";
+
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOG_10_ODDS_KEY =              "TLOD";
     public static final String NORMAL_LOG_10_ODDS_KEY =             "NLOD";

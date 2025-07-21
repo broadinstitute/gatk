@@ -21,7 +21,7 @@ STAGING_CLONE_DIR=${PROJECT}_staging_temp
 #################################################
 # Parsing arguments
 #################################################
-while getopts "e:pslrud:t:" option; do
+while getopts "e:pslrud:t:m" option; do
 	case "$option" in
 		e) GITHUB_TAG="$OPTARG" ;;
 		p) IS_PUSH=true ;;
@@ -31,6 +31,7 @@ while getopts "e:pslrud:t:" option; do
 		u) IS_NOT_RUN_UNIT_TESTS=true ;;
 		d) STAGING_DIR="$OPTARG" ;;
 		t) PULL_REQUEST_NUMBER="$OPTARG" ;;
+        m) LITE=true ;;
 	esac
 done
 
@@ -43,6 +44,7 @@ Optional arguments:  \n \
 -s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  git hashes cannot be pushed as latest, so -l is implied.  \n \
 -l \t Do not also push the image to the 'latest' tag. \n \
 -u \t Do not run the unit tests. \n \
+-m \t Build the lite image (which does not contain the conda environment). \n \
 -d <STAGING_DIR> \t staging directory to grab code from repo and build the docker image.  If unspecified, then use whatever is in current dir (do not go to the repo).  NEVER SPECIFY YOUR WORKING DIR \n \
 -p \t (GATK4 developers only) push image to docker hub once complete.  This will use the GITHUB_TAG in dockerhub as well. \n \
 \t\t Unless -l is specified, this will also push this image to the 'latest' tag. \n \
@@ -124,9 +126,17 @@ fi
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash . --iidfile /tmp/idfile.txt
+    if [ -n "${LITE}" ]; then
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} --target gatk-lite --squash . --iidfile /tmp/idfile.txt
+    else
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash . --iidfile /tmp/idfile.txt
+    fi
 else
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} . --iidfile /tmp/idfile.txt
+    if [ -n "${LITE}" ]; then
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} --target gatk-lite . --iidfile /tmp/idfile.txt
+    else
+        docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} . --iidfile /tmp/idfile.txt
+    fi
 fi
 # Since we build the docker image with stages, the first build stage for GATK will be leftover in
 # the local docker context after executing the above commands. This step reclaims that space automatically

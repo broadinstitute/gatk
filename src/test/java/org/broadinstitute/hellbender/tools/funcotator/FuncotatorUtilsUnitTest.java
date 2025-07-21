@@ -2662,4 +2662,12 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         final GATKPath customVcFile = new GATKPath(p.toUri().toString());
         FuncotatorUtils.setVariantClassificationCustomSeverity(customVcFile);
     }
+
+    @Test
+    public void testGetTranscriptIdWithoutVersionNumber() {
+        Assert.assertEquals(FuncotatorUtils.getTranscriptIdWithoutVersionNumber(""), "");
+        Assert.assertEquals(FuncotatorUtils.getTranscriptIdWithoutVersionNumber("ENST00000641515"), "ENST00000641515");
+        Assert.assertEquals(FuncotatorUtils.getTranscriptIdWithoutVersionNumber("ENST00000641515.2"), "ENST00000641515");
+        Assert.assertEquals(FuncotatorUtils.getTranscriptIdWithoutVersionNumber("ENST00000641515.2_4"), "ENST00000641515");
+    }
 }
