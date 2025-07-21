@@ -411,7 +411,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideTestForMANESelectMode() {
-        final VariantContext TEST_VARIANT_CONTEXT = FuncotatorTestUtils.createSimpleVariantContext("chr1", "1", 100, 100, "N", "N");
+        final VariantContext TEST_VARIANT_CONTEXT = FuncotatorTestUtils.createSimpleVariantContext("MANETestRef", "chr1", 100, 100, "T", "C");
         final GencodeGtfTranscriptFeature NONBASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, false);
         final GencodeGtfTranscriptFeature BASIC_A = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), true, false, false);
         final GencodeGtfTranscriptFeature BASIC_B = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 102), true, false, false);
