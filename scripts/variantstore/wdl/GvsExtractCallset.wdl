@@ -133,12 +133,12 @@ workflow GvsExtractCallset {
   # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if is_wgs then
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
-                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                                else 20000
                                      else
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
                                      else if GetNumSamplesLoaded.num_samples < 20000 then 1000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
@@ -276,6 +276,17 @@ workflow GvsExtractCallset {
     }
   }
 
+  call Utils.MergeVCFs {
+    input:
+      input_vcfs = ExtractTask.output_vcf,
+      gather_type = if (bgzip_output_vcfs) then "BLOCK" else "CONVENTIONAL",
+      output_directory = output_gcs_dir,
+      output_vcf_name = call_set_identifier + ".merged." + vcf_extension,
+      merge_disk_override = 500,
+      preemptible_tries = 2,
+      gatk_docker = effective_gatk_docker,
+  }
+
   if (collect_variant_calling_metrics) {
     call GatherVariantCallingMetrics {
       input:
@@ -329,6 +340,8 @@ workflow GvsExtractCallset {
     File sample_name_list = GenerateSampleListFile.sample_name_list
     File? summary_metrics_file = GatherVariantCallingMetrics.summary_metrics_file
     File? detail_metrics_file = GatherVariantCallingMetrics.detail_metrics_file
+    File? merged_vcf = MergeVCFs.output_vcf
+    File? merged_vcf_index = MergeVCFs.output_vcf_index
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
