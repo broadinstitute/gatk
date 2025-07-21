@@ -520,7 +520,7 @@ public class SVAnnotateEngine {
             final SimpleInterval interval = new SimpleInterval(parsed[1]);
             segments.add(new SVSegment(svTypeForInterval, interval));
         }
-        return segments;
+        return segments.stream().sorted().collect(Collectors.toList());
     }
 
 
@@ -541,7 +541,7 @@ public class SVAnnotateEngine {
      */
     @VisibleForTesting
     protected static ArrayList<SVSegment> getComplexAnnotationIntervals(final List<SVSegment> cpxIntervals,
-                                                                   final GATKSVVCFConstants.ComplexVariantSubtype complexType) {
+                                                                        final GATKSVVCFConstants.ComplexVariantSubtype complexType) {
         final ArrayList<SVSegment> segments = new ArrayList<>(cpxIntervals.size());
         final List<SimpleInterval> dupIntervals = new ArrayList<>(cpxIntervals.size());
         SimpleInterval inversionIntervalToAdjust = null;

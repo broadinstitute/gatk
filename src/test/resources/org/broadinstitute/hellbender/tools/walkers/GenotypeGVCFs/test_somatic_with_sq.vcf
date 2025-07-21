@@ -1,0 +1,20 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias">
+##FORMAT=<ID=SQ,Number=A,Type=Float,Description="Somatic quality">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=FractionInformativeReads,Number=1,Type=Float,Description="Fraction of informative reads">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=SoftClipRatio,Number=1,Type=Float,Description="Soft clip ratio">
+##contig=<ID=MT,length=16569>
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1	SAMPLE2	SAMPLE3
+MT	263	rs2853515	A	G,<NON_REF>	.	.	DP=3248;FractionInformativeReads=0.995;MQ=247.66;SoftClipRatio=0.00	GT:AD:AF:DP:F1R2:F2R1:MB:PS:SB:SQ	.|.:1,1198,0:0.9992,0.0000:1199:0,471,0:1,727,0:0,1,607,591:263:1,0,286,912:98.12,0.00	.|.:0,1173,0:1.0000,0.0000:1173:0,368,0:0,805,0:0,0,599,574:263:0,0,306,867:98.12,0.00	.|.:0,824,0:1.0000,0.0000:824:0,326,0:0,498,0:0,0,393,431:263:0,0,171,653:98.12,0.00

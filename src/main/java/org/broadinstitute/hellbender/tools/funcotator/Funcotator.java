@@ -90,7 +90,7 @@ import java.util.*;
  *     <br /><b>Versioned gzip archives of data source files are provided here:</b>
  *     <ul>
  *         <li><a href="ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/">ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/</a></li>
- *         <li><a href="https://console.cloud.google.com/storage/browser/broad-public-datasets/funcotator">gs://gcp-public-data--broad-references/funcotator/</a></li>
+ *         <li><a href="https://console.cloud.google.com/storage/browser/gcp-public-data--broad-references/funcotator">gs://gcp-public-data--broad-references/funcotator/</a></li>
  *     </ul>
  * </p>
  *

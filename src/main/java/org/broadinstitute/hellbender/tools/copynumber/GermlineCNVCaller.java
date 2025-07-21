@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -344,6 +345,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         /* check for successful import of gcnvkernel */
         PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
     }

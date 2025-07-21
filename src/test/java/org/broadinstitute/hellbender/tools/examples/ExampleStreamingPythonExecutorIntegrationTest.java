@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -34,6 +37,25 @@ public class ExampleStreamingPythonExecutorIntegrationTest extends CommandLinePr
                 Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleStreamingPythonExecutorIntegrationTest_output.txt")
         );
         testSpec.executeTest("testExampleStreamingPythonExecutor", this);
+    }
+
+    @Test(singleThreaded = true)
+    public void testInGatkLiteDocker() throws IOException {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                    " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
+                            " -O " + TEST_OUTPUT_DIRECTORY + "expected_ExampleStreamingPythonExecutorIntegrationTest_output.txt" +
+                            " --batchSize " + Integer.toString(2),
+                    0, UserException.NotAvailableInGatkLiteDocker.class
+            );
+            
+            try {
+                testSpec.executeTest("testExampleStreamingPythonExecutor", this);
+            }
+            catch(final IOException e) {
+                Assert.fail("Failed with IOException: " + e.getMessage());
+            }
+        });
     }
 
 }

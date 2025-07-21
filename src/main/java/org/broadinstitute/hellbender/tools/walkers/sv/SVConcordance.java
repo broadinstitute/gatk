@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.SortingCollection;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.Predicate;
@@ -20,18 +20,28 @@ import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.cluster.ClusteringParameters;
 import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngineArgumentsCollection;
+import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker;
+import org.broadinstitute.hellbender.tools.sv.cluster.StratifiedClusteringTableParser;
 import org.broadinstitute.hellbender.tools.sv.concordance.ClosestSVFinder;
 import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceAnnotator;
 import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceLinkage;
+import org.broadinstitute.hellbender.tools.sv.concordance.StratifiedConcordanceEngine;
+import org.broadinstitute.hellbender.tools.sv.stratify.OptionalSVStratificationEngineArgumentsCollection;
+import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import picard.vcf.GenotypeConcordance;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -52,7 +62,56 @@ import java.util.stream.Collectors;
  * of the specific fields. For multi-allelic CNVs, only a copy state concordance metric is
  * annotated. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
  *
- * For large inputs, users may enable the --do-not-sort flag to reduce memory usage.
+ * Minimum matching criteria can be specified as in {@link SVCluster} (e.g. reciprocal overlap). These serve to
+ * improve computational efficiency, but may be set to relaxed values that can be iterated on post hoc. Note that
+ * this set of parameters includes minimum sample overlap (Jaccard index of carrier samples), which should generally
+ * be set to 0 for concordance analysis.
+ *
+ * This tool also allows supports stratification of the SVs into groups with specified matching criteria including SV type,
+ * size range, and interval overlap. Please see the {@link GroupedSVCluster} tool documentation for further details
+ * on how to specify stratification groups. Stratification only affects the criteria applied to each "eval" SV. In
+ * other words, "truth" variants are not stratified and can match to an "eval" SV from any stratification group.
+ *
+ * Note that unlike {@link GroupedSVCluster}, this tool allows any variant to
+ * match more than one stratification group. If this occurs, groups will be prioritized by their ordering in the input
+ * stratification table, with groups appearing first receiving higher priority. While all matching groups will
+ * be listed in the STRAT INFO field, the variant ID pertaining to the highest-priority group will be populated in
+ * the TRUTH_VID field (groups with no matching variant are ignored). It is therefore recommended that the groups with
+ * the most specific clustering criteria be listed as higher priority.
+ *
+ * The "default" stratification group, with clustering parameters specified directly through the clustering program
+ * arguments (e.g. --depth-breakend-window, --pesr-interval-overlap, etc.), is always present and given lowest priority.
+ *
+ * <ul>
+ *     <li>GENOTYPE_CONCORDANCE</li>
+ *     <li>CNV_CONCORDANCE</li>
+ *     <li>NON_REF_GENOTYPE_CONCORDANCE</li>
+ *     <li>HET_PPV</li>
+ *     <li>HET_SENSITIVITY</li>
+ *     <li>HOMVAR_PPV</li>
+ *     <li>HOMVAR_SENSITIVITY</li>
+ *     <li>VAR_PPV</li>
+ *     <li>VAR_SENSITIVITY</li>
+ *     <li>VAR_SPECIFICITY</li>
+ *     <li>TRUTH_VARIANT_ID</li>
+ *     <li>TRUTH_AC</li>
+ *     <li>TRUTH_AF</li>
+ *     <li>TRUTH_AN</li>
+ *     <li>TRUTH_RECIPROCAL_OVERLAP</li>
+ *     <li>TRUTH_SIZE_SIMILARITY</li>
+ *     <li>TRUTH_DISTANCE_START</li>
+ *     <li>TRUTH_DISTANCE_END</li>
+ * </ul>
+ *
+ * Allele frequency related fields (AF, AC, AN, TRUTH_AF, TRUTH_AC, TRUTH_AN) are passed through if already assigned in
+ * the input VCFs and otherwise recalculated.
+ *
+ * Output records determined to be "true positives" are annotated with the following INFO fields according to overlap
+ * with the highest priority matching stratification group:
+ *
+ * This tool performs a final sorting step on the emitted records using {@link SortingCollection}, which may
+ * inflate memory usage and degrade performance on very large VCFs. Performance may be improved by reducing the
+ * {@link #maxRecordsInRam} parameter.
  *
  * <h3>Inputs</h3>
  *
@@ -94,29 +153,42 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public final class SVConcordance extends AbstractConcordanceWalker {
 
-    public static final String UNSORTED_OUTPUT_LONG_NAME = "do-not-sort";
-
     @Argument(
             doc = "Output VCF",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private GATKPath outputFile;
+    protected GATKPath outputFile;
 
+    /**
+     * Expected format is tab-delimited and contains columns NAME, RECIPROCAL_OVERLAP, SIZE_SIMILARITY, BREAKEND_WINDOW,
+     * SAMPLE_OVERLAP. First line must be a header with column names. Comment lines starting with
+     * {@link TableUtils#COMMENT_PREFIX} are ignored.
+     */
     @Argument(
-            doc = "Skip output sorting. This can substantially reduce memory usage.",
-            fullName = UNSORTED_OUTPUT_LONG_NAME
+            doc = "Configuration file (.tsv) containing the clustering parameters for each group",
+            fullName = GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME,
+            optional = true
     )
-    private boolean doNotSort;
+    public GATKPath strataClusteringConfigFile;
+
+    @Argument(fullName = SVClusterWalker.MAX_RECORDS_IN_RAM_LONG_NAME,
+            doc = "When writing VCF files that need to be sorted, this will specify the number of records stored in " +
+                    "RAM before spilling to disk. Increasing this number reduces the number of file handles needed to sort a " +
+                    "VCF file, and increases the amount of RAM needed.",
+            optional=true)
+    public int maxRecordsInRam = 1000;
 
     @ArgumentCollection
-    private final SVClusterEngineArgumentsCollection clusterParameterArgs = new SVClusterEngineArgumentsCollection();
+    protected final SVClusterEngineArgumentsCollection defaultClusteringArgs = new SVClusterEngineArgumentsCollection();
+    @ArgumentCollection
+    private final OptionalSVStratificationEngineArgumentsCollection stratArgs = new OptionalSVStratificationEngineArgumentsCollection();
 
-    private SAMSequenceDictionary dictionary;
-    private VariantContextWriter writer;
-    private SVConcordanceLinkage linkage;
-    private ClosestSVFinder engine;
-    private String currentContig = null;
+    protected StratifiedConcordanceEngine engine;
+    protected SAMSequenceDictionary dictionary;
+    protected SortingCollection<VariantContext> sortingBuffer;
+    protected VariantContextWriter writer;
+
 
     @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
@@ -125,6 +197,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
 
     @Override
     public void onTraversalStart() {
+        super.onTraversalStart();
         // Use master sequence dictionary i.e. hg38 .dict file since the "best" dictionary is grabbed
         // from the VCF, which is sometimes out of order
         dictionary = getMasterSequenceDictionary();
@@ -135,67 +208,95 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         // Check that vcfs are sorted the same
         SequenceDictionaryUtils.validateDictionaries("eval", getEvalHeader().getSequenceDictionary(),
                 "truth", getTruthHeader().getSequenceDictionary(), false, true);
-
-        linkage = new SVConcordanceLinkage(dictionary);
-        linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());
-        linkage.setMixedParams(clusterParameterArgs.getMixedParameters());
-        linkage.setEvidenceParams(clusterParameterArgs.getPESRParameters());
+        writer = createVCFWriter(outputFile);
+        final VCFHeader header = createHeader(getEvalHeader());
+        writer.writeHeader(header);
+        sortingBuffer = SortingCollection.newInstance(
+                VariantContext.class,
+                new VCFRecordCodec(header, true),
+                header.getVCFRecordComparator(),
+                maxRecordsInRam,
+                tmpDir.toPath());
 
         // Concordance computations should be done on common samples only
         final Set<String> commonSamples = Sets.intersection(
                 new HashSet<>(getEvalHeader().getGenotypeSamples()),
                 new HashSet<>(getTruthHeader().getGenotypeSamples()));
         final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples);
-        engine = new ClosestSVFinder(linkage, collapser::annotate, !doNotSort, dictionary);
 
-        if (doNotSort) {
-            createOutputVariantIndex = false;
+        // Load stratification groups
+        if ((stratArgs.configFile == null) ^ (strataClusteringConfigFile == null)) {
+            throw new UserException.BadInput("Both --" + OptionalSVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME
+                    + " and --" + GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME + " must be used together, but only one was specified.");
         }
-        writer = createVCFWriter(outputFile);
-        writer.writeHeader(createHeader(getEvalHeader()));
+        final Map<String, ClosestSVFinder> clusterEngineMap = new HashMap<>();
+        if (strataClusteringConfigFile != null) {
+            try (final TableReader<StratifiedClusteringTableParser.StratumParameters> tableReader = TableUtils.reader(strataClusteringConfigFile.toPath(), StratifiedClusteringTableParser::tableParser)) {
+                for (final StratifiedClusteringTableParser.StratumParameters parameters : tableReader) {
+                    // Identical parameters for each linkage type
+                    final ClusteringParameters pesrParams = ClusteringParameters.createPesrParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
+                    final ClusteringParameters mixedParams = ClusteringParameters.createMixedParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
+                    final ClusteringParameters depthParams = ClusteringParameters.createDepthParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
+                    final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
+                    linkage.setDepthOnlyParams(depthParams);
+                    linkage.setMixedParams(mixedParams);
+                    linkage.setEvidenceParams(pesrParams);
+                    final ClosestSVFinder engine = new ClosestSVFinder(linkage, collapser::annotate, false, dictionary);
+                    clusterEngineMap.put(parameters.name(), engine);
+                }
+            } catch (final IOException e) {
+                throw new GATKException("IO error while reading config table", e);
+            }
+        }
+        final SVStratificationEngine stratEngine = SVStratify.loadStratificationConfig(stratArgs.configFile, stratArgs, dictionary);
+        engine = new StratifiedConcordanceEngine(clusterEngineMap, stratEngine, stratArgs, defaultClusteringArgs, collapser, dictionary);
     }
+
 
     @Override
     public Object onTraversalSuccess() {
-        flushClusters(true);
+        for (final VariantContext variant : engine.flush(true)) {
+            sortingBuffer.add(variant);
+        }
+        if (!engine.isEmpty()) {
+            throw new GATKException("Concordance engine is not empty, but it should be");
+        }
+        for (final VariantContext variant : sortingBuffer) {
+            writer.add(variant);
+        }
         return super.onTraversalSuccess();
     }
 
     @Override
     public void closeTool() {
-        super.closeTool();
+        if (sortingBuffer != null) {
+            sortingBuffer.cleanup();
+        }
         if (writer != null) {
             writer.close();
         }
+        super.closeTool();
     }
 
     @Override
     public void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
         if (truthVersusEval.hasTruth()) {
-            add(truthVersusEval.getTruth(), true);
+            final SVCallRecord record = minimizeTruthFootprint(SVCallRecordUtils.create(truthVersusEval.getTruth(), dictionary));
+            engine.addTruthVariant(record);
         }
         if (truthVersusEval.hasEval()) {
-            add(truthVersusEval.getEval(), false);
+            final SVCallRecord record = SVCallRecordUtils.create(truthVersusEval.getEval(), dictionary);
+            engine.addEvalVariant(record);
         }
-    }
-
-    private void add(final VariantContext variant, final boolean isTruth) {
-        SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
-        if (!record.getContigA().equals(currentContig)) {
-            flushClusters(true);
-            currentContig = record.getContigA();
+        for (final VariantContext variant : engine.flush(false)) {
+            sortingBuffer.add(variant);
         }
-        if (isTruth) {
-            record = minimizeTruthFootprint(record);
-        }
-        engine.add(record, isTruth);
-        flushClusters(false);
     }
 
     /**
-     * Strips unneeded attributes from a truth variant to save memory.
+     * Strips unneeded FORMAT fields from a truth variant to save memory.
      */
-    protected SVCallRecord minimizeTruthFootprint(final SVCallRecord item) {
+    private SVCallRecord minimizeTruthFootprint(final SVCallRecord item) {
         final List<Genotype> genotypes = item.getGenotypes().stream().map(SVConcordance::stripTruthGenotype).collect(Collectors.toList());
         return new SVCallRecord(item.getId(), item.getContigA(), item.getPositionA(),
                 item.getStrandA(), item.getContigB(), item.getPositionB(), item.getStrandB(), item.getType(),
@@ -203,10 +304,16 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                 item.getAlleles(), genotypes, item.getAttributes(), item.getFilters(), item.getLog10PError(), dictionary);
     }
 
+    /**
+     * Strips all FORMAT fields except for the genotype and copy state
+     */
     private static Genotype stripTruthGenotype(final Genotype genotype) {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype.getSampleName()).alleles(genotype.getAlleles());
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
             builder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
+        }
+        if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
+            builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT));
         }
         return builder.make();
     }
@@ -216,14 +323,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         return true;
     }
 
-    private void flushClusters(final boolean force) {
-        engine.flush(force).stream()
-                .map(SVCallRecordUtils::getVariantBuilder)
-                .map(VariantContextBuilder::make)
-                .forEach(writer::add);
-    }
-
-    private VCFHeader createHeader(final VCFHeader header) {
+    protected VCFHeader createHeader(final VCFHeader header) {
         header.addMetaDataLine(new VCFFormatHeaderLine(GenotypeConcordance.CONTINGENCY_STATE_TAG, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "The genotype concordance contingency state"));
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.TRUTH_CN_EQUAL_FORMAT, 1, VCFHeaderLineType.Integer, "Truth CNV copy state is equal (1=True, 0=False)"));
         header.addMetaDataLine(Concordance.TRUTH_STATUS_HEADER_LINE);
@@ -241,11 +341,14 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Truth set allele count"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Truth set allele number"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Truth set allele frequency"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_RECIPROCAL_OVERLAP_INFO, 1, VCFHeaderLineType.Float, "Reciprocal overlap with truth variant"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_SIZE_SIMILARITY_INFO, 1, VCFHeaderLineType.Float, "Size similarity with truth variant"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_START_INFO, 1, VCFHeaderLineType.Integer, "Start coordinate distance in bp to truth variant's start"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_END_INFO, 1, VCFHeaderLineType.Integer, "End coordinate distance in bp to truth variant's end"));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
+        SVStratify.addStratifyMetadata(header);
         return header;
     }
-
-
 }

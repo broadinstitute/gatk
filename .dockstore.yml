@@ -349,6 +349,7 @@ workflows:
              - ah_var_store
              - VS-1619
              - vs_1676_AnVIL_3K
+             - master_merge_2025_07_16
          tags:
              - /.*/
    - name: GvsIngestTieout
