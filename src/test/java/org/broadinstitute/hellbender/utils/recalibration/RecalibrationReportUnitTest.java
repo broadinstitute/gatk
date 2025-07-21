@@ -142,10 +142,19 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
         return new RecalDatum((long)nObservations, (double)nErrors, (byte)qual);
     }
 
-    @Test(expectedExceptions = UserException.class)
-    public void testUnsupportedCovariates(){
-        File file = new File(toolsTestDir + "unsupported-covariates.table.gz");
-        new RecalibrationReport(file);
+    @Test
+    public void testNonStandardCovariates(){
+        File file = new File(toolsTestDir + "nonstandard-covariates.table.gz");
+        final RecalibrationReport report = new RecalibrationReport(file);
+        final BQSRCovariateList covariates = report.getCovariates();
+
+        Assert.assertEquals(covariates.size(), 5, "There should be 5 covariates in the report");
+        final List<String> covariateNames = covariates.getCovariateClassNames();
+        Assert.assertTrue(covariateNames.contains("ReadGroupCovariate"), "ReadGroupCovariate should be present but wasn't");
+        Assert.assertTrue(covariateNames.contains("QualityScoreCovariate"), "QualityScoreCovariate should be present but wasn't");
+        Assert.assertTrue(covariateNames.contains("ContextCovariate"), "ContextCovariate should be present but wasn't");
+        Assert.assertTrue(covariateNames.contains("CycleCovariate"), "CycleCovariate should be present but wasn't");
+        Assert.assertTrue(covariateNames.contains("RepeatLengthCovariate"), "RepeatLengthCovariate should be present but wasn't");
     }
 
     @Test
@@ -165,7 +174,7 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
 
         quantizationInfo.noQuantization();
         final String readGroupID = "id";
-        final StandardCovariateList covariateList = new StandardCovariateList(RAC, Collections.singletonList(readGroupID));
+        final BQSRCovariateList covariateList = new BQSRCovariateList(RAC, Collections.singletonList(readGroupID));
 
         final SAMReadGroupRecord rg = new SAMReadGroupRecord(readGroupID);
         rg.setPlatform("illumina");

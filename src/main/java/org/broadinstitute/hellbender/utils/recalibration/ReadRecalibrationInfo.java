@@ -118,8 +118,8 @@ public final class ReadRecalibrationInfo {
     }
 
     /**
-     * Get the ReadCovariates object carrying the mapping from offsets -> covariate key sets
-     * @return a non-null ReadCovariates object
+     * Get the PerReadCovariateMatrix object carrying the mapping from offsets -> covariate key sets
+     * @return a non-null PerReadCovariateMatrix object
      */
     public PerReadCovariateMatrix getCovariatesValues() {
         return covariates;

@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.PerReadCovariateMatrix;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadGroupCovariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 
 import java.io.File;
 import java.util.Arrays;
@@ -30,7 +30,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private static final long serialVersionUID = 1L;
 
     private final RecalibrationTables recalibrationTables;
-    private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
+    private final BQSRCovariateList covariates; // list of all covariates to be used in this calculation
     private final SAMFileHeader header;
 
     private final int preserveQLessThan;
@@ -39,12 +39,11 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
     //These fields are created to avoid redoing these calculations for every read
     private final int totalCovariateCount;
-    private final int specialCovariateCount;
 
-    private static final int BASE_SUBSTITUTION_INDEX = EventType.BASE_SUBSTITUTION.ordinal();
+    public static final int BASE_SUBSTITUTION_INDEX = EventType.BASE_SUBSTITUTION.ordinal();
 
     //Note: varargs allocates a new array every time. We'll pre-allocate one array and reuse it to avoid object allocation for every base of every read.
-    private final RecalDatum[] recalDatumsForSpecialCovariates;
+    private final RecalDatum[] recalDatumsForAdditionalCovariates;
     private final boolean useOriginalBaseQualities;
 
     // TODO: this should be merged with the quantized quals
@@ -73,13 +72,14 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param header header for the reads
      * @param recalibrationTables recalibration tables output from BQSR
      * @param quantizationInfo quantization info
-     * @param covariates standard covariate set
+     * @param bqsrCovariateList the list of covariate objects
      * @param args ApplyBQSR arguments
      */
-    private BQSRReadTransformer(final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo, final StandardCovariateList covariates, final ApplyBQSRArgumentCollection args) {
+    private BQSRReadTransformer( final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo,
+                                 final BQSRCovariateList bqsrCovariateList, final ApplyBQSRArgumentCollection args) {
         this.header = header;
         this.recalibrationTables = recalibrationTables;
-        this.covariates = covariates;
+        this.covariates = bqsrCovariateList;
 
         if (args.quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
@@ -99,11 +99,11 @@ public final class BQSRReadTransformer implements ReadTransformer {
         }
 
         this.quantizedQuals = quantizationInfo.getQuantizedQuals();
-        this.totalCovariateCount = covariates.size();
-        this.specialCovariateCount = covariates.numberOfSpecialCovariates();
+        this.totalCovariateCount = bqsrCovariateList.size();
+        final int additionalCovariateCount = bqsrCovariateList.getAdditionalCovariates().size();
 
         //Note: We pre-create the varargs arrays that will be used in the calls. Otherwise we're spending a lot of time allocating those int[] objects
-        this.recalDatumsForSpecialCovariates = new RecalDatum[specialCovariateCount];
+        this.recalDatumsForAdditionalCovariates = new RecalDatum[additionalCovariateCount];
         this.keyCache = new CovariateKeyCache();//one cache per transformer
         this.allowMissingReadGroups = args.allowMissingReadGroups;
     }
@@ -119,22 +119,26 @@ public final class BQSRReadTransformer implements ReadTransformer {
         this(header, recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates(), args);
     }
 
+    public BQSRCovariateList getCovariates() {
+        return covariates;
+    }
+
     /**
      * Recalibrates the base qualities of a read
      * <p>
      * It updates the base qualities of the read with the new recalibrated qualities (for all event types)
      * <p>
      * Implements a serial recalibration of the reads using the combinational table.
-     * First, we perform a positional recalibration, and then a subsequent dinuc correction.
+     * First, we perform a positional recalibration, and then a subsequent dinucleotide (dinuc) correction.
      * <p>
      * Given the full recalibration table, we perform the following preprocessing steps:
      * <p>
      * - calculate the global quality score shift across all data [DeltaQ]
      * - calculate for each of cycle and dinuc the shift of the quality scores relative to the global shift
-     * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Qempirical(pos, qual, dinuc) - Qreported(pos, qual, dinuc) / Npos * Nqual
+     * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Q_empirical(pos, qual, dinuc) - Q_reported(pos, qual, dinuc) / Npos * Nqual
      * - The final shift equation is:
      * <p>
-     * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
+     * Q_recal = Q_reported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
      *
      * @param originalRead the read to recalibrate
      */
@@ -203,26 +207,26 @@ public final class BQSRReadTransformer implements ReadTransformer {
             }
 
             // clear and reuse this array to save space
-            Arrays.fill(recalDatumsForSpecialCovariates, null);
+            Arrays.fill(recalDatumsForAdditionalCovariates, null);
             final int[] covariatesAtOffset = covariatesForRead[offset];
-            final int reportedBaseQualityAtOffset = covariatesAtOffset[StandardCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
+            final int reportedBaseQualityAtOffset = covariatesAtOffset[BQSRCovariateList.BASE_QUALITY_COVARIATE_DEFAULT_INDEX];
 
             // Datum for the tuple (read group, reported quality score).
             final RecalDatum qualityScoreDatum = recalibrationTables.getQualityScoreTable()
                     .get3Keys(rgKey, reportedBaseQualityAtOffset, BASE_SUBSTITUTION_INDEX);
 
-            for (int j = StandardCovariateList.NUM_REQUIRED_COVARITES; j < totalCovariateCount; j++) {
+            for (int j = BQSRCovariateList.NUM_REQUIRED_COVARITES; j < totalCovariateCount; j++) {
                 // If the covariate is -1 (e.g. the first base in each read should have -1 for the context covariate),
                 // we simply leave the corresponding Datum to be null, which will subsequently be ignored when it comes time to recalibrate.
                 if (covariatesAtOffset[j] >= 0) {
-                    recalDatumsForSpecialCovariates[j - StandardCovariateList.NUM_REQUIRED_COVARITES] = recalibrationTables.getTable(j)
+                    recalDatumsForAdditionalCovariates[j - BQSRCovariateList.NUM_REQUIRED_COVARITES] = recalibrationTables.getTable(j)
                             .get4Keys(rgKey, reportedBaseQualityAtOffset, covariatesAtOffset[j], BASE_SUBSTITUTION_INDEX);
                 }
             }
 
             // Use the reported quality score of the read group as the prior, which can be non-integer because of collapsing.
             final double priorQualityScore = constantQualityScorePrior > 0.0 ? constantQualityScorePrior : readGroupDatum.getReportedQuality();
-            final double rawRecalibratedQualityScore = hierarchicalBayesianQualityEstimate(priorQualityScore, readGroupDatum, qualityScoreDatum, recalDatumsForSpecialCovariates);
+            final double rawRecalibratedQualityScore = hierarchicalBayesianQualityEstimate(priorQualityScore, readGroupDatum, qualityScoreDatum, recalDatumsForAdditionalCovariates);
             final byte quantizedQualityScore = quantizedQuals.get(getBoundedIntegerQual(rawRecalibratedQualityScore));
 
             // TODO: as written the code quantizes *twice* if the static binning is enabled (first time to the dynamic bin). It should be quantized once.

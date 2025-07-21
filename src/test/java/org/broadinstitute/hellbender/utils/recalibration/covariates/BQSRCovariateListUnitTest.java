@@ -10,45 +10,43 @@ import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public final class StandardCovariateListUnitTest extends GATKBaseTest {
+public final class BQSRCovariateListUnitTest extends GATKBaseTest {
 
-    public StandardCovariateList makeCovariateList() {
-        return new StandardCovariateList(new RecalibrationArgumentCollection(), Collections.singletonList("readGroup"));
+    public BQSRCovariateList makeCovariateList() {
+        return new BQSRCovariateList(new RecalibrationArgumentCollection(), Collections.singletonList("readGroup"));
     }
 
     @Test
     public void testSize() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.size(), 4);
     }
 
     @Test
     public void testCovariateNames() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.covariateNames(), "ReadGroupCovariate,QualityScoreCovariate,ContextCovariate,CycleCovariate");
     }
 
     @Test
     public void testIterator() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(Utils.stream(scl).count(), 4);
     }
 
     @Test
     public void testGetCovariates() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.getReadGroupCovariate().parseNameForReport(), "ReadGroup");
         Assert.assertEquals(scl.getQualityScoreCovariate().parseNameForReport(), "QualityScore");
-        final List<Covariate> additionalCovars = Utils.stream(scl.getAdditionalCovariates()).collect(Collectors.toList());
-        Assert.assertEquals(additionalCovars.get(0).parseNameForReport(), "Context");
-        Assert.assertEquals(additionalCovars.get(1).parseNameForReport(), "Cycle");
+        Assert.assertEquals(scl.getAdditionalCovariates().get(0).parseNameForReport(), "Context");
+        Assert.assertEquals(scl.getAdditionalCovariates().get(1).parseNameForReport(), "Cycle");
     }
 
     @Test
     public void testGetCovariatesByIndex() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.get(0).parseNameForReport(), "ReadGroup");
         Assert.assertEquals(scl.get(1).parseNameForReport(), "QualityScore");
         Assert.assertEquals(scl.get(2).parseNameForReport(), "Context");
@@ -57,13 +55,13 @@ public final class StandardCovariateListUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IndexOutOfBoundsException.class)
     public void testGetCovariatesByIndexInvalid() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         scl.get(4);
     }
 
     @Test
     public void testGetCovariatesByIndexClass() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.indexByClass(ReadGroupCovariate.class), 0);
         Assert.assertEquals(scl.indexByClass(QualityScoreCovariate.class), 1);
         Assert.assertEquals(scl.indexByClass(ContextCovariate.class), 2);
@@ -72,6 +70,11 @@ public final class StandardCovariateListUnitTest extends GATKBaseTest {
         //finally, test an anonymous subclass
         Assert.assertEquals(scl.indexByClass(new Covariate() {
             private static final long serialVersionUID = 1L;
+
+            @Override
+            public void initialize( RecalibrationArgumentCollection RAC, List<String> readGroups ) {
+                
+            }
 
             @Override
             public void recordValues(GATKRead read, SAMFileHeader header, PerReadCovariateMatrix values, boolean recordIndels) {
@@ -97,7 +100,7 @@ public final class StandardCovariateListUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetCovariatesByParsedName() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         final String[] parsedNames = {"ReadGroup", "QualityScore", "Context", "Cycle"};
         for (String parsedName : parsedNames) {
             Assert.assertEquals(scl.getCovariateByParsedName(parsedName).parseNameForReport(), parsedName);
@@ -107,7 +110,7 @@ public final class StandardCovariateListUnitTest extends GATKBaseTest {
 
     @Test
     public void testCovariateInitialize() {
-        StandardCovariateList scl = makeCovariateList();
+        BQSRCovariateList scl = makeCovariateList();
         //this just tests non blowing up.
     }
 }

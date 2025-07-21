@@ -2,18 +2,27 @@ package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * The Covariate interface. A Covariate is a feature used in the recalibration that can be picked out of the read.
  * In general most error checking and adjustments to the data are done before the call to the covariates getValue methods in order to speed up the code.
  * This unfortunately muddies the code, but most of these corrections can be done per read while the covariates get called per base, resulting in a big speed up.
- *
- * Covariates are immutable objects after construction. All state setting and parameterization must happen during the construction call.
  */
 public interface Covariate extends Serializable {
     public static long serialVersionUID = 1L;
+
+    /**
+     * Initialize any member variables using the command-line arguments passed to the walker
+     *
+     * @param RAC the recalibration argument collection
+     * @param readGroups (only used by the ReadGroup covariate --- consider refactoring)
+     */
+    public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups);
+
     /**
      * Calculates covariate values for all positions in the read.
      *
