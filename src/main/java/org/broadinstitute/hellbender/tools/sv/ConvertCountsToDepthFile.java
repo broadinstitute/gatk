@@ -25,11 +25,16 @@ import java.util.Collections;
 @ExperimentalFeature
 public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
+    public static final String COUNTS_FILENAME_ARG_FULL_NAME = "counts-filename";
+    public static final String COUNTS_FILENAME_ARG_SHORT_NAME = StandardArgumentDefinitions.FEATURE_SHORT_NAME;
+    public static final String SAMPLE_NAME_ARG_FULL_NAME = "sample-name";
+    public static final String SAMPLE_NAME_ARG_SHORT_NAME = "n";
+
 
     @Argument(
             doc = "...",
-            fullName = "counts-filename", //StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME
+            fullName = COUNTS_FILENAME_ARG_FULL_NAME,
+            shortName = COUNTS_FILENAME_ARG_SHORT_NAME
     )
     private FeatureInput<SimpleCount> countsPath;
 
@@ -42,8 +47,9 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
 
     @Argument(
             doc = "...",
-            fullName = "sample-name",
-            shortName = "x"
+            fullName = SAMPLE_NAME_ARG_FULL_NAME,
+            shortName = SAMPLE_NAME_ARG_SHORT_NAME,
+            optional = true
     )
     private String sampleName;
 
@@ -75,6 +81,17 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
             throw new UserException.BadInput(
                     outputFilePath.getURIString() + " is not a valid format for " +
                     DepthEvidence.class.getSimpleName());
+
+        if(sampleName == null)
+        {
+            sampleName = header.getSampleName();
+
+            if (sampleName == null)
+            {
+                throw new UserException.BadInput("Sample name arg not provided and not present in the input, either provide the input argument or update header"); // TODO: better mesage.
+            }
+        }
+
 
 
         @SuppressWarnings("unchecked")
