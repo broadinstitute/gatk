@@ -1,7 +1,7 @@
 version 1.0
 
 import "../GvsUtils.wdl" as GvsUtils
-import "GvsQuickstartVCFIntegration.wdl" as Integration
+import "GvsQuickstartVcfIntegration.wdl" as Integration
 
 workflow AssertIdenticalMergedOutputs {
     input {
