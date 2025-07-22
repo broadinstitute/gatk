@@ -221,7 +221,10 @@ task AssertIdenticalMergedOutputs {
         # for this use case. If a persistent solution is required, see
         # https://broadinstitute.slack.com/archives/C0544AAC70D/p1696360070640409
 
+        # Let's not log the token.
+        set +o xtrace
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+        set -o xtrace
 
         bcftools view --header-only ~{merged_output_vcf} | grep -E -v '^##GATKCommandLine=|^##bcftools' > actual_header.txt
         bcftools view --header-only ${expected_prefix}/merged.vcf.gz | grep -E -v '^##GATKCommandLine=|^##bcftools' > expected_header.txt
