@@ -141,7 +141,6 @@ workflow GvsQuickstartVcfIntegration {
             call AssertIdenticalMergedOutputs {
                 input:
                     expected_output_prefix = expected_prefix,
-                    expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
                     merged_output_vcf = select_first([JointVariantCalling.merged_output_vcf]),
                     variants_docker = effective_variants_docker,
             }
@@ -200,7 +199,6 @@ task AssertIdenticalMergedOutputs {
     input {
         File merged_output_vcf
         String expected_output_prefix
-        String expected_output_suffix
         String variants_docker
     }
 
