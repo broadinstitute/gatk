@@ -223,17 +223,17 @@ task AssertIdenticalMergedOutputs {
 
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
 
-        bcftools view --header-only ~{merged_output_vcf} | grep -E -v '^##GATKCommandLine=' > actual_header.txt
-        bcftools view --header-only ${expected_prefix}/merged.vcf.gz | grep -E -v '^##GATKCommandLine=' > expected_header.txt
+        bcftools view --header-only ~{merged_output_vcf} | grep -E -v '^##GATKCommandLine=|^##bcftools' > actual_header.txt
+        bcftools view --header-only ${expected_prefix}/merged.vcf.gz | grep -E -v '^##GATKCommandLine=|^##bcftools' > expected_header.txt
 
         echo "Header Failure Check"
         cmp actual_header.txt expected_header.txt
 
         bcftools view --no-header ~{merged_output_vcf} > actual_content.txt
-        bcftools view --no-header ${expected_prefix}/merged.vcf.gz > actual_expected.txt
+        bcftools view --no-header ${expected_prefix}/merged.vcf.gz > expected_content.txt
 
         echo "Content Failure Check"
-        cmp actual_header.txt expected_header.txt
+        cmp actual_content.txt expected_content.txt
 
         echo "VCFs compared and matched!"
     >>>
