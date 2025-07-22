@@ -409,13 +409,13 @@ public enum TranscriptSelectionMode {
             }
 
             // Add the rest of the BEST_EFFECT comparators
-            chainedComparator = chainedComparator.thenComparing(byIgrStatus);
-            chainedComparator = chainedComparator.thenComparing(byVariantClassification);
-            chainedComparator = chainedComparator.thenComparing(byProteinCodingStatus);
-            chainedComparator = chainedComparator.thenComparing(byLocusLevel);
-            chainedComparator = chainedComparator.thenComparing(byApprisRank);
-            chainedComparator = chainedComparator.thenComparing(byTranscriptLength);
-            chainedComparator = chainedComparator.thenComparing(byTranscriptName);
+            chainedComparator = chainedComparator.thenComparing(byIgrStatus)
+                    .thenComparing(byVariantClassification)
+                    .thenComparing(byProteinCodingStatus)
+                    .thenComparing(byLocusLevel)
+                    .thenComparing(byApprisRank)
+                    .thenComparing(byTranscriptLength)
+                    .thenComparing(byTranscriptName);
         }
 
         @Override
@@ -470,13 +470,13 @@ public enum TranscriptSelectionMode {
             }
 
             // Add the rest of the CANONICAL comparators
-            chainedComparator = chainedComparator.thenComparing(byProteinCodingStatus);
-            chainedComparator = chainedComparator.thenComparing(byLocusLevel);
-            chainedComparator = chainedComparator.thenComparing(byApprisRank);
-            chainedComparator = chainedComparator.thenComparing(byIgrStatus);
-            chainedComparator = chainedComparator.thenComparing(byVariantClassification);
-            chainedComparator = chainedComparator.thenComparing(byTranscriptLength);
-            chainedComparator = chainedComparator.thenComparing(byTranscriptName);
+            chainedComparator = chainedComparator.thenComparing(byProteinCodingStatus)
+                    .thenComparing(byLocusLevel)
+                    .thenComparing(byApprisRank)
+                    .thenComparing(byIgrStatus)
+                    .thenComparing(byVariantClassification)
+                    .thenComparing(byTranscriptLength)
+                    .thenComparing(byTranscriptName);
         }
 
         @Override
