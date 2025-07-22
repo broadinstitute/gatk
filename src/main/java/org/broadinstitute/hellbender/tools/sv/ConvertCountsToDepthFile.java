@@ -18,8 +18,8 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import java.util.Collections;
 
 @CommandLineProgramProperties(
-        summary = "...",
-        oneLineSummary = "...",
+        summary = "Converts a counts file (*.counts.tsv) to a depth file (*." + DepthEvidenceCodec.FORMAT_SUFFIX + ").",
+        oneLineSummary = "Converts *.counts.tsv to " + DepthEvidenceCodec.FORMAT_SUFFIX,
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @ExperimentalFeature
@@ -32,21 +32,23 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
 
 
     @Argument(
-            doc = "...",
+            doc = "Input counts (*.counts.tsv) filename.",
             fullName = COUNTS_FILENAME_ARG_FULL_NAME,
             shortName = COUNTS_FILENAME_ARG_SHORT_NAME
     )
     private FeatureInput<SimpleCount> countsPath;
 
     @Argument(
-            doc = "...",
+            doc = "Output depth (*." + DepthEvidenceCodec.FORMAT_SUFFIX + ") filename.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private GATKPath outputFilePath;
 
     @Argument(
-            doc = "...",
+            doc = "Sample label of the input file. " +
+                  "If not provided, this tool extracts it from the input file header, " +
+                  "and will error-out if the header do not contain a sample name.",
             fullName = SAMPLE_NAME_ARG_FULL_NAME,
             shortName = SAMPLE_NAME_ARG_SHORT_NAME,
             optional = true
@@ -59,8 +61,6 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
             minValue = 0, maxValue = 9, optional = true
     )
     private int compressionLevel = 4;
-
-    private SAMSequenceDictionary dictionary;
 
     private FeatureOutputStream<DepthEvidence> outputSink;
 
@@ -88,11 +88,12 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
 
             if (sampleName == null)
             {
-                throw new UserException.BadInput("Sample name arg not provided and not present in the input, either provide the input argument or update header"); // TODO: better mesage.
+                throw new UserException.BadInput(
+                    "Sample name is not provided and the input file header does not contain sample name." +
+                    "You may either provide a label for input sample " +
+                    "(using --" + SAMPLE_NAME_ARG_FULL_NAME + " argument) or update input file header.");
             }
         }
-
-
 
         @SuppressWarnings("unchecked")
         final FeatureOutputCodec<DepthEvidence, FeatureOutputStream<DepthEvidence>> depthEvidenceCodec =
@@ -104,24 +105,6 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
                 Collections.singletonList(sampleName),
                 compressionLevel
         );
-
-
-        //Object sink = codec.makeSink(outputFilePath, sequenceDictionary, new ArrayList<>(Collections.singletonList(sampleName)), compressionLevel);
-        //FeatureOutputStream<DepthEvidence> x = codec.makeSink(outputFilePath, sequenceDictionary, new ArrayList<>(Collections.singletonList(sampleName)), compressionLevel);
-
-        /*
-        outputSink = (FeatureSink<SimpleCount>)codec.makeSortMerger(outputFilePath,
-                getDictionary(), new ArrayList<>(sampleNames), compressionLevel);*/
-
-        /*
-        final String headerString = (String) depthEvidenceCodec.getHeader(
-                Collections.singletonList(sampleName),
-                sequenceDictionary
-        );*/
-
-        //outputSink.writeHeader(headerString);
-
-        //outputSink.writeHeader();
     }
 
     @Override
@@ -137,7 +120,6 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
 
     @Override
     public GATKPath getDrivingFeaturePath() {
-        // TODO: not sure if this is intended to be implemented as the following or what purpose it serves
         return new GATKPath(countsPath.getFeaturePath());
     }
 
