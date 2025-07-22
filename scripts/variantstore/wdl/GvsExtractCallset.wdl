@@ -57,7 +57,7 @@ workflow GvsExtractCallset {
     Boolean convert_filtered_genotypes_to_nocalls = false
     Boolean write_cost_to_db = true
     Int maximum_alternate_alleles = 1000
-    Boolean merge_vcfs = true
+    Boolean merge_vcfs = false
   }
 
   String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
