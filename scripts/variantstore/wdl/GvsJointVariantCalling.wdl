@@ -260,6 +260,8 @@ workflow GvsJointVariantCalling {
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
         File? sample_name_list = GvsExtractCallset.sample_name_list
         File manifest = GvsExtractCallset.manifest
+        File? merged_output_vcf = GvsExtractCallset.merged_vcf
+        File? merged_output_vcf_index = GvsExtractCallset.merged_vcf_index
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = BulkIngestGenomes.used_tighter_gcp_quotas

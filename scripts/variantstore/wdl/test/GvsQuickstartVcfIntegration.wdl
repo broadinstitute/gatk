@@ -128,12 +128,23 @@ workflow GvsQuickstartVcfIntegration {
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)
     if (extract_do_not_filter_override || use_VETS) {
         String expected_prefix = expected_output_prefix + dataset_suffix + "/"
-        call AssertIdenticalOutputs {
-            input:
-                expected_output_prefix = expected_prefix,
-                expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
-                actual_vcfs = JointVariantCalling.output_vcfs,
-                gatk_docker = effective_gatk_docker
+        if (!defined(JointVariantCalling.merged_output_vcf)) {
+            call AssertIdenticalOutputs {
+                input:
+                    expected_output_prefix = expected_prefix,
+                    expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
+                    actual_vcfs = JointVariantCalling.output_vcfs,
+                    gatk_docker = effective_gatk_docker
+            }
+        }
+        if (defined(JointVariantCalling.merged_output_vcf)) {
+            call AssertIdenticalMergedOutputs {
+                input:
+                    expected_output_prefix = expected_prefix,
+                    expected_output_suffix = if (bgzip_output_vcfs) then ".bgz" else ".gz",
+                    merged_output_vcf = select_first([JointVariantCalling.merged_output_vcf]),
+                    variants_docker = effective_variants_docker,
+            }
         }
 
         if (check_expected_cost_and_table_size_outputs) {
@@ -185,6 +196,59 @@ workflow GvsQuickstartVcfIntegration {
     }
 }
 
+task AssertIdenticalMergedOutputs {
+    input {
+        File merged_output_vcf
+        String expected_output_prefix
+        String expected_output_suffix
+        String variants_docker
+    }
+
+    parameter_meta {
+        merged_output_vcf: {
+            localization_optional: true
+        }
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Where the current set of expected results lives in the cloud
+        expected_prefix="~{expected_output_prefix}"
+        # Remove a trailing slash if there is one
+        expected_prefix=${expected_prefix%/}
+
+        # Specify a GCS auth token for htslib/bcftools. Note this token only works for a limited time, but that's fine
+        # for this use case. If a persistent solution is required, see
+        # https://broadinstitute.slack.com/archives/C0544AAC70D/p1696360070640409
+
+        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+
+        bcftools view --header-only ~{merged_output_vcf} | grep -E -v '^##GATKCommandLine=' > actual_header.txt
+        bcftools view --header-only ${expected_prefix}/merged.vcf.gz | grep -E -v '^##GATKCommandLine=' > expected_header.txt
+
+        echo "Header Failure Check"
+        cmp actual_header.txt expected_header.txt
+
+        bcftools view --no-header ~{merged_output_vcf} > actual_content.txt
+        bcftools view --no-header ${expected_prefix}/merged.vcf.gz > actual_expected.txt
+
+        echo "Content Failure Check"
+        cmp actual_header.txt expected_header.txt
+
+        echo "VCFs compared and matched!"
+    >>>
+
+    runtime {
+        docker: variants_docker
+        disks: "local-disk 500 HDD"
+    }
+
+    output {
+        Boolean done = true
+    }
+}
 
 task AssertIdenticalOutputs {
     input {

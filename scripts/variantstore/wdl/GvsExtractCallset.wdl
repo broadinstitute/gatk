@@ -283,7 +283,7 @@ workflow GvsExtractCallset {
           input_vcfs = ExtractTask.output_vcf,
           gather_type = if (bgzip_output_vcfs) then "BLOCK" else "CONVENTIONAL",
           output_directory = output_gcs_dir,
-          output_vcf_name = call_set_identifier + ".merged." + vcf_extension,
+          output_vcf_name = call_set_identifier + ".merged" + vcf_extension,
           merge_disk_override = 500,
           preemptible_tries = 2,
           gatk_docker = effective_gatk_docker,
