@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import java.util.Collections;
 
 @CommandLineProgramProperties(
-        summary = "Converts a counts file (*.counts.tsv) to a depth file (*." + DepthEvidenceCodec.FORMAT_SUFFIX + ").",
+        summary = "Converts a counts file (*.counts.tsv) to a depth file (*" + DepthEvidenceCodec.FORMAT_SUFFIX + ").",
         oneLineSummary = "Converts *.counts.tsv to " + DepthEvidenceCodec.FORMAT_SUFFIX,
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
