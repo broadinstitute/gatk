@@ -127,6 +127,7 @@ workflows:
              - master
              - ah_var_store
              - gg_VS-1679_DontLetCreateFilterSetReuseFilterSetName
+             - FoxtrotRelease_20250722_1
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
