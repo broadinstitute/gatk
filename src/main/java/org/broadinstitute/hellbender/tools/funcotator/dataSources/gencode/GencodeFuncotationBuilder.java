@@ -320,6 +320,11 @@ public class GencodeFuncotationBuilder {
         return this;
     }
 
+    public GencodeFuncotationBuilder setManeTranscript(final Boolean isManeTranscript) {
+        gencodeFuncotation.setManeTranscript(isManeTranscript);
+        return this;
+    }
+
     /**
      * Set the Data Source Name {@link String} in the {@link GencodeFuncotation}.
      * @param name The {@link String} containing the Data Source Name for the {@link GencodeFuncotation}.
