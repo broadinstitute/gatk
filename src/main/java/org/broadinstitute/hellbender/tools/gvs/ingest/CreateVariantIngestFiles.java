@@ -170,6 +170,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private boolean shouldWriteVCFHeadersLoadedStatusRow = false;
 
+    private boolean shouldWritePloidiesLoadedStatusRow = false;
+
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -229,6 +231,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         Boolean refRangesRowsExist = null;
         Boolean vetRowsExist = null;
         Boolean vcfHeaderRowsExist = null;
+        Boolean ploidyRowsExist = null;
 
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
@@ -256,6 +259,20 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                         logger.info("Sample ID {}: No preexisting ref_ranges rows found.", sampleId);
                     }
                     shouldWriteReferencesLoadedStatusRow = true;
+                }
+
+                if (state.arePloidiesLoaded()) {
+                    logger.info("Sample ID {}: Reference ranges writing enabled but PLOIDIES_LOADED status row found, skipping.", sampleId);
+                } else {
+                    logger.info("Sample ID {}: Reference ranges writing enabled and no PLOIDIES_LOADED status row found, looking for existing rows.", sampleId);
+                    ploidyRowsExist = SamplePloidyCreator.doRowsExistFor(outputType, projectID, datasetName, sampleId);
+                    if (ploidyRowsExist) {
+                        logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ploidy rows found, skipping ploidy data writes.",
+                                sampleId, sampleName);
+                    } else {
+                        logger.info("Sample ID {}: No preexisting ploidy rows found.", sampleId);
+                    }
+                    shouldWritePloidiesLoadedStatusRow = true;
                 }
             }
 
@@ -299,14 +316,23 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // some class members that the CreateVariantIngestFilesTest expects to be initialized.
         SAMSequenceDictionary seqDictionary = initializeGQConfigurationAndIntervals();
 
-        if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
-            logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences);
+        if (enableReferenceRanges && (refRangesRowsExist == Boolean.FALSE || ploidyRowsExist == Boolean.FALSE)) {
+            // The refCreator is required if either reference ranges or ploidy data is being written, but should only
+            // write reference ranges if there are no preexisting reference range rows for this sample.
+            if (refRangesRowsExist == Boolean.FALSE) {
+                logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
+                refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, true, projectID, datasetName, storeCompressedReferences);
+            } else {
+                logger.info("*Not* writing reference range data for sample id = {}, name = {} but instantiating ref creator for ploidy writing", sampleId, sampleName);
+                refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, false, projectID, datasetName, storeCompressedReferences);
+            }
 
-            // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
-            // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
-            logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
-            samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
+            if (ploidyRowsExist == Boolean.FALSE) {
+                // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
+                // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
+                logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
+                samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
+            }
         }
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
@@ -321,11 +347,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         logger.info("enableReferenceRanges = {}, enableVet = {}, enableVCFHeaders = {}",
                 enableReferenceRanges, enableVet, enableVCFHeaders);
-        logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
-                shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
+        logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}, shouldWritePloidiesLoadedStatus = {}",
+                shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow, shouldWritePloidiesLoadedStatusRow);
 
-        if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
-                !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow) {
+        if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null && samplePloidyCreator == null &&
+                !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow && !shouldWritePloidiesLoadedStatusRow) {
             logger.info("No data to be written, exiting successfully.");
             System.exit(0);
         }
@@ -403,7 +429,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             refCreator.commitData();
 
             // this is likely an unnecessary check as it currently stands, but it can't hurt to have it in case we
-            // later separate their creation, throwing the ploidy stuff explicity behind a flag
+            // later separate their creation, throwing the ploidy stuff explicitly behind a flag
             if (samplePloidyCreator != null) {
                 try {
                     samplePloidyCreator.apply(refCreator.getReferencePloidyData(), refCreator.getTotalRefEntries());
@@ -423,6 +449,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             if (shouldWriteVCFHeadersLoadedStatusRow) loadStatus.writeHeadersLoadedStatus(sampleId);
             if (shouldWriteVariantsLoadedStatusRow) loadStatus.writeVariantsLoadedStatus(sampleId);
             if (shouldWriteReferencesLoadedStatusRow) loadStatus.writeReferencesLoadedStatus(sampleId);
+            if (shouldWritePloidiesLoadedStatusRow) loadStatus.writePloidiesLoadedStatus(sampleId);
         }
 
         return 0;
