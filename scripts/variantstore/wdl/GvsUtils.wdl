@@ -179,14 +179,14 @@ task MergeVCFs {
       --progress-logger-frequency 100000 \
       --output ~{output_vcf_name}
 
-    tabix ~{output_vcf_name}
+    bcftools index --tbi --threads 4 ~{output_vcf_name}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
-      gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
+      gcloud storage cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
+      gcloud storage cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
     fi
   >>>
 
