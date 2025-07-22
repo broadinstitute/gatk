@@ -39,7 +39,7 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
     private FeatureInput<SimpleCount> countsPath;
 
     @Argument(
-            doc = "Output depth (*." + DepthEvidenceCodec.FORMAT_SUFFIX + ") filename.",
+            doc = "Output depth (*" + DepthEvidenceCodec.FORMAT_SUFFIX + ") filename.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
