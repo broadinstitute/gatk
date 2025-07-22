@@ -15,7 +15,7 @@ workflow AssertIdenticalMergedOutputs {
 
     call GvsUtils.GetToolVersions {}
 
-    call Integration.AssertIdenticalMergedOutputs {
+    call Integration.AssertIdenticalMergedOutputs as DoIt {
         input:
             merged_output_vcf = actual,
             expected_output_prefix = expected_output_prefix,
