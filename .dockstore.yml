@@ -330,12 +330,12 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/AssertIdenticalMergedOutputs.wdl
      filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1710_cost_estimates
-       tags:
-         - /.*/
+         branches:
+             - master
+             - ah_var_store
+             - vs_1710_cost_estimates
+         tags:
+             - /.*/
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartHailIntegration.wdl
