@@ -6,8 +6,6 @@ import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
-import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
-
 
 workflow GvsJointVariantCalling {
     input {
@@ -139,7 +137,7 @@ workflow GvsJointVariantCalling {
     File interval_list_to_use = select_first([interval_list, default_interval_list])
 
     if (defined(custom_reference)) {
-        call PrepareReferenceFiles.GenerateBgzSequenceDictionaryAndIndex {
+        call Utils.GenerateBgzSequenceDictionaryAndIndex {
             input:
                 reference_fasta = select_first([custom_reference]),
                 output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
@@ -148,7 +146,7 @@ workflow GvsJointVariantCalling {
 
         File? custom_sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary
 
-        call PrepareReferenceFiles.GenerateContigMapping {
+        call Utils.GenerateContigMapping {
             input:
                 sequence_dictionary = select_first([custom_sequence_dictionary]),
                 in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
@@ -191,7 +189,7 @@ workflow GvsJointVariantCalling {
     }
 
     if (defined(custom_reference)) {
-        call PrepareReferenceFiles.CreateWeightedBedFile {
+        call Utils.CreateWeightedBedFile {
             input:
                 go = BulkIngestGenomes.done,
                 project_id = project_id,
