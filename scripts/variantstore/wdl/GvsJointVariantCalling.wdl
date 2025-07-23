@@ -8,6 +8,7 @@ import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "PrepareReferenceFiles.wdl" as PrepareReferenceFiles
 
+
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -197,12 +198,8 @@ workflow GvsJointVariantCalling {
                 dataset_name = dataset_name,
                 reference_dictionary = select_first([custom_sequence_dictionary]),
                 contig_mapping = select_first([custom_contig_mapping]),
-                in_reference_json = select_first([GenerateContigMapping.reference_files_json]),
-                output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
                 variants_docker = effective_variants_docker,
         }
-
-        File? custom_weighted_bed = read_json(CreateWeightedBedFile.updated_reference_files_json).weighted_bed
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -279,7 +276,7 @@ workflow GvsJointVariantCalling {
             scatter_count = extract_scatter_count,
             reference_name = reference_name,
             interval_list = interval_list_to_use,
-            interval_weights_bed = custom_weighted_bed,
+            interval_weights_bed = CreateWeightedBedFile.weighted_bed_file,
             custom_reference = custom_reference,
             custom_contig_mapping = custom_contig_mapping,
             variants_docker = effective_variants_docker,

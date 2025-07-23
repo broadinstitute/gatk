@@ -7,49 +7,6 @@ struct ReferenceFiles {
   String fasta_index
   String sequence_dictionary
   String contig_mapping
-  String vet_weight_bins
-  String weighted_bed
-}
-
-workflow PrepareReferenceFiles {
-  input {
-    File reference_fasta
-    String output_gcs_dir
-    String project_id
-    String dataset_name
-  }
-
-  call Utils.GetToolVersions {}
-
-  call GenerateBgzSequenceDictionaryAndIndex {
-    input:
-      reference_fasta = reference_fasta,
-      output_gcs_dir = output_gcs_dir,
-      gatk_docker = GetToolVersions.gatk_docker,
-  }
-
-  call GenerateContigMapping {
-    input:
-      sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
-      in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
-      output_gcs_dir = output_gcs_dir,
-      variants_docker = GetToolVersions.variants_docker,
-  }
-
-  call CreateWeightedBedFile {
-    input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      reference_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary,
-      contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping,
-      in_reference_json = GenerateContigMapping.reference_files_json,
-      output_gcs_dir = output_gcs_dir,
-      variants_docker = GetToolVersions.variants_docker,
-  }
-
-  output {
-    ReferenceFiles reference_files = read_json(CreateWeightedBedFile.updated_reference_files_json)
-  }
 }
 
 task GenerateBgzSequenceDictionaryAndIndex {
@@ -180,11 +137,9 @@ task CreateWeightedBedFile {
     Boolean go = true
     String project_id
     String dataset_name
-    String output_gcs_dir
     String variants_docker
     File reference_dictionary
     File contig_mapping
-    File in_reference_json
   }
 
   command <<<
@@ -205,31 +160,21 @@ task CreateWeightedBedFile {
       FROM ~{dataset_name}.vet_001
       GROUP BY bin ORDER BY bin' > vet_weight_bins.tsv
 
-    echo "Vet weight bins generated."
-    ls -l vet_weight_bins.tsv
-    echo "That's the file"
+    echo "Converting vet weight bins to BED format."
+    python /app/convert_weight_file_CSV_to_bed.py \
+      --bin-size 1 \
+      --mapping-file ~{contig_mapping} \
+      --infile vet_weight_bins.tsv \
+      --outfile vet_weight_bins.bed
 
-    python /app/weighted_bed_from_vet_bins.py \
-      --input-bin-data vet_weight_bins.tsv \
-      --reference-dict ~{reference_dictionary} \
-      --contig-mapping ~{contig_mapping} \
-      > weighted.bed
+    echo "Closing gaps in BED file."
+    python /app/close_bed_file_gaps.py \
+      --bin-size 1 \
+      --infile vet_weight_bins.bed \
+      --outfile vet_weight_bins_closed.bed \
+      --interval-list ~{reference_dictionary}
 
-    # Ensure no trailing slash on the GCS output directory
-    output_gcs_dir="~{output_gcs_dir}"
-    output_gcs_dir="${output_gcs_dir%/}"
-
-    base=$(basename ~{reference_dictionary} .dict)
-    cloud_weight_bins_file="${output_gcs_dir}/${base}.vet_weight_bins.tsv"
-    gcloud storage cp vet_weight_bins.tsv ${cloud_weight_bins_file}
-
-    cloud_weighted_bed_file="${output_gcs_dir}/${base}.weighted.bed"
-    gcloud storage cp weighted.bed ${cloud_weighted_bed_file}
-
-    jq " . += {
-      \"vet_weight_bins\": \"$cloud_weight_bins_file\",
-      \"weighted_bed\": \"$cloud_weighted_bed_file\"
-    } " ~{in_reference_json} > updated_reference_files.json
+    echo "Successfully created weighted.bed file 'vet_weight_bins_closed.bed'."
 
   >>>
 
@@ -241,6 +186,7 @@ task CreateWeightedBedFile {
   }
 
   output {
-    File updated_reference_files_json = "updated_reference_files.json"
+    File weighted_bed_file = "vet_weight_bins_closed.bed"
+    File vet_weight_bins_file = "vet_weight_bins.tsv"
   }
 }

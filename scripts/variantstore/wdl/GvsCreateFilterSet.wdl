@@ -125,7 +125,7 @@ workflow GvsCreateFilterSet {
     call ExtractFilterTask {
       input:
         go                         = CheckIfFilterSetNameIsInUse.done,
-        reference                  = GetReference.reference.reference_fasta,
+        reference                  = effective_reference,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
