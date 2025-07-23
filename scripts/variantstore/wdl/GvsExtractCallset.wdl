@@ -23,6 +23,9 @@ workflow GvsExtractCallset {
     Int extract_overhead_memory_override_gib = 3
     Int? disk_override
     Boolean bgzip_output_vcfs = false
+    Boolean merge_output_vcfs = false
+    Int merge_disk_override = 500
+    Int merge_preemptible_override = 2
     Boolean zero_pad_output_vcf_filenames = true
     Boolean collect_variant_calling_metrics = false
 
@@ -57,7 +60,6 @@ workflow GvsExtractCallset {
     Boolean convert_filtered_genotypes_to_nocalls = false
     Boolean write_cost_to_db = true
     Int maximum_alternate_alleles = 1000
-    Boolean merge_vcfs = false
   }
 
   String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
@@ -277,15 +279,15 @@ workflow GvsExtractCallset {
     }
   }
 
-  if (merge_vcfs) {
+  if (merge_output_vcfs) {
       call Utils.MergeVCFs {
         input:
           input_vcfs = ExtractTask.output_vcf,
           gather_type = if (bgzip_output_vcfs) then "BLOCK" else "CONVENTIONAL",
           output_directory = output_gcs_dir,
           output_vcf_name = call_set_identifier + ".merged" + vcf_extension,
-          merge_disk_override = 500,
-          preemptible_tries = 2,
+          merge_disk_override = merge_disk_override,
+          preemptible_tries = merge_preemptible_override,
           gatk_docker = effective_gatk_docker,
       }
   }
