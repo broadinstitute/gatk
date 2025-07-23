@@ -277,7 +277,7 @@ public class ReferenceConfidenceModel {
         // Assume infinite population on a single sample.
         final int refOffset = offset + globalRefOffset;
         final byte refBase = ref[refOffset];
-        final ReferenceConfidenceResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null, true);
+        final ReferenceConfidenceResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null, true, 1.0);
 
         final Allele refAllele = Allele.create(refBase, true);
         final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
@@ -401,7 +401,8 @@ public class ReferenceConfidenceModel {
                                                                        final byte refBase,
                                                                        final byte minBaseQual,
                                                                        final MathUtils.RunningAverage hqSoftClips,
-                                                                       final boolean readsWereRealigned) {
+                                                                       final boolean readsWereRealigned,
+                                                                       final double activeRegionAltMultiplier) {
 
         final int likelihoodCount = ploidy + 1;
         final double log10Ploidy = Math.log10(ploidy);
@@ -426,7 +427,7 @@ public class ReferenceConfidenceModel {
             }
 
             readCount++;
-            applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips, readsWereRealigned);
+            applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips, readsWereRealigned, activeRegionAltMultiplier);
         }
         final double denominator = readCount * log10Ploidy;
         for (int i = 0; i < likelihoodCount; i++) {
@@ -470,13 +471,13 @@ public class ReferenceConfidenceModel {
         return refModelDeletionQuality;
     }
 
-    private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned) {
+    private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned, final double activeRegionAltMultiplier) {
         final boolean isAlt = readsWereRealigned ? isAltAfterAssembly(element, refBase) : isAltBeforeAssembly(element, refBase);
         final double referenceLikelihood;
         final double nonRefLikelihood;
         if (isAlt) {
-            nonRefLikelihood = QualityUtils.qualToProbLog10(qual);
-            referenceLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            nonRefLikelihood = QualityUtils.qualToProbLog10(qual) * activeRegionAltMultiplier;
+            referenceLikelihood = QualityUtils.qualToErrorProbLog10(qual) * activeRegionAltMultiplier + MathUtils.LOG10_ONE_THIRD;
             result.nonRefDepth++;
         } else {
             referenceLikelihood = QualityUtils.qualToProbLog10(qual);
