@@ -13,6 +13,7 @@ workflow GvsExtractCohortFromSampleNames {
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
     Boolean is_wgs = true
+    Boolean merge_vcfs = true
 
     String gvs_project
     String gvs_dataset
@@ -178,6 +179,7 @@ workflow GvsExtractCohortFromSampleNames {
       variants_docker = effective_variants_docker,
       write_cost_to_db = write_cost_to_db,
       target_interval_list = target_interval_list,
+      merge_vcfs = merge_vcfs,
   }
 
   output {
@@ -185,6 +187,8 @@ workflow GvsExtractCohortFromSampleNames {
     Array[File] output_vcfs = GvsExtractCallset.output_vcfs
     Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
     String recorded_git_hash = effective_git_hash
+    File? merged_vcf = GvsExtractCallset.merged_vcf
+    File? merged_vcf_index = GvsExtractCallset.merged_vcf_index
   }
 
 }
