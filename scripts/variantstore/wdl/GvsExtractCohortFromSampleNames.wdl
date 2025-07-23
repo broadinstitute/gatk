@@ -206,4 +206,3 @@ task write_array_task {
     docker: cloud_sdk_docker
   }
 }
-

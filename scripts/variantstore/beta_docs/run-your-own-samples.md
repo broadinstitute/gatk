@@ -73,6 +73,7 @@ The following files are stored in the Google Cloud Storage path specified in the
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
 - Manifest file containing the output destination of additional files and other metadata
+- A single block-zipped (bgzipped) VCF file containing all variant data for the callset, as well as a corresponding index file
 
 Note:
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi

@@ -31,6 +31,7 @@ The following files are stored in the Google Cloud Storage path specified in the
 - A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in MB
 - Manifest file containing the destinations and sizes in B of the output sharded joint VCF and index files
+- A single block-zipped (bgzipped) VCF file containing all variant data for the callset, as well as a corresponding index file
 
 ## Setup
 
