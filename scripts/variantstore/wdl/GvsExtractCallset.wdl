@@ -108,7 +108,9 @@ workflow GvsExtractCallset {
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  # support a custom reference if one is provided.
+  File effective_reference = select_first([custom_reference,  GetReference.reference.reference_fasta])
+  String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.ScaleXYBedValues {
     input:
@@ -156,8 +158,6 @@ workflow GvsExtractCallset {
                                           else if effective_scatter_count <= 500 then 17 + extract_overhead_memory_override_gib
                                                else 9 + extract_overhead_memory_override_gib
 
-  # support a custom reference if one is provided.
-  File extract_reference = select_first([custom_reference,  GetReference.reference.reference_fasta])
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
@@ -167,7 +167,7 @@ workflow GvsExtractCallset {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = extract_reference,
+      ref_fasta = effective_reference,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
@@ -236,7 +236,7 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = extract_reference,
+        reference                             = effective_reference,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
