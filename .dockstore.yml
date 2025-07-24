@@ -219,7 +219,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1185_foxtrot_data_table
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -240,7 +239,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1676_AnVIL_3K
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -288,7 +286,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1670_release_0_6_3
+             - vs_1710_cost_estimates
          tags:
              - /.*/
    - name: GvsBeta
@@ -344,7 +342,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - master_merge_2025_07_16
+             - vs_1710_cost_estimates
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -482,4 +480,3 @@ workflows:
      filters:
        branches:
          - ah_var_store
-         - vs_1671_vat_discrepancies

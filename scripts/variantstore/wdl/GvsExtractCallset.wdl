@@ -22,7 +22,11 @@ workflow GvsExtractCallset {
     # The amount of memory on the extract VM *not* allocated to the GATK process.
     Int extract_overhead_memory_override_gib = 3
     Int? disk_override
-    Boolean bgzip_output_vcfs = false
+    # `bgzip_output_vcfs` and `merge_output_vcfs` will effectively default to `true` if the number of samples is less than 5000.
+    Boolean? bgzip_output_vcfs
+    Boolean? merge_output_vcfs
+    Int merge_disk_override = 500
+    Int merge_preemptible_override = 2
     Boolean zero_pad_output_vcf_filenames = true
     Boolean collect_variant_calling_metrics = false
 
@@ -83,7 +87,6 @@ workflow GvsExtractCallset {
   Boolean emit_ads = true
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
-  String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
 
   if (!defined(git_hash) || !defined(basic_docker) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
@@ -133,12 +136,12 @@ workflow GvsExtractCallset {
   # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if is_wgs then
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
-                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                                else 20000
                                      else
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
                                      else if GetNumSamplesLoaded.num_samples < 20000 then 1000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
@@ -218,6 +221,11 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  Boolean effective_merge_output_vcfs = select_first([merge_output_vcfs, GetNumSamplesLoaded.num_samples < 5000])
+  Boolean effective_bgzip_output_vcfs = select_first([bgzip_output_vcfs, GetNumSamplesLoaded.num_samples < 5000])
+
+  String vcf_extension = if (effective_bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
@@ -276,6 +284,19 @@ workflow GvsExtractCallset {
     }
   }
 
+  if (effective_merge_output_vcfs) {
+      call Utils.MergeVCFs {
+        input:
+          input_vcfs = ExtractTask.output_vcf,
+          gather_type = if (effective_bgzip_output_vcfs) then "BLOCK" else "CONVENTIONAL",
+          output_directory = output_gcs_dir,
+          output_vcf_name = call_set_identifier + ".merged" + vcf_extension,
+          merge_disk_override = merge_disk_override,
+          preemptible_tries = merge_preemptible_override,
+          gatk_docker = effective_gatk_docker,
+      }
+  }
+
   if (collect_variant_calling_metrics) {
     call GatherVariantCallingMetrics {
       input:
@@ -329,6 +350,8 @@ workflow GvsExtractCallset {
     File sample_name_list = GenerateSampleListFile.sample_name_list
     File? summary_metrics_file = GatherVariantCallingMetrics.summary_metrics_file
     File? detail_metrics_file = GatherVariantCallingMetrics.detail_metrics_file
+    File? merged_vcf = MergeVCFs.output_vcf
+    File? merged_vcf_index = MergeVCFs.output_vcf_index
     String recorded_git_hash = effective_git_hash
     Boolean done = true
   }

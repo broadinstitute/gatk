@@ -185,8 +185,8 @@ task MergeVCFs {
     OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
-      gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
+      gcloud storage cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
+      gcloud storage cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
     fi
   >>>
 

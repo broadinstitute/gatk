@@ -11,7 +11,7 @@
 
 The [Genomic Variant Store (GVS)](../gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, metrics, as well as an optional single combined, block-zipped (bgzipped) VCF file with index.
 
 The filtering approach follows the new best practice to use the GATK Variant Extract-Train-Score (VETS) toolchain with an isolation-forest model to flag probable artifacts.
 
@@ -111,12 +111,14 @@ This step calculates annotations including allele count (`AC`), allele number (`
 
 The final outputs of the GVS workflow are described in the table below: 
 
-| Output variable name | Description | Type | 
-| ------ | ------ | ------ |
-| output_vcfs | Sharded VCF files with variant calls. | Array of VCF files |
-| output_vcf_indexes | Sharded VCF index files for the output VCF files. | Array of VCF index files |
-| total_vcfs_size_mb | Float describing the total size of the output VCF files in MB. | Float |
-| manifest | TXT file listing output file destinations and other metadata. | TXT | 
+| Output variable name | Description                                                    | Type                     |
+|----------------------|----------------------------------------------------------------|--------------------------|
+| output_vcfs          | Sharded VCF files with variant calls.                          | Array of VCF files       |
+| output_vcf_indexes   | Sharded VCF index files for the output VCF files.              | Array of VCF index files |
+| total_vcfs_size_mb   | Float describing the total size of the output VCF files in MB. | Float                    |
+| manifest             | TXT file listing output file destinations and other metadata.  | TXT                      |
+| merged_vcf           | Merged VCF file with variant calls.                            | VCF file                 |
+| merged_vcf_index     | Merged VCF index file.                                         | VCF index file           |
 
 The GVS workflow outputs a sharded joint VCF file containing filter sites and genotypes flagged as probable artifacts and annotations calculated during the `GvsExtractCallset` subworkflow, including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The output VCF file is sharded so that no shards span multiple chromosomes. See [GVS outputs documentation](./gvs-outputs.md) for more information on the expected number of shards.
 

@@ -19,7 +19,8 @@ workflow GvsJointVariantCalling {
         String vcf_files_column_name
         String vcf_index_files_column_name
 
-        Boolean bgzip_output_vcfs = false
+        Boolean? merge_output_vcfs
+        Boolean? bgzip_output_vcfs
         Boolean collect_variant_calling_metrics = false
         String drop_state = "FORTY"
         Boolean use_VQSR = false
@@ -74,6 +75,17 @@ workflow GvsJointVariantCalling {
         File? scoring_python_script
 
         Int? maximum_alternate_alleles
+
+        Int? extract_maxretries_override
+        Int? extract_preemptible_override
+        Int? extract_scatter_count
+        Int? load_data_scatter_width
+        Int? load_data_preemptible_override
+        Int? load_data_maxretries_override
+        Array[String]? query_labels
+        File? sample_names_to_extract
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
     }
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
@@ -87,19 +99,6 @@ workflow GvsJointVariantCalling {
     String destination_dataset = dataset_name
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
     String ploidy_table_name = "sample_chromosome_ploidy"
-
-    if (false) {
-      Int extract_maxretries_override = ""
-      Int extract_preemptible_override = ""
-      Int extract_scatter_count = ""
-      Int load_data_batch_size = ""
-      Int load_data_preemptible_override = ""
-      Int load_data_maxretries_override = ""
-      Array[String] query_labels = []
-      File sample_names_to_extract = ""
-      Int split_intervals_disk_size_override = ""
-      Int split_intervals_mem_override = ""
-    }
 
     if (!defined(git_hash) ||
         !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
@@ -156,6 +155,9 @@ workflow GvsJointVariantCalling {
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
             is_wgs = is_wgs,
+            load_data_preemptible_override = load_data_preemptible_override,
+            load_data_maxretries_override = load_data_maxretries_override,
+            load_data_scatter_width = load_data_scatter_width,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -247,6 +249,8 @@ workflow GvsJointVariantCalling {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             ploidy_table_name = ploidy_table_name,
+            merge_output_vcfs = merge_output_vcfs,
+            bgzip_output_vcfs = bgzip_output_vcfs,
     }
 
     output {
@@ -257,6 +261,8 @@ workflow GvsJointVariantCalling {
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
         File? sample_name_list = GvsExtractCallset.sample_name_list
         File manifest = GvsExtractCallset.manifest
+        File? merged_output_vcf = GvsExtractCallset.merged_vcf
+        File? merged_output_vcf_index = GvsExtractCallset.merged_vcf_index
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = BulkIngestGenomes.used_tighter_gcp_quotas
