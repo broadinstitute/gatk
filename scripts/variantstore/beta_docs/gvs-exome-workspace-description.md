@@ -51,7 +51,7 @@ The following files are stored in the Google Cloud Storage path specified in the
 - A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in megabytes
 - Manifest file containing the destinations and sizes in bytes of the output sharded joint VCF and index files
-- A single block-zipped (bgzipped) VCF file containing all variant data for the callset, as well as a corresponding index file
+- Optionally, a single block-zipped (bgzipped) VCF file containing all variant data for the callset, as well as a corresponding index file
 
 There are example outputs from the sample data in the workspace bucket. For more information on GVS outputs, including the number of shards to expect, VCF content, and filters, see the [GVS outputs documentation](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-outputs.md).
 
