@@ -13,7 +13,9 @@ workflow GvsExtractCohortFromSampleNames {
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
     Boolean is_wgs = true
-    Boolean merge_vcfs = true
+    # `bgzip_output_vcfs` and `merge_output_vcfs` will effectively default to `true` if the number of samples is less than 5000.
+    Boolean? merge_output_vcfs
+    Boolean? bgzip_output_vcfs
 
     String gvs_project
     String gvs_dataset
@@ -33,7 +35,6 @@ workflow GvsExtractCohortFromSampleNames {
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
-    Boolean bgzip_output_vcfs = false
     String ploidy_table_name = "sample_chromosome_ploidy"
     Boolean collect_variant_calling_metrics = false
 
@@ -108,15 +109,14 @@ workflow GvsExtractCohortFromSampleNames {
 
   File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
 
-  # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(extract_scatter_count_override) then select_first([extract_scatter_count_override])
                                 else if is_wgs then
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
-                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
+                                     else if GetNumSamplesLoaded.num_samples < 20000 then 2000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                                else 20000
                                      else
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1 # This results in 1 VCF per chromosome.
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
                                      else if GetNumSamplesLoaded.num_samples < 20000 then 1000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
@@ -160,7 +160,6 @@ workflow GvsExtractCohortFromSampleNames {
       output_gcs_dir = output_gcs_dir,
 
       drop_state = drop_state,
-      bgzip_output_vcfs = bgzip_output_vcfs,
       collect_variant_calling_metrics = collect_variant_calling_metrics,
       ploidy_table_name = ploidy_table_name,
       extract_preemptible_override = extract_preemptible_override,
@@ -179,7 +178,8 @@ workflow GvsExtractCohortFromSampleNames {
       variants_docker = effective_variants_docker,
       write_cost_to_db = write_cost_to_db,
       target_interval_list = target_interval_list,
-      merge_vcfs = merge_vcfs,
+      merge_output_vcfs = select_first([merge_output_vcfs, GetNumSamplesLoaded.num_samples < 5000]),
+      bgzip_output_vcfs = select_first([bgzip_output_vcfs, GetNumSamplesLoaded.num_samples < 5000]),
   }
 
   output {

@@ -19,8 +19,8 @@ workflow GvsJointVariantCalling {
         String vcf_files_column_name
         String vcf_index_files_column_name
 
-        Boolean bgzip_output_vcfs = true
-        Boolean merge_extracted_vcfs = true
+        Boolean? merge_output_vcfs
+        Boolean? bgzip_output_vcfs
         Boolean collect_variant_calling_metrics = false
         String drop_state = "FORTY"
         Boolean use_VQSR = false
@@ -249,7 +249,8 @@ workflow GvsJointVariantCalling {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             ploidy_table_name = ploidy_table_name,
-            merge_vcfs = merge_extracted_vcfs,
+            merge_output_vcfs = merge_output_vcfs,
+            bgzip_output_vcfs = bgzip_output_vcfs,
     }
 
     output {
