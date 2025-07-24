@@ -155,7 +155,7 @@ task MergeVCFs {
     String gatk_docker
   }
 
-  Int disk_size = select_first([merge_disk_override, 100])
+  Int disk_size = select_first([merge_disk_override, 500])
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
@@ -1140,7 +1140,7 @@ task SelectVariants {
         Boolean exclude_filtered = false
         String output_basename
 
-        Int memory_gib = 10
+        Int memory_gib = 15
         Int overhead_memory_gib = 3
         Int disk_size_gb = ceil(3 * (size(input_vcf, "GiB") + size(input_vcf_index, "GiB"))) + 500
         String gatk_docker
