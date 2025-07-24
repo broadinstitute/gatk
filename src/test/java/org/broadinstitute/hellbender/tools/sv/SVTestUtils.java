@@ -557,7 +557,9 @@ public class SVTestUtils {
     public static SVCallRecord newBndCallRecordWithPositionAndStrands(final String chrA, final int posA, final boolean strandA,
                                                                       final String chrB, final int posB, final boolean strandB) {
         return new SVCallRecord("", chrA, posA, strandA, chrB, posB, strandB,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                null, Collections.emptyList(), null,
+                Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE),
                 Collections.singletonList(PESR_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),

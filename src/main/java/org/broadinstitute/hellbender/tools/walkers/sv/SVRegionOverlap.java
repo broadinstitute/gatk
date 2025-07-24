@@ -190,7 +190,7 @@ public final class SVRegionOverlap extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord record = SVCallRecordUtils.create(variant);
+        final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         final VariantContextBuilder builder = new VariantContextBuilder(variant);
         for (final Map.Entry<String, IntervalOverlapCalculator> entry : intervalTreeMap.entrySet()) {
             if (!suppressEndpointCounts) {

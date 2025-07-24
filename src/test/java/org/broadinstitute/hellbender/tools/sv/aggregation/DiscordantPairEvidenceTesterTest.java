@@ -22,7 +22,7 @@ public class DiscordantPairEvidenceTesterTest {
     private static final double ERROR_TOL = 1e-6;
 
     private final SVCallRecord TEST_DEL_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+            null, Collections.emptyList(), null,  Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
 
     @DataProvider(name = "poissonTestTestData")
     public Object[][] poissonTestTestData() {

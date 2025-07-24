@@ -397,13 +397,9 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
 
     private void loadSampleCoverage() {
         final String fileString = sampleCoverageFile.toString();
-        try {
-            sampleCoverageMap = IOUtils.readLines(BucketUtils.openFile(fileString), Charset.defaultCharset()).stream()
-                    .map(line -> line.split("\t"))
-                    .collect(Collectors.toMap(tokens -> tokens[0], tokens -> Double.valueOf(tokens[1])));
-        } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(fileString, e);
-        }
+        sampleCoverageMap = IOUtils.readLines(BucketUtils.openFile(fileString), Charset.defaultCharset()).stream()
+                .map(line -> line.split("\t"))
+                .collect(Collectors.toMap(tokens -> tokens[0], tokens -> Double.valueOf(tokens[1])));
     }
 
     @Override
@@ -445,7 +441,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     @Override
     public void firstPassApply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord call = SVCallRecordUtils.create(variant);
+        final SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
         if (!validRecordType(call)) {
             return;
         }
@@ -514,7 +510,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     @Override
     public void secondPassApply(final VariantContext variant, final ReadsContext readsContext,
                                 final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        SVCallRecord record = SVCallRecordUtils.create(variant);
+        SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         if (validRecordType(record)) {
             final Set<String> excludedSamples = getSamplesToExcludeForStatsBySex(record);
             flushOutputBuffer(record.getPositionAInterval());

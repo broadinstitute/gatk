@@ -336,11 +336,6 @@ public class SVCallRecord implements SVLocatable {
         return strandA == null && strandB == null;
     }
 
-    public SVCallRecord swapStartEnd() {
-        return new SVCallRecord(id, contigB, positionB, strandB, contigA, positionA, strandA,
-                type, cpxSubtype, length, algorithms, alleles, genotypes, attributes, filters, log10PError);
-    }
-
     public Map<String, Object> getAttributes() {
         return attributes;
     }
