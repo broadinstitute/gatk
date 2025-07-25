@@ -37,13 +37,6 @@ import java.util.stream.Stream;
 @DocumentedFeature
 public class SVFederate extends SVMergingWalker {
 
-    @Argument(
-            doc = "Output VCF",
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
-    )
-    protected GATKPath outputFile;
-
     /**
      * Default genotypes are assigned when they cannot be inferred from the inputs, such as when VCFs with different
      * variants and samples are provided.
