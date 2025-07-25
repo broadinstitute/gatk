@@ -5,7 +5,7 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
-
+# D
 workflow GvsQuickstartIntegration {
     input {
         String git_branch_or_tag
@@ -34,7 +34,6 @@ workflow GvsQuickstartIntegration {
         String? hail_version
         Boolean chr20_X_Y_only = true
         Int? maximum_alternate_alleles
-        String ploidy_table_name = "sample_chromosome_ploidy"
         File? gatk_override
     }
 
@@ -133,7 +132,6 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
-                ploidy_table_name = ploidy_table_name,
         }
 
         if (GvsQuickstartHailVETSIntegration.used_tighter_gcp_quotas) {
