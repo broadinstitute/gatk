@@ -29,10 +29,7 @@ import org.broadinstitute.hellbender.tools.sv.cluster.ClusteringParameters;
 import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngineArgumentsCollection;
 import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker;
 import org.broadinstitute.hellbender.tools.sv.cluster.StratifiedClusteringTableParser;
-import org.broadinstitute.hellbender.tools.sv.concordance.ClosestSVFinder;
-import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceAnnotator;
-import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceLinkage;
-import org.broadinstitute.hellbender.tools.sv.concordance.StratifiedConcordanceEngine;
+import org.broadinstitute.hellbender.tools.sv.concordance.*;
 import org.broadinstitute.hellbender.tools.sv.stratify.OptionalSVStratificationEngineArgumentsCollection;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
@@ -179,6 +176,15 @@ public final class SVConcordance extends AbstractConcordanceWalker {
             optional=true)
     public int maxRecordsInRam = 1000;
 
+    public static final String KEEP_ALL_MATCHES_LONG_NAME = "keep-all";
+    @Argument(fullName = KEEP_ALL_MATCHES_LONG_NAME,
+            doc = "If specified, SVConcordance will annotate all matching records within the specified parameters" +
+                    "rather than only the closest SV. Site-level concordance metrics like TRUTH_RECIPROCAL_OVERLAP" +
+                    "will be lists such that the nth item of each list corresponds to the same truth variant." +
+                    "Genotype concordance metrics will not be calculated.",
+            optional=true)
+    public boolean keepAll = false;
+
     @ArgumentCollection
     protected final SVClusterEngineArgumentsCollection defaultClusteringArgs = new SVClusterEngineArgumentsCollection();
     @ArgumentCollection
@@ -229,7 +235,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
             throw new UserException.BadInput("Both --" + OptionalSVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME
                     + " and --" + GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME + " must be used together, but only one was specified.");
         }
-        final Map<String, ClosestSVFinder> clusterEngineMap = new HashMap<>();
+        final Map<String, SVMatcher> clusterEngineMap = new HashMap<>();
         if (strataClusteringConfigFile != null) {
             try (final TableReader<StratifiedClusteringTableParser.StratumParameters> tableReader = TableUtils.reader(strataClusteringConfigFile.toPath(), StratifiedClusteringTableParser::tableParser)) {
                 for (final StratifiedClusteringTableParser.StratumParameters parameters : tableReader) {
@@ -241,15 +247,33 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                     linkage.setDepthOnlyParams(depthParams);
                     linkage.setMixedParams(mixedParams);
                     linkage.setEvidenceParams(pesrParams);
-                    final ClosestSVFinder engine = new ClosestSVFinder(linkage, collapser::annotate, false, dictionary);
+                    SVMatcher engine;
+                    if (keepAll) {
+                        engine = new SVMatchesFinder(linkage);
+                    } else {
+                        engine = new ClosestSVFinder(linkage, collapser::annotate, false, dictionary);
+
+                    }
                     clusterEngineMap.put(parameters.name(), engine);
                 }
             } catch (final IOException e) {
                 throw new GATKException("IO error while reading config table", e);
             }
         }
+
+        final SVConcordanceLinkage defaultLinkage = new SVConcordanceLinkage(dictionary);
+        defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
+        defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
+        defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());
+        SVMatcher defaultEngine;
+        if (keepAll) {
+            defaultEngine = new SVMatchesFinder(defaultLinkage);
+        } else {
+            defaultEngine = new ClosestSVFinder(defaultLinkage, collapser::annotate, false, dictionary);
+        }
+
         final SVStratificationEngine stratEngine = SVStratify.loadStratificationConfig(stratArgs.configFile, stratArgs, dictionary);
-        engine = new StratifiedConcordanceEngine(clusterEngineMap, stratEngine, stratArgs, defaultClusteringArgs, collapser, dictionary);
+        engine = new StratifiedConcordanceEngine(clusterEngineMap, defaultEngine, stratEngine, stratArgs);
     }
 
 
@@ -337,14 +361,14 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.VAR_PPV_INFO, 1, VCFHeaderLineType.Float, "Non-ref genotype positive predictive value"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.VAR_SENSITIVITY_INFO, 1, VCFHeaderLineType.Float, "Non-ref genotype sensitivity"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.VAR_SPECIFICITY_INFO, 1, VCFHeaderLineType.Float, "Non-ref genotype specificity"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_VARIANT_ID_INFO, 1, VCFHeaderLineType.String, "Matching truth set variant id"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Truth set allele count"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Truth set allele number"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Truth set allele frequency"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_RECIPROCAL_OVERLAP_INFO, 1, VCFHeaderLineType.Float, "Reciprocal overlap with truth variant"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_SIZE_SIMILARITY_INFO, 1, VCFHeaderLineType.Float, "Size similarity with truth variant"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_START_INFO, 1, VCFHeaderLineType.Integer, "Start coordinate distance in bp to truth variant's start"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_END_INFO, 1, VCFHeaderLineType.Integer, "End coordinate distance in bp to truth variant's end"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_VARIANT_ID_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Matching truth set variant id"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Truth set allele count"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Truth set allele number"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Truth set allele frequency"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_RECIPROCAL_OVERLAP_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Reciprocal overlap with truth variant"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_SIZE_SIMILARITY_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Size similarity with truth variant"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_START_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Start coordinate distance in bp to truth variant's start"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_END_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "End coordinate distance in bp to truth variant's end"));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));

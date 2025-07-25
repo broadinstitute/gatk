@@ -56,7 +56,7 @@ public class StratifiedConcordanceEngineTest extends BaseTest {
         stratificationEngine.addStratification(STRATIFICATION_3, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 100, 5000, Sets.newHashSet(TRACK_C));
         stratificationEngine.addStratification(STRATIFICATION_4, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, 100, 5000, Sets.newHashSet(TRACK_D));
 
-        final Map<String, ClosestSVFinder> clusterEngineMap = new HashMap<>();
+        final Map<String, SVMatcher> clusterEngineMap = new HashMap<>();
         final SVConcordanceLinkage linkage1 = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
         linkage1.setDepthOnlyParams(ClusteringParameters.createDepthParameters(0, 0, 10, 0));
         final SVConcordanceLinkage linkage2 = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
@@ -81,7 +81,13 @@ public class StratifiedConcordanceEngineTest extends BaseTest {
         stratArgs.numBreakpointOverlaps = 1;
         stratArgs.overlapFraction = 0;
 
-        return new StratifiedConcordanceEngine(clusterEngineMap, stratificationEngine, stratArgs, defaultClusteringArgs, collapser, SVTestUtils.hg38Dict);
+        final SVConcordanceLinkage defaultLinkage = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
+        defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
+        defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
+        defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());
+        final SVMatcher defaultEngine = new ClosestSVFinder(defaultLinkage, collapser::annotate, false, SVTestUtils.hg38Dict);
+
+        return new StratifiedConcordanceEngine(clusterEngineMap, defaultEngine, stratificationEngine, stratArgs);
     }
 
     @Test

@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  * between contigs. Developers should see {@link org.broadinstitute.hellbender.tools.walkers.sv.SVConcordance} as an
  * example use case.
  */
-public class ClosestSVFinder {
+public class ClosestSVFinder implements SVMatcher {
 
     protected final boolean sortOutput;
     protected final Map<Long, SVCallRecord> truthIdToItemMap;
