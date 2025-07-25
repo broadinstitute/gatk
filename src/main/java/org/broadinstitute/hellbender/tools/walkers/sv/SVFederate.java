@@ -37,17 +37,6 @@ import java.util.stream.Stream;
 @DocumentedFeature
 public class SVFederate extends SVMergingWalker {
 
-    /**
-     * Default genotypes are assigned when they cannot be inferred from the inputs, such as when VCFs with different
-     * variants and samples are provided.
-     */
-    @Argument(fullName = DEFAULT_NO_CALL_LONG_NAME,
-            doc = "Default to no-call GT (e.g. ./.) instead of reference alleles (e.g. 0/0) when a genotype is not" +
-                    " available",
-            optional = true
-    )
-    protected boolean defaultNoCall = true;
-
     @ArgumentCollection
     protected SVFederationArgumentCollection inputArgs = new SVFederationArgumentCollection();
 
