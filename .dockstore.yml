@@ -328,7 +328,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1716_CheckForExistenceOfSamplePloidyTable
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -348,6 +347,7 @@ workflows:
              - master
              - ah_var_store
              - master_merge_2025_07_16
+             - gg_VS-1716_CheckForExistenceOfSamplePloidyTable
          tags:
              - /.*/
    - name: GvsIngestTieout
