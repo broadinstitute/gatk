@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
-import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngineArgumentsCollection;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngineArgumentsCollection;
 import org.broadinstitute.hellbender.tools.walkers.sv.SVStratify;
@@ -40,21 +39,19 @@ import java.util.stream.Collectors;
  */
 public class StratifiedConcordanceEngine {
 
-    protected final Map<String, ClosestSVFinder> clusterEngineMap;
+    protected final Map<String, SVMatcher> clusterEngineMap;
     protected final SVStratificationEngine stratificationEngine;
     protected final Map<Long, ItemTracker> variantStatusMap = new HashMap<>();
     protected List<VariantContext> outputBuffer;
-    protected ClosestSVFinder defaultEngine;
+    protected SVMatcher defaultEngine;
     protected SAMSequenceDictionary dictionary;
     protected final SVStratificationEngineArgumentsCollection stratArgs;
     protected Long nextItemId = 0L;
 
-    public StratifiedConcordanceEngine(final Map<String, ClosestSVFinder> clusterEngineMap,
+    public StratifiedConcordanceEngine(final Map<String, SVMatcher> clusterEngineMap,
+                                       final SVMatcher defaultEngine,
                                        final SVStratificationEngine stratificationEngine,
-                                       final SVStratificationEngineArgumentsCollection stratArgs,
-                                       final SVClusterEngineArgumentsCollection defaultClusteringArgs,
-                                       final SVConcordanceAnnotator defaultCollapser,
-                                       final SAMSequenceDictionary dictionary) {
+                                       final SVStratificationEngineArgumentsCollection stratArgs) {
         Utils.validate(stratificationEngine.getStrata().size() == clusterEngineMap.size(),
                 "Stratification and clustering configurations have a different number of groups.");
         for (final SVStratificationEngine.Stratum stratum : stratificationEngine.getStrata()) {
@@ -66,13 +63,7 @@ public class StratifiedConcordanceEngine {
         this.stratificationEngine = stratificationEngine;
         this.stratArgs = stratArgs;
         this.outputBuffer = new ArrayList<>();
-        this.dictionary = dictionary;
-
-        final SVConcordanceLinkage defaultLinkage = new SVConcordanceLinkage(dictionary);
-        defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
-        defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
-        defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());
-        this.defaultEngine = new ClosestSVFinder(defaultLinkage, defaultCollapser::annotate, false, dictionary);
+        this.defaultEngine = defaultEngine;
     }
 
     /**
@@ -135,7 +126,7 @@ public class StratifiedConcordanceEngine {
     /**
      * Adds a record to the given concordance engine, flushing active variants to the buffer if it hit a new contig
      */
-    protected void addToEngine(final SVCallRecord record, final Long id, final boolean isTruth, final ClosestSVFinder engine, final String name) {
+    protected void addToEngine(final SVCallRecord record, final Long id, final boolean isTruth, final SVMatcher engine, final String name) {
         if (engine.getLastItemContig() != null && !record.getContigA().equals(engine.getLastItemContig())) {
             flushEngineToBuffer(engine, true, name);
         }
@@ -146,7 +137,7 @@ public class StratifiedConcordanceEngine {
     /**
      * Flushes active eval variants in a specific group's engine to the output buffer
      */
-    protected void flushEngineToBuffer(final ClosestSVFinder engine, final boolean force, final String name) {
+    protected void flushEngineToBuffer(final SVMatcher engine, final boolean force, final String name) {
         for (final ClosestSVFinder.LinkageConcordanceRecord record: engine.flush(force)) {
             final ItemTracker tracker = variantStatusMap.get(record.id());
             Utils.validate(tracker != null, "Unregistered variant id: " + record.id());

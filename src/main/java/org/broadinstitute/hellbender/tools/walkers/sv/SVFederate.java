@@ -144,6 +144,8 @@ public class SVFederate extends SVMergingWalker {
                         new SVClusterEngine.OutputCluster(Stream.of(variant, thatVariantMap.get(match))
                         .map(var -> SVCallRecordUtils.create(var, dictionary))
                         .collect(Collectors.toList()));
+                // TODO: annotate cohort AFs
+                // TODO: external AF annotation only mode
                 final SVCallRecord merged = collapser.collapse(outputCluster);
                 write(merged);  // handles conversion to VariantContext and sorting in buffer
                 thatVariantMap.remove(match);  // all done with this variant - delete it to save memory
