@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
-import javax.ws.rs.core.Variant;
 import java.util.Arrays;
 import java.util.List;
 
