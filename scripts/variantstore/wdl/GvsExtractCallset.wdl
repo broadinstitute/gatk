@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-
+# D
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -45,7 +45,7 @@ workflow GvsExtractCallset {
 
     String output_file_base_name = filter_set_name
 
-    String? ploidy_table_name
+    String ploidy_table_name = "sample_chromosome_ploidy"
     Int? extract_maxretries_override
     Int? extract_preemptible_override
     String? output_gcs_dir
@@ -73,8 +73,8 @@ workflow GvsExtractCallset {
   String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
   String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
 
-  # make the fully qualified version of the ploidy table if present, otherwise leave it undefined
-  String? fq_ploidy_mapping_table = if (defined(ploidy_table_name)) then "~{fq_gvs_dataset}.~{ploidy_table_name}" else ploidy_table_name
+  # define the fully qualified version of the ploidy table (note that we will check below to see if it is present and only use it if so)
+  String fq_ploidy_mapping_table = "~{fq_gvs_dataset}.~{ploidy_table_name}"
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
@@ -218,6 +218,14 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  call Utils.DoesTableExist as DoesSampleChromosomePloidyMappingTableExist {
+    input:
+      project_id = query_project,
+      dataset_name = dataset_name,
+      table_name = ploidy_table_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     String interval_filename = basename(SplitIntervals.interval_files[i])
     String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}"
@@ -242,7 +250,7 @@ workflow GvsExtractCallset {
         do_not_filter_override                = do_not_filter_override,
         fq_filter_set_info_table              = fq_filter_set_info_table,
         fq_filter_set_site_table              = fq_filter_set_site_table,
-        fq_ploidy_mapping_table               = fq_ploidy_mapping_table,
+        fq_ploidy_mapping_table               = if (DoesSampleChromosomePloidyMappingTableExist.table_exists) then fq_ploidy_mapping_table else none,
         fq_filter_set_tranches_table          = if (use_VETS) then none else fq_filter_set_tranches_table,
         filter_set_name                       = filter_set_name,
         drop_state                            = drop_state,

@@ -7,7 +7,7 @@ import "GvsUtils.wdl" as Utils
 # Workflow used by AoU to extract variants for a given cohort of sample_names
 
 workflow GvsExtractCohortFromSampleNames {
-
+# D
   input {
     # cohort_sample_names_array will take precedence over cohort_sample_names if both are set
     Array[String]? cohort_sample_names_array
@@ -33,7 +33,6 @@ workflow GvsExtractCohortFromSampleNames {
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
     Boolean bgzip_output_vcfs = false
-    String ploidy_table_name = "sample_chromosome_ploidy"
     Boolean collect_variant_calling_metrics = false
 
     String reference_name = "hg38"
@@ -161,7 +160,6 @@ workflow GvsExtractCohortFromSampleNames {
       drop_state = drop_state,
       bgzip_output_vcfs = bgzip_output_vcfs,
       collect_variant_calling_metrics = collect_variant_calling_metrics,
-      ploidy_table_name = ploidy_table_name,
       extract_preemptible_override = extract_preemptible_override,
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
