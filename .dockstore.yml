@@ -328,6 +328,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1716_CheckForExistenceOfSamplePloidyTable
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
