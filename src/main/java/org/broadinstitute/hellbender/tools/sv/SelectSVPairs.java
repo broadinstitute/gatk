@@ -22,8 +22,6 @@ import java.util.stream.Collectors;
  * TODO docs
  */
 
-@BetaFeature
-@DocumentedFeature
 public class SelectSVPairs {
 
     // SV pair table column names
