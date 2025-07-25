@@ -1080,6 +1080,61 @@ task GetExtractVetTableVersion {
   }
 }
 
+task DoesTableExist {
+  input {
+    String project_id
+    String dataset_name
+    String table_name
+    String cloud_sdk_docker
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Check if table exists using INFORMATION_SCHEMA
+    set +o errexit
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+      "SELECT COUNT(*) as table_exists FROM \`~{project_id}.\~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name = '\~{table_name}'" > table_check.txt 2>/dev/null
+    query_exit_code=$?
+    set -o errexit
+
+    if [[ $query_exit_code -eq 0 ]]; then
+      # Query succeeded, check the result
+      table_count=$(tail -1 table_check.txt)
+      if [[ "$table_count" == "1" ]]; then
+        echo "true" > table_exists.txt
+        echo "Table ~{dataset_name}.~{table_name} exists"
+      else
+        echo "false" > table_exists.txt
+        echo "Table ~{dataset_name}.~{table_name} does not exist"
+      fi
+    else
+      # Query failed (likely dataset doesn't exist)
+      echo "false" > table_exists.txt
+      echo "Table ~{dataset_name}.~{table_name} does not exist (dataset may not exist)"
+    fi
+  >>>
+  output {
+    Boolean table_exists = read_boolean("table_exists.txt")
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task IndexVcf {
     input {
         File input_vcf

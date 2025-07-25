@@ -7,7 +7,7 @@ import "GvsUtils.wdl" as Utils
 # Workflow used by AoU to extract variants for a given cohort of sample_names
 
 workflow GvsExtractCohortFromSampleNames {
-
+# A
   input {
     # cohort_sample_names_array will take precedence over cohort_sample_names if both are set
     Array[String]? cohort_sample_names_array
