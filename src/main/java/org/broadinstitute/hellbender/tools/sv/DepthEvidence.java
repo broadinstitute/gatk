@@ -23,6 +23,9 @@ public final class DepthEvidence implements SVFeature {
         this.start = start;
         this.end = end;
         this.counts = counts;
+        if (counts.length == 151) {
+            int x = 0;
+        }
     }
 
     public DepthEvidence( final Locatable loc, final int[] counts ) {

@@ -149,6 +149,11 @@ public final class GATKSVVCFConstants {
     public static final String BOTHSIDES_SUPPORT_ATTRIBUTE = "BOTHSIDES_SUPPORT";
     public static final String HIGH_SR_BACKGROUND_ATTRIBUTE = "HIGH_SR_BACKGROUND";
 
+    // RD support
+    public static final String READ_DEPTH_QUALITY_ATTRIBUTE = "RDQ";
+    public static final String READ_DEPTH_SECOND_MAX_QUALITY_ATTRIBUTE = "RD_P2";
+    public static final String READ_DEPTH_MEDIAN_SEPARATION_ATTRIBUTE = "RD_MEDIAN_SEPARATION";
+
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
     public static final String DEPTH_GENOTYPE_COPY_NUMBER_FORMAT = "RD_CN";
