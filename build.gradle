@@ -984,7 +984,7 @@ tasks.register('gatkValidateScriptsWdl') {
 
     doLast {
         // Run the womtool validator on all WDL files in the 'scripts' directory
-        final File wdlFolder = new File(buildDir, "scripts")
+        final File wdlFolder = new File(rootDir, "scripts")
         def wdlFiles = fileTree(dir: wdlFolder).filter {
             f -> f.getAbsolutePath().endsWith(".wdl")
         }
