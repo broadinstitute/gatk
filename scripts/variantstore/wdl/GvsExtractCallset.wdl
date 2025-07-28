@@ -22,7 +22,8 @@ workflow GvsExtractCallset {
     # The amount of memory on the extract VM *not* allocated to the GATK process.
     Int extract_overhead_memory_override_gib = 3
     Int? disk_override
-    # `bgzip_output_vcfs` and `merge_output_vcfs` will effectively default to `true` if the number of samples is less than 5000.
+    # `bgzip_output_vcfs` and `merge_output_vcfs` will effectively default to `true` if the number of samples loaded is
+    # less than 5000; for >= 5000 samples loaded these default to `false`.
     Boolean? bgzip_output_vcfs
     Boolean? merge_output_vcfs
     Int merge_disk_override = 500
@@ -133,7 +134,6 @@ workflow GvsExtractCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  # scatter for WGS and exome samples based on past successful runs and NOT optimized
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if is_wgs then
                                      if GetNumSamplesLoaded.num_samples < 5000 then 500

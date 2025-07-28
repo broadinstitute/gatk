@@ -13,7 +13,9 @@ workflow GvsExtractCohortFromSampleNames {
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
     Boolean is_wgs = true
-    # `bgzip_output_vcfs` and `merge_output_vcfs` will effectively default to `true` if the number of samples is less than 5000.
+    # `bgzip_output_vcfs` and `merge_output_vcfs` will effectively default to `true` if the number of samples loaded is
+    # less than 5000, but would default to `false` if the number of samples loaded is greater than 5000. So far the
+    # AoU RWB, these will always default to `false`.
     Boolean? merge_output_vcfs
     Boolean? bgzip_output_vcfs
 
