@@ -35,7 +35,6 @@ workflow GvsExtractCohortFromSampleNames {
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
     String drop_state = "NONE"
-    Boolean bgzip_output_vcfs = false
     Boolean collect_variant_calling_metrics = false
 
     String reference_name = "hg38"
