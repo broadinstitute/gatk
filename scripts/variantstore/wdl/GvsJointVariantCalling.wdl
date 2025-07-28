@@ -12,7 +12,7 @@ workflow GvsJointVariantCalling {
         Boolean go = true
         String call_set_identifier
         String dataset_name
-        Stringx extract_output_gcs_dir
+        String extract_output_gcs_dir
         String project_id
 
         String sample_id_column_name
