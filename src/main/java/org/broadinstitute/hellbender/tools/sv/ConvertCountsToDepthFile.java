@@ -16,7 +16,34 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
 
 import java.util.Collections;
-
+/**
+ * <p>Converts a read counts file (*.counts.tsv) to a depth file (*.rd.txt). </p>
+ *
+ * <h3>Inputs</h3>
+ *
+ * <ul>
+ *     <li>
+ *         A read counts file (*.counts.tsv).
+ *     </li>
+ *     <li>Optional:  Sample label of the input file. If not provided, this tool extracts it from the input file header.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ *
+ * <ul>
+ *     <li>
+ *         An output file containing converted read counts to depth file format.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
+ * <pre>
+ *     gatk ConvertCountsToDepthFile \
+ *       --counts-filename input.counts.tsv \
+ *       --output output.rd.txt.gz
+ * </pre>
+ */
 @CommandLineProgramProperties(
         summary = "Converts a counts file (*.counts.tsv) to a depth file (*" + DepthEvidenceCodec.FORMAT_SUFFIX + ").",
         oneLineSummary = "Converts *.counts.tsv to " + DepthEvidenceCodec.FORMAT_SUFFIX,
@@ -25,21 +52,21 @@ import java.util.Collections;
 @ExperimentalFeature
 public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
-    public static final String COUNTS_FILENAME_ARG_FULL_NAME = "counts-filename";
-    public static final String COUNTS_FILENAME_ARG_SHORT_NAME = StandardArgumentDefinitions.FEATURE_SHORT_NAME;
+    public static final String COUNTS_FILE_PATH_ARG_FULL_NAME = "counts-filename";
+    public static final String COUNTS_FILE_PATH_ARG_SHORT_NAME = StandardArgumentDefinitions.FEATURE_SHORT_NAME;
     public static final String SAMPLE_NAME_ARG_FULL_NAME = "sample-name";
     public static final String SAMPLE_NAME_ARG_SHORT_NAME = "n";
 
 
     @Argument(
-            doc = "Input counts (*.counts.tsv) filename.",
-            fullName = COUNTS_FILENAME_ARG_FULL_NAME,
-            shortName = COUNTS_FILENAME_ARG_SHORT_NAME
+            doc = "Input file of counts (*.counts.tsv).",
+            fullName = COUNTS_FILE_PATH_ARG_FULL_NAME,
+            shortName = COUNTS_FILE_PATH_ARG_SHORT_NAME
     )
     private FeatureInput<SimpleCount> countsPath;
 
     @Argument(
-            doc = "Output depth (*" + DepthEvidenceCodec.FORMAT_SUFFIX + ") filename.",
+            doc = "Output file of depth (*" + DepthEvidenceCodec.FORMAT_SUFFIX + ").",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
@@ -48,7 +75,7 @@ public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
     @Argument(
             doc = "Sample label of the input file. " +
                   "If not provided, this tool extracts it from the input file header, " +
-                  "and will error-out if the header do not contain a sample name.",
+                  "and will throw an error if the header do not contain a sample name.",
             fullName = SAMPLE_NAME_ARG_FULL_NAME,
             shortName = SAMPLE_NAME_ARG_SHORT_NAME,
             optional = true

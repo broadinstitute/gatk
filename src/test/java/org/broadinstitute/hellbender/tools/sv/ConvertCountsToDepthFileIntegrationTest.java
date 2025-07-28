@@ -40,7 +40,7 @@ public class ConvertCountsToDepthFileIntegrationTest extends CommandLineProgramT
     @Test(dataProvider="cases")
     public void testSuccessfulConvert(final TestCase testCase) throws IOException {
         final String args =
-            " --" + ConvertCountsToDepthFile.COUNTS_FILENAME_ARG_FULL_NAME + " " + testCase.inputFilename +
+            " --" + ConvertCountsToDepthFile.COUNTS_FILE_PATH_ARG_FULL_NAME + " " + testCase.inputFilename +
             " --" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + " " + FULL_HG38_DICT +
             ((testCase.inputFilename == null) ?
                     "" :
