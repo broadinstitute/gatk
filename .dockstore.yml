@@ -267,6 +267,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1710_cost_estimates
          tags:
              - /.*/
    - name: GvsWithdrawSamples
