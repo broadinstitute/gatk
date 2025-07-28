@@ -38,7 +38,7 @@ workflow GvsQuickstartHailIntegration {
         String? submission_id
 
         Int? maximum_alternate_alleles
-        String ploidy_table_name
+        String ploidy_table_name = "sample_chromosome_ploidy"
     }
 
     String project_id = "gvs-internal"

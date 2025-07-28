@@ -98,7 +98,6 @@ workflow GvsJointVariantCalling {
     String destination_project = project_id
     String destination_dataset = dataset_name
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
-    String ploidy_table_name = "sample_chromosome_ploidy"
 
     if (!defined(git_hash) ||
         !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
@@ -248,7 +247,6 @@ workflow GvsJointVariantCalling {
             is_wgs = is_wgs,
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
-            ploidy_table_name = ploidy_table_name,
             merge_output_vcfs = merge_output_vcfs,
             bgzip_output_vcfs = bgzip_output_vcfs,
     }

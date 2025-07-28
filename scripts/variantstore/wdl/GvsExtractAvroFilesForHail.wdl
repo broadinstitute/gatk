@@ -16,7 +16,7 @@ workflow GvsExtractAvroFilesForHail {
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker
-        String ploidy_table_name
+        String ploidy_table_name = "sample_chromosome_ploidy"
     }
 
     if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {

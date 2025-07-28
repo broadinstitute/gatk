@@ -126,7 +126,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1679_DontLetCreateFilterSetReuseFilterSetName
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
