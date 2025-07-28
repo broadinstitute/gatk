@@ -1088,7 +1088,8 @@ task DoesTableExist {
     String cloud_sdk_docker
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # It's possible that this *should* be volatile, but being conservative.
+    volatile: true
   }
 
   # add labels for DSP Cloud Cost Control Labeling and Reporting
