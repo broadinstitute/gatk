@@ -1103,7 +1103,7 @@ task DoesTableExist {
     # Check if table exists using INFORMATION_SCHEMA
     set +o errexit
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-      'SELECT COUNT(*) as table_exists FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name = "~{table_name}"' > table_check.txt 2>/dev/null
+      'SELECT COUNT(*) as table_exists FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name = "~{table_name}"' > table_check.txt 2>error_log.txt
     query_exit_code=$?
     set -o errexit
 
