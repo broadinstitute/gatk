@@ -5,6 +5,7 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -44,12 +45,13 @@ import java.util.Collections;
  *       --output output.rd.txt.gz
  * </pre>
  */
+@DocumentedFeature
+@ExperimentalFeature
 @CommandLineProgramProperties(
         summary = "Converts a counts file (*.counts.tsv) to a depth file (*" + DepthEvidenceCodec.FORMAT_SUFFIX + ").",
         oneLineSummary = "Converts *.counts.tsv to " + DepthEvidenceCodec.FORMAT_SUFFIX,
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
-@ExperimentalFeature
 public class ConvertCountsToDepthFile extends FeatureWalker<SimpleCount> {
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
     public static final String COUNTS_FILE_PATH_ARG_FULL_NAME = "counts-filename";
