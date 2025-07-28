@@ -1088,7 +1088,7 @@ task DoesTableExist {
     String cloud_sdk_docker
   }
   meta {
-    # It's possible that this *should* be volatile, but being conservative.
+    # It's likely that this doesn't need to be volatile, but being conservative.
     volatile: true
   }
 
