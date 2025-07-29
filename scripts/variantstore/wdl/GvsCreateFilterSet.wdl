@@ -42,7 +42,6 @@ workflow GvsCreateFilterSet {
     RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
 
-    String? gatk_docker
     File? training_python_script
     File? scoring_python_script
   }
@@ -126,7 +125,7 @@ workflow GvsCreateFilterSet {
     call ExtractFilterTask {
       input:
         go                         = CheckIfFilterSetNameIsInUse.done,
-        reference                  = GetReference.reference.reference_fasta,
+        reference                  = effective_reference,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
