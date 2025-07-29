@@ -14,7 +14,7 @@ The materials in this workspace were developed by the Data Sciences Platform at 
 
 ### What does it do?
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in single sample reblocked GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in single sample reblocked GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, metrics, as well as an optional single combined, block-zipped (bgzipped) VCF file with index.
 
 For workflow documentation, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-overview.md).
 
@@ -43,6 +43,7 @@ The following files are stored in the Google Cloud Storage path specified in the
 - A list of the sample names included in the callset called `sample-name-list.txt`
 - Size of output VCF files in megabytes
 - Manifest file containing the destinations and sizes in bytes of the output sharded joint VCF and index files
+- Optionally, a single block-zipped (bgzipped) VCF file containing all variant data for the callset, as well as a corresponding index file
 
 There are example outputs from the sample data in the workspace bucket. For more information on GVS outputs, including the number of shards to expect, VCF content, and filters, see the [GVS outputs documentation](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-outputs.md).
 
