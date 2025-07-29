@@ -269,13 +269,19 @@ workflow GvsExtractCallset {
     }
 
     if (collect_variant_calling_metrics) {
+      call Utils.GetResources {
+        input:
+          reference_name = reference_name,
+          basic_docker = effective_basic_docker,
+      }
+
       call CollectVariantCallingMetrics as CollectMetricsSharded {
         input:
           input_vcf = ExtractTask.output_vcf,
           input_vcf_index = ExtractTask.output_vcf_index,
           metrics_filename_prefix = call_set_identifier + "." + i,
-          dbsnp_vcf = GetReference.reference.dbsnp_vcf,
-          dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index,
+          dbsnp_vcf = GetResources.resources.dbsnp_vcf,
+          dbsnp_vcf_index = GetResources.resources.dbsnp_vcf_index,
           interval_list = SplitIntervals.interval_files[i],
           ref_dict = GetReference.reference.reference_dict,
           gatk_docker = effective_gatk_docker

@@ -1,6 +1,7 @@
 version 1.0
 
 import "../structs/Reference.wdl" as Reference
+import "../structs/Resources.wdl" as Resources
 
 task GetReference {
   input {
@@ -14,6 +15,32 @@ task GetReference {
     "reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
     "wgs_calling_interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
     "exome_calling_interval_list": "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list",
+  }
+
+  command <<<
+    echo "Done."
+  >>>
+
+  runtime {
+    docker: basic_docker
+    memory: "1 GiB"
+    disks: "local-disk 100 HDD"
+    preemptible: 0
+    cpu: 1
+  }
+
+  output {
+    Reference reference = hg38_reference
+  }
+}
+
+task GetResources {
+  input {
+    String reference_name
+    String basic_docker
+  }
+
+  Resources hg38_resources = {
     "dbsnp_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf",
     "dbsnp_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx",
     "axiomPoly_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
@@ -41,7 +68,7 @@ task GetReference {
   }
 
   output {
-    Reference reference = hg38_reference
+    Resources resources = hg38_resources
   }
 }
 
