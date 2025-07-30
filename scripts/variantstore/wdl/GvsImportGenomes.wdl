@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
+import "GvsReference.wdl" as GvsReference
 
 workflow GvsImportGenomes {
 
