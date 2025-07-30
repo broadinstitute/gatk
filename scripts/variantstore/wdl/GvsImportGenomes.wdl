@@ -178,7 +178,7 @@ workflow GvsImportGenomes {
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = effective_interval_list,
         reference_version = GetReference.reference_version,
-        reference_dictionary = if (GetReference.is_custom) then GetReference.reference_dict else none,
+        reference_dictionary = if (GetReference.is_custom_reference) then GetReference.reference_dict else none,
         custom_contig_mapping_file = GetReference.custom_contig_mapping_file,
         gatk_docker = effective_gatk_docker,
         gatk_override = load_data_gatk_override,
