@@ -7,7 +7,7 @@ import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "GvsReference.wdl" as GvsReference
-# M
+# N
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -155,7 +155,7 @@ workflow GvsJointVariantCalling {
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
             reference_name = reference_name,
-            custom_reference = GetReference.reference_fasta,
+            custom_reference = custom_reference,
             interval_list = interval_list_to_use,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
@@ -208,7 +208,7 @@ workflow GvsJointVariantCalling {
             use_VETS = !use_VQSR,
             add_additional_annotations_to_sites_only_vcf = add_additional_annotations_to_sites_only_vcf,
             reference_name = reference_name,
-            custom_reference = GetReference.reference_fasta,
+            custom_reference = custom_reference,
             interval_list = interval_list_to_use,
             custom_training_resources = custom_training_resources,
             variants_docker = effective_variants_docker,
@@ -256,7 +256,7 @@ workflow GvsJointVariantCalling {
             query_project = query_project,
             scatter_count = extract_scatter_count,
             reference_name = reference_name,
-            custom_reference = GetReference.reference_fasta,
+            custom_reference = custom_reference,
             interval_list = interval_list_to_use,
             interval_weights_bed = CreateWeightedBedFile.weighted_bed_file,
             variants_docker = effective_variants_docker,

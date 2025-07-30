@@ -41,7 +41,7 @@ workflow GvsReference {
         call Utils.TerminateWorkflow as UnknownReferenceName {
             input:
                 basic_docker = effective_basic_docker,
-                message = "Unrecognized `reference_name`: " + reference_name + ". Exiting."
+                message = "Unrecognized value 'reference_name' defined. Must be either 'hg38' or 'CUSTOM`. Exiting."
         }
     }
 
@@ -49,7 +49,7 @@ workflow GvsReference {
         call Utils.TerminateWorkflow as Hg38CustomReferenceDefined {
             input:
                 basic_docker = effective_basic_docker,
-                message = "If `reference_name` is set to `hg38`, ` then `custom_reference` should not be defined. Exiting."
+                message = "If reference_name is set to 'hg38' then 'custom_reference' should not be defined. Exiting."
         }
     }
 
@@ -57,7 +57,7 @@ workflow GvsReference {
         call Utils.TerminateWorkflow as CustomMustHaveCustReferenceDefined {
             input:
                 basic_docker = effective_basic_docker,
-                message = "If `reference_name` is set to `CUSTMO`, ` then `custom_reference` must be defined. Exiting."
+                message = "If 'reference_name' is set to 'CUSTOM', then 'custom_reference' must be defined. Exiting."
         }
     }
 
