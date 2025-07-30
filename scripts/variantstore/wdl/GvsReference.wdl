@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 import "../structs/Reference.wdl" as Reference
 
-workflow GvsReference {
+workflow GetReference {
     input {
         String reference_name
         File? custom_reference
