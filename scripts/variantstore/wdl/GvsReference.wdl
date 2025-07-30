@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-import "../structs/Reference.wdl" as Reference
-
 workflow GvsReference {
     input {
         String reference_name
@@ -87,17 +85,8 @@ workflow GvsReference {
         File? custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping
     }
 
-    Reference hg38_reference = {
-        "reference_version": "38",
-        "reference_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
-        "reference_fasta_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
-        "reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
-        "wgs_calling_interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
-        "exome_calling_interval_list": "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list",
-    }
 
     output {
-        Reference reference = hg38_reference
         Boolean is_custom_reference = if (defined(custom_reference)) then true else false
         String reference_version = if (defined(custom_reference)) then "CUSTOM" else "38"
         File reference_fasta = select_first([custom_reference, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"])

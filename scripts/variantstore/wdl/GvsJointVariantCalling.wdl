@@ -6,8 +6,7 @@ import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
-import "GvsReference.wdl" as GvsReference
-# F
+# G
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true

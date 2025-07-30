@@ -2,7 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 import "GvsVQSR.wdl" as VQSR
-import "GvsReference.wdl" as GvsReference
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
