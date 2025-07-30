@@ -7,7 +7,7 @@ import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "GvsReference.wdl" as GvsReference
-# D
+# E
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -127,11 +127,12 @@ workflow GvsJointVariantCalling {
 
     call GvsReference.GvsReference as GetReference {
         input:
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = effective_git_hash,
             reference_name = reference_name,
             custom_reference = custom_reference,
             basic_docker = effective_basic_docker,
             workspace_bucket = effective_workspace_bucket,
-            workspace_id = effective_workspace_id,
             submission_id = effective_submission_id,
     }
 
