@@ -135,6 +135,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250730_1
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -218,6 +219,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250730_1
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
