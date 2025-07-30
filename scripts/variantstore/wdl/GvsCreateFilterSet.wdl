@@ -160,11 +160,7 @@ workflow GvsCreateFilterSet {
 
   # support a custom truth file
   # Specifying default resources here to make condition below clearer to read
-  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ${GetResources.resources.hapmap_resource_vcf} \
-                                  --resource:omni,training=true,calibration=true ${GetResources.resources.omni_resource_vcf} \
-                                  --resource:1000G,training=true,calibration=false ${GetResources.resources.one_thousand_genomes_resource_vcf} \
-                                  --resource:mills,training=true,calibration=true ${GetResources.resources.mills_resource_vcf} \
-                                  --resource:axiom,training=true,calibration=false ${GetResources.resources.axiomPoly_resource_vcf}"
+  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ${GetResources.resources.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetResources.resources.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetResources.resources.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetResources.resources.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetResources.resources.axiomPoly_resource_vcf}"
   # If the user has specified a path to a custom training resource, use that instead
   String vets_resource_args = if defined(custom_training_resources) then "--resource:user_custom,training=true,calibration=true ${custom_training_resources}" else default_hg38_resources
 
