@@ -7,7 +7,7 @@ import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "GvsReference.wdl" as GvsReference
-# C
+# D
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -125,7 +125,7 @@ workflow GvsJointVariantCalling {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-    call GvsReference.GetReference as GetReference {
+    call GvsReference.GvsReference as GetReference {
         input:
             reference_name = reference_name,
             custom_reference = custom_reference,
