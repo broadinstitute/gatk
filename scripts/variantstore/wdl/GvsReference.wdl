@@ -73,6 +73,7 @@ workflow GvsReference {
                 gatk_docker = effective_gatk_docker,
         }
 
+        File? custom_reference_index = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).reference_index
         File? custom_sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary
 
         call GenerateContigMapping {
@@ -86,8 +87,6 @@ workflow GvsReference {
         File? custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping
     }
 
-
-
     Reference hg38_reference = {
         "reference_version": "38",
         "reference_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
@@ -99,10 +98,12 @@ workflow GvsReference {
 
     output {
         Reference reference = hg38_reference
-        String reference_version = "38"
-        File reference_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-        File reference_fasta_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-        File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
+        Boolean is_custom_reference = if (defined(custom_reference)) then true else false
+        String reference_version = if (defined(custom_reference)) then "CUSTOM" else "38"
+        File reference_fasta = select_first([custom_reference, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"])
+        File reference_fasta_index = select_first([custom_reference_index, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"])
+        File reference_dict = select_first([custom_sequence_dictionary, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"])
+        File? custom_contig_mapping_file = custom_contig_mapping
         File wgs_calling_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         File exome_calling_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     }

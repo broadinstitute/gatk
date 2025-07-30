@@ -60,12 +60,6 @@ workflow JointVcfFiltering {
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
-  call Utils.GetReference {
-    input:
-      reference_name = reference_name,
-      basic_docker = effective_basic_docker,
-  }
-
   call Utils.GetResources {
     input:
       reference_name = reference_name,

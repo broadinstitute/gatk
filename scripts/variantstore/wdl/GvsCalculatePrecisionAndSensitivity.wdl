@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
+import "GvsReference.wdl" as GvsReference
 import "GvsExtractCohortFromSampleNames.wdl" as GvsExtractSubCohortVCFs
 
 workflow GvsCalculatePrecisionAndSensitivity {
@@ -75,14 +76,16 @@ workflow GvsCalculatePrecisionAndSensitivity {
     }
   }
 
-  call Utils.GetReference {
+  # Note - making no effert to support custom references here.
+  call GvsReference.GvsReference as GetReference {
     input:
+      git_branch_or_tag = git_branch_or_tag,
       reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
-  File effective_reference_fasta = select_first([reference_fasta, GetReference.reference.reference_fasta])
+  File effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])
+  File effective_reference_fasta = select_first([reference_fasta, GetReference.reference_fasta])
 
   call GvsExtractSubCohortVCFs.GvsExtractCohortFromSampleNames as GenerateControlVCFs {
     input:

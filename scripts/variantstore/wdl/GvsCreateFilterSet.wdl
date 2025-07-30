@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 import "GvsVQSR.wdl" as VQSR
+import "GvsReference.wdl" as GvsReference
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
@@ -14,11 +15,12 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     String reference_name = "hg38"
-    String? interval_list
-
     # for supporting non-hg38 references
     File? custom_reference
-    File? custom_contig_mapping
+
+    String? interval_list
+
+#    File? custom_contig_mapping
     String? custom_training_resources
 
     String? basic_docker
@@ -28,6 +30,9 @@ workflow GvsCreateFilterSet {
     String? git_branch_or_tag
     String? git_hash
     File? gatk_override
+
+    String? workspace_bucket
+    String? submission_id
 
     Boolean use_VETS = true
     # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
@@ -66,11 +71,18 @@ workflow GvsCreateFilterSet {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+  String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-  call Utils.GetReference {
+  call GvsReference.GvsReference as GetReference {
     input:
+      git_branch_or_tag = git_branch_or_tag,
+      git_hash = effective_git_hash,
       reference_name = reference_name,
+      custom_reference = custom_reference,
       basic_docker = effective_basic_docker,
+      workspace_bucket = effective_workspace_bucket,
+      submission_id = effective_submission_id,
   }
 
   call Utils.GetResources {
@@ -79,9 +91,7 @@ workflow GvsCreateFilterSet {
       basic_docker = effective_basic_docker,
   }
 
-
-  File effective_reference = select_first([custom_reference,  GetReference.reference.reference_fasta])
-  String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  String effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -115,7 +125,7 @@ workflow GvsCreateFilterSet {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = effective_reference,
+      ref_fasta = GetReference.reference_fasta,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -132,7 +142,8 @@ workflow GvsCreateFilterSet {
     call ExtractFilterTask {
       input:
         go                         = CheckIfFilterSetNameIsInUse.done,
-        reference                  = effective_reference,
+        reference_version          = GetReference.reference_version,
+        reference                  = GetReference.reference_fasta,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -144,7 +155,7 @@ workflow GvsCreateFilterSet {
         project_id                 = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier,
-        custom_contig_mapping      = custom_contig_mapping,
+        custom_contig_mapping      = GetReference.custom_contig_mapping_file,
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
     }
@@ -234,7 +245,7 @@ workflow GvsCreateFilterSet {
         snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
         indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
         indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
-        custom_contig_mapping = custom_contig_mapping,
+        custom_contig_mapping = GetReference.custom_contig_mapping_file,
         project_id = project_id,
         useVQSR = false
     }
@@ -268,13 +279,14 @@ workflow GvsCreateFilterSet {
 
   call PopulateFilterSetSites {
     input:
+      reference_version = GetReference.reference_version,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
       sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
       fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-      custom_contig_mapping = custom_contig_mapping,
+      custom_contig_mapping = GetReference.custom_contig_mapping_file,
       project_id = project_id
   }
 
@@ -399,7 +411,9 @@ task ExtractFilterTask {
     String dataset_id
     String call_set_identifier
 
+    String reference_version
     File reference
+    File? custom_contig_mapping
 
     String fq_sample_table
     String sample_table_timestamp
@@ -413,7 +427,6 @@ task ExtractFilterTask {
 
     String output_file
     Int? excess_alleles_threshold
-    File? custom_contig_mapping
     Boolean add_additional_annotations = false
 
     # Runtime Options:
@@ -432,8 +445,6 @@ task ExtractFilterTask {
   String intervals_name = basename(intervals)
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
-
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -446,7 +457,7 @@ task ExtractFilterTask {
     df -h
 
     gatk --java-options "-Xmx4g" ExtractFeatures \
-      --ref-version ~{ref_version}  \
+      --ref-version ~{reference_version}  \
       -R "~{reference}" \
       -O "~{output_file}" \
       --local-sort-max-records-in-ram 1000000 \
@@ -485,6 +496,7 @@ task ExtractFilterTask {
 
 task PopulateFilterSetSites {
   input {
+    String reference_version
     String filter_set_name
     String fq_filter_sites_destination_table
 
@@ -506,8 +518,6 @@ task PopulateFilterSetSites {
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
-
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -520,7 +530,7 @@ task PopulateFilterSetSites {
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
       CreateSiteFilteringFiles \
-      --ref-version ~{ref_version}  \
+      --ref-version ~{reference_version}  \
       ~{"--contig-mapping-file " + custom_contig_mapping} \
       --filter-set-name ~{filter_set_name} \
       -V ~{sites_only_variant_filtered_vcf} \

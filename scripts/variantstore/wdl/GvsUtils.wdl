@@ -1,47 +1,6 @@
 version 1.0
 
-import "../structs/Reference.wdl" as Reference
 import "../structs/Resources.wdl" as Resources
-
-task GetReference {
-  input {
-    String reference_name
-    String basic_docker
-  }
-
-  String reference_version = "38" # Default value, can be overridden below
-
-  command <<<
-    # Determine reference version
-    if [[ "~{reference_name}" eq "hg38" ]]; then
-      reference_version="38"
-    else
-      reference_version="CUSTOM"
-    fi
-    echo "Done."
-  >>>
-
-    Reference hg38_reference = {
-      "reference_version": reference_version,
-      "reference_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
-      "reference_fasta_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
-      "reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
-      "wgs_calling_interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
-      "exome_calling_interval_list": "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list",
-    }
-
-  runtime {
-    docker: basic_docker
-    memory: "1 GiB"
-    disks: "local-disk 100 HDD"
-    preemptible: 0
-    cpu: 1
-  }
-
-  output {
-    Reference reference = hg38_reference
-  }
-}
 
 task GetResources {
   input {
