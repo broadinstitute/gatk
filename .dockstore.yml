@@ -291,6 +291,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1670_release_0_6_3
+             - gvs_expanded_references
              - gg_VS-1719_Better_RefSupport
          tags:
              - /.*/
