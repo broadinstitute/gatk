@@ -7,7 +7,7 @@ import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "GvsReference.wdl" as GvsReference
-# J
+# K
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -179,7 +179,7 @@ workflow GvsJointVariantCalling {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 reference_dictionary = GetReference.reference_dict,
-                contig_mapping = GetReference.custom_contig_mapping_file,
+                contig_mapping = select_first([GetReference.custom_contig_mapping_file]),
                 variants_docker = effective_variants_docker,
         }
     }
