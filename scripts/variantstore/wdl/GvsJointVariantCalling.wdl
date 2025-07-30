@@ -7,7 +7,7 @@ import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "GvsReference.wdl" as GvsReference
-# I
+# J
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -173,7 +173,7 @@ workflow GvsJointVariantCalling {
     }
 
     if (GetReference.is_custom_reference) {
-        call GetReference.CreateWeightedBedFile {
+        call GvsReference.CreateWeightedBedFile {
             input:
                 go = BulkIngestGenomes.done,
                 project_id = project_id,
