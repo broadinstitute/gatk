@@ -6,7 +6,8 @@ import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
-
+import "GvsReference.wdl" as GvsReference
+# A
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -124,16 +125,26 @@ workflow GvsJointVariantCalling {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-    call Utils.GetReference {
+    call GvsReference.GetReference as GetReference {
         input:
             reference_name = reference_name,
+            custom_reference = custom_reference,
             basic_docker = effective_basic_docker,
+            workspace_bucket = effective_workspace_bucket,
+            workspace_id = effective_workspace_id,
+            submission_id = effective_submission_id,
     }
+
+#    call Utils.GetReference {
+#        input:
+#            reference_name = reference_name,
+#            basic_docker = effective_basic_docker,
+#    }
 
     # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
     # However if `interval_list` is defined, we'll use that instead of choosing based on `is_wgs`.
-    File default_interval_list = if (is_wgs) then GetReference.reference.wgs_calling_interval_list
-                                 else GetReference.reference.exome_calling_interval_list
+    File default_interval_list = if (is_wgs) then GetReference.wgs_calling_interval_list
+                                 else GetReference.exome_calling_interval_list
     File interval_list_to_use = select_first([interval_list, default_interval_list])
 
     if (defined(custom_reference)) {
