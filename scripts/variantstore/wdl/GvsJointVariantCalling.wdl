@@ -7,7 +7,7 @@ import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
 import "GvsReference.wdl" as GvsReference
-# N
+# O
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true

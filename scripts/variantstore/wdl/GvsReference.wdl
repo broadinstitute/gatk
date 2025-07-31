@@ -21,70 +21,70 @@ workflow GvsReference {
         String? submission_id
     }
 
+    if ((reference_name != "hg38") || defined(custom_reference)) {
+        if (!defined(git_hash) ||
+            !defined(basic_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
+            !defined(workspace_bucket) || !defined(submission_id)) {
+            call Utils.GetToolVersions {
+                input:
+                    git_branch_or_tag = git_branch_or_tag,
+            }
+        }
 
-    if (!defined(git_hash) ||
-        !defined(basic_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
-        !defined(workspace_bucket) || !defined(submission_id)) {
-        call Utils.GetToolVersions {
-            input:
-                git_branch_or_tag = git_branch_or_tag,
+        String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+        String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+        String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+        String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+        String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
+
+        if ((reference_name != "hg38") && (reference_name != "CUSTOM")) {
+            call Utils.TerminateWorkflow as UnknownReferenceName {
+                input:
+                    basic_docker = effective_basic_docker,
+                    message = "Unrecognized value 'reference_name' defined. Must be either 'hg38' or 'CUSTOM`. Exiting."
+            }
+        }
+
+        if ((reference_name == "hg38") && defined(custom_reference)) {
+            call Utils.TerminateWorkflow as Hg38CustomReferenceDefined {
+                input:
+                    basic_docker = effective_basic_docker,
+                    message = "If reference_name is set to 'hg38' then 'custom_reference' should not be defined. Exiting."
+            }
+        }
+
+        if ((reference_name == "CUSTOM") && !defined(custom_reference)) {
+            call Utils.TerminateWorkflow as CustomMustHaveCustReferenceDefined {
+                input:
+                    basic_docker = effective_basic_docker,
+                    message = "If 'reference_name' is set to 'CUSTOM', then 'custom_reference' must be defined. Exiting."
+            }
+        }
+
+        # TODO - I'm not wild about storing these things on thge cloud. (e.g. index, dictionary) - maybe make it optional?
+
+        if (defined(custom_reference)) {
+            call GenerateBgzSequenceDictionaryAndIndex {
+                input:
+                    reference_fasta = select_first([custom_reference]),
+                    output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
+                    gatk_docker = effective_gatk_docker,
+            }
+
+            File? custom_reference_index = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).reference_index
+            File? custom_sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary
+
+            call GenerateContigMapping {
+                input:
+                    sequence_dictionary = select_first([custom_sequence_dictionary]),
+                    in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
+                    output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
+                    variants_docker = effective_variants_docker,
+            }
+
+            File? custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping
         }
     }
-
-    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
-    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
-    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
-
-    if ((reference_name != "hg38") && (reference_name != "CUSTOM")) {
-        call Utils.TerminateWorkflow as UnknownReferenceName {
-            input:
-                basic_docker = effective_basic_docker,
-                message = "Unrecognized value 'reference_name' defined. Must be either 'hg38' or 'CUSTOM`. Exiting."
-        }
-    }
-
-    if ((reference_name == "hg38") && defined(custom_reference)) {
-        call Utils.TerminateWorkflow as Hg38CustomReferenceDefined {
-            input:
-                basic_docker = effective_basic_docker,
-                message = "If reference_name is set to 'hg38' then 'custom_reference' should not be defined. Exiting."
-        }
-    }
-
-    if ((reference_name == "CUSTOM") && !defined(custom_reference)) {
-        call Utils.TerminateWorkflow as CustomMustHaveCustReferenceDefined {
-            input:
-                basic_docker = effective_basic_docker,
-                message = "If 'reference_name' is set to 'CUSTOM', then 'custom_reference' must be defined. Exiting."
-        }
-    }
-
-    # TODO - I'm not wild about storing these things on thge cloud. (e.g. index, dictionary) - maybe make it optional?
-
-    if (defined(custom_reference)) {
-        call GenerateBgzSequenceDictionaryAndIndex {
-            input:
-                reference_fasta = select_first([custom_reference]),
-                output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
-                gatk_docker = effective_gatk_docker,
-        }
-
-        File? custom_reference_index = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).reference_index
-        File? custom_sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary
-
-        call GenerateContigMapping {
-            input:
-                sequence_dictionary = select_first([custom_sequence_dictionary]),
-                in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
-                output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
-                variants_docker = effective_variants_docker,
-        }
-
-        File? custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping
-    }
-
 
     output {
         Boolean is_custom_reference = if (defined(custom_reference)) then true else false
