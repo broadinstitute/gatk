@@ -159,9 +159,9 @@ task GenerateBgzSequenceDictionaryAndIndex {
         echo "A"
         ls -l output/~{base_filename}.bgz
         echo "B"
-        ls -l output/~{base_filename}.fai
+        ls -l output/~{base_filename}.bgz.fai
         echo "C"
-        ls -l output/~{base_filename}.dict
+        ls -l output/~{base_filename}.bgz.dict
 
         gcloud storage cp output/*.bgz output/*.fai output/*.dict ${output_gcs_dir}/
 
@@ -181,8 +181,8 @@ task GenerateBgzSequenceDictionaryAndIndex {
 
     output {
         File fasta_bgz = "output/" + base_filename + ".bgz"
-        File fasta_index = "output/" + base_filename + ".fai"
-        File sequence_dictionary = "output/" + base_filename + ".dict"
+        File fasta_index = "output/" + base_filename + ".bgz.fai"
+        File sequence_dictionary = "output/" + base_filename + ".bgz.dict"
         File reference_files_json = "reference_files.json"
     }
 }
