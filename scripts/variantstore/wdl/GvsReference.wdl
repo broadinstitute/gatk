@@ -104,12 +104,16 @@ task GenerateBgzSequenceDictionaryAndIndex {
     }
 
     # The base name of the fasta file without the (possible) .bgz or .gz extension
-    String base_filename = sub(basename(reference_fasta, ".bgz"), "\\.bgz$|\\.gz$", "")
+    String base_filename = sub(basename(reference_fasta), "\\.bgz$|\\.gz$", "")
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "Hello!"
+        echo "Reference FASTA file: ~{reference_fasta}"
+        echo "Base filename from that: ~{base_filename}"
 
         mkdir output
 
@@ -152,6 +156,12 @@ task GenerateBgzSequenceDictionaryAndIndex {
 
         echo "hello"
         ls -l output/
+        echo "A"
+        ls -l output/~{base_filename}.bgz
+        echo "B"
+        ls -l output/~{base_filename}.fai
+        echo "C"
+        ls -l output/~{base_filename}.dict
 
         gcloud storage cp output/*.bgz output/*.fai output/*.dict ${output_gcs_dir}/
 
