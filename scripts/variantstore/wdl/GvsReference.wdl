@@ -67,7 +67,6 @@ workflow GvsReference {
             call GenerateBgzSequenceDictionaryAndIndex {
                 input:
                     reference_fasta = select_first([custom_reference]),
-                    output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
                     gatk_docker = effective_gatk_docker,
             }
 
@@ -94,7 +93,6 @@ workflow GvsReference {
 task GenerateBgzSequenceDictionaryAndIndex {
     input {
         File reference_fasta
-        String output_gcs_dir
         String gatk_docker
     }
     parameter_meta {
@@ -141,35 +139,11 @@ task GenerateBgzSequenceDictionaryAndIndex {
             bgzip ~{reference_fasta} --stdout > output/${base}.bgz
         fi
 
-        # Ensure no trailing slash on the GCS output directory
-        output_gcs_dir="~{output_gcs_dir}"
-        output_gcs_dir="${output_gcs_dir%/}"
-
-        base=$(basename output/*.bgz)
-
-        # Generate sequence dictionary using samtools. Make sure to specify the URI corresponding to where the bgzipped
-        # FASTA will be stored in the GCS output directory.
-        samtools dict --uri ${output_gcs_dir}/${base} output/*.bgz > output/$(basename output/*.bgz).dict
+        # Generate sequence dictionary using samtools.
+        samtools dict output/*.bgz > output/$(basename output/*.bgz).dict
 
         # Generate FASTA index using samtools
         samtools faidx output/*.bgz
-
-        echo "hello"
-        ls -l output/
-        echo "A"
-        ls -l output/~{base_filename}.bgz
-        echo "B"
-        ls -l output/~{base_filename}.bgz.fai
-        echo "C"
-        ls -l output/~{base_filename}.bgz.dict
-
-        gcloud storage cp output/*.bgz output/*.fai output/*.dict ${output_gcs_dir}/
-
-        echo "{
-            \"fasta_bgz\": \"$output_gcs_dir/$(basename output/*.bgz)\",
-            \"fasta_index\": \"$output_gcs_dir/$(basename output/*.fai)\",
-            \"sequence_dictionary\": \"$output_gcs_dir/$(basename output/*.dict)\"
-            }" > reference_files.json
     >>>
 
     runtime {
@@ -183,7 +157,6 @@ task GenerateBgzSequenceDictionaryAndIndex {
         File fasta_bgz = "output/" + base_filename + ".bgz"
         File fasta_index = "output/" + base_filename + ".bgz.fai"
         File sequence_dictionary = "output/" + base_filename + ".bgz.dict"
-        File reference_files_json = "reference_files.json"
     }
 }
 
