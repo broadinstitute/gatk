@@ -71,18 +71,11 @@ workflow GvsReference {
                     gatk_docker = effective_gatk_docker,
             }
 
-            File? custom_reference_index = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).fasta_index
-            File? custom_sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary
-
             call GenerateContigMapping {
                 input:
-                    sequence_dictionary = select_first([custom_sequence_dictionary]),
-                    in_reference_json = GenerateBgzSequenceDictionaryAndIndex.reference_files_json,
-                    output_gcs_dir = effective_workspace_bucket + "/submissions/" + effective_submission_id,
+                    sequence_dictionary = GenerateBgzSequenceDictionaryAndIndex.sequence_dictionary,
                     variants_docker = effective_variants_docker,
             }
-
-            File? custom_contig_mapping = read_json(GenerateContigMapping.reference_files_json).contig_mapping
         }
     }
 
@@ -90,9 +83,9 @@ workflow GvsReference {
         Boolean is_custom_reference = if (defined(custom_reference)) then true else false
         String reference_version = if (defined(custom_reference)) then "CUSTOM" else "38"
         File reference_fasta = select_first([custom_reference, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"])
-        File reference_fasta_index = select_first([custom_reference_index, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"])
-        File reference_dict = select_first([custom_sequence_dictionary, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"])
-        File? custom_contig_mapping_file = custom_contig_mapping
+        File reference_fasta_index = select_first([GenerateBgzSequenceDictionaryAndIndex.fasta_index, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"])
+        File reference_dict = select_first([GenerateBgzSequenceDictionaryAndIndex.sequence_dictionary, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"])
+        File? custom_contig_mapping_file = GenerateContigMapping.custom_contig_mapping_file
         File wgs_calling_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         File exome_calling_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     }
@@ -106,9 +99,12 @@ task GenerateBgzSequenceDictionaryAndIndex {
     }
     parameter_meta {
         reference_fasta: {
-                             help: "Reference FASTA file, can be compressed with bgzip, gzip or uncompressed."
-                         }
+             help: "Reference FASTA file, can be compressed with bgzip, gzip or uncompressed."
+         }
     }
+
+    # The base name of the fasta file without the (possible) .bgz or .gz extension
+    String base_filename = sub(basename(reference_fasta, ".bgz"), "\\.bgz$|\\.gz$", "")
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -154,6 +150,9 @@ task GenerateBgzSequenceDictionaryAndIndex {
         # Generate FASTA index using samtools
         samtools faidx output/*.bgz
 
+        echo "hello"
+        ls -l output/
+
         gcloud storage cp output/*.bgz output/*.fai output/*.dict ${output_gcs_dir}/
 
         echo "{
@@ -171,6 +170,9 @@ task GenerateBgzSequenceDictionaryAndIndex {
     }
 
     output {
+        File fasta_bgz = "output/" + base_filename + ".bgz"
+        File fasta_index = "output/" + base_filename + ".fai"
+        File sequence_dictionary = "output/" + base_filename + ".dict"
         File reference_files_json = "reference_files.json"
     }
 }
@@ -178,8 +180,6 @@ task GenerateBgzSequenceDictionaryAndIndex {
 task GenerateContigMapping {
     input {
         File sequence_dictionary
-        File in_reference_json
-        String output_gcs_dir
         String variants_docker
     }
 
@@ -195,19 +195,6 @@ task GenerateContigMapping {
         python3 /app/generate_custom_reference_mappings.py \
             ~{sequence_dictionary} > ~{contig_mapping_filename}
 
-        # Ensure no trailing slash on the GCS output directory
-        output_gcs_dir="~{output_gcs_dir}"
-        output_gcs_dir="${output_gcs_dir%/}"
-
-        gcloud storage cp ~{contig_mapping_filename} ${output_gcs_dir}/
-
-        # Update the reference files JSON with the contig mapping file
-        cloud_contig_mapping_file="${output_gcs_dir}/~{contig_mapping_filename})"
-
-        jq " . += {
-            \"contig_mapping\": \"$cloud_contig_mapping_file\"
-        } " ~{in_reference_json} > updated_reference_files.json
-
     >>>
 
     runtime {
@@ -219,7 +206,6 @@ task GenerateContigMapping {
 
     output {
         File custom_contig_mapping_file = contig_mapping_filename
-        File reference_files_json = "updated_reference_files.json"
     }
 }
 
