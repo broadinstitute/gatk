@@ -47,9 +47,6 @@ workflow GvsExtractCallset {
     String? git_hash
     File? gatk_override
 
-    String? workspace_bucket
-    String? submission_id
-
     String output_file_base_name = filter_set_name
 
     String? ploidy_table_name
@@ -92,8 +89,7 @@ workflow GvsExtractCallset {
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
   String vcf_extension = if (bgzip_output_vcfs) then '.vcf.bgz' else '.vcf.gz'
 
-  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
-      !defined(workspace_bucket) || !defined(submission_id)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -105,8 +101,6 @@ workflow GvsExtractCallset {
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
-  String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-  String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
   call GvsReference.GvsReference as GetReference {
     input:
@@ -115,8 +109,6 @@ workflow GvsExtractCallset {
       reference_name = reference_name,
       custom_reference = custom_reference,
       basic_docker = effective_basic_docker,
-      workspace_bucket = effective_workspace_bucket,
-      submission_id = effective_submission_id,
   }
 
   String effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])

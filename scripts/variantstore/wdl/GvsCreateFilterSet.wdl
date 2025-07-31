@@ -31,9 +31,6 @@ workflow GvsCreateFilterSet {
     String? git_hash
     File? gatk_override
 
-    String? workspace_bucket
-    String? submission_id
-
     Boolean use_VETS = true
     # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
     Boolean add_additional_annotations_to_sites_only_vcf = true
@@ -59,8 +56,7 @@ workflow GvsCreateFilterSet {
 
   String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
-  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
-      !defined(workspace_bucket) || !defined(submission_id)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -72,8 +68,6 @@ workflow GvsCreateFilterSet {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-  String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-  String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
   call GvsReference.GvsReference as GetReference {
     input:
@@ -82,8 +76,6 @@ workflow GvsCreateFilterSet {
       reference_name = reference_name,
       custom_reference = custom_reference,
       basic_docker = effective_basic_docker,
-      workspace_bucket = effective_workspace_bucket,
-      submission_id = effective_submission_id,
   }
 
   call Utils.GetResources {

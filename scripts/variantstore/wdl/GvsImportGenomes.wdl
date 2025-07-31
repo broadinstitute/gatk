@@ -47,10 +47,6 @@ workflow GvsImportGenomes {
     String? variants_docker
     String? gatk_docker
     File? load_data_gatk_override
-
-    String? workspace_bucket
-    String? submission_id
-
     String? billing_project_id
     Boolean is_wgs = true
   }
@@ -71,8 +67,7 @@ workflow GvsImportGenomes {
     File? none = ""
   }
 
-  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
-      !defined(workspace_bucket) || !defined(submission_id)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -84,8 +79,6 @@ workflow GvsImportGenomes {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
-  String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-  String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
   call GvsReference.GvsReference as GetReference {
     input:
@@ -94,8 +87,6 @@ workflow GvsImportGenomes {
       reference_name = reference_name,
       custom_reference = custom_reference,
       basic_docker = effective_basic_docker,
-      workspace_bucket = effective_workspace_bucket,
-      submission_id = effective_submission_id,
   }
 
   File effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])

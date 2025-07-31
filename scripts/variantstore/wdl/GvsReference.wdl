@@ -16,15 +16,11 @@ workflow GvsReference {
         String? basic_docker
         String? variants_docker
         String? gatk_docker
-
-        String? workspace_bucket
-        String? submission_id
     }
 
     if ((reference_name != "hg38") || defined(custom_reference)) {
         if (!defined(git_hash) ||
-            !defined(basic_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
-            !defined(workspace_bucket) || !defined(submission_id)) {
+            !defined(basic_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
             call Utils.GetToolVersions {
                 input:
                     git_branch_or_tag = git_branch_or_tag,
@@ -34,8 +30,6 @@ workflow GvsReference {
         String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
         String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
         String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-        String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
-        String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
         if ((reference_name != "hg38") && (reference_name != "CUSTOM")) {
             call Utils.TerminateWorkflow as UnknownReferenceName {
@@ -49,7 +43,7 @@ workflow GvsReference {
             call Utils.TerminateWorkflow as Hg38CustomReferenceDefined {
                 input:
                     basic_docker = effective_basic_docker,
-                    message = "If reference_name is set to 'hg38' then 'custom_reference' should not be defined. Exiting."
+                    message = "If reference_name is set to 'hg38' then 'custom_reference' must NOT be defined. Exiting."
             }
         }
 
@@ -60,8 +54,6 @@ workflow GvsReference {
                     message = "If 'reference_name' is set to 'CUSTOM', then 'custom_reference' must be defined. Exiting."
             }
         }
-
-        # TODO - I'm not wild about storing these things on thge cloud. (e.g. index, dictionary) - maybe make it optional?
 
         if (defined(custom_reference)) {
             call GenerateBgzSequenceDictionaryAndIndex {
@@ -108,10 +100,6 @@ task GenerateBgzSequenceDictionaryAndIndex {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-
-        echo "Hello!"
-        echo "Reference FASTA file: ~{reference_fasta}"
-        echo "Base filename from that: ~{base_filename}"
 
         mkdir output
 
