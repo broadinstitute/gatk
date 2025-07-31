@@ -71,7 +71,7 @@ workflow GvsReference {
                     gatk_docker = effective_gatk_docker,
             }
 
-            File? custom_reference_index = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).reference_index
+            File? custom_reference_index = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).fasta_index
             File? custom_sequence_dictionary = read_json(GenerateBgzSequenceDictionaryAndIndex.reference_files_json).sequence_dictionary
 
             call GenerateContigMapping {
@@ -183,24 +183,26 @@ task GenerateContigMapping {
         String variants_docker
     }
 
+    String contig_mapping_filename = basename(sequence_dictionary, ".dict") + ".contig_mapping.tsv"
+
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        base=$(basename ~{sequence_dictionary} .dict)
-
+        echo "Hello!"
+        echo ~{contig_mapping_filename}
         python3 /app/generate_custom_reference_mappings.py \
-            ~{sequence_dictionary} > ${base}.contig_mapping.tsv
+            ~{sequence_dictionary} > ~{contig_mapping_filename}
 
         # Ensure no trailing slash on the GCS output directory
         output_gcs_dir="~{output_gcs_dir}"
         output_gcs_dir="${output_gcs_dir%/}"
 
-        gcloud storage cp ${base}.contig_mapping.tsv ${output_gcs_dir}/
+        gcloud storage cp ~{contig_mapping_filename} ${output_gcs_dir}/
 
         # Update the reference files JSON with the contig mapping file
-        cloud_contig_mapping_file="${output_gcs_dir}/$(basename ${base}.contig_mapping.tsv)"
+        cloud_contig_mapping_file="${output_gcs_dir}/~{contig_mapping_filename})"
 
         jq " . += {
             \"contig_mapping\": \"$cloud_contig_mapping_file\"
@@ -216,6 +218,7 @@ task GenerateContigMapping {
     }
 
     output {
+        File custom_contig_mapping_file = contig_mapping_filename
         File reference_files_json = "updated_reference_files.json"
     }
 }
