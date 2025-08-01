@@ -606,32 +606,32 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         echo_date "VAT: Convert input to BCF format"
         bcftools convert --threads 4 -O b -o sites_only.bcf ~{sites_only_vcf}
 
-        echo_date "VAT: Calculating number of sites with Ns"
+        ## Track dropped sites with N's in the reference. Since Nirvana can't handle N as a base, we will drop these.
+        echo_date "VAT: Finding sites with Ns in the reference"
+        # The "2>/dev/null" is to suppress the profuse and useless "pass=0" stderr output from `bcftools view`.
+        bcftools view --threads 4 --include 'REF~"N"' --output-type u sites_only.bcf 2>/dev/null | bcftools query --format '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > dropped_sites_with_Ns.tsv
 
-        ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
-        # The "2>/dev/null" is to suppress the profuse and useless "pass=0" stderr output from bcftools view.
-        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf 2>/dev/null | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+        echo_date "VAT: Finding alleles with AC=0"
+        bcftools view --threads 4 --exclude 'AC=0' --output-type u sites_only.bcf 2>/dev/null | bcftools query --format '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > dropped_sites_with_AC0.tsv
 
-        echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
-        ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
-        ##       determined by examining the sites-only VCF provided to this WDL.
-        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf 2>/dev/null
+        echo_date "VAT: filtering out sites with N's in the reference or alleles with AC=0"
+        bcftools view --threads 4 --exclude 'REF~"N" || AC=0' --output-type b sites_only.bcf --output filtered_sites_only.bcf 2>/dev/null
         rm sites_only.bcf
 
-        echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
+        echo_date "VAT: normalize, left-align and split multi allelic-sites to new lines, remove duplicate lines"
         ## note that normalization may create sites with more than 50 alt alleles
-        bcftools norm --threads 4 -m- --check-ref w -f ~{ref} filtered_sites_only.bcf -O b -o normalized.bcf
+        bcftools norm --threads 4 --multiallelics - --check-ref w --fasta-ref ~{ref} filtered_sites_only.bcf --output-type b --output normalized.bcf
         rm filtered_sites_only.bcf
 
         echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
 
-        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
-        ## to locate the duplicates, we first make a file of just the first 5 columns
-        bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This is an artifact of input
+        ## data not always being left-aligned. We will first remove these duplicates, then go back and merge them as appropriate.
+        ## Finally we will concatenate this data back into a single VCF.
+        ## To locate the duplicates, we first make a file of just the first 5 columns
+        bcftools query normalized.bcf --format '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
 
         echo_date "VAT: done with duplicate detection"
-        wc -l duplicates.tsv
-        echo_date "VAT: Duplicates may have been found"
 
         # If there ARE dupes to remove
         if [ -s duplicates.tsv ]; then
@@ -662,7 +662,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     }
 
     output {
-        File track_dropped = "track_dropped.tsv"
+        File dropped_sites_with_Ns = "dropped_sites_with_Ns.tsv"
+        File dropped_sites_with_AC0 = "dropped_sites_with_AC0.tsv"
+        File duplicates = "duplicates.tsv"
         File output_vcf = "deduplicated.vcf"
         File monitoring_log = "monitoring.log"
     }
