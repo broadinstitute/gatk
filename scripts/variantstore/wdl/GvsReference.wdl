@@ -35,7 +35,7 @@ workflow GvsReference {
             call Utils.TerminateWorkflow as UnknownReferenceName {
                 input:
                     basic_docker = effective_basic_docker,
-                    message = "Unrecognized value 'reference_name' defined. Must be either 'hg38' or 'CUSTOM`. Exiting."
+                    message = "Unrecognized value 'reference_name' defined. Must be either 'hg38' or 'CUSTOM'. Exiting."
             }
         }
 
@@ -94,7 +94,7 @@ task GenerateBgzSequenceDictionaryAndIndex {
     }
 
     # The base name of the fasta file without the (possible) .bgz or .gz extension
-    String base_filename = sub(basename(reference_fasta), "\\.bgz$|\\.gz$", "")
+    String base_filename = sub(basename(reference_fasta), "\\.b?gz$", "")
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
