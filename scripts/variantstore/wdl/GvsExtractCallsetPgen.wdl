@@ -108,7 +108,7 @@ workflow GvsExtractCallsetPgen {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
-    # Note - making no effert to support custom references here.
+    # Note - no support for custom reference currently.
     call GvsReference.GvsReference as GetReference {
         input:
             git_branch_or_tag = git_branch_or_tag,

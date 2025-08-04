@@ -72,7 +72,7 @@ workflow GvsExtractCohortFromSampleNames {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-  # Note - making no effert to support custom references here.
+  # Note - no support for custom reference currently.
   call GvsReference.GvsReference as GetReference {
     input:
       git_branch_or_tag = git_branch_or_tag,

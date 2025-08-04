@@ -76,7 +76,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     }
   }
 
-  # Note - making no effert to support custom references here.
+  # Note - no support for custom reference currently
   call GvsReference.GvsReference as GetReference {
     input:
       git_branch_or_tag = git_branch_or_tag,

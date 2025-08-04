@@ -62,7 +62,7 @@ workflow GvsQuickstartVcfIntegration {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-    # Note - making no effert to support custom references here.
+    # Note - no support for custom reference currently.
     call GvsReference.GvsReference as GetReference {
         input:
             git_branch_or_tag = git_branch_or_tag,

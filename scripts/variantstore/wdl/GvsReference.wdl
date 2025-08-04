@@ -161,8 +161,6 @@ task GenerateContigMapping {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        echo "Hello!"
-        echo ~{contig_mapping_filename}
         python3 /app/generate_custom_reference_mappings.py \
             ~{sequence_dictionary} > ~{contig_mapping_filename}
 

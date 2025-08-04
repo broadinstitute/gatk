@@ -360,7 +360,6 @@ task ExtractTask {
 
     String reference_version
     File reference
-    # for supporting custom references... for now.
     File? custom_contig_mapping_file
 
     String fq_samples_to_extract_table

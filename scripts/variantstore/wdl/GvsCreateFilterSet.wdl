@@ -20,7 +20,6 @@ workflow GvsCreateFilterSet {
 
     String? interval_list
 
-#    File? custom_contig_mapping
     String? custom_training_resources
 
     String? basic_docker

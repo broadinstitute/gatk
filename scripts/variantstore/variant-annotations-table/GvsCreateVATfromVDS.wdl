@@ -126,7 +126,7 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    # Note - making no effert to support custom references here.
+    # Note - no support for custom reference as this is currently only used for AoU.
     call GvsReference.GvsReference as GetReference {
         input:
             git_branch_or_tag = git_branch_or_tag,

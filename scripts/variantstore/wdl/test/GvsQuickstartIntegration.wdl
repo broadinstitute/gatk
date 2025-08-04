@@ -63,7 +63,7 @@ workflow GvsQuickstartIntegration {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    # Note - making no effert to support custom references here.
+    # Note - no support for custom reference currently.
     call GvsReference.GvsReference as GetReference {
         input:
             git_branch_or_tag = git_branch_or_tag,
