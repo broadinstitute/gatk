@@ -134,7 +134,7 @@ python compare_vcfs.py out.vcf out_norm_dropped.vcf > vat_dropped_duplicates.tsv
 And load following the pseudo VID instructions (different target table, of course):
 
 ```shell
-    bq load --project_id aou-genomics-curation-prod --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
+bq load --project_id aou-genomics-curation-prod --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
                     echo.vs_1683_vat_dropped_duplicates vat_dropped_duplicates.tsv \
-                            vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRIN
+                            vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
 ```
