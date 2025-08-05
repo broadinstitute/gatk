@@ -6,6 +6,8 @@ workflow GvsReference {
     input {
         String reference_name
         File? custom_reference
+        File? custom_wgs_calling_interval_list
+        File? custom_exome_calling_interval_list
 
         # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
         # tag as specified in `GvsUtils.GetToolVersions`.
@@ -71,14 +73,14 @@ workflow GvsReference {
     }
 
     output {
-        Boolean is_custom_reference = if (defined(custom_reference)) then true else false
+        Boolean is_custom_reference = defined(custom_reference)
         String reference_version = if (defined(custom_reference)) then "CUSTOM" else "38"
         File reference_fasta = select_first([custom_reference, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"])
         File reference_fasta_index = select_first([GenerateBgzSequenceDictionaryAndIndex.fasta_index, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"])
         File reference_dict = select_first([GenerateBgzSequenceDictionaryAndIndex.sequence_dictionary, "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"])
         File? custom_contig_mapping_file = GenerateContigMapping.custom_contig_mapping_file
-        File wgs_calling_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-        File exome_calling_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
+        File wgs_calling_interval_list = select_first([custom_wgs_calling_interval_list, "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"])
+        File exome_calling_interval_list = select_first([custom_exome_calling_interval_list, "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"])
     }
 }
 

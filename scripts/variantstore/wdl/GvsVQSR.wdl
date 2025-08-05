@@ -26,10 +26,10 @@ workflow JointVcfFiltering {
     String? git_hash
     File? gatk_override
 
-    Int? INDEL_VQSR_max_gaussians_override = 4
+    Int INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_maximum_training_variants
     Int? INDEL_VQSR_mem_gb_override
-    Int? SNP_VQSR_max_gaussians_override = 6
+    Int SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
     Int? SNP_VQSR_sample_every_nth_variant
     Int? SNP_VQSR_maximum_training_variants

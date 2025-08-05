@@ -34,9 +34,9 @@ workflow GvsCreateFilterSet {
     # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
     Boolean add_additional_annotations_to_sites_only_vcf = true
 
-    Int? INDEL_VQSR_max_gaussians_override = 4
+    Int INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
-    Int? SNP_VQSR_max_gaussians_override = 6
+    Int SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
 
     RuntimeAttributes? vets_extract_runtime_attributes = {"command_mem_gb": 27}
@@ -143,7 +143,7 @@ workflow GvsCreateFilterSet {
         alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
         excess_alleles_threshold   = 100,
         add_additional_annotations = add_additional_annotations_to_sites_only_vcf,
-        output_file                = "${filter_set_name}_${i}.vcf.gz",
+        output_file                = "~{filter_set_name}_~{i}.vcf.gz",
         project_id                 = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier,
@@ -163,9 +163,9 @@ workflow GvsCreateFilterSet {
 
   # support a custom truth file
   # Specifying default resources here to make condition below clearer to read
-  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ${GetResources.resources.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetResources.resources.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetResources.resources.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetResources.resources.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetResources.resources.axiomPoly_resource_vcf}"
+  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ~{GetResources.resources.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ~{GetResources.resources.omni_resource_vcf} --resource:1000G,training=true,calibration=false ~{GetResources.resources.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ~{GetResources.resources.mills_resource_vcf} --resource:axiom,training=true,calibration=false ~{GetResources.resources.axiomPoly_resource_vcf}"
   # If the user has specified a path to a custom training resource, use that instead
-  String vets_resource_args = if defined(custom_training_resources) then "--resource:user_custom,training=true,calibration=true ${custom_training_resources}" else default_hg38_resources
+  String vets_resource_args = if defined(custom_training_resources) then "--resource:user_custom,training=true,calibration=true ~{custom_training_resources}" else default_hg38_resources
 
   # From this point, the paths diverge depending on whether they're using VQSR or VETS
   # The first branch here is VETS, and the second is VQSR
@@ -244,7 +244,7 @@ workflow GvsCreateFilterSet {
   }
 
   if (!use_VETS) {
-    call VQSR.JointVcfFiltering as VQSR {
+    call VQSR.JointVcfFiltering as RunVQSR {
       input:
         git_branch_or_tag = git_branch_or_tag,
         git_hash = git_hash,
@@ -299,7 +299,7 @@ workflow GvsCreateFilterSet {
                [CreateFilteredScoredSNPsVCF.monitoring_log],
                [CreateFilteredScoredINDELsVCF.monitoring_log],
                [PopulateFilterSetInfo.monitoring_log],
-               select_first([VQSR.monitoring_logs, []]),
+               select_first([RunVQSR.monitoring_logs, []]),
                [PopulateFilterSetSites.monitoring_log]
                ]
                )
