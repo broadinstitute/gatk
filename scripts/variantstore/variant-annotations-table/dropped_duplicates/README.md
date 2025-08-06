@@ -86,6 +86,59 @@ FROM (
 
 returns totals of 13081 for pseudo VID AC and 3862660 for dropped duplicate AC.
 
+## A few bad alignments cause a lot of the problems
+
+Wrap the query above with another `SELECT` that picks out `input_position`s and counts:
+
+```sql
+SELECT
+  left_aligned_position,
+  input_position,
+  (CAST (REGEXP_EXTRACT(outside.info_field, "AC=([0-9]+);") AS int64)) AS allele_count
+FROM
+  `echo.vs_1683_vat_dropped_duplicates` outside
+JOIN (
+  SELECT
+    SUM(CAST (REGEXP_EXTRACT(info_field, "AC=([0-9]+);") AS int64)) AS affected_allele_count,
+    left_aligned_location,
+    left_aligned_ref,
+    left_aligned_alt,
+  FROM
+    `echo.vs_1683_vat_dropped_duplicates`
+  GROUP BY
+    left_aligned_location,
+    left_aligned_ref,
+    left_aligned_alt
+  ORDER BY
+    affected_allele_count DESC
+  LIMIT
+    5) inside
+ON
+  outside.left_aligned_location = inside.left_aligned_location
+ORDER BY
+  outside.left_aligned_position,
+  allele_count desc
+```
+
+For the top 5 most affected left-aligned positions, this returns:
+
+```
+left_aligned_position	input_position	allele_count
+18467958	18467958	243441
+18467958	18467969	3
+76917565	76917565	700805
+76917565	76917567	12
+112864345	112864345	293036
+112864345	112864347	1
+134839958	134839958	737563
+134839958	134839960	2
+192641140	192641140	333117
+192641140	192641141	12
+```
+
+For this top 5, the overwhelming majority of samples reported correctly left-aligned positions, while only a few did not.
+But these few bad alignments led to duplicates when normalized, so all of this was thrown out of the VAT.
+
 ## Procedure to find this data
 
 I started by copying interesting things like `track_dropped.tsv` and `stderr` from the successful Echo VAT creation:
