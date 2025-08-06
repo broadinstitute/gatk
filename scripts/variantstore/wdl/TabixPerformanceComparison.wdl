@@ -3,8 +3,8 @@ version 1.0
 workflow TabixPerformanceComparison {
     input {
         File vcf_file
-        String? tabix_path_1
-        String? tabix_path_2
+        File? tabix_path_1
+        File? tabix_path_2
         
         # Runtime parameters
         String docker = "us.gcr.io/broad-gatk/gatk:latest"
@@ -69,7 +69,7 @@ workflow TabixPerformanceComparison {
 task TabixIndexTask {
     input {
         File vcf_file
-        String? tabix_path
+        File? tabix_path
         String task_name
         
         # Runtime parameters
@@ -89,18 +89,20 @@ task TabixIndexTask {
 
         bash ~{monitoring_script} > monitoring.log &
 
+        TABIX_CMD=~{default="tabix" tabix_path}
+
         # Set up tabix command - copy custom binary if provided
-        if [[ "~{defined(tabix_path)}" == "true" ]]; then
-            echo "Custom tabix path provided: ~{select_first([tabix_path, ""])}"
-            echo "Copying custom tabix binary..."
-            gsutil cp "~{select_first([tabix_path, ""])}" ./custom_tabix
-            chmod +x ./custom_tabix
-            TABIX_CMD="./custom_tabix"
-            echo "Custom tabix binary copied and made executable"
-        else
-            echo "Using system default tabix"
-            TABIX_CMD="tabix"
-        fi
+#        if [[ "~{defined(tabix_path)}" == "true" ]]; then
+#            echo "Custom tabix path provided: ~{select_first([tabix_path, ""])}"
+#            echo "Copying custom tabix binary..."
+#            gsutil cp "~{select_first([tabix_path, ""])}" ./custom_tabix
+#            chmod +x ./custom_tabix
+#            TABIX_CMD="./custom_tabix"
+#            echo "Custom tabix binary copied and made executable"
+#        else
+#            echo "Using system default tabix"
+#            TABIX_CMD="tabix"
+#        fi
 
         # Use input VCF directly without copying
         # Determine the file to index based on the input file
