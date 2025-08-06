@@ -16,8 +16,8 @@ workflow TabixPerformanceComparison {
     
     parameter_meta {
         vcf_file: "VCF file to index with tabix (supports .vcf, .vcf.gz, .vcf.bz2 formats)"
-        tabix_path_1: "Path to first tabix binary (optional, uses system default if not provided)"
-        tabix_path_2: "Path to second tabix binary (optional, uses system default if not provided)"
+        tabix_path_1: "Google Cloud Storage path to first tabix binary (optional, uses system default if not provided)"
+        tabix_path_2: "Google Cloud Storage path to second tabix binary (optional, uses system default if not provided)"
         docker: "Docker image to use"
         memory_gb: "Memory in GB"
         disk_size_gb: "Disk size in GB"
@@ -81,7 +81,6 @@ task TabixIndexTask {
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-    String tabix_cmd = if defined(tabix_path) then select_first([tabix_path]) else "tabix"
     
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -89,6 +88,19 @@ task TabixIndexTask {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
+
+        # Set up tabix command - copy custom binary if provided
+        if [[ "~{defined(tabix_path)}" == "true" ]]; then
+            echo "Custom tabix path provided: ~{select_first([tabix_path, ""])}"
+            echo "Copying custom tabix binary..."
+            gsutil cp "~{select_first([tabix_path, ""])}" ./custom_tabix
+            chmod +x ./custom_tabix
+            TABIX_CMD="./custom_tabix"
+            echo "Custom tabix binary copied and made executable"
+        else
+            echo "Using system default tabix"
+            TABIX_CMD="tabix"
+        fi
 
         # Use input VCF directly without copying
         # Determine the file to index based on the input file
@@ -114,12 +126,12 @@ task TabixIndexTask {
         
         # Display tabix version information
         echo "=== Tabix Version Information ===" > ~{task_name}_timing.log
-        echo "Tabix command: ~{tabix_cmd}" >> ~{task_name}_timing.log
-        if command -v ~{tabix_cmd} &> /dev/null; then
+        echo "Tabix command: $TABIX_CMD" >> ~{task_name}_timing.log
+        if command -v "$TABIX_CMD" &> /dev/null; then
             echo "Tabix version:" >> ~{task_name}_timing.log
-            ~{tabix_cmd} --version >> ~{task_name}_timing.log 2>&1 || echo "Version command failed" >> ~{task_name}_timing.log
+            "$TABIX_CMD" --version >> ~{task_name}_timing.log 2>&1 || echo "Version command failed" >> ~{task_name}_timing.log
         else
-            echo "ERROR: Tabix command '~{tabix_cmd}' not found" >> ~{task_name}_timing.log
+            echo "ERROR: Tabix command '$TABIX_CMD' not found" >> ~{task_name}_timing.log
             exit 1
         fi
         echo "" >> ~{task_name}_timing.log
@@ -137,7 +149,7 @@ task TabixIndexTask {
         START_TIME=$(date +%s.%N)
         
         # Run tabix indexing with timing
-        /usr/bin/time -v ~{tabix_cmd} -p vcf $VCF_TO_INDEX 2>&1 | tee -a ~{task_name}_timing.log
+        /usr/bin/time -v "$TABIX_CMD" -p vcf $VCF_TO_INDEX 2>&1 | tee -a ~{task_name}_timing.log
         
         END_TIME=$(date +%s.%N)
         EXECUTION_TIME=$(echo "$END_TIME - $START_TIME" | bc -l)
