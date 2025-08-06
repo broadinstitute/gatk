@@ -67,7 +67,40 @@ affected_allele_count	left_aligned_location	left_aligned_ref	left_aligned_alt
 So these top dropped duplicates have allele counts in the hundreds of thousands, roughly 1000 times higher than those
 of the top pseudo VIDs.
 
-Wrapping the above query with another `SUM` to count up all the affected alleles:
+Can this really be true? 700K+ affected alleles would imply that the overwhelming majority of AoU samples not only have
+this allele but are homozygous for it. Let's find out:
+
+```sql
+SELECT
+  call_GT,
+  COUNT(*) AS count
+FROM
+  `echo.alt_allele`
+WHERE
+  location = 11000134839958
+  AND ref = 'G'
+  AND allele = 'GC'
+GROUP BY
+  call_GT
+ORDER BY
+  count desc
+```
+
+returns:
+
+```
+call_GT	count
+1/1	358057
+1|1	9935
+0/1	1484
+1/2	56
+0|1	48
+1|0	17
+```
+
+Yup this is exactly what's happening, (358057 + 9935) / 414838 = ~89% of AoU samples are homozygous for this allele.
+
+Wrapping the previous query with another `SUM` to count up all affected alleles:
 
 ```sql
 SELECT
@@ -90,9 +123,9 @@ FROM (
 
 returns totals of 13081 for pseudo VID AC and 3862660 for dropped duplicate AC.
 
-## A few bad alignments cause a lot of the problems
+## In many cases (though not all), a very small number of bad alignments lead to duplicates and data loss
 
-Wrap the query above with another `SELECT` that picks out `input_position`s and counts:
+Wrap a previous query above with another `SELECT` that picks out `input_position`s and counts:
 
 ```sql
 SELECT
