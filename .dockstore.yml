@@ -490,3 +490,13 @@ workflows:
        branches:
          - ah_var_store
          - vs_1671_vat_discrepancies
+   - name: TabixPerformanceComparison
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/TabixPerformanceComparison.wdl
+     testParameterFiles:
+         - /scripts/variantstore/wdl/TabixPerformanceComparison.example.inputs.json
+         - /scripts/variantstore/wdl/TabixPerformanceComparison.system_default.inputs.json
+     filters:
+         branches:
+             - ah_var_store
+             - VS-1715
