@@ -15,7 +15,7 @@ workflow TabixPerformanceComparison {
     }
     
     parameter_meta {
-        vcf_file: "VCF file to index with tabix"
+        vcf_file: "VCF file to index with tabix (supports .vcf, .vcf.gz, .vcf.bz2 formats)"
         tabix_path_1: "Path to first tabix binary (optional, uses system default if not provided)"
         tabix_path_2: "Path to second tabix binary (optional, uses system default if not provided)"
         docker: "Docker image to use"
@@ -79,24 +79,37 @@ task TabixIndexTask {
         Int cpu_count
         Boolean use_preemptibles
     }
-    
-    String vcf_basename = basename(vcf_file, ".vcf")
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     String tabix_cmd = if defined(tabix_path) then select_first([tabix_path]) else "tabix"
     
     command <<<
-        set -euo pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Use input VCF directly without copying
+        # Determine the file to index based on the input file
+        INPUT_FILE="~{vcf_file}"
+        VCF_TO_INDEX="$INPUT_FILE"
         
-        # Copy input VCF to working directory
-        cp ~{vcf_file} ./input.vcf
-        
-        # Compress the VCF if it's not already compressed
-        if [[ "~{vcf_file}" != *.gz ]]; then
-            echo "Compressing VCF file..."
-            bgzip -c input.vcf > input.vcf.gz
-            VCF_TO_INDEX="input.vcf.gz"
+        # Check if the file is compressed and needs decompression/recompression for tabix
+        if [[ "$INPUT_FILE" == *.vcf.gz ]]; then
+            echo "Input is already bgzip compressed VCF, using directly"
+            VCF_TO_INDEX="$INPUT_FILE"
+        elif [[ "$INPUT_FILE" == *.vcf.bz2 ]]; then
+            echo "Input is bzip2 compressed, decompressing and recompressing with bgzip..."
+            bzcat "$INPUT_FILE" | bgzip -c > input_recompressed.vcf.gz
+            VCF_TO_INDEX="input_recompressed.vcf.gz"
+        elif [[ "$INPUT_FILE" == *.vcf ]]; then
+            echo "Input is uncompressed VCF, compressing with bgzip..."
+            bgzip -c "$INPUT_FILE" > input_compressed.vcf.gz
+            VCF_TO_INDEX="input_compressed.vcf.gz"
         else
-            mv input.vcf input.vcf.gz
-            VCF_TO_INDEX="input.vcf.gz"
+            echo "Unsupported file format. Expected .vcf, .vcf.gz, or .vcf.bz2"
+            exit 1
         fi
         
         # Display tabix version information
@@ -157,6 +170,7 @@ task TabixIndexTask {
         File timing_log = "~{task_name}_timing.log"
         File index_file = "~{task_name}_output.tbi"
         Float execution_time = read_float("execution_time.txt")
+        File monitoring_log = "monitoring.log"
     }
     
     runtime {
