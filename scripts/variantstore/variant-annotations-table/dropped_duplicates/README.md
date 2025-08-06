@@ -52,7 +52,8 @@ affected_allele_count	left_aligned_location	left_aligned_ref	left_aligned_alt
 201	4000049142988	ATTCCATTCCGTTCCTTTTATCTTGGGTTGATTCCATTCCATTCAATTCCTTTCCGTTCCGTTCCGTTCCATTCCATTCCATTCCATTCCATTCCATTGCATTCCACTGGGGTTGATTCCATTCCATTCCATTCCATTCCATTCCATTCCATTCCATACCCTTCGGGTTGATTCCTTTCCAATCCATTCCATTCTATACCATTCCACTTCATTCCGTTCCATTCCTTTCGGGTTGATTCTGTTCCATTCCATGCCCTTTTATTCCATTCCATTCCATTCCATACCATTCCACCAAAGTTGATTGCATGTTATTCCATTCCATTCCATTCCATTCCATTCCT	A
 ```
 
-Pointing this query to the `vs_1683_vat_dropped_duplicates` table instead returns:
+So apart from the one outlier that is nearly 800 alleles, the most prevalent of these pseudo-VID alleles are in the
+~200 range.  Pointing this query to the `vs_1683_vat_dropped_duplicates` table instead returns:
 
 ```
 affected_allele_count	left_aligned_location	left_aligned_ref	left_aligned_alt
@@ -63,7 +64,10 @@ affected_allele_count	left_aligned_location	left_aligned_ref	left_aligned_alt
 243444	11000018467958	TATATATATACGTATATATATACGTATATATATGC	T
 ```
 
-Wrapping the above query with another `SUM`:
+So these top dropped duplicates have allele counts in the hundreds of thousands, roughly 1000 times higher than those
+of the top pseudo VIDs.
+
+Wrapping the above query with another `SUM` to count up all the affected alleles:
 
 ```sql
 SELECT
