@@ -96,52 +96,53 @@ Wrap the query above with another `SELECT` that picks out `input_position`s and 
 
 ```sql
 SELECT
-  left_aligned_position,
-  input_position,
-  (CAST (REGEXP_EXTRACT(outside.info_field, "AC=([0-9]+);") AS int64)) AS allele_count
+    outside.chr,
+    outside.left_aligned_position,
+    outside.input_position,
+    (CAST (REGEXP_EXTRACT(outside.info_field, "AC=([0-9]+);") AS int64)) AS allele_count
 FROM
-  `echo.vs_1683_vat_dropped_duplicates` outside
-JOIN (
-  SELECT
-    SUM(CAST (REGEXP_EXTRACT(info_field, "AC=([0-9]+);") AS int64)) AS affected_allele_count,
-    left_aligned_location,
-    left_aligned_ref,
-    left_aligned_alt,
-  FROM
-    `echo.vs_1683_vat_dropped_duplicates`
-  GROUP BY
-    left_aligned_location,
-    left_aligned_ref,
-    left_aligned_alt
-  ORDER BY
-    affected_allele_count DESC
-  LIMIT
+    `echo.vs_1683_vat_dropped_duplicates` outside
+        JOIN (
+        SELECT
+            SUM(CAST (REGEXP_EXTRACT(info_field, "AC=([0-9]+);") AS int64)) AS affected_allele_count,
+            left_aligned_location,
+            left_aligned_ref,
+            left_aligned_alt,
+        FROM
+            `echo.vs_1683_vat_dropped_duplicates`
+        GROUP BY
+            left_aligned_location,
+            left_aligned_ref,
+            left_aligned_alt
+        ORDER BY
+            affected_allele_count DESC
+            LIMIT
     5) inside
-ON
-  outside.left_aligned_location = inside.left_aligned_location
+             ON
+                 outside.left_aligned_location = inside.left_aligned_location
 ORDER BY
-  outside.left_aligned_position,
-  allele_count desc
+    outside.left_aligned_position,
+    allele_count desc
 ```
 
 For the top 5 most affected left-aligned positions, this returns:
 
 ```
-left_aligned_position	input_position	allele_count
-18467958	18467958	243441
-18467958	18467969	3
-76917565	76917565	700805
-76917565	76917567	12
-112864345	112864345	293036
-112864345	112864347	1
-134839958	134839958	737563
-134839958	134839960	2
-192641140	192641140	333117
-192641140	192641141	12
+chr	left_aligned_position	input_position	allele_count
+chr11	18467958	18467958	243441
+chr11	18467958	18467969	3
+chr4	76917565	76917565	700805
+chr4	76917565	76917567	12
+chr13	112864345	112864345	293036
+chr13	112864345	112864347	1
+chr11	134839958	134839958	737563
+chr11	134839958	134839960	2
+chr3	192641140	192641140	333117
+chr3	192641140	192641141	12
 ```
 
 For this top 5, the overwhelming majority of samples reported correctly left-aligned positions, while only a few did not.
-But these few bad alignments led to duplicates when normalized, so all of this was thrown out of the VAT.
+But these few bad alignments led to duplicates when normalized, so all of this data was left out of the VAT.
 
 ## Procedure to find this data
 
