@@ -177,6 +177,33 @@ chr3	192641140	192641141	12
 For this top 5, the overwhelming majority of samples reported correctly left-aligned positions, while only a few did not.
 But these few bad alignments led to duplicates when normalized, so all of this data was left out of the VAT.
 
+## What's causing these nonstandard alignments? Is this related to hetvars and joined variant contexts forcing weird representations?
+
+Looking at the top 5 examples above, there is one hetvar here, but the vast majority of cases are homvars:
+
+```
+sample_id	call_GT	location	ref	allele
+379456	0/1	13000112864347	C	CC
+359456	1/1	11000134839960	C	CC
+137749	1/2	11000018467969	GTATATATATACGTATATATATGCATATATATACG	G
+371967	1/1	11000018467969	GTATATATATACGTATATATATGCATATATATACG	G
+141441	1/1	4000076917567	G	GG
+142731	1/1	4000076917567	G	GG
+276823	1/1	4000076917567	G	GG
+221927	1/1	4000076917567	G	GG
+161238	1/1	4000076917567	G	GG
+182992	1/1	4000076917567	G	GG
+300521	1/1	3000192641141	T	TT
+403102	1/1	3000192641141	T	TT
+106815	1/1	3000192641141	T	TT
+187365	1/1	3000192641141	T	TT
+192116	1/1	3000192641141	T	TT
+142873	1/1	3000192641141	T	TT
+```
+
+So it's currently unclear what's causing this, but at least for this (admittedly small) sample, hetvars don't appear to
+be the main driver.
+
 ## Procedure to find this data
 
 I started by copying interesting things like `track_dropped.tsv` and `stderr` from the successful Echo VAT creation:
