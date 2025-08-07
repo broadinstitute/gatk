@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
+import "GvsReference.wdl" as GvsReference
 import "GvsVQSR.wdl" as VQSR
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
@@ -14,11 +15,11 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     String reference_name = "hg38"
-    String? interval_list
-
     # for supporting non-hg38 references
     File? custom_reference
-    File? custom_contig_mapping
+
+    String? interval_list
+
     String? custom_training_resources
 
     String? basic_docker
@@ -33,9 +34,9 @@ workflow GvsCreateFilterSet {
     # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
     Boolean add_additional_annotations_to_sites_only_vcf = true
 
-    Int? INDEL_VQSR_max_gaussians_override = 4
+    Int INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
-    Int? SNP_VQSR_max_gaussians_override = 6
+    Int SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
 
     RuntimeAttributes? vets_extract_runtime_attributes = {"command_mem_gb": 27}
@@ -67,14 +68,22 @@ workflow GvsCreateFilterSet {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
-  call Utils.GetReference {
+  call GvsReference.GvsReference as GetReference {
+    input:
+      git_branch_or_tag = git_branch_or_tag,
+      git_hash = effective_git_hash,
+      reference_name = reference_name,
+      custom_reference = custom_reference,
+      basic_docker = effective_basic_docker,
+  }
+
+  call Utils.GetResources {
     input:
       reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
-  File effective_reference = select_first([custom_reference,  GetReference.reference.reference_fasta])
-  String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  String effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -108,7 +117,7 @@ workflow GvsCreateFilterSet {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = effective_reference,
+      ref_fasta = GetReference.reference_fasta,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -125,7 +134,8 @@ workflow GvsCreateFilterSet {
     call ExtractFilterTask {
       input:
         go                         = CheckIfFilterSetNameIsInUse.done,
-        reference                  = effective_reference,
+        reference_version          = GetReference.reference_version,
+        reference                  = GetReference.reference_fasta,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -133,11 +143,11 @@ workflow GvsCreateFilterSet {
         alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
         excess_alleles_threshold   = 100,
         add_additional_annotations = add_additional_annotations_to_sites_only_vcf,
-        output_file                = "${filter_set_name}_${i}.vcf.gz",
+        output_file                = "~{filter_set_name}_~{i}.vcf.gz",
         project_id                 = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier,
-        custom_contig_mapping      = custom_contig_mapping,
+        custom_contig_mapping      = GetReference.custom_contig_mapping_file,
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
     }
@@ -153,9 +163,9 @@ workflow GvsCreateFilterSet {
 
   # support a custom truth file
   # Specifying default resources here to make condition below clearer to read
-  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ${GetReference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetReference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetReference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetReference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetReference.reference.axiomPoly_resource_vcf}"
+  String default_hg38_resources = "--resource:hapmap,training=true,calibration=true ~{GetResources.resources.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ~{GetResources.resources.omni_resource_vcf} --resource:1000G,training=true,calibration=false ~{GetResources.resources.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ~{GetResources.resources.mills_resource_vcf} --resource:axiom,training=true,calibration=false ~{GetResources.resources.axiomPoly_resource_vcf}"
   # If the user has specified a path to a custom training resource, use that instead
-  String vets_resource_args = if defined(custom_training_resources) then "--resource:user_custom,training=true,calibration=true ${custom_training_resources}" else default_hg38_resources
+  String vets_resource_args = if defined(custom_training_resources) then "--resource:user_custom,training=true,calibration=true ~{custom_training_resources}" else default_hg38_resources
 
   # From this point, the paths diverge depending on whether they're using VQSR or VETS
   # The first branch here is VETS, and the second is VQSR
@@ -227,14 +237,14 @@ workflow GvsCreateFilterSet {
         snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
         indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
         indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
-        custom_contig_mapping = custom_contig_mapping,
+        custom_contig_mapping = GetReference.custom_contig_mapping_file,
         project_id = project_id,
         useVQSR = false
     }
   }
 
   if (!use_VETS) {
-    call VQSR.JointVcfFiltering as VQSR {
+    call VQSR.JointVcfFiltering as RunVQSR {
       input:
         git_branch_or_tag = git_branch_or_tag,
         git_hash = git_hash,
@@ -261,13 +271,14 @@ workflow GvsCreateFilterSet {
 
   call PopulateFilterSetSites {
     input:
+      reference_version = GetReference.reference_version,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
       sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
       fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-      custom_contig_mapping = custom_contig_mapping,
+      custom_contig_mapping = GetReference.custom_contig_mapping_file,
       project_id = project_id
   }
 
@@ -288,7 +299,7 @@ workflow GvsCreateFilterSet {
                [CreateFilteredScoredSNPsVCF.monitoring_log],
                [CreateFilteredScoredINDELsVCF.monitoring_log],
                [PopulateFilterSetInfo.monitoring_log],
-               select_first([VQSR.monitoring_logs, []]),
+               select_first([RunVQSR.monitoring_logs, []]),
                [PopulateFilterSetSites.monitoring_log]
                ]
                )
@@ -392,7 +403,9 @@ task ExtractFilterTask {
     String dataset_id
     String call_set_identifier
 
+    String reference_version
     File reference
+    File? custom_contig_mapping
 
     String fq_sample_table
     String sample_table_timestamp
@@ -406,7 +419,6 @@ task ExtractFilterTask {
 
     String output_file
     Int? excess_alleles_threshold
-    File? custom_contig_mapping
     Boolean add_additional_annotations = false
 
     # Runtime Options:
@@ -425,8 +437,6 @@ task ExtractFilterTask {
   String intervals_name = basename(intervals)
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
-
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -439,7 +449,7 @@ task ExtractFilterTask {
     df -h
 
     gatk --java-options "-Xmx4g" ExtractFeatures \
-      --ref-version ~{ref_version}  \
+      --ref-version ~{reference_version}  \
       -R "~{reference}" \
       -O "~{output_file}" \
       --local-sort-max-records-in-ram 1000000 \
@@ -478,6 +488,7 @@ task ExtractFilterTask {
 
 task PopulateFilterSetSites {
   input {
+    String reference_version
     String filter_set_name
     String fq_filter_sites_destination_table
 
@@ -499,8 +510,6 @@ task PopulateFilterSetSites {
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-  String ref_version = if (defined(custom_contig_mapping)) then "CUSTOM" else "38"
-
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
@@ -513,7 +522,7 @@ task PopulateFilterSetSites {
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
       CreateSiteFilteringFiles \
-      --ref-version ~{ref_version}  \
+      --ref-version ~{reference_version}  \
       ~{"--contig-mapping-file " + custom_contig_mapping} \
       --filter-set-name ~{filter_set_name} \
       -V ~{sites_only_variant_filtered_vcf} \

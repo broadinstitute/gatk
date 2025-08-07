@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
+import "GvsReference.wdl" as GvsReference
 
 workflow GvsExtractCallsetPgen {
     input {
@@ -107,13 +108,15 @@ workflow GvsExtractCallsetPgen {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
-    call Utils.GetReference {
+    # Note - no support for custom reference currently.
+    call GvsReference.GvsReference as GetReference {
         input:
+            git_branch_or_tag = git_branch_or_tag,
             reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
-    File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+    File effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])
 
     call Utils.ScaleXYBedValues {
         input:
@@ -162,7 +165,7 @@ workflow GvsExtractCallsetPgen {
     call Utils.SplitIntervalsTarred {
         input:
             intervals = effective_interval_list,
-            ref_fasta = GetReference.reference.reference_fasta,
+            ref_fasta = GetReference.reference_fasta,
             interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
@@ -234,7 +237,8 @@ workflow GvsExtractCallsetPgen {
                 use_VETS                           = use_VETS,
                 gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
-                reference                          = GetReference.reference.reference_fasta,
+                reference_version                  = GetReference.reference_version,
+                reference                          = GetReference.reference_fasta,
                 fq_samples_to_extract_table        = fq_samples_to_extract_table,
                 interval_index                     = i,
                 interval_files_tar                 = SplitIntervalsTarred.interval_files_tar,
@@ -332,6 +336,7 @@ task PgenExtractTask {
 
         Boolean use_VETS
 
+        String reference_version
         File reference
 
         String fq_samples_to_extract_table
@@ -437,7 +442,7 @@ task PgenExtractTask {
                 --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
                 ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
                 --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
-                --ref-version 38 \
+                --ref-version ~{reference_version} \
                 -R ~{reference} \
                 -O ~{output_pgen_basename}.pgen \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \

@@ -1,6 +1,7 @@
 version 1.0
 
 import "../GvsUtils.wdl" as Utils
+import "../GvsReference.wdl" as GvsReference
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
@@ -61,8 +62,10 @@ workflow GvsQuickstartVcfIntegration {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-    call Utils.GetReference {
+    # Note - no support for custom reference currently.
+    call GvsReference.GvsReference as GetReference {
         input:
+            git_branch_or_tag = git_branch_or_tag,
             reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
@@ -162,7 +165,7 @@ workflow GvsQuickstartVcfIntegration {
             input:
                 input_vcf = JointVariantCalling.output_vcfs[i],
                 input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
-                ref_fasta = GetReference.reference.reference_fasta,
+                ref_fasta = GetReference.reference_fasta,
                 gatk_docker = effective_gatk_docker,
         }
         call ValidateVcf {

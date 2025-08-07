@@ -3,6 +3,7 @@ version 1.0
 import "GvsPrepareRangesCallset.wdl" as GvsPrepareCallset
 import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
+import "GvsReference.wdl" as GvsReference
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
 
@@ -71,14 +72,16 @@ workflow GvsExtractCohortFromSampleNames {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-  call Utils.GetReference {
+  # Note - no support for custom reference currently.
+  call GvsReference.GvsReference as GetReference {
     input:
+      git_branch_or_tag = git_branch_or_tag,
       reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
   # allow an interval list to be passed in, but default it to the reference-standard one if no args are here
-  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  File effective_interval_list = select_first([interval_list, GetReference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:

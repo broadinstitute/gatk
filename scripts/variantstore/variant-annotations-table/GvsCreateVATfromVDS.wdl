@@ -1,6 +1,7 @@
 version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
+import "../wdl/GvsReference.wdl" as GvsReference
 import "GvsCreateVATFilesFromBigQuery.wdl" as GvsCreateVATFilesFromBigQuery
 
 workflow GvsCreateVATfromVDS {
@@ -125,14 +126,15 @@ workflow GvsCreateVATfromVDS {
             variants_docker = effective_variants_docker,
     }
 
-    call Utils.GetReference {
+    # Note - no support for custom reference as this is currently only used for AoU.
+    call GvsReference.GvsReference as GetReference {
         input:
+            git_branch_or_tag = git_branch_or_tag,
             reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
-    String interval_list = GetReference.reference.wgs_calling_interval_list
-    String reference_fasta = GetReference.reference.reference_fasta
+    String interval_list = GetReference.wgs_calling_interval_list
 
     if (defined(sites_only_vcf) || (defined(vds_path))) {
         if (!defined(split_intervals_scatter_count)) {
@@ -226,7 +228,7 @@ workflow GvsCreateVATfromVDS {
         call Utils.SplitIntervals {
             input:
                 intervals = interval_list,
-                ref_fasta = reference_fasta,
+                ref_fasta = GetReference.reference_fasta,
                 scatter_count = effective_scatter_count,
                 output_gcs_dir = effective_output_path + "intervals",
                 split_intervals_disk_size_override = split_intervals_disk_size_override,
@@ -252,7 +254,7 @@ workflow GvsCreateVATfromVDS {
             call RemoveDuplicatesFromSitesOnlyVCF {
                 input:
                     sites_only_vcf = SelectVariants.output_vcf,
-                    ref = reference_fasta,
+                    ref = GetReference.reference_fasta,
                     variants_docker = effective_variants_docker,
             }
 

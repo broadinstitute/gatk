@@ -26,10 +26,10 @@ workflow JointVcfFiltering {
     String? git_hash
     File? gatk_override
 
-    Int? INDEL_VQSR_max_gaussians_override = 4
+    Int INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_maximum_training_variants
     Int? INDEL_VQSR_mem_gb_override
-    Int? SNP_VQSR_max_gaussians_override = 6
+    Int SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
     Int? SNP_VQSR_sample_every_nth_variant
     Int? SNP_VQSR_maximum_training_variants
@@ -60,7 +60,7 @@ workflow JointVcfFiltering {
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
-  call Utils.GetReference {
+  call Utils.GetResources {
     input:
       reference_name = reference_name,
       basic_docker = effective_basic_docker,
@@ -68,28 +68,28 @@ workflow JointVcfFiltering {
 
   # reference files
   # Axiom - Used only for indels
-  String axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
-  String axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
+  String axiomPoly_resource_vcf = GetResources.resources.axiomPoly_resource_vcf
+  String axiomPoly_resource_vcf_index = GetResources.resources.axiomPoly_resource_vcf_index
 
   # DbSNP - BOTH SNPs and INDELs.
-  String dbsnp_vcf = GetReference.reference.dbsnp_vcf
-  String dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index
+  String dbsnp_vcf = GetResources.resources.dbsnp_vcf
+  String dbsnp_vcf_index = GetResources.resources.dbsnp_vcf_index
 
   # HapMap - SNPs
-  String hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
-  String hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
+  String hapmap_resource_vcf = GetResources.resources.hapmap_resource_vcf
+  String hapmap_resource_vcf_index = GetResources.resources.hapmap_resource_vcf_index
 
   # Mills - Indels
-  String mills_resource_vcf = GetReference.reference.mills_resource_vcf
-  String mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
+  String mills_resource_vcf = GetResources.resources.mills_resource_vcf
+  String mills_resource_vcf_index = GetResources.resources.mills_resource_vcf_index
 
   # Omni - SNPs
-  String omni_resource_vcf = GetReference.reference.omni_resource_vcf
-  String omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
+  String omni_resource_vcf = GetResources.resources.omni_resource_vcf
+  String omni_resource_vcf_index = GetResources.resources.omni_resource_vcf_index
 
   # 1000G - SNPs
-  String one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
-  String one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
+  String one_thousand_genomes_resource_vcf = GetResources.resources.one_thousand_genomes_resource_vcf
+  String one_thousand_genomes_resource_vcf_index = GetResources.resources.one_thousand_genomes_resource_vcf_index
 
   call IndelsVariantRecalibrator {
     input:
