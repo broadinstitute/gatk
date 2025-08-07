@@ -60,7 +60,7 @@
   ```
   # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples. The BQ export command requires this to be a
   # wildcarded path. If multiple output files are produced, they should be concatenated together for downstream processing.
-  FOXTROT_BULK_INGEST_FOFN='gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_new_samples_fofn/*.tsv'
+  FOXTROT_BULK_INGEST_FOFN='gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_new_samples_fofn_2025_07_29/*.tsv'
 
   bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod '
       EXPORT DATA OPTIONS(
@@ -70,7 +70,7 @@
       header=false,
       field_delimiter="\t") AS
       SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
-          `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
+          `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn_2025_07_29` f LEFT OUTER JOIN
           `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
           WHERE e.sample_name IS NULL'
   ```
