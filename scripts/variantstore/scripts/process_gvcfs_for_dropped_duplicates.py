@@ -13,14 +13,14 @@ import argparse
 def run_bcftools(gvcf_path, chr_name, position):
     """
     Run bcftools view command and return the output line.
-    
+
     Args:
         gvcf_path: Path to the GVCF file
         chr_name: Chromosome name (e.g., 'chr1')
         position: Position on chromosome
         ref: Reference allele
         alt: Alternate allele
-    
+
     Returns:
         String containing the bcftools output line
     """
@@ -29,7 +29,7 @@ def run_bcftools(gvcf_path, chr_name, position):
         '--regions', f'{chr_name}:{position}',
         gvcf_path
     ]
-    
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         # Return the output, stripped of trailing whitespace
@@ -46,10 +46,10 @@ def run_bcftools(gvcf_path, chr_name, position):
 def process_variant(variant_obj):
     """
     Process a single variant object by running bcftools on both GVCF files.
-    
+
     Args:
         variant_obj: Dictionary containing variant information
-    
+
     Returns:
         Dictionary with original fields plus bcftools results
     """
@@ -69,18 +69,18 @@ def process_variant(variant_obj):
     position = location % 1000000000000
     gvcf_path = variant_obj['gvcf_path']
     reblocked_gvcf = variant_obj['reblocked_gvcf']
-    
+
     # Run bcftools on both files
     gvcf_line = run_bcftools(gvcf_path, chr_name, position)
     reblocked_gvcf_line = run_bcftools(reblocked_gvcf, chr_name, position)
-    
+
     # Create result object with original fields plus new ones
     result = variant_obj.copy()
     result['chr'] = chr_name
     result['position'] = position
     result['gvcf_line'] = gvcf_line
     result['reblocked_gvcf_line'] = reblocked_gvcf_line
-    
+
     return result
 
 
@@ -88,9 +88,9 @@ def main():
     parser = argparse.ArgumentParser(description='Process variants with bcftools queries')
     parser.add_argument('json_file', help='Input JSON file containing variant objects')
     parser.add_argument('--output', '-o', help='Output JSON file (default: stdout)')
-    
+
     args = parser.parse_args()
-    
+
     # Load input JSON
     try:
         with open(args.json_file, 'r') as f:
@@ -101,12 +101,12 @@ def main():
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON in '{args.json_file}': {e}", file=sys.stderr)
         sys.exit(1)
-    
+
     # Validate input is an array
     if not isinstance(variants, list):
         print("Error: Input JSON must be an array of objects.", file=sys.stderr)
         sys.exit(1)
-    
+
     # Process each variant
     results = []
     for i, variant in enumerate(variants):
