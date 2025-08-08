@@ -371,6 +371,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250808_1
          tags:
              - /.*/
    - name: GvsCallsetStatistics
