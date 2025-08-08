@@ -480,3 +480,10 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: InspectDroppedDuplicateVCFs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/dropped_duplicates/InspectDroppedDuplicateVCFs.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - dropped_duplicates_investigation
