@@ -832,7 +832,7 @@ task CountSuperpartitions {
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-                WHERE table_name LIKE "vet_%"
+                WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
 
         ' | sed 1d > num_superpartitions.txt
     >>>
