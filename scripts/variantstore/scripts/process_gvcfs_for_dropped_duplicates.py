@@ -54,7 +54,7 @@ def process_variant(variant_obj):
         Dictionary with original fields plus bcftools results
     """
     # Extract required fields
-    location = variant_obj['location']
+    location = int(variant_obj['location'])
     location_chr = location // 1000000000000
 
     if location_chr < 23:
