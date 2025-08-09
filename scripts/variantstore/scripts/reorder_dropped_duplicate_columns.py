@@ -13,7 +13,7 @@ def main():
         # Load input TSV
         # https://stackoverflow.com/a/33002011
         with open(args.tsv_file, 'r') as infile:
-            fieldnames = ["sample_id", "sample_name", "location", "ref", "allele",
+            fieldnames = ["sample_id", "sample_name", "location", "ref", "allele", "chr", "position",
                           "gvcf_path", "reblocked_gvcf", "gvcf_line", "reblocked_gvcf_line"]
             writer = csv.DictWriter(sys.stdout, delimiter="\t", fieldnames=fieldnames)
             # reorder the header first

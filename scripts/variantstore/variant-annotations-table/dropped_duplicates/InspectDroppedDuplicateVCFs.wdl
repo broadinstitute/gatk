@@ -54,6 +54,8 @@ task QueryGVCFPaths {
         String project_id
         String dataset_name
         String variants_docker
+        Int split_batch_size = 300
+        Int split_suffix_size = 3
     }
 
     command <<<
@@ -82,14 +84,15 @@ task QueryGVCFPaths {
             `~{dataset_name}.sample_data_table` dt
         ON
             si.sample_name = dt.research_id
+        ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
 
         ' | jq '.[]' | jq --compact-output . > paths.json
 
         # The above query returns a JSON array which we reformat into a file with one JSON object per line so it can be
         # split and scattered over downstream.
 
-        # 100 lines per file, 3 letter suffix
-        split -l 100 -a 3 paths.json path_shard_.
+        # ~{split_batch_size} lines per file, ~{split_suffix_size} letter suffix
+        split -l ~{split_batch_size} -a ~{split_batch_size} paths.json path_shard_.
     >>>
     runtime {
         docker: variants_docker
