@@ -58,7 +58,7 @@ def process_variant(variant_obj):
     location_chr = location // 1000000000000
 
     if location_chr < 23:
-        chr_name = str(location_chr)
+        chr_name = f'chr{location_chr}'
     elif location_chr == 23:
         chr_name = 'chrX'
     elif location_chr == 24:
