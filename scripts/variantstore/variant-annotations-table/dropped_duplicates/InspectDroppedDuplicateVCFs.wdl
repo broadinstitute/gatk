@@ -88,7 +88,8 @@ task QueryGVCFPaths {
         # The above query returns a JSON array which we reformat into a file with one JSON object per line so it can be
         # split and scattered over downstream.
 
-        split paths.json path_shard_.
+        # 100 lines per file, 3 letter suffix
+        split -l 100 -a 3 paths.json path_shard_.
     >>>
     runtime {
         docker: variants_docker
