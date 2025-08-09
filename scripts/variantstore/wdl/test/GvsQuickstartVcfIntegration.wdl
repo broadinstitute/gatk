@@ -492,13 +492,16 @@ task AssertTableSizesAreExpected {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         # bq query --max_rows check: aggregating and unioning should produce two rows
-        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
-            \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$") \
-            UNION ALL \
-            SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
-            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-            WHERE REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$") ORDER BY total_name" > output/table_sizes.csv
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+
+            SELECT "vet_total" AS total_name, sum(total_billable_bytes) AS total_bytes FROM
+              `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+            UNION ALL
+            SELECT "ref_ranges_total" AS total_name, sum(total_billable_bytes) AS total_bytes FROM
+              `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+            ORDER BY total_name
+
+        ' > output/table_sizes.csv
 
         set +o errexit
         diff -w output/table_sizes.csv ~{expected_output_csv} > differences.txt
