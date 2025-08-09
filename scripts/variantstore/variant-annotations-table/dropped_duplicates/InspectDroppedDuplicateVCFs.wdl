@@ -92,7 +92,7 @@ task QueryGVCFPaths {
         # split and scattered over downstream.
 
         # ~{split_batch_size} lines per file, ~{split_suffix_size} letter suffix
-        split -l ~{split_batch_size} -a ~{split_batch_size} paths.json path_shard_.
+        split -l ~{split_batch_size} -a ~{split_suffix_size} paths.json path_shard_.
     >>>
     runtime {
         docker: variants_docker
