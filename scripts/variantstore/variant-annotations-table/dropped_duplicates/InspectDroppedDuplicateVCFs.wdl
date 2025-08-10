@@ -130,6 +130,7 @@ task ReadGVCFs {
     >>>
     runtime {
         docker: variants_docker
+        preemptible: 2
     }
     output {
         File gvcf_content_json = "gvcf_content.json"
@@ -153,7 +154,7 @@ task UploadGVCFContent {
 
         bq --apilog=false load --source_format=CSV --field_delimiter="\t" --skip_leading_rows=1 \
             --project_id=~{project_id} \
-            --schema "sample_id:INTEGER,sample_name:STRING,location:INTEGER,ref:STRING,alt:STRING,gvcf_path:STRING,reblocked_gvcf:STRING,gvcf_line:STRING,reblocked_gvcf_line:STRING" \
+            --schema "sample_id:INTEGER,sample_name:STRING,location:INTEGER,ref:STRING,alt:STRING,chr:STRING,position:INTEGER,gvcf_path:STRING,reblocked_gvcf:STRING,gvcf_line:STRING,reblocked_gvcf_line:STRING" \
             ~{dataset_name}.dropped_duplicates_gvcf_content \
             reordered.tsv
     >>>
