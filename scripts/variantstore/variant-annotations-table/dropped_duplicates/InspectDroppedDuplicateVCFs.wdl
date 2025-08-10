@@ -124,6 +124,7 @@ task QueryGVCFPaths {
         preemptible: 2
     }
     output {
+        File raw_paths_json = "raw_paths.json"
         File paths_json = "paths.json"
         Array[File] path_shards = glob("path_shard_.*")
     }
