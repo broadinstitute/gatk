@@ -6,6 +6,7 @@ workflow InspectDroppedDuplicateVCFs {
     input {
         String project_id
         String dataset_name
+        Int query_mem_gib = 14
         Boolean retry = false
     }
 
@@ -19,6 +20,7 @@ workflow InspectDroppedDuplicateVCFs {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
+            mem_gib = query_mem_gib,
             retry = retry,
             variants_docker = GetToolVersions.variants_docker,
     }
@@ -59,6 +61,7 @@ task QueryGVCFPaths {
         String dataset_name
         String variants_docker
         Boolean retry
+        Int mem_gib
         Int split_batch_size = 300
         Int split_suffix_size = 3
     }
@@ -117,6 +120,8 @@ task QueryGVCFPaths {
     >>>
     runtime {
         docker: variants_docker
+        memory: mem_gib + " GiB"
+        preemptible: 2
     }
     output {
         File paths_json = "paths.json"
