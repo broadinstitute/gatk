@@ -70,8 +70,19 @@ task QueryGVCFPaths {
 
         if [[ "~{retry}" = "true" ]]
         then
-        bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
-            --format=json '
+            bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
+                --format=json '
+
+            SELECT
+                *
+            FROM
+                `~{dataset_name}.dropped_duplicates_gvcf_content`
+            ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
+
+            ' > raw_paths.json
+        else
+            bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
+                --format=json '
 
             SELECT
                 si.sample_id,
@@ -91,18 +102,6 @@ task QueryGVCFPaths {
                 `~{dataset_name}.sample_data_table` dt
             ON
                 si.sample_name = dt.research_id
-            ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
-
-            ' > raw_paths.json
-        else
-
-            bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
-                --format=json '
-
-            SELECT
-                *
-            FROM
-                `~{dataset_name}.dropped_duplicates_gvcf_content`
             ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
 
             ' > raw_paths.json
