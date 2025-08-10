@@ -75,11 +75,15 @@ def process_variant(variant_obj):
     gvcf_path = variant_obj['gvcf_path']
     reblocked_gvcf = variant_obj['reblocked_gvcf']
 
-    # Run bcftools on both files
-    if 'gvcf_line' not in variant_obj or RE_ERROR.search(variant_obj['gvcf_line']):
-        gvcf_line = run_bcftools(gvcf_path, chr_name, position)
-    if 'reblocked_gvcf_line' not in variant_obj or RE_ERROR.search(variant_obj['reblocked_gvcf_line']):
-        reblocked_gvcf_line = run_bcftools(reblocked_gvcf, chr_name, position)
+    def query_or_lookup(field, gvcf):
+        if field not in variant_obj or RE_ERROR.search(field):
+            value = run_bcftools(gvcf, chr_name, position)
+        else:
+            value = variant_obj[field]
+        return value
+
+    gvcf_line = query_or_lookup('gvcf_line', gvcf_path)
+    reblocked_gvcf_line = query_or_lookup('reblocked_gvcf_line', reblocked_gvcf)
 
     # Create result object with original fields plus new ones
     result = variant_obj.copy()
