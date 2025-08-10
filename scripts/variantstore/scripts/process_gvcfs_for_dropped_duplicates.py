@@ -4,10 +4,15 @@ Script to process variants by querying GVCF and reblocked GVCF files with bcftoo
 Takes a JSON file with variant information and outputs enriched JSON with bcftools results.
 """
 
+import argparse
 import json
+import re
 import subprocess
 import sys
-import argparse
+
+# This may be called for data which has never attempted GVCF line fetching, or for data where this has been
+# attempted but there were errors we want to retry.
+RE_ERROR = re.compile(r"^ERROR:")
 
 
 def run_bcftools(gvcf_path, chr_name, position):
@@ -71,8 +76,10 @@ def process_variant(variant_obj):
     reblocked_gvcf = variant_obj['reblocked_gvcf']
 
     # Run bcftools on both files
-    gvcf_line = run_bcftools(gvcf_path, chr_name, position)
-    reblocked_gvcf_line = run_bcftools(reblocked_gvcf, chr_name, position)
+    if 'gvcf_line' not in variant_obj or RE_ERROR.search(variant_obj['gvcf_line']):
+        gvcf_line = run_bcftools(gvcf_path, chr_name, position)
+    if 'reblocked_gvcf_line' not in variant_obj or RE_ERROR.search(variant_obj['reblocked_gvcf_line']):
+        reblocked_gvcf_line = run_bcftools(reblocked_gvcf, chr_name, position)
 
     # Create result object with original fields plus new ones
     result = variant_obj.copy()

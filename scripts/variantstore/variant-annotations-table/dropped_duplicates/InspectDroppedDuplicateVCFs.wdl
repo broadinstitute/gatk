@@ -6,6 +6,7 @@ workflow InspectDroppedDuplicateVCFs {
     input {
         String project_id
         String dataset_name
+        Boolean retry = false
     }
 
     meta {
@@ -18,6 +19,7 @@ workflow InspectDroppedDuplicateVCFs {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
+            retry = retry,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -35,12 +37,14 @@ workflow InspectDroppedDuplicateVCFs {
             variants_docker = GetToolVersions.variants_docker,
     }
 
-    call UploadGVCFContent {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            merged_tsv = MergeJSONs.merged_tsv,
-            variants_docker = GetToolVersions.variants_docker,
+    if (!retry) {
+        call UploadGVCFContent {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                merged_tsv = MergeJSONs.merged_tsv,
+                variants_docker = GetToolVersions.variants_docker,
+        }
     }
 
     output {
@@ -54,6 +58,7 @@ task QueryGVCFPaths {
         String project_id
         String dataset_name
         String variants_docker
+        Boolean retry
         Int split_batch_size = 300
         Int split_suffix_size = 3
     }
@@ -63,32 +68,49 @@ task QueryGVCFPaths {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        if [[ "~{retry}" = "true ]]
+        then
         bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
             --format=json '
 
-        SELECT
-            si.sample_id,
-            si.sample_name,
-            ddaa.location,
-            ddaa.ref,
-            ddaa.allele,
-            dt.reblocked_gvcf,
-            dt.gvcf_path
-        FROM
-            `~{dataset_name}.dropped_duplicates_alt_allele` ddaa
-        JOIN
-            `~{dataset_name}.sample_info` si
-        ON
-            ddaa.sample_id = si.sample_id
-        JOIN
-            `~{dataset_name}.sample_data_table` dt
-        ON
-            si.sample_name = dt.research_id
-        ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
+            SELECT
+                si.sample_id,
+                si.sample_name,
+                ddaa.location,
+                ddaa.ref,
+                ddaa.allele,
+                dt.reblocked_gvcf,
+                dt.gvcf_path
+            FROM
+                `~{dataset_name}.dropped_duplicates_alt_allele` ddaa
+            JOIN
+                `~{dataset_name}.sample_info` si
+            ON
+                ddaa.sample_id = si.sample_id
+            JOIN
+                `~{dataset_name}.sample_data_table` dt
+            ON
+                si.sample_name = dt.research_id
+            ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
 
-        ' | jq '.[]' | jq --compact-output . > paths.json
+            ' > raw_paths.json
+        else
 
-        # The above query returns a JSON array which we reformat into a file with one JSON object per line so it can be
+            bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
+                --format=json '
+
+            SELECT
+                *
+            FROM
+                `~{dataset_name}.dropped_duplicates_gvcf_content`
+            ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
+
+            ' > raw_paths.json
+        fi
+
+        jq '.[]' raw_paths.json | jq --compact-output . > paths.json
+
+        # The above queries return a JSON array which we reformat into a file with one JSON object per line so it can be
         # split and scattered over downstream.
 
         # ~{split_batch_size} lines per file, ~{split_suffix_size} letter suffix
