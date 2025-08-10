@@ -68,7 +68,7 @@ task QueryGVCFPaths {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        if [[ "~{retry}" = "true ]]
+        if [[ "~{retry}" = "true" ]]
         then
         bq --apilog=false query --use_legacy_sql=false --max_rows=100000000 --project_id=~{project_id} \
             --format=json '
