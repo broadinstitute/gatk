@@ -77,7 +77,7 @@ task QueryGVCFPaths {
                 *
             FROM
                 `~{dataset_name}.dropped_duplicates_gvcf_content`
-            ORDER BY si.sample_id, ddaa.location, ddaa.ref, ddaa.allele
+            ORDER BY sample_id, location, ref, alt
 
             ' > raw_paths.json
         else
