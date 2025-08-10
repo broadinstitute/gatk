@@ -76,7 +76,8 @@ def process_variant(variant_obj):
     reblocked_gvcf = variant_obj['reblocked_gvcf']
 
     def query_or_lookup(field, gvcf):
-        if field not in variant_obj or RE_ERROR.search(field):
+        if field not in variant_obj or RE_ERROR.search(variant_obj[field]):
+            print(f"re-running bcftools for {variant_obj['sample_name']}:{location}", file=sys.stderr)
             value = run_bcftools(gvcf, chr_name, position)
         else:
             value = variant_obj[field]
