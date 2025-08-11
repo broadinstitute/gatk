@@ -340,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1631_extract_avros
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -368,6 +367,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250811_1
          tags:
              - /.*/
    - name: GvsCallsetStatistics
