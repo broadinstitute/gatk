@@ -267,7 +267,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1710_cost_estimates
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -286,7 +285,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1710_cost_estimates
          tags:
              - /.*/
    - name: GvsBeta
@@ -342,7 +340,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1710_cost_estimates
+             - vs_1631_extract_avros
          tags:
              - /.*/
    - name: GvsIngestTieout
