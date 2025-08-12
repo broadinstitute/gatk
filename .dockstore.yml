@@ -482,3 +482,10 @@ workflows:
        branches:
          - ah_var_store
          - vs_1671_vat_discrepancies
+   - name: RemoveDuplicatesFromSitesOnlyVCF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/RemoveDuplicatesFromSitesOnlyVCF.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - VS-1725
