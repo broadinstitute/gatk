@@ -340,7 +340,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1631_extract_avros
+             - vs_1633_fix_avro_extract
          tags:
              - /.*/
    - name: GvsIngestTieout
