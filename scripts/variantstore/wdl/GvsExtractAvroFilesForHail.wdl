@@ -352,12 +352,14 @@ task ExtractFromSuperpartitionedTables {
             # Default to a 1-based first superpartition
             start_table=$((~{shard_index} + 1))
         else
-            if [[ $((~{new_sample_cutoff} % 4000)) == 0 ]]
+            # +1 here since new_sample_cutoff is *excluded* from the data we want to export
+            first_sample=~{new_sample_cutoff + 1}
+            if [[ $((${first_sample} % 4000)) == 0 ]]
             then
                 # e.g. samples 1 to 4000 go in the first superpartition
-                start_table=$((~{new_sample_cutoff} / 4000))
+                start_table=$((${first_sample} / 4000))
             else
-               start_table=$(((~{new_sample_cutoff} / 4000) + 1))
+                start_table=$(((${first_sample} / 4000) + 1))
             fi
         fi
 
