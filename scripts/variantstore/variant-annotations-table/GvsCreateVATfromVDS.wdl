@@ -648,22 +648,27 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                 # Find all lines matching this synonym pattern and extract AC values
                 grep "^${chrom}	${pos}	${id}	${ref}	${alt}	" all_duplicates.vcf | \
                 awk -F'\t' '
-                BEGIN { max_ac = -1; max_line = ""; }
+                BEGIN { max_ac = -1; max_line = ""; lines[0]; num_lines = 0; }
                 {
+                    # Store all lines and their AC values
+                    lines[num_lines] = $0;
+
                     # Extract AC value from INFO field
                     info = $8;
                     if (match(info, /AC=([0-9]+)/, ac_match)) {
                         ac = ac_match[1];
                         if (ac > max_ac) {
-                            if (max_line != "") {
-                                # Previous max becomes a minority synonym - store entire line
-                                print max_line >> "temp_minorities.tsv";
-                            }
                             max_ac = ac;
-                            max_line = $0;  # Store the entire line, not just first 5 columns
-                        } else {
-                            # This line has lower AC, so it is a minority synonym - store entire line
-                            print $0 >> "temp_minorities.tsv";  # Store the entire line
+                            max_line_index = num_lines;
+                        }
+                    }
+                    num_lines++;
+                }
+                END {
+                    # Output all lines except the one with maximum AC
+                    for (i = 0; i < num_lines; i++) {
+                        if (i != max_line_index) {
+                            print lines[i] >> "temp_minorities.tsv";
                         }
                     }
                 }'
