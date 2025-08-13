@@ -635,7 +635,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         echo_date "VAT: Duplicates may have been found"
 
         # Debugging: Check awk version
-        awk --version
+        awk -W version
 
         # If there ARE dupes to process
         if [ -s duplicates.tsv ]; then
