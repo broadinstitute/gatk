@@ -20,5 +20,6 @@ workflow RemoveDuplicatesFromSitesOnlyVCF {
         File track_dropped = RemoveDuplicatesFromSitesOnlyVCF.track_dropped
         File output_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
         File monitoring_log = RemoveDuplicatesFromSitesOnlyVCF.monitoring_log
+        File filtered_synonyms = RemoveDuplicatesFromSitesOnlyVCF.filtered_synonyms
     }
 }
