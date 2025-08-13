@@ -68,3 +68,55 @@ class TestGenerateAvroArguments(unittest.TestCase):
             vet_avros_for_prefix(f'vet_00{i+1}') for i in range(3)
         ]
         self.assertEqual(actual, expected)
+
+
+    # A test for a Foxtrot-like incremental addition of Avros, *not* starting at the first superpartition.
+    def test_generate_avro_arguments_incremental(self):
+
+        bucket_name = 'fc-workspace'
+        blob_prefix = f'submission/workflow/workflow-id/call-Foo/avro'
+
+        # non superpartitioned
+        blobs = [
+            ShamBlob(f'{blob_prefix}/sample_mapping/sample_mapping_000000000000.avro')
+        ]
+        bucket = ShamBucket(bucket_name)
+        bucket.list_blobs = MagicMock(return_value=blobs)
+
+        actual = gcs_generate_avro_args(
+            bucket=bucket,
+            blob_prefix=blob_prefix,
+            key='sample_mapping'
+        )
+        bucket.list_blobs.assert_called_with(prefix=f'{blob_prefix}/sample_mapping/')
+        expected = [f'gs://{bucket.name}/{b.name}' for b in blobs]
+        self.assertEqual(actual, expected)
+
+        # superpartitioned
+        blobs = [
+            ShamBlob(f'{blob_prefix}/vets/vet_101/vet_101_000000000000.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_101/vet_101_000000000001.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_101/vet_101_000000000002.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_102/vet_102_000000000000.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_102/vet_102_000000000001.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_102/vet_102_000000000002.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_103/vet_103_000000000000.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_103/vet_103_000000000001.avro'),
+            ShamBlob(f'{blob_prefix}/vets/vet_103/vet_103_000000000002.avro'),
+        ]
+
+        bucket.list_blobs = MagicMock(return_value=blobs)
+        actual = gcs_generate_avro_args(
+            bucket=bucket,
+            blob_prefix=blob_prefix,
+            key='vets'
+        )
+        bucket.list_blobs.assert_called_with(prefix=f'{blob_prefix}/vets/')
+
+        def vet_avros_for_prefix(prefix):
+            return [f'gs://{bucket.name}/{blob_prefix}/vets/{prefix}/{prefix}_00000000000{i}.avro' for i in range(3)]
+
+        expected = [
+            vet_avros_for_prefix(f'vet_10{i+1}') for i in range(3)
+        ]
+        self.assertEqual(actual, expected)
