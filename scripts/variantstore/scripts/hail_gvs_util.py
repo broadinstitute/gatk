@@ -22,9 +22,10 @@ def gcs_generate_avro_args(bucket, blob_prefix, key):
         parts = relative_path.split('/')
 
         index = int(parts[0].split('_')[-1]) - 1
-        if len(ret) == index:
+        if index not in seen_indexes:
+            seen_indexes.add(index)
             ret.append([])
-        ret[index].append(f'gs://{bucket.name}/{blob_name}')
+        ret[-1].append(f'gs://{bucket.name}/{blob_name}')
 
     def regular_handler(blob_name):
         ret.append(f'gs://{bucket.name}/{blob_name}')
@@ -32,6 +33,7 @@ def gcs_generate_avro_args(bucket, blob_prefix, key):
     superpartitioned_keys = {'vets', 'refs'}
     entry_handler = superpartitioned_handler if key in superpartitioned_keys else regular_handler
 
+    seen_indexes = set()
     ret = []
 
     # `list_blobs` paginates under the covers, explicit pagination not required regardless of the number of Avro files.
