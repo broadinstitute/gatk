@@ -661,8 +661,12 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                     # Extract AC value from INFO field
                     info = $8;
                     debug_msg = "[DEBUG] line=" num_lines ", info=" info;
-                    if (match(info, /AC=([0-9]+)(;|$)/, ac_match)) {
-                        ac_string = ac_match[1];
+                    # Use split to extract AC value - works across awk implementations
+                    if (match(info, /AC=[0-9]+/)) {
+                        # Extract the AC=value part, then split on =
+                        ac_part = substr(info, RSTART, RLENGTH);
+                        split(ac_part, ac_parts, "=");
+                        ac_string = ac_parts[2];
                         ac = int(ac_string);
                         debug_msg = debug_msg ", AC_string=" ac_string ", AC=" ac;
                         # If this AC is the new maximum, record it
