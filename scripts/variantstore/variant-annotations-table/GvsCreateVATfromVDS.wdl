@@ -625,7 +625,8 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
         echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
 
-        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools.
+        ## We now keep the duplicate with the highest AC value for each synonym cluster
         ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
 
@@ -633,19 +634,72 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         wc -l duplicates.tsv
         echo_date "VAT: Duplicates may have been found"
 
-        # If there ARE dupes to remove
+        # If there ARE dupes to process
         if [ -s duplicates.tsv ]; then
-            ## remove those rows (that match up to the first 5 cols)
-            echo_date "VAT: Removing those rows"
-            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv > deduplicated.vcf
+            echo_date "VAT: Processing duplicates to keep highest AC variant per synonym cluster"
+
+            # Extract all duplicate lines from the VCF (not removing them yet)
+            bcftools view --threads 4 normalized.bcf | grep -wFf duplicates.tsv > all_duplicates.vcf
+
+            # Process each synonym cluster to identify minority synonyms to remove
+            > minority_synonyms.tsv  # Initialize empty file
+
+            while IFS=$'\t' read -r chrom pos id ref alt; do
+                # Find all lines matching this synonym pattern and extract AC values
+                grep "^${chrom}	${pos}	${id}	${ref}	${alt}	" all_duplicates.vcf | \
+                awk -F'\t' '
+                BEGIN { max_ac = -1; max_line = ""; }
+                {
+                    # Extract AC value from INFO field
+                    info = $8;
+                    if (match(info, /AC=([0-9]+)/, ac_match)) {
+                        ac = ac_match[1];
+                        if (ac > max_ac) {
+                            if (max_line != "") {
+                                # Previous max becomes a minority synonym - store entire line
+                                print max_line >> "temp_minorities.tsv";
+                            }
+                            max_ac = ac;
+                            max_line = $0;  # Store the entire line, not just first 5 columns
+                        } else {
+                            # This line has lower AC, so it is a minority synonym - store entire line
+                            print $0 >> "temp_minorities.tsv";  # Store the entire line
+                        }
+                    }
+                }'
+            done < duplicates.tsv
+
+            # Collect all minority synonyms
+            if [ -f temp_minorities.tsv ]; then
+                cat temp_minorities.tsv >> minority_synonyms.tsv
+                rm temp_minorities.tsv
+            fi
+
+            # Remove only the minority synonyms from the VCF
+            if [ -s minority_synonyms.tsv ]; then
+                echo_date "VAT: Removing minority synonyms"
+                bcftools view --threads 4 normalized.bcf | grep -v -wFf minority_synonyms.tsv > deduplicated.vcf
+
+                ## Copy minority synonyms to filtered_synonyms.tsv for output
+                cp minority_synonyms.tsv filtered_synonyms.tsv
+            else
+                echo_date "VAT: No minority synonyms to remove"
+                bcftools view --threads 4 normalized.bcf -o deduplicated.vcf
+                ## Create empty filtered_synonyms.tsv if no minorities found
+                touch filtered_synonyms.tsv
+            fi
+
+            rm all_duplicates.vcf minority_synonyms.tsv
         else
-            # There are no duplicates to remove
+            # There are no duplicates to process
             echo_date "VAT: No duplicates found"
             bcftools view --threads 4 normalized.bcf -o deduplicated.vcf
+            ## Create empty filtered_synonyms.tsv if no duplicates found
+            touch filtered_synonyms.tsv
         fi
         rm normalized.bcf
 
-        ## add duplicates to the file that's tracking dropped variants
+        ## add duplicates to the file that's tracking dropped variants (original functionality)
         cat duplicates.tsv >> track_dropped.tsv
         rm duplicates.tsv ## clean up unneeded file
 
@@ -664,6 +718,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     output {
         File track_dropped = "track_dropped.tsv"
         File output_vcf = "deduplicated.vcf"
+        File filtered_synonyms = "filtered_synonyms.tsv"
         File monitoring_log = "monitoring.log"
     }
 }
