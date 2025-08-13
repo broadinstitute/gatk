@@ -193,6 +193,15 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsExtractCallsetFoxtrotExome
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - FoxtrotRelease_20250813_1
+       tags:
+         - /.*/
    - name: GvsExtractCallsetShard30603
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
