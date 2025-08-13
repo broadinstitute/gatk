@@ -656,8 +656,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                     # Extract AC value from INFO field
                     info = $8;
                     if (match(info, /AC=([0-9]+)/, ac_match)) {
-                        ac = ac_match[1];
+                        ac = ac_match[1] + 0;  # force numeric comparison
                         if (ac > max_ac) {
+                            print ac, num_lines;  # print AC and line index
                             max_ac = ac;
                             max_line_index = num_lines;
                         }
