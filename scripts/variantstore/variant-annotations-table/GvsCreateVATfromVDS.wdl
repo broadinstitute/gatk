@@ -661,9 +661,10 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                     # Extract AC value from INFO field
                     info = $8;
                     debug_msg = "[DEBUG] line=" num_lines ", info=" info;
-                    if (match(info, /AC=([0-9]+)/, ac_match)) {
-                        ac = ac_match[1] + 0;
-                        debug_msg = debug_msg ", AC=" ac;
+                    if (match(info, /AC=([0-9]+)(;|$)/, ac_match)) {
+                        ac_string = ac_match[1];
+                        ac = int(ac_string);
+                        debug_msg = debug_msg ", AC_string=" ac_string ", AC=" ac;
                         # If this AC is the new maximum, record it
                         if (ac > max_ac) {
                             debug_msg = debug_msg " (new max)";
