@@ -634,9 +634,6 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         wc -l duplicates.tsv
         echo_date "VAT: Duplicates may have been found"
 
-        # Debugging: Check awk version
-        awk -W version
-
         # If there ARE dupes to process
         if [ -s duplicates.tsv ]; then
             echo_date "VAT: Processing duplicates to keep highest AC variant per synonym cluster"
