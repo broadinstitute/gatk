@@ -646,26 +646,38 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
             while IFS=$'\t' read -r chrom pos id ref alt; do
                 # Find all lines matching this synonym pattern and extract AC values
-                grep "^${chrom}	${pos}	${id}	${ref}	${alt}	" all_duplicates.vcf | \
+                grep "^${chrom}\t${pos}\t${id}\t${ref}\t${alt}\t" all_duplicates.vcf | \
                 awk -F'\t' '
-                BEGIN { max_ac = -1; max_line = ""; lines[0]; num_lines = 0; }
+                BEGIN {
+                    max_ac = -1;
+                    max_line = "";
+                    lines[0];
+                    num_lines = 0;
+                }
                 {
                     # Store all lines and their AC values
                     lines[num_lines] = $0;
 
                     # Extract AC value from INFO field
                     info = $8;
+                    debug_msg = "[DEBUG] line=" num_lines ", info=" info;
                     if (match(info, /AC=([0-9]+)/, ac_match)) {
-                        ac = ac_match[1] + 0;  # force numeric comparison
+                        ac = ac_match[1] + 0;
+                        debug_msg = debug_msg ", AC=" ac;
+                        # If this AC is the new maximum, record it
                         if (ac > max_ac) {
-                            print ac, num_lines;  # print AC and line index
+                            debug_msg = debug_msg " (new max)";
                             max_ac = ac;
                             max_line_index = num_lines;
                         }
+                    } else {
+                        debug_msg = debug_msg ", AC=NOT_FOUND";
                     }
+                    print debug_msg > "/dev/stderr";
                     num_lines++;
                 }
                 END {
+                    print "[DEBUG] max_ac=" max_ac ", max_line_index=" max_line_index > "/dev/stderr";
                     # Output all lines except the one with maximum AC
                     for (i = 0; i < num_lines; i++) {
                         if (i != max_line_index) {
