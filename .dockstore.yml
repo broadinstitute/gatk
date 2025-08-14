@@ -199,7 +199,7 @@ workflows:
      filters:
        branches:
          - master
-         - FoxtrotRelease_20250813_1
+         - FoxtrotRelease_20250814_1
        tags:
          - /.*/
    - name: GvsExtractCallsetShard30603
