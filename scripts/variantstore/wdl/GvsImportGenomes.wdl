@@ -397,7 +397,7 @@ task LoadData {
   runtime {
     docker: gatk_docker
     maxRetries: load_data_maxretries
-    memory: "3.75 GB"
+    memory: "7.5 GB"
     disks: "local-disk 50 HDD"
     preemptible: load_data_preemptible
     cpu: 1
