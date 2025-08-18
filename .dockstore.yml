@@ -173,6 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20250818_1
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -466,7 +467,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - FoxtrotRelease_20250818_1
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
