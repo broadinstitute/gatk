@@ -301,6 +301,13 @@ workflow GvsCreateVATfromVDS {
                 basic_docker = effective_basic_docker,
         }
 
+        call Utils.MergeTsvs as MergeDroppedSynonyms {
+            input:
+                input_files = RemoveDuplicatesFromSitesOnlyVCF.filtered_synonyms,
+                output_file_name = "${sites_only_vcf_basename}.detailed-dropped.tsv",
+                basic_docker = effective_basic_docker,
+        }
+
         call BigQueryLoadJson {
             input:
                 vat_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
@@ -346,6 +353,7 @@ workflow GvsCreateVATfromVDS {
         String vat_table_name = effective_vat_table_name
         String? cluster_name = GenerateSitesOnlyVcf.cluster_name
         File? dropped_sites_file = MergeTsvs.output_file
+        File? detailed_dropped_sites_file = MergeDroppedSynonyms.output_file
         File? final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         String recorded_git_hash = GetToolVersions.git_hash
     }
