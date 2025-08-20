@@ -661,6 +661,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                     max_line = "";
                     lines[0];
                     num_lines = 0;
+                    max_line_index = -1; # for clarity
                 }
                 {
                     # Store all lines and their AC values
@@ -692,10 +693,14 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                 END {
                     print "[DEBUG] max_ac=" max_ac ", max_line_index=" max_line_index > "/dev/stderr";
                     # Output all lines except the one with maximum AC
-                    for (i = 0; i < num_lines; i++) {
-                        if (i != max_line_index) {
-                            print lines[i] >> "temp_minorities.tsv";
+                    if (max_line_index != -1) {
+                        for (i = 0; i < num_lines; i++) {
+                            if (i != max_line_index) {
+                                print lines[i] >> "temp_minorities.tsv";
+                            }
                         }
+                    } else {
+                        print "[DEBUG] No valid AC found; no minorities output" > "/dev/stderr";
                     }
                 }'
             done < duplicates.tsv
@@ -720,7 +725,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
                 touch filtered_synonyms.tsv
             fi
 
-            rm all_duplicates.vcf minority_synonyms.tsv
+            rm -f all_duplicates.vcf minority_synonyms.tsv
         else
             # There are no duplicates to process
             echo_date "VAT: No duplicates found"
