@@ -109,7 +109,7 @@ public class SVMatchesFinder implements SVMatcher {
             for (final ActiveCluster cluster : idToClusterMap.values()) {
                 final CanonicalSVLinkage.CanonicalLinkageResult result = linkage.areClusterable(cluster.getItem(), item);
                 if (result.getResult()) {
-                    cluster.update(item.getId(), result);
+                    cluster.update(item.getId(), result, item);
                 }
             }
         } else {
@@ -119,7 +119,7 @@ public class SVMatchesFinder implements SVMatcher {
             for (final SVCallRecord truthItem : truthIdToItemMap.values()) {
                 final CanonicalSVLinkage.CanonicalLinkageResult result = linkage.areClusterable(item, truthItem);
                 if (result.getResult()) {
-                    cluster.update(truthItem.getId(), result);
+                    cluster.update(truthItem.getId(), result, truthItem);
                 }
             }
             idToClusterMap.put(id, cluster);
@@ -155,15 +155,15 @@ public class SVMatchesFinder implements SVMatcher {
         final SVCallRecord item;
         final List<String> matchVids;
         final List<CanonicalSVLinkage.CanonicalLinkageResult> linkageResults;
-        final List<Integer> matchAlleleCounts;
-        final List<Integer> matchAlleleNumbers;
-        final List<Double> matchAlleleFrequencies;
+        final List<Object> matchAlleleCounts;
+        final List<Object> matchAlleleNumbers;
+        final List<Object> matchAlleleFrequencies;
         final int maxClusterableStartingPosition;
 
         public ActiveCluster(final Long itemId, final SVCallRecord item, final List<String> matchVids,
                              final List<CanonicalSVLinkage.CanonicalLinkageResult> linkageResults,
-                             final List<Integer> matchAlleleCounts, final List<Integer> matchAlleleNumbers,
-                             final List<Double> matchAlleleFrequencies, int maxClusterableStartingPosition) {
+                             final List<Object> matchAlleleCounts, final List<Object> matchAlleleNumbers,
+                             final List<Object> matchAlleleFrequencies, int maxClusterableStartingPosition) {
             this.itemId = itemId;
             this.item = item;
             this.matchVids = matchVids;
@@ -174,9 +174,15 @@ public class SVMatchesFinder implements SVMatcher {
             this.maxClusterableStartingPosition = maxClusterableStartingPosition;
         }
 
-        void update(String matchVid, CanonicalSVLinkage.CanonicalLinkageResult linkageResult) {
+        void update(final String matchVid,
+                    final CanonicalSVLinkage.CanonicalLinkageResult linkageResult,
+                    final SVCallRecord matchRecord) {
             matchVids.add(matchVid);
             linkageResults.add(linkageResult);
+            final Map<String, Object> matchAttr = matchRecord.getAttributes();
+            matchAlleleCounts.add(matchAttr.get(VCFConstants.ALLELE_COUNT_KEY));
+            matchAlleleNumbers.add(matchAttr.get(VCFConstants.ALLELE_NUMBER_KEY));
+            matchAlleleFrequencies.add(matchAttr.get(VCFConstants.ALLELE_FREQUENCY_KEY));
         }
 
         Long getItemId() {
@@ -203,11 +209,11 @@ public class SVMatchesFinder implements SVMatcher {
             }
         }
 
-        List<Integer> getMatchAlleleCounts() { return matchAlleleCounts; }
+        List<Object> getMatchAlleleCounts() { return matchAlleleCounts; }
 
-        List<Integer> getMatchAlleleNumbers() { return matchAlleleNumbers; }
+        List<Object> getMatchAlleleNumbers() { return matchAlleleNumbers; }
 
-        List<Double> getMatchAlleleFrequencies() { return matchAlleleFrequencies; }
+        List<Object> getMatchAlleleFrequencies() { return matchAlleleFrequencies; }
 
         int getMaxClusterableStartingPosition() {
             return maxClusterableStartingPosition;
