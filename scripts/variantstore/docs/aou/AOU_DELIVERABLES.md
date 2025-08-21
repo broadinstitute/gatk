@@ -148,7 +148,8 @@ GROUP BY
        - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
        - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
        - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-    - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
+    - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `aou-genomics-curation-prod:gvs_public_reference_data.gnomad_v3_sites` table.
+      - Note that the script to generate this table can be found at `scripts/variantstore/bq/create_gnomad_v3_sites_table.sql`
     - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
     - This workflow needs to be run with the `filter_set_name` input from `GvsCreateFilterSet` step.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
