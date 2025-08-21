@@ -21,6 +21,8 @@ workflow GvsCreateFilterSet {
     String? interval_list
 
     String? custom_training_resources
+    # need to be able to override this
+    String? custom_contig_mapping
 
     String? basic_docker
     String? cloud_sdk_docker
@@ -147,7 +149,7 @@ workflow GvsCreateFilterSet {
         project_id                 = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier,
-        custom_contig_mapping      = GetReference.custom_contig_mapping_file,
+        custom_contig_mapping      = select_first([custom_contig_mapping, GetReference.custom_contig_mapping_file]),
         gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
     }
@@ -237,7 +239,7 @@ workflow GvsCreateFilterSet {
         snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
         indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
         indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
-        custom_contig_mapping = GetReference.custom_contig_mapping_file,
+        custom_contig_mapping = select_first([custom_contig_mapping, GetReference.custom_contig_mapping_file]),
         project_id = project_id,
         useVQSR = false
     }
@@ -278,7 +280,7 @@ workflow GvsCreateFilterSet {
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
       sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
       fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-      custom_contig_mapping = GetReference.custom_contig_mapping_file,
+      custom_contig_mapping = select_first([custom_contig_mapping, GetReference.custom_contig_mapping_file]),
       project_id = project_id
   }
 
