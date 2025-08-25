@@ -417,7 +417,7 @@ task CollectMetricsForChromosome {
                    titv(ref, alt) as titv,
                    CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
             FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
-            LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
+            LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
             WHERE call_GT != "./."
             AND v.location >= ~{chromosome}000000000000
             AND v.location < ~{chromosome + 1}000000000000) GROUP BY 1,2
