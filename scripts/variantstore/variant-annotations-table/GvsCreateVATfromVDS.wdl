@@ -653,56 +653,26 @@ task RemoveDuplicatesFromSitesOnlyVCF {
             > minority_synonyms.tsv  # Initialize empty file
 
             while IFS=$'\t' read -r chrom pos id ref alt; do
-                # Find all lines matching this synonym pattern and extract AC values
+                # Find all lines matching this synonym pattern and extract AC values using a python for loop that prints all but the highest AC line
                 grep "^${chrom}\t${pos}\t${id}\t${ref}\t${alt}\t" all_duplicates.vcf | \
-                awk -F'\t' '
-                BEGIN {
-                    max_ac = -1;
-                    max_line = "";
-                    lines[0];
-                    num_lines = 0;
-                    max_line_index = -1; # for clarity
-                }
-                {
-                    # Store all lines and their AC values
-                    lines[num_lines] = $0;
-
-                    # Extract AC value from INFO field
-                    info = $8;
-                    debug_msg = "[DEBUG] line=" num_lines ", info=" info;
-                    # Use split to extract AC value - works across awk implementations
-                    if (match(info, /AC=[0-9]+/)) {
-                        # Extract the AC=value part, then split on =
-                        ac_part = substr(info, RSTART, RLENGTH);
-                        split(ac_part, ac_parts, "=");
-                        ac_string = ac_parts[2];
-                        ac = int(ac_string);
-                        debug_msg = debug_msg ", AC_string=" ac_string ", AC=" ac;
-                        # If this AC is the new maximum, record it
-                        if (ac > max_ac) {
-                            debug_msg = debug_msg " (new max)";
-                            max_ac = ac;
-                            max_line_index = num_lines;
-                        }
-                    } else {
-                        debug_msg = debug_msg ", AC=NOT_FOUND";
-                    }
-                    print debug_msg > "/dev/stderr";
-                    num_lines++;
-                }
-                END {
-                    print "[DEBUG] max_ac=" max_ac ", max_line_index=" max_line_index > "/dev/stderr";
-                    # Output all lines except the one with maximum AC
-                    if (max_line_index != -1) {
-                        for (i = 0; i < num_lines; i++) {
-                            if (i != max_line_index) {
-                                print lines[i] >> "temp_minorities.tsv";
-                            }
-                        }
-                    } else {
-                        print "[DEBUG] No valid AC found; no minorities output" > "/dev/stderr";
-                    }
-                }'
+                python -c '
+import sys, re
+max_ac = -1
+highest_line = ""
+for line in sys.stdin:
+    match = re.search(r"AC=(\d+)", line.strip())
+    if match:
+        # match group 1 is the AC number
+        ac = int(match.group(1))
+        current_line = line.strip()
+        if ac > max_ac:
+            if highest_line != "":
+                print(highest_line)
+            max_ac = ac
+            highest_line = current_line
+        else:
+            print(current_line)
+'
             done < duplicates.tsv
 
             # Collect all minority synonyms
