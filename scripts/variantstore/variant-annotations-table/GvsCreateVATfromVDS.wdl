@@ -672,7 +672,7 @@ for line in sys.stdin:
             highest_line = current_line
         else:
             print(current_line)
-'
+' >> temp_minorities.tsv
             done < duplicates.tsv
 
             # Collect all minority synonyms
