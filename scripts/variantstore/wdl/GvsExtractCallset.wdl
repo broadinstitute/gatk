@@ -33,6 +33,8 @@ workflow GvsExtractCallset {
     String reference_name = "hg38"
     # for supporting non-hg38 references
     File? custom_reference
+    # need to be able to override this
+    String? custom_contig_mapping
 
     File? interval_list
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
@@ -239,7 +241,7 @@ workflow GvsExtractCallset {
         gatk_override                         = gatk_override,
         reference_version                     = GetReference.reference_version,
         reference                             = GetReference.reference_fasta,
-        custom_contig_mapping_file            = GetReference.custom_contig_mapping_file,
+        custom_contig_mapping_file            = select_first([custom_contig_mapping, GetReference.custom_contig_mapping_file]),
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
