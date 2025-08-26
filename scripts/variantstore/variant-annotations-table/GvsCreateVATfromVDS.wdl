@@ -633,7 +633,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
         echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
 
-        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools.
+        ## After normalization, sometimes duplicate variants appear but with different calculations. This is due to
+        ## non-left aligned synonyms (and possibly one left-aligned synonym) appearing in the input data, each synonym
+        ## having its own calculations.
         ## We now keep the duplicate with the highest AC value for each synonym cluster
         ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
