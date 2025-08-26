@@ -40,7 +40,6 @@ public class SVFederate extends SVMergingWalker {
     @ArgumentCollection
     protected SVFederationArgumentCollection inputArgs = new SVFederationArgumentCollection();
 
-    protected VariantContextWriter writer;
     protected Map<String, Map<String, String>> sourceToPairMap;
     protected HashMap<String, String> vidAtoB;
     protected HashMap<String, String> vidBtoA;
@@ -49,8 +48,6 @@ public class SVFederate extends SVMergingWalker {
     protected HashMap<String, VariantContext> vidToRecA;
     protected HashMap<String, VariantContext> vidToRecB;
 
-    protected SAMSequenceDictionary dictionary;
-    protected ReferenceSequenceFile reference;
     protected CanonicalSVCollapser collapser;
 
 
@@ -80,13 +77,9 @@ public class SVFederate extends SVMergingWalker {
     public void onTraversalStart() {
         super.onTraversalStart();  // loads ploidy table, reference dictionary, initializes writer
 
-        // get map of A and B feature input names to their respective SV match maps
-        // order is fixed in SVFederationArgumentCollection.getDrivingVariantPaths()
-        sourceToPairMap = new HashMap<>();
-        sourceToPairMap.put(getDrivingVariantsFeatureInputs().get(0).getName(), vidAtoB);
-        sourceToPairMap.put(getDrivingVariantsFeatureInputs().get(1).getName(), vidBtoA);
-
         // get map of A and B feature input names to their respective VID-to-VariantContext maps
+        vidToRecA = new HashMap<>();
+        vidToRecB = new HashMap<>();
         sourceToVariantMap = new HashMap<>();
         sourceToVariantMap.put(getDrivingVariantsFeatureInputs().get(0).getName(),
                 Arrays.asList(vidToRecA, vidToRecB));
@@ -97,6 +90,12 @@ public class SVFederate extends SVMergingWalker {
         final SelectSVPairs selector = new SelectSVPairs(inputArgs.getSVPairFilePath());
         vidAtoB = selector.getVidAToBMap();
         vidBtoA = selector.getVidBToAMap();
+
+        // get map of A and B feature input names to their respective SV match maps
+        // order is fixed in SVFederationArgumentCollection.getDrivingVariantPaths()
+        sourceToPairMap = new HashMap<>();
+        sourceToPairMap.put(getDrivingVariantsFeatureInputs().get(0).getName(), vidAtoB);
+        sourceToPairMap.put(getDrivingVariantsFeatureInputs().get(1).getName(), vidBtoA);
 
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
         // TODO breakpoint summary strategy
