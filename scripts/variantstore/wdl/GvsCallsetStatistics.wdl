@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# A
+# B
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -423,7 +423,7 @@ task CollectMetricsForChromosome {
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
                 LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
-                AND mod(v.sample_id, 2) = ${mod_value}
+                AND mod(v.sample_id, 2) = $mod_value
                 AND v.location >= ~{chromosome}000000000000
                 AND v.location < ~{chromosome + 1}000000000000) GROUP BY 1,2
             '
