@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-
+# A
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -333,9 +333,19 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        # Run the query twice: once for mod value 0, once for mod value 1
-        for mod_value in 0 1; do
-            echo "Running query for mod value: ${mod_value}"
+        # bq query Get the mid-point and max of the locations for this chromosome
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        SELECT (max(location) - min(location)) / 2 + min(location), max(location)
+            FROM `gvs-internal.gg_ah_var_store_20250529.callset__VET_DATA`
+            WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000) | sed 1d > locations.txt
+
+        start_location=~{chromosome}000000000000
+        mid_location=$(head -1 locations.txt)
+        max_location=$(tail -1 locations.txt)
+
+        # Run the query twice
+        for end_location in $mid_location $max_location; do
+            echo "Running query for $start_location to $end_location"
 
             # bq query --max_rows check: ok insert (elaborate one)
             bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
@@ -423,10 +433,10 @@ task CollectMetricsForChromosome {
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
                 LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
-                AND mod(v.sample_id, 2) = '$mod_value'
-                AND v.location >= ~{chromosome}000000000000
-                AND v.location < ~{chromosome + 1}000000000000) GROUP BY 1,2
+                AND v.location >= '$start_location'
+                AND v.location < '$end_location' GROUP BY 1,2
             '
+            start_location=$end_location
         done
 
     >>>
