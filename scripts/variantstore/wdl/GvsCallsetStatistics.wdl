@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# D
+
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -421,7 +421,7 @@ task CollectMetricsForChromosome {
                        titv(ref, alt) as titv,
                        CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
-                LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
+                LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
                 AND mod(v.sample_id, 2) = '$mod_value'
                 AND v.location >= ~{chromosome}000000000000
