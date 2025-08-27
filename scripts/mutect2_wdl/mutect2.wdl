@@ -231,13 +231,16 @@ workflow Mutect2 {
                 ref_dict = ref_dict,
                 bam_outs = M2.output_bamOut,
                 runtime_params = standard_runtime,
-                disk_space = ceil(merged_bamout_size * 4) + disk_pad,
+                disk_space = ceil(merged_bamout_size * 10) + disk_pad,
         }
     }
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
-    if (defined(variants_for_contamination) && (!skip_filtering)) {
+    # When generating Permutect test data we need the minor allele fraction (MAF) segmentation from CalculateContamination,
+    # even if we are skipping filtering.  Note also that we run CalculateContamination witht he normal as a "tumor"
+    # in order to get normal MAF segments.
+    if (defined(variants_for_contamination) && (make_permutect_test_dataset || (!skip_filtering))) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
                 input_tables = flatten(M2.tumor_pileups),
@@ -253,6 +256,14 @@ workflow Mutect2 {
                     output_name = "normal-pileups",
                     ref_dict = ref_dict,
                     runtime_params = standard_runtime
+            }
+
+            if (make_permutect_test_dataset) {
+                call CalculateContamination as GetNormalMAFSegments {
+                    input:
+                        tumor_pileups = select_first([MergeNormalPileups.merged_table]),
+                        runtime_params = standard_runtime
+                }
             }
         }
 
@@ -329,6 +340,7 @@ workflow Mutect2 {
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
+        File? normal_maf_segments = GetNormalMAFSegments.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? permutect_training_dataset = ConcatenatePermutectTrainingData.concatenated
         File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated

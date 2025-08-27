@@ -16,7 +16,7 @@ workflow GvsExtractAvroFilesForHail {
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker
-        String ploidy_table_name
+        String ploidy_table_name = "sample_chromosome_ploidy"
     }
 
     if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
@@ -347,8 +347,32 @@ task ExtractFromSuperpartitionedTables {
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
+        if [[ -z "~{new_sample_cutoff}" ]]
+        then
+            # Default to a 1-based first superpartition
+            start_table=$((~{shard_index} + 1))
+        else
+            # +1 here since new_sample_cutoff is *excluded* from the data we want to export
+            first_sample=~{new_sample_cutoff + 1}
+            if [[ $((${first_sample} % 4000)) == 0 ]]
+            then
+                # e.g. samples 1 to 4000 go in the first superpartition
+                start_table=$((${first_sample} / 4000))
+            else
+                start_table=$(((${first_sample} / 4000) + 1))
+            fi
+        fi
+
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
         do
+            if (( ${superpartition} < ${start_table} ))
+            then
+                # Do not process superpartitions less than the start table. The queries below wouldn't extract any data
+                # anyway due to the "new_samples_extract_clause", but they would generate empty files that would
+                # frustrate lining up vet and ref avros with sample mapping avros.
+                continue
+            fi
+
             str_table_index=$(printf "%03d" $superpartition)
 
             # These bq exports error out if there are any objects at the sibling level to where output files would be written

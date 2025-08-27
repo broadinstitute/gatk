@@ -121,12 +121,12 @@ task CoreStorageModelSizes {
             bq --apilog=false query --max_rows 10000000 --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
                 'SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2)
                     FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-                    WHERE table_name LIKE "'"${table_pattern}"'"' | tail -1 > ${output_file_name}
+                    WHERE REGEXP_CONTAINS(table_name, "'"${table_pattern}"'")' | tail -1 > ${output_file_name}
         }
 
-        get_billable_bytes_in_gib "vet_%"        vet_gib.txt
-        get_billable_bytes_in_gib "ref_ranges_%" ref_ranges_gib.txt
-        get_billable_bytes_in_gib "alt_allele"   alt_allele_gib.txt
+        get_billable_bytes_in_gib "^vet_[0-9]+$"        vet_gib.txt
+        get_billable_bytes_in_gib "^ref_ranges_[0-9]+$" ref_ranges_gib.txt
+        get_billable_bytes_in_gib "^alt_allele$"        alt_allele_gib.txt
     >>>
     runtime {
         docker: cloud_sdk_docker

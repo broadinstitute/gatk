@@ -35,6 +35,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.ws.rs.core.Variant;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -668,6 +669,125 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         for (final VariantContext vc : results) {
             Assert.assertTrue(vc.getNAlleles() <= 3);  //NAlleles includes ref
         }
+    }
+
+    @Test
+    public void testGenotypingForSomaticGVCFs_withSQ() throws IOException {
+        // This test verifies that GenotypeGVCFs can handle somatic data with SQ (Somatic Quality) field
+        // instead of TLOD (Tumor LOD) field when the input-is-somatic flag is supplied
+
+        final File output = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(getTestFile("test_somatic_with_sq.vcf"))
+                .addReference(new File(b37Reference))
+                .addOutput(output)
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args);
+
+        final List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
+
+        // Verify that genotypes are called correctly
+        for (final VariantContext vc : results) {
+            Assert.assertTrue(!vc.getAlleles().contains(Allele.NON_REF_ALLELE));
+            Assert.assertTrue(vc.getAlternateAlleles().size() >= 1);
+
+            for (final Genotype g : vc.getGenotypes()) {
+                Assert.assertTrue(g.isCalled());
+            }
+
+            // chrM:263 has SQ values - verify that they are correctly processed
+            if (vc.getStart() == 263) {
+                // Check that we can access SQ values
+                for (int i = 0; i < vc.getGenotypes().size(); i++) {
+                    double[] sampleSQs = VariantContextGetters.getAttributeAsDoubleArray(vc.getGenotype(i), "SQ", () -> null, 0.0);
+                    // Verify that SQ values are above the threshold (using the same threshold as for TLOD)
+                    for (int j = 0; j < vc.getNAlleles() - 1; j++) {
+                        Assert.assertTrue(sampleSQs[j] > TLOD_THRESHOLD);
+                    }
+                }
+            }
+        }
+
+        // Since we're using a new test file, we can't compare to an expected output file
+        // Instead, we'll verify specific properties of the output
+        Assert.assertEquals(results.size(), 1); // Should only have one variant
+        Assert.assertEquals(results.get(0).getContig(), "MT");
+        Assert.assertEquals(results.get(0).getStart(), 263);
+        Assert.assertEquals(results.get(0).getReference().getBaseString(), "A");
+        Assert.assertEquals(results.get(0).getAlternateAllele(0).getBaseString(), "G");
+    }
+
+    @Test
+    public void testThreeDragenMtSamples() throws IOException {
+        final File output = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args =   new ArgumentsBuilder()
+                .addVCF(new File(getToolTestDataDir() + "../CombineGVCFs/testCombineDragenMtGvcfs_expected.g.vcf"))
+                .addReference(new File(hg38Reference))
+                .addOutput(output)
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args);
+
+        List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
+        Assert.assertEquals(results.size(), 51); // Check length -- low SQ variants get dropped
+
+        //make sure every line has a variant genotype
+
+
+        Assert.assertEquals(results.get(2).getContig(), "chrM");
+        Assert.assertEquals(results.get(2).getStart(), 302);
+        Assert.assertEquals(results.get(2).getReference().getBaseString(), "A");
+        Assert.assertEquals(results.get(2).getAlternateAlleles().size(), 2);
+        Assert.assertEquals(results.get(2).getGenotype(0).getGenotypeString(), "A/ACC");
+        Assert.assertEquals(results.get(2).getGenotype(2).getGenotypeString(), "A/AC");
+
+        final VariantContext lowQualVC = results.get(4);
+        Assert.assertEquals(lowQualVC.getContig(), "chrM");
+        Assert.assertEquals(lowQualVC.getStart(), 539);
+        Assert.assertEquals(lowQualVC.getReference().getBaseString(), "T");
+        Assert.assertEquals(lowQualVC.getAlternateAllele(0).getBaseString(), "A");
+        final Genotype g1 = lowQualVC.getGenotype(0);
+        Assert.assertEquals(g1.getGenotypeString(), "T/A");
+        double[] g1_sqs = VariantContextGetters.getAttributeAsDoubleArray(g1, GATKVCFConstants.SOMATIC_QUALITY_KEY, () -> null, 0.0);
+        //SQ is low, but above threshold
+        Assert.assertEquals(g1_sqs[0], 5.56);
+
+        //VC with one high qual GT, one low qual GT
+        final VariantContext lowQualGenotype = results.get(9);
+        Assert.assertEquals(lowQualGenotype.getContig(), "chrM");
+        Assert.assertEquals(lowQualGenotype.getStart(), 3114);
+        Assert.assertEquals(lowQualGenotype.getReference().getBaseString(), "T");
+        Assert.assertEquals(lowQualGenotype.getAlternateAllele(0).getBaseString(), "G");
+        Assert.assertTrue(lowQualGenotype.getGenotype(1).isHet());
+
+        final VariantContext hetNonRefVC = results.get(47);
+        Assert.assertEquals(hetNonRefVC.getContig(), "chrM");
+        Assert.assertEquals(hetNonRefVC.getStart(), 16182);
+        Assert.assertEquals(hetNonRefVC.getReference().getBaseString(), "A");
+        Assert.assertEquals(hetNonRefVC.getAlternateAlleles().size(), 2);
+        Assert.assertEquals(hetNonRefVC.getGenotype(0).getGenotypeString(), "A/AC");
+        Assert.assertEquals(hetNonRefVC.getGenotype(2).getGenotypeString(), "A/ACC/AC");
+
+        final File output2 = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args2 =   new ArgumentsBuilder()
+                .addVCF(new File(getToolTestDataDir() + "../CombineGVCFs/testCombineDragenMtGvcfs_expected.g.vcf"))
+                .addReference(new File(hg38Reference))
+                .addOutput(output2)
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true)
+                .add(GenotypeGVCFs.SOMATIC_QUALITY_THRESHOLD_NAME, 20);
+        runCommandLine(args2);
+
+        List<VariantContext> results2 = VariantContextTestUtils.getVariantContexts(output2);
+        ///if we make SQ threshold 20, then a bunch should get dropped (like 539)
+        Assert.assertEquals(results2.size(), 50); // Check length -- low SQ variants get dropped
+        Assert.assertTrue(results2.stream().noneMatch(vc -> vc.getStart() == 539));
+
+        //VC with one high qual GT, one low qual GT -- low qual now goes to hom-ref
+        final VariantContext lowQualGenotype2 = results2.get(8);
+        Assert.assertEquals(lowQualGenotype2.getContig(), "chrM");
+        Assert.assertEquals(lowQualGenotype2.getStart(), 3114);
+        Assert.assertEquals(lowQualGenotype2.getReference().getBaseString(), "T");
+        Assert.assertEquals(lowQualGenotype2.getAlternateAllele(0).getBaseString(), "G");
+        Assert.assertTrue(lowQualGenotype2.getGenotype(1).isHomRef());
     }
 
     @Test

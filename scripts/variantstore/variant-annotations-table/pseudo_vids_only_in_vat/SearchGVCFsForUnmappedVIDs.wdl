@@ -120,7 +120,11 @@ task ReadGVCFs {
         # Specify a GCS auth token for htslib/bcftools. Note this token only works for a limited time, but that's fine
         # for this use case. If a persistent solution is required, see
         # https://broadinstitute.slack.com/archives/C0544AAC70D/p1696360070640409
+
+        # Let's not log the token.
+        set +o xtrace
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+        set -o xtrace
 
         # Wrap the JSON objects in an array to make a valid JSON file.
         jq --slurp '.' ~{paths_json} > array.json

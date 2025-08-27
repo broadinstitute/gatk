@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Charts quality score distribution within a BAM file.
@@ -120,6 +121,13 @@ public final class QualityScoreDistributionSpark extends GATKSparkTool {
         }
         long[] getOrigQualCounts(){
             return oqCounts;
+        }
+    }
+
+    @Override
+    protected void onStartup() {
+        if(chartOutput != null) {
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a chart file requires R, which is not available in the GATK Lite Docker image.");
         }
     }
 

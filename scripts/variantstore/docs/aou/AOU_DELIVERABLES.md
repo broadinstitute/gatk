@@ -60,7 +60,7 @@
   ```
   # Specify a GCS path for the FOFN output file of new-to-Foxtrot samples. The BQ export command requires this to be a
   # wildcarded path. If multiple output files are produced, they should be concatenated together for downstream processing.
-  FOXTROT_BULK_INGEST_FOFN='gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_new_samples_fofn/*.tsv'
+  FOXTROT_BULK_INGEST_FOFN='gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_new_samples_fofn_2025_07_29/*.tsv'
 
   bq --apilog=false query --nouse_legacy_sql --project_id=aou-genomics-curation-prod '
       EXPORT DATA OPTIONS(
@@ -70,7 +70,7 @@
       header=false,
       field_delimiter="\t") AS
       SELECT f.research_id, f.reblocked_gvcf, f.reblocked_gvcf_index FROM
-          `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn` f LEFT OUTER JOIN
+          `aou-genomics-curation-prod.foxtrot.foxtrot_all_samples_fofn_2025_07_29` f LEFT OUTER JOIN
           `aou-genomics-curation-prod.foxtrot.sample_info` e ON f.research_id = e.sample_name
           WHERE e.sample_name IS NULL'
   ```
@@ -137,7 +137,9 @@ GROUP BY
    - The `input_echo_vds_path` is the final VDS for Echo; see the private Variants Slack channel for this location.
    - The `input_unmerged_foxtrot_vds_path` corresponds to the `vds_path` that was given to `GvsCreateVDS` in the preceding step.
    - You can find what the `input_foxtrot_avro_path` input should be by going to the `GvsExtractAvroFilesForHail` run in Job Manager; the output `avro_path` is the location of the files created by that workflow.
-   - The `samples_to_remove_path` should be a one-column file containing the sample ids to remove from the final output VDS. At the time of this writing at least one sample should be removed as described in VS-1641. The format of the file should be one line per sample, with a header of "research_id".
+   - `samples_to_remove_path` should be set to the list of samples to remove. The current list is at `gs://fc-secure-2331be54-f5fd-4e7c-b159-8d166f47c169/foxtrot_samples_to_withdraw_from_echo_v4_2025_07_29.tsv`.
+     This file contains all withdrawn sample IDs per Lee's email "Release v9 array and srWGS sample list (aka Foxtrot release)" of July 30 2025 with a `v4_Jul292025_2122_21_tz0000` manifest, *plus* sample id `1624705` as specified in VS-1641.
+     If remaking this file for whatever reason, it should be formatted as a single column containing the sample ids to remove from the final output VDS, with a header of `research_id`.
    - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
@@ -146,7 +148,8 @@ GROUP BY
        - The `enable_extract_table_ttl` input should be set to `true` (the default value is `false`), which will add a TTL of two weeks to the tables it creates.
        - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
        - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-    - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
+    - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `aou-genomics-curation-prod:gvs_public_reference_data.gnomad_v3_sites` table.
+      - Note that the script to generate this table can be found at `scripts/variantstore/bq/create_gnomad_v3_sites_table.sql`
     - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
     - This workflow needs to be run with the `filter_set_name` input from `GvsCreateFilterSet` step.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.

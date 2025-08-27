@@ -186,7 +186,6 @@ workflow GvsExtractCallsetPgen {
                 project_id = query_project,
                 fq_filter_set_info_table = "~{fq_filter_set_info_table}",
                 filter_set_name = filter_set_name,
-                filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 

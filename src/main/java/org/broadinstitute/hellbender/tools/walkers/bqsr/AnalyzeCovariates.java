@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -218,6 +219,9 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         }
 
         checkOutputFile(PDF_ARG_SHORT_NAME,pdfFile);
+        if(pdfFile != null) {
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a PDF file requires R, which is not available in the GATK Lite Docker image.");
+        }
         checkOutputFile(CSV_ARG_SHORT_NAME, csvFile);
         checkInputReportFileLMT(beforeFile,afterFile);
         checkOutputRequested();

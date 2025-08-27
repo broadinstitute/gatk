@@ -1,5 +1,14 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.4 - 2025-07-29
+
+### Fixed
+
+- The Extract workflow is now backward compatible with older GVS BigQuery schemas that do not have a `sample_chromosome_ploidy` table.
+- For callsets of 5000 samples or fewer, the Extract workflow now defaults to a more performant scatter width, then merges and compresses the scatter shards into a single indexed VCF file.
+- Reuse of existing filter set names is now disallowed when creating filter sets.
+- Added tolerance for unexpected formatting of monitoring log output.
+
 ## 0.6.3 - 2025-06-02
 
 ### Fixed

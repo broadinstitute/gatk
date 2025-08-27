@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Example/toy ReadWalker program that uses a Python script. Processes reads from an input BAM in java,
@@ -51,6 +52,7 @@ public class ExamplePostTraversalPythonExecutor extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
+        PythonScriptExecutor.checkIfRunningInGatkLiteDocker();
         try {
             outputStream = javaOutputFile != null ? new PrintStream(javaOutputFile) : System.out;
         }

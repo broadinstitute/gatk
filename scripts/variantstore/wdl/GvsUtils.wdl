@@ -129,9 +129,9 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-06-30-alpine-61f482e29ee5"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-08-14-alpine-ed9cbc2508e8"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-06-26-gatkbase-f51a86f2644a"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-07-29-gatkbase-650b8e1a32f0"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -155,7 +155,7 @@ task MergeVCFs {
     String gatk_docker
   }
 
-  Int disk_size = select_first([merge_disk_override, 100])
+  Int disk_size = select_first([merge_disk_override, 500])
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
@@ -185,8 +185,8 @@ task MergeVCFs {
     OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
-      gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
+      gcloud storage cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
+      gcloud storage cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
     fi
   >>>
 
@@ -832,7 +832,7 @@ task CountSuperpartitions {
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-                WHERE table_name LIKE "vet_%"
+                WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
 
         ' | sed 1d > num_superpartitions.txt
     >>>
@@ -852,7 +852,6 @@ task ValidateFilterSetName {
         String project_id
         String fq_filter_set_info_table
         String filter_set_name
-        String filter_set_info_timestamp = ""
         String cloud_sdk_docker
     }
     meta {
@@ -1081,6 +1080,62 @@ task GetExtractVetTableVersion {
   }
 }
 
+task DoesTableExist {
+  input {
+    String project_id
+    String dataset_name
+    String table_name
+    String cloud_sdk_docker
+  }
+  meta {
+    # It's likely that this doesn't need to be volatile, but being conservative.
+    volatile: true
+  }
+
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Check if table exists using INFORMATION_SCHEMA
+    set +o errexit
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+      'SELECT COUNT(*) as table_exists FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name = "~{table_name}"' > table_check.txt 2>error_log.txt
+    query_exit_code=$?
+    set -o errexit
+
+    if [[ $query_exit_code -eq 0 ]]; then
+      # Query succeeded, check the result
+      table_count=$(tail -1 table_check.txt)
+      if [[ "$table_count" == "1" ]]; then
+        echo "true" > table_exists.txt
+        echo "Table ~{dataset_name}.~{table_name} exists"
+      else
+        echo "false" > table_exists.txt
+        echo "Table ~{dataset_name}.~{table_name} does not exist"
+      fi
+    else
+      # Query failed (likely dataset doesn't exist)
+      echo "false" > table_exists.txt
+      echo "Table ~{dataset_name}.~{table_name} does not exist (dataset may not exist)"
+    fi
+  >>>
+  output {
+    Boolean table_exists = read_boolean("table_exists.txt")
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task IndexVcf {
     input {
         File input_vcf
@@ -1141,7 +1196,7 @@ task SelectVariants {
         Boolean exclude_filtered = false
         String output_basename
 
-        Int memory_gib = 10
+        Int memory_gib = 15
         Int overhead_memory_gib = 3
         Int disk_size_gb = ceil(3 * (size(input_vcf, "GiB") + size(input_vcf_index, "GiB"))) + 500
         String gatk_docker
