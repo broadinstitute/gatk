@@ -248,7 +248,7 @@ if __name__ == '__main__':
     merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
     merged_and_rescored_vds.write(args.output_vds_path)
 
-    if (args.validate_vds):
+    if (args.run_validation):
         print("Beginning validation of merged and rescored VDS")
         validate(merged_and_rescored_vds)
         print("Finished validation of merged and rescored VDS")
