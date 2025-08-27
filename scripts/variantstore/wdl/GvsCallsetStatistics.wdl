@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# B
+# C
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -338,7 +338,7 @@ task CollectMetricsForChromosome {
             echo "Running query for mod value: ${mod_value}"
 
             # bq query --max_rows check: ok insert (elaborate one)
-            bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
+            bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false "
             CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
             RETURNS STRING
                 LANGUAGE js AS """
@@ -426,7 +426,7 @@ task CollectMetricsForChromosome {
                 AND mod(v.sample_id, 2) = $mod_value
                 AND v.location >= ~{chromosome}000000000000
                 AND v.location < ~{chromosome + 1}000000000000) GROUP BY 1,2
-            '
+            "
         done
 
     >>>
