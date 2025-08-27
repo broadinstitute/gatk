@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# D
+# E
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -434,7 +434,7 @@ task CollectMetricsForChromosome {
                 LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
                 AND v.location >= '$start_location'
-                AND v.location < '$end_location' GROUP BY 1,2
+                AND v.location < '$end_location') GROUP BY 1,2
             '
             start_location=$end_location
         done
