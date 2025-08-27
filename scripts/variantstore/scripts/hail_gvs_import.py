@@ -8,6 +8,7 @@ import argparse
 import os
 
 from hail_gvs_util import *
+from vds_validation import validate
 
 
 def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume_point):
@@ -67,6 +68,8 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--intermediate-resume-point', type=int, required=False, default=0,
                         help='Intermediate VDS index at which to resume')
+    parser.add_argument('--run-validation', type=bool, help='Whether to run VDS validation after creating the VDS',
+                        required=False, default=False)
 
     args = parser.parse_args()
     avro_path, temp_path, vds_path = remove_trailing_slashes(args.avro_path, args.temp_path, args.vds_path)
@@ -76,3 +79,7 @@ if __name__ == '__main__':
     references_path = 'gs://hail-common/references' if is_gcs else args.references_path
     create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point)
 
+    if args.run_validation:
+        print("Beginning VDS validation")
+        validate(vds)
+        print("Finished VDS validation")

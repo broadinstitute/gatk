@@ -128,6 +128,7 @@ workflow GvsMergeAndRescoreVDSes {
             output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
             input_foxtrot_avro_path = input_foxtrot_avro_path,
             samples_to_remove_path = samples_to_remove_path,
+            skip_validate = skip_validate,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
@@ -146,27 +147,8 @@ workflow GvsMergeAndRescoreVDSes {
             master_memory_fraction = master_memory_fraction,
     }
 
-    if (!skip_validate) {
-        call ValidateVDS.GvsValidateVDS as ValidateVds {
-            input:
-                go = MergeAndRescoreVDS.done,
-                cluster_prefix = cluster_prefix,
-                vds_path = output_merged_and_rescored_foxtrot_vds_path,
-                hail_version = effective_hail_version,
-                hail_wheel = hail_wheel,
-                hail_temp_path = hail_temp_path,
-                workspace_project = effective_google_project,
-                region = region,
-                workspace_bucket = effective_workspace_bucket,
-                gcs_subnetwork_name = gcs_subnetwork_name,
-                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-                leave_cluster_running_at_end = leave_cluster_running_at_end,
-        }
-    }
-
     output {
-        String create_cluster_name = MergeAndRescoreVDS.cluster_name
-        String? validate_cluster_name = ValidateVds.cluster_name
+        String cluster_name = MergeAndRescoreVDS.cluster_name
         Boolean done = true
     }
 }
@@ -179,6 +161,7 @@ task MergeAndRescoreVDS {
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
         String? samples_to_remove_path
+        Boolean skip_validate
         Boolean leave_cluster_running_at_end
         File merge_and_rescore_script
         File hail_gvs_util_script
@@ -276,6 +259,7 @@ task MergeAndRescoreVDS {
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
+            ~{if (skip_validate) then '' else '--run-validation' } \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 
