@@ -135,6 +135,7 @@ workflow GvsMergeAndRescoreVDSes {
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
             merge_and_rescore_script = GetHailScripts.merge_and_rescore_script,
             hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
+            vds_validation_script = GetHailScripts.vds_validation_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
@@ -166,6 +167,7 @@ task MergeAndRescoreVDS {
         File merge_and_rescore_script
         File hail_gvs_util_script
         File run_in_hail_cluster_script
+        File vds_validation_script
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
