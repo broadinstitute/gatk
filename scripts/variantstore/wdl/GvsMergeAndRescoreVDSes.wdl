@@ -243,6 +243,7 @@ task MergeAndRescoreVDS {
             "input-echo-vds": "~{input_echo_vds_path}",
             "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
             "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
+            ~{if (skip_validate) then '' else ', "run-validation": ""'}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
             ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
         }
@@ -262,7 +263,6 @@ task MergeAndRescoreVDS {
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
-            ~{if (skip_validate) then '' else '--run-validation' } \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 

@@ -225,7 +225,9 @@ task CreateVds {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}"
+            ~{if (run_validation) then ', "run-validation": ""' else ''}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
+
         }
         FIN
 
@@ -244,8 +246,7 @@ task CreateVds {
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
-            ~{'--master-memory-fraction ' + master_memory_fraction} \
-            ~{if (run_validation) then '--run-validation' else ''}
+            ~{'--master-memory-fraction ' + master_memory_fraction}
     >>>
 
     runtime {
