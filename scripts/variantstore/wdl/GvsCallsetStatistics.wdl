@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# C
+# D
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -335,13 +335,13 @@ task CollectMetricsForChromosome {
 
         # bq query Get the mid-point and max of the locations for this chromosome
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-        SELECT (max(location) - min(location)) / 2 + min(location), max(location)
+        SELECT CAST((max(location) - min(location)) / 2 + min(location) AS INT64), max(location)
             FROM `gvs-internal.gg_ah_var_store_20250529.callset__VET_DATA`
             WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
         start_location=~{chromosome}000000000000
-        mid_location=$(head -1 locations.txt)
-        max_location=$(tail -1 locations.txt)
+        mid_location=$(cut -f 0 -d ',' locations.txt)
+        max_location=$(cut -f 1 -d ',' locations.txt)
 
         # Run the query twice
         for end_location in $mid_location $max_location; do
