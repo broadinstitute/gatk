@@ -196,9 +196,9 @@ if __name__ == '__main__':
                         help="File with ids of samples to remove, one sample id per line, header should be 'research_id'.",
                         required=False)
 
-    parser.add_argument('--run-validation', type=bool,
+    parser.add_argument('--run-validation',
                         help='Whether to run VDS validation after creating the VDS',
-                        required=False, default=False)
+                        action='store_true')
 
     parser.add_argument('--temp-path', type=str, help='Path to temporary directory', required=True)
 

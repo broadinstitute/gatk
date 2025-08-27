@@ -68,8 +68,8 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--intermediate-resume-point', type=int, required=False, default=0,
                         help='Intermediate VDS index at which to resume')
-    parser.add_argument('--run-validation', type=bool, help='Whether to run VDS validation after creating the VDS',
-                        required=False, default=False)
+    parser.add_argument('--run-validation', help='Whether to run VDS validation after creating the VDS',
+                        action='store_true')
 
     args = parser.parse_args()
     avro_path, temp_path, vds_path = remove_trailing_slashes(args.avro_path, args.temp_path, args.vds_path)
