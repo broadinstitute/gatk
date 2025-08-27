@@ -252,6 +252,7 @@ task MergeAndRescoreVDS {
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{merge_and_rescore_script} \
             --secondary-script-path-list ~{hail_gvs_util_script} \
+            --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
