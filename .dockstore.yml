@@ -173,6 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1730_clusters_leaking
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -340,7 +341,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1633_ploidy_with_vds_resume
+             - vs_1730_clusters_leaking
          tags:
              - /.*/
    - name: GvsIngestTieout
