@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# I
+# J
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -339,9 +339,12 @@ task CollectMetricsForChromosome {
             FROM `gvs-internal.gg_ah_var_store_20250529.callset__VET_DATA`
             WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
+        echo "Hello"
+        cat locations.txt
+        echo "There"
         start_location=~{chromosome}000000000000
-        mid_location=$(cut -f 0 -d ',' locations.txt)
-        max_location=$(cut -f 1 -d ',' locations.txt)
+        mid_location=$(cut -f 1 -d ',' locations.txt)
+        max_location=$(cut -f 2 -d ',' locations.txt)
         echo "start_location = $start_location"
         echo "mid_location = $mid_location"
         echo "max_location = $max_location"
