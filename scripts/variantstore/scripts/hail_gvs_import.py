@@ -29,23 +29,24 @@ def create_vds(argsfn, vds_path, references_path, temp_path, intermediate_resume
     # Commented out parameters are ones where we are comfortable with the default, but want to make them easily
     # accessible to users.
     try:
-        import_gvs.import_gvs(
-            vets=argsfn('vets'),
-            refs=argsfn('refs'),
-            sample_mapping=argsfn('sample_mapping'),
-            site_filtering_data=argsfn('site_filtering_data'),
-            vets_filtering_data=argsfn('vets_filtering_data'),
-            ploidy_data=argsfn('ploidy_data'),
-            reference_genome=rg38,
-            final_path=vds_path,
-            tmp_dir=f'{temp_path}/hail_tmp_create_vds',
-            # truth_sensitivity_snp_threshold: 'float' = 0.997,
-            # truth_sensitivity_indel_threshold: 'float' = 0.990,
-            # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
-            # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
-            # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
-            intermediate_resume_point=intermediate_resume_point
-        )
+        vds = import_gvs.import_gvs(
+                vets=argsfn('vets'),
+                refs=argsfn('refs'),
+                sample_mapping=argsfn('sample_mapping'),
+                site_filtering_data=argsfn('site_filtering_data'),
+                vets_filtering_data=argsfn('vets_filtering_data'),
+                ploidy_data=argsfn('ploidy_data'),
+                reference_genome=rg38,
+                final_path=vds_path,
+                tmp_dir=f'{temp_path}/hail_tmp_create_vds',
+                # truth_sensitivity_snp_threshold: 'float' = 0.997,
+                # truth_sensitivity_indel_threshold: 'float' = 0.990,
+                # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
+                # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
+                # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
+                intermediate_resume_point=intermediate_resume_point
+            )
+        return vds
     finally:
         local_hail_log_path = os.path.realpath(Env.hc()._log)
         fs = RouterFS()
