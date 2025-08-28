@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# H
+# I
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -342,6 +342,9 @@ task CollectMetricsForChromosome {
         start_location=~{chromosome}000000000000
         mid_location=$(cut -f 0 -d ',' locations.txt)
         max_location=$(cut -f 1 -d ',' locations.txt)
+        echo "start_location = $start_location"
+        echo "mid_location = $mid_location"
+        echo "max_location = $max_location"
 
         # Run the query twice
         for end_location in $mid_location $max_location; do
