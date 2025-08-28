@@ -227,7 +227,6 @@ task CreateVds {
             "avro-path": "~{avro_path}"
             ~{if (run_validation) then ', "run-validation": ""' else ''}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
-
         }
         FIN
 
