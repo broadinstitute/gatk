@@ -144,6 +144,7 @@ task CreateVds {
         String vds_path
         String avro_path
         Boolean leave_cluster_running_at_end
+        Boolean run_validation = true
         File run_in_hail_cluster_script
         File run_in_existing_hail_cluster_script
         File hail_gvs_import_script
@@ -224,6 +225,7 @@ task CreateVds {
             "vds-path": "~{vds_path}",
             "temp-path": "${hail_temp_path}",
             "avro-path": "~{avro_path}"
+            ~{if (run_validation) then ', "run-validation": ""' else ''}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
         }
         FIN
@@ -234,6 +236,7 @@ task CreateVds {
             --secondary-script-path-list ~{gvs_import_script} \
             --secondary-script-path-list ~{hail_gvs_util_script} \
             --secondary-script-path-list ~{gvs_import_ploidy_script} \
+            --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
@@ -242,26 +245,7 @@ task CreateVds {
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
-            ~{'--master-memory-fraction ' + master_memory_fraction} \
-            --leave-cluster-running-at-end
-
-        # construct a JSON of arguments for python script to be run in the hail cluster
-        cat > validation-script-arguments.json <<FIN
-        {
-            "vds-path": "~{vds_path}",
-            "temp-path": "${hail_temp_path}"
-        }
-        FIN
-
-        # Run the hail python script to validate a VDS
-        python3 ~{run_in_existing_hail_cluster_script} \
-            --script-path ~{vds_validation_script} \
-            --script-arguments-json-path validation-script-arguments.json \
-            --account ${account_name} \
-            --region ~{region} \
-            --gcs-project ~{workspace_project} \
-            --cluster-name ${cluster_name} \
-            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
+            ~{'--master-memory-fraction ' + master_memory_fraction}
     >>>
 
     runtime {

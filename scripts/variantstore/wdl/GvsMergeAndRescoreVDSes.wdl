@@ -128,12 +128,14 @@ workflow GvsMergeAndRescoreVDSes {
             output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
             input_foxtrot_avro_path = input_foxtrot_avro_path,
             samples_to_remove_path = samples_to_remove_path,
+            skip_validate = skip_validate,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
             merge_and_rescore_script = GetHailScripts.merge_and_rescore_script,
             hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
+            vds_validation_script = GetHailScripts.vds_validation_script,
             intermediate_resume_point = intermediate_resume_point,
             workspace_project = effective_google_project,
             region = region,
@@ -146,27 +148,8 @@ workflow GvsMergeAndRescoreVDSes {
             master_memory_fraction = master_memory_fraction,
     }
 
-    if (!skip_validate) {
-        call ValidateVDS.GvsValidateVDS as ValidateVds {
-            input:
-                go = MergeAndRescoreVDS.done,
-                cluster_prefix = cluster_prefix,
-                vds_path = output_merged_and_rescored_foxtrot_vds_path,
-                hail_version = effective_hail_version,
-                hail_wheel = hail_wheel,
-                hail_temp_path = hail_temp_path,
-                workspace_project = effective_google_project,
-                region = region,
-                workspace_bucket = effective_workspace_bucket,
-                gcs_subnetwork_name = gcs_subnetwork_name,
-                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-                leave_cluster_running_at_end = leave_cluster_running_at_end,
-        }
-    }
-
     output {
-        String create_cluster_name = MergeAndRescoreVDS.cluster_name
-        String? validate_cluster_name = ValidateVds.cluster_name
+        String cluster_name = MergeAndRescoreVDS.cluster_name
         Boolean done = true
     }
 }
@@ -179,10 +162,12 @@ task MergeAndRescoreVDS {
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
         String? samples_to_remove_path
+        Boolean skip_validate
         Boolean leave_cluster_running_at_end
         File merge_and_rescore_script
         File hail_gvs_util_script
         File run_in_hail_cluster_script
+        File vds_validation_script
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
@@ -258,6 +243,7 @@ task MergeAndRescoreVDS {
             "input-echo-vds": "~{input_echo_vds_path}",
             "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
             "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
+            ~{if (skip_validate) then '' else ', "run-validation": ""'}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
             ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
         }
@@ -267,6 +253,7 @@ task MergeAndRescoreVDS {
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{merge_and_rescore_script} \
             --secondary-script-path-list ~{hail_gvs_util_script} \
+            --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \
