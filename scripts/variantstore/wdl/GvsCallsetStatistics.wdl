@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# J
+# K
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -339,15 +339,9 @@ task CollectMetricsForChromosome {
             FROM `gvs-internal.gg_ah_var_store_20250529.callset__VET_DATA`
             WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
-        echo "Hello"
-        cat locations.txt
-        echo "There"
         start_location=~{chromosome}000000000000
         mid_location=$(cut -f 1 -d ',' locations.txt)
         max_location=$(cut -f 2 -d ',' locations.txt)
-        echo "start_location = $start_location"
-        echo "mid_location = $mid_location"
-        echo "max_location = $max_location"
 
         # Run the query twice
         for end_location in $mid_location $max_location; do
@@ -439,8 +433,8 @@ task CollectMetricsForChromosome {
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
                 LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
-                AND v.location >= '$start_location'
-                AND v.location < '$end_location') GROUP BY 1,2
+                AND v.location > '$start_location'
+                AND v.location <= '$end_location') GROUP BY 1,2
             '
             start_location=$end_location
         done
