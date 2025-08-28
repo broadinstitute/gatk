@@ -77,7 +77,7 @@ if __name__ == '__main__':
     arguments_fn, is_gcs = determine_arguments_function(args)
 
     references_path = 'gs://hail-common/references' if is_gcs else args.references_path
-    create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point)
+    vds = create_vds(arguments_fn, vds_path, references_path, temp_path, args.intermediate_resume_point)
 
     if args.run_validation:
         print("Beginning VDS validation")
