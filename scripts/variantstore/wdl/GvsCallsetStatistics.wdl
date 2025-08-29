@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# M
+# N
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -335,17 +335,17 @@ task CollectMetricsForChromosome {
 
         # bq query Get the mid-point and max of the locations for this chromosome
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-        SELECT CAST((max(location) + min(location)) / 2 AS INT64), max(location)
+        SELECT CAST((max(location) + min(location)) / 2 AS INT64)
             FROM `gvs-internal.gg_ah_var_store_20250529.callset__VET_DATA`
             WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
         start_location=~{chromosome}000000000000
-        mid_location=$(cut -f 1 -d ',' locations.txt)
-        max_location=$(cut -f 2 -d ',' locations.txt)
+        mid_location=$(cat locations.txt)
+        max_location=~{chromosome + 1}000000000000
 
         # Run the query twice
         for end_location in $mid_location $max_location; do
-            echo "Running query for $start_location to $end_location"
+            echo "Running query for >= $start_location to < $end_location"
 
             # bq query --max_rows check: ok insert (elaborate one)
             bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
@@ -434,10 +434,9 @@ task CollectMetricsForChromosome {
                 LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
                 AND v.location >= '$start_location'
-                AND v.location <= '$end_location') GROUP BY 1,2
+                AND v.location < '$end_location') GROUP BY 1,2
             '
             start_location=$end_location
-            ((++start_location))        # move past the last location we just processed
         done
 
     >>>
