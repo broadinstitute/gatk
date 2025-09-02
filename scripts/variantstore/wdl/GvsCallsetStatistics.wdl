@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-
+# 1
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -9,24 +9,43 @@ workflow GvsCallsetStatistics {
         String project_id
         String dataset_name
         String filter_set_name
+        Int num_chunks = 2
         String extract_prefix
         String metrics_table = "~{extract_prefix}_sample_metrics"
         String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_aggregate"
         String statistics_table = "~{extract_prefix}_statistics"
+        String? basic_docker
         String? cloud_sdk_docker
     }
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
-    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker)) {
       call Utils.GetToolVersions {
           input:
               git_branch_or_tag = git_branch_or_tag,
       }
     }
 
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+    if (num_chunks <= 0 || num_chunks > 50) {
+        call Utils.TerminateWorkflow as NumChunksError {
+            input:
+                message = "The input parameter 'num_chunks' must be >= 1 and < 50!",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    if (num_chunks <= 0) {
+        call Utils.TerminateWorkflow as NumChunksTooLow {
+            input:
+                message = "The input parameter 'num_chunks' must be >= 1!",
+                basic_docker = effective_basic_docker,
+        }
+    }
 
     call Utils.ValidateFilterSetName {
         input:
@@ -55,6 +74,7 @@ workflow GvsCallsetStatistics {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 filter_set_name = filter_set_name,
+                num_chunks = num_chunks,
                 extract_prefix = extract_prefix,
                 metrics_table = metrics_table,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -305,6 +325,7 @@ task CollectMetricsForChromosome {
         String project_id
         String dataset_name
         String filter_set_name
+        Int num_chunks = 2
         String extract_prefix
         String metrics_table
         Int chromosome
@@ -335,16 +356,23 @@ task CollectMetricsForChromosome {
 
         # bq query Get the mid-point and max of the locations for this chromosome
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-        SELECT CAST((max(location) + min(location)) / 2 AS INT64)
-            FROM `gvs-internal.gg_ah_var_store_20250529.callset__VET_DATA`
+        SELECT CAST((max(location) + min(location)) / ~{num_chunks} AS INT64)
+            FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
             WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
-        start_location=~{chromosome}000000000000
-        mid_location=$(cat locations.txt)
-        max_location=~{chromosome + 1}000000000000
+        nlocation=$(cat locations.txt)
+        chunk_endpoints=()
+        for i in $(seq 1 $((num_chunks - 1))); do
+            chunk_endpoints+=($((nlocation * i)))
+        done
+        echo "Chunk endpoints: ${chunk_endpoints[@]}"
 
-        # Run the query twice
-        for end_location in $mid_location $max_location; do
+        # Set the final endpoint to be beyond the end of the chromosome
+        chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]=~{chromosome + 1}000000000000
+
+        # Iterate over all chunks
+        for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
+            end_location=${chunk_endpoints[i]}
             echo "Running query for >= $start_location to < $end_location"
 
             # bq query --max_rows check: ok insert (elaborate one)
