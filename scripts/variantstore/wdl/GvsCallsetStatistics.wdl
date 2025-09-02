@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# X
+# i
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -354,6 +354,7 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
+        start_location=~{chromosome}000000000000
         chunk_endpoints=()
         if [ ~{num_chunks} -gt 1 ]; then
             # bq query Get the mid-point and max of the locations for this chromosome
@@ -366,25 +367,17 @@ task CollectMetricsForChromosome {
             echo "nlocation = $nlocation"
 
             for i in $(seq 1 $((~{num_chunks} - 1))); do
-                chunk_endpoints+=($((nlocation * i)))
+                chunk_endpoints+=($((nlocation * i + start_location)))
                 echo "Added chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
             done
-#            chunk_endpoints+=(~{chromosome + 1}000000000000)
-#            # Set the final endpoint to be beyond the end of the chromosome
-#            echo "Added final chunk endpoint > to beginning of next chromosome = ~{chromosome + 1}000000000000"
-#        else
-#            # Just one chunk, so just do the whole chromosome
-#            chunk_endpoints+=(~{chromosome + 1}000000000000)
-#            echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         fi
-        # Set the final endpoint to be beyond the end of the chromosome
+        # Set the final endpoint to be beyond the start of the next chromosome
         chunk_endpoints+=(~{chromosome + 1}000000000000)
-        echo "Added final chunk endpoint > to beginning of next chromosome = ~{chromosome + 1}000000000000"
+        echo "Added final chunk endpoint (the beginning of the next chromosome) = ~{chromosome + 1}000000000000"
 
         echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
 
         # Iterate over all chunks
-        start_location=~{chromosome}000000000000
         for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
             end_location=${chunk_endpoints[i]}
             echo "Running query for >= $start_location to < $end_location"
