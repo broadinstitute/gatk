@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# 3
+# 4
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -374,7 +374,7 @@ task CollectMetricsForChromosome {
             echo "Final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         else
             # Just one chunk, so just do the whole chromosome
-            chunk_endpoints+=(~{chromosome} + 1)000000000000)
+            chunk_endpoints+=(~{chromosome + 1}000000000000)
             echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         fi
         echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
