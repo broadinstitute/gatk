@@ -377,7 +377,7 @@ task CollectMetricsForChromosome {
 #            chunk_endpoints+=(~{chromosome + 1}000000000000)
 #            echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         fi
-        echo "Adding final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
+        echo "Adding final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]} (end of chromosome)"
         chunk_endpoints+=(~{chromosome + 1}000000000000)
 
         echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
