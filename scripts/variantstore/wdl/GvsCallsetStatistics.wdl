@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# B
+# C
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -358,7 +358,7 @@ task CollectMetricsForChromosome {
         if [ ~{num_chunks} -gt 1 ]; then
             # bq query Get the mid-point and min of the (found) locations for this chromosome
             bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-                SELECT CAST((max(location) + min(location)) / ~{num_chunks} AS INT64, min(location)
+                SELECT CAST((max(location) - min(location)) / ~{num_chunks} AS INT64), min(location)
                     FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
                     WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
