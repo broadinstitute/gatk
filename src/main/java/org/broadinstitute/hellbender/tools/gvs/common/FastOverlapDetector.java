@@ -61,6 +61,13 @@ public class FastOverlapDetector {
         // correct items
         int endingBlock = (interval.getEnd() - 1) / blockSize + 1;
 
+        // in the situation where we're requesting overlap with an interval that isn't present, just return zeroes instead of crashing
+        if (!weightsByContig.containsKey(interval.getContig())) {
+            // just create an empty interval on the fly for it based off of the input one
+            WeightedInterval emptyInterval = new WeightedInterval(interval, 0);
+            return List.of(emptyInterval);
+        }
+
         return weightsByContig.get(interval.getContig()).subList(startingBlock, endingBlock);
     }
 }
