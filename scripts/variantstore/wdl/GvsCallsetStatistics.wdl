@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# 9
+# X
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -369,16 +369,17 @@ task CollectMetricsForChromosome {
                 chunk_endpoints+=($((nlocation * i)))
                 echo "Added chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
             done
-            chunk_endpoints+=(~{chromosome + 1}000000000000)
-            # Set the final endpoint to be beyond the end of the chromosome
-            echo "Added final chunk endpoint => to end of chromosome ~{chromosome + 1}000000000000"
-        else
-            # Just one chunk, so just do the whole chromosome
-            chunk_endpoints+=(~{chromosome + 1}000000000000)
-            echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
+#            chunk_endpoints+=(~{chromosome + 1}000000000000)
+#            # Set the final endpoint to be beyond the end of the chromosome
+#            echo "Added final chunk endpoint > to beginning of next chromosome = ~{chromosome + 1}000000000000"
+#        else
+#            # Just one chunk, so just do the whole chromosome
+#            chunk_endpoints+=(~{chromosome + 1}000000000000)
+#            echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         fi
-#        chunk_endpoints+=(~{chromosome + 1}000000000000)
-#        echo "Added final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]} (end of chromosome)"
+        # Set the final endpoint to be beyond the end of the chromosome
+        chunk_endpoints+=(~{chromosome + 1}000000000000)
+        echo "Added final chunk endpoint > to beginning of next chromosome = ~{chromosome + 1}000000000000"
 
         echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
 
