@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# 2
+# 3
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -374,9 +374,10 @@ task CollectMetricsForChromosome {
             echo "Final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         else
             # Just one chunk, so just do the whole chromosome
-            chunk_endpoints+=($((~{chromosome} + 1)000000000000))
+            chunk_endpoints+=(~{chromosome} + 1)000000000000)
             echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
         fi
+        echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
 
         # Iterate over all chunks
         for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
@@ -467,7 +468,7 @@ task CollectMetricsForChromosome {
                        titv(ref, alt) as titv,
                        CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
-                LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
+                LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
                 AND v.location >= '$start_location'
                 AND v.location < '$end_location') GROUP BY 1,2
