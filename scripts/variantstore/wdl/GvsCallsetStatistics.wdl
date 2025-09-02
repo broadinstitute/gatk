@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# 4
+# 5
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -380,6 +380,7 @@ task CollectMetricsForChromosome {
         echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
 
         # Iterate over all chunks
+        start_location=~{chromosome}000000000000
         for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
             end_location=${chunk_endpoints[i]}
             echo "Running query for >= $start_location to < $end_location"
