@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# 1
+# 2
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -354,21 +354,29 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        # bq query Get the mid-point and max of the locations for this chromosome
-        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-        SELECT CAST((max(location) + min(location)) / ~{num_chunks} AS INT64)
-            FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
-            WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
-
-        nlocation=$(cat locations.txt)
         chunk_endpoints=()
-        for i in $(seq 1 $((num_chunks - 1))); do
-            chunk_endpoints+=($((nlocation * i)))
-        done
-        echo "Chunk endpoints: ${chunk_endpoints[@]}"
+        if [ ~{num_chunks} -gt 1 ]; then
+            # bq query Get the mid-point and max of the locations for this chromosome
+            bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+                SELECT CAST((max(location) + min(location)) / ~{num_chunks} AS INT64)
+                    FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
+                    WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
-        # Set the final endpoint to be beyond the end of the chromosome
-        chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]=~{chromosome + 1}000000000000
+            nlocation=$(cat locations.txt)
+            echo "nlocation = $nlocation"
+
+            for i in $(seq 1 $((~{num_chunks} - 1))); do
+                chunk_endpoints+=($((nlocation * i)))
+                echo "Added chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
+            done
+            # Set the final endpoint to be beyond the end of the chromosome
+            chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]=~{chromosome + 1}000000000000
+            echo "Final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
+        else
+            # Just one chunk, so just do the whole chromosome
+            chunk_endpoints+=($((~{chromosome} + 1)000000000000))
+            echo "Only one chunk, final chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
+        fi
 
         # Iterate over all chunks
         for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
