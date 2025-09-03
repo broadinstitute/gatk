@@ -186,7 +186,9 @@ public class ExtractCohortToPgen extends ExtractCohort {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
-                    pgenWriter.add(variantContext);
+                    VariantContextBuilder variantBuilder = new VariantContextBuilder(variantContext);
+                    variantBuilder.id(variantContext.getContig() + ":" + variantContext.getStart());
+                    pgenWriter.add(variantBuilder.make());
                 }
                 catch(IllegalStateException e) {
                     logger.error("Encountered an error.  Here's some debug info:\n" +
