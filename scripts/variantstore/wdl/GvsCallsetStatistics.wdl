@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# C
+
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
@@ -35,14 +35,6 @@ workflow GvsCallsetStatistics {
         call Utils.TerminateWorkflow as NumChunksError {
             input:
                 message = "The input parameter 'num_chunks' must be >= 1 and < 50!",
-                basic_docker = effective_basic_docker,
-        }
-    }
-
-    if (num_chunks <= 0) {
-        call Utils.TerminateWorkflow as NumChunksTooLow {
-            input:
-                message = "The input parameter 'num_chunks' must be >= 1!",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -362,7 +354,6 @@ task CollectMetricsForChromosome {
                     FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
                     WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
 
-            cat locations.txt
             chunk_width=$(cut -f 1 -d ',' locations.txt)
             echo "chunk_width = $chunk_width"
             min_location=$(cut -f 2 -d ',' locations.txt)
@@ -469,7 +460,7 @@ task CollectMetricsForChromosome {
                        titv(ref, alt) as titv,
                        CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
-                LEFT JOIN `gvs-internal.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
+                LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
                 AND v.location >= '$start_location'
                 AND v.location < '$end_location') GROUP BY 1,2
