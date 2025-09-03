@@ -36,7 +36,7 @@ workflow GvsExtractCallset {
 
     String reference_name = "hg38"
     File? interval_list
-    File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
+    File interval_weights_bed = "gs://fc-64860a4d-eae2-4cc9-830c-9b2577399f70/intentionally_bad_weighted_bed_file/gvs_full_vet_weights_1kb_padded_minus_y.bed"
 
     File? target_interval_list
 
