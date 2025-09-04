@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class SVMatchesFinder implements SVMatcher {
+public class SVMatchesFinder implements CorrespondingSVSelector {
     protected final Map<Long, SVCallRecord> truthIdToItemMap;
     protected final Map<Long, ActiveCluster> idToClusterMap;
     private final SVConcordanceLinkage linkage;

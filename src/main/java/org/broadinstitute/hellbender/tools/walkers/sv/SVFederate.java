@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -13,6 +14,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SelectSVPairs;
@@ -35,7 +38,7 @@ import java.util.stream.Stream;
 )
 @BetaFeature
 @DocumentedFeature
-public class SVFederate extends SVMergingWalker {
+public final class SVFederate extends SVMergingWalker {
 
     @ArgumentCollection
     protected SVFederationArgumentCollection inputArgs = new SVFederationArgumentCollection();
@@ -104,6 +107,23 @@ public class SVFederate extends SVMergingWalker {
                 CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE,
                 CanonicalSVCollapser.FlagFieldLogic.OR);
 
+    }
+
+
+    @Override
+    protected VCFHeader createHeader() {
+        final VCFHeader header = super.createHeader();
+        // TODO: cohort AFs, cohort VIDs instead of MEMBERS?
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.END2_ATTRIBUTE, 1,
+                VCFHeaderLineType.Integer, "Second position"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, 1,
+                VCFHeaderLineType.String, "Second contig"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.STRANDS_ATTRIBUTE, 1,
+                VCFHeaderLineType.String, "First and second strands"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE,
+                VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Source algorithms"));
+
+        return header;
     }
 
 

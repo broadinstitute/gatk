@@ -713,7 +713,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
                 .collect(Collectors.toList());
         svBuilder.genotypes(genotypesWithECN);
 
-        final SVCallRecord baseRecord = SVCallRecordUtils.create(svBuilder.make(), true, dictionary);
+        final SVCallRecord baseRecord = SVCallRecordUtils.create(svBuilder.make(), dictionary);
         final List<Genotype> nonRefGenotypes = baseRecord.getGenotypes().stream()
                 .filter(g -> !(g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))))
                 .collect(Collectors.toList());

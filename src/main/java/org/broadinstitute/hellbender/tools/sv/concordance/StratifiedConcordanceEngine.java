@@ -39,17 +39,17 @@ import java.util.stream.Collectors;
  */
 public class StratifiedConcordanceEngine {
 
-    protected final Map<String, SVMatcher> clusterEngineMap;
+    protected final Map<String, CorrespondingSVSelector> clusterEngineMap;
     protected final SVStratificationEngine stratificationEngine;
     protected final Map<Long, ItemTracker> variantStatusMap = new HashMap<>();
     protected List<VariantContext> outputBuffer;
-    protected SVMatcher defaultEngine;
+    protected CorrespondingSVSelector defaultEngine;
     protected SAMSequenceDictionary dictionary;
     protected final SVStratificationEngineArgumentsCollection stratArgs;
     protected Long nextItemId = 0L;
 
-    public StratifiedConcordanceEngine(final Map<String, SVMatcher> clusterEngineMap,
-                                       final SVMatcher defaultEngine,
+    public StratifiedConcordanceEngine(final Map<String, CorrespondingSVSelector> clusterEngineMap,
+                                       final CorrespondingSVSelector defaultEngine,
                                        final SVStratificationEngine stratificationEngine,
                                        final SVStratificationEngineArgumentsCollection stratArgs) {
         Utils.validate(stratificationEngine.getStrata().size() == clusterEngineMap.size(),
@@ -126,7 +126,7 @@ public class StratifiedConcordanceEngine {
     /**
      * Adds a record to the given concordance engine, flushing active variants to the buffer if it hit a new contig
      */
-    protected void addToEngine(final SVCallRecord record, final Long id, final boolean isTruth, final SVMatcher engine, final String name) {
+    protected void addToEngine(final SVCallRecord record, final Long id, final boolean isTruth, final CorrespondingSVSelector engine, final String name) {
         if (engine.getLastItemContig() != null && !record.getContigA().equals(engine.getLastItemContig())) {
             flushEngineToBuffer(engine, true, name);
         }
@@ -137,7 +137,7 @@ public class StratifiedConcordanceEngine {
     /**
      * Flushes active eval variants in a specific group's engine to the output buffer
      */
-    protected void flushEngineToBuffer(final SVMatcher engine, final boolean force, final String name) {
+    protected void flushEngineToBuffer(final CorrespondingSVSelector engine, final boolean force, final String name) {
         for (final ClosestSVFinder.LinkageConcordanceRecord record: engine.flush(force)) {
             final ItemTracker tracker = variantStatusMap.get(record.id());
             Utils.validate(tracker != null, "Unregistered variant id: " + record.id());

@@ -654,11 +654,11 @@ public class SVCallRecordUtilsUnitTest {
     @Test(dataProvider= "testCreateData")
     public void testCreate(final VariantContext variant, final SVCallRecord expected) {
         final List<String> excludedAttributes = new ArrayList<>(variant.getAttributes().keySet());
-        final SVCallRecord resultDropAttr = SVCallRecordUtils.create(variant, false, SVTestUtils.hg38Dict);
+        final SVCallRecord resultDropAttr = SVCallRecordUtils.create(variant, false, true, SVTestUtils.hg38Dict);
         SVTestUtils.assertEqualsExceptExcludedAttributes(resultDropAttr, expected, excludedAttributes);
         Assert.assertTrue(resultDropAttr.getAttributes().isEmpty());
 
-        final SVCallRecord resultKeepAttr = SVCallRecordUtils.create(variant, true, SVTestUtils.hg38Dict);
+        final SVCallRecord resultKeepAttr = SVCallRecordUtils.create(variant, true, true, SVTestUtils.hg38Dict);
         SVTestUtils.assertEqualsExceptExcludedAttributes(resultKeepAttr, expected, Collections.emptyList());
     }
 

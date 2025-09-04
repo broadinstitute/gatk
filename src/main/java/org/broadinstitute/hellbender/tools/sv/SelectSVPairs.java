@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * TODO docs
  */
 
-public class SelectSVPairs {
+public final class SelectSVPairs {
 
     // SV pair table column names
     public static final String VID_A_COLUMN = "VID_A";

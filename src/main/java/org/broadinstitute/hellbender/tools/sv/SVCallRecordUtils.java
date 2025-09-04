@@ -306,7 +306,7 @@ public final class SVCallRecordUtils {
      * Creates a new {@link SVCallRecord} from the given {@link VariantContext}, keeping any variant fields.
      */
     public static SVCallRecord create(final VariantContext variant, final SAMSequenceDictionary dictionary) {
-        return create(variant, true, dictionary);
+        return create(variant, true, true, dictionary);
     }
 
     /**
@@ -315,7 +315,7 @@ public final class SVCallRecordUtils {
      * @param keepVariantAttributes retain variant attribute fields
      * @return converted record
      */
-    public static SVCallRecord create(final VariantContext variant, boolean keepVariantAttributes, final SAMSequenceDictionary dictionary) {
+    public static SVCallRecord create(final VariantContext variant, boolean keepVariantAttributes, boolean keepGenotypes, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(variant);
         final String id = variant.getID();
         final String contigA = variant.getContig();
@@ -378,9 +378,11 @@ public final class SVCallRecordUtils {
         }
         final Double log10PError = variant.hasLog10PError() ? variant.getLog10PError() : null;
 
+        final List<Genotype> genotypes = keepGenotypes ? variant.getGenotypes() : Collections.emptyList();
+
         final Map<String, Object> sanitizedAttributes = sanitizeAttributes(attributes);
         return new SVCallRecord(id, contigA, positionA, strand1, contigB, positionB, strand2, type, cpxSubtype,
-                cpxIntervals, length, evidence, algorithms, variant.getAlleles(), variant.getGenotypes(), sanitizedAttributes,
+                cpxIntervals, length, evidence, algorithms, variant.getAlleles(), genotypes, sanitizedAttributes,
                 variant.getFilters(), log10PError);
     }
 

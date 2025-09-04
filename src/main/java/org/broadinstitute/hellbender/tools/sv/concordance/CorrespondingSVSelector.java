@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 
 import java.util.List;
 
-public interface SVMatcher {
+public interface CorrespondingSVSelector {
     List<ClosestSVFinder.LinkageConcordanceRecord> flush(final boolean force);
 
     String getLastItemContig();

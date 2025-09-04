@@ -148,7 +148,7 @@ import java.util.stream.Collectors;
 )
 @BetaFeature
 @DocumentedFeature
-public final class SVConcordance extends AbstractConcordanceWalker {
+public class SVConcordance extends AbstractConcordanceWalker {
 
     @Argument(
             doc = "Output VCF",
@@ -175,15 +175,6 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                     "VCF file, and increases the amount of RAM needed.",
             optional=true)
     public int maxRecordsInRam = 1000;
-
-    public static final String KEEP_ALL_MATCHES_LONG_NAME = "keep-all";
-    @Argument(fullName = KEEP_ALL_MATCHES_LONG_NAME,
-            doc = "If specified, SVConcordance will annotate all matching records within the specified parameters" +
-                    "rather than only the closest SV. Site-level concordance metrics like TRUTH_RECIPROCAL_OVERLAP" +
-                    "will be lists such that the nth item of each list corresponds to the same truth variant." +
-                    "Genotype concordance metrics will not be calculated.",
-            optional=true)
-    public boolean keepAll = false;
 
     @ArgumentCollection
     protected final SVClusterEngineArgumentsCollection defaultClusteringArgs = new SVClusterEngineArgumentsCollection();
@@ -235,7 +226,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
             throw new UserException.BadInput("Both --" + OptionalSVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME
                     + " and --" + GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME + " must be used together, but only one was specified.");
         }
-        final Map<String, SVMatcher> clusterEngineMap = new HashMap<>();
+        final Map<String, CorrespondingSVSelector> clusterEngineMap = new HashMap<>();
         if (strataClusteringConfigFile != null) {
             try (final TableReader<StratifiedClusteringTableParser.StratumParameters> tableReader = TableUtils.reader(strataClusteringConfigFile.toPath(), StratifiedClusteringTableParser::tableParser)) {
                 for (final StratifiedClusteringTableParser.StratumParameters parameters : tableReader) {
@@ -247,13 +238,8 @@ public final class SVConcordance extends AbstractConcordanceWalker {
                     linkage.setDepthOnlyParams(depthParams);
                     linkage.setMixedParams(mixedParams);
                     linkage.setEvidenceParams(pesrParams);
-                    SVMatcher engine;
-                    if (keepAll) {
-                        engine = new SVMatchesFinder(linkage);
-                    } else {
-                        engine = new ClosestSVFinder(linkage, collapser::annotate, false, dictionary);
-
-                    }
+                    CorrespondingSVSelector engine;
+                    engine = new ClosestSVFinder(linkage, collapser::annotate, false, dictionary);
                     clusterEngineMap.put(parameters.name(), engine);
                 }
             } catch (final IOException e) {
@@ -265,12 +251,8 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
         defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
         defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());
-        SVMatcher defaultEngine;
-        if (keepAll) {
-            defaultEngine = new SVMatchesFinder(defaultLinkage);
-        } else {
-            defaultEngine = new ClosestSVFinder(defaultLinkage, collapser::annotate, false, dictionary);
-        }
+        CorrespondingSVSelector defaultEngine;
+        defaultEngine = new ClosestSVFinder(defaultLinkage, collapser::annotate, false, dictionary);
 
         final SVStratificationEngine stratEngine = SVStratify.loadStratificationConfig(stratArgs.configFile, stratArgs, dictionary);
         engine = new StratifiedConcordanceEngine(clusterEngineMap, defaultEngine, stratEngine, stratArgs);
