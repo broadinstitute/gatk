@@ -5,6 +5,7 @@ from typing import Sequence
 
 import hail as hl
 from hail.utils.java import info
+from vds_validation import validate
 
 
 _GRCH38 = None
@@ -195,6 +196,10 @@ if __name__ == '__main__':
                         help="File with ids of samples to remove, one sample id per line, header should be 'research_id'.",
                         required=False)
 
+    parser.add_argument('--run-validation',
+                        help='Whether to run VDS validation after creating the VDS',
+                        action='store_true')
+
     parser.add_argument('--temp-path', type=str, help='Path to temporary directory', required=True)
 
     args = parser.parse_args()
@@ -242,3 +247,8 @@ if __name__ == '__main__':
     rescored_vd = patch_variant_data(vd, site, vets)
     merged_and_rescored_vds = hl.vds.VariantDataset(tmp_merged_vds.reference_data, rescored_vd)
     merged_and_rescored_vds.write(args.output_vds_path)
+
+    if (args.run_validation):
+        print("Beginning validation of merged and rescored VDS")
+        validate(merged_and_rescored_vds)
+        print("Finished validation of merged and rescored VDS")

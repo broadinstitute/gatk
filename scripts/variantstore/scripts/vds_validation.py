@@ -48,7 +48,7 @@ def check_densify_small_region(vds):
 
 
 
-def main(vds):
+def validate(vds):
     check_densify_small_region(vds)
     chrs = [f'chr{c}' for c in itertools.chain(range(1, 23), ['X', 'Y', 'M'])]
     for chromosome_to_validate in chrs:
@@ -76,4 +76,4 @@ if __name__ == '__main__':
 
     vds = hl.vds.read_vds(args.vds_path)
 
-    main(vds)
+    validate(vds)

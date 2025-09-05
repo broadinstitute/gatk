@@ -39,7 +39,7 @@ def import_gvs(refs: 'List[List[str]]',
                intermediate_resume_point=0,
                skip_final_merge=False,
                ref_block_max_length: 'int' = 1000
-               ):
+               ) -> hl.vds.VariantDataset:
     """Import a collection of Avro files exported from GVS.
 
     This function is used to import Avro files exported from BigQuery for
@@ -377,7 +377,9 @@ def import_gvs(refs: 'List[List[str]]',
         vd = vd.annotate_entries(FT=~ft.any_no & (ft.any_yes | ft.all_ok))
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_OK')
-        hl.vds.VariantDataset(
+        final_vds = hl.vds.VariantDataset(
             reference_data=rd,
             variant_data=vd,
-        ).write(final_path, overwrite=True)
+        )
+        final_vds.write(final_path, overwrite=True)
+        return final_vds
