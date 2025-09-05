@@ -9,24 +9,35 @@ workflow GvsCallsetStatistics {
         String project_id
         String dataset_name
         String filter_set_name
+        Int num_chunks = 2
         String extract_prefix
         String metrics_table = "~{extract_prefix}_sample_metrics"
         String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_aggregate"
         String statistics_table = "~{extract_prefix}_statistics"
+        String? basic_docker
         String? cloud_sdk_docker
     }
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
-    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker)) {
       call Utils.GetToolVersions {
           input:
               git_branch_or_tag = git_branch_or_tag,
       }
     }
 
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+    if (num_chunks <= 0 || num_chunks > 50) {
+        call Utils.TerminateWorkflow as NumChunksError {
+            input:
+                message = "The input parameter 'num_chunks' must be >= 1 and < 50!",
+                basic_docker = effective_basic_docker,
+        }
+    }
 
     call Utils.ValidateFilterSetName {
         input:
@@ -55,6 +66,7 @@ workflow GvsCallsetStatistics {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 filter_set_name = filter_set_name,
+                num_chunks = num_chunks,
                 extract_prefix = extract_prefix,
                 metrics_table = metrics_table,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -305,6 +317,7 @@ task CollectMetricsForChromosome {
         String project_id
         String dataset_name
         String filter_set_name
+        Int num_chunks = 2
         String extract_prefix
         String metrics_table
         Int chromosome
@@ -333,9 +346,35 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        # Run the query twice: once for mod value 0, once for mod value 1
-        for mod_value in 0 1; do
-            echo "Running query for mod value: ${mod_value}"
+        chunk_endpoints=()
+        if [ ~{num_chunks} -gt 1 ]; then
+            # bq query Get the mid-point and min of the (found) locations for this chromosome
+            bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+                SELECT CAST((max(location) - min(location)) / ~{num_chunks} AS INT64), min(location)
+                    FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
+                    WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
+
+            chunk_width=$(cut -f 1 -d ',' locations.txt)
+            echo "chunk_width = $chunk_width"
+            min_location=$(cut -f 2 -d ',' locations.txt)
+            echo "min_location = $min_location"
+
+            for i in $(seq 1 $((~{num_chunks} - 1))); do
+                chunk_endpoints+=($((chunk_width * i + min_location)))
+                echo "Added chunk endpoint ${chunk_endpoints[$((${#chunk_endpoints[@]} - 1))]}"
+            done
+        fi
+        # Set the final endpoint to be beyond the start of the next chromosome
+        chunk_endpoints+=(~{chromosome + 1}000000000000)
+        echo "Added final chunk endpoint (the beginning of the next chromosome) = ~{chromosome + 1}000000000000"
+
+        echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
+
+        # Iterate over all chunks
+        start_location=~{chromosome}000000000000
+        for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
+            end_location=${chunk_endpoints[i]}
+            echo "Running query for >= $start_location to < $end_location"
 
             # bq query --max_rows check: ok insert (elaborate one)
             bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
@@ -423,10 +462,10 @@ task CollectMetricsForChromosome {
                 FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
                 LEFT JOIN `aou-genomics-curation-prod.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
                 WHERE call_GT != "./."
-                AND mod(v.sample_id, 2) = '$mod_value'
-                AND v.location >= ~{chromosome}000000000000
-                AND v.location < ~{chromosome + 1}000000000000) GROUP BY 1,2
+                AND v.location >= '$start_location'
+                AND v.location < '$end_location') GROUP BY 1,2
             '
+            start_location=$end_location
         done
 
     >>>
