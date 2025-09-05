@@ -379,7 +379,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1732_CallsetStatisticsAnotherImprovement
          tags:
              - /.*/
    - name: GvsFindHailCruft
