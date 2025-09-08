@@ -15,6 +15,7 @@ import org.broadinstitute.pgen.PgenEmptyPgenException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 
 @SuppressWarnings("unused")
@@ -30,7 +31,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output PGEN file to which annotated variants should be written."
     )
-    private GATKPath outputPgenPath = null;
+    private final GATKPath outputPgenPath = null;
 
     @Argument(
             fullName = "pgen-chromosome-code",
@@ -47,7 +48,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             doc = "Write mode for the PGEN writer.",
             optional = true
     )
-    private WriteMode writeMode = WriteMode.WRITE_AND_COPY;
+    private final WriteMode writeMode = WriteMode.WRITE_AND_COPY;
 
     @Argument(
             fullName = "max-alt-alleles",
@@ -56,7 +57,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             maxValue = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES,
             optional = true
     )
-    private int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
+    private final int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
 
     @Argument(
             fullName = "lenient-ploidy-validation",
@@ -67,7 +68,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     "(samples will be recoded as missing, and logged if a log file is provided using --writerLogFile)",
             optional = true
     )
-    private boolean lenientPloidyValidation = false;
+    private final boolean lenientPloidyValidation = false;
 
     @Argument(
             fullName = "writer-log-file",
@@ -77,7 +78,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     "samples have to be marked as missing for non-conforming ploidy.",
             optional = true
     )
-    private String writerLogFile = null;
+    private final String writerLogFile = null;
 
     @Argument(
             fullName = "allow-empty-pgen",
@@ -86,14 +87,14 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     " an empty PGEN file is not technically a valid PGEN file.",
             optional = true
     )
-    private boolean allowEmptyPgen = false;
+    private final boolean allowEmptyPgen = false;
 
     @Argument(
             fullName = "preserve-phasing",
             doc = "Preserves phasing in the output PGEN file if phasing is present in the source genotypes.",
             optional = true
     )
-    private boolean preservePhasing = false;
+    private final boolean preservePhasing = false;
 
     private PgenWriter pgenWriter = null;
 
@@ -186,7 +187,18 @@ public class ExtractCohortToPgen extends ExtractCohort {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
-                    pgenWriter.add(variantContext);
+                    VariantContextBuilder variantBuilder = new VariantContextBuilder(variantContext);
+                    String id = variantContext.getContig() +
+                            ":" +
+                            variantContext.getStart() +
+                            ":" +
+                            variantContext.getReference().getDisplayString() +
+                            ":" +
+                            variantContext.getAlleles().stream()
+                                    .map(Allele::getDisplayString)
+                                    .collect(Collectors.joining(","));
+                    variantBuilder.id(id);
+                    pgenWriter.add(variantBuilder.make());
                 }
                 catch(IllegalStateException e) {
                     logger.error("Encountered an error.  Here's some debug info:\n" +
@@ -212,7 +224,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
-        if (pgenWriter.getDroppedVariantCount() > 0l) {
+        if (pgenWriter.getDroppedVariantCount() > 0L) {
             logger.info(pgenWriter.getDroppedVariantCount() + " variants dropped by writer for exceeding the" +
                     " maximum number of allowed alt alleles.");
         }
