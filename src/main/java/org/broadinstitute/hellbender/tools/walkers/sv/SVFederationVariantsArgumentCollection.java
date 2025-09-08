@@ -11,20 +11,8 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import java.util.Arrays;
 import java.util.List;
 
-public class SVFederationArgumentCollection extends MultiVariantInputArgumentCollection {
+public class SVFederationVariantsArgumentCollection extends MultiVariantInputArgumentCollection {
     private static final long serialVersionUID = 1L;
-
-    /**
-     * Expected format is tab-delimited and contains columns VID_A, VID_B, SCORE.
-     * First line must be a header with column names. Comment lines starting with
-     * {@link TableUtils#COMMENT_PREFIX} are ignored.
-     */
-    public static final String SV_PAIR_FILE_LONG_NAME = "sv-pairs";
-    @Argument(
-            doc = "SV pair file (.tsv) containing the candidate SV pairs and matching scores",
-            fullName = SV_PAIR_FILE_LONG_NAME
-    )
-    public GATKPath svPairFilePath;
 
     public static final String VARIANTS_A_LONG_NAME = "variants-A";
     public static final String VARIANTS_A_SHORT_NAME = "A";
@@ -45,14 +33,10 @@ public class SVFederationArgumentCollection extends MultiVariantInputArgumentCol
     public FeatureInput<VariantContext> varB;
 
 
-
     @Override
     public List<GATKPath> getDrivingVariantPaths() {
         return Arrays.asList(varA, varB);
     }
 
-
     public List<FeatureInput<VariantContext>> getFeatureInputsForDrivingVariants() { return Arrays.asList(varA, varB); }
-
-    public final GATKPath getSVPairFilePath() { return svPairFilePath; }
 }

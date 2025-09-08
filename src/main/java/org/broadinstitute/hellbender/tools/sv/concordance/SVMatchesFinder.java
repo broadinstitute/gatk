@@ -126,30 +126,6 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
         }
     }
 
-    public static Double computeLogAlleleFrequencyDifference(final SVCallRecord a, final SVCallRecord b,
-                                                             final double maxAlleleNumberA,
-                                                             final double maxAlleleNumberB) {
-        final Map<String, Object> attrA = a.getAttributes();
-        final Map<String, Object> attrB = b.getAttributes();
-        if (attrA.containsKey(VCFConstants.ALLELE_FREQUENCY_KEY)
-                && (attrA.get(VCFConstants.ALLELE_FREQUENCY_KEY) != null)
-                && attrB.containsKey(VCFConstants.ALLELE_FREQUENCY_KEY)
-                && attrB.get(VCFConstants.ALLELE_FREQUENCY_KEY) != null) {
-            double alleleFrequencyA = (Double) attrA.get(VCFConstants.ALLELE_FREQUENCY_KEY);
-            double alleleFrequencyB = (Double) attrB.get(VCFConstants.ALLELE_FREQUENCY_KEY);
-            // handle zeroes before taking log: if AF is 0, set to just below the minimum cohort AF
-            if (alleleFrequencyA == 0) {
-                alleleFrequencyA = 1 / (maxAlleleNumberA + 1);
-            }
-            if (alleleFrequencyB == 0) {
-                alleleFrequencyB = 1 / (maxAlleleNumberB + 1);
-            }
-            return Math.abs(Math.log10(alleleFrequencyA) - Math.log10(alleleFrequencyB));
-        } else {
-            return null;
-        }
-    }
-
     public static class ActiveCluster {
         final Long itemId;
         final SVCallRecord item;
@@ -220,24 +196,4 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
         }
     }
 
-//    public static class FederationLinkageResult extends CanonicalSVLinkage.CanonicalLinkageResult {
-//        private final Double logAlleleFrequencyDifference;
-//
-//        public FederationLinkageResult(final boolean result, final Double reciprocalOverlap,
-//                                       final Double sizeSimilarity,
-//                                       final Integer breakpointDistance1,
-//                                       final Integer breakpointDistance2,
-//                                       final Double logAlleleFrequencyDifference) {
-//            super(result, reciprocalOverlap, sizeSimilarity, breakpointDistance1, breakpointDistance2);
-//            this.logAlleleFrequencyDifference = logAlleleFrequencyDifference;
-//        }
-//
-//        public FederationLinkageResult(final CanonicalSVLinkage.CanonicalLinkageResult result,
-//                                       final Double logAlleleFrequencyDifference) {
-//            super(result.getResult(), result.getReciprocalOverlap(), result.getSizeSimilarity(), result.getBreakpointDistance1(), result.getBreakpointDistance2());
-//            this.logAlleleFrequencyDifference = logAlleleFrequencyDifference;
-//        }
-//
-//        public Double getLogAlleleFrequencyDifference() { return this.logAlleleFrequencyDifference; }
-//    }
 }

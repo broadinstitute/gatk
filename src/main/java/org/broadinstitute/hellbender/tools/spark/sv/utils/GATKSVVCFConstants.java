@@ -194,6 +194,12 @@ public final class GATKSVVCFConstants {
     public static final String TRUTH_DISTANCE_START_INFO = "TRUTH_DISTANCE_START";
     public static final String TRUTH_DISTANCE_END_INFO = "TRUTH_DISTANCE_END";
 
+    public static final String RECIPROCAL_OVERLAP_INFO = "RECIPROCAL_OVERLAP";
+    public static final String SIZE_SIMILARITY_INFO = "SIZE_SIMILARITY";
+    public static final String BREAKPOINT_DISTANCE_START_INFO = "BREAKPOINT_DISTANCE_START";
+    public static final String BREAKPOINT_DISTANCE_END_INFO = "BREAKPOINT_DISTANCE_END";
+
+
     // stratification
     public static final String STRATUM_INFO_KEY = "STRAT";
 

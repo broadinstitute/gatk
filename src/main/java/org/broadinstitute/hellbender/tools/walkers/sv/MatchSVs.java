@@ -86,7 +86,9 @@ public final class MatchSVs extends AbstractConcordanceWalker {
     }
 
     protected VCFHeader createHeader(final VCFHeader inputHeader) {
-        final VCFHeader header = new VCFHeader(inputHeader.getMetaDataInSortedOrder());
+        final VCFHeader header = new VCFHeader(inputHeader.getMetaDataInInputOrder());
+        header.setSequenceDictionary(dictionary);
+
         header.addMetaDataLine(Concordance.TRUTH_STATUS_HEADER_LINE);
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_VARIANT_ID_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Matching truth set variant id"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Truth set allele count"));
