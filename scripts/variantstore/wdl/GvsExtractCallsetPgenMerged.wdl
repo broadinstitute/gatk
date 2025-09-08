@@ -3,7 +3,7 @@ version 1.0
 import "GvsExtractCallsetPgen.wdl" as Extract
 import "MergePgenHierarchical.wdl" as Merge
 import "GvsUtils.wdl" as Utils
-# A
+# B
 workflow GvsExtractCallsetPgenMerged {
 
     input {
