@@ -85,7 +85,7 @@ public final class IOUtils {
     public static File createTempDir(String prefix) {
         try {
             final Path tmpDir = Files.createTempDirectory(prefix).normalize();
-//            deleteOnExit(tmpDir);
+            deleteOnExit(tmpDir);
             return tmpDir.toFile();
         } catch (final IOException | SecurityException e) {
             throw new UserException.BadTempDir(e.getMessage(), e);
@@ -684,7 +684,7 @@ public final class IOUtils {
             }
 
             final File file = File.createTempFile(name, extension, targetDir);
-            file.deleteOnExit();
+//            file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
             new File(file.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX).deleteOnExit();

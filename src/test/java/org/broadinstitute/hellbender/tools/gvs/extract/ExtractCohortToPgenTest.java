@@ -92,7 +92,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     final File outputPgen = new File(outputBasePath + ".pgen");
     final File outputPsam = new File(outputBasePath + ".psam");
     final File outputPvar = new File(outputBasePath + ".pvar.zst");
-    System.err.println("Output pvar: " + expectedPvar.getAbsolutePath());
+    System.err.println("Output pvar: " + outputPvar.getAbsolutePath());
 
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
