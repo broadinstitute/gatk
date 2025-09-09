@@ -31,7 +31,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output PGEN file to which annotated variants should be written."
     )
-    private final GATKPath outputPgenPath = null;
+    private GATKPath outputPgenPath = null;
 
     @Argument(
             fullName = "pgen-chromosome-code",
@@ -48,7 +48,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             doc = "Write mode for the PGEN writer.",
             optional = true
     )
-    private final WriteMode writeMode = WriteMode.WRITE_AND_COPY;
+    private WriteMode writeMode = WriteMode.WRITE_AND_COPY;
 
     @Argument(
             fullName = "max-alt-alleles",
@@ -57,7 +57,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             maxValue = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES,
             optional = true
     )
-    private final int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
+    private int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
 
     @Argument(
             fullName = "lenient-ploidy-validation",
@@ -68,7 +68,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     "(samples will be recoded as missing, and logged if a log file is provided using --writerLogFile)",
             optional = true
     )
-    private final boolean lenientPloidyValidation = false;
+    private boolean lenientPloidyValidation = false;
 
     @Argument(
             fullName = "writer-log-file",
@@ -78,7 +78,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     "samples have to be marked as missing for non-conforming ploidy.",
             optional = true
     )
-    private final String writerLogFile = null;
+    private String writerLogFile = null;
 
     @Argument(
             fullName = "allow-empty-pgen",
@@ -87,14 +87,14 @@ public class ExtractCohortToPgen extends ExtractCohort {
                     " an empty PGEN file is not technically a valid PGEN file.",
             optional = true
     )
-    private final boolean allowEmptyPgen = false;
+    private boolean allowEmptyPgen = false;
 
     @Argument(
             fullName = "preserve-phasing",
             doc = "Preserves phasing in the output PGEN file if phasing is present in the source genotypes.",
             optional = true
     )
-    private final boolean preservePhasing = false;
+    private boolean preservePhasing = false;
 
     private PgenWriter pgenWriter = null;
 
