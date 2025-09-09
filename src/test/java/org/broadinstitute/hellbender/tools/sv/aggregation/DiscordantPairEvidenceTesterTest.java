@@ -46,7 +46,7 @@ public class DiscordantPairEvidenceTesterTest {
                         Collections.singletonList("sample1"),
                         Collections.singletonMap("sample1", 22.),
                         new DiscordantPairEvidenceTester.DiscordantPairTestResult(
-                                new EvidenceStatUtils.PoissonTestResult(1, 0, 1.3636363636363638),
+                                new EvidenceStatUtils.PoissonTestResult(1, 0, 2.7272727272727275),
                                 Collections.singletonMap("sample1", 1),
                                 Collections.singletonList(new DiscordantPairEvidence("sample1", "chr21", 1000, true, "chr21", 2000, false))
                         )
@@ -58,7 +58,7 @@ public class DiscordantPairEvidenceTesterTest {
                         Collections.emptyList(),
                         Collections.singletonMap("sample1", 22.),
                         new DiscordantPairEvidenceTester.DiscordantPairTestResult(
-                                new EvidenceStatUtils.PoissonTestResult(0.2557291599131005, 1.3636363636363638, 0),
+                                new EvidenceStatUtils.PoissonTestResult(0.06539740322986018, 2.7272727272727275, 0),
                                 Collections.singletonMap("sample1", 1),
                                 Collections.singletonList(new DiscordantPairEvidence("sample1", "chr21", 1000, true, "chr21", 2000, false))
                         )
@@ -71,7 +71,7 @@ public class DiscordantPairEvidenceTesterTest {
                         Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 22.), new AbstractMap.SimpleEntry<>("sample2", 20.)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                         new DiscordantPairEvidenceTester.DiscordantPairTestResult(
-                                new EvidenceStatUtils.PoissonTestResult(0.2557291599131005, 1.3636363636363638, 0),
+                                new EvidenceStatUtils.PoissonTestResult(0.06539740322986018, 2.7272727272727275, 0),
                                 Collections.singletonMap("sample1", 1),
                                 Collections.singletonList(new DiscordantPairEvidence("sample1", "chr21", 1000, true, "chr21", 2000, false))
                         )
@@ -89,7 +89,7 @@ public class DiscordantPairEvidenceTesterTest {
                         Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 22.), new AbstractMap.SimpleEntry<>("sample2", 20.), new AbstractMap.SimpleEntry<>("sample3", 21.)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                         new DiscordantPairEvidenceTester.DiscordantPairTestResult(
-                                new EvidenceStatUtils.PoissonTestResult(0.24375395749311557, 2.7272727272727275, 0.75),
+                                new EvidenceStatUtils.PoissonTestResult(0.09122705224221678, 5.454545454545455, 1.5),
                                 Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 2), new AbstractMap.SimpleEntry<>("sample2", 1)).stream()
                                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                                 Lists.newArrayList(
@@ -146,7 +146,7 @@ public class DiscordantPairEvidenceTesterTest {
                         Collections.singletonList(new DiscordantPairEvidence("sample1", "chr21", 1000, true, "chr21", 2000, false)),
                         Collections.singletonMap("sample1", 1),
                         100.,
-                        3.7225241305992993
+                        7.445048261198602
                 },
                 // Single carrier but excluded
                 {
@@ -173,7 +173,7 @@ public class DiscordantPairEvidenceTesterTest {
                         Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 2), new AbstractMap.SimpleEntry<>("sample2", 1)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                         58.8235294117647,
-                        3.10849265181288
+                        4.759143541495719
                 },
         };
     }
