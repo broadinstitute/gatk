@@ -210,7 +210,7 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     // Decompress the pvar for validation
     final File decompressedPvar = decompressPvar(outputPvar);
     System.err.println("Decompressed output pvar xXXXXXX: " + decompressedPvar.getAbsolutePath());
-//    IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
+    IntegrationTestSpec.assertEqualTextFiles(decompressedPvar, expectedPvar);
   }
 
   @Test(enabled = false)
