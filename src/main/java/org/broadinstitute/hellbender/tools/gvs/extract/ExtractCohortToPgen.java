@@ -195,6 +195,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
                             variantContext.getReference().getDisplayString() +
                             ":" +
                             variantContext.getAlleles().stream()
+                                    .filter(allele -> !allele.isReference())
                                     .map(Allele::getDisplayString)
                                     .collect(Collectors.joining(","));
                     variantBuilder.id(id);
