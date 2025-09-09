@@ -188,16 +188,15 @@ public class ExtractCohortToPgen extends ExtractCohort {
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
                     VariantContextBuilder variantBuilder = new VariantContextBuilder(variantContext);
-                    String id = variantContext.getContig() +
-                            ":" +
-                            variantContext.getStart() +
-                            ":" +
-                            variantContext.getReference().getDisplayString() +
-                            ":" +
+                    final String id = String.format("%s:%d:%s:%s",
+                            variantContext.getContig(),
+                            variantContext.getStart(),
+                            variantContext.getReference().getDisplayString(),
                             variantContext.getAlleles().stream()
                                     .filter(allele -> !allele.isReference())
                                     .map(Allele::getDisplayString)
-                                    .collect(Collectors.joining(","));
+                                    .collect(Collectors.joining(","))
+                    );
                     variantBuilder.id(id);
                     pgenWriter.add(variantBuilder.make());
                 }
