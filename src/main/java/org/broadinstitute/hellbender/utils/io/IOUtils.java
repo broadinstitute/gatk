@@ -85,7 +85,7 @@ public final class IOUtils {
     public static File createTempDir(String prefix) {
         try {
             final Path tmpDir = Files.createTempDirectory(prefix).normalize();
-            deleteOnExit(tmpDir);
+//            deleteOnExit(tmpDir);
             return tmpDir.toFile();
         } catch (final IOException | SecurityException e) {
             throw new UserException.BadTempDir(e.getMessage(), e);
