@@ -343,7 +343,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1730_clusters_leaking
-             - gg_VS-1738_AddVariantIdToPgenOutput
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -462,7 +461,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-1738_AddVariantIdToPgenOutput
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
