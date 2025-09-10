@@ -240,6 +240,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250910_1
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
