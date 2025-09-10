@@ -15,6 +15,7 @@ import org.broadinstitute.pgen.PgenEmptyPgenException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 
 @SuppressWarnings("unused")
@@ -186,7 +187,18 @@ public class ExtractCohortToPgen extends ExtractCohort {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
-                    pgenWriter.add(variantContext);
+                    VariantContextBuilder variantBuilder = new VariantContextBuilder(variantContext);
+                    final String id = String.format("%s:%d:%s:%s",
+                            variantContext.getContig(),
+                            variantContext.getStart(),
+                            variantContext.getReference().getDisplayString(),
+                            variantContext.getAlleles().stream()
+                                    .filter(allele -> !allele.isReference())
+                                    .map(Allele::getDisplayString)
+                                    .collect(Collectors.joining(","))
+                    );
+                    variantBuilder.id(id);
+                    pgenWriter.add(variantBuilder.make());
                 }
                 catch(IllegalStateException e) {
                     logger.error("Encountered an error.  Here's some debug info:\n" +
@@ -212,7 +224,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
-        if (pgenWriter.getDroppedVariantCount() > 0l) {
+        if (pgenWriter.getDroppedVariantCount() > 0L) {
             logger.info(pgenWriter.getDroppedVariantCount() + " variants dropped by writer for exceeding the" +
                     " maximum number of allowed alt alleles.");
         }
