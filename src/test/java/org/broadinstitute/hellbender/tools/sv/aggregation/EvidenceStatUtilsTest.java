@@ -70,7 +70,7 @@ public class EvidenceStatUtilsTest {
                 {new int[]{0}, new double[]{30.}, 0, 1.0},
                 {new int[]{0}, new double[]{30.}, 1, 1.0},
                 {new int[]{1}, new double[]{30.}, 1, 0.3678794411714422},
-                {new int[]{5, 1, 0}, new double[]{30., 35., 40.}, 1, 0.020010047914590948},
+                {new int[]{5, 1, 0}, new double[]{30., 35., 40.}, 1, 0.01735126523666451},
         };
     }
 
@@ -132,14 +132,15 @@ public class EvidenceStatUtilsTest {
         return new Object[][]{
                 {new double[]{}, new int[]{}, 0},
                 {new double[]{30.}, new int[]{0}, 0},
-                {new double[]{30.}, new int[]{1}, 1/30.},
+                {new double[]{30.}, new int[]{1}, 2.0},
                 {new double[]{30., 30.}, new int[]{0, 0}, 0},
-                {new double[]{30., 30.}, new int[]{1, 1}, 1/30.},
-                {new double[]{30., 45.}, new int[]{1, 1}, 0.5*((1/30.)+(1/45.))},
-                {new double[]{30., 30., 30.}, new int[]{1, 0, 2}, 1/30.},
-                {new double[]{30., 30., 30.}, new int[]{0, 1, 2}, 1/30.},
-                {new double[]{15., 30., 45.}, new int[]{1, 1, 1}, 1/30.},
-                {new double[]{16., 30., 45.}, new int[]{1, 2, 2}, 1/16.},
+                {new double[]{30., 30.}, new int[]{1, 1}, 2.0},
+                {new double[]{30., 45.}, new int[]{1, 1}, 1.5},
+                {new double[]{30., 30., 30.}, new int[]{1, 0, 2}, 2.0},
+                {new double[]{30., 30., 30.}, new int[]{0, 1, 2}, 2.0},
+                {new double[]{15., 30., 45.}, new int[]{1, 1, 1}, 2.0},
+                {new double[]{16., 30., 45.}, new int[]{1, 2, 2}, 4.0},
+                {new double[]{16., 30., 45.}, new int[]{16, 30, 45}, 60.0},
         };
     }
 
@@ -157,7 +158,7 @@ public class EvidenceStatUtilsTest {
             samples.add(sample);
         }
 
-        final double test = EvidenceStatUtils.getMedianNormalizedCount(samples, sampleCountsMap, sampleCoverageMap);
+        final double test = EvidenceStatUtils.getMedianNormalizedCount(samples, sampleCountsMap, sampleCoverageMap, 60.);
         Assert.assertTrue(Math.abs(test - expected) <= ERROR_TOL);
     }
 }
