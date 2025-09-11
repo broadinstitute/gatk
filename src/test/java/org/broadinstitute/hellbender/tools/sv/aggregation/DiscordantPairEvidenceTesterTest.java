@@ -117,9 +117,9 @@ public class DiscordantPairEvidenceTesterTest {
 
         final EvidenceStatUtils.PoissonTestResult testPoisson = test.getTest();
         final EvidenceStatUtils.PoissonTestResult expectedPoisson = expected.getTest();
-        Assert.assertTrue(Math.abs(testPoisson.getP() - expectedPoisson.getP()) <= ERROR_TOL);
-        Assert.assertTrue(Math.abs(testPoisson.getCarrierSignal() - expectedPoisson.getCarrierSignal()) <= ERROR_TOL);
-        Assert.assertTrue(Math.abs(testPoisson.getBackgroundSignal() - expectedPoisson.getBackgroundSignal()) <= ERROR_TOL);
+        testFloatWithTolerance(testPoisson.getP(), expectedPoisson.getP());
+        testFloatWithTolerance(testPoisson.getCarrierSignal(), expectedPoisson.getCarrierSignal());
+        testFloatWithTolerance(testPoisson.getBackgroundSignal(), expectedPoisson.getBackgroundSignal());
     }
 
 
@@ -219,13 +219,18 @@ public class DiscordantPairEvidenceTesterTest {
         Assert.assertEquals(test.getAttributes().get("TEST_KEY"), "TEST_VALUE");
         Assert.assertTrue(test.getGenotypes().containsSamples(carrierSamples));
         Assert.assertTrue(test.getGenotypes().containsSamples(backgroundSamples));
-        Assert.assertTrue(Math.abs((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE) - expectedCarrierSignal) <= ERROR_TOL);
-        Assert.assertTrue(Math.abs((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_QUALITY_ATTRIBUTE) - expectedQuality) <= ERROR_TOL);
+        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE), expectedCarrierSignal);
+        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_QUALITY_ATTRIBUTE), expectedQuality);
         for (final String s : expectedSampleCounts.keySet()) {
             final Integer count = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get(s),
                     GATKSVVCFConstants.DISCORDANT_PAIR_COUNT_ATTRIBUTE, -1);
             Assert.assertEquals(count, expectedSampleCounts.get(s));
         }
+    }
+
+    private static void testFloatWithTolerance(final Double a, final Double b) {
+        Assert.assertTrue((a == null && b == null) || (Double.isNaN(a) && Double.isNaN(b))
+                || Math.abs(a - b) <= ERROR_TOL);
     }
 
 }
