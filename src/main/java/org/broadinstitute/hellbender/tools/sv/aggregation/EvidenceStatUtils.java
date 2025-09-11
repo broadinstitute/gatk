@@ -37,14 +37,15 @@ public class EvidenceStatUtils {
     @VisibleForTesting
     protected static double getMedianNormalizedCount(final Collection<String> samples,
                                                      final Map<String, Integer> sampleCounts,
-                                                     final Map<String, Double> sampleCoverageMap) {
+                                                     final Map<String, Double> sampleCoverageMap,
+                                                     final double targetCoverage) {
         if (samples.isEmpty() || sampleCounts.isEmpty()) {
             return 0;
         }
         final double[] normalizedCounts = new double[samples.size()];
         int i = 0;
         for (final String sample : samples) {
-            normalizedCounts[i] = sampleCounts.getOrDefault(sample, 0) / sampleCoverageMap.get(sample);
+            normalizedCounts[i] = Math.round(targetCoverage * sampleCounts.getOrDefault(sample, 0) / sampleCoverageMap.get(sample));
             i++;
         }
         return MEDIAN.evaluate(normalizedCounts);
@@ -75,8 +76,8 @@ public class EvidenceStatUtils {
                                                                   final Collection<String> backgroundSamples,
                                                                   final Map<String, Double> sampleCoverageMap,
                                                                   final double meanCoverage) {
-        final double medianNormalizedCarrierCount = meanCoverage * EvidenceStatUtils.getMedianNormalizedCount(carrierSamples, sampleCounts, sampleCoverageMap);
-        final double medianBackgroundRate = meanCoverage * EvidenceStatUtils.getMedianNormalizedCount(backgroundSamples, sampleCounts, sampleCoverageMap);
+        final double medianNormalizedCarrierCount = EvidenceStatUtils.getMedianNormalizedCount(carrierSamples, sampleCounts, sampleCoverageMap, meanCoverage);
+        final double medianBackgroundRate = EvidenceStatUtils.getMedianNormalizedCount(backgroundSamples, sampleCounts, sampleCoverageMap, meanCoverage);
         // If a common variant (AF > 0.5), clamp background to 0
         final int backgroundCount = carrierSamples.size() > backgroundSamples.size() ? 0 : (int) Math.round(medianBackgroundRate);
         final double p = EvidenceStatUtils.cumulativePoissonProbability(medianNormalizedCarrierCount, backgroundCount);

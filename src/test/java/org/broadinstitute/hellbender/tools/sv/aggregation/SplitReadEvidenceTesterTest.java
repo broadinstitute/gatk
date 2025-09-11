@@ -67,7 +67,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 10,
                                 true,
                                 Collections.singletonMap("sample1", 1),
-                                new EvidenceStatUtils.PoissonTestResult(1, 0., 2.7272727272727275))
+                                new EvidenceStatUtils.PoissonTestResult(1, 0., 3.0))
                 },
                 // 1 carrier / 0 background sample
                 {
@@ -81,7 +81,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 10,
                                 true,
                                 Collections.singletonMap("sample1", 1),
-                                new EvidenceStatUtils.PoissonTestResult(0.06539740322986018, 2.7272727272727275, 0.0))
+                                new EvidenceStatUtils.PoissonTestResult(0.04978706836786395, 3.0, 0.0))
                 },
                 // 1 carrier / 1 background sample
                 {
@@ -96,7 +96,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 10,
                                 true,
                                 Collections.singletonMap("sample1", 1),
-                                new EvidenceStatUtils.PoissonTestResult(0.06539740322986018, 2.7272727272727275, 0.0))
+                                new EvidenceStatUtils.PoissonTestResult(0.04978706836786395, 3.0, 0.0))
                 },
                 // 1 carrier / 1 background sample with evidence
                 {
@@ -113,7 +113,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 true,
                                 Lists.newArrayList(new HashMap.SimpleEntry<>("sample1", 1), new HashMap.SimpleEntry<>("sample2", 1)).stream()
                                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                                new EvidenceStatUtils.PoissonTestResult(0.7080706070214238, 2.7272727272727275, 3.0))
+                                new EvidenceStatUtils.PoissonTestResult(0.6472318887822315, 3.0, 3.0))
                 },
                 // 1 carrier / 1 background; multiple loci with evidence
                 {
@@ -132,7 +132,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 true,
                                 Lists.newArrayList(new HashMap.SimpleEntry<>("sample1", 6), new HashMap.SimpleEntry<>("sample2", 1)).stream()
                                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                                new EvidenceStatUtils.PoissonTestResult(6.89601361417575E-5, 16.363636363636363, 3.0))
+                                new EvidenceStatUtils.PoissonTestResult(9.314161294264015E-5, 16.0, 3.0))
                 },
         };
     }
@@ -693,5 +693,6 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                     GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
             Assert.assertEquals(count, expectedEndSampleCounts.get(s));
         }
+        // TODO test rest of expected values
     }
 }
