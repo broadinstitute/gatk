@@ -334,7 +334,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1644_UpdateNChunksCalculationForVatCreation
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -345,7 +344,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1730_clusters_leaking
-             - gg_VS-1644_UpdateNChunksCalculationForVatCreation
          tags:
              - /.*/
    - name: GvsIngestTieout
