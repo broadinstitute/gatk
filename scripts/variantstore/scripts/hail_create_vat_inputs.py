@@ -64,12 +64,12 @@ def failing_gts_to_no_call(vds):
 
 def remove_too_many_alt_allele_sites(vds):
     """
-     Remove sites with more than 50 alternate alleles
+     Remove sites with more than 100 alternate alleles
     """
     vd = vds.variant_data
-    vd_50_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 50)
+    vd_100_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 100)
 
-    return hl.vds.VariantDataset(vds.reference_data, vd_50_aa_cutoff)
+    return hl.vds.VariantDataset(vds.reference_data, vd_100_aa_cutoff)
 
 
 
@@ -183,7 +183,7 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     n_samples = vds.n_samples()
-    n_rounds = math.ceil(n_samples / 10000)
+    n_rounds = math.ceil(n_samples / 100000)
     # note: this was hardcoded as 5 for the Echo callset creation  n_rounds = 5
     n_parts = vds.variant_data.n_partitions()
     # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
