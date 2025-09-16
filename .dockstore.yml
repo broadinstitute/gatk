@@ -463,6 +463,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20250915_1
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
