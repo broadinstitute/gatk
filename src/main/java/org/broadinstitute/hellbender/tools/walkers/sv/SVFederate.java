@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.tools.sv.SelectSVPairs;
 import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVCollapser;
 import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVLinkage;
 import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngine;
+import org.broadinstitute.hellbender.tools.sv.cluster.SVFederationCollapser;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
@@ -190,7 +191,7 @@ public final class SVFederate extends MultiVariantWalker {
 
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
         // TODO breakpoint summary strategy
-        collapser = new CanonicalSVCollapser(reference,
+        collapser = new SVFederationCollapser(reference,
                 CanonicalSVCollapser.AltAlleleSummaryStrategy.MOST_SPECIFIC_SUBTYPE,
                 CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE,
                 CanonicalSVCollapser.FlagFieldLogic.OR);
