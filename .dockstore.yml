@@ -260,6 +260,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1570_MoreVATValidation
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
@@ -344,6 +345,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1730_clusters_leaking
+             - gg_VS-1570_MoreVATValidation
          tags:
              - /.*/
    - name: GvsIngestTieout
