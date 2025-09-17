@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
     private static final SAMSequenceDictionary DICTIONARY = SVTestUtils.hg38Dict;
-    private static final double ERROR_TOL = 1e-6;
     private static final int MAX_SR_CROSS_DISTANCE = 20;
 
     private final SVCallRecord TEST_DEL_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
@@ -154,9 +153,9 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         for (final String s : samples) {
             Assert.assertEquals(test.getCount(s), expected.getCount(s));
         }
-        testFloatWithTolerance(test.getP(), expected.getP());
-        testFloatWithTolerance(test.getCarrierSignal(), expected.getCarrierSignal());
-        testFloatWithTolerance(test.getBackgroundSignal(), expected.getBackgroundSignal());
+        SVTestUtils.assertFloatWithinTolerance(test.getP(), expected.getP());
+        SVTestUtils.assertFloatWithinTolerance(test.getCarrierSignal(), expected.getCarrierSignal());
+        SVTestUtils.assertFloatWithinTolerance(test.getBackgroundSignal(), expected.getBackgroundSignal());
     }
 
     @DataProvider(name = "refineCallTestData")
@@ -678,12 +677,12 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         Assert.assertEquals(test.getAttributes().get("TEST_KEY"), "TEST_VALUE");
         Assert.assertTrue(test.getGenotypes().containsSamples(carrierSamples));
         Assert.assertTrue(test.getGenotypes().containsSamples(backgroundSamples));
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.TOTAL_SPLIT_QUALITY_ATTRIBUTE), expectedSRQ);
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_QUALITY_ATTRIBUTE), expectedSR1Q);
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedSR1CS);
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_QUALITY_ATTRIBUTE), expectedSR2Q);
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedSR2CS);
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.TOTAL_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedSRCS);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.TOTAL_SPLIT_QUALITY_ATTRIBUTE), expectedSRQ);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_QUALITY_ATTRIBUTE), expectedSR1Q);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedSR1CS);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_QUALITY_ATTRIBUTE), expectedSR2Q);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedSR2CS);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.TOTAL_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedSRCS);
         for (final String s : expectedStartSampleCounts.keySet()) {
             final Integer count = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get(s),
                     GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);
@@ -694,10 +693,5 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                     GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
             Assert.assertEquals(count, expectedEndSampleCounts.get(s));
         }
-    }
-
-    private static void testFloatWithTolerance(final Double a, final Double b) {
-        Assert.assertTrue((a == null && b == null) || (Double.isNaN(a) && Double.isNaN(b))
-                || Math.abs(a - b) <= ERROR_TOL);
     }
 }

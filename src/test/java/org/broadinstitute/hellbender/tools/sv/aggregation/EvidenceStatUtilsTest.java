@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv.aggregation;
 
-import com.google.common.collect.Lists;
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -10,8 +10,6 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 public class EvidenceStatUtilsTest {
-
-    private static final double ERROR_TOL = 1e-4;
 
     @DataProvider(name = "testProbToQualData")
     public Object[][] testProbToQualData() {
@@ -31,7 +29,7 @@ public class EvidenceStatUtilsTest {
     public void testProbToQual(final Double pError, final double maxQ, final Double expected) {
         final Double test = EvidenceStatUtils.probToQual(pError, maxQ);
         if (test != null) {
-            Assert.assertTrue(Math.abs(test - expected) <= ERROR_TOL);
+            SVTestUtils.assertFloatWithinTolerance(test, expected);
         } else {
             Assert.assertNull(test);
         }
@@ -58,7 +56,7 @@ public class EvidenceStatUtilsTest {
     public void testCarrierSignalFraction(final Double carrierSignal, final Double backgroundSignal, final Double expected) {
         final Double test = EvidenceStatUtils.carrierSignalFraction(carrierSignal, backgroundSignal);
         if (expected != null) {
-            Assert.assertTrue(Math.abs(test - expected) <= ERROR_TOL);
+            SVTestUtils.assertFloatWithinTolerance(test, expected);
         } else {
             Assert.assertNull(test);
         }
@@ -97,7 +95,7 @@ public class EvidenceStatUtilsTest {
         final double meanCoverage = MathUtils.sum(sampleCoverage) / sampleCoverage.length;
         final EvidenceStatUtils.PoissonTestResult test = EvidenceStatUtils.calculateOneSamplePoissonTest(sampleCountsMap, carrierSamples,
                 backgroundSamples, sampleCoverageMap, meanCoverage);
-        Assert.assertTrue(Math.abs(test.getP() - expected) <= ERROR_TOL);
+        SVTestUtils.assertFloatWithinTolerance(test.getP(), expected);
     }
 
     @DataProvider(name = "testCumulativePoissonProbabilityData")
@@ -124,7 +122,7 @@ public class EvidenceStatUtilsTest {
     public void testCumulativePoissonProbability(final double lambda, final int val) {
         final double expected = new PoissonDistribution(lambda).cumulativeProbability(val);
         final double test = EvidenceStatUtils.cumulativePoissonProbability(lambda, val);
-        Assert.assertTrue(Math.abs(test - expected) <= ERROR_TOL);
+        SVTestUtils.assertFloatWithinTolerance(test, expected);
     }
 
     @DataProvider(name = "testGetMedianNormalizedCountData")
@@ -159,6 +157,6 @@ public class EvidenceStatUtilsTest {
         }
 
         final double test = EvidenceStatUtils.getMedianNormalizedCount(samples, sampleCountsMap, sampleCoverageMap, 60.);
-        Assert.assertTrue(Math.abs(test - expected) <= ERROR_TOL);
+        SVTestUtils.assertFloatWithinTolerance(test, expected);
     }
 }
