@@ -46,6 +46,8 @@ public class SVTestUtils {
     public static final Allele CPX_ALLELE = Allele.create(SimpleSVType.createBracketedSymbAlleleString(CPX_SV_SYB_ALT_ALLELE_STR));
     public static final Allele BND_ALLELE = Allele.create(SimpleSVType.createBracketedSymbAlleleString(GATKSVVCFConstants.BREAKEND_STR));
 
+    private static final double DEFAULT_FLOAT_TOLERANCE = 1e-4;
+
     public static CanonicalSVLinkage<SVCallRecord> getNewDefaultLinkage() {
         final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);
         linkage.setDepthOnlyParams(defaultDepthOnlyParameters);
@@ -716,5 +718,14 @@ public class SVTestUtils {
                 "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype, null, Collections.emptyList(),
                 1000, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 alleles, GenotypesContext.copy(genotypesWithCopyNumber), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+    }
+
+    public static void assertFloatWithinTolerance(final Double a, final Double b) {
+        assertFloatWithinTolerance(a, b, DEFAULT_FLOAT_TOLERANCE);
+    }
+
+    public static void assertFloatWithinTolerance(final Double a, final Double b, final double tolerance) {
+        Assert.assertTrue((a == null && b == null) || (Double.isNaN(a) && Double.isNaN(b))
+                || Math.abs(a - b) <= tolerance);
     }
 }

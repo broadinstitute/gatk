@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 public class DiscordantPairEvidenceTesterTest {
 
     private static final SAMSequenceDictionary DICTIONARY = SVTestUtils.hg38Dict;
-    private static final double ERROR_TOL = 1e-6;
 
     private final SVCallRecord TEST_DEL_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
             null, Collections.emptyList(), null,  Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
@@ -117,9 +116,9 @@ public class DiscordantPairEvidenceTesterTest {
 
         final EvidenceStatUtils.PoissonTestResult testPoisson = test.getTest();
         final EvidenceStatUtils.PoissonTestResult expectedPoisson = expected.getTest();
-        testFloatWithTolerance(testPoisson.getP(), expectedPoisson.getP());
-        testFloatWithTolerance(testPoisson.getCarrierSignal(), expectedPoisson.getCarrierSignal());
-        testFloatWithTolerance(testPoisson.getBackgroundSignal(), expectedPoisson.getBackgroundSignal());
+        SVTestUtils.assertFloatWithinTolerance(testPoisson.getP(), expectedPoisson.getP());
+        SVTestUtils.assertFloatWithinTolerance(testPoisson.getCarrierSignal(), expectedPoisson.getCarrierSignal());
+        SVTestUtils.assertFloatWithinTolerance(testPoisson.getBackgroundSignal(), expectedPoisson.getBackgroundSignal());
     }
 
 
@@ -219,18 +218,13 @@ public class DiscordantPairEvidenceTesterTest {
         Assert.assertEquals(test.getAttributes().get("TEST_KEY"), "TEST_VALUE");
         Assert.assertTrue(test.getGenotypes().containsSamples(carrierSamples));
         Assert.assertTrue(test.getGenotypes().containsSamples(backgroundSamples));
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE), expectedCarrierSignal);
-        testFloatWithTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_QUALITY_ATTRIBUTE), expectedQuality);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE), expectedCarrierSignal);
+        SVTestUtils.assertFloatWithinTolerance((Double) test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_QUALITY_ATTRIBUTE), expectedQuality);
         for (final String s : expectedSampleCounts.keySet()) {
             final Integer count = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get(s),
                     GATKSVVCFConstants.DISCORDANT_PAIR_COUNT_ATTRIBUTE, -1);
             Assert.assertEquals(count, expectedSampleCounts.get(s));
         }
-    }
-
-    private static void testFloatWithTolerance(final Double a, final Double b) {
-        Assert.assertTrue((a == null && b == null) || (Double.isNaN(a) && Double.isNaN(b))
-                || Math.abs(a - b) <= ERROR_TOL);
     }
 
 }
