@@ -1395,7 +1395,8 @@ task SpotCheckForManeSelectTranscript {
             SELECT mane_select_name as nom
             FROM `~{fq_vat_table}`
             WHERE mane_select_name = "syntaxin 16"
-        UNION mane_plus_clinical_name as nom
+        UNION ALL
+            SELECT mane_plus_clinical_name as nom
             FROM `~{fq_vat_table}`
             where mane_plus_clinical_name = "GNAS complex locus"
         )' > output.csv
