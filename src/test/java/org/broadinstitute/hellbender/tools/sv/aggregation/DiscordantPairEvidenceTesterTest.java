@@ -3,9 +3,11 @@ package org.broadinstitute.hellbender.tools.sv.aggregation;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.TestUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.*;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -227,4 +229,10 @@ public class DiscordantPairEvidenceTesterTest {
         }
     }
 
+    @Test
+    public void testApplyNull() {
+        final DiscordantPairEvidenceTester tester = new DiscordantPairEvidenceTester(Collections.emptyMap(), DICTIONARY);
+        final SVCallRecord result = tester.applyToRecord(SVTestUtils.call1, null);
+        VariantContextTestUtils.assertVariantContextsAreEqual(SVCallRecordUtils.getVariantBuilder(result).make(), SVCallRecordUtils.getVariantBuilder(SVTestUtils.call1).make(), Collections.emptyList(), Collections.emptyList());
+    }
 }
