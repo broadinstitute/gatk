@@ -1401,7 +1401,7 @@ task SpotCheckForManeSelectTranscript {
         )' > output.csv
 
         NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
-        echo "Hello"
+        echo "Hello!"
         echo "$NUMVARS"
 
         echo "false" > ~{pf_file}
