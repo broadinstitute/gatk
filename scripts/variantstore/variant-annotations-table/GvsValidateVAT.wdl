@@ -1390,13 +1390,12 @@ task SpotCheckForManeSelectTranscript {
 
         # bq query --max_rows check: ok single row
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
-        COUNT (DISTINCT vid) FROM
+        COUNT (DISTINCT nom) FROM
         (
-            SELECT vid
+            SELECT mane_select_name as nom
             FROM `~{fq_vat_table}`
             WHERE mane_select_name = "syntaxin 16"
-        UNION ALL
-            SELECT vid
+        UNION mane_plus_clinical_name as nom
             FROM `~{fq_vat_table}`
             where mane_plus_clinical_name = "GNAS complex locus"
         )' > output.csv
@@ -1408,7 +1407,7 @@ task SpotCheckForManeSelectTranscript {
         echo "false" > ~{pf_file}
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
         if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
-            if [[ $UMVARS -ge 2 ]]; then
+            if [[ $NUMVARS -eq 2 ]]; then
                 echo "true" > ~{pf_file}
                 echo "The VAT table ~{fq_vat_table} has been successfully spot checked for known MANE Select Names and MANE Plus Clinical Names." > ~{results_file}
             else
