@@ -1343,7 +1343,6 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
             else
                 echo "The VAT table ~{fq_vat_table} has failed the spot check for aa_change and exon_number consistency." > ~{results_file}
             fi
-        fi
         # otherwise, something is off, so return the output from the bq query call
         else
             echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv) >&2
@@ -1412,7 +1411,6 @@ task SpotCheckForManeSelectTranscript {
             else
                 echo "The VAT table ~{fq_vat_table} has failed the spot check for known MANE Select Names and MANE Plus Clinical Names." > ~{results_file}
             fi
-        fi
         # otherwise, something is off, so return the output from the bq query call
         else
             echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv) >&2
