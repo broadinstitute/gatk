@@ -22,13 +22,13 @@ workflow GvsMapUnmappedVIDs {
 
     call MapUnmappedVIDs {
         input:
-        project = project,
-        dataset = dataset,
-        vat_table_name = vat_table_name,
-        sites_only_vcf = sites_only_vcf,
-        reference = GetReference.reference,
-        unmapped_vid_mapping_table_name = unmapped_vid_mapping_table_name,
-        variants_docker = GetToolVersions.variants_docker,
+            project = project,
+            dataset = dataset,
+            vat_table_name = vat_table_name,
+            sites_only_vcf = sites_only_vcf,
+            reference = GetReference.reference,
+            unmapped_vid_mapping_table_name = unmapped_vid_mapping_table_name,
+            variants_docker = GetToolVersions.variants_docker,
     }
 
 }
@@ -91,5 +91,8 @@ task MapUnmappedVIDs {
     >>>
     runtime {
         docker: variants_docker
+    }
+    output {
+        Boolean done = true
     }
 }
