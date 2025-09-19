@@ -1380,7 +1380,6 @@ task SpotCheckForManeSelectTranscript {
 
     # This test runs a spot check on the VAT table to verify that some known MANE Select and MANE Plus Clinical names are present
 
-
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -1402,8 +1401,6 @@ task SpotCheckForManeSelectTranscript {
         )' > output.csv
 
         NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
-        echo "Hello!"
-        echo "$NUMVARS"
 
         echo "false" > ~{pf_file}
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
@@ -1433,7 +1430,7 @@ task SpotCheckForManeSelectTranscript {
 
     output {
         Boolean pass = read_boolean(pf_file)
-        String name = "SpotCheckForAAChangeAndExonNumberConsistency"
+        String name = "SpotCheckForManeSelectTranscript"
         String result = read_string(results_file)
     }
 }
