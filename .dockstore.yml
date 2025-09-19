@@ -464,7 +464,7 @@ workflows:
          - ah_var_store
    - name: GvsMapUnmappedVIDs
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/variant-annotations-table/GvsMapUnmappedVIDs.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
      filters:
        branches:
          - master
