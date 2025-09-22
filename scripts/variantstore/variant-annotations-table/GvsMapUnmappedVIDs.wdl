@@ -49,6 +49,9 @@ task MapUnmappedVIDs {
         }
     }
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # 1. Get the unmapped VIDs.
         bq --apilog=false query --use_legacy_sql=false --project_id=~{project} --format=csv --max_rows 1000000000 '
@@ -58,7 +61,7 @@ task MapUnmappedVIDs {
         ' sed 1d > unmapped_vids.csv
 
         # 2. Generate bcftools commands to query the sites-only VCF.
-        python generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.csv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        python /app/generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.csv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
 
         # 3a. auth before doing GCS-flavored bcftools commands
         set +o xtrace
@@ -82,11 +85,11 @@ task MapUnmappedVIDs {
         # 7. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
         #    to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
         #    Run the following to clean out non-"pseudo vid" entries from this file.
-        python filter_vcf_by_vids.py pseudo_vids_file.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
+        python /app/filter_vcf_by_vids.py pseudo_vids_file.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
 
         # 8. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
         #    positions as GVS.
-        python compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
+        python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
 
         # 9. Load into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
