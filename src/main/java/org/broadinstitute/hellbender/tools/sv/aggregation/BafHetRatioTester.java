@@ -27,6 +27,12 @@ public class BafHetRatioTester {
 
     public Double test(final SVCallRecord record, final List<BafEvidence> evidence, final Set<String> allSamples,
                        final Set<String> carrierSamples, final int flankSize) {
+        Utils.nonNull(record);
+        Utils.nonNull(allSamples);
+        Utils.nonNull(carrierSamples);
+        Utils.validateArg(flankSize >= 0, "flankSize cannot be negative");
+        Utils.validateArg(allSamples.size() >= carrierSamples.size() && allSamples.containsAll(carrierSamples), "Sample set must contain all carrier samples");
+
         if (!record.isSimpleCNV() || evidence == null || evidence.isEmpty()) {
             return null;
         }
@@ -59,8 +65,6 @@ public class BafHetRatioTester {
                              final Map<String, HetSnpStats> sampleStats,
                              final Set<String> carrierSamples,
                              final int flankSize) {
-        //final double pSnp = 0.001; //Math.min(50. / length, 0.0005);
-        //int totalInnerCount = 0;
         final List<Double> nullLogRatios = new ArrayList<>();
         final List<Double> carrierLogRatios = new ArrayList<>();
 
@@ -80,32 +84,13 @@ public class BafHetRatioTester {
                     nullLogRatios.add(stats.logRatio);
                 }
             }
-            //totalInnerCount += stats.innerHetCount;
         }
-
         if (carrierLogRatios.isEmpty() || nullLogRatios.isEmpty()) {
             return null;
         }
         final double medianCarrier = MEDIAN.evaluate(carrierLogRatios.stream().mapToDouble(Double::doubleValue).toArray());
         final double medianNull = MEDIAN.evaluate(nullLogRatios.stream().mapToDouble(Double::doubleValue).toArray());
         return medianNull - medianCarrier;
-
-        /*
-        if (nullRatios.size() <= 10 || totalInnerCount < 10) {
-            return null;
-        }
-        final double minNullRatio = nullRatios.stream().mapToDouble(d -> d).min().getAsDouble();
-        final double maxNullRatio = nullRatios.stream().mapToDouble(d -> d).max().getAsDouble();
-        if (maxNullRatio - minNullRatio < 0.0001) {
-            return null;
-        }
-        final List<SampleStats> carrierStats = carrierSamples.stream().map(sampleStats::get).filter(s -> s.deletionRatio != null).collect(Collectors.toList());
-        if (carrierStats.isEmpty() || carrierStats.size() > nullRatios.size()) {
-            return null;
-        }
-        final double[] carrierRatiosArr = carrierSamples.stream().map(sampleStats::get).filter(s -> s.deletionRatio != null).mapToDouble(s -> s.deletionRatio).toArray();
-        return median.evaluate(carrierRatiosArr);
-         */
     }
 
     private static final class HetSnpStats {
@@ -114,16 +99,4 @@ public class BafHetRatioTester {
         public int downstreamHets = 0;
         public Double logRatio = null;
     }
-
-    /*
-    protected boolean isRegionOfHomozygosity(final int beforeHetCount, final int innerHetCount, final int afterHetCount, final double length, final double threshold) {
-        return innerHetCount < threshold * length &&
-                (beforeHetCount  < threshold * length || afterHetCount < threshold * length);
-    }
-
-    protected double calculateDeletionRatio(final int beforeHetCount, final int innerHetCount, final int afterHetCount, final double length, final double threshold) {
-        final int flankHetCount = Math.min(beforeHetCount, afterHetCount);
-        return Math.log10(innerHetCount + length * threshold) - Math.log10(flankHetCount + length * threshold);
-    }
-     */
 }
