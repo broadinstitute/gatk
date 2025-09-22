@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class PESREvidenceTester {
@@ -25,7 +26,6 @@ public class PESREvidenceTester {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
     }
 
-
     /**
      * Test combined PE/SR evidence
      */
@@ -33,6 +33,10 @@ public class PESREvidenceTester {
                                final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult,
                                final Set<String> carrierSamples,
                                final Set<String> backgroundSamples) {
+        Utils.nonNull(splitReadTestResult);
+        Utils.nonNull(discordantPairTestResult);
+        Utils.nonNull(carrierSamples);
+        Utils.nonNull(backgroundSamples);
         final Map<String, Integer> sampleCountSums = new HashMap<>(SVUtils.hashMapCapacity(carrierSamples.size() + backgroundSamples.size()));
         final Map<String, Integer> discordantPairCounts = discordantPairTestResult.getSampleCounts();
         final SplitReadSite startSite = splitReadTestResult.getFirst();
@@ -67,7 +71,7 @@ public class PESREvidenceTester {
         return SVCallRecordUtils.copyCallWithNewAttributes(record, refinedAttr);
     }
 
-    public final class PESRTestResult {
+    public static final class PESRTestResult {
         private final EvidenceStatUtils.PoissonTestResult pesrResult;
         private final Double combinedCarrierSignal;
 
