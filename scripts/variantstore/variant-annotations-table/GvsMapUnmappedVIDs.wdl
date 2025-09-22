@@ -58,10 +58,15 @@ task MapUnmappedVIDs {
         ' sed 1d > unmapped_vids.csv
 
         # 2. Generate bcftools commands to query the sites-only VCF.
-        python generate_bcftools_commands.py unmapped_vids.csv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        python generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.csv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
 
-        # 3. Initialize a `to_search.vcf` with a VCF header, using the sites-only VCF as a donor.
-        bcftools head sites_only.vcf > to_search.vcf
+        # 3a. auth before doing GCS-flavored bcftools commands
+        set +o xtrace
+        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+        set -o xtrace
+
+        # 3b. Initialize a `to_search.vcf` with a VCF header, using the sites-only VCF as a donor.
+        bcftools head ~{sites_only_vcf} > to_search.vcf
 
         # 4. Run the generated bcftools commands to extract the relevant variants from the sites only VCF and add the
         #    output to this `to_search.vcf` file.
@@ -85,8 +90,8 @@ task MapUnmappedVIDs {
 
         # 9. Load into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
-        ~{dataset}.~{unmapped_vid_mapping_table_name} unmapped_vid_mappings.tsv \
-        vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
+            ~{dataset}.~{unmapped_vid_mapping_table_name} unmapped_vid_mappings.tsv \
+            vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
 
     >>>
     runtime {
