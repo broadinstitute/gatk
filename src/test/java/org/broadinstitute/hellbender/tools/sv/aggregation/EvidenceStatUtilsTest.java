@@ -11,6 +11,43 @@ import java.util.*;
 
 public class EvidenceStatUtilsTest {
 
+    @DataProvider(name = "testEqualsData")
+    public Object[][] testEqualsData() {
+        return new Object[][]{
+                {
+                    new EvidenceStatUtils.PoissonTestResult(0.5, 0.1, 0.2),
+                        new EvidenceStatUtils.PoissonTestResult(0.5, 0.1, 0.2),
+                        true
+                },
+                {
+                        new EvidenceStatUtils.PoissonTestResult(0.5, 0.1, 0.2),
+                        new EvidenceStatUtils.PoissonTestResult(0.4, 0.1, 0.2),
+                        false
+                },
+                {
+                        new EvidenceStatUtils.PoissonTestResult(0.5, 0.1, 0.2),
+                        new EvidenceStatUtils.PoissonTestResult(0.5, 0.2, 0.2),
+                        false
+                },
+                {
+                        new EvidenceStatUtils.PoissonTestResult(0.5, 0.1, 0.2),
+                        new EvidenceStatUtils.PoissonTestResult(0.5, 0.1, 0.3),
+                        false
+                },
+
+        };
+    }
+
+    @Test(dataProvider= "testEqualsData")
+    public void testEquals(EvidenceStatUtils.PoissonTestResult a, EvidenceStatUtils.PoissonTestResult b, boolean expected) {
+        Assert.assertEquals(a.equals(b), expected);
+        if (expected) {
+            Assert.assertEquals(a.hashCode(), b.hashCode());
+        } else {
+            Assert.assertNotEquals(a.hashCode(), b.hashCode());
+        }
+    }
+
     @DataProvider(name = "testProbToQualData")
     public Object[][] testProbToQualData() {
         return new Object[][]{

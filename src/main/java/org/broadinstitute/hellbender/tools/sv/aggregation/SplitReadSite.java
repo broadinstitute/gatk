@@ -69,14 +69,13 @@ public final class SplitReadSite {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SplitReadSite that = (SplitReadSite) o;
-        return position == that.position && strand == that.strand && Objects.equals(sampleCountsMap, that.sampleCountsMap) && Objects.equals(result, that.result);
+        return position == that.position && strand == that.strand && Objects.equals(contig, that.contig) && Objects.equals(sampleCountsMap, that.sampleCountsMap) && Objects.equals(result, that.result);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(position, strand, sampleCountsMap, result);
+        return Objects.hash(contig, position, strand, sampleCountsMap, result);
     }
 }

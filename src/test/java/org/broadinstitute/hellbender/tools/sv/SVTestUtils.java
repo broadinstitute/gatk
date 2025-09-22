@@ -511,7 +511,11 @@ public class SVTestUtils {
     }
 
     public static SVCallRecord newDepthCallRecordWithIntervalAndType(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
-        return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
+        return newDepthCallRecordWithIntervalAndType("chr1", start, end, svtype);
+    }
+
+    public static SVCallRecord newDepthCallRecordWithIntervalAndType(final String contig, final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
+        return new SVCallRecord("", contig, start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
                 svtype, null, Collections.emptyList(), getLength(start, end, svtype), Collections.emptyList(), DEPTH_ONLY_ALGORITHM_LIST, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null);
     }
