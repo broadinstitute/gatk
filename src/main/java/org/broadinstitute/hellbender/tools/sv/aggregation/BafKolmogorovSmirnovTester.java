@@ -68,11 +68,11 @@ public class BafKolmogorovSmirnovTester {
             frequencyFilteredEvidence.addAll(buffer);
         }
 
-        double[] carrierBaf = frequencyFilteredEvidence.stream().filter(baf -> carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray(); // TODO .map(x -> Math.min(x, 1.0 - x)).toArray();
+        double[] carrierBaf = frequencyFilteredEvidence.stream().filter(baf -> carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray();
         if (carrierBaf.length < minBafCount) {
             return null;
         }
-        double[] nullBaf = frequencyFilteredEvidence.stream().filter(baf -> !carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray(); // TODO .map(x -> Math.min(x, 1.0 - x)).toArray();
+        double[] nullBaf = frequencyFilteredEvidence.stream().filter(baf -> !carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray();
         if (nullBaf.length < minBafCount) {
             return null;
         }
@@ -94,7 +94,7 @@ public class BafKolmogorovSmirnovTester {
         private final Double stat;
         private final Double p;
 
-        private KSTestResult(final Double stat, final Double p) {
+        public KSTestResult(final Double stat, final Double p) {
             this.stat = stat;
             this.p = p;
         }
