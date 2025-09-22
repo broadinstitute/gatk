@@ -322,6 +322,10 @@ public class SVTestUtils {
         return new GenotypeBuilder(gt).alleles(null).make();
     }
 
+    public static void assertEquals(final SVCallRecord one, final SVCallRecord two) {
+        assertEqualsExceptExcludedAttributes(one, two, Collections.emptySet(), false);
+    }
+
     public static void assertEqualsExceptExcludedAttributes(final SVCallRecord one, final SVCallRecord two,
                                                             final Collection<String> excludedAttributeKeys) {
         assertEqualsExceptExcludedAttributes(one, two, excludedAttributeKeys, false);
