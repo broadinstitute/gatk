@@ -311,7 +311,7 @@ public class SplitReadEvidenceTester {
         return refinedEndPosition - 1;
     }
 
-    public final class SplitReadTestResult {
+    public static final class SplitReadTestResult {
         private final SplitReadSite first;
         private final SplitReadSite second;
         private final EvidenceStatUtils.PoissonTestResult bothsidesResult;
