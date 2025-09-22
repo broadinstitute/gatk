@@ -32,9 +32,7 @@ public class DiscordantPairEvidenceTester {
 
     public SVCallRecord applyToRecord(final SVCallRecord record, final DiscordantPairTestResult discordantPairResult) {
         Utils.nonNull(record);
-        if (discordantPairResult == null) {
-            return record;
-        }
+        Utils.nonNull(discordantPairResult);
         final EvidenceStatUtils.PoissonTestResult test = discordantPairResult.getTest();
         final double p = test == null ? 1. : test.getP();
         final Double q = EvidenceStatUtils.probToQual(p, (byte) 99);

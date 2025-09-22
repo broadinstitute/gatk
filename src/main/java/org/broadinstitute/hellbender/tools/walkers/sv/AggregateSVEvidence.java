@@ -302,9 +302,9 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
 
     private Collection<VariantContext> outputBuffer;
 
-    private final int BAF_QUERY_LOOKAHEAD = 0;
-    private final int SPLIT_READ_QUERY_LOOKAHEAD = 0;
-    private final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 0;
+    private static final int BAF_QUERY_LOOKAHEAD = 0;
+    private static final int SPLIT_READ_QUERY_LOOKAHEAD = 0;
+    private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 0;
 
     @Override
     public void onTraversalStart() {

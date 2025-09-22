@@ -228,11 +228,4 @@ public class DiscordantPairEvidenceTesterTest {
             Assert.assertEquals(count, expectedSampleCounts.get(s));
         }
     }
-
-    @Test
-    public void testApplyNull() {
-        final DiscordantPairEvidenceTester tester = new DiscordantPairEvidenceTester(Collections.emptyMap(), DICTIONARY);
-        final SVCallRecord result = tester.applyToRecord(SVTestUtils.call1, null);
-        VariantContextTestUtils.assertVariantContextsAreEqual(SVCallRecordUtils.getVariantBuilder(result).make(), SVCallRecordUtils.getVariantBuilder(SVTestUtils.call1).make(), Collections.emptyList(), Collections.emptyList());
-    }
 }

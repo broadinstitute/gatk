@@ -27,7 +27,6 @@ public class BafKolmogorovSmirnovTester {
         if (!record.isSimpleCNV() || evidence == null || evidence.isEmpty()) {
             return null;
         }
-
         final List<BafEvidence> bafList = new ArrayList<>(evidence.size());
         for (final BafEvidence baf : evidence) {
             if (baf.getStart() >= record.getPositionA() && baf.getStart() < record.getPositionB()) {
@@ -81,24 +80,6 @@ public class BafKolmogorovSmirnovTester {
         final double p = calculateP(stat, carrierBaf.length, nullBaf.length);
 
         return new KSTestResult(stat, p);
-        //final double p = KS_TEST.monteCarloP(stat, carrierBaf.length, nullBaf.length, true, 10000);
-        //final double p = kolmogorovSmirnovTest(stat, carrierBaf, nullBaf);
-        //return BafResult.createDuplicationResult(p, stat);
-        //final MannWhitneyU test = new MannWhitneyU();
-        //final MannWhitneyU.Result stat = test.test(carrierBaf, nullBaf, MannWhitneyU.TestType.TWO_SIDED);
-        //return BafResult.createDuplicationResult(stat.getP());
-        //final MannWhitneyUTest test = new MannWhitneyUTest();
-        //final double u = (long) carrierBaf.length * nullBaf.length - test.mannWhitneyU(nullBaf, carrierBaf);
-
-        //final double p = calculateAsymptoticPValue(u, carrierBaf.length, nullBaf.length);
-        //return BafResult.createDuplicationResult(p, u);
-        /*
-        final double nullMedian = MEDIAN.evaluate(nullBaf);
-        final double carrierMedian = MEDIAN.evaluate(carrierBaf);
-        final double nullStd = STDEV.evaluate(nullBaf);
-        final double carrierStd = STDEV.evaluate(carrierBaf);
-        return (nullMedian - carrierMedian) / Math.sqrt(nullStd * nullStd + carrierStd * carrierStd);
-        */
     }
 
     public double calculateP(final double stat, final int n, final int m) {
@@ -126,32 +107,4 @@ public class BafKolmogorovSmirnovTester {
             return p;
         }
     }
-
-    /*
-    private static double[] shrinkArray(final double[] arr, final int size) {
-        if (arr.length <= size) {
-            return arr;
-        }
-        final double[] sorted = Arrays.copyOf(arr, arr.length);
-        Arrays.sort(sorted);
-        final int k = arr.length / size;
-        int j = k / 2;
-        final double[] out = new double[size];
-        for (int i = 0; i < size; i++) {
-            out[i] = sorted[j];
-            j += k;
-        }
-        return out;
-    }
-
-    private static double[] downsampleArray(final double[] arr, final int size) {
-        for (int i = arr.length - 1; i >= arr.length - size; i--) {
-            final double tmp = arr[i];
-            final int j = RAND.nextInt(arr.length);
-            arr[i] = arr[j];
-            arr[j] = tmp;
-        }
-        return Arrays.copyOf(arr, size);
-    }
-     */
 }

@@ -27,6 +27,10 @@ public class BafEvidenceAggregator extends SVEvidenceAggregator<BafEvidence> {
         return result;
     }
 
+    public double getPaddingFraction() {
+        return paddingFraction;
+    }
+
     @Override
     public boolean evidenceFilter(final SVCallRecord record, final BafEvidence evidence) {
         return true;
