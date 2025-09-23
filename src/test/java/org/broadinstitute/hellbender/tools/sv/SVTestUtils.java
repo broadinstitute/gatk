@@ -743,7 +743,5 @@ public class SVTestUtils {
                 throw new AssertionError("Double values not within tolerance " + tolerance + "\nExpected :" + expected + "\nActual   :" + actual);
             }
         }
-        Assert.assertTrue((actual == null && expected == null) || (Double.isNaN(actual) && Double.isNaN(expected))
-                || Math.abs(actual - expected) <= tolerance);
     }
 }
