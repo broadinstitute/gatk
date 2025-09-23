@@ -345,7 +345,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1730_clusters_leaking
-             - gg_VS-1570_MoreVATValidation
+             - gg_VS-1644_MoreDiskForExcludeSites
          tags:
              - /.*/
    - name: GvsIngestTieout
