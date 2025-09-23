@@ -8,6 +8,7 @@ workflow GvsMapUnmappedVIDs {
         String project
         String dataset
         String vat_table_name
+        String mapping_table_name
         String unmapped_vid_mapping_table_name
         String reference_name = "hg38"
     }
@@ -25,6 +26,7 @@ workflow GvsMapUnmappedVIDs {
             project = project,
             dataset = dataset,
             vat_table_name = vat_table_name,
+            mapping_table_name = mapping_table_name,
             sites_only_vcf = sites_only_vcf,
             reference = GetReference.reference,
             unmapped_vid_mapping_table_name = unmapped_vid_mapping_table_name,
@@ -38,6 +40,7 @@ task MapUnmappedVIDs {
         String project
         String dataset
         String vat_table_name
+        String mapping_table_name
         File sites_only_vcf
         Reference reference
         String unmapped_vid_mapping_table_name
@@ -56,12 +59,12 @@ task MapUnmappedVIDs {
         # 1. Get the unmapped VIDs.
         bq --apilog=false query --use_legacy_sql=false --project_id=~{project} --format=csv --max_rows 1000000000 '
 
-            select distinct vid from `~{dataset}.~{vat_table_name}` where vid not in (select vid from `~{dataset}.~{vat_table_name}`)
+            select distinct vid from `~{dataset}.~{vat_table_name}` where vid not in (select vid from `~{dataset}.~{mapping_table_name}`)
 
-        ' | sed 1d > unmapped_vids.csv
+        ' | sed 1d > unmapped_vids.tsv
 
         # 2. Generate bcftools commands to query the sites-only VCF.
-        python /app/generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.csv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        python /app/generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
 
         # 3a. auth before doing GCS-flavored bcftools commands
         set +o xtrace
@@ -85,7 +88,7 @@ task MapUnmappedVIDs {
         # 7. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
         #    to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
         #    Run the following to clean out non-"pseudo vid" entries from this file.
-        python /app/filter_vcf_by_vids.py unmapped_vids.csv to_search.sort.dedup.norm.vcf > hits_only.vcf
+        python /app/filter_vcf_by_vids.py unmapped_vids.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
 
         # 8. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
         #    positions as GVS.
