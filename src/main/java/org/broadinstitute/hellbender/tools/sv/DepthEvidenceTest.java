@@ -155,15 +155,15 @@ public class DepthEvidenceTest {
         } else {
             throw new IllegalStateException("Unsupported variant type: " + svtype);
         }
-        final PermutationTTest.PermTestResult result = PermutationTTest.permTSDefault(controlMedians, treatMedians, alternative, PermutationTTest.Method.PCLT);
+        final PermutationTTest.PermTestResult result = PermutationTTest.permTSDefault(controlMedians, treatMedians, alternative);
 
         final int numBins = depthMatrix.getNumBins();
         final double[] slicePvals = new double[numBins];
         for (int i = 0; i < numBins; i++) {
             final double[] controlSlice = getSlice(i, depthMatrix.getMatrix(), controlSampleSet);
             final double[] treatSlice = getSlice(i, depthMatrix.getMatrix(), treatSampleSet);
-            final PermutationTTest.PermTestResult sliceResult = PermutationTTest.permTSDefault(controlSlice, treatSlice, alternative, PermutationTTest.Method.PCLT);
-            slicePvals[i] = sliceResult.pValue;
+            final PermutationTTest.PermTestResult sliceResult = PermutationTTest.permTSDefault(controlSlice, treatSlice, alternative);
+            slicePvals[i] = sliceResult.pValue();
         }
         Arrays.sort(slicePvals);
         final double secondMaxP;
@@ -172,7 +172,7 @@ public class DepthEvidenceTest {
         } else {
             secondMaxP = Double.NaN;
         }
-        return new StatsResult(result.pValue, secondMaxP);
+        return new StatsResult(result.pValue(), secondMaxP);
     }
 
     private double combinePValues(final double[] x) {
