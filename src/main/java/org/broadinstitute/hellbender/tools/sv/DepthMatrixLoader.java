@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -12,7 +10,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import picard.sam.util.Pair;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class DepthMatrixLoader {
 
@@ -53,13 +50,13 @@ public class DepthMatrixLoader {
 
         final DepthMatrix rawData;
         if (interval.getLengthOnReference() > largeSizeCutoff) {
-            rawData = DepthMatrix.loadLargeVariantMatrix(interval, dataSource, largeVariantWindow, largeVariantRegionPoints, dictionary);
+            rawData = DepthMatrix.fromDataSourceSubsampled(interval, dataSource, largeVariantWindow, largeVariantRegionPoints, dictionary);
         } else {
-            rawData = DepthMatrix.loadStandardVariantMatrix(interval, dataSource);
+            rawData = DepthMatrix.fromDataSource(interval, dataSource);
         }
 
         // Calculate compression and region bounds
-        final CompressionResult compressionResult = calculateCompression(rawData, interval, bins);
+        final CompressionResult compressionResult = calculateCompression(rawData, interval);
 
         // Trim bins from compression
         final DepthMatrix trimmedData = trimBins(rawData, compressionResult);
@@ -94,33 +91,34 @@ public class DepthMatrixLoader {
         }
     }
 
-    private DepthMatrix trimBins(DepthMatrix cov1, final CompressionResult compressionResult) {
+    private DepthMatrix trimBins(final DepthMatrix matrix, final CompressionResult compressionResult) {
         if (compressionResult == null) {
-            return cov1;
+            return matrix;
         }
         final int trimStart = compressionResult.adjustedRegion.getStart();
         final int trimEnd = compressionResult.adjustedRegion.getEnd();
-        Set<Integer> indicesToRemove = new HashSet<>();
-        for (int i = 0; i < cov1.getBins().size(); i++) {
-            final SimpleInterval bin = cov1.getBins().get(i);
+        final Set<Integer> indicesToRemove = new HashSet<>();
+        final List<SimpleInterval> matrixBins = matrix.getBins();
+        for (int i = 0; i < matrixBins.size(); i++) {
+            final SimpleInterval bin = matrixBins.get(i);
             if (bin.getEnd() <= trimStart || bin.getStart() >= trimEnd) {
                 indicesToRemove.add(i);
             }
         }
         if (indicesToRemove.isEmpty()) {
-            return cov1;
+            return matrix;
         }
 
-        final int newNumBins = cov1.getBins().size() - indicesToRemove.size();
+        final int newNumBins = matrixBins.size() - indicesToRemove.size();
         final List<SimpleInterval> newBins = new ArrayList<>(newNumBins);
-        for (int i = 0; i < cov1.getBins().size(); i++) {
+        for (int i = 0; i < matrixBins.size(); i++) {
             if (!indicesToRemove.contains(i)) {
-                newBins.add(cov1.getBins().get(i));
+                newBins.add(matrixBins.get(i));
             }
         }
         final Map<String, double[]> newCoverageData = new HashMap<>();
-        for (final String sample : cov1.getSampleSet()) {
-            final double[] values = cov1.getSample(sample);
+        for (final String sample : matrix.getSampleSet()) {
+            final double[] values = matrix.getSample(sample);
             final double[] newValues = new double[newNumBins];
             int j = 0;
             for (int i = 0; i < values.length; i++) {
@@ -151,15 +149,15 @@ public class DepthMatrixLoader {
         return new DepthMatrix(newBins, newMatrix);
     }
 
-    private static CompressionResult calculateCompression(DepthMatrix cov1, SimpleInterval queryInterval, int bins) {
-        int start = queryInterval.getStart() - 1; // covert to 0-based to match R code
-        int end = queryInterval.getEnd();
+    private CompressionResult calculateCompression(final DepthMatrix matrix, final SimpleInterval interval) {
+        final int start = interval.getStart() - 1; // covert to 0-based to match R code
+        int end = interval.getEnd();
 
         // Find bins that overlap with the query interval
-        int startBinIdx = -1, endBinIdx = -1;
-
-        for (int i = 0; i < cov1.getBins().size(); i++) {
-            SimpleInterval bin = cov1.getBins().get(i);
+        int startBinIdx = -1;
+        int endBinIdx = -1;
+        for (int i = 0; i < matrix.getBins().size(); i++) {
+            final SimpleInterval bin = matrix.getBins().get(i);
             if (startBinIdx == -1 && bin.getStart() - 1 >= start) {
                 startBinIdx = i;
             }
@@ -169,36 +167,38 @@ public class DepthMatrixLoader {
         }
 
         if (startBinIdx == -1) startBinIdx = 0;
-        if (endBinIdx == -1) endBinIdx = cov1.getBins().size() - 1;
+        if (endBinIdx == -1) endBinIdx = matrix.getBins().size() - 1;
+        final int numInternalBins = endBinIdx - startBinIdx + 1;
 
-        int numInternalBins = endBinIdx - startBinIdx + 1;
-
+        final int numBins;
         if (numInternalBins < bins) {
-            bins = numInternalBins;
-            if (bins == 0) {
+            numBins = numInternalBins;
+            if (numBins == 0) {
                 return null;
-            } else if (bins <= 1) {
-                SimpleInterval adjustedRegion = new SimpleInterval(
-                        queryInterval.getContig(),
-                        cov1.getBins().get(0).getStart(),
-                        cov1.getBins().get(cov1.getBins().size() - 1).getEnd()
+            } else if (numBins == 1) {
+                final SimpleInterval adjustedRegion = new SimpleInterval(
+                        interval.getContig(),
+                        matrix.getBins().get(0).getStart(),
+                        matrix.getBins().get(matrix.getBins().size() - 1).getEnd()
                 );
                 return new CompressionResult(1, adjustedRegion);
             }
+        } else {
+            numBins = bins;
         }
 
         // Adjust for even compression
-        int remainderForRemoval = (int) Math.floor(((double) (numInternalBins % bins)) / 2.0);
-        int newStartBinIdx = startBinIdx + remainderForRemoval;
-        int newEndBinIdx = endBinIdx - remainderForRemoval;
+        final int remainderForRemoval = (int) Math.floor(((double) (numInternalBins % numBins)) / 2.0);
+        final int newStartBinIdx = startBinIdx + remainderForRemoval;
+        final int newEndBinIdx = endBinIdx - remainderForRemoval;
 
         // Calculate compression factor
-        double compression = (newEndBinIdx - newStartBinIdx + 1) / (double) bins;
+        final double compression = (newEndBinIdx - newStartBinIdx + 1) / (double) numBins;
 
-        SimpleInterval adjustedRegion = new SimpleInterval(
-                queryInterval.getContig(),
-                cov1.getBins().get(newStartBinIdx).getStart(),
-                cov1.getBins().get(newEndBinIdx).getEnd()
+        final SimpleInterval adjustedRegion = new SimpleInterval(
+                interval.getContig(),
+                matrix.getBins().get(newStartBinIdx).getStart(),
+                matrix.getBins().get(newEndBinIdx).getEnd()
         );
 
         return new CompressionResult(compression, adjustedRegion);
