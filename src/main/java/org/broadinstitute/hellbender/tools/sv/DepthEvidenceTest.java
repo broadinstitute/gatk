@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import picard.util.MathUtil;
 
@@ -155,14 +154,14 @@ public class DepthEvidenceTest {
         } else {
             throw new IllegalStateException("Unsupported variant type: " + svtype);
         }
-        final PermutationTTest.PermTestResult result = PermutationTTest.permTSDefault(controlMedians, treatMedians, alternative);
+        final PermutationTTest.PermTestResult result = PermutationTTest.test(controlMedians, treatMedians, alternative);
 
         final int numBins = depthMatrix.getNumBins();
         final double[] slicePvals = new double[numBins];
         for (int i = 0; i < numBins; i++) {
             final double[] controlSlice = getSlice(i, depthMatrix.getMatrix(), controlSampleSet);
             final double[] treatSlice = getSlice(i, depthMatrix.getMatrix(), treatSampleSet);
-            final PermutationTTest.PermTestResult sliceResult = PermutationTTest.permTSDefault(controlSlice, treatSlice, alternative);
+            final PermutationTTest.PermTestResult sliceResult = PermutationTTest.test(controlSlice, treatSlice, alternative);
             slicePvals[i] = sliceResult.pValue();
         }
         Arrays.sort(slicePvals);
