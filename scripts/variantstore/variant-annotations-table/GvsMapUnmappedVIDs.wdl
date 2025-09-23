@@ -58,7 +58,7 @@ task MapUnmappedVIDs {
 
             select distinct vid from `~{dataset}.~{vat_table_name}` where vid not in (select vid from `~{dataset}.~{vat_table_name}`)
 
-        ' sed 1d > unmapped_vids.csv
+        ' | sed 1d > unmapped_vids.csv
 
         # 2. Generate bcftools commands to query the sites-only VCF.
         python /app/generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.csv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
