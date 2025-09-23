@@ -15,7 +15,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.*;
@@ -159,7 +158,7 @@ public final class AggregateDepthEvidence extends VariantWalker {
         }
         final SVCallRecord record = SVCallRecordUtils.create(variant, samSequenceDictionary);
         final DepthMatrix depthMatrix = loader.load(new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB()), sampleMedians);
-        final DepthEvidenceTest.AggregateDepthResult result = depthEvidenceTest.test(record, depthMatrix);
+        final DepthEvidenceTest.DepthTestResult result = depthEvidenceTest.test(record, depthMatrix);
         if (result == null ) {
             writer.add(variant);
         } else {
