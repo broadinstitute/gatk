@@ -14,17 +14,17 @@ import java.util.stream.Collectors;
 
 public final class DepthMatrix {
 
-    protected static final Median MEDIAN = new Median();
+    private static final Median MEDIAN = new Median();
 
     private final List<SimpleInterval> bins;
     private final Map<String, double[]> matrix;
 
-    public DepthMatrix(List<SimpleInterval> bins, Map<String, double[]> matrix) {
+    public DepthMatrix(final List<SimpleInterval> bins, final Map<String, double[]> matrix) {
         Utils.nonNull(bins);
         Utils.nonNull(matrix);
         for (final double[] value : matrix.values()) {
             Utils.nonNull(value);
-            Utils.validateArg(value.length == bins.size(), "Each vector must have " + value.length + " bins");
+            Utils.validateArg(value.length == bins.size(), "Each vector must have same length as bins list");
         }
         this.bins = bins;
         this.matrix = matrix;
@@ -40,8 +40,8 @@ public final class DepthMatrix {
         return new DepthMatrix(bins, arrayData);
     }
 
-    public static DepthMatrix loadStandardVariantMatrix(final SimpleInterval interval,
-                                                        final FeatureDataSource<DepthEvidence> dataSource) {
+    public static DepthMatrix fromDataSource(final SimpleInterval interval,
+                                             final FeatureDataSource<DepthEvidence> dataSource) {
         final DepthMatrix depthMatrix = queryDataSource(dataSource, interval);
 
         // Remove bins that start or end exactly at query boundaries (mimics R behavior)
@@ -86,7 +86,7 @@ public final class DepthMatrix {
             final SimpleInterval currentBin = bins.get(i);
             final SimpleInterval nextBin = bins.get(i + 1);
 
-            int gapLength = nextBin.getStart() - currentBin.getEnd() - 1;
+            final int gapLength = nextBin.getStart() - currentBin.getEnd() - 1;
             if (gapLength > 0) {
                 // Fill gap with zero-count bins
                 final String chr = currentBin.getContig();
@@ -111,41 +111,35 @@ public final class DepthMatrix {
                 }
             }
         }
-
-        return DepthMatrix.fromListMap(filledBins, filledData);
+        return fromListMap(filledBins, filledData);
     }
 
-    public static DepthMatrix loadLargeVariantMatrix(final SimpleInterval interval,
-                                                     final FeatureDataSource<DepthEvidence> dataSource,
-                                                     final int largeVariantWindow,
-                                                     final int largeVariantRegionPoints,
-                                                     final SAMSequenceDictionary dictionary) {
-        final int padding = largeVariantWindow / 2;
-        final int pointSpacing = interval.getLengthOnReference() / largeVariantRegionPoints;
+    public static DepthMatrix fromDataSourceSubsampled(final SimpleInterval interval,
+                                                       final FeatureDataSource<DepthEvidence> dataSource,
+                                                       final int window,
+                                                       final int numPoints,
+                                                       final SAMSequenceDictionary dictionary) {
+        final int padding = window / 2;
+        final int pointSpacing = interval.getLengthOnReference() / numPoints;
 
-        List<SimpleInterval> pointIntervals = new ArrayList<>();
-        for (int i = 0; i < largeVariantRegionPoints; i++) {
+        final List<SimpleInterval> pointIntervals = new ArrayList<>();
+        for (int i = 0; i < numPoints; i++) {
             final int pointCenter = interval.getStart() + padding + (i * pointSpacing);
-            final int pointStart = Math.max(1, pointCenter - padding);
-            final int pointEnd = Math.min(pointCenter + padding + 1, dictionary.getSequence(interval.getContig()).getSequenceLength());
-            final SimpleInterval newInterval = new SimpleInterval(interval.getContig(), pointStart, pointEnd);
-            if (!IntervalUtils.intervalIsOnDictionaryContig(newInterval, dictionary)) {
-                throw new GATKException("Padded interval " + newInterval + " failed to validate against the sequence dictionary");
-            }
-            pointIntervals.add(newInterval);
+            final SimpleInterval pointInterval = new SimpleInterval(interval.getContig(), pointCenter, pointCenter);
+            final SimpleInterval paddedInterval = pointInterval.expandWithinContig(padding, dictionary);
+            pointIntervals.add(paddedInterval);
         }
 
         final List<SimpleInterval> bins = new ArrayList<>();
         final Map<String, List<Double>> listMatrix = new HashMap<>();
-
-        for (int i = 0; i < largeVariantRegionPoints; i++) {
+        for (int i = 0; i < numPoints; i++) {
             final SimpleInterval pointInterval = pointIntervals.get(i);
-            final DepthMatrix windowCov = queryDataSource(dataSource, pointInterval);
+            final DepthMatrix pointMatrix = queryDataSource(dataSource, pointInterval);
 
             // Calculate median coverage for this window
             boolean hasData = false;
-            for (String sample : windowCov.getSampleSet()) {
-                double[] values = windowCov.getSample(sample);
+            for (String sample : pointMatrix.getSampleSet()) {
+                final double[] values = pointMatrix.getSample(sample);
                 if (!listMatrix.containsKey(sample)) {
                     listMatrix.put(sample, new ArrayList<>());
                 }
@@ -158,16 +152,11 @@ public final class DepthMatrix {
                 bins.add(pointInterval);
             }
         }
-        final Map<String, double[]> arrayMatrix = new HashMap<>();
-        for (String sample : listMatrix.keySet()) {
-            arrayMatrix.put(sample, listMatrix.get(sample).stream().mapToDouble(Double::doubleValue).toArray());
-        }
-        return new DepthMatrix(bins, arrayMatrix);
+        return fromListMap(bins, listMatrix);
     }
 
     private static DepthMatrix queryDataSource(final FeatureDataSource<DepthEvidence> dataSource, final SimpleInterval interval) {
-        final Iterator<DepthEvidence> iter = dataSource.query(interval);
-        final List<DepthEvidence> data = Lists.newArrayList(iter);
+        final List<DepthEvidence> data = Lists.newArrayList(dataSource.query(interval));
         final List<SimpleInterval> bins = data.stream().map(d -> new SimpleInterval(d.getContig(), d.getStart(), d.getEnd())).collect(Collectors.toList());
         final SVFeaturesHeader header = (SVFeaturesHeader) dataSource.getHeader();
         final List<String> sampleNames = header.getSampleNames();
@@ -181,10 +170,8 @@ public final class DepthMatrix {
             for (final String sampleName : sampleNames) {
                 coverageData.get(sampleName)[i] = depthEvidence.getCounts()[j++];
             }
-            i += 1;
+            ++i;
         }
-
-        // This would be replaced with actual GATK FeatureDataSource query logic
         return new DepthMatrix(bins, coverageData);
     }
 
