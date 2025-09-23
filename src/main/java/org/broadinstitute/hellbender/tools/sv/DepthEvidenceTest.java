@@ -28,6 +28,7 @@ public class DepthEvidenceTest {
     }
 
     protected static final Median MEDIAN = new Median();
+    protected static final NormalDistribution STD_NORMAL = new NormalDistribution();
     protected final double powerThreshold;
 
     public DepthEvidenceTest(final double powerThreshold) {
@@ -110,7 +111,6 @@ public class DepthEvidenceTest {
         } else {
             throw new IllegalStateException("Unsupported variant type: " + svtype);
         }
-        final NormalDistribution normal = new NormalDistribution();
         final double[] pValues = new double[treatMedians.length];
         final double[] secondMaxPValues = new double[treatMedians.length];
         final double controlMean = MathUtil.mean(controlMedians);
@@ -118,14 +118,14 @@ public class DepthEvidenceTest {
         final String[] treatSampleList = treatSampleSet.toArray(new String[0]);
         final int numBins = depthMatrix.getNumBins();
         for (int i = 0; i < treatMedians.length; i++) {
-            pValues[i] = Math.log(Math.max(normal.cumulativeProbability(alternativeSign * (treatMedians[i] - controlMean) / controlStd), Double.MIN_VALUE));
+            pValues[i] = Math.log(Math.max(STD_NORMAL.cumulativeProbability(alternativeSign * (treatMedians[i] - controlMean) / controlStd), Double.MIN_VALUE));
             final double[] slicePvals = new double[numBins];
             for (int j = 0; j < numBins; j++) {
                 final double[] controlSlice = depthMatrix.slice(j,  controlSampleSet);
                 final double[] treatSlice = depthMatrix.slice(j, Collections.singleton(treatSampleList[i]));
                 final double controlMeanSlice = MathUtil.mean(controlSlice);
                 final double controlStdSlice = MathUtil.stddev(controlSlice, controlMeanSlice) * Math.sqrt(controlSlice.length / (double) (controlSlice.length - 1));
-                slicePvals[j] = Math.log(Math.max(normal.cumulativeProbability(alternativeSign * (treatSlice[0] - controlMeanSlice) / controlStdSlice), Double.MIN_VALUE));
+                slicePvals[j] = Math.log(Math.max(STD_NORMAL.cumulativeProbability(alternativeSign * (treatSlice[0] - controlMeanSlice) / controlStdSlice), Double.MIN_VALUE));
             }
             Arrays.sort(slicePvals);
             if (slicePvals.length > 0) {

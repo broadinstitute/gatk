@@ -53,9 +53,9 @@ public class DepthMatrixLoader {
 
         final DepthMatrix rawData;
         if (interval.getLengthOnReference() > largeSizeCutoff) {
-            rawData = loadLargeVariantMatrix(interval, dataSource);
+            rawData = DepthMatrix.loadLargeVariantMatrix(interval, dataSource, largeVariantWindow, largeVariantRegionPoints, dictionary);
         } else {
-            rawData = loadStandardVariantMatrix(interval, dataSource);
+            rawData = DepthMatrix.loadStandardVariantMatrix(interval, dataSource);
         }
 
         // Calculate compression and region bounds
@@ -92,129 +92,6 @@ public class DepthMatrixLoader {
                 }
             }
         }
-    }
-
-    private DepthMatrix loadLargeVariantMatrix(final SimpleInterval interval,
-                                               final FeatureDataSource<DepthEvidence> dataSource) {
-        int padding = largeVariantWindow / 2;
-        int pointSpacing = interval.getLengthOnReference() / largeVariantRegionPoints;
-
-        List<SimpleInterval> pointIntervals = new ArrayList<>();
-        for (int i = 0; i < largeVariantRegionPoints; i++) {
-            int pointCenter = interval.getStart() + padding + (i * pointSpacing);
-            int pointStart = Math.max(1, pointCenter - padding);
-            int pointEnd = Math.min(pointCenter + padding + 1, dictionary.getSequence(interval.getContig()).getSequenceLength());
-            final SimpleInterval newInterval = new SimpleInterval(interval.getContig(), pointStart, pointEnd);
-            if (!IntervalUtils.intervalIsOnDictionaryContig(newInterval, dictionary)) {
-                throw new GATKException("Padded interval " + newInterval + " failed to validate against the sequence dictionary");
-            }
-            pointIntervals.add(newInterval);
-        }
-
-        final List<SimpleInterval> bins = new ArrayList<>();
-        final Map<String, List<Double>> listMatrix = new HashMap<>();
-
-        final Median median = new Median();
-        for (int i = 0; i < largeVariantRegionPoints; i++) {
-            final SimpleInterval pointInterval = pointIntervals.get(i);
-            final DepthMatrix windowCov = queryDataSource(dataSource, pointInterval);
-
-            // Calculate median coverage for this window
-            boolean hasData = false;
-            for (String sample : windowCov.getSampleSet()) {
-                double[] values = windowCov.getSample(sample);
-                if (!listMatrix.containsKey(sample)) {
-                    listMatrix.put(sample, new ArrayList<>());
-                }
-                if (values.length > 0) {
-                    listMatrix.get(sample).add(median.evaluate(values));
-                    hasData = true;
-                }
-            }
-            if (hasData) {
-                bins.add(pointInterval);
-            }
-        }
-        final Map<String, double[]> arrayMatrix = new HashMap<>();
-        for (String sample : listMatrix.keySet()) {
-            arrayMatrix.put(sample, listMatrix.get(sample).stream().mapToDouble(Double::doubleValue).toArray());
-        }
-        return new DepthMatrix(bins, arrayMatrix);
-    }
-
-    private DepthMatrix loadStandardVariantMatrix(final SimpleInterval interval,
-                                                  final FeatureDataSource<DepthEvidence> dataSource) {
-        DepthMatrix depthMatrix = queryDataSource(dataSource, interval);
-
-        // Remove bins that start or end exactly at query boundaries (mimics R behavior)
-        List<SimpleInterval> filteredBins = new ArrayList<>();
-        Map<String, List<Double>> filteredData = new HashMap<>();
-        for (String sample : depthMatrix.getSampleSet()) {
-            filteredData.put(sample, new ArrayList<>());
-        }
-
-        for (int i = 0; i < depthMatrix.getBins().size(); i++) {
-            SimpleInterval bin = depthMatrix.getBins().get(i);
-            if (bin.getStart() <= interval.getEnd() && bin.getEnd() != interval.getStart()) {
-                filteredBins.add(bin);
-                for (String sample : depthMatrix.getSampleSet()) {
-                    filteredData.get(sample)
-                            .add(depthMatrix.getSample(sample)[i]);
-                }
-            }
-        }
-
-        // Fill gaps with zero-count bins
-        return fillGapsInCoverageMatrix(filteredBins, filteredData, interval.getContig());
-    }
-
-    private DepthMatrix fillGapsInCoverageMatrix(final List<SimpleInterval> bins,
-                                                 final Map<String, List<Double>> coverageData,
-                                                 final String chr) {
-        if (bins.size() <= 1) {
-            return createCoverageMatrixFromLists(bins, coverageData);
-        }
-
-        List<SimpleInterval> filledBins = new ArrayList<>(bins);
-        Map<String, List<Double>> filledData = new HashMap<>();
-
-        // Initialize with existing data
-        for (String sample : coverageData.keySet()) {
-            filledData.put(sample, new ArrayList<>(coverageData.get(sample)));
-        }
-
-        int binSize = bins.get(0).size(); // Assume uniform bin size
-
-        for (int i = 0; i < bins.size() - 1; i++) {
-            SimpleInterval currentBin = bins.get(i);
-            SimpleInterval nextBin = bins.get(i + 1);
-
-            int gapLength = nextBin.getStart() - currentBin.getEnd() - 1;
-            if (gapLength > 0) {
-                // Fill gap with zero-count bins
-                for (int pos = currentBin.getEnd(); pos < nextBin.getStart(); pos += binSize) {
-                    int gapEnd = Math.min(pos + binSize, nextBin.getStart());
-                    SimpleInterval gapBin = new SimpleInterval(chr, pos, gapEnd);
-
-                    int insertIndex = filledBins.size();
-                    for (int j = 0; j < filledBins.size(); j++) {
-                        if (filledBins.get(j).getStart() > pos) {
-                            insertIndex = j;
-                            break;
-                        }
-                    }
-
-                    filledBins.add(insertIndex, gapBin);
-
-                    // Add zero values for all samples
-                    for (String sample : filledData.keySet()) {
-                        filledData.get(sample).add(insertIndex, 0.0);
-                    }
-                }
-            }
-        }
-
-        return createCoverageMatrixFromLists(filledBins, filledData);
     }
 
     private DepthMatrix trimBins(DepthMatrix cov1, final CompressionResult compressionResult) {
@@ -450,37 +327,4 @@ public class DepthMatrixLoader {
         return new DepthMatrix(matrix.getBins(), normalizedMatrix);
     }
 
-    // Helper methods
-    private static DepthMatrix queryDataSource(FeatureDataSource<DepthEvidence> dataSource, SimpleInterval interval) {
-        final Iterator<DepthEvidence> iter = dataSource.query(interval);
-        final List<DepthEvidence> data = Lists.newArrayList(iter);
-        final List<SimpleInterval> bins = data.stream().map(d -> new SimpleInterval(d.getContig(), d.getStart(), d.getEnd())).collect(Collectors.toList());
-        final SVFeaturesHeader header = (SVFeaturesHeader) dataSource.getHeader();
-        final List<String> sampleNames = header.getSampleNames();
-        final Map<String, double[]> coverageData = new HashMap<>();
-        for (final String sampleName : sampleNames) {
-            coverageData.put(sampleName, new double[bins.size()]);
-        }
-        int i = 0;
-        for (final DepthEvidence depthEvidence : data) {
-            int j = 0;
-            for (final String sampleName : sampleNames) {
-                coverageData.get(sampleName)[i] = depthEvidence.getCounts()[j++];
-            }
-            i += 1;
-        }
-
-        // This would be replaced with actual GATK FeatureDataSource query logic
-        return new DepthMatrix(bins, coverageData);
-    }
-
-    private static DepthMatrix createCoverageMatrixFromLists(List<SimpleInterval> bins,
-                                                             Map<String, List<Double>> coverageData) {
-        Map<String, double[]> arrayData = new HashMap<>();
-        for (String sample : coverageData.keySet()) {
-            List<Double> values = coverageData.get(sample);
-            arrayData.put(sample, values.stream().mapToDouble(Double::doubleValue).toArray());
-        }
-        return new DepthMatrix(bins, arrayData);
-    }
 }
