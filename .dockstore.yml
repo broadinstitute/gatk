@@ -464,6 +464,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20250923_1
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -471,7 +472,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - FoxtrotRelease_20250923_1
    - name: GvsTieoutPgenToVcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieoutPgenToVcf.wdl
