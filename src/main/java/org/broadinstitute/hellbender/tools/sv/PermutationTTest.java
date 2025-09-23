@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -9,9 +8,7 @@ import java.util.stream.IntStream;
 
 public class PermutationTTest {
 
-    private static final NormalDistribution STD_NORMAL_DISTRIBUTION = new NormalDistribution();
-    private static final ChiSquaredDistribution CHI_SQUARED_DISTRIBUTION = new ChiSquaredDistribution(1);
-
+    protected static final NormalDistribution STD_NORMAL_DISTRIBUTION = new NormalDistribution();
 
     // Enum for alternative hypotheses
     public enum Alternative {
@@ -27,116 +24,75 @@ public class PermutationTTest {
     /**
      * Main permutation test function - equivalent to permTS.default in R
      */
-    public static PermTestResult permTSDefault(double[] x, double[] y, Alternative alternative) {
-
-        // Validate input
+    public static PermTestResult test(final double[] x, final double[] y, final Alternative alternative) {
         Utils.nonNull(x);
         Utils.nonNull(y);
+        Utils.nonNull(alternative);
 
         // Combine data
-        double[] W = new double[x.length + y.length];
-        int[] Z = new int[x.length + y.length];
+        final double[] W = new double[x.length + y.length];
+        final int[] Z = new int[x.length + y.length];
         System.arraycopy(x, 0, W, 0, x.length);
         System.arraycopy(y, 0, W, x.length, y.length);
         Arrays.fill(Z, 0, x.length, 1);
         Arrays.fill(Z, x.length, Z.length, 0);
 
-        // Execute appropriate method
-        TwoSamplePCLT.Result mout = TwoSamplePCLT.twosamplePclt(W, Z);
-
-        // Extract p-value based on alternative
-        double pValue;
-        switch (alternative) {
-            case TWO_SIDED:
-                pValue = mout.pValues.get(Alternative.TWO_SIDED);
-                break;
-            case GREATER:
-                pValue = mout.pValues.get(Alternative.GREATER);
-                break;
-            case LESS:
-                pValue = mout.pValues.get(Alternative.LESS);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown alternative");
-        }
-
-        return new PermTestResult(mout.Z, pValue, alternative);
+        return twosamplePclt(W, Z, alternative);
     }
 
-    public class TwoSamplePCLT {
+    public static PermTestResult twosamplePclt(final double[] scores, final int[] groups, final Alternative alternative) {
+        final int n = scores.length;
 
-        public static class Result {
-            public Map<Alternative, Double> pValues;
-            public double Z;
+        // Find the groups and determine which is "group 1"
+        final Set<Integer> uniqueGroups = new HashSet<>();
+        for (int g : groups) {
+            uniqueGroups.add(g);
+        }
+        final Integer[] groupArray = uniqueGroups.toArray(new Integer[0]);
+        Arrays.sort(groupArray);
 
-            public Result(Map<Alternative, Double> pValues, double Z) {
-                this.pValues = pValues;
-                this.Z = Z;
-            }
+        // The second group in sorted order becomes "Grp1"
+        final int group1 = groupArray.length > 1 ? groupArray[1] : groupArray[0];
+
+        // Create binary group indicator (grp)
+        final int[] groupIndicators = new int[n];
+        for (int i = 0; i < n; i++) {
+            groupIndicators[i] = groups[i] == group1 ? 1 : 0;
         }
 
-        public static Result twosamplePclt(double[] scores, int[] group) {
-            int n = scores.length;
+        // Calculate T0 (sum of scores * grp)
+        final double t0 = IntStream.range(0, n)
+                .mapToDouble(i -> scores[i] * groupIndicators[i])
+                .sum();
 
-            // Create frequency table equivalent
-            Map<Integer, Map<Double, Integer>> tab = new HashMap<>();
-            for (int i = 0; i < n; i++) {
-                tab.computeIfAbsent(group[i], k -> new HashMap<>())
-                        .merge(scores[i], 1, Integer::sum);
-            }
+        // Calculate means
+        final double meanScores = Arrays.stream(scores).average().orElse(0.0);
+        final double meanGrp = Arrays.stream(groupIndicators).average().orElse(0.0);
 
-            // Find the groups and determine which is "group 1"
-            Set<Integer> uniqueGroups = new HashSet<>();
-            for (int g : group) {
-                uniqueGroups.add(g);
-            }
-            Integer[] groupArray = uniqueGroups.toArray(new Integer[0]);
-            Arrays.sort(groupArray);
+        // Calculate SSE for scores
+        final double sseScores = Arrays.stream(scores)
+                .map(x -> Math.pow(x - meanScores, 2))
+                .sum();
 
-            // The second group in sorted order becomes "Grp1" (equivalent to dimnames(tab)[[1]][2])
-            int Grp1 = groupArray.length > 1 ? groupArray[1] : groupArray[0];
+        // Calculate SSE for group
+        final double sseGroup = Arrays.stream(groupIndicators)
+                .mapToDouble(x -> Math.pow(x - meanGrp, 2))
+                .sum();
 
-            // Create binary group indicator (grp)
-            int[] grp = new int[n];
-            for (int i = 0; i < n; i++) {
-                grp[i] = group[i] == Grp1 ? 1 : 0;
-            }
+        // Calculate Z statistic
+        final double Z = Math.sqrt(n - 1) * (t0 - n * meanScores * meanGrp) /
+                Math.sqrt(sseScores * sseGroup);
 
-            // Calculate T0 (sum of scores * grp)
-            double T0 = IntStream.range(0, n)
-                    .mapToDouble(i -> scores[i] * grp[i])
-                    .sum();
+        // Calculate p-values using standard normal distribution
+        final double pLess = STD_NORMAL_DISTRIBUTION.cumulativeProbability(Z);
+        final double pGreater = 1 - STD_NORMAL_DISTRIBUTION.cumulativeProbability(Z);
 
-            // Calculate means
-            double meanScores = Arrays.stream(scores).average().orElse(0.0);
-            double meanGrp = Arrays.stream(grp).average().orElse(0.0);
-
-            // Calculate SSE for scores
-            double SSE_scores = Arrays.stream(scores)
-                    .map(x -> Math.pow(x - meanScores, 2))
-                    .sum();
-
-            // Calculate SSE for group
-            double SSE_grp = Arrays.stream(grp)
-                    .mapToDouble(x -> Math.pow(x - meanGrp, 2))
-                    .sum();
-
-            // Calculate Z statistic
-            double Z = Math.sqrt(n - 1) * (T0 - n * meanScores * meanGrp) /
-                    Math.sqrt(SSE_scores * SSE_grp);
-
-            // Calculate p-values using standard normal distribution
-            double p_lte = STD_NORMAL_DISTRIBUTION.cumulativeProbability(Z);
-            double p_gte = 1 - STD_NORMAL_DISTRIBUTION.cumulativeProbability(Z);
-            double p_twosided = Math.min(1.0, 2 * Math.min(p_lte, p_gte));
-
-            // Create result map
-            Map<Alternative, Double> pValues = new LinkedHashMap<>();
-            pValues.put(Alternative.TWO_SIDED, p_twosided);
-            pValues.put(Alternative.LESS, p_lte);
-            pValues.put(Alternative.GREATER, p_gte);
-
-            return new Result(pValues, Z);
-        }
+        final double pValue = switch (alternative) {
+            case TWO_SIDED -> Math.min(1.0, 2 * Math.min(pLess, pGreater));
+            case GREATER -> pGreater;
+            case LESS -> pLess;
+            default -> throw new IllegalArgumentException("Unknown alternative");
+        };
+        return new PermTestResult(Z, pValue, alternative);
     }
 }
