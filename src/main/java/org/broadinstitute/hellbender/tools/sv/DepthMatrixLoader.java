@@ -84,8 +84,8 @@ public class DepthMatrixLoader {
 
     private static void setZeroesToOnes(final DepthMatrix matrix) {
         // Replace zeros with ones
-        for (String sample : matrix.getMatrix().keySet()) {
-            final double[] values = matrix.getMatrix().get(sample);
+        for (String sample : matrix.getSampleSet()) {
+            final double[] values = matrix.getSample(sample);
             for (int i = 0; i < values.length; i++) {
                 if (values[i] == 0.0) {
                     values[i] = 1.0;
@@ -121,8 +121,8 @@ public class DepthMatrixLoader {
 
             // Calculate median coverage for this window
             boolean hasData = false;
-            for (String sample : windowCov.getMatrix().keySet()) {
-                double[] values = windowCov.getMatrix().get(sample);
+            for (String sample : windowCov.getSampleSet()) {
+                double[] values = windowCov.getSample(sample);
                 if (!listMatrix.containsKey(sample)) {
                     listMatrix.put(sample, new ArrayList<>());
                 }
@@ -144,22 +144,22 @@ public class DepthMatrixLoader {
 
     private DepthMatrix loadStandardVariantMatrix(final SimpleInterval interval,
                                                   final FeatureDataSource<DepthEvidence> dataSource) {
-        DepthMatrix cov1 = queryDataSource(dataSource, interval);
+        DepthMatrix depthMatrix = queryDataSource(dataSource, interval);
 
         // Remove bins that start or end exactly at query boundaries (mimics R behavior)
         List<SimpleInterval> filteredBins = new ArrayList<>();
         Map<String, List<Double>> filteredData = new HashMap<>();
-        for (String sample : cov1.getMatrix().keySet()) {
+        for (String sample : depthMatrix.getSampleSet()) {
             filteredData.put(sample, new ArrayList<>());
         }
 
-        for (int i = 0; i < cov1.getBins().size(); i++) {
-            SimpleInterval bin = cov1.getBins().get(i);
+        for (int i = 0; i < depthMatrix.getBins().size(); i++) {
+            SimpleInterval bin = depthMatrix.getBins().get(i);
             if (bin.getStart() <= interval.getEnd() && bin.getEnd() != interval.getStart()) {
                 filteredBins.add(bin);
-                for (String sample : cov1.getMatrix().keySet()) {
+                for (String sample : depthMatrix.getSampleSet()) {
                     filteredData.get(sample)
-                            .add(cov1.getMatrix().get(sample)[i]);
+                            .add(depthMatrix.getSample(sample)[i]);
                 }
             }
         }
@@ -241,9 +241,9 @@ public class DepthMatrixLoader {
                 newBins.add(cov1.getBins().get(i));
             }
         }
-        final Map<String, double[]> newCoverageData = new HashMap<>(cov1.getMatrix());
-        for (final String sample : cov1.getMatrix().keySet()) {
-            final double[] values = newCoverageData.get(sample);
+        final Map<String, double[]> newCoverageData = new HashMap<>();
+        for (final String sample : cov1.getSampleSet()) {
+            final double[] values = cov1.getSample(sample);
             final double[] newValues = new double[newNumBins];
             int j = 0;
             for (int i = 0; i < values.length; i++) {
@@ -260,9 +260,9 @@ public class DepthMatrixLoader {
         final int numBins = matrix.getNumBins();
         final boolean subset = numBins >= 4;
         final List<SimpleInterval> newBins = subset ? matrix.getBins().subList(1, numBins - 1) : matrix.getBins();
-        final Map<String, double[]> newMatrix = new HashMap<>(matrix.getMatrix());
-        for (final String sample : matrix.getMatrix().keySet()) {
-            final double[] counts = matrix.getMatrix().get(sample);
+        final Map<String, double[]> newMatrix = new HashMap<>();
+        for (final String sample : matrix.getSampleSet()) {
+            final double[] counts = matrix.getSample(sample);
             final double[] trimmedCounts;
             if (subset) {
                 trimmedCounts = Arrays.copyOfRange(counts, 1, numBins - 1);
@@ -329,19 +329,20 @@ public class DepthMatrixLoader {
 
     private DepthMatrix compressMatrix(DepthMatrix cov1,
                                        CompressionResult compressionResult) {
-        if (cov1.getMatrix().isEmpty()) {
+        if (cov1.isEmpty()) {
             return cov1;
         }
-        final List<Pair<Integer, Integer>> compressionIndices = computeCompressionIndices(cov1.getMatrix().values().iterator().next(), compressionResult.compression);
+        final String firstSample = cov1.getSampleSet().iterator().next();
+        final List<Pair<Integer, Integer>> compressionIndices = computeCompressionIndices(cov1.getSample(firstSample), compressionResult.compression);
         final List<SimpleInterval> compressedBins = compressBins(cov1.getBins(), compressionIndices);
         Map<String, double[]> compressedMatrix = new LinkedHashMap<>();
-        List<String> columnNames = new ArrayList<>(cov1.getMatrix().keySet());
-        for (final String columnName : columnNames) {
-            double[] columnValues = cov1.getMatrix().get(columnName);
+        List<String> sampleNames = new ArrayList<>(cov1.getSampleSet());
+        for (final String sample : sampleNames) {
+            double[] columnValues = cov1.getSample(sample);
 
             // Apply compression function to this column
             double[] compressedColumn = compressColumn(columnValues, compressionIndices);
-            compressedMatrix.put(columnName, compressedColumn);
+            compressedMatrix.put(sample, compressedColumn);
         }
         return new DepthMatrix(compressedBins, compressedMatrix);
     }
@@ -431,14 +432,14 @@ public class DepthMatrixLoader {
 
 
     private static DepthMatrix normalizeData(DepthMatrix matrix, Map<String, Double> medians) {
-        List<String> samples = new ArrayList<>(matrix.getMatrix().keySet());
+        List<String> samples = new ArrayList<>(matrix.getSampleSet());
         if (samples.isEmpty()) {
             return matrix;
         }
-        int numBins = matrix.getMatrix().get(samples.get(0)).length;
-        Map<String, double[]> normalizedMatrix = new HashMap<>(SVUtils.hashMapCapacity(matrix.getMatrix().size()));
+        int numBins = matrix.getSample(samples.get(0)).length;
+        Map<String, double[]> normalizedMatrix = new HashMap<>(SVUtils.hashMapCapacity(matrix.getSampleSet().size()));
         for (final String sample : samples) {
-            double[] values = matrix.getMatrix().get(sample);
+            double[] values = matrix.getSample(sample);
             double median = medians.getOrDefault(sample, 1.0);
             final double[] newValues = new double[values.length];
             for (int j = 0; j < numBins; j++) {
