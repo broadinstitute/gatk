@@ -48,35 +48,29 @@ public class DepthMatrixLoader {
         Utils.nonNull(dataSource);
         Utils.nonNull(sampleMedians);
 
-        final DepthMatrix rawData;
+        final DepthMatrix rawMatrix;
         if (interval.getLengthOnReference() > largeSizeCutoff) {
-            rawData = DepthMatrix.fromDataSourceSubsampled(interval, dataSource, largeVariantWindow, largeVariantRegionPoints, dictionary);
+            rawMatrix = DepthMatrix.fromDataSourceSubsampled(interval, dataSource, largeVariantWindow, largeVariantRegionPoints, dictionary);
         } else {
-            rawData = DepthMatrix.fromDataSource(interval, dataSource);
+            rawMatrix = DepthMatrix.fromDataSource(interval, dataSource);
         }
 
         // Calculate compression and region bounds
-        final CompressionResult compressionResult = calculateCompression(rawData, interval);
+        final CompressionResult compressionResult = calculateCompression(rawMatrix, interval);
 
         // Trim bins from compression
-        final DepthMatrix trimmedData = trimBins(rawData, compressionResult);
+        final DepthMatrix trimmedMatrix = trimMatrix(rawMatrix, compressionResult);
 
         // Set 0 entries to 1
-        setZeroesToOnes(trimmedData);
+        setZeroesToOnes(trimmedMatrix);
 
-        final DepthMatrix compressedData;
-        final Map<String, Double> compressedMedians;
-        if (compressionResult == null || compressionResult.compression <= 1) {
-            // No compression needed
-            compressedData = trimmedData;
-            compressedMedians = sampleMedians;
-        } else {
-            // Apply compression and normalization
-            compressedData = compressMatrix(trimmedData, compressionResult);
-            compressedMedians = compressMedians(sampleMedians, compressionResult);
-        }
-        final DepthMatrix normalizedData = normalizeData(compressedData, compressedMedians);
-        return trimMatrix(normalizedData);
+        // Apply compression and normalization
+        final DepthMatrix compressedMatrix = compressMatrix(trimmedMatrix, compressionResult);
+        final Map<String, Double> compressedMedians = compressMedians(sampleMedians, compressionResult);
+
+        // Normalize by sample depth
+        final DepthMatrix normalizedMatrix = normalizeMatrix(compressedMatrix, compressedMedians);
+        return trimMatrix(normalizedMatrix);
     }
 
     private static void setZeroesToOnes(final DepthMatrix matrix) {
@@ -91,7 +85,7 @@ public class DepthMatrixLoader {
         }
     }
 
-    private DepthMatrix trimBins(final DepthMatrix matrix, final CompressionResult compressionResult) {
+    private DepthMatrix trimMatrix(final DepthMatrix matrix, final CompressionResult compressionResult) {
         if (compressionResult == null) {
             return matrix;
         }
@@ -116,7 +110,7 @@ public class DepthMatrixLoader {
                 newBins.add(matrixBins.get(i));
             }
         }
-        final Map<String, double[]> newCoverageData = new HashMap<>();
+        final Map<String, double[]> newMatrix = new HashMap<>();
         for (final String sample : matrix.getSampleSet()) {
             final double[] values = matrix.getSample(sample);
             final double[] newValues = new double[newNumBins];
@@ -126,9 +120,9 @@ public class DepthMatrixLoader {
                     newValues[j++] = values[i];
                 }
             }
-            newCoverageData.put(sample, newValues);
+            newMatrix.put(sample, newValues);
         }
-        return new DepthMatrix(newBins, newCoverageData);
+        return new DepthMatrix(newBins, newMatrix);
     }
 
     private DepthMatrix trimMatrix(final DepthMatrix matrix) {
@@ -138,12 +132,7 @@ public class DepthMatrixLoader {
         final Map<String, double[]> newMatrix = new HashMap<>();
         for (final String sample : matrix.getSampleSet()) {
             final double[] counts = matrix.getSample(sample);
-            final double[] trimmedCounts;
-            if (subset) {
-                trimmedCounts = Arrays.copyOfRange(counts, 1, numBins - 1);
-            } else {
-                trimmedCounts = counts;
-            }
+            final double[] trimmedCounts = subset ? Arrays.copyOfRange(counts, 1, numBins - 1) : counts;
             newMatrix.put(sample, trimmedCounts);
         }
         return new DepthMatrix(newBins, newMatrix);
@@ -151,7 +140,7 @@ public class DepthMatrixLoader {
 
     private CompressionResult calculateCompression(final DepthMatrix matrix, final SimpleInterval interval) {
         final int start = interval.getStart() - 1; // covert to 0-based to match R code
-        int end = interval.getEnd();
+        final int end = interval.getEnd();
 
         // Find bins that overlap with the query interval
         int startBinIdx = -1;
@@ -204,32 +193,33 @@ public class DepthMatrixLoader {
         return new CompressionResult(compression, adjustedRegion);
     }
 
-    private DepthMatrix compressMatrix(DepthMatrix cov1,
-                                       CompressionResult compressionResult) {
-        if (cov1.isEmpty()) {
-            return cov1;
+    private DepthMatrix compressMatrix(final DepthMatrix matrix,
+                                       final CompressionResult compressionResult) {
+        if (compressionResult == null || compressionResult.compression() <= 1 || matrix.isEmpty()) {
+            return matrix;
         }
-        final String firstSample = cov1.getSampleSet().iterator().next();
-        final List<Pair<Integer, Integer>> compressionIndices = computeCompressionIndices(cov1.getSample(firstSample), compressionResult.compression);
-        final List<SimpleInterval> compressedBins = compressBins(cov1.getBins(), compressionIndices);
-        Map<String, double[]> compressedMatrix = new LinkedHashMap<>();
-        List<String> sampleNames = new ArrayList<>(cov1.getSampleSet());
-        for (final String sample : sampleNames) {
-            double[] columnValues = cov1.getSample(sample);
-
-            // Apply compression function to this column
-            double[] compressedColumn = compressColumn(columnValues, compressionIndices);
-            compressedMatrix.put(sample, compressedColumn);
+        final String firstSample = matrix.getSampleSet().iterator().next();
+        final List<Pair<Integer, Integer>> compressionIndices = computeCompressionIndices(matrix.getSample(firstSample), compressionResult.compression);
+        final List<SimpleInterval> compressedBins = compressBins(matrix.getBins(), compressionIndices);
+        final Map<String, double[]> compressedMatrix = new HashMap<>();
+        for (final String sample : matrix.getSampleSet()) {
+            final double[] counts = matrix.getSample(sample);
+            // Apply compression function to this sample's counts
+            final double[] compressed = compressCounts(counts, compressionIndices);
+            compressedMatrix.put(sample, compressed);
         }
         return new DepthMatrix(compressedBins, compressedMatrix);
     }
 
-    private Map<String, Double> compressMedians(Map<String, Double> allnorm,
-                                                CompressionResult compressionResult) {
+    private Map<String, Double> compressMedians(final Map<String, Double> sampleMedians,
+                                                final CompressionResult compressionResult) {
+        if (compressionResult == null || compressionResult.compression() <= 1) {
+            return sampleMedians;
+        }
         // Approximate rebinned per-sample medians
-        Map<String, Double> adjustedMedians = new HashMap<>();
-        for (String sample : allnorm.keySet()) {
-            double median = allnorm.get(sample);
+        final Map<String, Double> adjustedMedians = new HashMap<>();
+        for (final String sample : sampleMedians.keySet()) {
+            double median = sampleMedians.get(sample);
             if (median == 0.0) median = 1.0;
             adjustedMedians.put(sample, median * compressionResult.compression);
         }
@@ -244,17 +234,18 @@ public class DepthMatrixLoader {
      * @param compression compression factor (as double)
      * @return compressed array as double[]
      */
-    private static List<Pair<Integer, Integer>> computeCompressionIndices(double[] vals, double compression) {
+    private static List<Pair<Integer, Integer>> computeCompressionIndices(final double[] vals, final double compression) {
+        Utils.nonNull(vals);
         Utils.validateArg(compression > 1., "Compression must be greater than 1");
         if (vals.length == 0) return Collections.emptyList();
-        List<Pair<Integer, Integer>> result = new ArrayList<>();
+        final List<Pair<Integer, Integer>> result = new ArrayList<>();
 
         // Convert compression to int for array indexing
         final int firstEnd = Math.min(((int) compression) - 1, vals.length - 1);
         result.add(new Pair<>(0, firstEnd));
 
         // Process remaining chunks
-        int numChunks = (int) (vals.length / compression);
+        final int numChunks = (int) (vals.length / compression);
         for (int i = 2; i <= numChunks; i++) {
             final double startIndexFloat = ((i - 1) * compression);
             final int startIndex = (int) startIndexFloat;
@@ -269,20 +260,24 @@ public class DepthMatrixLoader {
         return Collections.unmodifiableList(result);
     }
 
-    private List<SimpleInterval> compressBins(List<SimpleInterval> bins, List<Pair<Integer, Integer>> indices) {
-        final List<SimpleInterval> compressedBins = new ArrayList<>();
+    private List<SimpleInterval> compressBins(final List<SimpleInterval> bins, final List<Pair<Integer, Integer>> indices) {
+        final List<SimpleInterval> compressedBins = new ArrayList<>(indices.size());
         for (final Pair<Integer, Integer> pair : indices) {
-            final int startIndex = pair.getLeft();
-            final int endIndex = pair.getRight();
-            final SimpleInterval startBin = bins.get(startIndex);
-            final SimpleInterval endBin = bins.get(endIndex);
-            final SimpleInterval compressedBin = new SimpleInterval(startBin.getContig(), startBin.getStart(), endBin.getEnd());
-            if (!IntervalUtils.intervalIsOnDictionaryContig(compressedBin, dictionary)) {
-                throw new GATKException("Compressed interval " + compressedBin + " failed to validate against the sequence dictionary");
-            }
-            compressedBins.add(compressedBin);
+            compressedBins.add(makeCompressedBin(bins, pair.getLeft(), pair.getRight()));
         }
         return compressedBins;
+    }
+
+    private SimpleInterval makeCompressedBin(final List<SimpleInterval> bins, final int startIndex, final int endIndex) {
+        if (startIndex < 0 || startIndex >= bins.size()) {
+            throw new IllegalArgumentException("Invalid start bin index: " + startIndex);
+        }
+        if (endIndex < 0 || endIndex >= bins.size()) {
+            throw new IllegalArgumentException("Invalid end bin index: " + endIndex);
+        }
+        final SimpleInterval startBin = bins.get(startIndex);
+        final SimpleInterval endBin = bins.get(endIndex);
+        return new SimpleInterval(startBin.getContig(), startBin.getStart(), endBin.getEnd());
     }
 
     /**
@@ -292,8 +287,8 @@ public class DepthMatrixLoader {
      * @param indices indices bounding compression intervals
      * @return compressed array as double[]
      */
-    private static double[] compressColumn(double[] vals, List<Pair<Integer, Integer>> indices) {
-        double[] newcol = new double[indices.size()];
+    private static double[] compressCounts(final double[] vals, final List<Pair<Integer, Integer>> indices) {
+        final double[] compressed = new double[indices.size()];
         int i = 0;
         for (final Pair<Integer, Integer> pair : indices) {
             final int startIndex = pair.getLeft();
@@ -302,29 +297,28 @@ public class DepthMatrixLoader {
             for (int j = startIndex; j <= endIndex && j < vals.length; j++) {
                 sum += vals[j];
             }
-            newcol[i++] = sum;
+            compressed[i++] = sum;
         }
-        return newcol;
+        return compressed;
     }
 
-
-    private static DepthMatrix normalizeData(DepthMatrix matrix, Map<String, Double> medians) {
-        List<String> samples = new ArrayList<>(matrix.getSampleSet());
-        if (samples.isEmpty()) {
+    private static DepthMatrix normalizeMatrix(final DepthMatrix matrix, final Map<String, Double> sampleMedians) {
+        if (matrix.isEmpty()) {
             return matrix;
         }
-        int numBins = matrix.getSample(samples.get(0)).length;
-        Map<String, double[]> normalizedMatrix = new HashMap<>(SVUtils.hashMapCapacity(matrix.getSampleSet().size()));
-        for (final String sample : samples) {
-            double[] values = matrix.getSample(sample);
-            double median = medians.getOrDefault(sample, 1.0);
+        final Map<String, double[]> normalizedMatrix = new HashMap<>();
+        for (final String sample : matrix.getSampleSet()) {
+            final double[] values = matrix.getSample(sample);
+            if (!sampleMedians.containsKey(sample)) {
+                throw new IllegalArgumentException("Sample " + sample + " has no median");
+            }
+            final double median = sampleMedians.get(sample);
             final double[] newValues = new double[values.length];
-            for (int j = 0; j < numBins; j++) {
+            for (int j = 0; j < matrix.getNumBins(); j++) {
                 newValues[j] = values[j] / median;
             }
             normalizedMatrix.put(sample, newValues);
         }
         return new DepthMatrix(matrix.getBins(), normalizedMatrix);
     }
-
 }
