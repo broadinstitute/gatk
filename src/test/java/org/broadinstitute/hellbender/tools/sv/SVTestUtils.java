@@ -732,8 +732,18 @@ public class SVTestUtils {
         assertFloatWithinTolerance(a, b, DEFAULT_FLOAT_TOLERANCE);
     }
 
-    public static void assertFloatWithinTolerance(final Double a, final Double b, final double tolerance) {
-        Assert.assertTrue((a == null && b == null) || (Double.isNaN(a) && Double.isNaN(b))
-                || Math.abs(a - b) <= tolerance);
+    public static void assertFloatWithinTolerance(final Double actual, final Double expected, final double tolerance) {
+        if (actual == null || expected == null) {
+            Assert.assertEquals(actual, expected);
+        } else if (Double.isNaN(actual) || Double.isNaN(expected)) {
+            Assert.assertTrue(Double.isNaN(actual));
+            Assert.assertTrue(Double.isNaN(expected));
+        } else {
+            if (Math.abs(actual - expected) > tolerance) {
+                throw new AssertionError("Double values not within tolerance " + tolerance + "\nExpected :" + expected + "\nActual   :" + actual);
+            }
+        }
+        Assert.assertTrue((actual == null && expected == null) || (Double.isNaN(actual) && Double.isNaN(expected))
+                || Math.abs(actual - expected) <= tolerance);
     }
 }
