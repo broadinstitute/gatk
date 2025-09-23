@@ -85,7 +85,7 @@ task MapUnmappedVIDs {
         # 7. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
         #    to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
         #    Run the following to clean out non-"pseudo vid" entries from this file.
-        python /app/filter_vcf_by_vids.py pseudo_vids_file.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
+        python /app/filter_vcf_by_vids.py unmapped_vids.csv to_search.sort.dedup.norm.vcf > hits_only.vcf
 
         # 8. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
         #    positions as GVS.
@@ -102,5 +102,8 @@ task MapUnmappedVIDs {
     }
     output {
         Boolean done = true
+        Array[File] shell_scripts = glob("*.sh")
+        Array[File] vcfs = glob("*.vcf")
+        Array[File] tsvs = glob("*.tsv")
     }
 }
