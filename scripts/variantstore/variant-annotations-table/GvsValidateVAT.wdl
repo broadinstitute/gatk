@@ -156,6 +156,14 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call SpotCheckForManeSelectTranscript {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
     # Check if the input boolean `is_small_callset` is defined,
     # if not use the `GetNumSamples` task to find the number of samples in the callset and set the flag if it's < 10000
     Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
@@ -201,6 +209,7 @@ workflow GvsValidateVat {
                            DuplicateAnnotations.pass,
                            ClinvarSignificance.pass,
                            SchemaAAChangeAndExonNumberConsistent.pass,
+                           SpotCheckForManeSelectTranscript.pass,
                            SpotCheckForAAChangeAndExonNumberConsistency.pass,
                            CheckForNullColumns.pass
                            ],
@@ -219,6 +228,7 @@ workflow GvsValidateVat {
                                    DuplicateAnnotations.name,
                                    ClinvarSignificance.name,
                                    SchemaAAChangeAndExonNumberConsistent.name,
+                                   SpotCheckForManeSelectTranscript.name,
                                    SpotCheckForAAChangeAndExonNumberConsistency.name,
                                    CheckForNullColumns.name
                                    ],
@@ -237,6 +247,7 @@ workflow GvsValidateVat {
                                      DuplicateAnnotations.result,
                                      ClinvarSignificance.result,
                                      SchemaAAChangeAndExonNumberConsistent.result,
+                                     SpotCheckForManeSelectTranscript.result,
                                      SpotCheckForAAChangeAndExonNumberConsistency.result,
                                      CheckForNullColumns.result
                                      ],
@@ -260,7 +271,8 @@ workflow GvsValidateVat {
                            SubpopulationAlleleCount.pass,
                            SubpopulationAlleleNumber.pass,
                            DuplicateAnnotations.pass,
-                           SchemaAAChangeAndExonNumberConsistent.pass
+                           SchemaAAChangeAndExonNumberConsistent.pass,
+                           SpotCheckForManeSelectTranscript.pass,
                            ],
                 validation_names = [
                                    EnsureVatTableHasVariants.name,
@@ -276,6 +288,7 @@ workflow GvsValidateVat {
                                    SubpopulationAlleleNumber.name,
                                    DuplicateAnnotations.name,
                                    SchemaAAChangeAndExonNumberConsistent.name,
+                                   SpotCheckForManeSelectTranscript.name,
                                    ],
                 validation_results = [
                                      EnsureVatTableHasVariants.result,
@@ -290,7 +303,8 @@ workflow GvsValidateVat {
                                      SubpopulationAlleleCount.result,
                                      SubpopulationAlleleNumber.result,
                                      DuplicateAnnotations.result,
-                                     SchemaAAChangeAndExonNumberConsistent.result
+                                     SchemaAAChangeAndExonNumberConsistent.result,
+                                     SpotCheckForManeSelectTranscript.result,
                                      ],
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -1328,10 +1342,10 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
                 echo "The VAT table ~{fq_vat_table} has been spot checked for aa_change and exon_number consistency." > ~{results_file}
             else
                 echo "The VAT table ~{fq_vat_table} has failed the spot check for aa_change and exon_number consistency." > ~{results_file}
-        fi
+            fi
         # otherwise, something is off, so return the output from the bq query call
         else
-            echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv.csv) >&2
+            echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv) >&2
             exit 1
         fi
     >>>
@@ -1349,6 +1363,74 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     output {
         Boolean pass = read_boolean(pf_file)
         String name = "SpotCheckForAAChangeAndExonNumberConsistency"
+        String result = read_string(results_file)
+    }
+}
+
+task SpotCheckForManeSelectTranscript {
+    input {
+        String project_id
+        String fq_vat_table
+        String last_modified_timestamp
+        String cloud_sdk_docker
+    }
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    # This test runs a spot check on the VAT table to verify that some known MANE Select and MANE Plus Clinical names are present
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # bq query --max_rows check: ok single row
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        COUNT (DISTINCT nom) FROM
+        (
+            SELECT mane_select_name as nom
+            FROM `~{fq_vat_table}`
+            WHERE mane_select_name = "syntaxin 16"
+        UNION ALL
+            SELECT mane_plus_clinical_name as nom
+            FROM `~{fq_vat_table}`
+            where mane_plus_clinical_name = "GNAS complex locus"
+        )' > output.csv
+
+        NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+        echo "false" > ~{pf_file}
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
+        if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
+            if [[ $NUMVARS -eq 2 ]]; then
+                echo "true" > ~{pf_file}
+                echo "The VAT table ~{fq_vat_table} has been successfully spot checked for known MANE Select Names and MANE Plus Clinical Names." > ~{results_file}
+            else
+                echo "The VAT table ~{fq_vat_table} has failed the spot check for known MANE Select Names and MANE Plus Clinical Names." > ~{results_file}
+            fi
+        # otherwise, something is off, so return the output from the bq query call
+        else
+            echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv) >&2
+            exit 1
+        fi
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "SpotCheckForManeSelectTranscript"
         String result = read_string(results_file)
     }
 }
