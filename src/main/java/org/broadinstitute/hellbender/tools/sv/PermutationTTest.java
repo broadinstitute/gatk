@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -37,37 +38,18 @@ public class PermutationTTest {
         Arrays.fill(Z, 0, x.length, 1);
         Arrays.fill(Z, x.length, Z.length, 0);
 
-        return twosamplePclt(W, Z, alternative);
+        return twosamplePclt(W, x.length, alternative);
     }
 
-    public static PermTestResult twosamplePclt(final double[] scores, final int[] groups, final Alternative alternative) {
+    public static PermTestResult twosamplePclt(final double[] scores, final int nFirstGroup, final Alternative alternative) {
         final int n = scores.length;
 
-        // Find the groups and determine which is "group 1"
-        final Set<Integer> uniqueGroups = new HashSet<>();
-        for (int g : groups) {
-            uniqueGroups.add(g);
-        }
-        final Integer[] groupArray = uniqueGroups.toArray(new Integer[0]);
-        Arrays.sort(groupArray);
-
-        // The second group in sorted order becomes "Grp1"
-        final int group1 = groupArray.length > 1 ? groupArray[1] : groupArray[0];
-
-        // Create binary group indicator (grp)
-        final int[] groupIndicators = new int[n];
-        for (int i = 0; i < n; i++) {
-            groupIndicators[i] = groups[i] == group1 ? 1 : 0;
-        }
-
         // Calculate T0 (sum of scores * grp)
-        final double t0 = IntStream.range(0, n)
-                .mapToDouble(i -> scores[i] * groupIndicators[i])
-                .sum();
+        final double t0 = MathUtils.sum(scores, 0, nFirstGroup);
 
         // Calculate means
         final double meanScores = Arrays.stream(scores).average().orElse(0.0);
-        final double meanGrp = Arrays.stream(groupIndicators).average().orElse(0.0);
+        final double meanGrp = n == 0 ? 0 : nFirstGroup / (double) n;
 
         // Calculate SSE for scores
         final double sseScores = Arrays.stream(scores)
@@ -75,9 +57,7 @@ public class PermutationTTest {
                 .sum();
 
         // Calculate SSE for group
-        final double sseGroup = Arrays.stream(groupIndicators)
-                .mapToDouble(x -> Math.pow(x - meanGrp, 2))
-                .sum();
+        final double sseGroup = nFirstGroup * Math.pow(1 - meanGrp, 2) + (n - nFirstGroup) * Math.pow(-meanGrp, 2);
 
         // Calculate Z statistic
         final double Z = Math.sqrt(n - 1) * (t0 - n * meanScores * meanGrp) /
