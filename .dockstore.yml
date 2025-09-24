@@ -344,6 +344,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1730_clusters_leaking
+             - gg_VS-1743_NewPvarIDFormat
          tags:
              - /.*/
    - name: GvsIngestTieout
