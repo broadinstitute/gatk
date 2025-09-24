@@ -10,13 +10,18 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
-import org.jetbrains.annotations.Nullable;
 import picard.util.MathUtil;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class DepthEvidenceTest {
+
+    protected static final Median MEDIAN = new Median();
+    protected static final NormalDistribution STD_NORMAL = new NormalDistribution();
+    protected static final double POWER_SIGNIFICANCE_LEVEL = 0.05;
+
+    protected final double powerThreshold;
 
     protected record SampleSetResult(Set<String> treatSampleSet, Set<String> controlSampleSet) {
     }
@@ -27,32 +32,29 @@ public class DepthEvidenceTest {
     public record DepthTestResult(double pValue, double secondMaxP, double medianSeparation) {
     }
 
-    protected static final Median MEDIAN = new Median();
-    protected static final NormalDistribution STD_NORMAL = new NormalDistribution();
-    protected final double powerThreshold;
-
     public DepthEvidenceTest(final double powerThreshold) {
         this.powerThreshold = powerThreshold;
     }
 
     public DepthTestResult test(final SVCallRecord record, final DepthMatrix depthMatrix) {
+        final GATKSVVCFConstants.StructuralVariantAnnotationType svType = record.getType();
+        Utils.validateArg(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL.equals(svType) || GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.equals(svType), "Only DEL/DUP types are supported");
         final SampleSetResult sampleSets = getSampleSets(record);
         if (sampleSets == null) return null;
         final double[] controlMedians = getSampleMedians(depthMatrix, sampleSets.controlSampleSet);
         final double[] treatMedians = getSampleMedians(depthMatrix, sampleSets.treatSampleSet);
-        final double power = TTestPowerCalculator.powerCalc(controlMedians, treatMedians);
-        final GATKSVVCFConstants.StructuralVariantAnnotationType svtype = record.getType();
+        final double power = TTestPowerCalculator.power(controlMedians, treatMedians, POWER_SIGNIFICANCE_LEVEL);
         final DepthStats result;
         if (!Double.isNaN(power) && power > powerThreshold) {
-            result = highPowerTest(depthMatrix, sampleSets.controlSampleSet, sampleSets.treatSampleSet, svtype, controlMedians, treatMedians);
+            result = poweredTest(depthMatrix, sampleSets.controlSampleSet, sampleSets.treatSampleSet, svType, controlMedians, treatMedians);
         } else {
-            result = lowPowerTest(depthMatrix, sampleSets.controlSampleSet, sampleSets.treatSampleSet, svtype, treatMedians, controlMedians);
+            result = underpoweredTest(depthMatrix, sampleSets.controlSampleSet, sampleSets.treatSampleSet, svType, treatMedians, controlMedians);
         }
-        final double medianSeparation = getMedianSeparation(svtype, controlMedians, treatMedians);
+        final double medianSeparation = getMedianSeparation(svType, controlMedians, treatMedians);
         return new DepthTestResult(result.pValue, result.secondMaxP, medianSeparation);
     }
 
-    protected @Nullable SampleSetResult getSampleSets(final SVCallRecord record) {
+    protected static SampleSetResult getSampleSets(final SVCallRecord record) {
         final List<Genotype> carrierGenotypes = record.getCarrierGenotypeList();
         if (carrierGenotypes.isEmpty()) {
             // Do not process uncalled variants
@@ -63,7 +65,7 @@ public class DepthEvidenceTest {
             throw new GATKException("Found a sample with expected copy number (ECN) of " + maxExpectedCopyNumber + " but this tool only supports diploid samples");
         }
         final Set<String> rawCarrierSampleSet = record.getCarrierSampleSet();
-        final Set<String> rawRefSampleSet = Sets.difference(record.getAllSamples(), rawCarrierSampleSet); // TODO: does not account for no-call samples
+        final Set<String> rawRefSampleSet = Sets.difference(record.getAllSamples(), rawCarrierSampleSet); // TODO: assumes no-calls are hom-ref
         final Set<String> eligibleGenotypes = getSamplesWithExpectedCopyNumber(maxExpectedCopyNumber, record.getGenotypes()); // TODO: male-only variants only tested against other males but females could be incorporated here
         final Set<String> treatSampleSet = Sets.intersection(rawCarrierSampleSet, eligibleGenotypes);
         final Set<String> controlSampleSet = Sets.intersection(rawRefSampleSet, eligibleGenotypes);
@@ -72,22 +74,26 @@ public class DepthEvidenceTest {
 
     private static int getMaxExpectedCopyNumber(final Collection<Genotype> genotypes) {
         Utils.nonNull(genotypes);
-        Utils.nonNull(genotypes);
-        final OptionalInt result = genotypes.stream()
-                .mapToInt(g -> VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0))
-                .max();
-        return result.getAsInt();
+        if (genotypes.isEmpty()) {
+            return 0;
+        }
+        return genotypes.stream()
+                .mapToInt(g -> VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1))
+                .max().getAsInt();
     }
 
     private static Set<String> getSamplesWithExpectedCopyNumber(final int state, final List<Genotype> genotypes) {
         Utils.nonNull(genotypes);
+        if (genotypes.isEmpty()) {
+            return Collections.emptySet();
+        }
         return genotypes.stream()
-                .filter(g -> VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0) == state)
+                .filter(g -> VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1) == state)
                 .map(Genotype::getSampleName)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private double[] getSampleMedians(final DepthMatrix depthMatrix, final Set<String> samples) {
+    private static double[] getSampleMedians(final DepthMatrix depthMatrix, final Set<String> samples) {
         final double[] medians = new double[samples.size()];
         int i = 0;
         for (final String sample : samples) {
@@ -96,12 +102,12 @@ public class DepthEvidenceTest {
         return medians;
     }
 
-    protected DepthStats lowPowerTest(final DepthMatrix depthMatrix,
-                                      final Set<String> controlSampleSet,
-                                      final Set<String> treatSampleSet,
-                                      final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
-                                      final double[] treatMedians,
-                                      final double[] controlMedians) {
+    protected static DepthStats underpoweredTest(final DepthMatrix depthMatrix,
+                                                 final Set<String> controlSampleSet,
+                                                 final Set<String> treatSampleSet,
+                                                 final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
+                                                 final double[] treatMedians,
+                                                 final double[] controlMedians) {
         // Underpowered case - use multiple single-sample t-tests
         final int alternativeSign;
         if (svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
@@ -121,7 +127,7 @@ public class DepthEvidenceTest {
             pValues[i] = Math.log(Math.max(STD_NORMAL.cumulativeProbability(alternativeSign * (treatMedians[i] - controlMean) / controlStd), Double.MIN_VALUE));
             final double[] slicePvals = new double[numBins];
             for (int j = 0; j < numBins; j++) {
-                final double[] controlSlice = depthMatrix.slice(j,  controlSampleSet);
+                final double[] controlSlice = depthMatrix.slice(j, controlSampleSet);
                 final double[] treatSlice = depthMatrix.slice(j, Collections.singleton(treatSampleList[i]));
                 final double controlMeanSlice = MathUtil.mean(controlSlice);
                 final double controlStdSlice = MathUtil.stddev(controlSlice, controlMeanSlice) * Math.sqrt(controlSlice.length / (double) (controlSlice.length - 1));
@@ -137,12 +143,12 @@ public class DepthEvidenceTest {
         return new DepthStats(combinePValues(pValues), combinePValues(secondMaxPValues));
     }
 
-    protected DepthStats highPowerTest(final DepthMatrix depthMatrix,
-                                       final Set<String> controlSampleSet,
-                                       final Set<String> treatSampleSet,
-                                       final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
-                                       final double[] controlMedians,
-                                       final double[] treatMedians) {
+    protected static DepthStats poweredTest(final DepthMatrix depthMatrix,
+                                            final Set<String> controlSampleSet,
+                                            final Set<String> treatSampleSet,
+                                            final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
+                                            final double[] controlMedians,
+                                            final double[] treatMedians) {
         final PermutationTTest.Alternative alternative;
         if (svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
             alternative = PermutationTTest.Alternative.GREATER;
@@ -171,7 +177,7 @@ public class DepthEvidenceTest {
         return new DepthStats(result.pValue(), secondMaxP);
     }
 
-    private double combinePValues(final double[] x) {
+    private static double combinePValues(final double[] x) {
         if (x.length == 0) {
             return Double.NaN;
         } else if (x.length == 1) {
@@ -183,8 +189,8 @@ public class DepthEvidenceTest {
         }
     }
 
-    protected double getMedianSeparation(final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
-                                         final double[] controlMedians, final double[] treatMedians) {
+    protected static double getMedianSeparation(final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
+                                                final double[] controlMedians, final double[] treatMedians) {
         final int medianSeparationSign;
         if (svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
             medianSeparationSign = 1;

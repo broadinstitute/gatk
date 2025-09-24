@@ -38,13 +38,13 @@ import java.util.*;
 public final class AggregateDepthEvidence extends VariantWalker {
 
     public static final String DEPTH_EVIDENCE_FILE_PATH_LONG_NAME = "rd-file";
-    public static final String MEDIAN_COUNTS_FILE_PATH_LONG_NAME = "median-counts";
+    public static final String MEDIAN_COUNTS_FILE_PATH_LONG_NAME = AggregateSVEvidence.MEDIAN_COVERAGE_LONG_NAME;
     public static final String LARGE_VARIANT_SIZE_LONG_NAME = "large-variant-size";
     public static final String LARGE_VARIANT_POINTS_LONG_NAME = "large-variant-points";
     public static final String LARGE_VARIANT_WINDOW_LONG_NAME = "large-variant-window";
     public static final String NUM_BINS_LONG_NAME = "num-bins";
     public static final String MAX_QUALITY_LONG_NAME = "max-qual";
-    public static final String POWER_THRESHOLD_LONG_NAME = "power-thresh";
+    public static final String POWER_THRESHOLD_LONG_NAME = "power-threshold";
 
     @Argument(
             fullName = DEPTH_EVIDENCE_FILE_PATH_LONG_NAME,
