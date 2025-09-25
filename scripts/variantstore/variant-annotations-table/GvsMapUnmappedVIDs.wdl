@@ -70,10 +70,10 @@ task MapUnmappedVIDs {
         if [ $? -ne 0 ]
         then
             gcloud storage cp ~{sites_only_vcf} .
-            sites_only=$(basename ~{sites_only_vcf})
+            sites_only="$(basename ~{sites_only_vcf})"
             bcftools index --tbi ${sites_only}
         else
-            sites_only=~{sites_only_vcf}
+            sites_only="~{sites_only_vcf}"
         fi
 
         # 3. Generate bcftools commands to query the sites-only VCF.
