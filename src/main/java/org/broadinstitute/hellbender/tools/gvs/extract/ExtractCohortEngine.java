@@ -446,7 +446,7 @@ public class ExtractCohortEngine {
     }
 
     private void addToRefSortingCollection(final SortingCollection<GenericRecord> sortingCollection, final Iterable<GenericRecord> avroReader, final VariantBitSet vbs) {
-        int recordsProcessed = 0;
+        long recordsProcessed = 0;
         long startTime = System.currentTimeMillis();
 
         for (final GenericRecord queryRow : avroReader) {
