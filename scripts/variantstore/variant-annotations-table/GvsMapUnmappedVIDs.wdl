@@ -63,38 +63,51 @@ task MapUnmappedVIDs {
 
         ' | sed 1d > unmapped_vids.tsv
 
-        # 2. Generate bcftools commands to query the sites-only VCF.
-        python /app/generate_bcftools_commands.py --sites-only ~{sites_only_vcf} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        # 2. Subsequent steps require an index for the sites-only VCF. If an index is already present in the cloud just
+        #    use that, otherwise download the sites-only VCF and index it.
+        gsutil stat ~{sites_only_vcf}.tbi
 
-        # 3a. auth before doing GCS-flavored bcftools commands
+        if [ $? -ne 0 ]
+        then
+            gcloud storage cp ~{sites_only_vcf} .
+            sites_only=$(basename ~{sites_only_vcf})
+            bcftools index --tbi ${sites_only}
+        else
+            sites_only=~{sites_only_vcf}
+        fi
+
+        # 3. Generate bcftools commands to query the sites-only VCF.
+        python /app/generate_bcftools_commands.py --sites-only ${sites_only} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+
+        # 4. auth before doing GCS-flavored bcftools commands
         set +o xtrace
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
         set -o xtrace
 
-        # 3b. Initialize a `to_search.vcf` with a VCF header, using the sites-only VCF as a donor.
-        bcftools head ~{sites_only_vcf} > to_search.vcf
+        # 5. Initialize a `to_search.vcf` with a VCF header, using the sites-only VCF as a donor.
+        bcftools head ${sites_only} > to_search.vcf
 
-        # 4. Run the generated bcftools commands to extract the relevant variants from the sites only VCF and add the
+        # 6. Run the generated bcftools commands to extract the relevant variants from the sites only VCF and add the
         #    output to this `to_search.vcf` file.
         bash bcftools_commands.sh
 
-        # 5. The generated bcftools commands will likely have overlapping ranges and generate duplicate and non-sequential entries
+        # 7. The generated bcftools commands will likely have overlapping ranges and generate duplicate and non-sequential entries
         #    in the `to_search.vcf` file. Fix that by sorting and deduplicating the VCF.
         bcftools sort to_search.vcf | bcftools norm -d none -o to_search.sort.dedup.vcf
 
-        # 6. Make a normalized (left aligned) version of this VCF.
+        # 8. Make a normalized (left aligned) version of this VCF.
         bcftools norm -f ~{reference.reference_fasta} to_search.sort.dedup.vcf > to_search.sort.dedup.norm.vcf
 
-        # 7. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
+        # 9. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
         #    to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
         #    Run the following to clean out non-"pseudo vid" entries from this file.
         python /app/filter_vcf_by_vids.py unmapped_vids.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
 
-        # 8. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
-        #    positions as GVS.
+        # 10. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
+        #     positions as GVS.
         python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
 
-        # 9. Load into BigQuery
+        # 11. Load into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
             ~{dataset}.~{unmapped_vid_mapping_table_name} unmapped_vid_mappings.tsv \
             vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
