@@ -21,7 +21,7 @@ public class DepthMatrixLoader {
     protected final int largeVariantRegionPoints;
     protected final int largeVariantWindow;
 
-    private record CompressionResult(double compression, SimpleInterval adjustedRegion) {
+    protected record CompressionResult(double compression, SimpleInterval adjustedRegion) {
     }
 
     public DepthMatrixLoader(final FeatureDataSource<DepthEvidence> dataSource,
@@ -41,8 +41,7 @@ public class DepthMatrixLoader {
         this.largeVariantWindow = largeVariantWindow;
     }
 
-    public DepthMatrix load(final SimpleInterval interval,
-                            final Map<String, Double> sampleMedians) {
+    public DepthMatrix load(final SimpleInterval interval, final Map<String, Double> sampleMedians) {
         Utils.nonNull(interval);
         if (!IntervalUtils.intervalIsOnDictionaryContig(interval, dictionary)) {
             throw new GATKException("Load interval " + interval + " failed to validate against the sequence dictionary");
@@ -74,7 +73,7 @@ public class DepthMatrixLoader {
         return trimOuterBins(normalizedMatrix);
     }
 
-    private static void setZeroesToOnes(final DepthMatrix matrix) {
+    protected static void setZeroesToOnes(final DepthMatrix matrix) {
         // Replace zeros with ones
         for (String sample : matrix.getSampleSet()) {
             final double[] values = matrix.getSample(sample);
@@ -86,7 +85,7 @@ public class DepthMatrixLoader {
         }
     }
 
-    private static DepthMatrix trimMatrixBeforeCompression(final DepthMatrix matrix, final CompressionResult compressionResult) {
+    protected static DepthMatrix trimMatrixBeforeCompression(final DepthMatrix matrix, final CompressionResult compressionResult) {
         if (compressionResult == null) {
             return matrix;
         }
@@ -126,20 +125,22 @@ public class DepthMatrixLoader {
         return new DepthMatrix(newBins, newMatrix);
     }
 
-    private static DepthMatrix trimOuterBins(final DepthMatrix matrix) {
+    protected static DepthMatrix trimOuterBins(final DepthMatrix matrix) {
         final int numBins = matrix.getNumBins();
-        final boolean subset = numBins >= MIN_BINS_FOR_TRIMMING;
-        final List<SimpleInterval> newBins = subset ? matrix.getBins().subList(1, numBins - 1) : matrix.getBins();
+        if (numBins < MIN_BINS_FOR_TRIMMING) {
+            return matrix;
+        }
+        final List<SimpleInterval> newBins = matrix.getBins().subList(1, numBins - 1);
         final Map<String, double[]> newMatrix = new HashMap<>();
         for (final String sample : matrix.getSampleSet()) {
             final double[] counts = matrix.getSample(sample);
-            final double[] trimmedCounts = subset ? Arrays.copyOfRange(counts, 1, numBins - 1) : counts;
+            final double[] trimmedCounts = Arrays.copyOfRange(counts, 1, numBins - 1);
             newMatrix.put(sample, trimmedCounts);
         }
         return new DepthMatrix(newBins, newMatrix);
     }
 
-    private static CompressionResult calculateCompression(final DepthMatrix matrix, final SimpleInterval interval, final int bins) {
+    protected static CompressionResult calculateCompression(final DepthMatrix matrix, final SimpleInterval interval, final int bins) {
         final int start = interval.getStart() - 1; // covert to 0-based to match R code
         final int end = interval.getEnd();
 
@@ -194,8 +195,8 @@ public class DepthMatrixLoader {
         return new CompressionResult(compression, adjustedRegion);
     }
 
-    private static DepthMatrix compressMatrix(final DepthMatrix matrix,
-                                       final CompressionResult compressionResult) {
+    protected static DepthMatrix compressMatrix(final DepthMatrix matrix,
+                                                final CompressionResult compressionResult) {
         if (compressionResult == null || compressionResult.compression() <= 1 || matrix.isEmpty()) {
             return matrix;
         }
@@ -213,7 +214,7 @@ public class DepthMatrixLoader {
     }
 
     private static Map<String, Double> compressMedians(final Map<String, Double> sampleMedians,
-                                                final CompressionResult compressionResult) {
+                                                       final CompressionResult compressionResult) {
         if (compressionResult == null || compressionResult.compression() <= 1) {
             return sampleMedians;
         }
@@ -303,7 +304,7 @@ public class DepthMatrixLoader {
         return compressed;
     }
 
-    private static DepthMatrix normalizeMatrix(final DepthMatrix matrix, final Map<String, Double> sampleMedians) {
+    protected static DepthMatrix normalizeMatrix(final DepthMatrix matrix, final Map<String, Double> sampleMedians) {
         if (matrix.isEmpty()) {
             return matrix;
         }
