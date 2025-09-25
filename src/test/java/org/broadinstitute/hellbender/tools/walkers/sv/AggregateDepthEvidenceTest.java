@@ -86,7 +86,8 @@ public class AggregateDepthEvidenceTest extends GatkToolIntegrationTest {
                 if (Double.isNaN(expectedValue)) {
                     Assert.assertTrue(Double.isNaN(variant.getAttributeAsDouble(attribute, 0)));
                 } else {
-                    Assert.assertTrue(Math.abs(expectedValue - variant.getAttributeAsDouble(attribute, 0)) < FLOAT_TOLERANCE);
+                    final double actualValue = variant.getAttributeAsDouble(attribute, 0);
+                    Assert.assertTrue(Math.abs(expectedValue - actualValue) < FLOAT_TOLERANCE);
                 }
             }
         }
