@@ -260,6 +260,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20250925_1
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
