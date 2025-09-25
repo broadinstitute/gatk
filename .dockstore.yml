@@ -343,8 +343,8 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1730_clusters_leaking
              - gg_VS-1743_NewPvarIDFormat
+             - vs_1634_pgen_exome
          tags:
              - /.*/
    - name: GvsIngestTieout

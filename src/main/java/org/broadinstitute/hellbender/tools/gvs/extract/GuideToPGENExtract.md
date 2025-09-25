@@ -39,7 +39,7 @@ Plink defines a set of [chromosome codes](https://www.cog-genomics.org/plink/2.0
 The PGEN writer defined in PGEN-JNI defines two different write modes.  When `WRITE_AND_COPY` is selected, a temporary .pgen file is created and written to during the running of the tool, and then once all records have been written, a new file is created with the index at the top and the contents of the temporary .pgen file appended to it.  When `WRITE_SEPARATE_INDEX` is selected, the index is instead written to a separate .pgi file.  The default is `WRITE_AND_COPY`.
 
 #### max-alt-alleles
-The PGEN format can only support up to 254 alt alleles per site.  This argument allows you to specify a limit.  The default is the max of 254.  Any sites with more alt alleles than the specified max will not be written.
+The PGEN format can only support up to 254 alt alleles per site.  This argument allows you to specify a limit.  The default is 100.  Any sites with more alt alleles than the specified max will not be written.
 
 #### lenient-ploidy-validation
 PGEN is a bit quirky in that it requires samples to be diploid but has a special case for sex chromosomes, which are allowed to be haploid.  By default, any attempt to write a record with an unsupported ploidy will result in an exception being thrown.  If this flag is used, then ploidy failures will instead be logged and the records will be written as missing.
