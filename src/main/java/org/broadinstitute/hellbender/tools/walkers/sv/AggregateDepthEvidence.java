@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.*;
+import org.broadinstitute.hellbender.tools.sv.aggregation.DepthEvidenceTest;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
