@@ -174,8 +174,11 @@ chr2    15219939        TGGCCGGGCAGAGGGCTCCTCACTTCCCAGTAGGGGCGGCCGGGCAGAGGCGCCCC
 ```
 
 This strange-looking result represents a fairly common occurrence in the non-left aligned data: multiple alleles are
-referenced in the `ALT` field, although only one of them is referenced in `0/2` genotype. It seems the reblocking
-process will remove alleles that appeared in the unreblocked VCF but are not actually referenced in the called genotype.
+referenced in the `ALT` field, although only one of them is referenced in the called `0/2` genotype.
+
+The current reblocking process seems to remove alleles that are not actually referenced in the called genotype. In this
+particular example, the called genotype would likely be changed to `0/1` in the reblocked gVCF and the `T` allele from
+the unreblocked gVCF would not appear in the reblocked gVCF.
 
 ## Large deletion 21-10769701-TCCTGAAA...-T
 
