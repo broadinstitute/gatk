@@ -343,7 +343,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1743_NewPvarIDFormat
              - vs_1634_pgen_exome
          tags:
              - /.*/
