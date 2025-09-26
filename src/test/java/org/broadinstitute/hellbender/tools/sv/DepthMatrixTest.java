@@ -39,12 +39,17 @@ public class DepthMatrixTest extends GATKBaseTest {
     // Based on all_samples_depth_chr1_00000141 variant from AggregateDepthEvidence integration test, includes gap
     private static final SimpleInterval TEST_INTERVAL_GAP = new SimpleInterval("chr1", 206001, 261667);
 
-    private static DepthMatrix makeTestMatrix(final String contig, final int start, final int end, final int binSize) {
+    public static List<SimpleInterval> makeBins(final String contig, final int start, final int end, final int binSize) {
         Utils.validateArg(binSize > 0, "binSize must be greater than zero");
         final List<SimpleInterval> bins = new ArrayList<>();
         for (int i = start; i < end; i += binSize) {
             bins.add(new SimpleInterval(contig, i, i + binSize - 1));
         }
+        return bins;
+    }
+
+    private static DepthMatrix makeTestMatrix(final String contig, final int start, final int end, final int binSize) {
+        final List<SimpleInterval> bins = makeBins(contig, start, end, binSize);
         final int numBins = bins.size();
         final double[] counts1 = new double[numBins];
         final double[] counts2 = new double[numBins];
