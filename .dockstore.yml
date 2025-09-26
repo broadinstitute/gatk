@@ -348,10 +348,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1619
-             - vs_1691_wdl_for_the_dogs
-             - vs_1676_AnVIL_3K
-             - master_merge_2025_07_16
+             - mars_no_indels
          tags:
              - /.*/
    - name: GvsIngestTieout

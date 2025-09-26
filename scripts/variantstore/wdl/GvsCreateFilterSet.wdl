@@ -31,6 +31,7 @@ workflow GvsCreateFilterSet {
     String? git_branch_or_tag
     String? git_hash
     File? gatk_override
+    String? train_extra_args
 
     Boolean use_VETS = true
     # Defaulting to true here as this wdl is called by itself for the AoU use case where we would want a fully annotated VCF.
@@ -183,6 +184,7 @@ workflow GvsCreateFilterSet {
         resource_args = vets_resource_args,
         extract_extra_args = "-L ${effective_interval_list}",
         score_extra_args = "-L ${effective_interval_list}",
+        train_extra_args = train_extra_args,
         extract_runtime_attributes = vets_extract_runtime_attributes,
         train_runtime_attributes = vets_train_runtime_attributes,
         score_runtime_attributes = vets_score_runtime_attributes,
