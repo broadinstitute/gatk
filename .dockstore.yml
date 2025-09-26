@@ -290,8 +290,8 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1670_release_0_6_3
              - gvs_expanded_references
+             - mars_no_indels
          tags:
              - /.*/
    - name: GvsBeta
