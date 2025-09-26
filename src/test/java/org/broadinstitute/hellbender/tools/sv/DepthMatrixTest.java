@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.mockito.internal.util.collections.Sets;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +12,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class DepthMatrixLoaderTest extends GATKBaseTest {
+public class DepthMatrixTest extends GATKBaseTest {
 
     private static final String SAMPLE_1 = "sample1";
     private static final String SAMPLE_2 = "sample2";
@@ -34,6 +35,9 @@ public class DepthMatrixLoaderTest extends GATKBaseTest {
 
     // Based on all_samples_depth_chr1_00002cd3 variant from AggregateDepthEvidence integration test
     private static final SimpleInterval TEST_INTERVAL_LARGE = new SimpleInterval("chr1", 143503901, 143968588);
+
+    // Based on all_samples_depth_chr1_00000141 variant from AggregateDepthEvidence integration test, includes gap
+    private static final SimpleInterval TEST_INTERVAL_GAP = new SimpleInterval("chr1", 206001, 261667);
 
     private static DepthMatrix makeTestMatrix(final String contig, final int start, final int end, final int binSize) {
         Utils.validateArg(binSize > 0, "binSize must be greater than zero");
@@ -125,6 +129,31 @@ public class DepthMatrixLoaderTest extends GATKBaseTest {
     }
 
     @Test
+    public void testLoadWithGap() {
+        final int bins = 10;
+        final int largeSizeCutoff = 100000;
+        final int largeVariantRegionPoints = 15;
+        final int largeVariantWindow = 1000;
+        final FeatureDataSource<DepthEvidence> source = new FeatureDataSource<>(new File(DEPTH_FILE_PATH));
+        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, SVTestUtils.hg38Dict);
+        final Map<String, Double> sampleMedians = makeSampleMedians(((SVFeaturesHeader)source.getHeader()).getSampleNames(), 30.);
+        final DepthMatrix matrix = loader.load(TEST_INTERVAL_GAP, sampleMedians);
+        Assert.assertEquals(matrix.getNumBins(), 8);
+        Assert.assertEquals(matrix.getSampleSet().size(), 156);
+        Assert.assertEquals(matrix.getBins().get(0), new SimpleInterval("chr1", 211800, 217300));
+        Assert.assertEquals(matrix.getBins().get(7), new SimpleInterval("chr1", 250300, 255800));
+        final double[] values = matrix.getSample("NA20845");
+        SVTestUtils.assertFloatWithinTolerance(values[0], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[1], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[2], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[3], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[4], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[5], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[6], 0.03327283726557774, TEST_TOLERANCE);
+        SVTestUtils.assertFloatWithinTolerance(values[7], 0.03327283726557774, TEST_TOLERANCE);
+    }
+
+    @Test
     public void testLoadLarge() {
         final int bins = 10;
         final int largeSizeCutoff = 100000; // Smaller than interval size
@@ -147,6 +176,32 @@ public class DepthMatrixLoaderTest extends GATKBaseTest {
         SVTestUtils.assertFloatWithinTolerance(values[5], 0.6060606060606061, TEST_TOLERANCE);
         SVTestUtils.assertFloatWithinTolerance(values[6], 0.6666666666666666, TEST_TOLERANCE);
         SVTestUtils.assertFloatWithinTolerance(values[7], 0.6666666666666666, TEST_TOLERANCE);
+    }
+
+    @Test
+    public void testSliceEmpty() {
+        final DepthMatrix matrix = new DepthMatrix(Collections.singletonList(TEST_INTERVAL), Collections.emptyMap());
+        final double[] slice = matrix.slice(3, Collections.emptySet());
+        Assert.assertNotNull(slice);
+        Assert.assertEquals(slice.length, 0);
+    }
+
+    @Test
+    public void testSlice() {
+        final DepthMatrix matrix = makeTestMatrix("chr1", 10000, 20000, 100);
+        final double[] rawValues1 = matrix.getSample(SAMPLE_1);
+        final double[] rawValues2 = matrix.getSample(SAMPLE_2);
+        final double[] rawValues3 = matrix.getSample(SAMPLE_3);
+        for (int i = 0; i < matrix.getBins().size(); i++) {
+            rawValues1[i] = RAW_DEPTH_1 + i;
+            rawValues2[i] = RAW_DEPTH_2 + i;
+            rawValues3[i] = RAW_DEPTH_3 + i;
+        }
+        final double[] slice = matrix.slice(20, Sets.newSet(SAMPLE_1, SAMPLE_2));
+        Assert.assertNotNull(slice);
+        Assert.assertEquals(slice.length, 2);
+        Assert.assertTrue(slice[0] == RAW_DEPTH_1 + 20 || slice[1] == RAW_DEPTH_1 + 20);
+        Assert.assertTrue(slice[0] == RAW_DEPTH_2 + 20 || slice[1] == RAW_DEPTH_2 + 20);
     }
 
     @Test
