@@ -285,7 +285,6 @@ public class DepthEvidenceTest {
         } else {
             throw new IllegalStateException("Unsupported variant type: " + svtype);
         }
-        final double medianSeparation = medianSeparationSign * (MEDIAN.evaluate(controlMedians) - MEDIAN.evaluate(treatMedians));
-        return medianSeparation;
+        return medianSeparationSign * (MEDIAN.evaluate(controlMedians) - MEDIAN.evaluate(treatMedians));
     }
 }

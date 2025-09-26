@@ -174,11 +174,25 @@ public class SVTestUtils {
         return builder.make();
     }
 
-    public static final SVCallRecord makeRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
+    public static final SVCallRecord makeDeletionRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
         final List<GenotypeBuilder> genotypes = makeGenotypesWithCarriers(allSamples, carrierSamples, Allele.SV_SIMPLE_DEL);
         return makeRecord("", "chr1", 100, Boolean.TRUE, "chr1", 200, Boolean.FALSE,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
                 List.of(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes);
+    }
+
+    public static final SVCallRecord makeDeletionRecordWithCoordsAndCarriers(final String contig, final int start, final int end, final List<String> allSamples, final Set<String> carrierSamples) {
+        final List<GenotypeBuilder> genotypes = makeGenotypesWithCarriers(allSamples, carrierSamples, Allele.SV_SIMPLE_DEL);
+        return makeRecord("", contig, start, Boolean.TRUE, contig, end, Boolean.FALSE,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
+                List.of(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes);
+    }
+
+    public static final SVCallRecord makeDuplicationRecordWithCoordsAndCarriers(final String contig, final int start, final int end, final List<String> allSamples, final Set<String> carrierSamples) {
+        final List<GenotypeBuilder> genotypes = makeGenotypesWithCarriers(allSamples, carrierSamples, Allele.SV_SIMPLE_DUP);
+        return makeRecord("", contig, start, Boolean.FALSE, contig, end, Boolean.TRUE,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, null, Collections.emptyList(),
+                List.of(Allele.REF_N, Allele.SV_SIMPLE_DUP), genotypes);
     }
 
     public static final SVCallRecord makeComplexRecordWithCarriers(final List<String> allSamples, final Set<String> carrierSamples) {
