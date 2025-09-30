@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -14,10 +15,12 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.sv.IntervalOverlapCalculator;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
+import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngineArgumentsCollection;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.util.*;
@@ -66,8 +69,8 @@ import java.util.stream.Collectors;
 @BetaFeature
 @DocumentedFeature
 public final class SVRegionOverlap extends VariantWalker {
-    public static final String REGIONS_FILE_LONG_NAME = "region-file";
-    public static final String REGIONS_NAME_LONG_NAME = "region-name";
+    public static final String REGIONS_FILE_LONG_NAME = SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME;
+    public static final String REGIONS_NAME_LONG_NAME = SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME;
     public static final String REGIONS_SET_RULE_LONG_NAME = "region-set-rule";
     public static final String REGIONS_MERGING_RULE_LONG_NAME = "region-merging-rule";
     public static final String REGION_PADDING_LONG_NAME = "region-padding";
@@ -131,13 +134,13 @@ public final class SVRegionOverlap extends VariantWalker {
 
     private SAMSequenceDictionary dictionary;
     private List<String> formattedRegionNames;
-    private final Map<String, IntervalOverlapCalculator> intervalTreeMap = new HashMap<>();
+    private SVStratificationEngine engine;
     private VariantContextWriter writer;
 
     @Override
     public void onTraversalStart() {
         // Dictionary defined by input vcf
-        dictionary = getMasterSequenceDictionary();
+        dictionary = getSequenceDictionaryForDrivingVariants();
 
         Utils.validateArg(!(suppressOverlapFraction && suppressEndpointCounts), "Cannot use both --" +
                 SUPPRESS_ENDPOINT_COUNTS_LONG_NAME + " and --" + SUPPRESS_OVERLAP_FRACTION_LONG_NAME);
@@ -148,15 +151,26 @@ public final class SVRegionOverlap extends VariantWalker {
         Utils.validateArg(dictionary != null, "Sequence dictionary not found in variants header");
         formattedRegionNames = regionNames.stream().map(String::toUpperCase).collect(Collectors.toList());
         Utils.validateArg(new HashSet<>(formattedRegionNames).size() == formattedRegionNames.size(), "Found duplicate region names (not case-sensitive)");
-        for (int i = 0; i < regionPaths.size(); i++) {
-            final IntervalOverlapCalculator calc = IntervalOverlapCalculator.create(
-                    regionPaths.get(i),
-                    dictionary,
-                    intervalSetRule,
-                    intervalMergingRule,
-                    regionPadding
-            );
-            intervalTreeMap.put(formattedRegionNames.get(i), calc);
+
+        final Map<String, List<Locatable>> map = new HashMap<>();
+        final Iterator<String> nameIterator = formattedRegionNames.iterator();
+        final Iterator<GATKPath> pathIterator = regionPaths.iterator();
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
+        while (nameIterator.hasNext() && pathIterator.hasNext()) {
+            final String name = nameIterator.next();
+            final GATKPath intervalsPath = pathIterator.next();
+            final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(intervalsPath.toString()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+            final List<Locatable> intervals = Collections.unmodifiableList(genomeLocs.toList());
+            if (map.containsKey(name)) {
+                throw new UserException.BadInput("Duplicate track name was specified: " + name);
+            }
+            map.put(name, intervals);
+        }
+
+        engine = new SVStratificationEngine(dictionary);
+        for (final Map.Entry<String, List<Locatable>> entry : map.entrySet()) {
+            engine.addTrack(entry.getKey(), entry.getValue());
+            engine.addStratification(entry.getKey(), null, null, null, Collections.singleton(entry.getKey()));
         }
 
         // Initialize output
@@ -192,12 +206,12 @@ public final class SVRegionOverlap extends VariantWalker {
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         final VariantContextBuilder builder = new VariantContextBuilder(variant);
-        for (final Map.Entry<String, IntervalOverlapCalculator> entry : intervalTreeMap.entrySet()) {
+        for (final SVStratificationEngine.Stratum stratum : engine.getStrata()) {
             if (!suppressEndpointCounts) {
-                builder.attribute(getFieldName(GATKSVVCFConstants.NUM_END_OVERLAPS_INFO_BASE, entry.getKey()), entry.getValue().getEndpointOverlapCount(record));
+                builder.attribute(getFieldName(GATKSVVCFConstants.NUM_END_OVERLAPS_INFO_BASE, stratum.getName()), stratum.countBreakpointOverlaps(record));
             }
             if (!suppressOverlapFraction) {
-                builder.attribute(getFieldName(GATKSVVCFConstants.OVERLAP_FRACTION_INFO_BASE, entry.getKey()), entry.getValue().getOverlapFraction(record));
+                builder.attribute(getFieldName(GATKSVVCFConstants.OVERLAP_FRACTION_INFO_BASE, stratum.getName()), stratum.trackOverlapFraction(record));
             }
         }
         writer.add(builder.make());

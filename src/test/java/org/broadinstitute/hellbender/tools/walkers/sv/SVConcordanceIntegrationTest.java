@@ -214,9 +214,9 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcfPath)
                 .add(GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME, clusteringConfigFile)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, stratifyConfigFile)
-                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME, segdupName)
                 .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME, repeatmaskerName)
                 .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile);
 
         runCommandLine(args, SVConcordance.class.getSimpleName());
@@ -430,9 +430,9 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
                 .add(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, vcfPath)
                 .add(GroupedSVCluster.CLUSTERING_CONFIG_FILE_LONG_NAME, clusteringConfigFile)
                 .add(SVStratificationEngineArgumentsCollection.STRATIFY_CONFIG_FILE_LONG_NAME, stratifyConfigFile)
-                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, segdupName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME, segdupName)
                 .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, segdupFile)
-                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME, repeatmaskerName)
+                .add(SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME, repeatmaskerName)
                 .add(SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME, repeatmaskerFile);
 
         runCommandLine(args, SVConcordance.class.getSimpleName());

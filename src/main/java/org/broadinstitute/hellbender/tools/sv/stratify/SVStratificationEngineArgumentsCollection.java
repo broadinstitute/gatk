@@ -12,7 +12,7 @@ import java.util.List;
 public class SVStratificationEngineArgumentsCollection implements Serializable {
     // Command-line arguments
     public static final String STRATIFY_CONFIG_FILE_LONG_NAME = "stratify-config";
-    public static final String TRACK_NAME_FILE_LONG_NAME = "track-name";
+    public static final String TRACK_NAME_LONG_NAME = "track-name";
     public static final String TRACK_INTERVAL_FILE_LONG_NAME = "track-intervals";
     public static final String OVERLAP_FRACTION_LONG_NAME = "stratify-overlap-fraction";
     public static final String NUM_BREAKPOINT_OVERLAPS_LONG_NAME = "stratify-num-breakpoint-overlaps";
@@ -28,7 +28,7 @@ public class SVStratificationEngineArgumentsCollection implements Serializable {
 
     @Argument(
             doc = "Track names. Must be once for each --" + TRACK_INTERVAL_FILE_LONG_NAME,
-            fullName = TRACK_NAME_FILE_LONG_NAME,
+            fullName = TRACK_NAME_LONG_NAME,
             optional = true
     )
     public List<String> trackNameList;

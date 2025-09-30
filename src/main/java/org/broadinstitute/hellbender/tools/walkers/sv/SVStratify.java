@@ -274,7 +274,7 @@ public final class SVStratify extends MultiVariantWalker {
                                                                   final SVStratificationEngineArgumentsCollection args,
                                                                   final SAMSequenceDictionary dictionary) {
         Utils.validateArg(args.trackNameList.size() == args.trackFileList.size(), "Arguments --" +
-                SVStratificationEngineArgumentsCollection.TRACK_NAME_FILE_LONG_NAME + " and --" + SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME +
+                SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME + " and --" + SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME +
                 " must be specified the same number of times.");
         final Map<String, List<Locatable>> map = new HashMap<>();
         final Iterator<String> nameIterator = args.trackNameList.iterator();
