@@ -296,6 +296,20 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testMatchesNullType() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        final SVStratificationEngine.Stratum strat = engine.new Stratum(
+                "strat",
+                null,
+                100, 500,
+                Collections.emptySet()
+        );
+        for (final GATKSVVCFConstants.StructuralVariantAnnotationType type : GATKSVVCFConstants.StructuralVariantAnnotationType.values()) {
+            Assert.assertTrue(strat.matchesType(SVTestUtils.newCallRecordWithLengthAndType(null, type)));
+        }
+    }
+
+    @Test
     public void testMatchesSizeSimple() {
         final SVStratificationEngine engine = makeDefaultEngine();
         final SVStratificationEngine.Stratum strat = engine.new Stratum(

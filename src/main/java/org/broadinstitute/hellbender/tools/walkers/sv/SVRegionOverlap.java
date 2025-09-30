@@ -27,9 +27,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Annotate records from a structural variant (SV) VCF with overlap metrics against one or more interval sets.
+ * Annotate records from a structural variant (SV) VCF with overlap metrics against one or more interval tracks.
  *
- * Note that -L/-XL arguments maintain normal behavior of filtering variants by location and will not be used for annotation.
+ * Note that -L/-XL and associated arguments maintain usual behavior of filtering variants by location and are not used for annotation.
  *
  * <h3>Inputs</h3>
  *
@@ -52,8 +52,8 @@ import java.util.stream.Collectors;
  * <pre>
  *     gatk SVRegionOverlap \
  *       --sequence-dictionary ref.dict \
- *       --region-file my_regions.bed \
- *       --region-name MY_REGIONS \
+ *       --track-intervals intervals.bed \
+ *       --track-name TRACK \
  *       -V variants.vcf.gz \
  *       -O annotated.vcf.gz
  * </pre>
@@ -62,13 +62,14 @@ import java.util.stream.Collectors;
  */
 
 @CommandLineProgramProperties(
-        summary = "Annotates structural variants with overlap metrics against one or more interval sets",
-        oneLineSummary = "Annotates structural variants with overlap metrics against one or more interval sets",
+        summary = "Annotates structural variants with overlap metrics against one or more interval tracks",
+        oneLineSummary = "Annotates structural variants with overlap metrics against one or more interval tracks",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
 @DocumentedFeature
 public final class SVRegionOverlap extends VariantWalker {
+
     public static final String REGIONS_FILE_LONG_NAME = SVStratificationEngineArgumentsCollection.TRACK_INTERVAL_FILE_LONG_NAME;
     public static final String REGIONS_NAME_LONG_NAME = SVStratificationEngineArgumentsCollection.TRACK_NAME_LONG_NAME;
     public static final String REGIONS_SET_RULE_LONG_NAME = "region-set-rule";
@@ -152,25 +153,17 @@ public final class SVRegionOverlap extends VariantWalker {
         formattedRegionNames = regionNames.stream().map(String::toUpperCase).collect(Collectors.toList());
         Utils.validateArg(new HashSet<>(formattedRegionNames).size() == formattedRegionNames.size(), "Found duplicate region names (not case-sensitive)");
 
-        final Map<String, List<Locatable>> map = new HashMap<>();
         final Iterator<String> nameIterator = formattedRegionNames.iterator();
         final Iterator<GATKPath> pathIterator = regionPaths.iterator();
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
+        engine = new SVStratificationEngine(dictionary);
         while (nameIterator.hasNext() && pathIterator.hasNext()) {
             final String name = nameIterator.next();
             final GATKPath intervalsPath = pathIterator.next();
-            final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(intervalsPath.toString()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+            final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(intervalsPath.toString()), intervalSetRule, intervalMergingRule, regionPadding, genomeLocParser);
             final List<Locatable> intervals = Collections.unmodifiableList(genomeLocs.toList());
-            if (map.containsKey(name)) {
-                throw new UserException.BadInput("Duplicate track name was specified: " + name);
-            }
-            map.put(name, intervals);
-        }
-
-        engine = new SVStratificationEngine(dictionary);
-        for (final Map.Entry<String, List<Locatable>> entry : map.entrySet()) {
-            engine.addTrack(entry.getKey(), entry.getValue());
-            engine.addStratification(entry.getKey(), null, null, null, Collections.singleton(entry.getKey()));
+            engine.addTrack(name, intervals);
+            engine.addStratification(name, null, null, null, Collections.singleton(name));
         }
 
         // Initialize output
