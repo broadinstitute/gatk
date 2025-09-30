@@ -144,12 +144,20 @@ public class SVStratificationEngine {
     }
 
     protected Stratum parseTableLine(final DataLine dataLine) {
-        final GATKSVVCFConstants.StructuralVariantAnnotationType svType = GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(dataLine.get(SVTYPE_COLUMN));
+        final GATKSVVCFConstants.StructuralVariantAnnotationType svType = parseTypeString(dataLine.get(SVTYPE_COLUMN));
         final String name = dataLine.get(NAME_COLUMN);
         final Integer minSize = parseIntegerMaybeNull(dataLine.get(MIN_SIZE_COLUMN));
         final Integer maxSize = parseIntegerMaybeNull(dataLine.get(MAX_SIZE_COLUMN));
         final Set<String> trackNames = parseTrackString(dataLine.get(TRACK_COLUMN));
         return new Stratum(name, svType, minSize, maxSize, trackNames);
+    }
+
+    protected GATKSVVCFConstants.StructuralVariantAnnotationType parseTypeString(final String val) {
+        if (NULL_TABLE_VALUES.contains(val)) {
+            return null;
+        } else {
+            return GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(val);
+        }
     }
 
     protected Set<String> parseTrackString(final String val) {
@@ -231,7 +239,7 @@ public class SVStratificationEngine {
         }
 
         protected boolean matchesType(final SVCallRecord record) {
-            return record.getType() == svType;
+            return svType == null || record.getType() == svType;
         }
 
         protected boolean matchesSize(final SVCallRecord record) {
@@ -282,26 +290,43 @@ public class SVStratificationEngine {
             return matchesTrackOverlapFraction(record, overlapFraction) && matchesTrackBreakpointOverlap(record, numBreakpointOverlaps);
         }
 
+        public double trackOverlapFraction(final SVCallRecord record) {
+            if (!record.isIntrachromosomal()) {
+                return Double.NaN;
+            }
+            final SimpleInterval interval = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB());
+            final int length = interval.getLengthOnReference();
+            if (length == 0) {
+                return Double.NaN;
+            }
+            final List<SimpleInterval> overlaps = new ArrayList<>();
+            for (final String track : trackNames) {
+                overlaps.addAll(trackMap.get(track).getOverlaps(interval).stream().map(SimpleInterval::new).collect(Collectors.toList()));
+            }
+            final List<SimpleInterval> mergedOverlaps = IntervalUtils.sortAndMergeIntervals(overlaps, dictionary, IntervalMergingRule.ALL)
+                    .values().stream().flatMap(List::stream).collect(Collectors.toList());
+            long overlapLength = 0;
+            for (final Locatable overlap : mergedOverlaps) {
+                overlapLength += interval.intersect(overlap).size();
+            }
+            return overlapLength / (double) length;
+        }
+
         protected boolean matchesTrackOverlapFraction(final SVCallRecord record, final double overlapFraction) {
             if (overlapFraction > 0 && !trackNames.isEmpty()) {
                 if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
                     throw new GATKException("Track overlap for CPX types not currently supported (" + name + ")");
                 }
-                final SimpleInterval interval = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB());
-                final List<SimpleInterval> overlaps = new ArrayList<>();
-                for (final String track : trackNames) {
-                    overlaps.addAll(trackMap.get(track).getOverlaps(interval).stream().map(SimpleInterval::new).collect(Collectors.toList()));
-                }
-                final List<SimpleInterval> mergedOverlaps = IntervalUtils.sortAndMergeIntervals(overlaps, dictionary, IntervalMergingRule.ALL)
-                        .values().stream().flatMap(List::stream).collect(Collectors.toList());
-                long overlapLength = 0;
-                for (final Locatable overlap : mergedOverlaps) {
-                    overlapLength += interval.intersect(overlap).size();
-                }
-                return overlapLength / (double) interval.getLengthOnReference() >= overlapFraction;
+                return trackOverlapFraction(record) >= overlapFraction;
             } else {
                 return true;
             }
+        }
+
+        public int countBreakpointOverlaps(final SVCallRecord record) {
+            final SimpleInterval intervalA = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionA());
+            final SimpleInterval intervalB = new SimpleInterval(record.getContigB(), record.getPositionB(), record.getPositionB());
+            return countAnyTrackOverlap(intervalA) + countAnyTrackOverlap(intervalB);
         }
 
         protected boolean matchesTrackBreakpointOverlap(final SVCallRecord record, final int numBreakpointOverlaps) {
@@ -309,9 +334,7 @@ public class SVStratificationEngine {
                 if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
                     throw new GATKException("Track overlap for CPX types not currently supported (" + name + ")");
                 }
-                final SimpleInterval intervalA = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionA());
-                final SimpleInterval intervalB = new SimpleInterval(record.getContigB(), record.getPositionB(), record.getPositionB());
-                return countAnyTrackOverlap(intervalA) + countAnyTrackOverlap(intervalB) >= numBreakpointOverlaps;
+                return countBreakpointOverlaps(record) >= numBreakpointOverlaps;
             } else {
                 return true;
             }
