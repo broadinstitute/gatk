@@ -22,7 +22,8 @@ public class AggregateSVEvidenceTest extends GatkToolIntegrationTest {
     // instead of actually running the tests.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
-    public static final String TOOL_TEST_DIR = toolsTestDir + "walkers/sv/AggregatePairedEndAndSplitReadEvidence";
+    public static final String TOOL_TEST_DIR = toolsTestDir + "walkers/sv/AggregateSVEvidence";
+    public static final String LARGE_FILE_TEST_DIR = largeFileTestDir + "sv";
 
     public static final double FLOAT_TOLERANCE = 1e-4;
 
@@ -56,11 +57,13 @@ public class AggregateSVEvidenceTest extends GatkToolIntegrationTest {
 
     @Test
     public void test() {
-        final File vcfFile = new File(TOOL_TEST_DIR, "test_hg38.vcf.gz");
-        final File peFile = new File(TOOL_TEST_DIR, "test_hg38.pe.txt.gz");
-        final File srFile = new File(TOOL_TEST_DIR, "test_hg38.sr.txt.gz");
-        final File coverageFile = new File(TOOL_TEST_DIR, "test_hg38.sample_coverage.tsv");
-        final String outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? TOOL_TEST_DIR + "/test_hg38.expected.vcf.gz" : createTempFile("aggregated", ".vcf.gz").getAbsolutePath();
+        final File vcfFile = new File(TOOL_TEST_DIR, "aggregate_sv_test.vcf.gz");
+        final File peFile = new File(LARGE_FILE_TEST_DIR, "aggregate_sv_test.pe.txt.gz");
+        final File srFile = new File(LARGE_FILE_TEST_DIR, "aggregate_sv_test.sr.txt.gz");
+        final File bafFile = new File(LARGE_FILE_TEST_DIR, "aggregate_sv_test.baf.txt.gz");
+        final File coverageFile = new File(TOOL_TEST_DIR, "aggregate_sv_test.medianCov.tsv");
+        final File ploidyTable = new File(TOOL_TEST_DIR, "1kg_ref_panel_v1.ploidy_table.tsv");
+        final String outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? TOOL_TEST_DIR + "/aggregate_sv_test.expected.vcf.gz" : createTempFile("aggregated", ".vcf.gz").getAbsolutePath();
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(vcfFile)
@@ -68,7 +71,9 @@ public class AggregateSVEvidenceTest extends GatkToolIntegrationTest {
                 .addReference(hg38Reference)
                 .add(AggregateSVEvidence.DISCORDANT_PAIRS_LONG_NAME, peFile)
                 .add(AggregateSVEvidence.SPLIT_READ_LONG_NAME, srFile)
+                .add(AggregateSVEvidence.BAF_LONG_NAME, bafFile)
                 .add(AggregateSVEvidence.MEDIAN_COVERAGE_LONG_NAME, coverageFile)
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, ploidyTable)
                 .add(AggregateSVEvidence.PE_INNER_WINDOW_LONG_NAME, PE_INNER_WINDOW)
                 .add(AggregateSVEvidence.PE_OUTER_WINDOW_LONG_NAME, PE_OUTER_WINDOW)
                 .add(AggregateSVEvidence.SR_WINDOW_LONG_NAME, SR_WINDOW)
@@ -76,7 +81,7 @@ public class AggregateSVEvidenceTest extends GatkToolIntegrationTest {
 
         runCommandLine(args, AggregateSVEvidence.class.getSimpleName());
 
-        final File expectedFile = new File(TOOL_TEST_DIR, "test_hg38.expected.vcf.gz");
+        final File expectedFile = new File(TOOL_TEST_DIR, "aggregate_sv_test.expected.vcf.gz");
         final Pair<VCFHeader, List<VariantContext>> expected = VariantContextTestUtils.readEntireVCFIntoMemory(expectedFile.getPath());
         final Pair<VCFHeader, List<VariantContext>> output = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile);
 
