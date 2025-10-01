@@ -36,12 +36,7 @@ def generate_bcftools_command(vid, sites_only):
     
     insert_size = calculate_insert_size(ref_allele, var_allele)
 
-    # The "pseudo vid"s are either short (< 10 base) inserts, or longer (up to ~400 base) deletions.
-    # Choose the search range accordingly.
-    if insert_size > 0:
-        search_range = 20
-    else:
-        search_range = 200
+    search_range = 200
 
     start = position + 1
     end = position + search_range
