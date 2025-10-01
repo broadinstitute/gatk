@@ -12,6 +12,8 @@ workflow DST2716 {
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
         String vds_path
+        String chrom
+        Int position
     }
 
     call Utils.GetToolVersions
@@ -27,6 +29,8 @@ workflow DST2716 {
             site_specific_variant_qc_script = GetHailScripts.site_specific_variant_qc_script,
             prefix = cluster_prefix,
             vds_path = vds_path,
+            chrom = chrom,
+            position = position,
             hail_version = GetToolVersions.hail_version,
             workspace_project = GetToolVersions.google_project,
             region = region,
@@ -49,6 +53,8 @@ task InspectVds {
         File site_specific_variant_qc_script
         String prefix
         String vds_path
+        String chrom
+        Int position
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
@@ -108,6 +114,8 @@ task InspectVds {
         cat > script-arguments.json <<FIN
         {
             "vds-path": "~{vds_path}",
+            "chrome: "~{chrom}",
+            "position: ~{position},
             "temp-path": "${hail_temp_path}"
         }
         FIN

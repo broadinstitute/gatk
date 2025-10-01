@@ -16,6 +16,8 @@ def mt_for_site(vds, chrom, pos):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Site specific variant QC')
     parser.add_argument('--vds-path', type=str, help='Input VDS Path', required=True)
+    parser.add_argument('--chrom', type=str, help='HG38 chromosome', required=True)
+    parser.add_argument('--position', type=int, help='position', required=True)
     parser.add_argument('--temp-path', type=str, help='Path to temporary directory',
                         required=True)
 
@@ -24,8 +26,8 @@ if __name__ == '__main__':
     hl.init(tmp_dir=f'{args.temp_path}/hail_tmp_general')
 
     vds = hl.vds.read_vds(args.vds_path)
-    chrom='chr20'
-    pos=14955058
+    chrom=args.chrom
+    pos=args.position
     mt = mt_for_site(vds, chrom, pos)
 
     # integration_vds="gs://fc-358fc8a2-f84e-4d45-846a-a533d08f6103/submissions/b5622f6d-4c03-4e54-9bf4-a4b6386754f9/GvsQuickstartIntegration/ff599838-c254-4fdd-8059-1387786c5ffc/call-GvsQuickstartHailVETSIntegration/GvsQuickstartHailIntegration/822b8d15-5f20-449d-a2b5-049a33ff6576/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/6d264919-3cfa-4768-82dd-5f10f93067cd/call-OutputPath/avro/gvs_export.vds"
