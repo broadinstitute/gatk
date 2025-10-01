@@ -10,6 +10,7 @@ def mt_for_site(vds, chrom, pos):
     f_vds=hl.vds.VariantDataset(vds.reference_data, ffvd)
     mt = hl.vds.to_dense_mt(f_vds)
     mt = hl.variant_qc(mt)
+    mt = hl.methods.split_multi(mt, left_aligned=True)
     return mt
 
 if __name__ == '__main__':
@@ -32,4 +33,4 @@ if __name__ == '__main__':
 
     mt.variant_qc.AC.show()
     mt.variant_qc.AN.show()
-    mt.variant_qc.AF.show()
+    # mt.variant_qc.AF.show()
