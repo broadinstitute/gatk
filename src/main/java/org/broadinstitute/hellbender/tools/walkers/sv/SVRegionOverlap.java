@@ -27,7 +27,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Annotate records from a structural variant (SV) VCF with overlap metrics against one or more interval tracks.
+ * Annotate records from a structural variant (SV) VCF with overlap metrics against one or more interval tracks. For each
+ * intervals track with name "MYTRACK", the following INFO fields are added:
+ * <ul>
+ *     <li>NUM_END_OVERLAPS_MYTRACK: number of ends of the variant that overlap the track [integer].</li>
+ *     <li>OVERLAP_FRAC_MYTRACK: fraction of the variant that spans the track [float], or NaN for interchromosomal
+ *     and SVs with 0 length on the reference.</li>
+ * </ul>
  *
  * Note that -L/-XL and associated arguments maintain usual behavior of filtering variants by location and are not used for annotation.
  *
@@ -36,6 +42,9 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>
  *         SV VCF
+ *     </li>
+ *     <li>
+ *         One or more interval tracks (interval file and name)
  *     </li>
  * </ul>
  *
@@ -51,9 +60,10 @@ import java.util.stream.Collectors;
  *
  * <pre>
  *     gatk SVRegionOverlap \
- *       --sequence-dictionary ref.dict \
- *       --track-intervals intervals.bed \
- *       --track-name TRACK \
+ *       --track-intervals intervals1.bed \
+ *       --track-name TRACK1 \
+ *       --track-intervals intervals2.bed \
+ *       --track-name TRACK2 \
  *       -V variants.vcf.gz \
  *       -O annotated.vcf.gz
  * </pre>
