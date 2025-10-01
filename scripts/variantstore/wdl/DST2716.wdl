@@ -114,8 +114,8 @@ task InspectVds {
         cat > script-arguments.json <<FIN
         {
             "vds-path": "~{vds_path}",
-            "chrome: "~{chrom}",
-            "position: ~{position},
+            "chrom": "~{chrom}",
+            "position": ~{position},
             "temp-path": "${hail_temp_path}"
         }
         FIN
