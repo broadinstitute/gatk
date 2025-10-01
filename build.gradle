@@ -323,8 +323,12 @@ dependencies {
     implementation 'com.github.jsr203hadoop:jsr203hadoop:1.0.3'
 
     implementation 'org.apache.orc:orc:1.6.5'
-    implementation 'de.javakaffee:kryo-serializers:0.43'
-    implementation 'com.esotericsoftware:kryo:4.0.2'
+    implementation 'de.javakaffee:kryo-serializers:0.45'
+    implementation ('com.esotericsoftware:kryo'){
+        version {
+            strictly '[4,5)' // we're not compatible with kryo 5+
+        }
+    }
 
     // Dependency change for including MLLib
     implementation 'org.objenesis:objenesis:1.2'
