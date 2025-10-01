@@ -35,7 +35,8 @@ import java.util.stream.Collectors;
  *     and SVs with 0 length on the reference.</li>
  * </ul>
  *
- * Note that -L/-XL and associated arguments maintain usual behavior of filtering variants by location and are not used for annotation.
+ * All track names are converted to upper-case. Note that -L/-XL and associated arguments maintain usual behavior
+ * of filtering variants by location and are not used for annotation.
  *
  * <h3>Inputs</h3>
  *
@@ -96,34 +97,34 @@ public final class SVRegionOverlap extends VariantWalker {
     private GATKPath outputFile;
 
     @Argument(
-            doc = "Region interval files, may be specified multiple times",
+            doc = "Track interval files, may be specified multiple times",
             fullName = REGIONS_FILE_LONG_NAME
     )
     private List<GATKPath> regionPaths;
 
     @Argument(
-            doc = "Region names. All values must be unique after converting to upper-case and must correspond with the " +
-                    "input order of --" + REGIONS_FILE_LONG_NAME,
+            doc = "Track names, may be specified multiple times. All values must be unique after converting to " +
+                    "upper-case and must correspond with the input order of --" + REGIONS_FILE_LONG_NAME,
             fullName = REGIONS_NAME_LONG_NAME
     )
     private List<String> regionNames;
 
     @Argument(
-            doc = "Region interval set rule",
+            doc = "Track interval set rule (applies to all tracks)",
             fullName = REGIONS_SET_RULE_LONG_NAME,
             optional=true
     )
     private IntervalSetRule intervalSetRule = IntervalSetRule.UNION;
 
     @Argument(
-            doc = "Region interval merging rule",
+            doc = "Track interval merging rule (applies to all tracks)",
             fullName = REGIONS_MERGING_RULE_LONG_NAME,
             optional=true
     )
     private IntervalMergingRule intervalMergingRule = IntervalMergingRule.OVERLAPPING_ONLY;
 
     @Argument(
-            doc = "Region padding (bp)",
+            doc = "Track padding (in bp, applies to all tracks)",
             fullName = REGION_PADDING_LONG_NAME,
             optional=true
     )
@@ -200,7 +201,7 @@ public final class SVRegionOverlap extends VariantWalker {
         writer.writeHeader(header);
     }
 
-    public static String getFieldName(final String fieldBaseName, final String regionSetName) {
+    private static String getFieldName(final String fieldBaseName, final String regionSetName) {
         return fieldBaseName + regionSetName;
     }
 
