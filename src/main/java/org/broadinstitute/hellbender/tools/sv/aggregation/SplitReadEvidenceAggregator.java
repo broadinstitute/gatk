@@ -12,11 +12,18 @@ public class SplitReadEvidenceAggregator extends SVEvidenceAggregator<SplitReadE
     private final int window;
     private final boolean isStart; // Retrieve start position split reads, else end position
 
+    /**
+     * Constructor.
+     * @param source        SR feature source
+     * @param dictionary    sequence dictionary
+     * @param window        evidence window around variant start/end (in bp)
+     * @param isStart       true if aggregating start coordinate, else end coordinate
+     */
     public SplitReadEvidenceAggregator(final FeatureDataSource<SplitReadEvidence> source,
                                        final SAMSequenceDictionary dictionary,
                                        final int window,
                                        final boolean isStart) {
-        super(source, window, dictionary);
+        super(source, dictionary);
         Utils.validateArg(window >= 0, "Window cannot be negative");
         this.window = window;
         this.isStart = isStart;

@@ -100,16 +100,9 @@ public class DiscordantPairEvidenceAggregatorTest extends GATKBaseTest {
             cacheIntervals.add(new SimpleInterval("chr21", posA - innerWindow, posA + outerWindow));
         }
 
-        // No caching
         final List<DiscordantPairEvidence> testStart = new DiscordantPairEvidenceAggregator(source, DICTIONARY, innerWindow, outerWindow)
                 .collectEvidence(record);
         Assert.assertEquals(testStart.size(), expectedCount);
-
-        // With caching
-        final DiscordantPairEvidenceAggregator cachedAggregatorStart = new DiscordantPairEvidenceAggregator(source, DICTIONARY, innerWindow, outerWindow);
-        cachedAggregatorStart.setCacheIntervals(cacheIntervals);
-        final List<DiscordantPairEvidence> testStartCached = cachedAggregatorStart.collectEvidence(record);
-        Assert.assertEquals(testStartCached.size(), expectedCount);
     }
 
     @DataProvider(name = "testGetEvidenceQueryIntervalData")

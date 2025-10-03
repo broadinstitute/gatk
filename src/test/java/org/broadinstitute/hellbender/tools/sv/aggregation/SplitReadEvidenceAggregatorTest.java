@@ -52,27 +52,15 @@ public class SplitReadEvidenceAggregatorTest extends GATKBaseTest {
         cacheIntervals.add(new SimpleInterval("chr21", pos, pos));
         cacheIntervals.add(new SimpleInterval("chr21", pos - window, pos + window));
 
-        // Start SR, no caching
+        // Start SR
         final List<SplitReadEvidence> testStart = new SplitReadEvidenceAggregator(source, DICTIONARY, window, true)
                 .collectEvidence(startRecord);
         Assert.assertEquals(testStart.size(), expectedCount);
 
-        // End SR, no caching
+        // End SR
         final List<SplitReadEvidence> testEnd = new SplitReadEvidenceAggregator(source, DICTIONARY, window, false)
                 .collectEvidence(endRecord);
         Assert.assertEquals(testEnd.size(), expectedCount);
-
-        // Start SR, with caching
-        final SplitReadEvidenceAggregator cachedAggregatorStart = new SplitReadEvidenceAggregator(source, DICTIONARY, window, true);
-        cachedAggregatorStart.setCacheIntervals(cacheIntervals);
-        final List<SplitReadEvidence> testStartCached = cachedAggregatorStart.collectEvidence(startRecord);
-        Assert.assertEquals(testStartCached.size(), expectedCount);
-
-        // End SR, with caching
-        final SplitReadEvidenceAggregator cachedAggregatorEnd = new SplitReadEvidenceAggregator(source, DICTIONARY, window, false);
-        cachedAggregatorEnd.setCacheIntervals(cacheIntervals);
-        final List<SplitReadEvidence> testEndCached = cachedAggregatorEnd.collectEvidence(endRecord);
-        Assert.assertEquals(testEndCached.size(), expectedCount);
     }
 
     @Test
