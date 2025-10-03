@@ -82,7 +82,7 @@ task QueryGVCFPaths {
             `~{dataset_name}.reblocking_data_table` dt
         ON
             si.sample_name = dt.research_id
-        WHERE si.sample_id in ('"${formatted_sample_names}"')
+        WHERE si.sample_name in ('"${formatted_sample_names}"')
 
         ' > paths.json
     >>>
