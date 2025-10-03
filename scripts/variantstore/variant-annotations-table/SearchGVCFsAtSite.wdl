@@ -21,27 +21,29 @@ workflow SearchGVCFsAtSite {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            variants_docker = GetToolVersions.variants_docker,
             sample_names = echo_sample_names,
+            variants_docker = GetToolVersions.variants_docker,
     }
 
     call QueryGVCFPaths as QueryFoxtrot {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            variants_docker = GetToolVersions.variants_docker,
             sample_names = foxtrot_sample_names,
+            variants_docker = GetToolVersions.variants_docker,
     }
 
     call ReadGVCFs as ReadEchoGVCFs {
         input:
             paths_json = QueryEcho.paths_json,
+            locus = locus,
             variants_docker = GetToolVersions.variants_docker,
     }
 
     call ReadGVCFs as ReadFoxtrotGVCFs {
         input:
             paths_json = QueryFoxtrot.paths_json,
+            locus = locus,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -55,8 +57,8 @@ task QueryGVCFPaths {
     input {
         String project_id
         String dataset_name
-        String variants_docker
         Array[String] sample_names
+        String variants_docker
     }
 
     command <<<
@@ -83,7 +85,6 @@ task QueryGVCFPaths {
         WHERE si.sample_id in ('"${formatted_sample_names}"')
 
         ' > paths.json
-
     >>>
     runtime {
         docker: variants_docker
@@ -95,8 +96,9 @@ task QueryGVCFPaths {
 
 task ReadGVCFs {
     input {
-        String variants_docker
         File paths_json
+        String locus
+        String variants_docker
     }
 
     command <<<
@@ -113,7 +115,7 @@ task ReadGVCFs {
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
         set -o xtrace
 
-        python3 /app/dst_2716_vat_investigation_read_site.py ~{paths_json}> gvcf_content.json
+        python3 /app/dst_2716_vat_investigation_read_site.py ~{paths_json} --locus ~{locus} > gvcf_content.json
     >>>
     runtime {
         docker: variants_docker
