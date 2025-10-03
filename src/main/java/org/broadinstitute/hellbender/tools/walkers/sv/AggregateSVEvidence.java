@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.io.IOUtils;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -30,7 +31,26 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Annotates records with PE/SR/BAF evidence and performs breakpoint refinement with SR.
+ * This tool assesses split read (SR), discordant paired-end (PE), and B-allele frequency (BAF) evidence for structural variants (SVs),
+ * annotating records with statistical metrics that can be used to assess a variant's quality. The input VCF should
+ * contain multiple samples with GT fields populated. Note that this tool only considers carrier status and does not
+ * differentiate heterozygous from homozygous variant genotypes. For read depth evidence metrics, see
+ * {@link AggregateDepthEvidence}.
+ *
+ * Detailed methodology can be found in the supplement of <a href="https://doi.org/10.1038/s41586-020-2287-8">Collins et al. 2020</a>.
+ *
+ * Briefly, for each variant the supporting split reads and discordant pairs are counted. Phred-scaled quality scores
+ * (SRQ, PEQ, PESRQ) are then computed based on a Poisson test of the observed median carrier sample signal against
+ * background. The raw fraction of median SR signal attributed to carriers (SRCS, PECS, PESRCS) is also annotated as an additional
+ * metric to assess concordance between detected evidence and genotypes.
+ *
+ * During SR aggregation, breakpoint refinement is performed (SR1POS, SR2POS) by maximizing the quality score
+ * over all positions within a small window around each end of the variant.
+ *
+ * Bi-allelic copy number variants are also assessed using BAF evidence. Deletions are annotated with the ratio of heterozygous
+ * SNPs in carrier samples to in controls (BAF_HET_RATIO). Duplications are assessed by comparing the distribution of
+ * BAFs across SNPs with a Kolmogorov-Smirnov test statistic (BAF_KS_STAT), which is used to compute a quality
+ * score (BAF_KS_Q).
  *
  * <h3>Inputs</h3>
  *
@@ -39,16 +59,19 @@ import java.util.stream.Collectors;
  *         SV VCF
  *     </li>
  *     <li>
- *         PE evidence file
+ *         PE evidence file (optional)
  *     </li>
  *     <li>
- *         SR evidence file
+ *         SR evidence file (optional)
  *     </li>
  *     <li>
- *         BAF evidence file
+ *         BAF evidence file (optional)
  *     </li>
  *     <li>
- *         Mean depth table
+ *         Median binned read counts table
+ *     </li>
+ *     <li>
+ *         Ploidy table
  *     </li>
  * </ul>
  *
@@ -63,20 +86,27 @@ import java.util.stream.Collectors;
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk AggregateSVEvidence
+ *     gatk AggregateSVEvidence \
+ *      -V input.vcf.gz \
+ *      -O output.vcf.gz \
+ *      --median-coverage median_coverage.tsv \
+ *      --ploidy-table ploidy_table.tsv \
+ *      --baf-file all_samples.baf.txt.gz \
+ *      --split-reads-file all_samples.sr.txt.gz \
+ *      --discordant-pairs-file all_samples.pe.txt.gz
  * </pre>
  *
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
 
 @CommandLineProgramProperties(
-        summary = "Annotate SVs with supporting evidence",
-        oneLineSummary = "Annotate SVs with supporting evidence",
+        summary = "Annotate SVs with supporting evidence metrics",
+        oneLineSummary = "Annotate SVs with supporting evidence metrics",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
-@ExperimentalFeature
+@BetaFeature
 @DocumentedFeature
-public final class AggregateSVEvidence extends TwoPassVariantWalker {
+public final class AggregateSVEvidence extends VariantWalker {
     public static final String SPLIT_READ_LONG_NAME = "split-reads-file";
     public static final String DISCORDANT_PAIRS_LONG_NAME = "discordant-pairs-file";
     public static final String BAF_LONG_NAME = "baf-file";
@@ -97,21 +127,21 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     public static final String Y_CHROMOSOME_LONG_NAME = "y-chromosome-name";
 
     @Argument(
-            doc = "Split reads evidence file",
+            doc = "Split reads evidence file (indexed and ending in .sr.txt.gz)",
             fullName = SPLIT_READ_LONG_NAME,
             optional = true
     )
     private GATKPath splitReadsFile;
 
     @Argument(
-            doc = "Discordant pairs evidence file",
+            doc = "Discordant pairs evidence file (indexed and ending in .pe.txt.gz)",
             fullName = DISCORDANT_PAIRS_LONG_NAME,
             optional = true
     )
     private GATKPath discordantPairsFile;
 
     @Argument(
-            doc = "B-allele frequency (BAF) evidence file",
+            doc = "B-allele frequency (BAF) evidence file (indexed and ending in .baf.txt.gz)",
             fullName = BAF_LONG_NAME,
             optional = true
     )
@@ -238,7 +268,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     /**
      * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
      * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
-     * integers in their respective columns.
+     * integers in their respective columns. This information is used to determine sample sex.
      */
     @Argument(
             doc = "Sample ploidy table (.tsv). Required only if the input VCF contains allosomal records.",
@@ -271,36 +301,32 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     private SAMSequenceDictionary dictionary;
     private VariantContextWriter writer;
 
+    // SR
     private FeatureDataSource<SplitReadEvidence> splitReadSource;
     private SplitReadEvidenceAggregator startSplitCollector;
     private SplitReadEvidenceAggregator endSplitCollector;
     private SplitReadEvidenceTester splitReadEvidenceTester;
 
+    // PE
     private FeatureDataSource<DiscordantPairEvidence> discordantPairSource;
     private DiscordantPairEvidenceAggregator discordantPairCollector;
     private DiscordantPairEvidenceTester discordantPairEvidenceTester;
 
+    // PESR
     private PESREvidenceTester pesrEvidenceTester;
 
+    // BAF
     private FeatureDataSource<BafEvidence> bafSource;
     private BafEvidenceAggregator bafCollector;
     private BafHetRatioTester bafHetRatioTester;
     private BafKolmogorovSmirnovTester bafKolmogorovSmirnovTester;
 
+    // Metadata
     private Map<String,Double> sampleCoverageMap;
     private Set<String> samples;
     private VCFHeader header;
     private Set<String> maleSamples;
     private Set<String> femaleSamples;
-
-    private Collection<SimpleInterval> discordantPairIntervals;
-    private Collection<SimpleInterval> startSplitReadIntervals;
-    private Collection<SimpleInterval> endSplitReadIntervals;
-    private Collection<SimpleInterval> bafIntervals;
-
-    private LocalizedFeatureSubset<SplitReadEvidence> localizedEndSplitReads;
-
-    private Collection<VariantContext> outputBuffer;
 
     private static final int BAF_QUERY_LOOKAHEAD = 0;
     private static final int SPLIT_READ_QUERY_LOOKAHEAD = 0;
@@ -330,11 +356,6 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         if (bafCollectionEnabled()) {
             initializeBAFCollection();
         }
-        discordantPairIntervals = new ArrayList<>();
-        startSplitReadIntervals = new ArrayList<>();
-        endSplitReadIntervals = new ArrayList<>();
-        bafIntervals = new ArrayList<>();
-        outputBuffer = new ArrayList<>();
         writer = createVCFWriter(Paths.get(outputFile));
         header = getVCFHeader();
         writer.writeHeader(header);
@@ -343,6 +364,9 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         }
     }
 
+    /**
+     * Read ploidy table and assign sample sex
+     */
     private void initializeSampleSexSets() {
         final PloidyTable table = new PloidyTable(ploidyTablePath.toPath());
         maleSamples = header.getGenotypeSamples().stream()
@@ -362,6 +386,8 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     private void initializeSplitReadCollection() {
         initializeSplitReadEvidenceDataSource();
         splitReadEvidenceTester = new SplitReadEvidenceTester(sampleCoverageMap, splitReadCrossover, dictionary);
+        startSplitCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, splitReadWindow, true);
+        endSplitCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, splitReadWindow, false);
     }
 
     private void initializeBAFCollection() {
@@ -401,6 +427,9 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
                 cloudIndexPrefetchBuffer);
     }
 
+    /**
+     * Loads median coverage table
+     */
     private void loadSampleCoverage() {
         final String fileString = medianCoverageFile.toString();
         final List<String> lines = IOUtils.readLines(BucketUtils.openFile(fileString), Charset.defaultCharset());
@@ -436,69 +465,39 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         super.closeTool();
     }
 
+    /**
+     * For skipping records that are not testable types
+     */
     private boolean validRecordType(final SVCallRecord call) {
         return call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
     }
 
+    /**
+     * Determines which variants to run PE testing on
+     */
     private boolean useDiscordantPairEvidence(final SVCallRecord call) {
         return !call.isDepthOnly() && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.INS;
     }
 
+    /**
+     * Determines which variants to run SR testing on
+     */
     private boolean useSplitReadEvidence(final SVCallRecord call) {
         return !call.isDepthOnly();
     }
 
+    /**
+     * Determines which variants to run BAF testing on
+     */
     private boolean useBafEvidence(final SVCallRecord call) {
         final Integer length = call.getLength();
         return (call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL || call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)
                 && length != null && length >= bafMinSize && length <= bafMaxSize;
     }
 
-    // Collect intervals for the evidence
-    @Override
-    public void firstPassApply(final VariantContext variant, final ReadsContext readsContext,
-                      final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
-        if (!validRecordType(call)) {
-            return;
-        }
-        if (discordantPairCollectionEnabled() && useDiscordantPairEvidence(call)) {
-            discordantPairIntervals.add(discordantPairCollector.getEvidenceQueryInterval(call));
-        }
-        if (splitReadCollectionEnabled() && useSplitReadEvidence(call)) {
-            startSplitReadIntervals.add(SplitReadEvidenceAggregator.getStartEvidenceQueryInterval(call, splitReadWindow, dictionary));
-            endSplitReadIntervals.add(SplitReadEvidenceAggregator.getEndEvidenceQueryInterval(call, splitReadWindow, dictionary));
-        }
-        if (bafCollectionEnabled() && useBafEvidence(call)) {
-            bafIntervals.add(bafCollector.getEvidenceQueryInterval(call));
-        }
-    }
-
-    // Localize evidence over the intervals we found
-    @Override
-    public void afterFirstPass() {
-        if (discordantPairCollectionEnabled()) {
-            discordantPairCollector.setCacheIntervals(discordantPairIntervals);
-        }
-        if (splitReadCollectionEnabled()) {
-            startSplitCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, splitReadWindow, true);
-            startSplitCollector.setCacheIntervals(startSplitReadIntervals);
-            logger.info("Localizing split read evidence at END loci...");
-            localizedEndSplitReads = new LocalizedFeatureSubset<>(splitReadsFile, endSplitReadIntervals, "endSplitReads", 0,
-                    cloudPrefetchBuffer, cloudIndexPrefetchBuffer, new ArrayList<>(samples), compressionLevel, dictionary);
-            logger.info("Finished localization of " + localizedEndSplitReads.getRecordCount() + " feature records");
-            // Does not use interval caching to avoid thrashing due distant ENDs
-            endSplitCollector = new SplitReadEvidenceAggregator(localizedEndSplitReads.getLocalizedDataSource(), dictionary, splitReadWindow, false);
-        }
-        if (bafCollectionEnabled()) {
-            bafCollector.setCacheIntervals(bafIntervals);
-        }
-    }
-
     /**
-     * Returns set of samples to exclude for evidence stat calculations by sex.
-     * @param record
-     * @return set of sample ids or null
+     * Returns set of samples to exclude for evidence stat calculations by sex. Prefer female carriers on chrX when
+     * available, and male carriers on chrY.
      */
     public Set<String> getSamplesToExcludeForStatsBySex(final SVCallRecord record) {
         // TODO paired BND records may cause problems here
@@ -523,14 +522,15 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         }
     }
 
-    // Perform evidence testing
+    /**
+     * Perform evidence testing and write output
+     */
     @Override
-    public void secondPassApply(final VariantContext variant, final ReadsContext readsContext,
+    public void apply(final VariantContext variant, final ReadsContext readsContext,
                                 final ReferenceContext referenceContext, final FeatureContext featureContext) {
         SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         if (validRecordType(record)) {
             final Set<String> excludedSamples = getSamplesToExcludeForStatsBySex(record);
-            flushOutputBuffer(record.getPositionAInterval());
             final Set<String> allSamples = Sets.difference(record.getAllSamples(), excludedSamples);
             final Set<String> carrierSamples = Sets.intersection(record.getCarrierSampleSet(), allSamples);
             final Set<String> backgroundSamples = Sets.difference(allSamples, carrierSamples);
@@ -566,28 +566,12 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
                 record = pesrEvidenceTester.applyToRecord(record, result);
             }
         }
-        outputBuffer.add(SVCallRecordUtils.getVariantBuilder(record).make());
+        writer.add(SVCallRecordUtils.getVariantBuilder(record).make());
     }
 
     @Override
     public Object onTraversalSuccess() {
-        outputBuffer.stream().sorted(IntervalUtils.getDictionaryOrderComparator(dictionary)).forEach(writer::add);
-        outputBuffer.clear();
         return super.onTraversalSuccess();
-    }
-
-    private void flushOutputBuffer(final SimpleInterval currentLocus) {
-        outputBuffer.stream()
-                .filter(v -> !variantIsActive(v, currentLocus))
-                .sorted(IntervalUtils.getDictionaryOrderComparator(dictionary))
-                .forEach(writer::add);
-        outputBuffer = outputBuffer.stream()
-                .filter(v -> variantIsActive(v, currentLocus))
-                .collect(Collectors.toList());
-    }
-
-    private boolean variantIsActive(final VariantContext variant, final SimpleInterval currentLocus) {
-        return variant.getContig().equals(currentLocus.getContig()) && variant.getStart() >= currentLocus.getStart() - splitReadWindow;
     }
 
     private VCFHeader getVCFHeader() {

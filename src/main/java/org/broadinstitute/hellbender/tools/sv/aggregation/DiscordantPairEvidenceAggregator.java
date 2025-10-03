@@ -12,11 +12,18 @@ public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<Disco
     private final int innerWindow;
     private final int outerWindow;
 
+    /**
+     * Constructor.
+     * @param source        PE feature source
+     * @param dictionary    sequence dictionary
+     * @param innerWindow   window past start locus and before end locus
+     * @param outerWindow   window before start locus and past end locus
+     */
     public DiscordantPairEvidenceAggregator(final FeatureDataSource<DiscordantPairEvidence> source,
                                             final SAMSequenceDictionary dictionary,
                                             final int innerWindow,
                                             final int outerWindow) {
-        super(source, Math.max(innerWindow, outerWindow), dictionary);
+        super(source, dictionary);
         this.innerWindow = innerWindow;
         this.outerWindow = outerWindow;
     }

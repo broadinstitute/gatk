@@ -40,25 +40,9 @@ public class BafEvidenceAggregatorTest extends GATKBaseTest {
         final FeatureDataSource<BafEvidence> source = new FeatureDataSource<>(TEST_EVIDENCE);
         final SVCallRecord record = SVTestUtils.newDepthCallRecordWithIntervalAndType(contig, pos, pos + length - 1, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
 
-        // no caching
         final List<BafEvidence> test = new BafEvidenceAggregator(source, DICTIONARY, padding)
                 .collectEvidence(record);
         Assert.assertEquals(test.size(), expectedCount);
-
-        // with caching
-        final Collection<SimpleInterval> cacheIntervals = new ArrayList<>();
-        cacheIntervals.add(new SimpleInterval("chr21", 25794845 - 500, 25794845 + 1500));
-        cacheIntervals.add(new SimpleInterval("chr21", 25794388, 25794388 + 1000));
-        cacheIntervals.add(new SimpleInterval("chr21", 25794389, 25794389 + 1000));
-        cacheIntervals.add(new SimpleInterval("chr21", 25794390, 25794390 + 1000));
-        cacheIntervals.add(new SimpleInterval("chr21", 25984667 - 500, 25984667 + 1500));
-        cacheIntervals.add(new SimpleInterval("chr22", 30468212 - 500, 30468212 + 1500));
-        final int paddingSize = (int) Math.ceil(length * padding);
-        cacheIntervals.add(new SimpleInterval(contig, pos - paddingSize, pos + paddingSize));
-        final BafEvidenceAggregator cachedAggregator = new BafEvidenceAggregator(source, DICTIONARY, padding);
-        cachedAggregator.setCacheIntervals(cacheIntervals);
-        final List<BafEvidence> testCached = cachedAggregator.collectEvidence(record);
-        Assert.assertEquals(testCached.size(), expectedCount);
     }
 
     @Test

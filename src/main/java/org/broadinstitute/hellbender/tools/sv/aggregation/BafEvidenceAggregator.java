@@ -11,10 +11,16 @@ public class BafEvidenceAggregator extends SVEvidenceAggregator<BafEvidence> {
 
     private final double paddingFraction;
 
+    /**
+     * Constructor.
+     * @param source        PE feature source
+     * @param dictionary    sequence dictionary
+     * @param paddingFraction  evidence window as a fraction of variant size
+     */
     public BafEvidenceAggregator(final FeatureDataSource<BafEvidence> source,
                                  final SAMSequenceDictionary dictionary,
                                  final double paddingFraction) {
-        super(source, 0, dictionary);
+        super(source, dictionary); // there is no fixed upper bound on the window since it's a fraction of length
         this.paddingFraction = paddingFraction;
     }
 
@@ -33,6 +39,7 @@ public class BafEvidenceAggregator extends SVEvidenceAggregator<BafEvidence> {
 
     @Override
     public boolean evidenceFilter(final SVCallRecord record, final BafEvidence evidence) {
+        // No additional properties to match on, other than assumed overlap
         return true;
     }
 }
