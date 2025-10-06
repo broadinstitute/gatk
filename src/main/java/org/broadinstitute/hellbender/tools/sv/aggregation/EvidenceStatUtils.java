@@ -13,10 +13,23 @@ public class EvidenceStatUtils {
 
     private static final Median MEDIAN = new Median();
 
+    /**
+     * Converts probability to Phred-scaled quality
+     * @param pError  error probability
+     * @param maxQual max quality score
+     * @return        phred-scaled score, or null of pError is null
+     */
     public static Double probToQual(final Double pError, final double maxQual) {
         return pError == null ? null : Math.min(-10.0*Math.log10(pError), maxQual);
     }
 
+    /**
+     * Gets carrier signal as percentage of total signal, i.e. 100 * carrierSignal / (carrierSignal + backgroundSignal).
+     * Returns null if either input is null, otherwise 0 if either signal is 0.
+     * @param carrierSignal     carrier evidence count
+     * @param backgroundSignal  background evidence count
+     * @return                  result on [0-100] or null
+     */
     public static Double carrierSignalFraction(final Double carrierSignal, final Double backgroundSignal) {
         if (backgroundSignal == null || carrierSignal == null) {
             return null;
@@ -28,11 +41,12 @@ public class EvidenceStatUtils {
     }
 
     /**
-     * Find the median of site counts in a subset of samples when normalized by sample coverage
-     *
-     * @param samples sample ids to restrict to
-     * @param sampleCounts
-     * @return median
+     * Find the median of site counts in a subset of samples when normalized by sample coverage. Returns 0 if no samples.
+     * @param samples               samples to restrict to
+     * @param sampleCounts          sample counts
+     * @param sampleCoverageMap     characteristic sample depth
+     * @param targetCoverage        normalized characteristic coverage
+     * @return                      result
      */
     @VisibleForTesting
     protected static double getMedianNormalizedCount(final Collection<String> samples,
@@ -51,6 +65,9 @@ public class EvidenceStatUtils {
         return MEDIAN.evaluate(normalizedCounts);
     }
 
+    /**
+     * Poisson CDF
+     */
     public static double cumulativePoissonProbability(final double mean, final int x) {
         if (x < 0) {
             return 0;
@@ -65,11 +82,11 @@ public class EvidenceStatUtils {
      * Performs poisson test on a single site by computing the probability of observing the background counts
      * under a carrier count distribution
      *
-     * @param sampleCounts
-     * @param carrierSamples
-     * @param backgroundSamples
-     * @param meanCoverage mean coverage of all samples
-     * @return probability on [0,1]
+     * @param sampleCounts      sample counts
+     * @param carrierSamples    carrier sample IDs
+     * @param backgroundSamples background sample IDs
+     * @param meanCoverage      mean coverage of all samples
+     * @return                  probability on [0,1]
      */
     public static PoissonTestResult calculateOneSamplePoissonTest(final Map<String, Integer> sampleCounts,
                                                                   final Collection<String> carrierSamples,
@@ -95,14 +112,23 @@ public class EvidenceStatUtils {
             this.backgroundSignal = backgroundSignal;
         }
 
+        /**
+         * Probability
+         */
         public double getP() {
             return p;
         }
 
+        /**
+         * Median normalized carrier signal
+         */
         public double getCarrierSignal() {
             return carrierSignal;
         }
 
+        /**
+         * Median background carrier signal
+         */
         public double getBackgroundSignal() {
             return backgroundSignal;
         }

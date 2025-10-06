@@ -12,6 +12,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Analyzes and refines SV breakpoints by combining PE and SR evidence.
+ * See {@link SplitReadEvidenceTester} for description of statistical methods.
+ */
+
 public class PESREvidenceTester {
 
     public static final int MAX_QUAL = 99;

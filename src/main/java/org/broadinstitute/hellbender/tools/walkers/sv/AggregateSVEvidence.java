@@ -9,7 +9,6 @@ import org.apache.commons.io.IOUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
@@ -19,10 +18,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.*;
 import org.broadinstitute.hellbender.tools.sv.aggregation.*;
 import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.cloud.LocalizedFeatureSubset;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.nio.charset.Charset;
@@ -31,26 +27,26 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This tool assesses split read (SR), discordant paired-end (PE), and B-allele frequency (BAF) evidence for structural variants (SVs),
+ * <p>This tool assesses split read (SR), discordant paired-end (PE), and B-allele frequency (BAF) evidence for structural variants (SVs),
  * annotating records with statistical metrics that can be used to assess a variant's quality. The input VCF should
  * contain multiple samples with GT fields populated. Note that this tool only considers carrier status and does not
  * differentiate heterozygous from homozygous variant genotypes. For read depth evidence metrics, see
- * {@link AggregateDepthEvidence}.
+ * the AggregateDepthEvidence tool.</p>
  *
- * Detailed methodology can be found in the supplement of <a href="https://doi.org/10.1038/s41586-020-2287-8">Collins et al. 2020</a>.
+ * <p>Detailed methodology can be found in the supplement of <a href="https://doi.org/10.1038/s41586-020-2287-8">Collins et al. 2020</a>.</p>
  *
- * Briefly, for each variant the supporting split reads and discordant pairs are counted. Phred-scaled quality scores
+ * <p>Briefly, for each variant the supporting split reads and discordant pairs are counted. Phred-scaled quality scores
  * (SRQ, PEQ, PESRQ) are then computed based on a Poisson test of the observed median carrier sample signal against
  * background. The raw fraction of median SR signal attributed to carriers (SRCS, PECS, PESRCS) is also annotated as an additional
- * metric to assess concordance between detected evidence and genotypes.
+ * metric to assess concordance between detected evidence and genotypes.</p>
  *
- * During SR aggregation, breakpoint refinement is performed (SR1POS, SR2POS) by maximizing the quality score
- * over all positions within a small window around each end of the variant.
+ * <p>During SR aggregation, breakpoint refinement is performed (SR1POS, SR2POS) by maximizing the quality score
+ * over all positions within a small window around each end of the variant.</p>
  *
- * Bi-allelic copy number variants are also assessed using BAF evidence. Deletions are annotated with the ratio of heterozygous
+ * <p>Bi-allelic copy number variants are also assessed using BAF evidence. Deletions are annotated with the ratio of heterozygous
  * SNPs in carrier samples to in controls (BAF_HET_RATIO). Duplications are assessed by comparing the distribution of
  * BAFs across SNPs with a Kolmogorov-Smirnov test statistic (BAF_KS_STAT), which is used to compute a quality
- * score (BAF_KS_Q).
+ * score (BAF_KS_Q).</p>
  *
  * <h3>Inputs</h3>
  *
@@ -160,6 +156,20 @@ public final class AggregateSVEvidence extends VariantWalker {
     )
     private String outputFile;
 
+    /**
+     * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
+     * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
+     * integers in their respective columns. This information is used to determine sample sex.
+     */
+    @Argument(
+            doc = "Sample ploidy table (.tsv)",
+            fullName = SVCluster.PLOIDY_TABLE_LONG_NAME
+    )
+    private GATKPath ploidyTablePath;
+
+    /**
+     * Paired-end window size downstream of the first mate and upstream of the second mate.
+     */
     @Argument(
             doc = "Inner discordant pair window size (bp)",
             fullName = PE_INNER_WINDOW_LONG_NAME,
@@ -168,6 +178,10 @@ public final class AggregateSVEvidence extends VariantWalker {
     )
     private int innerWindow = 50;
 
+
+    /**
+     * Paired-end window size upstream of the first mate and downstream of the second mate.
+     */
     @Argument(
             doc = "Outer discordant pair window size (bp)",
             fullName = PE_OUTER_WINDOW_LONG_NAME,
@@ -238,7 +252,7 @@ public final class AggregateSVEvidence extends VariantWalker {
     private int minSnpCarriers = 5;
 
     @Argument(
-            doc = "Minimum number of BAF values required in carrier and non-carrier groups.",
+            doc = "Minimum number of BAF values required in carrier and non-carrier groups, used for duplication BAF assessment.",
             fullName = MIN_BAF_COUNT_LONG_NAME,
             minValue = 1,
             optional = true
@@ -246,8 +260,8 @@ public final class AggregateSVEvidence extends VariantWalker {
     private int minBafCount = 2;
 
     @Argument(
-            doc = "Baseline expected SNPs per locus, used for filtering deletions in likely regions of homozygosity " +
-                    "during BAF assessment.",
+            doc = "Baseline expected het SNPs per locus, used for filtering deletions in likely regions of homozygosity " +
+                    "during deletion BAF assessment.",
             fullName = P_SNP_LONG_NAME,
             minValue = 0.,
             maxValue = 1.,
@@ -256,26 +270,14 @@ public final class AggregateSVEvidence extends VariantWalker {
     private double pSnp = 0.001;
 
     @Argument(
-            doc = "Significance threshold for binomial test on region homozygosity, used for filtering deletions in " +
-                    "likely regions of homozygosity during BAF assessment.",
+            doc = "Significance threshold for binomial test on het counts, used for filtering deletions in " +
+                    "regions of homozygosity during deletion BAF assessment.",
             fullName = P_MAX_HOMOZYGOUS_LONG_NAME,
             minValue = 0.,
             maxValue = 1.,
             optional = true
     )
     private double pMaxHomozygous = 0.05;
-
-    /**
-     * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
-     * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
-     * integers in their respective columns. This information is used to determine sample sex.
-     */
-    @Argument(
-            doc = "Sample ploidy table (.tsv). Required only if the input VCF contains allosomal records.",
-            fullName = SVCluster.PLOIDY_TABLE_LONG_NAME,
-            optional = true
-    )
-    private GATKPath ploidyTablePath;
 
     @Argument(
             doc = "X chromosome name",
@@ -290,13 +292,6 @@ public final class AggregateSVEvidence extends VariantWalker {
             optional = true
     )
     private String yChromosomeName = "chrY";
-
-    @Argument(
-            doc = "Output compression level",
-            fullName = PrintSVEvidence.COMPRESSION_LEVEL_NAME,
-            minValue = 0, maxValue = 9, optional = true
-    )
-    private int compressionLevel = 4;
 
     private SAMSequenceDictionary dictionary;
     private VariantContextWriter writer;
@@ -359,9 +354,7 @@ public final class AggregateSVEvidence extends VariantWalker {
         writer = createVCFWriter(Paths.get(outputFile));
         header = getVCFHeader();
         writer.writeHeader(header);
-        if (ploidyTablePath != null) {
-            initializeSampleSexSets();
-        }
+        initializeSampleSexSets();
     }
 
     /**
