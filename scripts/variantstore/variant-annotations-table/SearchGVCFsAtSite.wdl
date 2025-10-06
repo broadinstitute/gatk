@@ -7,49 +7,32 @@ workflow SearchGVCFsAtSite {
         String project_id
         String dataset_name
         String locus
-        Array[String] echo_sample_names
-        Array[String] foxtrot_sample_names
+        Array[String] sample_names
     }
 
     meta {
-        description: "Reads relevant lines of GVCFs for samples with unmapped VIDs in the VAT and loads into BigQuery."
+        description: "Reads relevant lines of GVCFs for the specified sample names at a specified locus"
     }
 
     call GvsUtils.GetToolVersions {}
 
-    call QueryGVCFPaths as QueryEcho {
+    call QueryGVCFPaths {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            sample_names = echo_sample_names,
+            sample_names = sample_names,
             variants_docker = GetToolVersions.variants_docker,
     }
 
-    call QueryGVCFPaths as QueryFoxtrot {
+    call ReadGVCFs {
         input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            sample_names = foxtrot_sample_names,
-            variants_docker = GetToolVersions.variants_docker,
-    }
-
-    call ReadGVCFs as ReadEchoGVCFs {
-        input:
-            paths_json = QueryEcho.paths_json,
-            locus = locus,
-            variants_docker = GetToolVersions.variants_docker,
-    }
-
-    call ReadGVCFs as ReadFoxtrotGVCFs {
-        input:
-            paths_json = QueryFoxtrot.paths_json,
+            paths_json = QueryGVCFPaths.paths_json,
             locus = locus,
             variants_docker = GetToolVersions.variants_docker,
     }
 
     output {
-        File echo_content = ReadEchoGVCFs.gvcf_content_json
-        File foxtrot_content = ReadFoxtrotGVCFs.gvcf_content_json
+        File gvcf_content = ReadGVCFs.gvcf_content_json
     }
 }
 
