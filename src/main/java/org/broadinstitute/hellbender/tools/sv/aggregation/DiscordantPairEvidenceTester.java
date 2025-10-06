@@ -10,17 +10,36 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Analyzes and refines SV breakpoints using discordant pair (PE) evidence.
+ * See {@link SplitReadEvidenceTester} for description of statistical methods.
+ */
+
 public class DiscordantPairEvidenceTester {
 
     private final Map<String,Double> sampleCoverageMap;
     private final SAMSequenceDictionary dictionary;
 
+    public static final int MAX_QUAL = 99;
+
+    /**
+     * @param sampleCoverageMap map with (sample id, per-base sample coverage) entries
+     * @param dictionary reference dictionary
+     */
     public DiscordantPairEvidenceTester(final Map<String, Double> sampleCoverageMap,
                                         final SAMSequenceDictionary dictionary) {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
         this.dictionary = Utils.nonNull(dictionary);
     }
 
+    /**
+     * Applies statistical model to PE evidence around variant breakends.
+     *
+     * @param record  variant to test
+     * @param evidence  PE evidence for the variant
+     * @param carrierSamples  non-ref samples for this variant
+     * @param backgroundSamples  hom-ref samples for this variant
+     */
     public DiscordantPairTestResult test(final SVCallRecord record,
                                          final List<DiscordantPairEvidence> evidence,
                                          final Set<String> carrierSamples,
@@ -30,12 +49,15 @@ public class DiscordantPairEvidenceTester {
         return poissonTest(evidence, carrierSamples, backgroundSamples);
     }
 
+    /**
+     * Annotates record with PE test results
+     */
     public SVCallRecord applyToRecord(final SVCallRecord record, final DiscordantPairTestResult discordantPairResult) {
         Utils.nonNull(record);
         Utils.nonNull(discordantPairResult);
         final EvidenceStatUtils.PoissonTestResult test = discordantPairResult.getTest();
         final double p = test == null ? 1. : test.getP();
-        final Double q = EvidenceStatUtils.probToQual(p, (byte) 99);
+        final Double q = EvidenceStatUtils.probToQual(p, (byte) MAX_QUAL);
         final Double carrierSignal = test == null ? 0 :
                 EvidenceStatUtils.carrierSignalFraction(test.getCarrierSignal(), test.getBackgroundSignal());
         final Map<String, Object> attributes = new HashMap<>(record.getAttributes());
@@ -45,6 +67,9 @@ public class DiscordantPairEvidenceTester {
         return SVCallRecordUtils.assignDiscordantPairCountsToGenotypes(newRecord, discordantPairResult.getDiscordantPairEvidence());
     }
 
+    /**
+     * Runs statistical tests
+     */
     protected DiscordantPairTestResult poissonTest(final List<DiscordantPairEvidence> evidence,
                                                    final Collection<String> carrierSamples,
                                                    final Collection<String> backgroundSamples) {
@@ -72,14 +97,23 @@ public class DiscordantPairEvidenceTester {
             this.discordantPairEvidence = discordantPairEvidence;
         }
 
+        /**
+         * Gets stats
+         */
         public EvidenceStatUtils.PoissonTestResult getTest() {
             return test;
         }
 
+        /**
+         * Gets map from sample ID to PE evidence count
+         */
         public Map<String, Integer> getSampleCounts() {
             return sampleCounts;
         }
 
+        /**
+         * Gets all PE evidence for the test
+         */
         public List<DiscordantPairEvidence> getDiscordantPairEvidence() {
             return discordantPairEvidence;
         }

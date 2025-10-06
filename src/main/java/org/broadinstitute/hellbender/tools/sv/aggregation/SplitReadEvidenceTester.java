@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Refines variant breakpoints using split read evidence.
+ * Analyzes and refines SV breakpoints using split read evidence.
  *
  * The start and end of the breakpoint are tested independently. At each end we perform a series of Poisson
  * tests across positions of the provided SR evidence using the following model:

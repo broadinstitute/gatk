@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<DiscordantPairEvidence> {
 
+    // PE evidence uses asymmetric windows for "outside" and "inside" the breakpoint
     private final int innerWindow;
     private final int outerWindow;
 

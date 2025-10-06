@@ -13,9 +13,9 @@ public class BafEvidenceAggregator extends SVEvidenceAggregator<BafEvidence> {
 
     /**
      * Constructor.
-     * @param source        PE feature source
-     * @param dictionary    sequence dictionary
-     * @param paddingFraction  evidence window as a fraction of variant size
+     * @param source            BAF feature source
+     * @param dictionary        sequence dictionary
+     * @param paddingFraction   evidence window as a fraction of variant size
      */
     public BafEvidenceAggregator(final FeatureDataSource<BafEvidence> source,
                                  final SAMSequenceDictionary dictionary,
