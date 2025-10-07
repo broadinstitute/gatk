@@ -9,6 +9,8 @@ workflow SearchGVCFsAtSite {
         String locus
         Array[String] sample_names
         String sample_group_name
+        String gvcf_lines_table_name
+        String gvcf_info_fields_table_name
     }
 
     meta {
@@ -30,6 +32,17 @@ workflow SearchGVCFsAtSite {
             paths_json = QueryGVCFPaths.paths_json,
             locus = locus,
             sample_group_name = sample_group_name,
+            variants_docker = GetToolVersions.variants_docker,
+    }
+
+    call UploadGVCFContent {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            gvcf_lines_tsv = ReadGVCFs.gvcf_lines_tsv,
+            gvcf_info_fields_tsv = ReadGVCFs.gvcf_info_fields_tsv,
+            gvcf_lines_table_name = gvcf_lines_table_name,
+            gvcf_info_fields_table_name = gvcf_info_fields_table_name,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -108,7 +121,7 @@ task ReadGVCFs {
         # loading into BigQuery.
         jq --raw-output '(.[0] | keys_unsorted) as $keys | $keys, map([.[ $keys[] ]|tostring])[] | @tsv' gvcf_content.json > gvcf_content_unordered.tsv
 
-        cat gvcf_content_unordered.tsv | awk 'BEGIN {OFS="\t";} {print $3, $4, $1, $2, $5, $6, "~{sample_group_name}"}' > gvcf_content.tsv
+        cat gvcf_content_unordered.tsv | awk 'BEGIN {OFS="\t";} {print $3, $4, $1, $2, $5, $6, "~{sample_group_name}"}' > gvcf_lines.tsv
 
         # Generate a TSV file that splits out the info fields in a format suitable for loading in to BigQuery, e.g.
         # sample_id	sample_name	sample_group   vcf	format	info
@@ -123,14 +136,14 @@ task ReadGVCFs {
         # 444444	5555555	foxtrot_gq40	reblocked	GT	0/0
         # 444444	5555555	foxtrot_gq40	reblocked	DP	33
         # 444444	5555555	foxtrot_gq40	reblocked	GQ	40
-        python3 /app/dst_2716_split_vcf_info_fields.py gvcf_content.tsv > gvcf_info_fields.tsv
+        python3 /app/dst_2716_split_vcf_info_fields.py gvcf_lines.tsv > gvcf_info_fields.tsv
     >>>
     runtime {
         docker: variants_docker
     }
     output {
         File gvcf_content_json = "gvcf_content.json"
-        File gvcf_content_tsv = "gvcf_content.tsv"
+        File gvcf_lines_tsv = "gvcf_lines.tsv"
         File gvcf_info_fields_tsv = "gvcf_info_fields.tsv"
     }
 }
@@ -139,7 +152,10 @@ task UploadGVCFContent {
     input {
         String project_id
         String dataset_name
-        File merged_tsv
+        File gvcf_lines_tsv
+        File gvcf_info_fields_tsv
+        String gvcf_lines_table_name
+        String gvcf_info_fields_table_name
         String variants_docker
     }
 
@@ -148,13 +164,17 @@ task UploadGVCFContent {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        python /app/reorder_gvcf_content_cols.py ~{merged_tsv} > reordered.tsv
+        bq --apilog=false load --source_format=CSV --field_delimiter="\t" --skip_leading_rows=1 \
+            --project_id=~{project_id} \
+            --schema "sample_id:INTEGER,sample_name:STRING,gvcf_path:STRING,reblocked_gvcf:STRING,gvcf_line:STRING,reblocked_gvcf_line:STRING,sample_group_name:STRING" \
+            ~{dataset_name}.~{gvcf_lines_table_name}\
+            ~{gvcf_lines_tsv}
 
         bq --apilog=false load --source_format=CSV --field_delimiter="\t" --skip_leading_rows=1 \
             --project_id=~{project_id} \
-            --schema "sample_name:STRING,sample_id:INTEGER,chr:STRING,input_position:INTEGER,input_ref:STRING,input_alt:STRING,gvcf_path:STRING,reblocked_gvcf:STRING,gvcf_line:STRING,reblocked_gvcf_line:STRING" \
-            ~{dataset_name}.pseudo_vid_gvcf_content \
-            reordered.tsv
+            --schema "sample_id:INTEGER,sample_name:STRING,sample_group_name:STRING,vcf:STRING,format:STRING,info:STRING" \
+            ~{dataset_name}.~{gvcf_info_fields_table_name}\
+            ~{gvcf_info_fields_tsv}
     >>>
     runtime {
         docker: variants_docker
