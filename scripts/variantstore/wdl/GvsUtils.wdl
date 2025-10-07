@@ -1544,7 +1544,6 @@ task GetHailScripts {
         File create_vat_inputs_script = "app/create_vat_inputs.py"
         File hail_create_vat_inputs_script = "app/hail_create_vat_inputs.py"
         File vds_validation_script = "app/vds_validation.py"
-        File site_specific_variant_qc_script = "app/site_specific_variant_qc.py"
     }
     runtime {
         docker: variants_docker
