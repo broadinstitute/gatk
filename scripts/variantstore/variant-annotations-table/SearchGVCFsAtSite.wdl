@@ -8,6 +8,7 @@ workflow SearchGVCFsAtSite {
         String dataset_name
         String locus
         Array[String] sample_names
+        String sample_group
     }
 
     meta {
@@ -21,6 +22,7 @@ workflow SearchGVCFsAtSite {
             project_id = project_id,
             dataset_name = dataset_name,
             sample_names = sample_names,
+            sample_group = sample_group,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -41,6 +43,7 @@ task QueryGVCFPaths {
         String project_id
         String dataset_name
         Array[String] sample_names
+        String sample_group
         String variants_docker
     }
 
@@ -58,7 +61,8 @@ task QueryGVCFPaths {
             si.sample_id,
             si.sample_name,
             dt.reblocked_gvcf,
-            dt.gvcf_path
+            dt.gvcf_path,
+            "~{sample_group}"
         FROM
             `~{dataset_name}.sample_info` si
         JOIN
@@ -68,12 +72,33 @@ task QueryGVCFPaths {
         WHERE si.sample_name in ('"${formatted_sample_names}"')
 
         ' > paths.json
+
+        # Generate a TSV file including embedded lines from the gVCFs (both raw and reblocked) in a format suitable for
+        # loading into BigQuery.
+        jq --raw-output '(.[0] | keys_unsorted) as $keys | $keys, map([.[ $keys[] ]|tostring])[] | @tsv' paths.json > paths.tsv
+
+        # Generate a TSV file that splits out the info fields in a format suitable for loading in to BigQuery, e.g.
+        # sample_id	sample_name	sample_group   vcf	format	info
+        # 444444	5555555	foxtrot_gq40	raw	GT	0/0
+        # 444444	5555555	foxtrot_gq40	raw	AD	41,0
+        # 444444	5555555	foxtrot_gq40	raw	DP	41
+        # 444444	5555555	foxtrot_gq40	raw	GQ	83
+        # 444444	5555555	foxtrot_gq40	raw	MIN_DP	35
+        # 444444	5555555	foxtrot_gq40	raw	PL	0,83,1485
+        # 444444	5555555	foxtrot_gq40	raw	SPL	0,83,255
+        # 444444	5555555	foxtrot_gq40	raw	ICNT	40,0
+        # 444444	5555555	foxtrot_gq40	reblocked	GT	0/0
+        # 444444	5555555	foxtrot_gq40	reblocked	DP	33
+        # 444444	5555555	foxtrot_gq40	reblocked	GQ	40
+        python3 /app/dst_2716_split_vcf_info_fields.py paths.tsv > vcf_info_fields.tsv
     >>>
     runtime {
         docker: variants_docker
     }
     output {
         File paths_json = "paths.json"
+        File paths_tsv = "paths.tsv"
+        File vcf_info_fields_tsv = "vcf_info_fields.tsv"
     }
 }
 
