@@ -123,7 +123,7 @@ task ReadGVCFs {
         # 444444	5555555	foxtrot_gq40	reblocked	GT	0/0
         # 444444	5555555	foxtrot_gq40	reblocked	DP	33
         # 444444	5555555	foxtrot_gq40	reblocked	GQ	40
-        python3 /app/dst_2716_split_vcf_info_fields.py paths.tsv > gvcf_info_fields.tsv
+        python3 /app/dst_2716_split_vcf_info_fields.py gvcf_content.tsv > gvcf_info_fields.tsv
     >>>
     runtime {
         docker: variants_docker
