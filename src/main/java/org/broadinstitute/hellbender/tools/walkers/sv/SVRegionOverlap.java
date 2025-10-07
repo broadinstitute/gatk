@@ -15,6 +15,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
@@ -151,8 +152,14 @@ public final class SVRegionOverlap extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        // Dictionary defined by input vcf
-        dictionary = getSequenceDictionaryForDrivingVariants();
+        // Prefer master sequence dictionary in case interval files include alt contigs
+        dictionary = getMasterSequenceDictionary();
+        if (dictionary == null) {
+            dictionary = getBestAvailableSequenceDictionary();
+            if (dictionary == null) {
+                throw new GATKException("Unable to find sequence dictionary");
+            }
+        }
 
         Utils.validateArg(!(suppressOverlapFraction && suppressEndpointCounts), "Cannot use both --" +
                 SUPPRESS_ENDPOINT_COUNTS_LONG_NAME + " and --" + SUPPRESS_OVERLAP_FRACTION_LONG_NAME);

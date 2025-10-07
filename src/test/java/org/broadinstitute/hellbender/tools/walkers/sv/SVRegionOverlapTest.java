@@ -63,7 +63,6 @@ public class SVRegionOverlapTest extends GatkToolIntegrationTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(INPUT_VCF_FILE)
                 .addOutput(outputFile)
-                .addReference(hg38Reference)
                 .add(SVRegionOverlap.REGIONS_NAME_LONG_NAME, SEGDUP_REGION_NAME)
                 .add(SVRegionOverlap.REGIONS_FILE_LONG_NAME, SEGDUP_REGION_FILE)
                 .add(SVRegionOverlap.REGIONS_NAME_LONG_NAME, REPEATMASKER_REGION_NAME)
