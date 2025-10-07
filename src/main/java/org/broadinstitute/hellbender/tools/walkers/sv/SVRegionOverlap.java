@@ -39,6 +39,9 @@ import java.util.stream.Collectors;
  * All track names are converted to upper-case. Note that -L/-XL and associated arguments maintain usual behavior
  * of filtering variants by location and are not used for annotation.
  *
+ * Note that this tool will preferentially load any sequence dictionary provided with the --sequence-dictionary argument
+ * over that of the VCF header in order to support interval lists with additional contigs.
+ *
  * <h3>Inputs</h3>
  *
  * <ul>
