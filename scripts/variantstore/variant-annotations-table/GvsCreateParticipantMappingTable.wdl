@@ -43,11 +43,11 @@ task CreateParticipantMappingTable {
    CREATE TEMP FUNCTION vidToLocation(vid string)
     RETURNS int64
     AS (
-        (CASE SPLIT(vid, '-')[OFFSET(0)]
-                            WHEN 'X' THEN 23
-                            WHEN 'Y' THEN 24
-                            ELSE CAST(SPLIT(vid, '-')[OFFSET(0)] AS int64) END) * 1000000000000 +
-                    CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64)
+        (CASE SPLIT(vid, "-")[OFFSET(0)]
+                            WHEN "X" THEN 23
+                            WHEN "Y" THEN 24
+                            ELSE CAST(SPLIT(vid, "-")[OFFSET(0)] AS int64) END) * 1000000000000 +
+                    CAST(SPLIT(vid, "-")[OFFSET(1)] AS int64)
     );
 
     CREATE TABLE `~{project_id}.~{dataset}.~{mapping_table_name}` AS
@@ -58,8 +58,8 @@ task CreateParticipantMappingTable {
                 JOIN
             (SELECT vid,
                 vidToLocation(vid) AS location,
-                SPLIT(vid, '-')[OFFSET(2)] AS ref_allele,
-                SPLIT(vid, '-')[OFFSET(3)] AS alt_allele
+                SPLIT(vid, "-")[OFFSET(2)] AS ref_allele,
+                SPLIT(vid, "-")[OFFSET(3)] AS alt_allele
             FROM `~{project_id}.~{dataset}.~{vat_table_name}`
             GROUP BY vid, location) AS vat
         ON
@@ -69,8 +69,8 @@ task CreateParticipantMappingTable {
     GROUP BY vat.vid
     ORDER BY
         vidToLocation(vat.vid),
-        SPLIT(vat.vid, '-')[OFFSET(2)],
-        SPLIT(vat.vid, '-')[OFFSET(3)]
+        SPLIT(vat.vid, "-")[OFFSET(2)],
+        SPLIT(vat.vid, "-")[OFFSET(3)]
         '
 
     bq update --project_id=~{project_id} --clustering_fields=vid ~{dataset}.~{mapping_table_name}
