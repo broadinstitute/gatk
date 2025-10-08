@@ -50,7 +50,7 @@ task CreateParticipantMappingTable {
                     CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64)
     );
 
-    CREATE TABLE ~{project_id}.~{dataset}.~{mapping_table_name} AS
+    CREATE TABLE `~{project_id}.~{dataset}.~{mapping_table_name}` AS
     SELECT vat.vid as vid, ARRAY_AGG(SAFE_CAST(si.sample_name as INT64) IGNORE NULLS) AS person_ids
         FROM `~{project_id}.~{dataset}.alt_allele` AS aa
                 JOIN `~{project_id}.~{dataset}.sample_info` AS si
