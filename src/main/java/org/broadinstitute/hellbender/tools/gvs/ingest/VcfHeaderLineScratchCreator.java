@@ -79,7 +79,7 @@ public class VcfHeaderLineScratchCreator {
                 case PARQUET:
                     // TODO ensure that there doesn't need to be a table_number or sampleIdentifierForOutputFileName--it's all tables/samples, yes?
                     final File parquetOutputFile = new File(outputDirectory, HEADER_FILETYPE_PREFIX + ".parquet");
-                    vcfHeaderParquetFileWriter = new GvsHeaderParquetFileWriter(new Path(parquetOutputFile.toURI()), headersRowSchema, false, CompressionCodecName.SNAPPY);
+                    vcfHeaderParquetFileWriter = new GvsHeaderParquetFileWriter(new Path(parquetOutputFile.toURI()), headersRowSchema, CompressionCodecName.SNAPPY);
                     break;
 
             }
@@ -114,7 +114,7 @@ public class VcfHeaderLineScratchCreator {
                 case PARQUET:
                     String chunkHash = Utils.calcMD5(headerChunk.getKey());
                     Boolean isExpectedUnique = headerChunk.getValue();
-                    JSONObject record = vcfHeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
+                    JSONObject record = GvsHeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
                     vcfHeaderParquetFileWriter.write(record);
 
                     //boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);

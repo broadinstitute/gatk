@@ -23,7 +23,20 @@ public class GvsReferenceWriteSupport extends WriteSupport<JSONObject> {
         this.cols = schema.getColumns();
     }
 
+    /**
+     * Initializes the WriteSupport with schema information.
+     * 
+     * Note: This method signature init(Configuration) is deprecated in Parquet 1.13.1,
+     * but it's still the required method to implement WriteSupport. The Configuration
+     * parameter is not used in our implementation as the schema is provided via constructor.
+     * We suppress the deprecation warning because this is currently the only way to
+     * implement WriteSupport in this version of Parquet.
+     * 
+     * @param config Configuration object (unused in our implementation)
+     * @return WriteContext containing the schema and metadata
+     */
     @Override
+    @SuppressWarnings("deprecation")
     public WriteContext init(Configuration config) {
         return new WriteContext(schema, new HashMap<>());
     }
