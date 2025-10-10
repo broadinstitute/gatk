@@ -11,7 +11,6 @@ import org.apache.commons.io.IOUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
@@ -28,26 +27,16 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 /**
- * <p>This tool assesses split read (SR), discordant paired-end (PE), and B-allele frequency (BAF) evidence for structural variants (SVs),
- * annotating records with statistical metrics that can be used to assess a variant's quality. The input VCF should
+ * <p>This tool assesses depth evidence for structural variants (SVs),annotating records with statistical metrics that
+ * can be used to assess a variant's quality. The input VCF should
  * contain multiple samples with GT fields populated. Note that this tool only considers carrier status and does not
- * differentiate heterozygous from homozygous variant genotypes. For read depth evidence metrics, see
- * the AggregateDepthEvidence tool.</p>
+ * differentiate heterozygous from homozygous variant genotypes. For paired-end, split-read, and B-allele frequency
+ * evidence metrics, see the AggregateSVEvidence tool.</p>
  *
  * <p>Detailed methodology can be found in the supplement of <a href="https://doi.org/10.1038/s41586-020-2287-8">Collins et al. 2020</a>.</p>
  *
- * <p>Briefly, for each variant the supporting split reads and discordant pairs are counted. Phred-scaled quality scores
- * (SRQ, PEQ, PESRQ) are then computed based on a Poisson test of the observed median carrier sample signal against
- * background. The raw fraction of median SR signal attributed to carriers (SRCS, PECS, PESRCS) is also annotated as an additional
- * metric to assess concordance between detected evidence and genotypes.</p>
- *
- * <p>During SR aggregation, breakpoint refinement is performed (SR1POS, SR2POS) by maximizing the quality score
- * over all positions within a small window around each end of the variant.</p>
- *
- * <p>Bi-allelic copy number variants are also assessed using BAF evidence. Deletions are annotated with the ratio of heterozygous
- * SNPs in carrier samples to in controls (BAF_HET_RATIO). Duplications are assessed by comparing the distribution of
- * BAFs across SNPs with a Kolmogorov-Smirnov test statistic (BAF_KS_STAT), which is used to compute a quality
- * score (BAF_KS_Q).</p>
+ * <p>Briefly, for each variant the median binned read counts are aggreagated across samples. Carrier and control
+ * samples are then compared using a permuted t-test. However, if the test is underpowered, </p>
  *
  * <h3>Inputs</h3>
  *
