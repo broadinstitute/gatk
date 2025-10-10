@@ -154,13 +154,13 @@ public class DepthEvidenceTest {
         }
 
         // Calculate degrees of freedom
-        double df = n1 + n2 - 2;
+        final double df = n1 + n2 - 2;
 
         // Calculate pooled standard error
-        double se = Math.sqrt((1.0 / n1) + (1.0 / n2));
+        final double se = Math.sqrt((1.0 / n1) + (1.0 / n2));
 
         // Calculate non-centrality parameter
-        double ncp = effectSize / se;
+        final double ncp = effectSize / se;
 
         // Calculate critical value based on alternative hypothesis and significance level
         // Assume "greater than" alternative hypothesis
@@ -184,7 +184,7 @@ public class DepthEvidenceTest {
      */
     private static double approximateNonCentralTCdf(double t, double df, double ncp) {
         // Simple approximation using shifted central t-distribution
-        double shiftedT = t - ncp * Math.sqrt(df / (df + t * t));
+        final double shiftedT = t - ncp * Math.sqrt(df / (df + t * t));
         return new TDistribution(df).cumulativeProbability(shiftedT);
     }
 
