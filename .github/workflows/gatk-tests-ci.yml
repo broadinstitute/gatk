@@ -1,0 +1,118 @@
+name: Test GATK 4 only tests, no WDL
+concurrency:
+  group: gatk-tests-ci-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run workflow on'
+        required: true
+        default: 'master'
+
+env:
+  TERM: dumb
+  GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.daemon=false"
+  HELLBENDER_TEST_INPUTS: gs://hellbender/test/resources/
+  HELLBENDER_TEST_STAGING: gs://hellbender-test-logs/staging/
+  HELLBENDER_TEST_LOGS: /hellbender-test-logs/build_reports/
+  HELLBENDER_TEST_PROJECT: broad-dsde-dev
+  TEST_VERBOSITY: minimal
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  ## This workaround is necessary since there is no equivalent to the old TRAVIS_SECURE_ENVIRONMENT variable that indicated
+  ## if a run was privileged and had secrets. Since the GCP credentials are necessary for all tests in order to upload their,
+  ## results that makes them a reasonable proxy for testing the credentials of this entire execution. https://github.com/actions/runner/issues/520
+  check-secrets:
+    name: check if the environment has privileges
+    outputs:
+      google-credentials: ${{ steps.google-credentials.outputs.defined }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: google-credentials
+        env:
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        if: "${{ env.GCP_CREDENTIALS != '' }}"
+        run: echo defined=true >> $GITHUB_OUTPUT
+
+
+  #Run our non-docker tests
+  test:
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    strategy:
+      matrix:
+        java: [ 17.0.6+10 ]
+        experimental: [ false ]
+        scalaVersion: [ 2.13 ]
+        testType: [ integration, unit, variantcalling ]
+      fail-fast: false
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      TEST_TYPE: ${{ matrix.testType }}
+      SCALA_VERSION: ${{ matrix.scalaVersion }}
+    name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.branch || github.ref }}
+      - uses: ./.github/actions/purge-runner-disk
+      - name: 'Set up java ${{ matrix.Java }}'
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.Java }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 'Compile with Gradle'
+        run: |
+          ./gradlew compileJava ; ./gradlew installDist
+
+      #Google Cloud stuff
+      - id: 'gcloud-auth'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          project_id: ${{ env.HELLBENDER_TEST_PROJECT }}
+          create_credentials_file: true
+
+      - name: "export the credentials for GATK tests"
+        if: needs.check-secrets.outputs.google-credentials == 'true'
+        run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+
+      - name: 'Set up Cloud SDK'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: pull lfs files
+        run: git lfs pull
+
+      - name: compile test code
+        run: ./gradlew compileTestJava
+
+      - name: run-tests
+        if: ${{ needs.check-secrets.outputs.google-credentials == 'true' || matrix.testType != 'cloud'}}
+        id: jacoco-tests
+        run: |
+          ./gradlew --daemon -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
+
+      - uses: ./.github/actions/upload-gatk-test-results
+        if: always()
+        with:
+          warnPR: ${{ github.event_name == 'pull_request' && steps.jacoco-tests.outcome != 'success' }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          job-matrix-id: ${{ github.run_id }}.1${{ strategy.job-index }}
+          repo-path: ${{ github.ref_name }}_${{ github.run_id }}.1${{ strategy.job-index }}
+          bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
+          identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
+          only-artifact: ${{ needs.check-secrets.outputs.google-credentials != 'true' }}
+
+
