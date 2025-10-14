@@ -488,3 +488,13 @@ workflows:
        branches:
          - ah_var_store
          - dst_2716_an_divergence_echo_foxtrot
+   - name: GvsCreateParticipantMappingTable
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateParticipantMappingTable.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1632_foxtrot_participant_mapping_table
+       tags:
+         - /.*/

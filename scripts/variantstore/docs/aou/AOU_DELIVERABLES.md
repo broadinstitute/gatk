@@ -250,46 +250,10 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
 
-### VID to Participant ID Mapping Table.
+### VID to Participant ID Mapping Table
 Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them. 
-
-1. Create the database table. Using (for instance) the BigQuery cloud user interface, run the query below. Note that you should redirect the output of this query to a new database table in the same dataset, for instance by using the 'query settings' feature in the BigQuery cloud user interface. Also note that you will need to specify the `project`, `dataset`, and `vat_table_name` fields before running the query. Further note that this query might take an hour or two to run to completion:
-    ```
-   CREATE TEMP FUNCTION vidToLocation(vid string)
-    RETURNS int64
-    AS (
-        (CASE SPLIT(vid, '-')[OFFSET(0)]
-                            WHEN 'X' THEN 23
-                            WHEN 'Y' THEN 24
-                            ELSE CAST(SPLIT(vid, '-')[OFFSET(0)] AS int64) END) * 1000000000000 +
-                    CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64)
-    );
-    
-    SELECT vat.vid as vid, ARRAY_AGG(SAFE_CAST(si.sample_name as INT64) IGNORE NULLS) AS person_ids
-        FROM `<project>.<dataset>.alt_allele` AS aa
-                JOIN `<project>.<dataset>.sample_info` AS si
-                    ON aa.sample_id = si.sample_id
-                JOIN
-            (SELECT vid,
-                vidToLocation(vid) AS location,
-                SPLIT(vid, '-')[OFFSET(2)] AS ref_allele,
-                SPLIT(vid, '-')[OFFSET(3)] AS alt_allele
-            FROM `<project>.<dataset>.<vat_table_name>`
-            GROUP BY vid, location) AS vat
-        ON
-            vat.ref_allele = aa.ref AND
-            vat.alt_allele = aa.allele AND
-            vat.location = aa.location
-    GROUP BY vat.vid
-    ORDER BY
-        vidToLocation(vat.vid),
-        SPLIT(vat.vid, '-')[OFFSET(2)],
-        SPLIT(vat.vid, '-')[OFFSET(3)]
-   ```
-1. Once the query has successfully finished, you should cluster it on the field `vid`. This can be accomplished using the command below. Note that you will need to specify the `project`, `dataset`, and `mapping_table_name` fields before running the command:
-    ```
-    bq update --project_id=<project> --clustering_fields=vid <dataset>.<mapping_table_name>
-    ```
+The WDL `GvsCreateParticipantMappingTable.wdl` can be used for this purpose. Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above.
+Also specify the `mapping_table_name` that will be created to hold the VID to participant mapping information.
 
 1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
 
@@ -298,3 +262,4 @@ Once the VAT has been created, you will need to create a database table mapping 
     ```
    select distinct vid from `<dataset>.<vat_table_name>` where vid not in (select vid from `<dataset>.<mapping_table_name>`) ;
     ```
+   Instructions for adding these "unmapped VIDs" into the participant mapping table are forthcoming.
