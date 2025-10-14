@@ -191,6 +191,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gvs_0.6.4
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
@@ -462,6 +463,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gvs_0.6.4
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
