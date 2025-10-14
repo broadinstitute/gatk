@@ -8,6 +8,7 @@ workflow GvsCreateParticipantMappingTable {
         String dataset
         String vat_table_name
         String mapping_table_name
+        Boolean chr20_only = false
     }
 
     call Utils.GetToolVersions
@@ -19,6 +20,7 @@ workflow GvsCreateParticipantMappingTable {
         dataset = dataset,
         vat_table_name = vat_table_name,
         mapping_table_name = mapping_table_name,
+        chr20_only = chr20_only,
     }
 }
 
@@ -30,6 +32,7 @@ task CreateParticipantMappingTable {
         String dataset
         String vat_table_name
         String mapping_table_name
+        Boolean chr20_only
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -66,6 +69,7 @@ task CreateParticipantMappingTable {
             vat.ref_allele = aa.ref AND
             vat.alt_allele = aa.allele AND
             vat.location = aa.location
+    ~{if (chr20_only) then "WHERE aa.location >= 20 * (1000 * 1000 * 1000 * 1000) AND aa.location < 21 * (1000 * 1000 * 1000 * 1000)" else ""}
     GROUP BY vat.vid
     ORDER BY
         vidToLocation(vat.vid),
