@@ -401,8 +401,15 @@ task LoadData {
 
       OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
       # the file name is a little wonky, so let's just grab the file using such a star statement
-      parquet_file=`ls *.parquet`
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $parquet_file ${OUTPUT_GCS_DIR}/$parquet_file
+      vet_parquet_file=`ls vet_*.parquet`
+      ref_parquet_file=`ls ref_*.parquet`
+
+      # parse the table partition out of the file name
+      table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+
+      # copy the vet and ref parquet files to the gcs bucket in the right place
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
+      gcloud storage ~{"--billing-project " + billing_project_id} cp $parquet_file ${OUTPUT_GCS_DIR}/ref/$table_number/$ref_parquet_file
 
       # cleanup after ourselves
       rm *.parquet
