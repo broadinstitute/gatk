@@ -25,13 +25,7 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.File;
 import java.io.IOException;
@@ -190,17 +184,17 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             	required binary alt (UTF8);
             	optional binary AS_RAW_MQ (UTF8);
             	optional binary AS_RAW_MQRankSum (UTF8);
+            	optional binary QUALapprox (UTF8);
             	optional binary AS_QUALapprox (UTF8);
             	optional binary AS_RAW_ReadPosRankSum (UTF8);
             	optional binary AS_SB_TABLE (UTF8);
             	optional binary AS_VarDP (UTF8);
             	required binary call_GT (UTF8);
             	optional binary call_AD (UTF8);
-            	optional binary call_DP (UTF8);
             	required int64 call_GQ;
             	optional binary call_PGT (UTF8);
             	optional binary call_PID (UTF8);
-            	optional binary call_PS (UTF8);
+            	optional int64 call_PS;
             	optional binary call_PL (UTF8);
             }
             """);
@@ -337,6 +331,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     shouldWriteVCFHeadersLoadedStatusRow = true;
                 }
             }
+        } else if (outputType == CommonCode.OutputType.PARQUET) {
+            // These checks don't matter for parquet, since it's a local file created.  Operate as though they don't exist at all times.
+            refRangesRowsExist = Boolean.FALSE;
+            vetRowsExist = Boolean.FALSE;
+            vcfHeaderRowsExist = Boolean.FALSE;
         }
 
         // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of
