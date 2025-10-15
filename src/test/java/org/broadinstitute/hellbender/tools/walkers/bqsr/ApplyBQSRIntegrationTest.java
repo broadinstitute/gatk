@@ -61,7 +61,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         return ApplyBQSR.class.getSimpleName();
     }
 
-    private final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
+    private final String resourceDir = getTestDataDir() + File.separator + "BQSR" + File.separator;
     private final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
     private final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.bam";
     private final String hiSeqCram = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.cram";

@@ -95,14 +95,14 @@ public final class SplitReadsIntegrationTest extends CommandLineProgramTest {
         outputDir.toFile().deleteOnExit();
 
         args.add("-"+ StandardArgumentDefinitions.INPUT_SHORT_NAME);
-        args.add(getTestDataDir() + "/" + baseName + fileExtension);
+        args.add(getTestDataDir() + File.separator + baseName + fileExtension);
 
         args.add("-"+ StandardArgumentDefinitions.OUTPUT_SHORT_NAME );
         args.add(outputDir.toString());
 
         if (isReferenceRequired(type)) {
             args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME );
-            args.add(getTestDataDir()+ "/" + getReferenceSequenceName(baseName));
+            args.add(getTestDataDir() + File.separator + getReferenceSequenceName(baseName));
         }
 
         splitArgs.forEach(arg -> {

@@ -7,13 +7,14 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.*;
 
 
 public class SampleDBUnitTest extends GATKBaseTest {
     private static SampleDBBuilder builder;
     // all the test sample files are located here
-    private GATKPath testPED = new GATKPath(getToolTestDataDir() +  "testtrio.ped");
+    private GATKPath testPED = new GATKPath(getToolTestDataDir() + File.separator + "testtrio.ped");
 
     private static final Set<Sample> testPEDSamples = new LinkedHashSet<>(Arrays.asList(
             new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED),

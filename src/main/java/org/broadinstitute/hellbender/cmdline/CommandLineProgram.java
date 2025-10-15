@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.*;
@@ -154,7 +155,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
         if (tmpDir == null) {
-            tmpDir = new GATKPath(System.getProperty("java.io.tmpdir"));
+            // Use File.getAbsolutePath() which handles Windows paths correctly
+            tmpDir = new GATKPath(new File(System.getProperty("java.io.tmpdir")).getAbsolutePath());
         }
 
         // Build the default headers
@@ -536,10 +538,12 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             logger.debug(e);
         } finally {
             // Make sure we clean up the test file
-            try {
-                Files.deleteIfExists(tempFilePath);
-            } catch(Exception e) {
-                logger.warn("Failed to delete temp file for testing temp dir", e);
+            if (tempFilePath != null) {
+                try {
+                    Files.deleteIfExists(tempFilePath);
+                } catch(Exception e) {
+                    logger.warn("Failed to delete temp file for testing temp dir", e);
+                }
             }
         }
         

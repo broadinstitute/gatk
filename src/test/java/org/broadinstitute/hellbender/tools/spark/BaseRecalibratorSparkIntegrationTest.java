@@ -51,7 +51,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     }
 
     private String getResourceDir(){
-        return getTestDataDir() + "/" + "BQSR" + "/";
+        return getTestDataDir() + File.separator + "BQSR" + File.separator;
     }
 
     private String getCloudInputs() {
@@ -179,7 +179,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     // TODO: This test is disabled because a new expected result needs to be created.
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud", "spark"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
-        final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir = getTestDataDir() + File.separator + "BQSR" + File.separator;
         final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
         final String dbSNPb37_chr2021 = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String HiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
@@ -209,7 +209,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @Test(groups = {"spark", "bucket"})
     public void testBQSRFailWithoutDBSNP() throws IOException {
-        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir =  getTestDataDir() + File.separator + "BQSR" + File.separator;
         final String localResources =  getResourceDir();
 
         final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
@@ -226,7 +226,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @Test(groups = {"spark", "bucket"})
     public void testBQSRFailWithIncompatibleReference() throws IOException {
-        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir =  getTestDataDir() + File.separator + "BQSR" + File.separator;
         final String localResources =  getResourceDir();
 
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";

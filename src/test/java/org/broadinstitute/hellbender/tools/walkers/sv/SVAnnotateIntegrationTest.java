@@ -17,7 +17,7 @@ import java.util.*;
 
 
 public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
-    final String INPUT_VCF_PATH = getToolTestDataDir() + "integration.vcf.gz";
+    final String INPUT_VCF_PATH = getToolTestDataDir() + File.separator + "integration.vcf.gz";
     final File inputVCF = new File(INPUT_VCF_PATH);
     private final String LARGE_FILE_DIR = GATKBaseTest.largeFileTestDir + "SVAnnotate/";
     final File GTF_FILE = new File(LARGE_FILE_DIR + "MANE.selected.GRCh38.v0.95.select_ensembl_genomic.gtf");

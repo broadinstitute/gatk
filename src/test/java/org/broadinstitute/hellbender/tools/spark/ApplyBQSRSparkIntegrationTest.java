@@ -41,7 +41,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         }
     }
 
-    final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
+    final String resourceDir = getTestDataDir() + File.separator + "BQSR" + File.separator;
     final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
     final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
     final String hiSeqCram = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.cram";

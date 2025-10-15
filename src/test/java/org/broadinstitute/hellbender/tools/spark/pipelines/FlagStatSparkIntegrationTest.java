@@ -29,7 +29,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
         //the expected output was created using stand-alone hellbender
-        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.txt"), false, null);
+        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() + File.separator + "expectedStats.txt"), false, null);
     }
     @Test(groups = "spark")
     public void flagStatSparkLocalWithBigInterval() throws IOException {
@@ -51,7 +51,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
         //the expected output was created using stand-alone hellbender
-        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1-chr8.txt"), false, null);
+        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() + File.separator + "expectedStats.chr1-chr8.txt"), false, null);
     }
 
     @Test(groups = "spark")
@@ -67,7 +67,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
         //the expected output was created using stand-alone hellbender
-        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1_1.txt"), false, null);
+        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() + File.separator + "expectedStats.chr1_1.txt"), false, null);
     }
 
     @Test(groups = "spark")

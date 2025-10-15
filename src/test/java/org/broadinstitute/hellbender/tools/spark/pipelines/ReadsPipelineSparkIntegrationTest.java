@@ -44,7 +44,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
     }
 
     private String getResourceDir(){
-        return getTestDataDir() + "/" + "BQSR" + "/";
+        return getTestDataDir() + File.separator + "BQSR" + File.separator;
     }
 
     @DataProvider(name = "ReadsPipeline")

@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -13,7 +14,7 @@ import java.util.Arrays;
  */
 public class PileupIntegrationTest extends CommandLineProgramTest {
 
-    private final String TEST_OUTPUT_DIRECTORY = getToolTestDataDir().toLowerCase() + "/";
+    private final String TEST_OUTPUT_DIRECTORY = getToolTestDataDir().toLowerCase() + File.separator;
 
     @Test
     public void testSimplePileup() throws IOException {

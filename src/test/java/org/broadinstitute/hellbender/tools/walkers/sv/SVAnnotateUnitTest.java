@@ -17,8 +17,8 @@ import java.io.File;
 import java.util.*;
 
 public class SVAnnotateUnitTest extends GATKBaseTest {
-    protected final File TOY_GTF_FILE = new File(getToolTestDataDir() + "unittest.gtf");
-    protected final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir() + "noncoding.unittest.bed");
+    protected final File TOY_GTF_FILE = new File(getToolTestDataDir() + File.separator + "unittest.gtf");
+    protected final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir() + File.separator + "noncoding.unittest.bed");
 
     /**
      * Load toy GTF containing toy genes into FeatureDataSource

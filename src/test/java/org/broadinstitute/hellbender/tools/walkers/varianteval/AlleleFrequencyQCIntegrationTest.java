@@ -7,17 +7,18 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
 public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
 
-    private String evalVcf = getToolTestDataDir() + "af.na12878_array.vcf";
-    private String comparisonVcf = getToolTestDataDir() + "af.thousand_genomes.10sites.vcf";
+    private String evalVcf = getToolTestDataDir() + File.separator + "af.na12878_array.vcf";
+    private String comparisonVcf = getToolTestDataDir() + File.separator + "af.thousand_genomes.10sites.vcf";
 
 
     private String getExpectedFile(String testName) {
-        return getToolTestDataDir() + "expected/" + testName + ".expected.txt";
+        return getToolTestDataDir() + File.separator + "expected" + File.separator + testName + ".expected.txt";
     }
 
 

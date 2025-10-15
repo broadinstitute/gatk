@@ -48,7 +48,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
     }
 
     private String getResourceDir(){
-        return getTestDataDir() + "/" + "BQSR" + "/";
+        return getTestDataDir() + File.separator + "BQSR" + File.separator;
     }
 
     @DataProvider(name = "BQSRTest")
@@ -108,7 +108,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322")
     public void testPlottingWorkflow() throws IOException {
-        final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir = getTestDataDir() + File.separator + "BQSR" + File.separator;
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String dbSNPb37_chr17 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String HiSeqBam_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
@@ -136,7 +136,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testBQSRFailWithoutDBSNP() throws IOException {
-        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir =  getTestDataDir() + File.separator + "BQSR" + File.separator;
 
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
@@ -153,7 +153,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testBQSRFailWithIncompatibleReference() throws IOException {
-        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir =  getTestDataDir() + File.separator + "BQSR" + File.separator;
 
         final String HiSeqBam_Hg18 = resourceDir + "HiSeq.1mb.1RG.2k_lines.bam";
 
@@ -168,7 +168,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testBQSRFailWithIncompatibleSequenceDictionaries() throws IOException {
-        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+        final String resourceDir =  getTestDataDir() + File.separator + "BQSR" + File.separator;
 
         final String bam_chr20 = resourceDir + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr17 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";

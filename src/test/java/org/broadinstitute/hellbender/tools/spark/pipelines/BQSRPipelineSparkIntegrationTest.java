@@ -46,7 +46,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
     }
 
     private String getResourceDir(){
-        return getTestDataDir() + "/" + "BQSR" + "/";
+        return getTestDataDir() + File.separator + "BQSR" + File.separator;
     }
 
     @DataProvider(name = "BQSRLocalRefTest")

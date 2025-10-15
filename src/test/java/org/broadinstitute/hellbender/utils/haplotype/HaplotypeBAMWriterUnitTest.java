@@ -25,7 +25,7 @@ import java.util.*;
 
 public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
     private final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeaderWithPrograms(20, 1, 1000, 3);
-    private final String expectedFilePath = getToolTestDataDir() + "/expected/";
+    private final String expectedFilePath = getToolTestDataDir() + File.separator + "expected" + File.separator;
 
     @DataProvider(name="ReadsLikelikhoodData")
     public Object[][] makeReadsLikelikhoodData() {

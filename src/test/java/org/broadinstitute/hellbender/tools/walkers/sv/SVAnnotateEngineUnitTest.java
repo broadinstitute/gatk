@@ -23,8 +23,8 @@ import java.io.File;
 import java.util.*;
 
 public class SVAnnotateEngineUnitTest extends GATKBaseTest {
-    private final File TOY_GTF_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + "unittest.gtf");
-    private final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + "noncoding.unittest.bed");
+    private final File TOY_GTF_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + File.separator + "unittest.gtf");
+    private final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + File.separator + "noncoding.unittest.bed");
 
 
     // Pairs of intervals with different relationships to check if first (variant) interval spans second (feature)

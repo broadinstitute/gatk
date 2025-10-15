@@ -22,18 +22,18 @@ import java.util.List;
 public abstract class GATKBaseTest extends BaseTest {
 
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
-    public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
+    public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + File.separator;
 
-    public static final String publicMainResourcesDir = new File(gatkDirectory, "src/main/resources").getAbsolutePath() + "/";
-    public static final String packageMainResourcesDir = publicMainResourcesDir + "org/broadinstitute/hellbender/";
+    public static final String publicMainResourcesDir = new File(gatkDirectory, "src/main/resources").getAbsolutePath() + File.separator;
+    public static final String packageMainResourcesDir = publicMainResourcesDir + "org" + File.separator + "broadinstitute" + File.separator + "hellbender" + File.separator;
 
     private static final String publicTestDirRelative = "src/test/resources/";
-    public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
+    public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + File.separator;
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
-    public static final String packageRootTestDir = publicTestDir + "org/broadinstitute/hellbender/";
-    public static final String toolsTestDir = packageRootTestDir + "tools/";
-    public static final String exampleTestDir = toolsTestDir + "examples/";
+    public static final String packageRootTestDir = publicTestDir + "org" + File.separator + "broadinstitute" + File.separator + "hellbender" + File.separator;
+    public static final String toolsTestDir = packageRootTestDir + "tools" + File.separator;
+    public static final String exampleTestDir = toolsTestDir + "examples" + File.separator;
 
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 
@@ -47,7 +47,7 @@ public abstract class GATKBaseTest extends BaseTest {
     /**
      * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)
      */
-    public static final String largeFileTestDir = new File(publicTestDir, "large").getAbsolutePath() + "/";
+    public static final String largeFileTestDir = new File(publicTestDir, "large").getAbsolutePath() + File.separator;
 
     // The complete B37 human reference, including the Epstein-Barr contig, in fasta.gz format.
     // Source: /seq/references/Homo_sapiens_assembly19/v1/ in the Broad Institute filesystem.
@@ -119,15 +119,15 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
 
     public static final String FULL_HG19_DICT = publicTestDir + "Homo_sapiens_assembly19.dict";
-    public static final String FULL_HG38_DICT = publicTestDir + "large/Homo_sapiens_assembly38.dict";
+    public static final String FULL_HG38_DICT = publicTestDir + "large" + File.separator + "Homo_sapiens_assembly38.dict";
 
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
     public static final String wgsIntervalFile = publicTestDir + "wgs_calling_regions.v1.interval_list";
 
-    public static final String DREAM_BAMS_DIR = publicTestDir + "large/mutect/dream_synthetic_bams";
-    public static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs";
+    public static final String DREAM_BAMS_DIR = publicTestDir + "large" + File.separator + "mutect" + File.separator + "dream_synthetic_bams";
+    public static final String DREAM_VCFS_DIR = publicTestDir + "org" + File.separator + "broadinstitute" + File.separator + "hellbender" + File.separator + "tools" + File.separator + "mutect" + File.separator + "dream" + File.separator + "vcfs";
 
     public static final String thousandGenomes = largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf";
 

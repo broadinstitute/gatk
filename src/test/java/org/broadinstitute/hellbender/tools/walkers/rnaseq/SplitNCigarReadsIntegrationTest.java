@@ -51,8 +51,8 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSplitsFixNDN() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-R " + b37_reference_20_21 + " -I " + getTestDataDir() +"/" + "splitNCigarReadsSnippet.bam -O %s -fixNDN --process-secondary-alignments",
-                Arrays.asList(getTestDataDir() +"/" + "expected.splitNCigarReadsSnippet.splitNcigarReads.fixNDN.bam"));
+                "-R " + b37_reference_20_21 + " -I " + getTestDataDir() + File.separator + "splitNCigarReadsSnippet.bam -O %s -fixNDN --process-secondary-alignments",
+                Arrays.asList(getTestDataDir() + File.separator + "expected.splitNCigarReadsSnippet.splitNcigarReads.fixNDN.bam"));
         spec.executeTest("test fix NDN", this);
     }
 
