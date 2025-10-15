@@ -387,7 +387,7 @@ task LoadData {
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
         --output-type PARQUET \
-        --enable-reference-ranges false \
+        --enable-reference-ranges true \
         --enable-vet true \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
