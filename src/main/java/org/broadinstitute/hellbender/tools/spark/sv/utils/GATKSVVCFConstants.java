@@ -14,6 +14,7 @@ public final class GATKSVVCFConstants {
     public static final String SVTYPE = "SVTYPE";
     public static final String SVLEN = "SVLEN";
     public static final String EVIDENCE = "EVIDENCE";
+    public static final String GENOTYPE_EVIDENCE = "EV";
     public static final String IMPRECISE = "IMPRECISE";
     public static final String CIPOS = "CIPOS";
     public static final String CIEND = "CIEND";
@@ -32,12 +33,12 @@ public final class GATKSVVCFConstants {
     public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
     public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
 
-    // Evidence types
+    // Evidence types, note ordering here should be enforced in EV format field
     public enum EvidenceTypes {
-        BAF,
-        PE,
         RD,
-        SR
+        PE,
+        SR,
+        BAF
     }
 
     // GATK-SV specific header lines
@@ -157,6 +158,7 @@ public final class GATKSVVCFConstants {
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
     public static final String DEPTH_GENOTYPE_COPY_NUMBER_FORMAT = "RD_CN";
+    public static final String DEPTH_MEDIAN_COPY_RATIO = "RD_MCR";
     public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
@@ -181,6 +183,17 @@ public final class GATKSVVCFConstants {
     public static final String BAF_HET_RATIO_ATTRIBUTE = "BAF_HET_RATIO";
     public static final String BAF_KS_STAT_ATTRIBUTE = "BAF_KS_STAT";
     public static final String BAF_KS_Q_ATTRIBUTE = "BAF_KS_Q";
+
+    // depth aggregation
+    public static final String DEPTH_COPY_STATE_ATTRIBUTE = "RD_CN";
+    public static final String DEPTH_GENOTYPE_QUALITY_ATTRIBUTE = "RD_GQ";
+
+    // pesr genotyping
+    public static final String DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE = "PE_GQ";
+    public static final String DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE = "PE_GT";
+    public static final String SPLIT_READ_GENOTYPE_QUALITY_ATTRIBUTE = "SR_GQ";
+    public static final String SPLIT_READ_GENOTYPE_ATTRIBUTE = "SR_GT";
+    public static final String VARIANT_GENOTYPE_QUALITY_ATTRIBUTE = "varGQ";
 
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";

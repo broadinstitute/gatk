@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
+import java.util.Collections;
 import java.util.Set;
 
 import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
@@ -37,6 +38,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     public static final String OMIT_MEMBERS_LONG_NAME = "omit-members";
     public static final String DEFAULT_NO_CALL_LONG_NAME = "default-no-call";
     public static final String MAX_RECORDS_IN_RAM_LONG_NAME = "max-records-in-ram";
+    public static final String SITES_ONLY_LONG_NAME = "sites-only";
 
     /**
      * The enum Cluster algorithm.
@@ -69,10 +71,11 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * integers in their respective columns.
      */
     @Argument(
-            doc = "Sample ploidy table (.tsv)",
-            fullName = PLOIDY_TABLE_LONG_NAME
+            doc = "Sample ploidy table (.tsv). Note this is required unless using --" + SITES_ONLY_LONG_NAME + ".",
+            fullName = PLOIDY_TABLE_LONG_NAME,
+            mutex = {SITES_ONLY_LONG_NAME}
     )
-    protected GATKPath ploidyTablePath;
+    private GATKPath ploidyTablePath;
 
     @Argument(
             doc = "If supplied, generate variant IDs with this prefix",
@@ -133,6 +136,14 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     )
     protected CLUSTER_ALGORITHM algorithm = CLUSTER_ALGORITHM.SINGLE_LINKAGE;
 
+    @Argument(
+            doc = "Drop all samples from input VCF(s) before clustering. The ploidy table may be omitted if using this " +
+                    "option.",
+            fullName = SITES_ONLY_LONG_NAME,
+            mutex = {}
+    )
+    private boolean sitesOnly = false;
+
     /**
      * Default genotypes are assigned when they cannot be inferred from the inputs, such as when VCFs with different
      * variants and samples are provided.
@@ -168,13 +179,18 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
 
     @Override
     public void onTraversalStart() {
+        super.onTraversalStart();
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
         dictionary = reference.getSequenceDictionary();
         if (dictionary == null) {
             throw new UserException("Reference sequence dictionary required");
         }
-        ploidyTable = new PloidyTable(ploidyTablePath.toPath());
-        samples = getSamplesForVariants();
+        if (ploidyTablePath == null) {
+            ploidyTable = new PloidyTable(Collections.emptyMap());
+        } else {
+            ploidyTable = new PloidyTable(ploidyTablePath.toPath());
+        }
+        samples = sitesOnly ? Collections.emptySet() : getSamplesForVariants();
         writer = createVCFWriter(outputFile);
         header = createHeader();
         writer.writeHeader(header);
@@ -212,8 +228,12 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     public abstract void applyRecord(final SVCallRecord record);
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext,
+    public void apply(VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        if (sitesOnly) {
+            // Remove genotypes if we're in sites-only mode
+            variant = new VariantContextBuilder(variant).genotypes(Collections.emptyList()).make();
+        }
         SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
         if (fastMode && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
             // Strip out non-carrier genotypes to save memory and compute

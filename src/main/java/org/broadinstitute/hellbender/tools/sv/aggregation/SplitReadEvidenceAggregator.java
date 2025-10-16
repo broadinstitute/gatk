@@ -2,8 +2,12 @@ package org.broadinstitute.hellbender.tools.sv.aggregation;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -38,16 +42,31 @@ public class SplitReadEvidenceAggregator extends SVEvidenceAggregator<SplitReadE
         return isStart ? getStartEvidenceQueryInterval(call, window, dictionary) : getEndEvidenceQueryInterval(call, window, dictionary);
     }
 
+    private static int getPositionMaybeAttribute(final int pos, final Object attribute) {
+        if (attribute != null && !attribute.getClass().isAssignableFrom(String.class)) {
+            throw new IllegalArgumentException("Expected integer type for variant attributes");
+        }
+        return attribute == null ? pos : Integer.parseInt((String) attribute);
+    }
+
     public static SimpleInterval getStartEvidenceQueryInterval(final SVCallRecord call, final int window, final SAMSequenceDictionary dictionary) {
-        final SimpleInterval result = call.getPositionAInterval().expandWithinContig(window, dictionary);
+        final Object splitReadPos = call.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE);
+        final int pos = getPositionMaybeAttribute(call.getPositionA(), splitReadPos);
+        final SimpleInterval result = shiftInterval(new SimpleInterval(call.getContigA(), pos, pos), 1).expandWithinContig(window, dictionary);
         Utils.nonNull(result, "Error generating padded interval for variant " + call.getId() + "; check that its coordinates are valid");
         return result;
     }
 
     public static SimpleInterval getEndEvidenceQueryInterval(final SVCallRecord call, final int window, final SAMSequenceDictionary dictionary) {
-        final SimpleInterval result = call.getPositionBInterval().expandWithinContig(window, dictionary);
+        final Object splitReadPos = call.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE);
+        final int pos = getPositionMaybeAttribute(call.getPositionB(), splitReadPos);
+        final SimpleInterval result = shiftInterval(new SimpleInterval(call.getContigB(), pos, pos), 1).expandWithinContig(window, dictionary);
         Utils.nonNull(result, "Error generating padded interval for variant " + call.getId() + "; check that its coordinates are valid");
         return result;
+    }
+
+    private static SimpleInterval shiftInterval(final SimpleInterval interval, final int shiftBy) {
+        return new SimpleInterval(interval.getContig(), interval.getStart() + shiftBy, interval.getEnd() + shiftBy);
     }
 
     @Override

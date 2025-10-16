@@ -156,6 +156,7 @@ public final class SVCallRecordUtils {
                                                                                  final VCFHeader header) {
         Utils.nonNull(record);
         Utils.nonNull(samples);
+        Utils.nonNull(ploidyTable);
         final GenotypesContext genotypes = record.getGenotypes();
         final Set<String> missingSamples = Sets.difference(samples, genotypes.getSampleNames());
         if (missingSamples.isEmpty()) {

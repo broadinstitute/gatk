@@ -2,10 +2,12 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import scala.reflect.internal.Depth;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,6 +42,8 @@ public final class DepthMatrix {
 
     public static DepthMatrix fromDataSource(final SimpleInterval interval,
                                              final FeatureDataSource<DepthEvidence> dataSource) {
+        Utils.nonNull(interval);
+        Utils.nonNull(dataSource);
         final DepthMatrix depthMatrix = queryDataSource(dataSource, interval);
 
         // Remove bins that start or end exactly at query boundaries (mimics R behavior)
@@ -155,6 +159,7 @@ public final class DepthMatrix {
 
     private static DepthMatrix queryDataSource(final FeatureDataSource<DepthEvidence> dataSource, final SimpleInterval interval) {
         final List<DepthEvidence> data = Lists.newArrayList(dataSource.query(interval));
+
         final List<SimpleInterval> bins = data.stream().map(d -> new SimpleInterval(d.getContig(), d.getStart(), d.getEnd())).collect(Collectors.toList());
         final SVFeaturesHeader header = (SVFeaturesHeader) dataSource.getHeader();
         final List<String> sampleNames = header.getSampleNames();

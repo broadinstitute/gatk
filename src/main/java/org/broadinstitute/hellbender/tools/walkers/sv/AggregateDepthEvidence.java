@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.arrow.util.VisibleForTesting;
@@ -15,16 +14,22 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.*;
 import org.broadinstitute.hellbender.tools.sv.aggregation.DepthEvidenceTest;
+import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
+import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.tsv.*;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * <p>This tool assesses depth evidence for structural variants (SVs),annotating records with statistical metrics that
@@ -102,6 +107,18 @@ public final class AggregateDepthEvidence extends VariantWalker {
     )
     public GATKPath medianFile;
 
+    /**
+     * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
+     * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
+     * integers in their respective columns.
+     */
+    @Argument(
+            doc = "Sample ploidy table (.tsv), required if using a sites-only VCF",
+            fullName = SVClusterWalker.PLOIDY_TABLE_LONG_NAME,
+            optional = true
+    )
+    protected GATKPath ploidyTablePath;
+
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -152,23 +169,24 @@ public final class AggregateDepthEvidence extends VariantWalker {
     )
     public double powerThreshold = 0.8;
 
+    private SAMSequenceDictionary dictionary;
     private VariantContextWriter writer;
-    private SAMSequenceDictionary samSequenceDictionary;
     private Map<String, Double> sampleMedians;
+    private PloidyTable ploidyTable;
     private DepthMatrixLoader loader;
     private DepthEvidenceTest depthEvidenceTest;
     private FeatureDataSource<DepthEvidence> evidenceDataSource;
 
     @Override
     public void onTraversalStart() {
-        samSequenceDictionary = getBestAvailableSequenceDictionary();
         evidenceDataSource = new FeatureDataSource<>(evidenceFile.toString());
         sampleMedians = loadMedianSampleCoverageTable();
-        final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
-        loader = new DepthMatrixLoader(evidenceDataSource, numBins, largeVariantSize, largeVariantPoints, largeVariantWindow, dictionary);
+        dictionary = getBestAvailableSequenceDictionary();
+        loader = new DepthMatrixLoader(evidenceDataSource, numBins, largeVariantSize, largeVariantPoints, largeVariantWindow, null, dictionary);
         depthEvidenceTest = new DepthEvidenceTest(powerThreshold);
         writer = createVCFWriter(outputVcf);
-        writer.writeHeader(createHeader(getHeaderForVariants()));
+        final VCFHeader header = createHeader(getHeaderForVariants());
+        writer.writeHeader(header);
     }
 
     @VisibleForTesting
@@ -187,31 +205,34 @@ public final class AggregateDepthEvidence extends VariantWalker {
         } catch (final NumberFormatException nfe) {
             throw new UserException.BadInput(nfe.getMessage());
         }
-        final Set<String> vcfSamples = new HashSet<>(getHeaderForVariants().getSampleNamesInOrder());
-        Utils.validate(vcfSamples.containsAll(sampleMedians.keySet()), "Median counts table does not contain all samples in the VCF");
+        final List<String> vcfSamples = getHeaderForVariants().getSampleNamesInOrder();
+        Utils.validate(sampleMedians.keySet().containsAll(vcfSamples), "Median counts table does not contain all samples in the VCF");
         return sampleMedians;
     }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        // Must be a bi-allelic CNV
+        // Must be a CNV
         final StructuralVariantType svtype = variant.getStructuralVariantType();
-        if (svtype != StructuralVariantType.DEL && svtype != StructuralVariantType.DUP) {
+        if (svtype != StructuralVariantType.DEL && svtype != StructuralVariantType.DUP && svtype != StructuralVariantType.CNV) {
             writer.add(variant);
             return;
         }
-        final SVCallRecord record = SVCallRecordUtils.create(variant, samSequenceDictionary);
+        SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         final DepthMatrix depthMatrix = loader.load(new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB()), sampleMedians);
-        final DepthEvidenceTest.DepthTestResult result = depthEvidenceTest.test(record, depthMatrix);
-        if (result == null ) {
+
+        DepthEvidenceTest.DepthTestResult result = null;
+        if (svtype == StructuralVariantType.DEL || svtype == StructuralVariantType.DUP) {
+            result = depthEvidenceTest.test(record, depthMatrix);
+            if (result != null) {
+                record = depthEvidenceTest.applyToRecord(record, result, maxQual, dictionary);
+            }
+        }
+
+        if (result == null) {
             writer.add(variant);
         } else {
-            final VariantContext outputVariant = SVCallRecordUtils.getVariantBuilder(record).make();
-            final VariantContextBuilder builder = new VariantContextBuilder(outputVariant);
-            builder.attribute(GATKSVVCFConstants.READ_DEPTH_QUALITY_ATTRIBUTE, Math.min(-10. * Math.log10(result.pValue()), maxQual));
-            builder.attribute(GATKSVVCFConstants.READ_DEPTH_SECOND_MAX_QUALITY_ATTRIBUTE, Math.min(-10. * Math.log10(result.secondMaxP()), maxQual));
-            builder.attribute(GATKSVVCFConstants.READ_DEPTH_MEDIAN_SEPARATION_ATTRIBUTE, result.medianSeparation());
-            writer.add(builder.make());
+            writer.add(SVCallRecordUtils.getVariantBuilder(record).make());
         }
     }
 
@@ -223,10 +244,22 @@ public final class AggregateDepthEvidence extends VariantWalker {
         return null;
     }
 
-    private VCFHeader createHeader(final VCFHeader header) {
+    private VCFHeader createHeader(VCFHeader header) {
+        final List<String> samples = header.getSampleNamesInOrder();
+        if (samples.isEmpty()) {
+            Utils.nonNull(ploidyTablePath, "Ploidy table required for sites-only VCFs");
+            ploidyTable = new PloidyTable(ploidyTablePath.toPath());
+            final List<String> featureSamples = ((SVFeaturesHeader) evidenceDataSource.getHeader()).getSampleNames();
+            for (final String sample : samples) {
+                Utils.validate(ploidyTable.contains(sample), "Ploidy table does not contain sample " + sample + " from the depth file");
+            }
+            header = new VCFHeader(header.getMetaDataInInputOrder(), featureSamples);
+        }
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.READ_DEPTH_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Depth evidence quality"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.READ_DEPTH_SECOND_MAX_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Depth evidence second highest quality across individual bins"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.READ_DEPTH_MEDIAN_SEPARATION_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Median normalized depth difference between carriers and background samples"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Expected copy number for ref genotype"));
+        header.addMetaDataLine(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
         return header;
     }
 }

@@ -97,7 +97,7 @@ public class DepthMatrixTest extends GATKBaseTest {
         final int largeVariantRegionPoints = 15;
         final int largeVariantWindow = 1000;
         final FeatureDataSource<DepthEvidence> source = new FeatureDataSource<>(new File(DEPTH_FILE_PATH));
-        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, SVTestUtils.hg38Dict);
+        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, null, SVTestUtils.hg38Dict);
         final Map<String, Double> sampleMedians = makeSampleMedians(((SVFeaturesHeader) source.getHeader()).getSampleNames(), 30.);
         final SimpleInterval interval = new SimpleInterval("chr2", 89295001, 89295002);
         final DepthMatrix matrix = loader.load(interval, sampleMedians);
@@ -115,7 +115,7 @@ public class DepthMatrixTest extends GATKBaseTest {
         final int largeVariantRegionPoints = 15;
         final int largeVariantWindow = 1000;
         final FeatureDataSource<DepthEvidence> source = new FeatureDataSource<>(new File(DEPTH_FILE_PATH));
-        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, SVTestUtils.hg38Dict);
+        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, null, SVTestUtils.hg38Dict);
         final Map<String, Double> sampleMedians = makeSampleMedians(((SVFeaturesHeader)source.getHeader()).getSampleNames(), 30.);
         final DepthMatrix matrix = loader.load(TEST_INTERVAL, sampleMedians);
         Assert.assertEquals(matrix.getNumBins(), 8);
@@ -140,7 +140,7 @@ public class DepthMatrixTest extends GATKBaseTest {
         final int largeVariantRegionPoints = 15;
         final int largeVariantWindow = 1000;
         final FeatureDataSource<DepthEvidence> source = new FeatureDataSource<>(new File(DEPTH_FILE_PATH));
-        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, SVTestUtils.hg38Dict);
+        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, null, SVTestUtils.hg38Dict);
         final Map<String, Double> sampleMedians = makeSampleMedians(((SVFeaturesHeader)source.getHeader()).getSampleNames(), 30.);
         final DepthMatrix matrix = loader.load(TEST_INTERVAL_GAP, sampleMedians);
         Assert.assertEquals(matrix.getNumBins(), 8);
@@ -165,7 +165,7 @@ public class DepthMatrixTest extends GATKBaseTest {
         final int largeVariantRegionPoints = 15;
         final int largeVariantWindow = 1000;
         final FeatureDataSource<DepthEvidence> source = new FeatureDataSource<>(new File(DEPTH_FILE_PATH));
-        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, SVTestUtils.hg38Dict);
+        final DepthMatrixLoader loader = new DepthMatrixLoader(source, bins, largeSizeCutoff, largeVariantRegionPoints, largeVariantWindow, null, SVTestUtils.hg38Dict);
         final Map<String, Double> sampleMedians = makeSampleMedians(((SVFeaturesHeader)source.getHeader()).getSampleNames(), 30.);
         final DepthMatrix matrix = loader.load(TEST_INTERVAL_LARGE, sampleMedians);
         Assert.assertEquals(matrix.getNumBins(), 8);

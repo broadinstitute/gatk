@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -13,8 +15,11 @@ import java.util.*;
 public class DepthMatrixLoader {
 
     protected static final int MIN_BINS_FOR_TRIMMING = 4;
+    protected static final int MIN_INTERVALS_AFTER_EXCLUSION = 10;
+    protected static final double PADDING_FRACTION_EXCLUSION = 0.1;
 
     protected final FeatureDataSource<DepthEvidence> dataSource;
+    protected final OverlapDetector<SimpleInterval> exclusionIntervals;
     protected final SAMSequenceDictionary dictionary;
     protected final int bins;
     protected final long largeSizeCutoff;
@@ -26,6 +31,7 @@ public class DepthMatrixLoader {
 
     public DepthMatrixLoader(final FeatureDataSource<DepthEvidence> dataSource,
                              final int bins, final long largeSizeCutoff, final int largeVariantRegionPoints, final int largeVariantWindow,
+                             final OverlapDetector<SimpleInterval> exclusionIntervals,
                              final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dataSource);
         Utils.validateArg(bins > 0, "bins must be greater than zero");
@@ -35,6 +41,7 @@ public class DepthMatrixLoader {
         Utils.nonNull(dictionary);
         this.dataSource = dataSource;
         this.dictionary = dictionary;
+        this.exclusionIntervals = exclusionIntervals;
         this.bins = bins;
         this.largeSizeCutoff = largeSizeCutoff;
         this.largeVariantRegionPoints = largeVariantRegionPoints;
@@ -64,8 +71,16 @@ public class DepthMatrixLoader {
         // Set 0 entries to 1
         setZeroesToOnes(trimmedMatrix);
 
+        // Exclude poor coverage intervals
+        final DepthMatrix intervalExcludedMatrix;
+        if (exclusionIntervals != null) {
+            intervalExcludedMatrix = applyExclusionIntervals(interval, trimmedMatrix, exclusionIntervals);
+        } else {
+            intervalExcludedMatrix = rawMatrix;
+        }
+
         // Apply compression and normalization
-        final DepthMatrix compressedMatrix = compressMatrix(trimmedMatrix, compressionResult);
+        final DepthMatrix compressedMatrix = compressMatrix(intervalExcludedMatrix, compressionResult);
         final Map<String, Double> compressedMedians = compressMedians(sampleMedians, compressionResult);
 
         // Normalize by sample depth
@@ -138,6 +153,60 @@ public class DepthMatrixLoader {
             newMatrix.put(sample, trimmedCounts);
         }
         return new DepthMatrix(newBins, newMatrix);
+    }
+
+    private static DepthMatrix applyExclusionIntervals(final SimpleInterval interval, final DepthMatrix depthMatrix, final OverlapDetector<SimpleInterval> exclusionIntervals) {
+        final int trimPadding = (int) (PADDING_FRACTION_EXCLUSION * interval.getLengthOnReference());
+        final int trimmedStart = interval.getStart() + trimPadding;
+        final int trimmedEnd = interval.getEnd() - trimPadding;
+        final SimpleInterval trimmedInterval = new SimpleInterval(interval.getContig(), trimmedStart, trimmedEnd);
+        final Set<Integer> excludedBins = new HashSet<>();  // Trimming and excluded intervals
+        final Set<Integer> trimmedBins = new HashSet<>();   // Trimming only
+        final List<SimpleInterval> bins = depthMatrix.getBins();
+        for (int i = 0; i < bins.size(); i++) {
+            final SimpleInterval bin = bins.get(i);
+            if (!trimmedInterval.overlaps(bin)) {
+                trimmedBins.add(i);
+                excludedBins.add(i);
+            } else if (exclusionIntervals.overlapsAny(bin)) {
+                excludedBins.add(i);
+            }
+        }
+        if (bins.size() - excludedBins.size() >= MIN_INTERVALS_AFTER_EXCLUSION) {
+            return excludeBins(depthMatrix, excludedBins);
+        } else if (bins.size() - trimmedBins.size() >= MIN_INTERVALS_AFTER_EXCLUSION) {
+            return excludeBins(depthMatrix, trimmedBins);
+        } else {
+            return depthMatrix;
+        }
+    }
+
+    private static DepthMatrix excludeBins(final DepthMatrix depthMatrix, final Set<Integer> excludedBins) {
+        Utils.validate(depthMatrix.getNumBins() >= excludedBins.size(), "Invalid excluded bin index set");
+        final List<SimpleInterval> bins = depthMatrix.getBins();
+        final List<SimpleInterval> newBins = new ArrayList<>(bins.size() - excludedBins.size());
+        for (int i = 0; i < bins.size(); i++) {
+            if (!excludedBins.contains(i)) {
+                newBins.add(bins.get(i));
+            }
+        }
+        final Map<String, double[]> newMatrix = new HashMap<>();
+        for (final String sample : depthMatrix.getSampleSet()) {
+            final double[] counts = depthMatrix.getSample(sample);
+            final double[] trimmedCounts = new double[bins.size() - excludedBins.size()];
+            int j = 0;
+            for (int i = 0; i < bins.size(); i++) {
+                if (!excludedBins.contains(i)) {
+                    trimmedCounts[j++] = counts[i];
+                }
+            }
+            if (j != trimmedCounts.length) {
+                throw new IllegalArgumentException("At least one excluded bin was not a valid index");
+            }
+            newMatrix.put(sample, trimmedCounts);
+        }
+        return new DepthMatrix(newBins, newMatrix);
+
     }
 
     protected static CompressionResult calculateCompression(final List<SimpleInterval> binIntervals, final SimpleInterval interval, final int targetBins) {

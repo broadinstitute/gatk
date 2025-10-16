@@ -143,9 +143,6 @@ public class SplitReadEvidenceTester {
         Utils.validateArg(record.getStrandB() != null, "Record has null strand B");
         SplitReadSite refinedFirstSite;
         SplitReadSite refinedSecondSite;
-        if (record.getId().equals("all_samples_manta_chr22_00000000")) {
-            int x = 0;
-        }
         if (!record.isIntrachromosomal()) {
             // Interchromosomal variants, just test without any checks
             refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
