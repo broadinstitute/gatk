@@ -34,12 +34,16 @@ public class DepthEvidenceGenotyper {
     private final CopyStateStats[] copyStateStats;
     private final List<String> samples;
 
-    public DepthEvidenceGenotyper(final List<String> samples, final SAMSequenceDictionary dictionary) {
+    public DepthEvidenceGenotyper(final List<CopyStateStats> cutoffs, final List<String> samples, final SAMSequenceDictionary dictionary) {
         this.dictionary = Utils.nonNull(dictionary);
         this.samples = Utils.nonNull(samples);
-        copyStateStats = new CopyStateStats[DEFAULT_NUM_STATES];
-        for (int i = 0; i < copyStateStats.length; i++) {
-            copyStateStats[i] = new CopyStateStats(i * DEFAULT_COPY_STATE_INCREMENT, DEFAULT_COPY_STATE_STD, (i + 0.5) * DEFAULT_COPY_STATE_INCREMENT);
+        if (cutoffs != null) {
+            copyStateStats = cutoffs.toArray(CopyStateStats[]::new);
+        } else {
+            copyStateStats = new CopyStateStats[DEFAULT_NUM_STATES];
+            for (int i = 0; i < copyStateStats.length; i++) {
+                copyStateStats[i] = new CopyStateStats(i, i * DEFAULT_COPY_STATE_INCREMENT, DEFAULT_COPY_STATE_STD, (i + 0.5) * DEFAULT_COPY_STATE_INCREMENT);
+            }
         }
     }
 
@@ -54,11 +58,12 @@ public class DepthEvidenceGenotyper {
 
     public SVCallRecord applyToRecord(final SVCallRecord record,
                                       final DepthGenotypeResult result,
-                                      final PloidyTable ploidyTable) {
+                                      final PloidyTable ploidyTable,
+                                      final int maxQuality) {
         Utils.nonNull(record);
         Utils.nonNull(result);
         final Map<String, Object> refinedAttr = new HashMap<>(record.getAttributes());
-        refinedAttr.put(GATKSVVCFConstants.DEPTH_VARIANT_QUALITY_ATTRIBUTE, result.variantQual);
+        refinedAttr.put(GATKSVVCFConstants.DEPTH_VARIANT_QUALITY_ATTRIBUTE, Math.min(result.variantQual, maxQuality));
 
         final List<Genotype> genotypes = record.getGenotypes();
         final GenotypesContext newGenotypes = GenotypesContext.create(genotypes.size());
@@ -104,7 +109,7 @@ public class DepthEvidenceGenotyper {
                 throw new GATKException("Unsupported variant type here: " + record.getType());
             }
             builder.attribute(GATKSVVCFConstants.DEPTH_COPY_STATE_ATTRIBUTE, depthGenotype.copyState);
-            builder.attribute(GATKSVVCFConstants.DEPTH_GENOTYPE_QUALITY_ATTRIBUTE, Math.round(depthGenotype.quality));
+            builder.attribute(GATKSVVCFConstants.DEPTH_GENOTYPE_QUALITY_ATTRIBUTE, Math.min(Math.round(depthGenotype.quality), maxQuality));
             newGenotypes.add(builder.make());
         }
 
@@ -188,7 +193,7 @@ public class DepthEvidenceGenotyper {
             } else {
                 upperBound = getCutoff(means[i], stdDevs[i], means[i + 1], stdDevs[i + 1]);
             }
-            trained.add(new CopyStateStats(means[i], stdDevs[i], upperBound));
+            trained.add(new CopyStateStats(i, means[i], stdDevs[i], upperBound));
         }
         return trained;
     }
@@ -207,11 +212,8 @@ public class DepthEvidenceGenotyper {
         Utils.validateArg(0 <= p2 && 1 >= p2, "p2 not on [0, 1]");
         Utils.validateArg(p1 <= p2, "p1 cannot be greater than p2");
         if (p2 == 0) {
-            if (p1 == 0) {
-                return 0;
-            } else {
-                return Double.POSITIVE_INFINITY;
-            }
+            // p1 also 0
+            return 0;
         } else if (p1 == 0) {
             return Double.POSITIVE_INFINITY;
         }
@@ -222,7 +224,7 @@ public class DepthEvidenceGenotyper {
         return 1. - Z_DISTRIBUTION.cumulativeProbability(Math.abs(state.mean - median) / state.stdDev);
     }
 
-    public record CopyStateStats(double mean, double stdDev, double upperBound) {}
+    public record CopyStateStats(int copyState, double mean, double stdDev, double upperBound) {}
     public record DepthGenotypeResult(double[] sampleDepths, int[] copyStates, List<DepthGenotype> genotypeQuals, double variantQual) {}
     public record DepthGenotype(int copyState, double quality) {}
 }
