@@ -503,6 +503,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1632_foxtrot_participant_mapping_table
+         - vs_1686_pseudo_vid_fixup
        tags:
          - /.*/
