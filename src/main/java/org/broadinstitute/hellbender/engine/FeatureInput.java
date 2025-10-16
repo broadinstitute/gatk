@@ -153,7 +153,9 @@ public final class FeatureInput<T extends Feature> extends GATKPath implements S
         } else if (getScheme() != null && !getScheme().equals("file")) { // local files always have a "file" scheme
             return toPath().toAbsolutePath().toUri().toString();
         } else {
-            return getURI().getPath();
+            // For local files, convert to absolute path using the platform-specific path separator
+            // This ensures consistency with File.getAbsolutePath() behavior
+            return toPath().toAbsolutePath().toString();
         }
     }
 

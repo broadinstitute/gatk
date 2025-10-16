@@ -766,7 +766,14 @@ public final class IOUtils {
             uri = URI.create(uriString);
         } catch (IllegalArgumentException x) {
             // not a valid URI. Caller probably just gave us a file name.
-            return Paths.get(uriString);
+            try {
+                return Paths.get(uriString);
+            } catch (InvalidPathException e) {
+                // On Windows, strings like "1:1-100" (interval notation) will throw InvalidPathException
+                // because ':' is not allowed except after drive letters. Return a placeholder path
+                // that will fail existence checks, allowing the caller to treat it as an interval string.
+                return Paths.get(uriString.replaceAll(":", "_"));
+            }
         }
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
@@ -789,7 +796,15 @@ public final class IOUtils {
                 // TODO: we depend on this code path to allow IntervalUtils to all getPath on a string that may be either
                 // a literal interval or a feature file containing intervals
                 // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
-                return Paths.get(uriString);
+                try {
+                    return Paths.get(uriString);
+                } catch (InvalidPathException ipe) {
+                    // On Windows, interval strings like "1:1-100" will throw InvalidPathException
+                    // because ':' is not allowed in Windows paths (except after drive letter).
+                    // In this case, we create a bogus Path that wraps the string for compatibility.
+                    // The caller (e.g., IntervalUtils) will handle this appropriately.
+                    return Paths.get(uriString.replaceAll(":", "_"));
+                }
             }
             catch ( IOException io ) {
                 throw new UserException(uriString + " is not a supported path", io);
@@ -823,7 +838,15 @@ public final class IOUtils {
      * @return a String with the absolute name, and the file:// protocol removed, if it was present.
      */
     public static String getAbsolutePathWithoutFileProtocol(final Path path) {
-        return path.toAbsolutePath().toUri().toString().replaceFirst("^file://", "");
+        String result = path.toAbsolutePath().toUri().toString();
+        // Remove file:// or file:/// protocol
+        result = result.replaceFirst("^file:///", "").replaceFirst("^file://", "");
+        // On Windows, after removing file:///, we get /C:/Users/... which needs the leading slash removed
+        // Check for Windows absolute path pattern: /[A-Z]:/
+        if (result.matches("^/[A-Za-z]:.*")) {
+            result = result.substring(1);
+        }
+        return result;
     }
 
     /**

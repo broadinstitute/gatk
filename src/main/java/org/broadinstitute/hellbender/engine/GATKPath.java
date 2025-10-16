@@ -4,6 +4,7 @@ import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 
 import htsjdk.io.HtsPath;
 
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.TaggedArgument;
 import org.broadinstitute.barclay.argparser.TaggedArgumentParser;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * GATK tool command line arguments that are input or output resources. These can
@@ -201,5 +203,47 @@ public class GATKPath extends HtsPath implements TaggedArgument, Serializable {
                 result :
                 31 * result + getTagAttributes().hashCode();
         return result;
+    }
+
+    /**
+     * Override getExtension() to work around issues in htsjdk 4.2.0 on Windows.
+     * Uses Apache Commons FilenameUtils which handles URIs and paths correctly across platforms.
+     *
+     * @return the extension of the file name (including the leading '.'), or empty if no extension
+     */
+    @Override
+    public Optional<String> getExtension() {
+        final String uriPath = getURI().getPath();
+        if (uriPath == null || uriPath.isEmpty()) {
+            return Optional.empty();
+        }
+
+        final String extension = FilenameUtils.getExtension(uriPath);
+        if (extension == null || extension.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of("." + extension);
+    }
+
+    /**
+     * Override getBaseName() to work around issues in htsjdk 4.2.0 on Windows.
+     * Uses Apache Commons FilenameUtils which handles URIs and paths correctly across platforms.
+     *
+     * @return the base name of the file (without extension), or empty if no file name component
+     */
+    @Override
+    public Optional<String> getBaseName() {
+        final String uriPath = getURI().getPath();
+        if (uriPath == null || uriPath.isEmpty()) {
+            return Optional.empty();
+        }
+
+        final String baseName = FilenameUtils.getBaseName(uriPath);
+        if (baseName == null || baseName.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(baseName);
     }
 }

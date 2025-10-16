@@ -22,7 +22,10 @@ public final class GenomicsDBTestUtils {
      * @return a string formatted as a genomicsDB uri pointing to the given workspace i.e "gendb:///pathTo/workspace
      */
     public static String makeGenomicsDBUri(final File workspace){
-        return IOUtils.GENOMIC_DB_URI_SCHEME + "://" + workspace.getAbsolutePath();
+        // Convert the file path to a URI path string to ensure proper formatting on all platforms (e.g., Windows)
+        // This uses the Path.toUri() method which properly converts backslashes to forward slashes
+        final String uriPath = workspace.toPath().toUri().normalize().getPath();
+        return IOUtils.GENOMIC_DB_URI_SCHEME + "://" + uriPath;
     }
 
     /**

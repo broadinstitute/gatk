@@ -473,9 +473,9 @@ public class GATKPathUnitTest extends GATKBaseTest {
         final String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
         return new Object[][] {
                 { twoBitRefURL, false },
-                { "file://" + twoBitRefURL, false },
+                { Paths.get(twoBitRefURL).toUri().toString(), false },
                 { hg38Reference, true }, // gzipped
-                { "file://" + hg38Reference, true }, // gzipped
+                { Paths.get(hg38Reference).toUri().toString(), true }, // gzipped
                 { GCS_b37_CHR20_21_REFERENCE_2BIT, false },
                 { GCS_b37_CHR20_21_REFERENCE, true },
                 // dummy query params at the end to make sure URI.getPath does the right thing
