@@ -1,6 +1,7 @@
 version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
+import "../structs/Range.wdl" as Range
 
 workflow GvsMapUnmappedVIDs {
     input {
@@ -11,6 +12,7 @@ workflow GvsMapUnmappedVIDs {
         String mapping_table_name
         String unmapped_vid_mapping_table_name
         String reference_name = "hg38"
+        Range? range_filter
     }
 
     call Utils.GetToolVersions
@@ -30,6 +32,7 @@ workflow GvsMapUnmappedVIDs {
             sites_only_vcf = sites_only_vcf,
             reference = GetReference.reference,
             unmapped_vid_mapping_table_name = unmapped_vid_mapping_table_name,
+            range_filter = range_filter,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -44,6 +47,7 @@ task MapUnmappedVIDs {
         File sites_only_vcf
         Reference reference
         String unmapped_vid_mapping_table_name
+        Range? range_filter
         String variants_docker
     }
     parameter_meta {
@@ -107,10 +111,35 @@ task MapUnmappedVIDs {
         #     positions as GVS.
         python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
 
-        # 11. Load into BigQuery
+        # 11. Load the unmapped vid mapping into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
             ~{dataset}.~{unmapped_vid_mapping_table_name} unmapped_vid_mappings.tsv \
             vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
+
+        # 12. Add the mappings for these no-longer-unmapped VIDs into the mapping table.
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
+
+        INSERT into `~{dataset}.~{mapping_table_name}` (vid, person_ids)
+        SELECT
+          umm.vid as vid,
+          ARRAY_AGG(SAFE_CAST(si.sample_name AS INT64) IGNORE NULLS) AS person_ids
+        FROM
+          `~{dataset}.~{unmapped_vid_mapping_table_name}` umm
+        JOIN
+          `~{dataset}.alt_allele` aa
+        ON
+          umm.input_location = aa.location
+          AND umm.input_ref = aa.ref
+          AND umm.input_alt = aa.allele
+        JOIN
+          `~{dataset}.sample_info` si
+        ON
+          aa.sample_id = si.sample_id
+          ~{if defined(range_filter) then "where aa.location >= ~{select_first([range_filter]).startLocation} AND aa.location < ~{select_first([range_filter]).endLocation}" else ""}
+        GROUP BY
+          vid
+
+        '
 
     >>>
     runtime {

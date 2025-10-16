@@ -506,3 +506,13 @@ workflows:
          - vs_1686_pseudo_vid_fixup
        tags:
          - /.*/
+   - name: GvsMapUnmappedVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1686_pseudo_vid_fixup
+       tags:
+         - /.*/
