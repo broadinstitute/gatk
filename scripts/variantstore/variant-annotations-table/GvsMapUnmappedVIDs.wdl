@@ -63,7 +63,18 @@ task MapUnmappedVIDs {
         # 1. Get the unmapped VIDs.
         bq --apilog=false query --use_legacy_sql=false --project_id=~{project} --format=csv --max_rows 1000000000 '
 
-            select distinct vid from `~{dataset}.~{vat_table_name}` where vid not in (select vid from `~{dataset}.~{mapping_table_name}`)
+            CREATE TEMP FUNCTION vidToLocation(vid string)
+             RETURNS int64
+             AS (
+                 (CASE SPLIT(vid, "-")[OFFSET(0)]
+                                     WHEN "X" THEN 23
+                                     WHEN "Y" THEN 24
+                                     ELSE CAST(SPLIT(vid, "-")[OFFSET(0)] AS int64) END) * 1000000000000 +
+                             CAST(SPLIT(vid, "-")[OFFSET(1)] AS int64)
+             );
+
+            SELECT distinct vid, vidToLocation(vid) AS location FROM `~{dataset}.~{vat_table_name}` WHERE vid NOT IN (SELECT vid FROM `~{dataset}.~{mapping_table_name}`)
+            ~{if (defined(range_filter)) then "AND location >= ~{select_first([range_filter]).startLocation} AND location < ~{select_first([range_filter]).endLocation}" else ""}
 
         ' | sed 1d > unmapped_vids.tsv
 
