@@ -182,6 +182,11 @@ public final class GATKSVVCFConstants {
     public static final String BAF_KS_STAT_ATTRIBUTE = "BAF_KS_STAT";
     public static final String BAF_KS_Q_ATTRIBUTE = "BAF_KS_Q";
 
+    // depth aggregation
+    public static final String DEPTH_VARIANT_QUALITY_ATTRIBUTE = "RDQ_GENOTYPE";
+    public static final String DEPTH_COPY_STATE_ATTRIBUTE = "RD_CN";
+    public static final String DEPTH_GENOTYPE_QUALITY_ATTRIBUTE = "RD_GQ";
+
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";

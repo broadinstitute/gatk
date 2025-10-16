@@ -46,6 +46,10 @@ public class PloidyTable {
         return samplePloidyMap.get(sample).getPloidy(contig);
     }
 
+    public boolean contains(final String sample) {
+        return samplePloidyMap.containsKey(sample);
+    }
+
     private static final class PloidyRecord {
         private final String sample;
         private final Map<String, Integer> ploidyMap;

@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.tools.sv.aggregation;
 
 import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.TDistribution;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.sv.DepthEvidenceGenotyper;
 import org.broadinstitute.hellbender.tools.sv.DepthMatrix;
 import org.broadinstitute.hellbender.tools.sv.PermutationTTest;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
@@ -59,6 +63,25 @@ public class DepthEvidenceTest {
         return new DepthTestResult(result.pValue, result.secondMaxP, medianSeparation);
     }
 
+    public SVCallRecord applyToRecord(final SVCallRecord record,
+                                      final DepthTestResult result,
+                                      final double maxQual,
+                                      final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(record);
+        Utils.nonNull(result);
+        final Map<String, Object> refinedAttr = new HashMap<>(record.getAttributes());
+        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_QUALITY_ATTRIBUTE, Math.min(-10. * Math.log10(result.pValue()), maxQual));
+        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_SECOND_MAX_QUALITY_ATTRIBUTE, Math.min(-10. * Math.log10(result.secondMaxP()), maxQual));
+        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_MEDIAN_SEPARATION_ATTRIBUTE, result.medianSeparation());
+
+        // Create new record
+        return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(),
+                record.getStrandA(), record.getContigB(), record.getPositionB(), record.getStrandB(),
+                record.getType(), record.getComplexSubtype(), record.getComplexEventIntervals(), record.getLength(),
+                record.getEvidence(), record.getAlgorithms(), record.getAlleles(),
+                record.getGenotypes(), refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
+    }
+
     protected static SampleSetResult getSampleSets(final SVCallRecord record) {
         final List<Genotype> carrierGenotypes = record.getCarrierGenotypeList();
         if (carrierGenotypes.isEmpty()) {
@@ -98,7 +121,7 @@ public class DepthEvidenceTest {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private static double[] getSampleMedians(final DepthMatrix depthMatrix, final Set<String> samples) {
+    public static double[] getSampleMedians(final DepthMatrix depthMatrix, final Collection<String> samples) {
         final double[] medians = new double[samples.size()];
         int i = 0;
         for (final String sample : samples) {
