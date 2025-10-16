@@ -73,8 +73,8 @@ task MapUnmappedVIDs {
                              CAST(SPLIT(vid, "-")[OFFSET(1)] AS int64)
              );
 
-            SELECT distinct vid, vidToLocation(vid) AS location FROM `~{dataset}.~{vat_table_name}` WHERE vid NOT IN (SELECT vid FROM `~{dataset}.~{mapping_table_name}`)
-            ~{if (defined(range_filter)) then "AND location >= ~{select_first([range_filter]).startLocation} AND location < ~{select_first([range_filter]).endLocation}" else ""}
+            SELECT distinct vid AS location FROM `~{dataset}.~{vat_table_name}` WHERE vid NOT IN (SELECT vid FROM `~{dataset}.~{mapping_table_name}`)
+            ~{if (defined(range_filter)) then "AND vidToLocation(vid) >= ~{select_first([range_filter]).startLocation} AND vidToLocation(vid) < ~{select_first([range_filter]).endLocation}" else ""}
 
         ' | sed 1d > unmapped_vids.tsv
 
