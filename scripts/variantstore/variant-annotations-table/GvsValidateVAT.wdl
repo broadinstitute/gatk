@@ -1101,7 +1101,6 @@ task ClinvarSignificance {
         #                                 "risk factor",
         #                                 "protective",
         #                                 "affects",
-        #                                 "conflicting data from submitters",
         #                                 "other",
         #                                 "not provided"]
 
@@ -1114,7 +1113,6 @@ task ClinvarSignificance {
         echo 'affects
         association
         benign
-        conflicting data from submitters
         drug response
         likely benign
         likely pathogenic
@@ -1125,7 +1123,7 @@ task ClinvarSignificance {
         risk factor
         uncertain significance' > expected_clinvar_classes.txt
 
-        comm -23 <(sort bq_clinvar_classes.txt) expected_clinvar_classes.txt > missing_clinvar_classes.txt
+        comm -13 <(sort bq_clinvar_classes.txt) expected_clinvar_classes.txt > missing_clinvar_classes.txt
 
         NUMRESULTS=$( wc -l bq_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 13+
         NUMMISS=$( wc -l missing_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 0
