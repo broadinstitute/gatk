@@ -80,6 +80,7 @@ task MapDroppedDuplicateVIDs {
         # 3. Get the dropped duplicate VCFs. Transform the filtered synonyms file into an actual VCF by adding a header,
         #    kindly donated by the sites-only VCF.
         bcftools head ${sites_only} > filtered_synonyms.vcf
+        cp filtered_synonyms.vcf head.vcf
         cat ~{filtered_synonyms} >> filtered_synonyms.vcf
         bcftools query -f '%CHR %POS %REF %ALT\n' filtered_synonyms.vcf | sed -E 's/ /-/g' | cut -c 3- | sort | uniq > dropped_duplicate_vids.tsv
 
