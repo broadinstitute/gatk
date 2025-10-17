@@ -1101,7 +1101,6 @@ task ClinvarSignificance {
         #                                 "risk factor",
         #                                 "protective",
         #                                 "affects",
-        #                                 "conflicting data from submitters",
         #                                 "other",
         #                                 "not provided"]
 
@@ -1109,12 +1108,11 @@ task ClinvarSignificance {
         bq --apilog=false query --max_rows 1000000 --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
-        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.txt
+        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "1 d" | sort > bq_clinvar_classes.txt
 
         echo 'affects
         association
         benign
-        conflicting data from submitters
         drug response
         likely benign
         likely pathogenic
@@ -1125,7 +1123,7 @@ task ClinvarSignificance {
         risk factor
         uncertain significance' > expected_clinvar_classes.txt
 
-        comm -23 <(sort bq_clinvar_classes.txt) expected_clinvar_classes.txt > missing_clinvar_classes.txt
+        comm -13 bq_clinvar_classes.txt expected_clinvar_classes.txt > missing_clinvar_classes.txt
 
         NUMRESULTS=$( wc -l bq_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 13+
         NUMMISS=$( wc -l missing_clinvar_classes.txt | awk '{print $1;}' ) # we expect this to be 0
