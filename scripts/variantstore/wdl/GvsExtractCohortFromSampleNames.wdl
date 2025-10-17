@@ -5,7 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
-
+# A
 workflow GvsExtractCohortFromSampleNames {
 
   input {
@@ -66,7 +66,7 @@ workflow GvsExtractCohortFromSampleNames {
     }
   }
 
-  String effective_cohort_table_prefix = select_first(cohort_table_prefix, call_set_identifier + "." + GetToolVersions.GetToolVersions.date_as_secs_since_unix_epoch)
+  String effective_cohort_table_prefix = select_first([cohort_table_prefix, call_set_identifier + "." + GetToolVersions.GetToolVersions.date_as_secs_since_unix_epoch])
 
   String effective_git_hash = select_first([git_branch_or_tag, GetToolVersions.git_hash])
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
