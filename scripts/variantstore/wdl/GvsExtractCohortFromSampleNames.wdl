@@ -5,7 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
-# B
+# C
 workflow GvsExtractCohortFromSampleNames {
 
   input {
@@ -127,7 +127,7 @@ workflow GvsExtractCohortFromSampleNames {
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
       call_set_identifier = call_set_identifier,
-      extract_table_prefix = cohort_table_prefix,
+      extract_table_prefix = effective_cohort_table_prefix,
       sample_names_to_extract = cohort_sample_names_file,
       project_id = gvs_project,
       query_labels = ["extraction_uuid=~{extraction_uuid}"],
@@ -154,7 +154,7 @@ workflow GvsExtractCohortFromSampleNames {
       call_set_identifier = call_set_identifier,
       cohort_project_id = destination_project_id,
       cohort_dataset_name = destination_dataset_name,
-      extract_table_prefix = cohort_table_prefix,
+      extract_table_prefix = effective_cohort_table_prefix,
 
       scatter_count = effective_scatter_count,
       filter_set_name = filter_set_name,
