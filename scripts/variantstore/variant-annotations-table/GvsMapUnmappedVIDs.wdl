@@ -35,7 +35,6 @@ workflow GvsMapUnmappedVIDs {
             range_filter = range_filter,
             variants_docker = GetToolVersions.variants_docker,
     }
-
 }
 
 task MapUnmappedVIDs {
@@ -151,7 +150,6 @@ task MapUnmappedVIDs {
           vid
 
         '
-
     >>>
     runtime {
         docker: variants_docker
