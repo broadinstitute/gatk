@@ -269,6 +269,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1748_UniqueifyPrepTablesForExtractCohort
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -344,7 +345,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1634_pgen_exome
-             - gg_VS-1754_FixAnotherBugInClinvarSignificance
          tags:
              - /.*/
    - name: GvsIngestTieout

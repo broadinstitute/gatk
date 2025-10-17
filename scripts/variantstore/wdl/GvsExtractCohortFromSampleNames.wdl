@@ -17,7 +17,8 @@ workflow GvsExtractCohortFromSampleNames {
     String gvs_project
     String gvs_dataset
     String call_set_identifier
-    String cohort_table_prefix = call_set_identifier
+    String? cohort_table_prefix
+    #String cohort_table_prefix = call_set_identifier
     String query_project = gvs_project
 
     # not using the defaults in GvsPrepareCallset because we might be using pre created datasets defined by the caller
@@ -64,6 +65,8 @@ workflow GvsExtractCohortFromSampleNames {
         git_branch_or_tag = git_branch_or_tag,
     }
   }
+
+  String effective_cohort_table_prefix = select_first(cohort_table_prefix, call_set_identifier + "." + GetToolVersions.GetToolVersions.date_as_secs_since_unix_epoch)
 
   String effective_git_hash = select_first([git_branch_or_tag, GetToolVersions.git_hash])
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])

@@ -71,6 +71,7 @@ task GetToolVersions {
   String submission_id_output = "submission_id.txt"
   String workflow_id_output = "workflow_id.txt"
   String google_project_output = "google_project.txt"
+  String date_as_secs_since_unix_epoch_output = "date_as_secs_since_unix_epoch.txt"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -94,6 +95,7 @@ task GetToolVersions {
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{submission_id_output}
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
     sed -n -E 's!.*(terra-[0-9a-f]+).*# project to use if requester pays$!\1!p' ${CROMWELL_ROOT}/gcs_localization.sh | sort -u > ~{google_project_output}
+    date +%s > ~{date_as_secs_since_unix_epoch_output}
 
     echo "~{effective_version}" > version.txt
 
@@ -141,6 +143,7 @@ task GetToolVersions {
     String submission_id = read_string(submission_id_output)
     String workflow_id = read_string(workflow_id_output)
     String google_project = read_string(google_project_output)
+    String date_as_secs_since_unix_epoch = read_string(date_as_secs_since_unix_epoch_output)
   }
 }
 
