@@ -121,7 +121,7 @@ public class SortingCollection<T> implements Iterable<T> {
      * @param maxRecordsInRam how many records to accumulate before spilling to disk
      * @param tmpDir          Where to write files of records that will not fit in RAM
      */
-    private SortingCollection(final Class<T> componentType, final Codec<T> codec,
+    private SortingCollection(final Class<T> componentType, final SortingCollection.Codec<T> codec,
                               final Comparator<T> comparator, final int maxRecordsInRam,
                               final Path... tmpDir) {
         if (maxRecordsInRam <= 0) {
