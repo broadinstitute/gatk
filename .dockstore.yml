@@ -496,6 +496,15 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1632_foxtrot_participant_mapping_table
+       tags:
+         - /.*/
+   - name: GvsMapDroppedDuplicateVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapDroppedDuplicateVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1757_map_dropped_duplicates
        tags:
          - /.*/
