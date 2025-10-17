@@ -347,43 +347,6 @@ public class SortingCollection<T> implements Iterable<T> {
     /**
      * Syntactic sugar around the ctor, to save some typing of type parameters.  Writes files to java.io.tmpdir
      *
-     * @param componentType    Class of the record to be sorted.  Necessary because of Java generic lameness.
-     * @param codec            For writing records to file and reading them back into RAM
-     * @param comparator       Defines output sort order
-     * @param maxRecordsInRAM  how many records to accumulate in memory before spilling to disk
-     * @param printRecordSizeSampling If true record size will be sampled and output at DEBUG log level
-     */
-    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
-                                                       final SortingCollection.Codec<T> codec,
-                                                       final Comparator<T> comparator,
-                                                       final int maxRecordsInRAM,
-                                                       final boolean printRecordSizeSampling) {
-        final Path tmpDir = Paths.get(System.getProperty("java.io.tmpdir"));
-        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, tmpDir);
-    }
-
-    /**
-     * Syntactic sugar around the ctor, to save some typing of type parameters
-     *
-     * @param componentType    Class of the record to be sorted.  Necessary because of Java generic lameness.
-     * @param codec            For writing records to file and reading them back into RAM
-     * @param comparator       Defines output sort order
-     * @param maxRecordsInRAM  how many records to accumulate in memory before spilling to disk
-     * @param printRecordSizeSampling If true record size will be sampled and output at DEBUG log level
-     * @param tmpDir           Where to write files of records that will not fit in RAM
-     */
-    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
-                                                       final SortingCollection.Codec<T> codec,
-                                                       final Comparator<T> comparator,
-                                                       final int maxRecordsInRAM,
-                                                       final boolean printRecordSizeSampling,
-                                                       final Path... tmpDir) {
-        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, tmpDir);
-    }
-
-    /**
-     * Syntactic sugar around the ctor, to save some typing of type parameters.  Writes files to java.io.tmpdir
-     *
      * @param componentType   Class of the record to be sorted.  Necessary because of Java generic lameness.
      * @param codec           For writing records to file and reading them back into RAM
      * @param comparator      Defines output sort order
