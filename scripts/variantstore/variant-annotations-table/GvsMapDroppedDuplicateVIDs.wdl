@@ -59,7 +59,12 @@ task MapDroppedDuplicateVIDs {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # 1. Subsequent steps require an index for the sites-only VCF. If an index is already present in the cloud just
+        # 1. auth before doing GCS-flavored bcftools commands
+        set +o xtrace
+        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+        set -o xtrace
+
+        # 2. Subsequent steps require an index for the sites-only VCF. If an index is already present in the cloud just
         #    use that, otherwise download the sites-only VCF and index it.
         gsutil stat ~{sites_only_vcf}.tbi
 
@@ -72,19 +77,14 @@ task MapDroppedDuplicateVIDs {
             sites_only="~{sites_only_vcf}"
         fi
 
-        # 2. Get the dropped duplicate VCFs. Transform the filtered synonyms file into an actual VCF by adding a header,
+        # 3. Get the dropped duplicate VCFs. Transform the filtered synonyms file into an actual VCF by adding a header,
         #    kindly donated by the sites-only VCF.
         bcftools head ${sites_only} > filtered_synonyms.vcf
         cat ~{filtered_synonyms} >> filtered_synonyms.vcf
         bcftools query -f '%CHR-%POS-%REF-%ALT\n' filtered_synonyms.vcf | cut -c 3- | sort | uniq > dropped_duplicate_vids.tsv
 
-        # 3. Generate bcftools commands to query the sites-only VCF.
+        # 4. Generate bcftools commands to query the sites-only VCF.
         python /app/generate_bcftools_commands.py --sites-only ${sites_only} dropped_duplicate_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
-
-        # 4. auth before doing GCS-flavored bcftools commands
-        set +o xtrace
-        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-        set -o xtrace
 
         # 5. Initialize a `to_search.vcf` with a VCF header, using the sites-only VCF as a donor.
         bcftools head ${sites_only} > to_search.vcf
