@@ -153,27 +153,7 @@ public class SortingCollection<T> implements Iterable<T> {
             throw new IllegalStateException("Cannot add after calling iterator()");
         }
         if (numRecordsInRam == maxRecordsInRam) {
-
-            long startMem = 0;
-            if (printRecordSizeSampling) {
-                // Garbage collect and get free memory
-                Runtime.getRuntime().gc();
-                startMem = Runtime.getRuntime().freeMemory();
-            }
-
             spillToDisk();
-
-            if (printRecordSizeSampling) {
-                //Garbage collect again and get free memory
-                Runtime.getRuntime().gc();
-                long endMem = Runtime.getRuntime().freeMemory();
-
-                long usedBytes = endMem - startMem;
-                log.info(String.format("%d records in ram required approximately %s memory or %s per record. ", maxRecordsInRam,
-                        StringUtil.humanReadableByteCount(usedBytes),
-                        StringUtil.humanReadableByteCount(usedBytes / maxRecordsInRam)));
-
-            }
         }
         ramRecords[numRecordsInRam++] = rec;
     }
