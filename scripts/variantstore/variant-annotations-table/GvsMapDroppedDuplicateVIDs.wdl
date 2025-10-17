@@ -76,7 +76,7 @@ task MapDroppedDuplicateVIDs {
         #    kindly donated by the sites-only VCF.
         bcftools head ${sites_only} > filtered_synonyms.vcf
         cat ~{filtered_synonyms} >> filtered_synonyms.vcf
-        bcftools query -f "%CHR-%POS-%REF-%ALT\n' filtered_synonyms.vcf | cut -c 3- | sort | uniq > dropped_duplicate_vids.tsv
+        bcftools query -f '%CHR-%POS-%REF-%ALT\n' filtered_synonyms.vcf | cut -c 3- | sort | uniq > dropped_duplicate_vids.tsv
 
         # 3. Generate bcftools commands to query the sites-only VCF.
         python /app/generate_bcftools_commands.py --sites-only ${sites_only} dropped_duplicate_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
