@@ -139,10 +139,52 @@ public abstract class BaseTest {
     public static void runToolInNewJVM(String toolName, ArgumentsBuilder arguments, Map<String, String> environment){
         final String javaHome = System.getProperty("java.home");
         final String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
-        final String classpath = System.getProperty("java.class.path");;
+        final String classpath = System.getProperty("java.class.path");
+
+        // On Windows, use a classpath JAR to avoid command line length limitations (max 8191 characters)
+        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        String classpathArg = classpath;
+        File manifestJar = null;
+
+        if (isWindows) {
+            try {
+                // Create a temporary JAR with a manifest containing the classpath
+                manifestJar = File.createTempFile("gatk-test-classpath-", ".jar");
+                manifestJar.deleteOnExit();
+
+                // Build the manifest with Class-Path entry
+                final java.util.jar.Manifest manifest = new java.util.jar.Manifest();
+                manifest.getMainAttributes().put(java.util.jar.Attributes.Name.MANIFEST_VERSION, "1.0");
+
+                // Convert classpath to URLs (required format for manifest Class-Path)
+                final String[] classpathEntries = classpath.split(File.pathSeparator);
+                final StringBuilder classPathBuilder = new StringBuilder();
+                for (String entry : classpathEntries) {
+                    final File file = new File(entry);
+                    // Convert to URI to handle spaces and special characters
+                    classPathBuilder.append(file.toURI().toURL()).append(" ");
+                }
+                manifest.getMainAttributes().put(java.util.jar.Attributes.Name.CLASS_PATH, classPathBuilder.toString().trim());
+
+                // Write the JAR with only the manifest
+                try (final java.util.jar.JarOutputStream jos = new java.util.jar.JarOutputStream(
+                        new java.io.FileOutputStream(manifestJar), manifest)) {
+                    // No entries needed, just the manifest
+                }
+
+                classpathArg = manifestJar.getAbsolutePath();
+            } catch (IOException e) {
+                // Fall back to direct classpath if manifest JAR creation fails
+                classpathArg = classpath;
+                if (manifestJar != null && manifestJar.exists()) {
+                    manifestJar.delete();
+                }
+            }
+        }
+
         final List<String> baseCommand = new ArrayList<>(Arrays.asList(
                 javaBin,
-                "-cp", classpath,
+                "-cp", classpathArg,
                 Main.class.getName(),
                 toolName));
         baseCommand.addAll(arguments.getArgsList());
