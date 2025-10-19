@@ -9,3 +9,9 @@ src/test/resources/large/funcotator/funcotator_dataSources/simple_uniprot/hg38 -
 src/test/resources/large/** filter=lfs diff=lfs merge=lfs -text
 src/main/resources/large/** filter=lfs diff=lfs merge=lfs -text
 *.psd filter=lfs diff=lfs merge=lfs -text
+
+# Ensure reference files use LF line endings to maintain consistent MD5 checksums across platforms
+*.fasta text eol=lf
+*.fa text eol=lf
+*.fai text eol=lf
+*.dict text eol=lf

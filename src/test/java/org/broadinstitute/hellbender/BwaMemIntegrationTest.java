@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.testutils.ReadTestUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -40,6 +41,10 @@ public final class BwaMemIntegrationTest extends GATKBaseTest {
 
     @BeforeClass
     public void loadIndex() throws IOException {
+        // BWA native library is not available for Windows - only Linux and macOS are supported
+        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            throw new SkipException("BWA native library is not available for Windows. Skipping test.");
+        }
         final RandomDNA rdnDNA = new RandomDNA(103);
         try {
             fastaFile = rdnDNA.nextFasta(TEST_DICTIONARY, 60);
