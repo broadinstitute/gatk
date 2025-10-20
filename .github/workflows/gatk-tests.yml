@@ -141,6 +141,66 @@ jobs:
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
           only-artifact: ${{ needs.check-secrets.outputs.google-credentials != 'true' }}
 
+  #Run tests on Windows
+  test-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        java: [ 17.0.6+10 ]
+        scalaVersion: [ 2.13 ]
+      fail-fast: false
+    env:
+      TEST_TYPE: noncloud
+      SCALA_VERSION: ${{ matrix.scalaVersion }}
+    name: Java ${{ matrix.java }} Windows build and test
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 'Set up java ${{ matrix.java }}'
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 'Setup Hadoop environment for Windows'
+        shell: pwsh
+        run: |
+          $hadoopHome = "C:\hadoop"
+          $hadoopTemp = "$hadoopHome\temp"
+          New-Item -Path $hadoopTemp -ItemType Directory -Force
+          echo "HADOOP_HOME=$hadoopHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "hadoop.home.dir=$hadoopHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: 'Compile with Gradle'
+        run: |
+          ./gradlew compileJava
+          ./gradlew installDist
+
+      - name: pull lfs files
+        run: git lfs pull
+
+      - name: compile test code
+        run: ./gradlew compileTestJava
+
+      - name: run-tests
+        id: jacoco-tests
+        run: |
+          ./gradlew --daemon -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
+
+      - uses: ./.github/actions/upload-gatk-test-results
+        if: always()
+        with:
+          warnPR: ${{ github.event_name == 'pull_request' && steps.jacoco-tests.outcome != 'success' }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          job-matrix-id: ${{ github.run_id }}.2${{ strategy.job-index }}
+          repo-path: ${{ github.ref_name }}_${{ github.run_id }}.2${{ strategy.job-index }}
+          bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
+          identifier: Java ${{ matrix.java }} Windows build and test
+          only-artifact: true
+
 
   #Run our docker tests
   testOnDocker:
