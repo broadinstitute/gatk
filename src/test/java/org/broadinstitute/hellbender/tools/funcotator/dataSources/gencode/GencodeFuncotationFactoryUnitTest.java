@@ -437,16 +437,16 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 // More complicated cases with multiple transcripts
                 {TEST_VARIANT_CONTEXT, List.of(NONBASIC_A, BASIC_B), List.of(BASIC_B)}, // filter out non-basic transcripts
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_B), List.of(BASIC_A, BASIC_B)}, // return all basic transcripts
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A), List.of(BASIC_MANESELECT_A)}, // return only MANE select transcript
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A), List.of(BASIC_MANESELECT_A)}, // return only MANE_SELECT transcript
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B), List.of(BASIC_MANESELECT_A, BASIC_MANESELECT_B)}, // return ALL MANE_SELECT transcripts present
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANESELECT), List.of(BASIC_MANESELECT_A, NONBASIC_MANESELECT)}, // return ALL MANE_SELECT transcripts present, even if one is non-basic
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_B)}, // return only MANE+Clinical transcript
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B)}, // return multiple MANE+Clinical transcripts
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_B)}, // MANE+Clinical Overrides MANE select
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B)}, // MANE+Clinical DOES NOT override MANE_SELECT
 
                 //edge cases
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL), List.of(NONBASIC_MANEPLUSCLINICAL)}, // MANE+Clinical Overrides MANE select EVEN if it is non-basic and MANE select is basic (probably doesn't happen in practice)
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_MANEPLUSCLINICAL)}, // MANE+Clinical trumps MANE_Select if both are present (should not happen in practice)
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL)}, // MANE+Clinical DOES NOT override MANE_SELECT, EVEN if it is non-basic and MANE_SELECT is basic (probably doesn't happen in practice)
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL)}, // MANE+Clinical DOES NOT override MANE_SELECT if both tags are present (should not happen in practice)
         };
     }
 

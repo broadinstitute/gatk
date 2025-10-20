@@ -631,22 +631,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * If MANE_Plus_Clinical transcripts are available, only return them, followed by MANE_Select transcripts, followed by only the basic transcripts if none were MANE_Plus_Clinical or MANE_Select.
+     * It is observed that for some variants, MANE_Plus_Clinical transcript(s) are non-coding while the MANE_Select transcript is coding.
+     * Reverse might also be true, therefore we've decided to return all MANE transcripts that contain the variant and let the base Funcotator selection criteria do the rest.
+     * If there are no MANE transcripts covering the current variant, then we default to basic transcripts.
      * @param transcripts of gencode transcripts to possibly filter
      * @return
      */
     @VisibleForTesting
     static List<GencodeGtfTranscriptFeature> retrieveMANESelectModeTranscriptsCriteria(final VariantContext variant, final List<GencodeGtfTranscriptFeature> transcripts) {
-        final List<GencodeGtfTranscriptFeature> plusClinical = transcripts.stream().filter(g -> hasTag(g, MANE_PLUS_CLINICAL) && g.contains(variant)).toList();
+        final List<GencodeGtfTranscriptFeature> maneSelectAndPlusClinical = transcripts.stream().filter(g -> (hasTag(g, MANE_SELECT) || hasTag(g, MANE_PLUS_CLINICAL)) && g.contains(variant)).toList();
 
-        if(plusClinical.size() > 0) {
-            return plusClinical;
-        }
-
-        final List<GencodeGtfTranscriptFeature> maneSelectTranscripts = transcripts.stream().filter(g -> hasTag(g, MANE_SELECT) && g.contains(variant)).toList();
-
-        if(maneSelectTranscripts.size() > 0) {
-            return maneSelectTranscripts;
+        if(maneSelectAndPlusClinical.size() > 0) {
+            return maneSelectAndPlusClinical;
         }
 
         return transcripts.stream().filter(GencodeFuncotationFactory::isBasic).collect(Collectors.toList());
