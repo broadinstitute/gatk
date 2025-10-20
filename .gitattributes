@@ -15,3 +15,7 @@ src/main/resources/large/** filter=lfs diff=lfs merge=lfs -text
 *.fa text eol=lf
 *.fai text eol=lf
 *.dict text eol=lf
+*.vcf text eol=lf
+*.g.vcf text eol=lf
+*.vcf.gz binary
+*.vcf.idx binary
