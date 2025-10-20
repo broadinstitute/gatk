@@ -111,18 +111,18 @@ task MapDroppedDuplicateVIDs {
         # 10. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
         #     to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
         #     Run the following to clean out non-"pseudo vid" entries from this file.
-        python /app/filter_vcf_by_vids.py unmapped_vids.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
+        python /app/filter_vcf_by_vids.py dropped_duplicate_vids.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
 
         # 11. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
         #     positions as GVS.
-        python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
+        python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > dropped_duplicate_mappings.tsv
 
         # 12. Load the duplicate vid mapping into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
-            ~{dataset}.~{duplicate_mapping_table_name} unmapped_vid_mappings.tsv \
+            ~{dataset}.~{duplicate_mapping_table_name} dropped_duplicate_mappings.tsv \
             vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
 
-        # 13. Add the mappings for these no-longer-unmapped VIDs into the mapping table.
+        # 13. Add the mappings for these duplicate VIDs into the mapping table
         # deal with this later-- we're going to need to effectively update existing entries
 
         # bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
