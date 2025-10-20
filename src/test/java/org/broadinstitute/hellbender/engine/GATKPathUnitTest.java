@@ -264,10 +264,11 @@ public class GATKPathUnitTest extends GATKBaseTest {
 
     @Test
     public void testStdIn() throws IOException {
-        final IOPath ioPath = new GATKPath(
-                SystemUtils.IS_OS_WINDOWS ?
-                        "-" :
-                        "/dev/stdin");
+        if (SystemUtils.IS_OS_WINDOWS) {
+            // stdin is not addressable as a device in the file system namespace on Windows, so skip
+            throw new SkipException("No stdin test on Windows");
+        }
+        final IOPath ioPath = new GATKPath("/dev/stdin");
         try (final InputStream is = ioPath.getInputStream();
              final DataInputStream dis = new DataInputStream(is)) {
             final byte[] actualFileContents = new byte[0];
