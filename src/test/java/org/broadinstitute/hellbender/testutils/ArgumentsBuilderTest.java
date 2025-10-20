@@ -12,13 +12,14 @@ public final class ArgumentsBuilderTest{
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("--value1");
         args.addRaw(1);
+        final File testFile = new File("path/to/somewhere");
         args.addRaw("--Input")
-            .addRaw(new File("path/to/somewhere"))
+            .addRaw(testFile)
             .addRaw("--Value2 2")
             .addRaw(" --Value3 3 --Value4 4");
 
         Assert.assertEquals(args.getArgsArray(), new String[]{"--value1", "1",
-                "--Input", "path/to/somewhere","--Value2","2","--Value3","3","--Value4","4"});
+                "--Input", testFile.getPath(),"--Value2","2","--Value3","3","--Value4","4"});
     }
     @Test
     public void testOneBigString(){
@@ -31,8 +32,10 @@ public final class ArgumentsBuilderTest{
 
     @Test
     public void testFromArray(){
-        ArgumentsBuilder args = new ArgumentsBuilder(new Object[]{"--Option " + new File("path/to"), "--OtherOption " + -1, new File("somewhere")});
-        Assert.assertEquals(args.getArgsArray(), new String[]{"--Option","path/to", "--OtherOption", "-1", "somewhere"});
+        final File testFile1 = new File("path/to");
+        final File testFile2 = new File("somewhere");
+        ArgumentsBuilder args = new ArgumentsBuilder(new Object[]{"--Option " + testFile1, "--OtherOption " + -1, testFile2});
+        Assert.assertEquals(args.getArgsArray(), new String[]{"--Option", testFile1.getPath(), "--OtherOption", "-1", testFile2.getPath()});
     }
 
     @Test

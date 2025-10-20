@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -62,6 +64,10 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
     @Test(dataProvider = "dataDenoiseReadCounts")
     public void testDenoiseReadCounts(final ArgumentsBuilder argumentsBuilder,
                                       final boolean isStandardizedEqualsDenoised) {
+        // HDF5 is currently supported on x86-64 architecture and Linux or OSX systems
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("HDF5 is currently supported on x86-64 architecture and Linux or OSX systems");
+        }
         final File standardizedCRFile = createTempFile("test", ".standardizedCR.tsv");
         final File denoisedCRFile = createTempFile("test", ".denoisedCR.tsv");
         final String[] arguments = argumentsBuilder

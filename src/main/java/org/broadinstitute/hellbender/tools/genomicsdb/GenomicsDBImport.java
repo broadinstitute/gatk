@@ -573,11 +573,8 @@ public final class GenomicsDBImport extends GATKTool {
                     headers.add(header);
 
                     final String sampleName = header.getGenotypeSamples().get(0);
-                    try {
-                        sampleNameMap.addSample(sampleName, new URI(variantPathString));
-                    } catch (final URISyntaxException e) {
-                        throw new UserException("Malformed URI " + e.getMessage(), e);
-                    }
+                    // Use variantPath.toUri() instead of new URI(variantPathString) to handle Windows paths correctly
+                    sampleNameMap.addSample(sampleName, variantPath.toUri());
                 }
                 mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
                 mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();

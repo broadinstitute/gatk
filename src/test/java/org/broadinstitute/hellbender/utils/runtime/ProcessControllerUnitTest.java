@@ -153,6 +153,11 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
     @Test
     public void testWriteStdOut() {
+        // Skip on Windows: echo output format differs (CRLF vs LF line endings)
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("Test expects Unix line ending behavior which differs on Windows");
+        }
+
         final String testInput = "Testing to stdout";
         final ProcessSettings job = new ProcessSettings(new String[] {"echo", testInput});
         job.getStdoutSettings().printStandard(true);
@@ -278,6 +283,11 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "truncateSizes")
     public void testTruncateBuffer(int truncateLen, int expectedLen) {
+        // Skip on Windows: echo output format differs (CRLF vs LF line endings)
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("Test expects Unix line ending behavior which differs on Windows");
+        }
+
         byte[] expected = Arrays.copyOf(TRUNCATE_OUTPUT_BYTES, expectedLen);
 
         String[] command = {"echo", TRUNCATE_TEXT};
@@ -330,6 +340,11 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "echoCommands")
     public void testEcho(EchoCommand script) throws IOException {
+        // Skip on Windows: echo output format differs (CRLF vs LF line endings)
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("Test expects Unix line ending behavior which differs on Windows");
+        }
+
         File outputFile = null;
         try {
             outputFile = GATKBaseTest.createTempFile("temp", "");

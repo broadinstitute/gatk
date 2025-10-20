@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
@@ -11,6 +12,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSam
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -91,6 +93,10 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simpleCountCollectionReadTestData")
     public void testRead(final File file) {
+        // HDF5 is currently supported on x86-64 architecture and Linux or OSX systems
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("HDF5 is currently supported on x86-64 architecture and Linux or OSX systems");
+        }
         final SimpleCountCollection counts = SimpleCountCollection.read(file);
         assertCountsExpected(counts);
     }
@@ -121,6 +127,10 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simpleCountCollectionReadTestData")
     public void testReadAndSubset(final File file) {
+        // HDF5 is currently supported on x86-64 architecture and Linux or OSX systems
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("HDF5 is currently supported on x86-64 architecture and Linux or OSX systems");
+        }
         final SimpleCountCollection countsSubsetNull = SimpleCountCollection.readAndSubset(file,
                 null);
         assertCountsExpected(countsSubsetNull);

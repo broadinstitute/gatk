@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
@@ -8,6 +9,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Simple
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -97,6 +99,11 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
 
     @Test(dataProvider = "testData")
     public void testHDF5Output(final File inputBAMFile, final File expectedOutputFile) {
+        // HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
+        }
+
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".hdf5");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(inputBAMFile)

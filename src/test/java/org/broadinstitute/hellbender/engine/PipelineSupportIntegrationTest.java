@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -15,6 +17,10 @@ public class PipelineSupportIntegrationTest extends GATKBaseTest {
     @Test
     // Asserting that Picard programs are able to pipe their output without errors
     public void testPipeForPicardTools() {
+        // Skip on Windows: uses Unix-specific 'sh' command
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("Test uses Unix command 'sh' which is not available on Windows");
+        }
         File output = createTempFile("testOutput",".bam");
         String gatkLaunchScript = System.getenv("GATK_LAUNCH_SCRIPT");
         String gatkLaunchScriptSubsitution = gatkLaunchScript == null ? "./gatk" : gatkLaunchScript;

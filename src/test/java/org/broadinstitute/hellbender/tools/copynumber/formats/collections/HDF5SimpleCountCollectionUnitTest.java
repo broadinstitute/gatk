@@ -2,12 +2,14 @@ package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -18,6 +20,10 @@ import java.util.List;
 public final class HDF5SimpleCountCollectionUnitTest extends GATKBaseTest {
     @Test
     public void basicTest() {
+        // HDF5 is currently supported on x86-64 architecture and Linux or OSX systems
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("HDF5 is currently supported on x86-64 architecture and Linux or OSX systems");
+        }
         final File outputFile = createTempFile("HDF5ReadCountCollection", ".hdf5");
         final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
                 "test-sample",

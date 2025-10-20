@@ -9,6 +9,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
     private static String fastaRefURL = publicTestDir + "large/human_g1k_v37.20.21.fasta";
@@ -60,17 +62,29 @@ public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
 
     @DataProvider(name="referenceTestCases")
     public Object[][] getReferenceTestCases() {
-        return new Object[][] {
-                { twoBitRefURL, true },
-                { "file://" + twoBitRefURL, true },
-                { hg38Reference, false }, // gzipped
-                { "file://" + hg38Reference, false }, // gzipped
-                { GCS_b37_CHR20_21_REFERENCE_2BIT, true },
-                { GCS_b37_CHR20_21_REFERENCE, false },
-                // dummy query params at the end to make sure URI.getPath does the right thing
-                { GCS_b37_CHR20_21_REFERENCE_2BIT + "?query=param", true },
-                { GCS_b37_CHR20_21_REFERENCE + "?query=param", false},
-        };
+        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        final List<Object[]> testCases = new ArrayList<>();
+
+        // Always test plain paths
+        testCases.add(new Object[] { twoBitRefURL, true });
+        testCases.add(new Object[] { hg38Reference, false }); // gzipped
+
+        // Skip file:// URI tests on Windows because "file://" + Windows path creates invalid URIs
+        // (e.g., "file://C:\Users" has illegal character ':' in authority section)
+        if (!isWindows) {
+            testCases.add(new Object[] { "file://" + twoBitRefURL, true });
+            testCases.add(new Object[] { "file://" + hg38Reference, false }); // gzipped
+        }
+
+        // GCS URIs work on all platforms
+        testCases.add(new Object[] { GCS_b37_CHR20_21_REFERENCE_2BIT, true });
+        testCases.add(new Object[] { GCS_b37_CHR20_21_REFERENCE, false });
+
+        // dummy query params at the end to make sure URI.getPath does the right thing
+        testCases.add(new Object[] { GCS_b37_CHR20_21_REFERENCE_2BIT + "?query=param", true });
+        testCases.add(new Object[] { GCS_b37_CHR20_21_REFERENCE + "?query=param", false });
+
+        return testCases.toArray(new Object[0][]);
     }
 
     @Test(dataProvider = "referenceTestCases")

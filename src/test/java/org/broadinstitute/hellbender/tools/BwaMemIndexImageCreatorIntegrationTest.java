@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.BwaMemTestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -22,6 +24,11 @@ public class BwaMemIndexImageCreatorIntegrationTest extends CommandLineProgramTe
 
     @Test
     public void testImageFileGeneration() throws Exception {
+
+        // pre-build fermi-lite binaries are only available for Linux and Mac
+        if (SystemUtils.IS_OS_WINDOWS) {
+            throw new SkipException("pre-build fermi-lite binaries are only available for Linux and Mac");
+        }
 
         final File tempImage = GATKBaseTest.createTempFile("tempBwaMemIndexImage", ".img");
         final List<String> args = new ArrayList<>(Arrays.asList(
