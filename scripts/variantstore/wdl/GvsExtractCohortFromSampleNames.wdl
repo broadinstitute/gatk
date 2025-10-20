@@ -88,7 +88,7 @@ workflow GvsExtractCohortFromSampleNames {
     input:
       project_id = query_project,
       dataset_name = gvs_dataset,
-      table_name = [prepare_sample_table_name, prepare_ref_data_table_name, prepare_vet_table_name],
+      table_names = [prepare_sample_table_name, prepare_ref_data_table_name, prepare_vet_table_name],
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
