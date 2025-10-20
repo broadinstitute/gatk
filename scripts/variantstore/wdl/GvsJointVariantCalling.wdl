@@ -74,7 +74,7 @@ workflow GvsJointVariantCalling {
         File? training_python_script
         File? scoring_python_script
 
-        Int? maximum_alternate_alleles
+        Int maximum_alternate_alleles = 1000
 
         Int? extract_maxretries_override
         Int? extract_preemptible_override

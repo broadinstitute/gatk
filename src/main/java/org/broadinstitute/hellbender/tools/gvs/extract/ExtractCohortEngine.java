@@ -401,7 +401,7 @@ public class ExtractCohortEngine {
                 return Long.compare(firstSample, secondSample);
             }
         };
-        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam, true);
+        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
     }
 
     private void addToVetSortingCollection(final SortingCollection<GenericRecord> sortingCollection,
