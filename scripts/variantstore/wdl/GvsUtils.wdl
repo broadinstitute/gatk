@@ -1104,9 +1104,10 @@ task DoAnyOfTheTablesExist {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     declare -a bashArray=(~{sep=" " table_names})
+    echo ${bashArray[@]}
 
-    # Temporarily set IFS to a comma and join the array elements
-    (IFS=','; declare inString="${bashArray[*]}")
+    printf -v inString '%s,' "${bashArray[@]}"
+    inString=${inString%,}
     echo "Comma-delimited string: $inString"
 
     # Check if table exists using INFORMATION_SCHEMA
