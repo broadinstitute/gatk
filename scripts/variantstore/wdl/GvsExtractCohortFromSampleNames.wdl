@@ -5,6 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
+# I
 
 workflow GvsExtractCohortFromSampleNames {
 
@@ -77,6 +78,26 @@ workflow GvsExtractCohortFromSampleNames {
     input:
       reference_name = reference_name,
       basic_docker = effective_basic_docker,
+  }
+
+  String prepare_sample_table_name = effective_cohort_table_prefix + "__SAMPLES"
+  String prepare_ref_data_table_name = effective_cohort_table_prefix + "__REF_DATA"
+  String prepare_vet_table_name = effective_cohort_table_prefix + "__VET_DATA"
+
+  call Utils.DoAnyOfTheTablesExist {
+    input:
+      project_id = query_project,
+      dataset_name = gvs_dataset,
+      table_name = [prepare_sample_table_name, prepare_ref_data_table_name, prepare_vet_table_name],
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
+  if (DoAnyOfTheTablesExist.table_exists) {
+    call Utils.TerminateWorkflow as NumChunksError {
+      input:
+        message = "There are already tables with the cohort prefix '~{effective_cohort_table_prefix}' in the dataset '~{gvs_dataset}' in project '~{query_project}'.  Please choose a different cohort_table_prefix to avoid overwriting existing data.",
+        basic_docker = effective_basic_docker,
+    }
   }
 
   # allow an interval list to be passed in, but default it to the reference-standard one if no args are here
