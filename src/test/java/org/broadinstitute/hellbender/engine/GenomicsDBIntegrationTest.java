@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -27,7 +28,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
     @BeforeClass
     public void checkPlatform() {
         // GenomicsDB native library is not available for Windows - only Linux and macOS are supported
-        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+        if (SystemUtils.IS_OS_WINDOWS) {
             throw new SkipException("GenomicsDB native library is not available for Windows. Skipping test.");
         }
     }
