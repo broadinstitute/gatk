@@ -840,12 +840,9 @@ public final class IOUtils {
     public static String getAbsolutePathWithoutFileProtocol(final Path path) {
         String result = path.toAbsolutePath().toUri().toString();
         // Remove file:// or file:/// protocol
-        result = result.replaceFirst("^file:///", "").replaceFirst("^file://", "");
         // On Windows, after removing file:///, we get /C:/Users/... which needs the leading slash removed
         // Check for Windows absolute path pattern: /[A-Z]:/
-        if (result.matches("^/[A-Za-z]:.*")) {
-            result = result.substring(1);
-        }
+        result = result.replaceFirst("^file:(?:/{1,3})?", "");
         return result;
     }
 
