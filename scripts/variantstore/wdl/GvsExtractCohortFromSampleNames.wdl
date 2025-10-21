@@ -5,7 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
-# VIII
+# IX
 
 workflow GvsExtractCohortFromSampleNames {
 
@@ -162,44 +162,44 @@ workflow GvsExtractCohortFromSampleNames {
         git_hash = effective_git_hash,
         variants_docker = effective_variants_docker,
     }
-  }
 
-  call GvsExtractCallset.GvsExtractCallset {
-    input:
-      go = GvsPrepareCallset.done,
-      project_id = gvs_project,
-      query_project = query_project,
-      dataset_name = gvs_dataset,
-      call_set_identifier = call_set_identifier,
-      cohort_project_id = destination_project_id,
-      cohort_dataset_name = destination_dataset_name,
-      extract_table_prefix = effective_cohort_table_prefix,
+    call GvsExtractCallset.GvsExtractCallset {
+      input:
+        go = GvsPrepareCallset.done,
+        project_id = gvs_project,
+        query_project = query_project,
+        dataset_name = gvs_dataset,
+        call_set_identifier = call_set_identifier,
+        cohort_project_id = destination_project_id,
+        cohort_dataset_name = destination_dataset_name,
+        extract_table_prefix = effective_cohort_table_prefix,
 
-      scatter_count = effective_scatter_count,
-      filter_set_name = filter_set_name,
-      output_file_base_name = output_file_base_name,
-      output_gcs_dir = output_gcs_dir,
+        scatter_count = effective_scatter_count,
+        filter_set_name = filter_set_name,
+        output_file_base_name = output_file_base_name,
+        output_gcs_dir = output_gcs_dir,
 
-      drop_state = drop_state,
-      bgzip_output_vcfs = bgzip_output_vcfs,
-      merge_output_vcfs = merge_output_vcfs,
-      collect_variant_calling_metrics = collect_variant_calling_metrics,
-      extract_preemptible_override = extract_preemptible_override,
-      extract_maxretries_override = extract_maxretries_override,
-      split_intervals_disk_size_override = split_intervals_disk_size_override,
-      split_intervals_mem_override = split_intervals_mem_override,
-      extract_memory_override_gib = extract_memory_override,
-      disk_override = extract_disk_override,
-      interval_list = effective_interval_list,
-      control_samples = control_samples,
+        drop_state = drop_state,
+        bgzip_output_vcfs = bgzip_output_vcfs,
+        merge_output_vcfs = merge_output_vcfs,
+        collect_variant_calling_metrics = collect_variant_calling_metrics,
+        extract_preemptible_override = extract_preemptible_override,
+        extract_maxretries_override = extract_maxretries_override,
+        split_intervals_disk_size_override = split_intervals_disk_size_override,
+        split_intervals_mem_override = split_intervals_mem_override,
+        extract_memory_override_gib = extract_memory_override,
+        disk_override = extract_disk_override,
+        interval_list = effective_interval_list,
+        control_samples = control_samples,
 
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      gatk_docker = effective_gatk_docker,
-      gatk_override = gatk_override,
-      git_hash = effective_git_hash,
-      variants_docker = effective_variants_docker,
-      write_cost_to_db = write_cost_to_db,
-      target_interval_list = target_interval_list,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        gatk_docker = effective_gatk_docker,
+        gatk_override = gatk_override,
+        git_hash = effective_git_hash,
+        variants_docker = effective_variants_docker,
+        write_cost_to_db = write_cost_to_db,
+        target_interval_list = target_interval_list,
+    }
   }
 
   output {
