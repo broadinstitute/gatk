@@ -128,8 +128,8 @@ task MapDroppedDuplicateVIDs {
         #
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
 
-        DELETE `~{dataset}.~{mapping_table_name}` where vid in (
-            SELECT dup.vid from `~{dataset}.~{duplicate_mapping_table_name}` dup
+        DELETE `~{dataset}.~{mapping_table_name}` WHERE vid IN (
+            SELECT dup.vid FROM `~{dataset}.~{duplicate_mapping_table_name}` dup
         ~{if defined(range_filter) then "WHERE dup.left_aligned_location >= ~{select_first([range_filter]).startLocation} AND dup.left_aligned_location < ~{select_first([range_filter]).endLocation}" else ""}
         )
 
@@ -143,7 +143,7 @@ task MapDroppedDuplicateVIDs {
 
         INSERT into `~{dataset}.~{mapping_table_name}` (vid, person_ids)
         SELECT
-          dup.vid as vid,
+          dup.vid AS vid,
           ARRAY_AGG(SAFE_CAST(si.sample_name AS INT64) IGNORE NULLS) AS person_ids
         FROM
           `~{dataset}.~{duplicate_mapping_table_name}` dup
