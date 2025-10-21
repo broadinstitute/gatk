@@ -1083,11 +1083,11 @@ task GetExtractVetTableVersion {
   }
 }
 
-task DoAnyOfTheTablesExist {
+task DoesTableExist {
   input {
     String project_id
     String dataset_name
-    Array[String] table_names
+    String table_name
     String cloud_sdk_docker
   }
   meta {
@@ -1103,17 +1103,10 @@ task DoAnyOfTheTablesExist {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    declare -a bashArray=(~{sep=" " table_names})
-    echo ${bashArray[@]}
-
-    printf -v inString '%s,' "${bashArray[@]}"
-    inString=${inString%,}
-    echo "Comma-delimited string: $inString"
-
     # Check if table exists using INFORMATION_SCHEMA
     set +o errexit
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-      'SELECT COUNT(*) as table_exists FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name IN '"($inString)"'' > table_check.txt 2>error_log.txt
+      'SELECT COUNT(*) as table_exists FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name = "~{table_name}"' > table_check.txt 2>error_log.txt
     query_exit_code=$?
     set -o errexit
 
@@ -1122,15 +1115,15 @@ task DoAnyOfTheTablesExist {
       table_count=$(tail -1 table_check.txt)
       if [[ "$table_count" == "1" ]]; then
         echo "true" > table_exists.txt
-        echo "One or more of the tables in ($inString) exist in the dataset: ~{dataset_name}"
+        echo "Table ~{dataset_name}.~{table_name} exists"
       else
         echo "false" > table_exists.txt
-        echo "None of the tables in ($inString) exist in the dataset: ~{dataset_name}"
+        echo "Table ~{dataset_name}.~{table_name} does not exist"
       fi
     else
       # Query failed (likely dataset doesn't exist)
       echo "false" > table_exists.txt
-      echo "Dataset ~{dataset_name} may not exist"
+      echo "Table ~{dataset_name}.~{table_name} does not exist (dataset may not exist)"
     fi
   >>>
   output {
