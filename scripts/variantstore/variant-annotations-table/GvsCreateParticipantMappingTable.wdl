@@ -1,6 +1,7 @@
 version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
+import "../structs/Range.wdl" as Range
 
 workflow GvsCreateParticipantMappingTable {
     input {
@@ -8,7 +9,7 @@ workflow GvsCreateParticipantMappingTable {
         String dataset
         String vat_table_name
         String mapping_table_name
-        Boolean chr20_only = false
+        Range? range_filter
     }
 
     call Utils.GetToolVersions
@@ -20,7 +21,7 @@ workflow GvsCreateParticipantMappingTable {
         dataset = dataset,
         vat_table_name = vat_table_name,
         mapping_table_name = mapping_table_name,
-        chr20_only = chr20_only,
+        range_filter = range_filter,
     }
 }
 
@@ -32,7 +33,7 @@ task CreateParticipantMappingTable {
         String dataset
         String vat_table_name
         String mapping_table_name
-        Boolean chr20_only
+        Range? range_filter
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -69,7 +70,7 @@ task CreateParticipantMappingTable {
             vat.ref_allele = aa.ref AND
             vat.alt_allele = aa.allele AND
             vat.location = aa.location
-    ~{if (chr20_only) then "WHERE aa.location >= 20 * (1000 * 1000 * 1000 * 1000) AND aa.location < 21 * (1000 * 1000 * 1000 * 1000)" else ""}
+    ~{if (defined(range_filter)) then "WHERE aa.location >= ~{select_first([range_filter]).startLocation} AND aa.location < ~{select_first([range_filter]).endLocation}" else ""}
     GROUP BY vat.vid
     ORDER BY
         vidToLocation(vat.vid),
