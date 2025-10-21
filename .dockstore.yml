@@ -462,6 +462,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsMapUnmappedVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1686_pseudo_vid_fixup
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -495,6 +503,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1632_foxtrot_participant_mapping_table
+         - vs_1686_pseudo_vid_fixup
        tags:
          - /.*/
