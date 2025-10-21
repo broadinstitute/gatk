@@ -122,32 +122,46 @@ task MapDroppedDuplicateVIDs {
             ~{dataset}.~{duplicate_mapping_table_name} dropped_duplicate_mappings.tsv \
             vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
 
-        # 13. Add the mappings for these duplicate VIDs into the mapping table
-        # deal with this later-- we're going to need to effectively update existing entries
-
-        # bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
-
-        # INSERT into `~{dataset}.~{mapping_table_name}` (vid, person_ids)
-        # SELECT
-        #   umm.vid as vid,
-        #   ARRAY_AGG(SAFE_CAST(si.sample_name AS INT64) IGNORE NULLS) AS person_ids
-        # FROM
-        #   `~{dataset}.~{duplicate_mapping_table_name}` umm
-        # JOIN
-        #   `~{dataset}.alt_allele` aa
-        # ON
-        #   umm.input_location = aa.location
-        #   AND umm.input_ref = aa.ref
-        #   AND umm.input_alt = aa.allele
-        # JOIN
-        #   `~{dataset}.sample_info` si
-        # ON
-        #   aa.sample_id = si.sample_id
-        #   ~{if defined(range_filter) then "where aa.location >= ~{select_first([range_filter]).startLocation} AND aa.location < ~{select_first([range_filter]).endLocation}" else ""}
-        # GROUP BY
-        #   vid
+        # 13. Remove existing mappings for these duplicates from the mapping table
         #
-        # '
+        # bq query --max_rows check: ok delete
+        #
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
+
+        DELETE `~{dataset}.~{mapping_table_name}` where vid in (
+            SELECT dup.vid from `~{dataset}.~{duplicate_mapping_table_name}` dup
+        ~{if defined(range_filter) then "WHERE dup.left_aligned_location >= ~{select_first([range_filter]).startLocation} AND dup.left_aligned_location < ~{select_first([range_filter]).endLocation}" else ""}
+        )
+
+        '
+
+        # 14. Write all the person mappings for these duplicate VIDs
+        #
+        # bq query --max_rows check: ok insert
+        #
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
+
+        INSERT into `~{dataset}.~{mapping_table_name}` (vid, person_ids)
+        SELECT
+          dup.vid as vid,
+          ARRAY_AGG(SAFE_CAST(si.sample_name AS INT64) IGNORE NULLS) AS person_ids
+        FROM
+          `~{dataset}.~{duplicate_mapping_table_name}` dup
+        JOIN
+          `~{dataset}.alt_allele` aa
+        ON
+          dup.input_location = aa.location
+          AND dup.input_ref = aa.ref
+          AND dup.input_alt = aa.allele
+        JOIN
+          `~{dataset}.sample_info` si
+        ON
+          aa.sample_id = si.sample_id
+          ~{if defined(range_filter) then "where aa.location >= ~{select_first([range_filter]).startLocation} AND aa.location < ~{select_first([range_filter]).endLocation}" else ""}
+        GROUP BY
+          vid
+
+        '
     >>>
     runtime {
         docker: variants_docker
