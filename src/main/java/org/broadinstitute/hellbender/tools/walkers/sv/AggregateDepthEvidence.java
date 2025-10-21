@@ -263,7 +263,7 @@ public final class AggregateDepthEvidence extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        // Must be a bi-allelic CNV
+        // Must be a CNV
         final StructuralVariantType svtype = variant.getStructuralVariantType();
         if (svtype != StructuralVariantType.DEL && svtype != StructuralVariantType.DUP && svtype != StructuralVariantType.CNV) {
             writer.add(variant);
@@ -323,7 +323,7 @@ public final class AggregateDepthEvidence extends VariantWalker {
         dataLine.append(stats.upperBound());
     }
 
-    protected Function<DataLine, DepthEvidenceGenotyper.CopyStateStats> tableParser(TableColumnCollection columns, Function<String, RuntimeException> exceptionFactory) {
+    private Function<DataLine, DepthEvidenceGenotyper.CopyStateStats> tableParser(TableColumnCollection columns, Function<String, RuntimeException> exceptionFactory) {
         // Check for expected columns
         for (final String column : CUTOFFS_COLUMNS.names()) {
             if (!columns.contains(column)) {
@@ -338,10 +338,10 @@ public final class AggregateDepthEvidence extends VariantWalker {
     }
 
     private DepthEvidenceGenotyper.CopyStateStats parseTableLine(final DataLine dataLine) {
-        final int copyState = Integer.valueOf(dataLine.get(COPY_STATE_COLUMN));
-        final double mean = Double.valueOf(dataLine.get(MEAN_COLUMN));
-        final double stdDev = Double.valueOf(dataLine.get(STD_DEV_COLUMN));
-        final double cutoff = Double.valueOf(dataLine.get(CUTOFFS_COLUMN));
+        final int copyState = Integer.parseInt(dataLine.get(COPY_STATE_COLUMN));
+        final double mean = Double.parseDouble(dataLine.get(MEAN_COLUMN));
+        final double stdDev = Double.parseDouble(dataLine.get(STD_DEV_COLUMN));
+        final double cutoff = Double.parseDouble(dataLine.get(CUTOFFS_COLUMN));
         return new DepthEvidenceGenotyper.CopyStateStats(copyState, mean, stdDev, cutoff);
     }
 
