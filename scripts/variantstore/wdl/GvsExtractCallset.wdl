@@ -225,7 +225,7 @@ workflow GvsExtractCallset {
     input:
       project_id = query_project,
       dataset_name = dataset_name,
-      table_name = [ploidy_table_name],
+      table_name = ploidy_table_name,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
