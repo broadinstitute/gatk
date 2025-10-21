@@ -5,7 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
-# VII
+# VIII
 
 workflow GvsExtractCohortFromSampleNames {
 
@@ -203,9 +203,9 @@ workflow GvsExtractCohortFromSampleNames {
   }
 
   output {
-    Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
-    Array[File] output_vcfs = GvsExtractCallset.output_vcfs
-    Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
+    Float? total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+    Array[File]? output_vcfs = GvsExtractCallset.output_vcfs
+    Array[File]? output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
     String recorded_git_hash = effective_git_hash
   }
 
