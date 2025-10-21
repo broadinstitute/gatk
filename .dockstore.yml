@@ -344,7 +344,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1634_pgen_exome
+             - vs_1739_cmrg_learnings
          tags:
              - /.*/
    - name: GvsIngestTieout
