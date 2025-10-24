@@ -38,7 +38,7 @@ def generate_bcftools_command(vid, sites_only):
 
     search_range = 200
 
-    start = position + 1
+    start = position
     end = position + search_range
     
     command = f"bcftools view --no-header -i '(ILEN = {insert_size})' --regions chr{chromosome}:{start}-{end} {sites_only}"

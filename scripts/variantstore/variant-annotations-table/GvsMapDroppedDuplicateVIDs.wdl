@@ -86,7 +86,7 @@ task MapDroppedDuplicateVIDs {
         # 4. Get unique VIDs of the dropped duplicates.
         # Process the autosomal chromosomes first. The X and Y chromosomes complicate sorting; add in X and Y in a
         # separate step, where the chromosome field is not sorted numerically. The resulting file will have chromosomes
-        # sorted in numerical order # followed by X, followed by Y; secondary sort on numerical position; tertiary sort
+        # sorted in numerical order followed by X, followed by Y; secondary sort on numerical position; tertiary sort
         # on reference allele; quaternary sort on alt allele.
         bcftools query -f '%CHROM-%POS-%REF-%ALT\n' filtered_synonyms.vcf | cut -c 4- | grep -E -v '^[XY]' | sort -t - -k 1,1n -k 2,2n -k 3,3 -k 4,4 | uniq > dropped_duplicate_vids.tsv
         bcftools query -f '%CHROM-%POS-%REF-%ALT\n' filtered_synonyms.vcf | cut -c 4- | grep -E '^[XY]' | sort -t - -k 1,1 -k 2,2n -k 3,3 -k 4,4 | uniq >> dropped_duplicate_vids.tsv
