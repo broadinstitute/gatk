@@ -69,7 +69,7 @@ sibling scripts. Please consult these files for more details on each script.
   - Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
     positions as GVS (see the prompt and code for details of how this works):
     ```shell
-    python compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > pseudo_vid_mappings.tsv
+    python map_input_alignments_to_left_alignments.py to_search.sort.dedup.vcf hits_only.vcf > pseudo_vid_mappings.tsv
     ```
   - Load into BigQuery:
     ```shell

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script to compare input variants VCF with left-aligned variants VCF.
-Outputs tab-delimited comparison data to standard output.
+Script to compare an input VCF with possibly non-left aligned variant representations with a VCF with exclusively
+left-aligned variant representations. Outputs tab-delimited mapping data connecting input lines to left alignments.
 """
 
 import sys

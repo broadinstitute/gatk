@@ -246,7 +246,7 @@ and contains only those entries that were present in the `track_dropped.tsv`s.
 Then run the `compare_vcfs.py` script (horrible name) from the pseudo VID investigation to make a BigQuery TSV load file:
 
 ```shell
-python compare_vcfs.py out.vcf out_norm_dropped.vcf > vat_dropped_duplicates.tsv
+python map_input_alignments_to_left_alignments.py out.vcf out_norm_dropped.vcf > vat_dropped_duplicates.tsv
 ```
 
 And load following the pseudo VID instructions (different target table, of course):

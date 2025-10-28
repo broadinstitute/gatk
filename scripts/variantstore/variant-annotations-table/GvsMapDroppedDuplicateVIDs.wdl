@@ -115,7 +115,7 @@ task MapDroppedDuplicateVIDs {
 
         # 11. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
         #     positions as GVS.
-        python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > dropped_duplicate_mappings.tsv
+        python /app/map_input_alignments_to_left_alignments.py to_search.sort.dedup.vcf hits_only.vcf > dropped_duplicate_mappings.tsv
 
         # 12. Load the duplicate vid mapping into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
