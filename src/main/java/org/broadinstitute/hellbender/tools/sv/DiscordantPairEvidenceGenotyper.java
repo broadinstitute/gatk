@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
@@ -138,44 +136,47 @@ public class DiscordantPairEvidenceGenotyper {
         return new DiscordantPairGenotypeParameters(minCount, homMedian, sdHet);
     }
 
-    public List<Genotype> genotype(final SVCallRecord record, final List<DiscordantPairEvidence> evidence,
-                         final DiscordantPairGenotypeParameters parameters) {
+    public DiscordantPairGenotypeResult genotype(final SVCallRecord record, final List<DiscordantPairEvidence> evidence,
+                                                       final DiscordantPairGenotypeParameters parameters, final List<String> samples) {
         final Map<String, Double> counts = normalizeCounts(evidence);
-        final List<Genotype> genotypes = new ArrayList<>(record.getGenotypes().size());
-        for (final Genotype genotype : record.getGenotypes()) {
-            final double discordantPairCount = counts.getOrDefault(genotype.getSampleName(), 0.);
-            final int discordantPairGenotype;
-            int quality;
+        final int[] genotypes = new int[samples.size()];
+        final int[] genotypeQuals = new int[samples.size()];
+        final List<Integer> nonRefQuals = new ArrayList<>(samples.size());
+        for (int i = 0; i < samples.size(); i++) {
+            final String sample = samples.get(i);
+            final double discordantPairCount = counts.getOrDefault(sample, 0.);
             if (discordantPairCount < minCount) {
-                discordantPairGenotype = 0;
+                genotypes[i] = 0;
             } else if (discordantPairCount <= parameters.medianHom - parameters.sdHet) {
-                discordantPairGenotype = 1;
+                genotypes[i] = 1;
             } else {
-                discordantPairGenotype = (int) ((discordantPairCount / (parameters.medianHom * 0.5)) + 0.5);
+                genotypes[i] = (int) ((discordantPairCount / (parameters.medianHom * 0.5)) + 0.5);
             }
-            if (discordantPairGenotype == 0) {
+            if (genotypes[i] == 0) {
                 if (discordantPairCount == 0) {
-                    quality = maxQuality;
+                    genotypeQuals[i] = maxQuality;
                 } else {
                     final PoissonDistribution dist = new PoissonDistribution(discordantPairCount);
-                    quality = (int) Math.round(- 10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
+                    genotypeQuals[i] = (int) Math.round(- 10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
                 }
             } else {
-                final double z0 = discordantPairCount - discordantPairGenotype * parameters.medianHom * 0.5;
+                final double z0 = discordantPairCount - genotypes[i] * parameters.medianHom * 0.5;
                 final double z1 = z0 + parameters.medianHom * 0.5;
                 final double z2 = z0 - parameters.medianHom * 0.5;
                 final double q0 = getGenotypeLikelihood(z0, parameters.sdHet);
                 final double q1 = getGenotypeLikelihood(z1, parameters.sdHet);
                 final double q2 = getGenotypeLikelihood(z2, parameters.sdHet);
-                quality = (int) Math.round((Math.min(q1, q2) - q0) * normalization);
+                genotypeQuals[i] = (int) Math.round((Math.min(q1, q2) - q0) * normalization);
             }
-            quality = Math.max(Math.min(quality, maxQuality), 1);
-            final GenotypeBuilder builder = new GenotypeBuilder(genotype);
-            builder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE, discordantPairGenotype);
-            builder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE, quality);
-            genotypes.add(builder.make());
+            genotypeQuals[i] = Math.max(Math.min(genotypeQuals[i], maxQuality), 1);
+            if (genotypes[i] != 0) {
+                nonRefQuals.add(genotypeQuals[i]);
+            }
         }
-        return genotypes;
+        final double medianCarrierQual = MEDIAN.evaluate(nonRefQuals.stream().mapToDouble(Double::valueOf).toArray());
+        final PoissonDistribution variantQualDist = new PoissonDistribution(medianCarrierQual);
+        final double variantQual = - 10. * Math.log10(variantQualDist.cumulativeProbability(0));
+        return new DiscordantPairGenotypeResult(genotypes, genotypeQuals, variantQual);
     }
 
     private static double getGenotypeLikelihood(final double z, final double sdHet) {
@@ -249,5 +250,6 @@ public class DiscordantPairEvidenceGenotyper {
         }
     }
 
+    public record DiscordantPairGenotypeResult(int[] genotypes, int[] genotypeQuals, double variantQual) {}
     public record DiscordantPairGenotypeParameters(double minCount, double medianHom, double sdHet) {}
 }

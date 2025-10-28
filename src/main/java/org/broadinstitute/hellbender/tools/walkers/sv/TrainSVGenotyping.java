@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -30,6 +33,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * <p>This tool assesses depth evidence for structural variants (SVs),annotating records with statistical metrics that
@@ -172,7 +176,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             doc = "Discordant pair quality threshold, used for setting minimum evidence count",
             minValue = 1
     )
-    public int minDiscordantPairQuality = 20;
+    public double minDiscordantPairQuality = 20;
 
     @Argument(
             fullName = MIN_PE_SIZE_LONG_NAME,
@@ -250,10 +254,12 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private PloidyTable ploidyTable;
     private DepthMatrixLoader loader;
     private DepthEvidenceGenotyper depthGenotyper;
+    private List<String> masterSampleList;
     private FeatureDataSource<DepthEvidence> evidenceDataSource;
     private List<DepthEvidenceGenotyper.CopyStateStats> trainedCopyStateStats;
 
     private Map<String, DepthEvidenceGenotyper.DepthGenotypeResult> depthGenotypeResults;
+    private Map<String, DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult> discordantPairGenotypeResults;
 
     private FeatureDataSource<DiscordantPairEvidence> discordantPairSource;
     private DiscordantPairEvidenceAggregator discordantPairCollector;
@@ -263,7 +269,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 0;
 
     protected int numberOfPasses() {
-        return 5;
+        return 6;
     }
 
     private void initializeDiscordantPairCollection() {
@@ -286,10 +292,12 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         writer = createVCFWriter(outputVcf);
         final VCFHeader header = createHeader(getHeaderForVariants());
         writer.writeHeader(header);
-        depthGenotyper = new DepthEvidenceGenotyper(null, header.getSampleNamesInOrder(), dictionary);
+        masterSampleList = header.getSampleNamesInOrder();
+        depthGenotyper = new DepthEvidenceGenotyper(null, masterSampleList, dictionary);
         trainCopyNumberSites();
 
         depthGenotypeResults = new HashMap<>();
+        discordantPairGenotypeResults = new HashMap<>();
         initializeDiscordantPairCollection();
         discordantPairGenotyper = new DiscordantPairEvidenceGenotyper(sampleMedians, minDiscordantPairQuality, minDiscordantPairSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
     }
@@ -346,9 +354,39 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             applyDiscordantPairThirdPass(record);
         } else if (n == 4) {
             applySplitRead(record);
+        } else if (n == 5) {
+            writeGenotypes(record);
         } else {
             throw new GATKException("Unexpected number of passes: " + n);
         }
+    }
+
+    public void writeGenotypes(final SVCallRecord record) {
+        final ArrayList<Genotype> newGenotypeList = new ArrayList<>(masterSampleList.size());
+        final GenotypesContext genotypes = record.getGenotypes();
+        for (int i = 0; i < masterSampleList.size(); i++) {
+            final String sample = masterSampleList.get(i);
+            if (!genotypes.containsSample(sample)) {
+                throw new IllegalArgumentException("Sample " + sample + " does not exist in record " + record.getId());
+            }
+            final GenotypeBuilder builder = new GenotypeBuilder(genotypes.get(sample));
+            if (depthGenotypeResults.containsKey(record.getId())) {
+                final DepthEvidenceGenotyper.DepthGenotypeResult result = depthGenotypeResults.get(record.getId());
+                final DepthEvidenceGenotyper.DepthGenotype depthGenotype =  result.genotypeQuals().get(i);
+                builder.attribute(GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, depthGenotype.copyState());
+                builder.attribute(GATKSVVCFConstants.DEPTH_GENOTYPE_QUALITY_ATTRIBUTE, (int) depthGenotype.quality());
+            }
+            if (discordantPairGenotypeResults.containsKey(record.getId())) {
+                final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult result = discordantPairGenotypeResults.get(record.getId());
+                builder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE, result.genotypes()[i]);
+                builder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE, result.genotypeQuals()[i]);
+            }
+            newGenotypeList.add(builder.make());
+        }
+        final GenotypesContext newGenotypes = GenotypesContext.create(newGenotypeList);
+        final SVCallRecord regenotypedCall = SVCallRecordUtils.copyCallWithNewGenotypes(record, newGenotypes);
+        final VariantContext variant = SVCallRecordUtils.getVariantBuilder(regenotypedCall).make();
+        writer.add(variant);
     }
 
     @Override
@@ -369,6 +407,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         final DepthMatrix depthMatrix = loader.load(new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB()), sampleMedians);
 
         final DepthEvidenceGenotyper.DepthGenotypeResult genotypeResult  = depthGenotyper.genotype(depthMatrix);
+        if (depthGenotypeResults.containsKey(record.getContigA())) {
+            throw new UserException.BadInput("Duplicate variant ID: " + record.getId());
+        }
         if (genotypeResult != null) {
             depthGenotypeResults.put(record.getId(), genotypeResult);
         }
@@ -389,14 +430,20 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         if (discordantPairCollectionEnabled()
                 && depthGenotypeResults.containsKey(record.getId())) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
-            discordantPairGenotyper.addSecondPass(record, depthResult, depthGenotyper.getSamplesInOrder());
+            discordantPairGenotyper.addSecondPass(record, depthResult, masterSampleList);
         }
     }
 
     private void applyDiscordantPairThirdPass(final SVCallRecord record) {
         if (discordantPairCollectionEnabled()) {
             final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
-            discordantPairGenotyper.genotype(record, discordantPairEvidence, discordantPairParameters);
+            final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult genotypeResult = discordantPairGenotyper.genotype(record, discordantPairEvidence, discordantPairParameters, masterSampleList);
+            if (discordantPairGenotypeResults.containsKey(record.getContigA())) {
+                throw new UserException.BadInput("Duplicate variant ID: " + record.getId());
+            }
+            if (genotypeResult != null) {
+                discordantPairGenotypeResults.put(record.getId(), genotypeResult);
+            }
         }
     }
 
@@ -459,6 +506,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DEPTH_COPY_STATE_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Depth genotyping copy state"));
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DEPTH_GENOTYPE_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Depth genotyping quality"));
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Expected copy number for ref genotype"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Discordant pair genotype"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Discordant pair genotyping quality"));
         header.addMetaDataLine(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
         return header;
     }

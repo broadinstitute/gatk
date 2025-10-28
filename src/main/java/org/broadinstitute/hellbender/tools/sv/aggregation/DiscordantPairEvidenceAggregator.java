@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<DiscordantPairEvidence> {
 
@@ -45,7 +46,9 @@ public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<Disco
     @Override
     public boolean evidenceFilter(final SVCallRecord call, final DiscordantPairEvidence evidence) {
         final SimpleInterval startInterval = getDiscordantPairStartInterval(call);
+        Utils.nonNull(startInterval);
         final SimpleInterval endInterval = getDiscordantPairEndInterval(call);
+        Utils.nonNull(endInterval);
         return discordantPairOverlapsInterval(evidence, startInterval, endInterval)
                 && evidence.getStartStrand() == call.getStrandA()
                 && evidence.getEndStrand() == call.getStrandB();
