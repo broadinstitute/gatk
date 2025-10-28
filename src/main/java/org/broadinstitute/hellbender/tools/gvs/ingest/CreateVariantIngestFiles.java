@@ -332,7 +332,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 }
             }
         } else if (outputType == CommonCode.OutputType.PARQUET) {
-            // These checks don't matter for parquet, since it's a local file created.  Operate as though they don't exist at all times.
+            // These checks don't matter for parquet, since it's a local file created.  Operate as though they don't exist at all times during testing
             refRangesRowsExist = Boolean.FALSE;
             vetRowsExist = Boolean.FALSE;
             vcfHeaderRowsExist = Boolean.FALSE;
@@ -466,7 +466,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator.commitData();
         }
 
-        if (outputType == CommonCode.OutputType.BQ) {
+        if (outputType == CommonCode.OutputType.BQ || outputType == CommonCode.OutputType.PARQUET) {
             if (shouldWriteVCFHeadersLoadedStatusRow) loadStatus.writeHeadersLoadedStatus(sampleId);
             if (shouldWriteVariantsLoadedStatusRow) loadStatus.writeVariantsLoadedStatus(sampleId);
             if (shouldWriteReferencesLoadedStatusRow) loadStatus.writeReferencesLoadedStatus(sampleId);
