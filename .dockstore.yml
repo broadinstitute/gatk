@@ -469,7 +469,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1686_pseudo_vid_fixup
+         - vs_1757_dropped_duplicates
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
