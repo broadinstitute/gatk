@@ -32,7 +32,7 @@ sibling scripts. Please consult these files for more details on each script.
     only VCF (see prompt for details):
  
     ```shell
-    python generate_bcftools_commands.py pseudo_vids_file.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+    python generate_bcftools_searches_for_variant_synonyms.py pseudo_vids_file.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
     ```
 
   - Initialize a `to_search.vcf` with a VCF header. Probably any of our hg38 VCFs will work, but the sites-only VCF is handy:

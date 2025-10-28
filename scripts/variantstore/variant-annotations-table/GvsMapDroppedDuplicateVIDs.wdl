@@ -92,7 +92,7 @@ task MapDroppedDuplicateVIDs {
         bcftools query -f '%CHROM-%POS-%REF-%ALT\n' filtered_synonyms.vcf | cut -c 4- | grep -E '^[XY]' | sort -t - -k 1,1 -k 2,2n -k 3,3 -k 4,4 | uniq >> dropped_duplicate_vids.tsv
 
         # 5. Generate bcftools commands to query the sites-only VCF.
-        python /app/generate_bcftools_commands.py --sites-only ${sites_only} dropped_duplicate_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        python /app/generate_bcftools_searches_for_variant_synonyms.py --sites-only ${sites_only} dropped_duplicate_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
 
         # 6. Initialize a `to_search.vcf` with a VCF header, using the sites-only VCF as a donor.
         bcftools head ${sites_only} > to_search.vcf

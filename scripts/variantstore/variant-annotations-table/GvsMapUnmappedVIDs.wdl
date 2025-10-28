@@ -91,7 +91,7 @@ task MapUnmappedVIDs {
         fi
 
         # 3. Generate bcftools commands to query the sites-only VCF.
-        python /app/generate_bcftools_commands.py --sites-only ${sites_only} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        python /app/generate_bcftools_searches_for_variant_synonyms.py --sites-only ${sites_only} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
 
         # 4. auth before doing GCS-flavored bcftools commands
         set +o xtrace
