@@ -108,9 +108,9 @@ task MapDroppedDuplicateVIDs {
         # 9. Make a normalized (left aligned) version of this VCF.
         bcftools norm -f ~{reference.reference_fasta} to_search.sort.dedup.vcf > to_search.sort.dedup.norm.vcf
 
-        # 10. At this point the normalized VCF should contain all the "pseudo vids", but because the bcftools searches are written
-        #     to search a range of positions, they will likely match some variants that do not correspond to "pseudo vids".
-        #     Run the following to clean out non-"pseudo vid" entries from this file.
+        # 10. At this point the normalized VCF should contain all the duplicate vids, but because the bcftools searches are written
+        #     to search a range of positions, they will likely also match some variants that do not correspond to duplicate vids.
+        #     Run the following to clean out non-duplicate vid entries from this file.
         python /app/filter_vcf_by_vids.py dropped_duplicate_vids.tsv to_search.sort.dedup.norm.vcf > hits_only.vcf
 
         # 11. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
