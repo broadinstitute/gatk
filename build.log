@@ -1,0 +1,14 @@
+Option -e requires an argument.
+ Usage: ./build_docker.sh: -e <GITHUB_TAG> [-psl] 
+ where <GITHUB_TAG> is the github tag (or hash when -s is used) to use in building the docker image
+ (e.g. bash build_docker.sh -e 1.0.0.0-alpha1.2.1)
+ Optional arguments:  
+ -s 	 The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  git hashes cannot be pushed as latest, so -l is implied.  
+ -l 	 Do not also push the image to the 'latest' tag. 
+ -u 	 Do not run the unit tests. 
+ -m 	 Build the lite image (which does not contain the conda environment). 
+ -d <STAGING_DIR> 	 staging directory to grab code from repo and build the docker image.  If unspecified, then use whatever is in current dir (do not go to the repo).  NEVER SPECIFY YOUR WORKING DIR 
+ -p 	 (GATK4 developers only) push image to docker hub once complete.  This will use the GITHUB_TAG in dockerhub as well. 
+ 		 Unless -l is specified, this will also push this image to the 'latest' tag. 
+ -r 	 (GATK4 developers only) Do not remove the unit test docker container.  This is useful for debugging failing unit tests. 
+ -t <PULL_REQUEST_NUMBER>	 (Travis CI only) The pull request number.  This is only used during pull request builds on Travis CI. 
