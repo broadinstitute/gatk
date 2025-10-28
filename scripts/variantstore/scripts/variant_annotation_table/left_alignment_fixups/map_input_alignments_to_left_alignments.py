@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Script to compare an input VCF with possibly non-left aligned variant representations with a VCF with exclusively
-left-aligned variant representations. Outputs tab-delimited mapping data connecting input lines to left alignments.
+Script to compare an input VCF having possibly non-left aligned variant representations with a VCF having exclusively
+left-aligned variant representations. Outputs tab-delimited mapping data connecting input positions, refs, and alleles
+to their left-aligned synonyms.
 """
 
 import sys
