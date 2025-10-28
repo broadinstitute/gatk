@@ -17,8 +17,6 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import picard.util.MathUtil;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class DepthEvidenceGenotyper {
 
@@ -54,6 +52,10 @@ public class DepthEvidenceGenotyper {
             }
         }
         return copyStateStats.length - 1;
+    }
+
+    public List<String> getSamplesInOrder() {
+        return samples;
     }
 
     public SVCallRecord applyToRecord(final SVCallRecord record,

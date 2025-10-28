@@ -187,6 +187,10 @@ public final class GATKSVVCFConstants {
     public static final String DEPTH_COPY_STATE_ATTRIBUTE = "RD_CN";
     public static final String DEPTH_GENOTYPE_QUALITY_ATTRIBUTE = "RD_GQ";
 
+    // pesr genotyping
+    public static final String DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE = "PE_GQ";
+    public static final String DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE = "PE_GT";
+
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";

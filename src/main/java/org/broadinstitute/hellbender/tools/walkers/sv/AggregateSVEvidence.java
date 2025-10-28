@@ -178,7 +178,6 @@ public final class AggregateSVEvidence extends VariantWalker {
     )
     private int innerWindow = 50;
 
-
     /**
      * Paired-end window size upstream of the first mate and downstream of the second mate.
      */
@@ -338,7 +337,7 @@ public final class AggregateSVEvidence extends VariantWalker {
         if (!splitReadCollectionEnabled() && !discordantPairCollectionEnabled() && !bafCollectionEnabled()) {
             throw new UserException.BadInput("At least one evidence file must be provided");
         }
-        loadSampleCoverage();
+        sampleCoverageMap = loadSampleCoverage(medianCoverageFile);
         if (discordantPairCollectionEnabled()) {
             initializeDiscordantPairCollection();
         }
@@ -423,15 +422,15 @@ public final class AggregateSVEvidence extends VariantWalker {
     /**
      * Loads median coverage table
      */
-    private void loadSampleCoverage() {
-        final String fileString = medianCoverageFile.toString();
+    public static Map<String, Double> loadSampleCoverage(final GATKPath path) {
+        final String fileString = path.toString();
         final List<String> lines = IOUtils.readLines(BucketUtils.openFile(fileString), Charset.defaultCharset());
         Utils.validate(lines.size() >= 2, "Median coverage file must contain at least two lines");
         final String[] samples = lines.get(0).split("\t");
         final String[] values = lines.get(1).split("\t");
         Utils.validate(samples.length == values.length,
                 "Median file's first two lines must have the same number of columns");
-        sampleCoverageMap = new HashMap<>();
+        final Map<String, Double> sampleCoverageMap = new HashMap<>();
         try {
             for (int i = 0; i < samples.length; i++) {
                 sampleCoverageMap.put(samples[i], Double.valueOf(values[i]));
@@ -439,6 +438,7 @@ public final class AggregateSVEvidence extends VariantWalker {
         } catch (final NumberFormatException nfe) {
             throw new UserException.BadInput("Encountered NumberFormatException while parsing median coverage file");
         }
+        return sampleCoverageMap;
     }
 
     @Override

@@ -67,6 +67,12 @@ public class DiscordantPairEvidenceTester {
         return SVCallRecordUtils.assignDiscordantPairCountsToGenotypes(newRecord, discordantPairResult.getDiscordantPairEvidence());
     }
 
+    public static Map<String, Integer> countEvidence(final List<DiscordantPairEvidence> evidence) {
+        return evidence.stream()
+                .collect(Collectors.groupingBy(DiscordantPairEvidence::getSample,
+                        Collectors.collectingAndThen(Collectors.toList(), List::size)));
+    }
+
     /**
      * Runs statistical tests
      */
@@ -77,9 +83,7 @@ public class DiscordantPairEvidenceTester {
                 "One or more carrier samples not found in sample coverage map");
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(backgroundSamples),
                 "One or more non-carrier samples not found in sample coverage map");
-        final Map<String, Integer> sampleCounts = evidence.stream()
-                .collect(Collectors.groupingBy(DiscordantPairEvidence::getSample,
-                        Collectors.collectingAndThen(Collectors.toList(), List::size)));
+        final Map<String, Integer> sampleCounts = countEvidence(evidence);
         final EvidenceStatUtils.PoissonTestResult test = EvidenceStatUtils.calculateOneSamplePoissonTest(sampleCounts, carrierSamples, backgroundSamples,
                 sampleCoverageMap, PESREvidenceTester.DEPTH_BASIS);
         return new DiscordantPairTestResult(test, sampleCounts, evidence);

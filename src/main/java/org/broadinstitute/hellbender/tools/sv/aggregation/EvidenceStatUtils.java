@@ -59,10 +59,17 @@ public class EvidenceStatUtils {
         final double[] normalizedCounts = new double[samples.size()];
         int i = 0;
         for (final String sample : samples) {
-            normalizedCounts[i] = Math.round(targetCoverage * sampleCounts.getOrDefault(sample, 0) / sampleCoverageMap.get(sample));
+            normalizedCounts[i] = getNormalizedCount(sampleCounts.getOrDefault(sample, 0), sampleCoverageMap.get(sample), targetCoverage);
             i++;
         }
         return MEDIAN.evaluate(normalizedCounts);
+    }
+
+    /**
+     * Normalizes counts by sample coverage to the target coverage.
+     */
+    public static double getNormalizedCount(final int count, final double sampleCoverage, final double targetCoverage) {
+        return Math.round(targetCoverage * count / sampleCoverage);
     }
 
     /**

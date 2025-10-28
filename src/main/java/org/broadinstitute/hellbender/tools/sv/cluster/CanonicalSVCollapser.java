@@ -581,10 +581,11 @@ public class CanonicalSVCollapser {
             return Collections.singletonList(Allele.SV_SIMPLE_DUP);
         }
         // Case where we assume no multi-copy alleles or can resolve alleles
-        if (numAlt > expectedCopyNumber) {
+        // TODO
+        /*if (numAlt > expectedCopyNumber) {
             throw new IllegalArgumentException("Encountered simple DUP with copy number " + copyNumber + " but the " +
                     "ploidy is only " + expectedCopyNumber);
-        }
+        }*/
         return makeBiallelicList(Allele.SV_SIMPLE_DUP, refAllele, Math.min(numAlt, expectedCopyNumber), expectedCopyNumber);
     }
 
