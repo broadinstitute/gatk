@@ -261,13 +261,13 @@ Once the VAT has been created, you will need to create a database table mapping 
    input VCFs only in non-left aligned representations, which during the process of creating the VAT were left-aligned and thus
    disconnected from their `alt_allele` representations. Specify the following parameters:
    1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
    1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
        position/ref/alt to left-aligned position/ref/alt. This should be a new table.
 1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0.
    1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This should be the same value as
-        specified for the `GvsMapUnmappedVIDs.wdl` step above.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
+       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
    1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATFromVDS.wdl`.
    1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
