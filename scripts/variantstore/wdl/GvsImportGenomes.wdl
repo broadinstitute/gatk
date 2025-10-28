@@ -193,6 +193,49 @@ workflow GvsImportGenomes {
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
+    
+    # Load Parquet files into BigQuery after all data has been created
+    call CreateParquetTrackingTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        set_is_loaded_done = SetIsLoadedColumn.done,
+        variants_docker = effective_variants_docker,
+    }
+    
+    call DiscoverParquetFiles {
+      input:
+        output_gcs_dir = output_gcs_dir,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        table_prefixes = ["vet", "ref_ranges"],
+        tracking_table_ready = CreateParquetTrackingTable.done,
+        billing_project_id = billing_project_id,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+    
+    scatter (i in range(length(DiscoverParquetFiles.table_names))) {
+      call LoadParquetFilesToBQ {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          table_name = DiscoverParquetFiles.table_names[i],
+          files_to_load = DiscoverParquetFiles.file_fofns[i],
+          schema_path = DiscoverParquetFiles.schema_paths[i],
+          batch_size = 10000,
+          billing_project_id = billing_project_id,
+          variants_docker = effective_variants_docker,
+      }
+    }
+    
+    call VerifyParquetLoading {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        gcs_files_list = DiscoverParquetFiles.all_files_list,
+        load_outputs = LoadParquetFilesToBQ.completion_status,
+        variants_docker = effective_variants_docker,
+    }
   }
 
   output {
@@ -200,6 +243,9 @@ workflow GvsImportGenomes {
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
     Array[File] load_data_stderrs = LoadData.stderr
+    Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
+    Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
+    Int? parquet_total_files = VerifyParquetLoading.total_files
   }
 }
 
@@ -663,5 +709,182 @@ task CurateInputLists {
     File input_vcf_indexes = "output_vcf_index_list_file"
     File input_vcfs = "output_vcf_list_file"
     File sample_name_list = "output_sample_name_list_file"
+  }
+}
+
+task CreateParquetTrackingTable {
+  input {
+    String project_id
+    String dataset_name
+    Boolean set_is_loaded_done
+    String variants_docker
+  }
+  
+  command <<<
+    set -euo pipefail
+    
+    python3 /app/create_tracking_table.py \
+      --project-id ~{project_id} \
+      --dataset-name ~{dataset_name}
+  >>>
+  
+  runtime {
+    docker: variants_docker
+    memory: "2 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+  
+  output {
+    Boolean done = true
+  }
+}
+
+task DiscoverParquetFiles {
+  input {
+    String output_gcs_dir
+    String project_id
+    String dataset_name
+    Array[String] table_prefixes
+    Boolean tracking_table_ready
+    String? billing_project_id
+    String cloud_sdk_docker
+  }
+  
+  meta {
+    volatile: true
+  }
+  
+  command <<<
+    set -euo pipefail
+    
+    # List all objects, filter for parquet files
+    echo "Listing files in ~{output_gcs_dir}..."
+    gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
+      "~{output_gcs_dir}/" > all_objects.txt || true
+    
+    grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
+    
+    FILE_COUNT=$(wc -l < all_files.txt)
+    echo "Found $FILE_COUNT Parquet files"
+    
+    # Parse and group by table
+    python3 /app/parse_and_group_files.py \
+      --input all_files.txt \
+      --output-dir grouped_files \
+      --project-id ~{project_id} \
+      --dataset ~{dataset_name} \
+      --table-prefixes ~{sep=" " table_prefixes}
+    
+    # For each table, create a dummy schema file
+    # In production, these would be actual schema files
+    while IFS= read -r table_name; do
+      echo '[]' > "grouped_files/${table_name}.schema.json"
+    done < grouped_files/table_names.txt
+    
+    # Create list of schema paths
+    while IFS= read -r table_name; do
+      echo "$(pwd)/grouped_files/${table_name}.schema.json"
+    done < grouped_files/table_names.txt > grouped_files/schema_paths.txt
+  >>>
+  
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "4 GB"
+    disks: "local-disk 50 HDD"
+    preemptible: 3
+    cpu: 2
+  }
+  
+  output {
+    Array[String] table_names = read_lines("grouped_files/table_names.txt")
+    Array[File] file_fofns = read_lines("grouped_files/fofn_paths.txt")
+    Array[File] schema_paths = read_lines("grouped_files/schema_paths.txt")
+    File all_files_list = "all_files.txt"
+    File stats_json = "grouped_files/stats.json"
+  }
+}
+
+task LoadParquetFilesToBQ {
+  input {
+    String project_id
+    String dataset_name
+    String table_name
+    File files_to_load
+    File schema_path
+    Int batch_size
+    String? billing_project_id
+    String variants_docker
+  }
+  
+  command <<<
+    set -euo pipefail
+    
+    python3 /app/load_parquet_to_bq.py \
+      --project-id ~{project_id} \
+      --dataset-name ~{dataset_name} \
+      --table-name ~{table_name} \
+      --files-fofn ~{files_to_load} \
+      --schema-path ~{schema_path} \
+      --pending-jobs-path pending_jobs.json \
+      --batch-size ~{batch_size} \
+      --output-stats stats.json
+  >>>
+  
+  runtime {
+    docker: variants_docker
+    memory: "4 GB"
+    disks: "local-disk 20 HDD"
+    preemptible: 5
+    maxRetries: 3
+    cpu: 1
+  }
+  
+  output {
+    String completion_status = read_string("stats.json")
+    File stats_json = "stats.json"
+  }
+}
+
+task VerifyParquetLoading {
+  input {
+    String project_id
+    String dataset_name
+    File gcs_files_list
+    Array[String] load_outputs
+    String variants_docker
+  }
+  
+  meta {
+    volatile: true
+  }
+  
+  command <<<
+    set -euo pipefail
+    
+    mkdir -p verification_output
+    
+    python3 /app/verify_all_loaded.py \
+      --project-id ~{project_id} \
+      --dataset-name ~{dataset_name} \
+      --gcs-files-list ~{gcs_files_list} \
+      --output-dir verification_output
+  >>>
+  
+  runtime {
+    docker: variants_docker
+    memory: "4 GB"
+    disks: "local-disk 20 HDD"
+    cpu: 1
+  }
+  
+  output {
+    File results_json = "verification_output/verification_results.json"
+    Boolean all_loaded = read_json(results_json)["all_loaded"]
+    Int total_files = read_json(results_json)["total_files"]
+    Int loaded_files = read_json(results_json)["loaded_files"]
+    Int missing_files = read_json(results_json)["missing_files"]
+    File? missing_files_list = "verification_output/missing_files.txt"
   }
 }
