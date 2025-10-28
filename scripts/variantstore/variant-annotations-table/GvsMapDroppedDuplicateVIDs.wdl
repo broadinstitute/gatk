@@ -9,7 +9,7 @@ workflow GvsMapDroppedDuplicateVIDs {
         File filtered_synonyms
         String project
         String dataset
-        String mapping_table_name
+        String participant_mapping_table_name
         String duplicate_mapping_table_name
         String reference_name = "hg38"
         Range? range_filter
@@ -27,7 +27,7 @@ workflow GvsMapDroppedDuplicateVIDs {
         input:
             project = project,
             dataset = dataset,
-            mapping_table_name = mapping_table_name,
+            participant_mapping_table_name = participant_mapping_table_name,
             sites_only_vcf = sites_only_vcf,
             filtered_synonyms = filtered_synonyms,
             reference = GetReference.reference,
@@ -41,7 +41,7 @@ task MapDroppedDuplicateVIDs {
     input {
         String project
         String dataset
-        String mapping_table_name
+        String participant_mapping_table_name
         File sites_only_vcf
         File filtered_synonyms
         Reference reference
@@ -128,7 +128,7 @@ task MapDroppedDuplicateVIDs {
         #
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
 
-        DELETE `~{dataset}.~{mapping_table_name}` WHERE vid IN (
+        DELETE `~{dataset}.~{participant_mapping_table_name}` WHERE vid IN (
             SELECT dup.vid FROM `~{dataset}.~{duplicate_mapping_table_name}` dup
         ~{if defined(range_filter) then "WHERE dup.left_aligned_location >= ~{select_first([range_filter]).startLocation} AND dup.left_aligned_location < ~{select_first([range_filter]).endLocation}" else ""}
         )
@@ -141,7 +141,7 @@ task MapDroppedDuplicateVIDs {
         #
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
 
-        INSERT into `~{dataset}.~{mapping_table_name}` (vid, person_ids)
+        INSERT into `~{dataset}.~{participant_mapping_table_name}` (vid, person_ids)
         SELECT
           dup.vid AS vid,
           ARRAY_AGG(SAFE_CAST(si.sample_name AS INT64) IGNORE NULLS) AS person_ids

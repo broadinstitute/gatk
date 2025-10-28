@@ -8,7 +8,7 @@ workflow GvsCreateParticipantMappingTable {
         String project_id
         String dataset
         String vat_table_name
-        String mapping_table_name
+        String participant_mapping_table_name
         Range? range_filter
     }
 
@@ -20,7 +20,7 @@ workflow GvsCreateParticipantMappingTable {
         project_id = project_id,
         dataset = dataset,
         vat_table_name = vat_table_name,
-        mapping_table_name = mapping_table_name,
+        participant_mapping_table_name = participant_mapping_table_name,
         range_filter = range_filter,
     }
 }
@@ -32,7 +32,7 @@ task CreateParticipantMappingTable {
         String project_id
         String dataset
         String vat_table_name
-        String mapping_table_name
+        String participant_mapping_table_name
         Range? range_filter
     }
     command <<<
@@ -54,7 +54,7 @@ task CreateParticipantMappingTable {
                     CAST(SPLIT(vid, "-")[OFFSET(1)] AS int64)
     );
 
-    CREATE TABLE `~{project_id}.~{dataset}.~{mapping_table_name}` AS
+    CREATE TABLE `~{project_id}.~{dataset}.~{participant_mapping_table_name}` AS
     SELECT vat.vid as vid, ARRAY_AGG(SAFE_CAST(si.sample_name as INT64) IGNORE NULLS) AS person_ids
         FROM `~{project_id}.~{dataset}.alt_allele` AS aa
                 JOIN `~{project_id}.~{dataset}.sample_info` AS si
@@ -78,7 +78,7 @@ task CreateParticipantMappingTable {
         SPLIT(vat.vid, "-")[OFFSET(3)]
         '
 
-    bq update --project_id=~{project_id} --clustering_fields=vid ~{dataset}.~{mapping_table_name}
+    bq update --project_id=~{project_id} --clustering_fields=vid ~{dataset}.~{participant_mapping_table_name}
 
     >>>
     runtime {
