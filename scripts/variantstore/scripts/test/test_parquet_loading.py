@@ -40,12 +40,12 @@ class TestParseTableFromPath(unittest.TestCase):
     def test_parse_ref_ranges_path(self):
         """Test ref_ranges path parsing."""
         path = "gs://bucket/ref_ranges/123/file.parquet"
-        self.assertEqual(parse_table_from_path(path, ["vet", "ref_ranges"]), "ref_123")
+        self.assertEqual(parse_table_from_path(path, ["vet", "ref_ranges"]), "ref_ranges_123")
     
     def test_parse_ref_ranges_path_with_subdirs(self):
         """Test ref_ranges path with subdirectories."""
         path = "gs://bucket/output/ref_ranges/042/subdir/file.parquet"
-        self.assertEqual(parse_table_from_path(path, ["vet", "ref_ranges"]), "ref_042")
+        self.assertEqual(parse_table_from_path(path, ["vet", "ref_ranges"]), "ref_ranges_042")
     
     def test_parse_vet_path_with_subdirs(self):
         """Test vet path with nested subdirectories."""
