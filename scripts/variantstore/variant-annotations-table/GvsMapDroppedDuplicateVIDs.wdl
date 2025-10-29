@@ -157,7 +157,7 @@ task MapDroppedDuplicateVIDs {
           `~{dataset}.sample_info` si
         ON
           aa.sample_id = si.sample_id
-          ~{if defined(range_filter) then "where aa.location >= ~{select_first([range_filter]).startLocation} AND aa.location < ~{select_first([range_filter]).endLocation}" else ""}
+          ~{if defined(range_filter) then "WHERE aa.location >= ~{select_first([range_filter]).startLocation} AND aa.location < ~{select_first([range_filter]).endLocation}" else ""}
         GROUP BY
           vid
 
