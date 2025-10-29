@@ -716,7 +716,7 @@ task CreateParquetTrackingTable {
   input {
     String project_id
     String dataset_name
-    Boolean set_is_loaded_done
+    String set_is_loaded_done
     String variants_docker
   }
   
@@ -737,7 +737,7 @@ task CreateParquetTrackingTable {
   }
   
   output {
-    Boolean done = true
+    String done = true
   }
 }
 
@@ -747,7 +747,7 @@ task DiscoverParquetFiles {
     String project_id
     String dataset_name
     Array[String] table_prefixes
-    Boolean tracking_table_ready
+    String tracking_table_ready
     String? billing_project_id
     String cloud_sdk_docker
   }
