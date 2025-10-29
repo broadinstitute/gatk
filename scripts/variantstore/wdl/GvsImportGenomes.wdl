@@ -210,7 +210,6 @@ workflow GvsImportGenomes {
         dataset_name = dataset_name,
         table_prefixes = ["vet", "ref_ranges"],
         tracking_table_ready = CreateParquetTrackingTable.done,
-#        billing_project_id = billing_project_id,
         variants_docker = effective_variants_docker,
     }
     
@@ -223,7 +222,6 @@ workflow GvsImportGenomes {
           files_to_load = DiscoverParquetFiles.file_fofns[i],
           schema_path = DiscoverParquetFiles.schema_paths[i],
           batch_size = 10000,
-#          billing_project_id = billing_project_id,
           variants_docker = effective_variants_docker,
       }
     }
