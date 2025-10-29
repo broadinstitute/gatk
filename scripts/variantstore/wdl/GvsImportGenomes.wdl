@@ -758,10 +758,13 @@ task DiscoverParquetFiles {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
     
+    # Normalize GCS path to ensure exactly one trailing slash
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+    
     # List all objects, filter for parquet files
-    echo "Listing files in ~{output_gcs_dir}..."
+    echo "Listing files in ${OUTPUT_GCS_DIR}..."
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
-      "~{output_gcs_dir}/" > all_objects.txt || true
+      "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
     
     grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
     
