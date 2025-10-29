@@ -29,8 +29,10 @@ def parse_table_from_path(file_path, table_prefixes):
         if match:
             table_number = match.group(1)
             # ref_ranges maps to ref_XXX tables
-            table_prefix = "ref" if prefix == "ref_ranges" else prefix
-            return f"{table_prefix}_{table_number}"
+            # Why would you remap ref_ranges to ref??
+            # table_prefix = "ref" if prefix == "ref_ranges" else prefix
+            # return f"{table_prefix}_{table_number}"
+            return f"{prefix}_{table_number}"
     return None
 
 

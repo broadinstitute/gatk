@@ -805,6 +805,7 @@ task DiscoverParquetFiles {
     Array[File] schema_paths = read_lines("grouped_files/schema_paths.txt")
     File all_files_list = "all_files.txt"
     File stats_json = "grouped_files/stats.json"
+    Array[File] grouped_files = glob("grouped_files/*")
   }
 }
 
