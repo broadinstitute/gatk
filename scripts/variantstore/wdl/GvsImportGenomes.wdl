@@ -211,7 +211,7 @@ workflow GvsImportGenomes {
         table_prefixes = ["vet", "ref_ranges"],
         tracking_table_ready = CreateParquetTrackingTable.done,
         billing_project_id = billing_project_id,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
+        variants_docker = effective_variants_docker,
     }
     
     scatter (i in range(length(DiscoverParquetFiles.table_names))) {
@@ -749,7 +749,7 @@ task DiscoverParquetFiles {
     Array[String] table_prefixes
     String tracking_table_ready
     String? billing_project_id
-    String cloud_sdk_docker
+    String variants_docker
   }
   
   meta {
@@ -790,7 +790,7 @@ task DiscoverParquetFiles {
   >>>
   
   runtime {
-    docker: cloud_sdk_docker
+    docker: variants_docker
     memory: "4 GB"
     disks: "local-disk 50 HDD"
     preemptible: 3
