@@ -104,9 +104,9 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   call GatherVcfs {
     input:
-      input_vcfs = GenerateControlVCFs.output_vcfs,
+      input_vcfs = select_first([GenerateControlVCFs.output_vcfs]),
       output_basename = output_basename,
-      total_vcfs_size_mb = GenerateControlVCFs.total_vcfs_size_mb,
+      total_vcfs_size_mb = select_first([GenerateControlVCFs.total_vcfs_size_mb]),
       gatk_docker = effective_gatk_docker,
   }
 
