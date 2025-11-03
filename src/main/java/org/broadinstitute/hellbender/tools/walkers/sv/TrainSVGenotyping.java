@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
@@ -22,8 +23,10 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.*;
 import org.broadinstitute.hellbender.tools.sv.aggregation.DiscordantPairEvidenceAggregator;
 import org.broadinstitute.hellbender.tools.sv.aggregation.PESREvidenceTester;
+import org.broadinstitute.hellbender.tools.sv.aggregation.SplitReadEvidenceAggregator;
 import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
 import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker;
+import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -33,7 +36,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * <p>This tool assesses depth evidence for structural variants (SVs),annotating records with statistical metrics that
@@ -95,8 +97,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public static final String NUM_TRAINING_STATES_LONG_NAME = "n-training-states";
     public static final String CUTOFFS_OUTPUT_LONG_NAME = "cutoffs-output";
     public static final String TRAINING_INTERVALS_LONG_NAME = "training-intervals";
+    public static final String PESR_EXCLUSION_INTERVALS_LONG_NAME = "pesr-exclusion-intervals";
     public static final String MIN_PE_QUALITY_LONG_NAME = "pe-quality";
-    public static final String MIN_PE_SIZE_LONG_NAME = "pe-size";
+    public static final String MIN_PESER_SIZE_LONG_NAME = "min-pesr-size";
     public static final String MIN_SR_QUALITY_LONG_NAME = "sr-quality";
 
     @Argument(
@@ -118,6 +121,13 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     )
     private GATKPath discordantPairsFile;
 
+    @Argument(
+            doc = "Split reads evidence file (indexed and ending in .sr.txt.gz)",
+            fullName = AggregateSVEvidence.SPLIT_READ_LONG_NAME,
+            optional = true
+    )
+    private GATKPath splitReadsFile;
+
     /**
      * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
      * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
@@ -135,6 +145,13 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             optional = true
     )
     protected GATKPath trainingIntervalsPath;
+
+    @Argument(
+            doc = "Intervals to exclude for PE/SR evidence genotype training",
+            fullName = PESR_EXCLUSION_INTERVALS_LONG_NAME,
+            optional = true
+    )
+    protected GATKPath pesrExclusionIntervalsPath;
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -173,24 +190,24 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     @Argument(
             fullName = MIN_PE_QUALITY_LONG_NAME,
-            doc = "Discordant pair quality threshold, used for setting minimum evidence count",
+            doc = "Discordant pair quality threshold, used for setting evidence count threshold",
             minValue = 1
     )
     public double minDiscordantPairQuality = 20;
 
     @Argument(
-            fullName = MIN_PE_SIZE_LONG_NAME,
-            doc = "Discordant pair quality threshold, used for setting minimum evidence count",
-            minValue = 1
+            fullName = MIN_PESER_SIZE_LONG_NAME,
+            doc = "Discordant pair and split read training minimum size",
+            minValue = 0
     )
-    public int minDiscordantPairSize = 1000;
+    public int minPesrSize = 1000;
 
     @Argument(
             fullName = MIN_SR_QUALITY_LONG_NAME,
-            doc = "Split read quality threshold, used for setting minimum evidence count",
+            doc = "Split read quality threshold, used for setting evidence count threshold",
             minValue = 1
     )
-    public int minSplitReadQuality = 20;
+    public double minSplitReadQuality = 20;
 
     @Argument(
             fullName = AggregateDepthEvidence.MAX_QUALITY_LONG_NAME,
@@ -266,21 +283,46 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private DiscordantPairEvidenceGenotyper discordantPairGenotyper;
     private DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeParameters discordantPairParameters;
 
+    private FeatureDataSource<SplitReadEvidence> splitReadSource;
+    private SplitReadEvidenceAggregator splitReadStartCollector;
+    private SplitReadEvidenceAggregator splitReadEndCollector;
+    private SplitReadEvidenceGenotyper splitReadGenotyper;
+
+    private SVStratificationEngine pesrExclusionEngine;
+
     private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 0;
+    private static final int SPLIT_READ_QUERY_LOOKAHEAD = 0;
+    private static final String PESR_EXCLUSION_STRATIFICATION = "pesrex";
 
     protected int numberOfPasses() {
         return 6;
     }
 
     private void initializeDiscordantPairCollection() {
-        discordantPairSource = new FeatureDataSource<>(
-                discordantPairsFile.toString(),
-                "discordantPairsFile",
-                DISCORDANT_PAIR_QUERY_LOOKAHEAD,
-                DiscordantPairEvidence.class,
-                cloudPrefetchBuffer,
-                cloudIndexPrefetchBuffer);
-        discordantPairCollector = new DiscordantPairEvidenceAggregator(discordantPairSource, dictionary, innerWindow, outerWindow);
+        if (discordantPairCollectionEnabled()) {
+            discordantPairSource = new FeatureDataSource<>(
+                    discordantPairsFile.toString(),
+                    "discordantPairsFile",
+                    DISCORDANT_PAIR_QUERY_LOOKAHEAD,
+                    DiscordantPairEvidence.class,
+                    cloudPrefetchBuffer,
+                    cloudIndexPrefetchBuffer);
+            discordantPairCollector = new DiscordantPairEvidenceAggregator(discordantPairSource, dictionary, innerWindow, outerWindow);
+        }
+    }
+
+    private void initializeSplitReadCollection() {
+        if (splitReadCollectionEnabled()) {
+            splitReadSource = new FeatureDataSource<>(
+                    splitReadsFile.toString(),
+                    "splitReadsFile",
+                    SPLIT_READ_QUERY_LOOKAHEAD,
+                    SplitReadEvidence.class,
+                    cloudPrefetchBuffer,
+                    cloudIndexPrefetchBuffer);
+            splitReadStartCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, 0, true);
+            splitReadEndCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, 0, false);
+        }
     }
 
     @Override
@@ -298,8 +340,24 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
         depthGenotypeResults = new HashMap<>();
         discordantPairGenotypeResults = new HashMap<>();
+
+        if (splitReadCollectionEnabled()) {
+            Utils.validate(discordantPairCollectionEnabled(), "Discordant pairs file must be provided for split read training");
+        }
+
         initializeDiscordantPairCollection();
-        discordantPairGenotyper = new DiscordantPairEvidenceGenotyper(sampleMedians, minDiscordantPairQuality, minDiscordantPairSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
+        initializeSplitReadCollection();
+        discordantPairGenotyper = new DiscordantPairEvidenceGenotyper(sampleMedians, minDiscordantPairQuality, minPesrSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
+        splitReadGenotyper = new SplitReadEvidenceGenotyper(sampleMedians, minSplitReadQuality, minPesrSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
+
+        if (pesrExclusionIntervalsPath != null) {
+            pesrExclusionEngine = new SVStratificationEngine(dictionary);
+            final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
+            final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(pesrExclusionIntervalsPath.toString()), IntervalSetRule.UNION, IntervalMergingRule.OVERLAPPING_ONLY, 0, genomeLocParser);
+            final List<Locatable> intervals = Collections.unmodifiableList(genomeLocs.toList());
+            pesrExclusionEngine.addTrack(PESR_EXCLUSION_STRATIFICATION, intervals);
+            pesrExclusionEngine.addStratification(PESR_EXCLUSION_STRATIFICATION, null, null, null, Collections.singleton(PESR_EXCLUSION_STRATIFICATION));
+        }
     }
 
     private void trainCopyNumberSites() {
@@ -346,6 +404,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         if (n == 0) {
             applyReadDepth(record);
+            if (discordantPairCollectionEnabled()) {
+                discordantPairGenotyper.registerVariantForOverlapCheck(record);
+            }
         } else if (n == 1) {
             applyDiscordantPairFirstPass(record);
         } else if (n == 2) {
@@ -391,10 +452,14 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     @Override
     protected void afterNthPass(final int n) {
-        if (n == 1) {
+        if (n == 0 && discordantPairCollectionEnabled()) {
+            discordantPairGenotyper.aggregateOverlapCheckIntervals();
+        } else if (n == 1 && discordantPairCollectionEnabled()) {
             discordantPairGenotyper.finalizeFirstPass();
-        } else if (n == 2) {
+        } else if (n == 2 && discordantPairCollectionEnabled()) {
             discordantPairParameters = discordantPairGenotyper.finalizeSecondPass();
+        } else if (n == 4 && splitReadCollectionEnabled()) {
+            splitReadGenotyper.finalizeFirstPass();
         }
     }
 
@@ -406,7 +471,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         }
         final DepthMatrix depthMatrix = loader.load(new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB()), sampleMedians);
 
-        final DepthEvidenceGenotyper.DepthGenotypeResult genotypeResult  = depthGenotyper.genotype(depthMatrix);
+        final DepthEvidenceGenotyper.DepthGenotypeResult genotypeResult = depthGenotyper.genotype(depthMatrix);
         if (depthGenotypeResults.containsKey(record.getContigA())) {
             throw new UserException.BadInput("Duplicate variant ID: " + record.getId());
         }
@@ -419,9 +484,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         if (discordantPairCollectionEnabled()
                 && depthGenotypeResults.containsKey(record.getId())) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
-            if (discordantPairGenotyper.trainableRecord(record, depthResult)) {
+            if (discordantPairGenotyper.trainableRecord(record, depthResult, pesrExclusionEngine)) {
                 final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
-                discordantPairGenotyper.addFirstPass(record, discordantPairEvidence);
+                discordantPairGenotyper.addFirstPass(record, discordantPairEvidence, depthResult, masterSampleList);
             }
         }
     }
@@ -451,7 +516,22 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         return discordantPairsFile != null;
     }
 
+    private boolean splitReadCollectionEnabled() {
+        return splitReadsFile != null;
+    }
+
     private void applySplitRead(final SVCallRecord record) {
+        if (splitReadCollectionEnabled()
+                && depthGenotypeResults.containsKey(record.getId())
+                && discordantPairGenotypeResults.containsKey(record.getId())) {
+            final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
+            final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discorantPairResult = discordantPairGenotypeResults.get(record.getId());
+            if (splitReadGenotyper.trainableRecord(record, depthResult, discorantPairResult, pesrExclusionEngine)) {
+                final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
+                final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
+                splitReadGenotyper.addFirstPass(record, startSplitReads, endSplitReads, depthResult, masterSampleList);
+            }
+        }
     }
 
     @Override

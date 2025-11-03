@@ -1,25 +1,20 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.OverlapDetector;
+import autovalue.shaded.com.google.common.collect.Sets;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.sv.aggregation.DiscordantPairEvidenceTester;
 import org.broadinstitute.hellbender.tools.sv.aggregation.EvidenceStatUtils;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import spire.math.interval.Overlap;
 
 import java.util.*;
 import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
-public class DiscordantPairEvidenceGenotyper {
+public class SplitReadEvidenceGenotyper {
 
     private final int minSize;
     private final int minCount;
@@ -27,6 +22,8 @@ public class DiscordantPairEvidenceGenotyper {
     private final int maxQuality;
     private final Map<String, Double> sampleCoverageMap;
     private final Map<String, FirstPassResult> firstPassCounts;
+    private Double hetMedian = null;
+    private Double hetMad = null;
     private Double hetCutoff = null;
     private Double normalization = null;
     private Double normalizationVariant = null;
@@ -35,9 +32,6 @@ public class DiscordantPairEvidenceGenotyper {
     private boolean firstPassMade = false;
     private boolean secondPassMade = false;
 
-    private final Map<String, SimpleInterval> variantIntervals;
-    private OverlapDetector<NamedSimpleInterval> overlapDetector = null;
-
     private static final Median MEDIAN = new Median();
     private static final NormalDistribution Z_DISTRIBUTION = new NormalDistribution();
     private static final StandardDeviation STD_DEV = new StandardDeviation();
@@ -45,43 +39,7 @@ public class DiscordantPairEvidenceGenotyper {
     private static final Set<Integer> HET_COPY_STATES = Set.of(1, 3);
     private static final Set<Integer> HOM_COPY_STATES = Set.of(0, 4);
 
-    private static class NamedSimpleInterval implements Locatable {
-        private final String name;
-        private final SimpleInterval interval;
-        public NamedSimpleInterval(final String name, final SimpleInterval interval) {
-            this.name = name;
-            this.interval = interval;
-        }
-
-        @Override
-        public String getContig() {
-            return interval.getContig();
-        }
-
-        @Override
-        public int getStart() {
-            return interval.getStart();
-        }
-
-        @Override
-        public int getEnd() {
-            return interval.getEnd();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (o == null || getClass() != o.getClass()) return false;
-            NamedSimpleInterval that = (NamedSimpleInterval) o;
-            return Objects.equals(name, that.name) && Objects.equals(interval, that.interval);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, interval);
-        }
-    }
-
-    public DiscordantPairEvidenceGenotyper(final Map<String,Double> sampleCoverageMap, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
+    public SplitReadEvidenceGenotyper(final Map<String,Double> sampleCoverageMap, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
         this.minCount = computeCountCutoff(qualityCutoff);
         Utils.validateArg(maxQuality > 0, "Maximum quality must be greater than zero");
@@ -91,23 +49,6 @@ public class DiscordantPairEvidenceGenotyper {
         this.firstPassCounts = new HashMap<>();
         this.hetCounts = new ArrayList<>();
         this.homCounts = new ArrayList<>();
-        this.variantIntervals = new HashMap<>();
-    }
-
-    public void registerVariantForOverlapCheck(final SVCallRecord record) {
-        if ((record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL || record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) && !record.isDepthOnly()) {
-            final SimpleInterval interval = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB());
-            if (variantIntervals.containsKey(record.getId())) {
-                throw new IllegalArgumentException("Duplicate variant ID: " + record.getId());
-            }
-            variantIntervals.put(record.getId(), interval);
-        }
-    }
-
-    public void aggregateOverlapCheckIntervals() {
-        final List<NamedSimpleInterval> namedIntervals = variantIntervals.entrySet().stream().map(e -> new NamedSimpleInterval(e.getKey(), e.getValue())).toList();
-        overlapDetector = OverlapDetector.create(namedIntervals);
-        variantIntervals.clear();
     }
 
     private static int computeCountCutoff(final double qualityCutoff) {
@@ -120,44 +61,42 @@ public class DiscordantPairEvidenceGenotyper {
             }
             final double qual = QualityUtils.errorProbToQual(p);
             if (qual > qualityCutoff) {
-                return Math.max(i - 1, 1);
+                return Math.max((i - 1) / 2, 1);
             }
             i++;
         }
     }
 
-    public void addFirstPass(final SVCallRecord record, final List<DiscordantPairEvidence> evidence, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotypeResult, final List<String> depthGenotypeSamples) {
-        Utils.nonNull(evidence);
+    public void addFirstPass(final SVCallRecord record, final List<SplitReadEvidence> startEvidence,
+                             final List<SplitReadEvidence> endEvidence, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype, final List<String> depthGenotypeSamples) {
+        Utils.nonNull(startEvidence);
+        Utils.nonNull(endEvidence);
         Utils.validate(!firstPassMade, "First pass already made");
         // TODO check all samples are in coverage map
-        final Map<String, Double> counts = normalizeCounts(evidence, minCount);
-        firstPassCounts.put(record.getId(), new FirstPassResult(counts, depthGenotypeResult, depthGenotypeSamples));
+        final Map<String, Double> startCounts = normalizeCounts(startEvidence, minCount);
+        final Map<String, Double> endCounts = normalizeCounts(endEvidence, minCount);
+        firstPassCounts.put(record.getId(), new FirstPassResult(startCounts, endCounts, depthGenotype, depthGenotypeSamples));
     }
 
-    // 0-counts are not added to map
-    private Map<String, Double> normalizeCounts(final List<DiscordantPairEvidence> evidence, final int threshold) {
-        final Map<String, Integer> countsMap = DiscordantPairEvidenceTester.countEvidence(evidence);
+    private Map<String, Double> normalizeCounts(final List<SplitReadEvidence> evidence, final double threshold) {
         final Map<String, Double> counts = new HashMap<>();
-        for (final String sample : countsMap.keySet()) {
-            final int count = countsMap.getOrDefault(sample, 0);
-            if (count > 0) {
-                final double sampleCoverage = sampleCoverageMap.getOrDefault(sample, 0.);
-                final double normalizedCount = EvidenceStatUtils.getNormalizedCount(count, sampleCoverage, targetCoverage);
-                if (normalizedCount >= threshold) {
-                    counts.put(sample, normalizedCount);
-                }
+        for (final SplitReadEvidence e : evidence) {
+            final double sampleCoverage = sampleCoverageMap.getOrDefault(e.getSample(), 0.);
+            final double normalizedCount = EvidenceStatUtils.getNormalizedCount(e.getCount(), sampleCoverage, targetCoverage);
+            if (normalizedCount > 0 && normalizedCount >= threshold) {
+                counts.put(e.getSample(), normalizedCount);
             }
         }
         return counts;
     }
 
     public void finalizeFirstPass() {
-        Utils.validate(!firstPassCounts.isEmpty(), "No discordant pair counts after first pass");
+        Utils.validate(!firstPassCounts.isEmpty(), "No split read counts after first pass");
         Utils.validate(!firstPassMade, "First pass has already been made");
         final double[] hetCounts = firstPassCounts.values().stream().map(c -> c.getCounts(HET_COPY_STATES)).flatMapToDouble(DoubleStream::of).toArray();
-        final double hetMedian = MEDIAN.evaluate(hetCounts);
+        hetMedian = MEDIAN.evaluate(hetCounts);
         final double[] deviations = DoubleStream.of(hetCounts).map(d -> Math.abs(d - hetMedian)).toArray();
-        final double hetMad = MEDIAN.evaluate(deviations);
+        hetMad = MEDIAN.evaluate(deviations);
         hetCutoff = hetMedian + 1.645 * hetMad;
         firstPassMade = true;
     }
@@ -192,45 +131,47 @@ public class DiscordantPairEvidenceGenotyper {
         }
     }
 
-    public DiscordantPairGenotypeParameters finalizeSecondPass() {
+    public SplitReadGenotypeParameters finalizeSecondPass() {
         Utils.validate(!homCounts.isEmpty(), "No discordant pair counts after second pass");
         Utils.validate(!hetCounts.isEmpty(), "No discordant pair counts after second pass");
         Utils.validate(!secondPassMade, "Second pass has already been made");
         final double homMedian = MEDIAN.evaluate(homCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
+        final double sdHet = STD_DEV.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
         normalization = maxQuality / (- 10. * Math.log10(1 - Z_DISTRIBUTION.cumulativeProbability(0.5 * homMedian / sdHet)) - 3.0103);
         final PoissonDistribution poissonDistribution = new PoissonDistribution(0.5 * homMedian);
         normalizationVariant = maxQuality / (-10. * Math.log10(poissonDistribution.cumulativeProbability(0)));
         secondPassMade = true;
-        return new DiscordantPairGenotypeParameters(minCount, homMedian, sdHet);
+        return new SplitReadGenotypeParameters(minCount, homMedian, sdHet);
     }
 
-    public DiscordantPairGenotypeResult genotype(final SVCallRecord record, final List<DiscordantPairEvidence> evidence,
-                                                       final DiscordantPairGenotypeParameters parameters, final List<String> samples) {
-        final Map<String, Double> counts = normalizeCounts(evidence, 0);
+    public SplitReadGenotypeResult genotype(final SVCallRecord record, final List<SplitReadEvidence> startEvidence,
+                                            final List<SplitReadEvidence> endEvidence,
+                                            final SplitReadGenotypeParameters parameters, final List<String> samples) {
+        final Map<String, Double> startCounts = normalizeCounts(startEvidence, 0);
+        final Map<String, Double> endCounts = normalizeCounts(endEvidence, 0);
         final int[] genotypes = new int[samples.size()];
         final int[] genotypeQuals = new int[samples.size()];
         final List<Integer> nonRefQuals = new ArrayList<>(samples.size());
         for (int i = 0; i < samples.size(); i++) {
             final String sample = samples.get(i);
-            final double discordantPairCount = counts.getOrDefault(sample, 0.);
-            if (discordantPairCount < minCount) {
+            final double startCount = startCounts.getOrDefault(sample, 0.);
+            final double endCount = endCounts.getOrDefault(sample, 0.);
+            if (startCount < minCount) {
                 genotypes[i] = 0;
-            } else if (discordantPairCount <= parameters.medianHom - parameters.sdHet) {
+            } else if (startCount <= parameters.medianHom - parameters.sdHet) {
                 genotypes[i] = 1;
             } else {
-                genotypes[i] = (int) ((discordantPairCount / (parameters.medianHom * 0.5)) + 0.5);
+                genotypes[i] = (int) ((startCount / (parameters.medianHom * 0.5)) + 0.5);
             }
             if (genotypes[i] == 0) {
-                if (discordantPairCount == 0) {
+                if (startCount == 0) {
                     genotypeQuals[i] = maxQuality;
                 } else {
-                    final PoissonDistribution dist = new PoissonDistribution(discordantPairCount);
+                    final PoissonDistribution dist = new PoissonDistribution(startCount);
                     genotypeQuals[i] = (int) Math.round(- 10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
                 }
             } else {
-                final double z0 = discordantPairCount - genotypes[i] * parameters.medianHom * 0.5;
+                final double z0 = startCount - genotypes[i] * parameters.medianHom * 0.5;
                 final double z1 = z0 + parameters.medianHom * 0.5;
                 final double z2 = z0 - parameters.medianHom * 0.5;
                 final double q0 = getGenotypeLikelihood(z0, parameters.sdHet);
@@ -246,7 +187,7 @@ public class DiscordantPairEvidenceGenotyper {
         final double medianCarrierQual = MEDIAN.evaluate(nonRefQuals.stream().mapToDouble(Double::valueOf).toArray());
         final PoissonDistribution variantQualDist = new PoissonDistribution(medianCarrierQual);
         final double variantQual = - 10. * Math.log10(variantQualDist.cumulativeProbability(0)) * normalizationVariant;
-        return new DiscordantPairGenotypeResult(genotypes, genotypeQuals, variantQual);
+        return new SplitReadGenotypeResult(genotypes, genotypeQuals, variantQual);
     }
 
     private static double getGenotypeLikelihood(final double z, final double sdHet) {
@@ -255,64 +196,16 @@ public class DiscordantPairEvidenceGenotyper {
 
     public boolean trainableRecord(final SVCallRecord record,
                                    final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype,
+                                   final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discordantPairGenotype,
                                    final SVStratificationEngine exclusionEngine) {
-        if (record.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.DEL && record.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
-            return false;
-        }
-        if (record.isDepthOnly()) {
+        if (discordantPairGenotype == null) {
             return false;
         }
         if (record.getLength() == null || record.getLength() < minSize) {
             return false;
         }
-        if (record.isDepthOnly()) {
-            return false;
-        }
         if (exclusionEngine != null && !exclusionEngine.getMatches(record, 0, 1, 1).isEmpty()) {
             return false;
-        }
-        final SimpleInterval interval = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB());
-        if (overlapDetector != null && overlapDetector.getOverlaps(interval).size() > 1) {
-            return false;
-        }
-        if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
-            boolean foundOne = false;
-            boolean foundTwo = false;
-            for (final int c : depthGenotype.copyStates()) {
-                if (c > 2) {
-                    return false;
-                }
-                if (c == 1) {
-                    foundOne = true;
-                }
-                if (c == 2) {
-                    foundTwo = true;
-                }
-            }
-            if (!(foundOne && foundTwo)) {
-                return false;
-            }
-        }
-        if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
-            if (Arrays.stream(depthGenotype.copyStates()).anyMatch(s -> s < 2 || s > 4)) {
-                return false;
-            }
-            boolean foundThree = false;
-            boolean foundTwo = false;
-            for (final int c : depthGenotype.copyStates()) {
-                if (c < 2 || c > 4) {
-                    return false;
-                }
-                if (c == 3) {
-                    foundThree = true;
-                }
-                if (c == 2) {
-                    foundTwo = true;
-                }
-            }
-            if (!(foundThree && foundTwo)) {
-                return false;
-            }
         }
         return true;
     }
@@ -320,8 +213,14 @@ public class DiscordantPairEvidenceGenotyper {
     private static final class FirstPassResult {
         private final Map<String, Double> counts;
         private final Map<String, Integer> depthGenotypes;
-        public FirstPassResult(final Map<String, Double> counts, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype, final List<String> depthGenotypeSamples) {
-            this.counts = counts;
+        public FirstPassResult(final Map<String, Double> startCounts, final Map<String, Double> endCounts, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype, final List<String> depthGenotypeSamples) {
+            this.counts = new HashMap<>();
+            final Set<String> keys = Sets.union(startCounts.keySet(), endCounts.keySet());
+            for (final String key : keys) {
+                final double startCount = startCounts.getOrDefault(key, 0.);
+                final double endCount = endCounts.getOrDefault(key, 0.);
+                counts.put(key, startCount + endCount);
+            }
             this.depthGenotypes = new HashMap<>();
             for (int i = 0; i < depthGenotypeSamples.size(); i++) {
                 final String sample = depthGenotypeSamples.get(i);
@@ -351,6 +250,6 @@ public class DiscordantPairEvidenceGenotyper {
         }
     }
 
-    public record DiscordantPairGenotypeResult(int[] genotypes, int[] genotypeQuals, double variantQual) {}
-    public record DiscordantPairGenotypeParameters(double minCount, double medianHom, double sdHet) {}
+    public record SplitReadGenotypeResult(int[] genotypes, int[] genotypeQuals, double variantQual) {}
+    public record SplitReadGenotypeParameters(double minCount, double medianHom, double sdHet) {}
 }
