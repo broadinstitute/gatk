@@ -469,7 +469,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1686_pseudo_vid_fixup
+         - vs_1757_dropped_duplicates
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -503,6 +503,16 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1686_pseudo_vid_fixup
+         - vs_1757_dropped_duplicates
+       tags:
+         - /.*/
+   - name: GvsMapDroppedDuplicateVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapDroppedDuplicateVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1757_dropped_duplicates
        tags:
          - /.*/

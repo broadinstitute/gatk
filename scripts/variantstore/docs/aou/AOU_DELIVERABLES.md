@@ -254,16 +254,24 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
 Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them. 
 
 1. First run `GvsCreateParticipantMappingTable.wdl` to create this participant ID mapping table and most of its data.
-   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `mapping_table_name` that
+   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `participant_mapping_table_name` that
    will be created to hold the VID to participant mapping information.
-1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" or "pseudo VIDs". These ummapped VIDs are VIDs for
-   which there are VAT table entries but no corresponding `alt_allele` entries. These VIDs correspond to data that appeared in
-   input VCFs only in non-left aligned representations, which during the process of creating the VAT were left-aligned and thus
+1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" (a.k.a "pseudo VIDs"). These unmapped VIDs have
+   VAT table entries but no corresponding `alt_allele` entries and correspond to data that appeared in
+   input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
    disconnected from their `alt_allele` representations. Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT.
+   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
    1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
        position/ref/alt to left-aligned position/ref/alt. This should be a new table.
+1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATFromVDS` currently preserves a left-aligned version of the
+   synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
+   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
+       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
+   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATFromVDS.wdl`.
+   1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
+      position/ref/alt to left-aligned position/ref/alt. This should be a new table.
 
 #### Delivery Steps
 1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.

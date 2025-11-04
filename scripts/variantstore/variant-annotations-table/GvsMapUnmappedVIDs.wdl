@@ -9,7 +9,7 @@ workflow GvsMapUnmappedVIDs {
         String project
         String dataset
         String vat_table_name
-        String mapping_table_name
+        String participant_mapping_table_name
         String unmapped_vid_mapping_table_name
         String reference_name = "hg38"
         Range? range_filter
@@ -28,7 +28,7 @@ workflow GvsMapUnmappedVIDs {
             project = project,
             dataset = dataset,
             vat_table_name = vat_table_name,
-            mapping_table_name = mapping_table_name,
+            participant_mapping_table_name = participant_mapping_table_name,
             sites_only_vcf = sites_only_vcf,
             reference = GetReference.reference,
             unmapped_vid_mapping_table_name = unmapped_vid_mapping_table_name,
@@ -42,7 +42,7 @@ task MapUnmappedVIDs {
         String project
         String dataset
         String vat_table_name
-        String mapping_table_name
+        String participant_mapping_table_name
         File sites_only_vcf
         Reference reference
         String unmapped_vid_mapping_table_name
@@ -72,7 +72,7 @@ task MapUnmappedVIDs {
                              CAST(SPLIT(vid, "-")[OFFSET(1)] AS int64)
              );
 
-            SELECT distinct vid AS location FROM `~{dataset}.~{vat_table_name}` WHERE vid NOT IN (SELECT vid FROM `~{dataset}.~{mapping_table_name}`)
+            SELECT distinct vid AS location FROM `~{dataset}.~{vat_table_name}` WHERE vid NOT IN (SELECT vid FROM `~{dataset}.~{participant_mapping_table_name}`)
             ~{if (defined(range_filter)) then "AND vidToLocation(vid) >= ~{select_first([range_filter]).startLocation} AND vidToLocation(vid) < ~{select_first([range_filter]).endLocation}" else ""}
 
         ' | sed 1d > unmapped_vids.tsv
@@ -91,7 +91,7 @@ task MapUnmappedVIDs {
         fi
 
         # 3. Generate bcftools commands to query the sites-only VCF.
-        python /app/generate_bcftools_commands.py --sites-only ${sites_only} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
+        python /app/generate_bcftools_searches_for_variant_synonyms.py --sites-only ${sites_only} unmapped_vids.tsv | sed 's/$/ >> to_search.vcf/' > bcftools_commands.sh
 
         # 4. auth before doing GCS-flavored bcftools commands
         set +o xtrace
@@ -119,7 +119,7 @@ task MapUnmappedVIDs {
 
         # 10. Now we can correlate the entries in this `hits_only.vcf` file back to the non-left aligned version that uses the same
         #     positions as GVS.
-        python /app/compare_vcfs.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
+        python /app/map_input_alignments_to_left_alignments.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
 
         # 11. Load the unmapped vid mapping into BigQuery
         bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
@@ -129,7 +129,7 @@ task MapUnmappedVIDs {
         # 12. Add the mappings for these no-longer-unmapped VIDs into the mapping table.
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
 
-        INSERT into `~{dataset}.~{mapping_table_name}` (vid, person_ids)
+        INSERT into `~{dataset}.~{participant_mapping_table_name}` (vid, person_ids)
         SELECT
           umm.vid as vid,
           ARRAY_AGG(SAFE_CAST(si.sample_name AS INT64) IGNORE NULLS) AS person_ids

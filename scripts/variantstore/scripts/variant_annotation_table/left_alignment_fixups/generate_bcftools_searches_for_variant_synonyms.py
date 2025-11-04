@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Script to generate bcftools invocations from VIDs (Variant IDs).
+Script to generate bcftools invocations from VIDs (Variant IDs) for the purpose of finding insertions or deletions of
+a particular size which may represent non-left aligned synonyms of particular variants.
 
 A VID consists of four components separated by dashes:
 chromosome-position-reference_allele-variant_allele
 
 Example usage:
-python generate_bcftools_commands.py input_vids.txt
+python generate_bcftools_searches_for_variant_synonyms.py input_vids.txt
 """
 
 import sys
@@ -38,7 +39,7 @@ def generate_bcftools_command(vid, sites_only):
 
     search_range = 200
 
-    start = position + 1
+    start = position
     end = position + search_range
     
     command = f"bcftools view --no-header -i '(ILEN = {insert_size})' --regions chr{chromosome}:{start}-{end} {sites_only}"

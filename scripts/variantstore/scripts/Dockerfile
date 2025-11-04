@@ -50,7 +50,7 @@ COPY --from=build /vcftools /vcftools
 # Copy the application source code.
 RUN mkdir /app
 COPY *.py /app/
-COPY /variant_annotation_table/pseudo_vids_only_in_vat/*.py /app/
+COPY /variant_annotation_table/left_alignment_fixups/*.py /app/
 COPY *.sql /app/
 
 # Copy the schema files needed for VAT creation.
