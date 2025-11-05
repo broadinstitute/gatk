@@ -48,6 +48,7 @@ public class DiscordantPairEvidenceGenotyper {
     private static class NamedSimpleInterval implements Locatable {
         private final String name;
         private final SimpleInterval interval;
+
         public NamedSimpleInterval(final String name, final SimpleInterval interval) {
             this.name = name;
             this.interval = interval;
@@ -81,7 +82,7 @@ public class DiscordantPairEvidenceGenotyper {
         }
     }
 
-    public DiscordantPairEvidenceGenotyper(final Map<String,Double> sampleCoverageMap, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
+    public DiscordantPairEvidenceGenotyper(final Map<String, Double> sampleCoverageMap, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
         this.minCount = computeCountCutoff(qualityCutoff);
         Utils.validateArg(maxQuality > 0, "Maximum quality must be greater than zero");
@@ -132,6 +133,10 @@ public class DiscordantPairEvidenceGenotyper {
         // TODO check all samples are in coverage map
         final Map<String, Double> counts = normalizeCounts(evidence, minCount);
         firstPassCounts.put(record.getId(), new FirstPassResult(counts, depthGenotypeResult, depthGenotypeSamples));
+    }
+
+    public boolean isTrainingRecord(final SVCallRecord record) {
+        return firstPassCounts.containsKey(record.getId());
     }
 
     // 0-counts are not added to map
@@ -199,7 +204,7 @@ public class DiscordantPairEvidenceGenotyper {
         final double homMedian = MEDIAN.evaluate(homCounts.stream().mapToDouble(Double::valueOf).toArray());
         final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
         final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
-        normalization = maxQuality / (- 10. * Math.log10(1 - Z_DISTRIBUTION.cumulativeProbability(0.5 * homMedian / sdHet)) - 3.0103);
+        normalization = maxQuality / (-10. * Math.log10(1 - Z_DISTRIBUTION.cumulativeProbability(0.5 * homMedian / sdHet)) - 3.0103);
         final PoissonDistribution poissonDistribution = new PoissonDistribution(0.5 * homMedian);
         normalizationVariant = maxQuality / (-10. * Math.log10(poissonDistribution.cumulativeProbability(0)));
         secondPassMade = true;
@@ -207,7 +212,7 @@ public class DiscordantPairEvidenceGenotyper {
     }
 
     public DiscordantPairGenotypeResult genotype(final SVCallRecord record, final List<DiscordantPairEvidence> evidence,
-                                                       final DiscordantPairGenotypeParameters parameters, final List<String> samples) {
+                                                 final DiscordantPairGenotypeParameters parameters, final List<String> samples) {
         final Map<String, Double> counts = normalizeCounts(evidence, 0);
         final int[] genotypes = new int[samples.size()];
         final int[] genotypeQuals = new int[samples.size()];
@@ -215,7 +220,7 @@ public class DiscordantPairEvidenceGenotyper {
         for (int i = 0; i < samples.size(); i++) {
             final String sample = samples.get(i);
             final double discordantPairCount = counts.getOrDefault(sample, 0.);
-            if (discordantPairCount < minCount) {
+            if (discordantPairCount < parameters.minCount) {
                 genotypes[i] = 0;
             } else if (discordantPairCount <= parameters.medianHom - parameters.sdHet) {
                 genotypes[i] = 1;
@@ -227,7 +232,7 @@ public class DiscordantPairEvidenceGenotyper {
                     genotypeQuals[i] = maxQuality;
                 } else {
                     final PoissonDistribution dist = new PoissonDistribution(discordantPairCount);
-                    genotypeQuals[i] = (int) Math.round(- 10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
+                    genotypeQuals[i] = (int) Math.round(-10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
                 }
             } else {
                 final double z0 = discordantPairCount - genotypes[i] * parameters.medianHom * 0.5;
@@ -245,7 +250,7 @@ public class DiscordantPairEvidenceGenotyper {
         }
         final double medianCarrierQual = MEDIAN.evaluate(nonRefQuals.stream().mapToDouble(Double::valueOf).toArray());
         final PoissonDistribution variantQualDist = new PoissonDistribution(medianCarrierQual);
-        final double variantQual = - 10. * Math.log10(variantQualDist.cumulativeProbability(0)) * normalizationVariant;
+        final double variantQual = -10. * Math.log10(variantQualDist.cumulativeProbability(0)) * normalizationVariant;
         return new DiscordantPairGenotypeResult(genotypes, genotypeQuals, variantQual);
     }
 
@@ -320,6 +325,7 @@ public class DiscordantPairEvidenceGenotyper {
     private static final class FirstPassResult {
         private final Map<String, Double> counts;
         private final Map<String, Integer> depthGenotypes;
+
         public FirstPassResult(final Map<String, Double> counts, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype, final List<String> depthGenotypeSamples) {
             this.counts = counts;
             this.depthGenotypes = new HashMap<>();
@@ -351,6 +357,9 @@ public class DiscordantPairEvidenceGenotyper {
         }
     }
 
-    public record DiscordantPairGenotypeResult(int[] genotypes, int[] genotypeQuals, double variantQual) {}
-    public record DiscordantPairGenotypeParameters(double minCount, double medianHom, double sdHet) {}
+    public record DiscordantPairGenotypeResult(int[] genotypes, int[] genotypeQuals, double variantQual) {
+    }
+
+    public record DiscordantPairGenotypeParameters(double minCount, double medianHom, double sdHet) {
+    }
 }

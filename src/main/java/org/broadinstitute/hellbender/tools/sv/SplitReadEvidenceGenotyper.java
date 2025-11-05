@@ -5,6 +5,7 @@ import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.aggregation.EvidenceStatUtils;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -12,12 +13,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.stream.DoubleStream;
-import java.util.stream.Stream;
 
 public class SplitReadEvidenceGenotyper {
 
     private final int minSize;
-    private final int minCount;
+    private final int countCutoff;
     private final double targetCoverage;
     private final int maxQuality;
     private final Map<String, Double> sampleCoverageMap;
@@ -25,8 +25,6 @@ public class SplitReadEvidenceGenotyper {
     private Double hetMedian = null;
     private Double hetMad = null;
     private Double hetCutoff = null;
-    private Double normalization = null;
-    private Double normalizationVariant = null;
     private final List<Double> hetCounts;
     private final List<Double> homCounts;
     private boolean firstPassMade = false;
@@ -41,7 +39,7 @@ public class SplitReadEvidenceGenotyper {
 
     public SplitReadEvidenceGenotyper(final Map<String,Double> sampleCoverageMap, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
-        this.minCount = computeCountCutoff(qualityCutoff);
+        this.countCutoff = computeCountCutoff(qualityCutoff);
         Utils.validateArg(maxQuality > 0, "Maximum quality must be greater than zero");
         this.maxQuality = maxQuality;
         this.minSize = minSize;
@@ -61,7 +59,7 @@ public class SplitReadEvidenceGenotyper {
             }
             final double qual = QualityUtils.errorProbToQual(p);
             if (qual > qualityCutoff) {
-                return Math.max((i - 1) / 2, 1);
+                return Math.max(i - 1, 1);
             }
             i++;
         }
@@ -73,9 +71,23 @@ public class SplitReadEvidenceGenotyper {
         Utils.nonNull(endEvidence);
         Utils.validate(!firstPassMade, "First pass already made");
         // TODO check all samples are in coverage map
+        final int minCount = Math.max(countCutoff / 2, 1);
         final Map<String, Double> startCounts = normalizeCounts(startEvidence, minCount);
         final Map<String, Double> endCounts = normalizeCounts(endEvidence, minCount);
-        firstPassCounts.put(record.getId(), new FirstPassResult(startCounts, endCounts, depthGenotype, depthGenotypeSamples));
+        if (bothSideSupport(startCounts, endCounts)) {
+            firstPassCounts.put(record.getId(), new FirstPassResult(startCounts, endCounts, depthGenotype, depthGenotypeSamples));
+        }
+    }
+
+    // Assumes samples with 0 counts are not present in the key set
+    private static boolean bothSideSupport(final Map<String, Double> startCounts,
+                                           final Map<String, Double> endCounts) {
+        for (final String sample : startCounts.keySet()) {
+            if (endCounts.containsKey(sample)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Map<String, Double> normalizeCounts(final List<SplitReadEvidence> evidence, final double threshold) {
@@ -132,21 +144,23 @@ public class SplitReadEvidenceGenotyper {
     }
 
     public SplitReadGenotypeParameters finalizeSecondPass() {
-        Utils.validate(!homCounts.isEmpty(), "No discordant pair counts after second pass");
-        Utils.validate(!hetCounts.isEmpty(), "No discordant pair counts after second pass");
+        Utils.validate(!homCounts.isEmpty(), "No split read counts after second pass");
+        Utils.validate(!hetCounts.isEmpty(), "No split read counts after second pass");
         Utils.validate(!secondPassMade, "Second pass has already been made");
         final double homMedian = MEDIAN.evaluate(homCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double sdHet = STD_DEV.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
-        normalization = maxQuality / (- 10. * Math.log10(1 - Z_DISTRIBUTION.cumulativeProbability(0.5 * homMedian / sdHet)) - 3.0103);
-        final PoissonDistribution poissonDistribution = new PoissonDistribution(0.5 * homMedian);
-        normalizationVariant = maxQuality / (-10. * Math.log10(poissonDistribution.cumulativeProbability(0)));
+        final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
+        final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
         secondPassMade = true;
-        return new SplitReadGenotypeParameters(minCount, homMedian, sdHet);
+        return new SplitReadGenotypeParameters(countCutoff, homMedian, sdHet);
     }
 
-    public SplitReadGenotypeResult genotype(final SVCallRecord record, final List<SplitReadEvidence> startEvidence,
+    public SplitReadGenotypeResult genotype(final SVCallRecord record,
+                                            final List<SplitReadEvidence> startEvidence,
                                             final List<SplitReadEvidence> endEvidence,
-                                            final SplitReadGenotypeParameters parameters, final List<String> samples) {
+                                            final SplitReadGenotypeParameters parameters,
+                                            final List<String> samples) {
+        final double normalization = 1; // TODO
+        final double normalizationVariant = 1; // TODO
         final Map<String, Double> startCounts = normalizeCounts(startEvidence, 0);
         final Map<String, Double> endCounts = normalizeCounts(endEvidence, 0);
         final int[] genotypes = new int[samples.size()];
@@ -156,22 +170,23 @@ public class SplitReadEvidenceGenotyper {
             final String sample = samples.get(i);
             final double startCount = startCounts.getOrDefault(sample, 0.);
             final double endCount = endCounts.getOrDefault(sample, 0.);
-            if (startCount < minCount) {
+            final double countSum = startCount + endCount;
+            if (!bothSideSupport(startCounts, endCounts) || countSum < parameters.minCount) {
                 genotypes[i] = 0;
-            } else if (startCount <= parameters.medianHom - parameters.sdHet) {
+            } else if (countSum <= parameters.medianHom - parameters.sdHet) {
                 genotypes[i] = 1;
             } else {
-                genotypes[i] = (int) ((startCount / (parameters.medianHom * 0.5)) + 0.5);
+                genotypes[i] = (int) ((countSum / (parameters.medianHom * 0.5)) + 0.5);
             }
             if (genotypes[i] == 0) {
-                if (startCount == 0) {
+                if (countSum == 0) {
                     genotypeQuals[i] = maxQuality;
                 } else {
-                    final PoissonDistribution dist = new PoissonDistribution(startCount);
-                    genotypeQuals[i] = (int) Math.round(- 10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
+                    final PoissonDistribution dist = new PoissonDistribution(countSum);
+                    genotypeQuals[i] = (int) Math.round(-10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
                 }
             } else {
-                final double z0 = startCount - genotypes[i] * parameters.medianHom * 0.5;
+                final double z0 = countSum - genotypes[i] * parameters.medianHom * 0.5;
                 final double z1 = z0 + parameters.medianHom * 0.5;
                 final double z2 = z0 - parameters.medianHom * 0.5;
                 final double q0 = getGenotypeLikelihood(z0, parameters.sdHet);
@@ -186,7 +201,7 @@ public class SplitReadEvidenceGenotyper {
         }
         final double medianCarrierQual = MEDIAN.evaluate(nonRefQuals.stream().mapToDouble(Double::valueOf).toArray());
         final PoissonDistribution variantQualDist = new PoissonDistribution(medianCarrierQual);
-        final double variantQual = - 10. * Math.log10(variantQualDist.cumulativeProbability(0)) * normalizationVariant;
+        final double variantQual = -10. * Math.log10(variantQualDist.cumulativeProbability(0)) * normalizationVariant;
         return new SplitReadGenotypeResult(genotypes, genotypeQuals, variantQual);
     }
 
@@ -195,16 +210,18 @@ public class SplitReadEvidenceGenotyper {
     }
 
     public boolean trainableRecord(final SVCallRecord record,
-                                   final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype,
-                                   final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discordantPairGenotype,
+                                   final DiscordantPairEvidenceGenotyper discordantPairGenotyper,
                                    final SVStratificationEngine exclusionEngine) {
-        if (discordantPairGenotype == null) {
+        if (!discordantPairGenotyper.isTrainingRecord(record)) {
             return false;
         }
         if (record.getLength() == null || record.getLength() < minSize) {
             return false;
         }
         if (exclusionEngine != null && !exclusionEngine.getMatches(record, 0, 1, 1).isEmpty()) {
+            return false;
+        }
+        if (!record.getEvidence().contains(GATKSVVCFConstants.EvidenceTypes.SR)) {
             return false;
         }
         return true;

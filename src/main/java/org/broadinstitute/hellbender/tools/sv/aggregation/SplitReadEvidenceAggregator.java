@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.tools.sv.aggregation;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -35,7 +37,9 @@ public class SplitReadEvidenceAggregator extends SVEvidenceAggregator<SplitReadE
 
     @Override
     public SimpleInterval getEvidenceQueryInterval(final SVCallRecord call) {
-        return isStart ? getStartEvidenceQueryInterval(call, window, dictionary) : getEndEvidenceQueryInterval(call, window, dictionary);
+        final SimpleInterval windowed = isStart ? getStartEvidenceQueryInterval(call, window, dictionary) : getEndEvidenceQueryInterval(call, window, dictionary);
+        // Need to shift by 1
+        return shiftInterval(windowed, 1);
     }
 
     public static SimpleInterval getStartEvidenceQueryInterval(final SVCallRecord call, final int window, final SAMSequenceDictionary dictionary) {
@@ -48,6 +52,10 @@ public class SplitReadEvidenceAggregator extends SVEvidenceAggregator<SplitReadE
         final SimpleInterval result = call.getPositionBInterval().expandWithinContig(window, dictionary);
         Utils.nonNull(result, "Error generating padded interval for variant " + call.getId() + "; check that its coordinates are valid");
         return result;
+    }
+
+    private static SimpleInterval shiftInterval(final SimpleInterval interval, final int shiftBy) {
+        return new SimpleInterval(interval.getContig(), interval.getStart() + shiftBy, interval.getEnd() + shiftBy);
     }
 
     @Override

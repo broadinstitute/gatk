@@ -277,6 +277,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     private Map<String, DepthEvidenceGenotyper.DepthGenotypeResult> depthGenotypeResults;
     private Map<String, DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult> discordantPairGenotypeResults;
+    private Map<String, SplitReadEvidenceGenotyper.SplitReadGenotypeResult> splitReadGenotypeResults;
 
     private FeatureDataSource<DiscordantPairEvidence> discordantPairSource;
     private DiscordantPairEvidenceAggregator discordantPairCollector;
@@ -287,6 +288,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private SplitReadEvidenceAggregator splitReadStartCollector;
     private SplitReadEvidenceAggregator splitReadEndCollector;
     private SplitReadEvidenceGenotyper splitReadGenotyper;
+    private SplitReadEvidenceGenotyper.SplitReadGenotypeParameters splitReadParameters;
 
     private SVStratificationEngine pesrExclusionEngine;
 
@@ -295,7 +297,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private static final String PESR_EXCLUSION_STRATIFICATION = "pesrex";
 
     protected int numberOfPasses() {
-        return 6;
+        return 8;
     }
 
     private void initializeDiscordantPairCollection() {
@@ -340,6 +342,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
         depthGenotypeResults = new HashMap<>();
         discordantPairGenotypeResults = new HashMap<>();
+        splitReadGenotypeResults = new HashMap<>();
 
         if (splitReadCollectionEnabled()) {
             Utils.validate(discordantPairCollectionEnabled(), "Discordant pairs file must be provided for split read training");
@@ -414,8 +417,12 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         } else if (n == 3) {
             applyDiscordantPairThirdPass(record);
         } else if (n == 4) {
-            applySplitRead(record);
+            applySplitReadFirstPass(record);
         } else if (n == 5) {
+            applySplitReadSecondPass(record);
+        } else if (n == 6) {
+            applySplitReadThirdPass(record);
+        } else if (n == 7) {
             writeGenotypes(record);
         } else {
             throw new GATKException("Unexpected number of passes: " + n);
@@ -442,6 +449,11 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                 builder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE, result.genotypes()[i]);
                 builder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE, result.genotypeQuals()[i]);
             }
+            if (splitReadGenotypeResults.containsKey(record.getId())) {
+                final SplitReadEvidenceGenotyper.SplitReadGenotypeResult result = splitReadGenotypeResults.get(record.getId());
+                builder.attribute(GATKSVVCFConstants.SPLIT_READ_GENOTYPE_ATTRIBUTE, result.genotypes()[i]);
+                builder.attribute(GATKSVVCFConstants.SPLIT_READ_GENOTYPE_QUALITY_ATTRIBUTE, result.genotypeQuals()[i]);
+            }
             newGenotypeList.add(builder.make());
         }
         final GenotypesContext newGenotypes = GenotypesContext.create(newGenotypeList);
@@ -460,6 +472,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             discordantPairParameters = discordantPairGenotyper.finalizeSecondPass();
         } else if (n == 4 && splitReadCollectionEnabled()) {
             splitReadGenotyper.finalizeFirstPass();
+        } else if (n == 5 && splitReadCollectionEnabled()) {
+            splitReadParameters = splitReadGenotyper.finalizeSecondPass();
         }
     }
 
@@ -520,16 +534,37 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         return splitReadsFile != null;
     }
 
-    private void applySplitRead(final SVCallRecord record) {
+    private void applySplitReadFirstPass(final SVCallRecord record) {
         if (splitReadCollectionEnabled()
                 && depthGenotypeResults.containsKey(record.getId())
                 && discordantPairGenotypeResults.containsKey(record.getId())) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
-            final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discorantPairResult = discordantPairGenotypeResults.get(record.getId());
-            if (splitReadGenotyper.trainableRecord(record, depthResult, discorantPairResult, pesrExclusionEngine)) {
+            if (splitReadGenotyper.trainableRecord(record, discordantPairGenotyper, pesrExclusionEngine)) {
                 final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
                 final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
                 splitReadGenotyper.addFirstPass(record, startSplitReads, endSplitReads, depthResult, masterSampleList);
+            }
+        }
+    }
+
+    private void applySplitReadSecondPass(final SVCallRecord record) {
+        if (splitReadCollectionEnabled()
+                && depthGenotypeResults.containsKey(record.getId())) {
+            final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
+            splitReadGenotyper.addSecondPass(record, depthResult, masterSampleList);
+        }
+    }
+
+    private void applySplitReadThirdPass(final SVCallRecord record) {
+        if (splitReadCollectionEnabled()) {
+            final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
+            final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
+            final SplitReadEvidenceGenotyper.SplitReadGenotypeResult genotypeResult = splitReadGenotyper.genotype(record, startSplitReads, endSplitReads, splitReadParameters, masterSampleList);
+            if (splitReadGenotypeResults.containsKey(record.getContigA())) {
+                throw new UserException.BadInput("Duplicate variant ID: " + record.getId());
+            }
+            if (genotypeResult != null) {
+                splitReadGenotypeResults.put(record.getId(), genotypeResult);
             }
         }
     }
@@ -588,6 +623,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 1, VCFHeaderLineType.Integer, "Expected copy number for ref genotype"));
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Discordant pair genotype"));
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Discordant pair genotyping quality"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.SPLIT_READ_GENOTYPE_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read genotype"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.SPLIT_READ_GENOTYPE_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read genotyping quality"));
         header.addMetaDataLine(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
         return header;
     }

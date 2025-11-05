@@ -190,6 +190,8 @@ public final class GATKSVVCFConstants {
     // pesr genotyping
     public static final String DISCORDANT_PAIR_GENOTYPE_QUALITY_ATTRIBUTE = "PE_GQ";
     public static final String DISCORDANT_PAIR_GENOTYPE_ATTRIBUTE = "PE_GT";
+    public static final String SPLIT_READ_GENOTYPE_QUALITY_ATTRIBUTE = "SR_GQ";
+    public static final String SPLIT_READ_GENOTYPE_ATTRIBUTE = "SR_GT";
 
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
