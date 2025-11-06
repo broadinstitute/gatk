@@ -351,7 +351,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         initializeDiscordantPairCollection();
         initializeSplitReadCollection();
         discordantPairGenotyper = new DiscordantPairEvidenceGenotyper(sampleMedians, minDiscordantPairQuality, minPesrSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
-        splitReadGenotyper = new SplitReadEvidenceGenotyper(sampleMedians, minSplitReadQuality, minPesrSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
+        splitReadGenotyper = new SplitReadEvidenceGenotyper(sampleMedians, masterSampleList.size(), minSplitReadQuality, minPesrSize, PESREvidenceTester.DEPTH_BASIS, maxQual);
 
         if (pesrExclusionIntervalsPath != null) {
             pesrExclusionEngine = new SVStratificationEngine(dictionary);
@@ -474,6 +474,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             splitReadGenotyper.finalizeFirstPass();
         } else if (n == 5 && splitReadCollectionEnabled()) {
             splitReadParameters = splitReadGenotyper.finalizeSecondPass();
+        } else if (n == 6 && splitReadCollectionEnabled()) {
+            splitReadGenotyper.finalizeThirdPass();
         }
     }
 

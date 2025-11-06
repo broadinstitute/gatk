@@ -8,11 +8,13 @@ import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.aggregation.EvidenceStatUtils;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
 
 public class SplitReadEvidenceGenotyper {
 
@@ -21,32 +23,48 @@ public class SplitReadEvidenceGenotyper {
     private final double targetCoverage;
     private final int maxQuality;
     private final Map<String, Double> sampleCoverageMap;
-    private final Map<String, FirstPassResult> firstPassCounts;
+    private final Map<String, FirstPassResult> firstPassCounts = new HashMap<>();
     private Double hetMedian = null;
     private Double hetMad = null;
     private Double hetCutoff = null;
-    private final List<Double> hetCounts;
-    private final List<Double> homCounts;
+    private final List<Double> hetCounts = new ArrayList<>();
+    private final List<Double> homCounts = new ArrayList<>();
     private boolean firstPassMade = false;
     private boolean secondPassMade = false;
+    private boolean thirdPassMade = false;
+
+    private final int rareMin;
+    private final int rareMax;
+    private final int commonMin;
+    private final int commonMax;
+
+    private Double commonSingle;
+    private Double commonBoth;
+    private Double rareSingle;
+    private Double rareBoth;
+
+    private final List<RecoverResult> recoverSinglePass = new ArrayList<>();
+    private final List<RecoverResult> recoverSingleFail = new ArrayList<>();
+    private final List<RecoverResult> recoverBothPass = new ArrayList<>();
+    private final List<RecoverResult> recoverBothFail = new ArrayList<>();
 
     private static final Median MEDIAN = new Median();
     private static final NormalDistribution Z_DISTRIBUTION = new NormalDistribution();
-    private static final StandardDeviation STD_DEV = new StandardDeviation();
 
     private static final Set<Integer> HET_COPY_STATES = Set.of(1, 3);
     private static final Set<Integer> HOM_COPY_STATES = Set.of(0, 4);
 
-    public SplitReadEvidenceGenotyper(final Map<String,Double> sampleCoverageMap, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
+    public SplitReadEvidenceGenotyper(final Map<String,Double> sampleCoverageMap, final int numSamples, final double qualityCutoff, final int minSize, final double targetCoverage, final int maxQuality) {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
         this.countCutoff = computeCountCutoff(qualityCutoff);
         Utils.validateArg(maxQuality > 0, "Maximum quality must be greater than zero");
         this.maxQuality = maxQuality;
         this.minSize = minSize;
         this.targetCoverage = targetCoverage;
-        this.firstPassCounts = new HashMap<>();
-        this.hetCounts = new ArrayList<>();
-        this.homCounts = new ArrayList<>();
+        this.rareMin = 0;
+        this.rareMax = Math.max(numSamples / 100, 2);
+        this.commonMin = rareMax;
+        this.commonMax = numSamples;
     }
 
     private static int computeCountCutoff(final double qualityCutoff) {
@@ -143,6 +161,60 @@ public class SplitReadEvidenceGenotyper {
         firstPassMade = true;
     }
 
+    private record RecoverResult(int count, double frac) {}
+    private record CutoffResult(double fracSingle, double fracBoth, int countPass, int countFail) {}
+
+    private static int countCutoff(final List<RecoverResult> list, final double frac, final double freqMin, final double freqMax) {
+        return (int) list.stream().filter(r -> r.frac >= frac && r.count > freqMin && r.count <= freqMax ).count();
+    }
+
+    private CutoffResult countAtCutoff(final double fracSingle, final double fracBoth, final int freqMin, final int freqMax) {
+        final int recoverSinglePassCount = countCutoff(recoverSinglePass, fracSingle, freqMin, freqMax);
+        final int recoverSingleFailCount = countCutoff(recoverSingleFail, fracSingle, freqMin, freqMax);
+        final int recoverBothPassCount = countCutoff(recoverBothPass, fracBoth, freqMin, freqMax);
+        final int recoverBothFailCount = countCutoff(recoverBothFail, fracBoth, freqMin, freqMax);
+        return new CutoffResult(fracSingle, fracBoth, recoverSinglePassCount + recoverBothPassCount, recoverSingleFailCount + recoverBothFailCount);
+    }
+
+    public void finalizeThirdPass() {
+        Utils.validate(!thirdPassMade, "Third pass has already been made");
+        final double[] cutoffs = IntStream.rangeClosed(0, 10).mapToDouble(i -> i * 0.1).toArray();
+        final CutoffResult commonResult = cutoffOptimization(cutoffs, commonMin, commonMax);
+        final CutoffResult rareResult = cutoffOptimization(cutoffs, rareMin, rareMax);
+        commonSingle = commonResult.fracSingle;
+        commonBoth = commonResult.fracBoth;
+        rareSingle = rareResult.fracSingle;
+        rareBoth = rareResult.fracBoth;
+        thirdPassMade = true;
+    }
+
+    private CutoffResult cutoffOptimization(final double[] cutoffs, final int freqMin, final int freqMax) {
+        final List<CutoffResult> combine = new ArrayList<>();
+        for (final Double fracSingle : cutoffs) {
+            for (final Double fracBoth : cutoffs) {
+                combine.add(countAtCutoff(fracSingle, fracBoth, freqMin, freqMax));
+            }
+        }
+        final double baseline = computeBaseline(combine);
+        final int maxIndex = MathUtils.maxElementIndex(combine.stream().mapToDouble(c -> computeCutoffScore(c, baseline)).toArray());
+        return combine.get(maxIndex);
+    }
+
+    private static double computeBaseline(final List<CutoffResult> list) {
+        for (final CutoffResult result : list) {
+            if (result.fracSingle == 0 && result.fracBoth == 0) {
+                return result.countPass;
+            }
+        }
+        throw new IllegalArgumentException("List did not contain 0-fraction entry");
+    }
+
+    final double computeCutoffScore(final CutoffResult cutoffResult, final double baseline) {
+        final double a = cutoffResult.countFail / (double) (cutoffResult.countFail + cutoffResult.countPass);
+        final double b = (cutoffResult.countPass / baseline) - 1;
+        return -((a * a) + (b * b));
+    }
+
     public void addSecondPass(final SVCallRecord record, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype,
                               final List<String> depthGenotypeSamples) {
         Utils.nonNull(record);
@@ -219,15 +291,6 @@ public class SplitReadEvidenceGenotyper {
         final int twoSidedPassCount = countBothSideSupport(startCounts, endCounts, minCount);
         final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
         final int samplesOverOneCount = countSummedSupport(startCounts, endCounts, 1);
-        final int rareMin = 0;
-        final int rareMax = Math.max(samples.size() / 100, 2);
-        final int commonMin = rareMax;
-        final int commonMax = samples.size();
-
-        final List<Double> recoverSinglePass = new ArrayList<>();
-        final List<Double> recoverSingleFail = new ArrayList<>();
-        final List<Double> recoverBothPass = new ArrayList<>();
-        final List<Double> recoverBothFail = new ArrayList<>();
         final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
         final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
         for (int i = 0; i < samples.size(); i++) {
@@ -235,35 +298,30 @@ public class SplitReadEvidenceGenotyper {
             final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypeQuals()[i] > 0;
             final boolean nonRefDepth = depthGenotype != null && depthGenotype.copyStates()[i] != 2;
             final boolean pass = nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth); // TODO should || be && ?
-
-            if (record.getId().equals("all_samples_manta_chr20_00000008") && samples.get(i).equals("HG03085")) {
-                int x = 0;
-            }
-            final double startCount = startCounts.getOrDefault(samples.get(i), 0.0);
-            final double endCount = endCounts.getOrDefault(samples.get(i), 0.0);
             if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
                 // compute ratio with number of fully supported samples
                 // recover.bothsides.txt
                 if (genotypes[i] > 0) {
+                    final RecoverResult result = new RecoverResult(twoSidedPassCount, backgroundRatio);
                     if (pass) {
                         // recover.both.txt
-                        recoverBothPass.add(backgroundRatio);
+                        recoverBothPass.add(result);
                     } else {
                         // recover.both.fail.txt
-                        recoverBothFail.add(backgroundRatio);
+                        recoverBothFail.add(result);
                     }
                 }
-            }
-            if (samplesOverOneCount > 0 && nonRefCount > 0) {
+            } else if (samplesOverOneCount > 0 && nonRefCount > 0) {  // in original code, this is not an "else" but records are deduplicated later in optimalsrcutoffs.sh
                 // One-sided support
                 if (genotypes[i] > 0) {
+                    final RecoverResult result = new RecoverResult(nonRefCount, genotypeRatio);
                     // recover.txt
                     if (pass) {
                         // recover.single.txt
-                        recoverSinglePass.add(genotypeRatio);
+                        recoverSinglePass.add(result);
                     } else {
                         // recover.single.fail.txt
-                        recoverSingleFail.add(genotypeRatio);
+                        recoverSingleFail.add(result);
                     }
                 }
             }
