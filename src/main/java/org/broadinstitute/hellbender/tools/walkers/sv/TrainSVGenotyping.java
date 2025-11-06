@@ -559,7 +559,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         if (splitReadCollectionEnabled()) {
             final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
             final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
-            final SplitReadEvidenceGenotyper.SplitReadGenotypeResult genotypeResult = splitReadGenotyper.genotype(record, startSplitReads, endSplitReads, splitReadParameters, masterSampleList);
+            final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype = depthGenotypeResults.get(record.getId());
+            final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discordantPairGenotype = discordantPairGenotypeResults.get(record.getId());
+            final SplitReadEvidenceGenotyper.SplitReadGenotypeResult genotypeResult = splitReadGenotyper.genotype(record, startSplitReads, endSplitReads, depthGenotype, discordantPairGenotype, splitReadParameters, masterSampleList);
             if (splitReadGenotypeResults.containsKey(record.getContigA())) {
                 throw new UserException.BadInput("Duplicate variant ID: " + record.getId());
             }

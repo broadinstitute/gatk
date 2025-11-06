@@ -72,30 +72,60 @@ public class SplitReadEvidenceGenotyper {
         Utils.validate(!firstPassMade, "First pass already made");
         // TODO check all samples are in coverage map
         final int minCount = Math.max(countCutoff / 2, 1);
-        final Map<String, Double> startCounts = normalizeCounts(startEvidence, minCount);
-        final Map<String, Double> endCounts = normalizeCounts(endEvidence, minCount);
-        if (bothSideSupport(startCounts, endCounts)) {
+        final Map<String, Double> startCounts = normalizeCounts(startEvidence);
+        final Map<String, Double> endCounts = normalizeCounts(endEvidence);
+        if (hasBothSideSupport(startCounts, endCounts, minCount)) {
             firstPassCounts.put(record.getId(), new FirstPassResult(startCounts, endCounts, depthGenotype, depthGenotypeSamples));
         }
     }
 
     // Assumes samples with 0 counts are not present in the key set
-    private static boolean bothSideSupport(final Map<String, Double> startCounts,
-                                           final Map<String, Double> endCounts) {
-        for (final String sample : startCounts.keySet()) {
-            if (endCounts.containsKey(sample)) {
-                return true;
+    private static boolean hasBothSideSupport(final Map<String, Double> startCounts,
+                                              final Map<String, Double> endCounts, final double threshold) {
+        for (final Map.Entry<String, Double> entry : startCounts.entrySet()) {
+            if (entry.getValue() >= threshold) {
+                if (endCounts.getOrDefault(entry.getKey(), 0.0) >= threshold) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
-    private Map<String, Double> normalizeCounts(final List<SplitReadEvidence> evidence, final double threshold) {
+    // Assumes samples with 0 counts are not present in the key set
+    private static int countBothSideSupport(final Map<String, Double> startCounts,
+                                            final Map<String, Double> endCounts, final double threshold) {
+        int count = 0;
+        for (final Map.Entry<String, Double> entry : startCounts.entrySet()) {
+            if (entry.getValue() > threshold) {
+                if (endCounts.getOrDefault(entry.getKey(), 0.0) > threshold) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    // Assumes samples with 0 counts are not present in the key set
+    private static int countSummedSupport(final Map<String, Double> startCounts,
+                                          final Map<String, Double> endCounts, final double threshold) {
+        int count = 0;
+        final Set<String> samples = Sets.union(startCounts.keySet(), endCounts.keySet());
+        for (final String sample : samples) {
+            final double sum = startCounts.getOrDefault(sample, 0.0) + endCounts.getOrDefault(sample, 0.0);
+            if (sum > threshold) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private Map<String, Double> normalizeCounts(final List<SplitReadEvidence> evidence) {
         final Map<String, Double> counts = new HashMap<>();
         for (final SplitReadEvidence e : evidence) {
             final double sampleCoverage = sampleCoverageMap.getOrDefault(e.getSample(), 0.);
             final double normalizedCount = EvidenceStatUtils.getNormalizedCount(e.getCount(), sampleCoverage, targetCoverage);
-            if (normalizedCount > 0 && normalizedCount >= threshold) {
+            if (normalizedCount > 0) {
                 counts.put(e.getSample(), normalizedCount);
             }
         }
@@ -157,36 +187,105 @@ public class SplitReadEvidenceGenotyper {
     public SplitReadGenotypeResult genotype(final SVCallRecord record,
                                             final List<SplitReadEvidence> startEvidence,
                                             final List<SplitReadEvidence> endEvidence,
+                                            final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype,
+                                            final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discordantPairGenotype,
                                             final SplitReadGenotypeParameters parameters,
                                             final List<String> samples) {
-        final double normalization = 1; // TODO
-        final double normalizationVariant = 1; // TODO
-        final Map<String, Double> startCounts = normalizeCounts(startEvidence, 0);
-        final Map<String, Double> endCounts = normalizeCounts(endEvidence, 0);
+        final Map<String, Double> startCounts = normalizeCounts(startEvidence);
+        final Map<String, Double> endCounts = normalizeCounts(endEvidence);
         final int[] genotypes = new int[samples.size()];
+        final double[] countSum = new double[samples.size()];
         final int[] genotypeQuals = new int[samples.size()];
         final List<Integer> nonRefQuals = new ArrayList<>(samples.size());
+        int nonRefCount = 0;
         for (int i = 0; i < samples.size(); i++) {
             final String sample = samples.get(i);
             final double startCount = startCounts.getOrDefault(sample, 0.);
             final double endCount = endCounts.getOrDefault(sample, 0.);
-            final double countSum = startCount + endCount;
-            if (!bothSideSupport(startCounts, endCounts) || countSum < parameters.minCount) {
+            countSum[i] = startCount + endCount;if (countSum[i] < parameters.minCount) {
                 genotypes[i] = 0;
-            } else if (countSum <= parameters.medianHom - parameters.sdHet) {
+            } else if (countSum[i] <= parameters.medianHom - parameters.sdHet) {
                 genotypes[i] = 1;
             } else {
-                genotypes[i] = (int) ((countSum / (parameters.medianHom * 0.5)) + 0.5);
+                genotypes[i] = (int) ((countSum[i] / (parameters.medianHom * 0.5)) + 0.5);
             }
+            if (genotypes[i] != 0) {
+                ++nonRefCount;
+            }
+        }
+        final boolean largeEnough = record.getLength() != null && record.getLength() >= minSize;
+        final boolean hasSplitReadEvidence = record.getEvidence().contains(GATKSVVCFConstants.EvidenceTypes.SR);
+        final int minCount = Math.max(countCutoff / 2, 1);
+        final int twoSidedPassCount = countBothSideSupport(startCounts, endCounts, minCount);
+        final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
+        final int samplesOverOneCount = countSummedSupport(startCounts, endCounts, 1);
+        final int rareMin = 0;
+        final int rareMax = Math.max(samples.size() / 100, 2);
+        final int commonMin = rareMax;
+        final int commonMax = samples.size();
+
+        final List<Double> recoverSinglePass = new ArrayList<>();
+        final List<Double> recoverSingleFail = new ArrayList<>();
+        final List<Double> recoverBothPass = new ArrayList<>();
+        final List<Double> recoverBothFail = new ArrayList<>();
+        final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
+        final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
+        for (int i = 0; i < samples.size(); i++) {
+            // TODO this is a bug I think - should check for non-ref genotype not GQ>0
+            final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypeQuals()[i] > 0;
+            final boolean nonRefDepth = depthGenotype != null && depthGenotype.copyStates()[i] != 2;
+            final boolean pass = nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth); // TODO should || be && ?
+
+            if (record.getId().equals("all_samples_manta_chr20_00000008") && samples.get(i).equals("HG03085")) {
+                int x = 0;
+            }
+            final double startCount = startCounts.getOrDefault(samples.get(i), 0.0);
+            final double endCount = endCounts.getOrDefault(samples.get(i), 0.0);
+            if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
+                // compute ratio with number of fully supported samples
+                // recover.bothsides.txt
+                if (genotypes[i] > 0) {
+                    if (pass) {
+                        // recover.both.txt
+                        recoverBothPass.add(backgroundRatio);
+                    } else {
+                        // recover.both.fail.txt
+                        recoverBothFail.add(backgroundRatio);
+                    }
+                }
+            }
+            if (samplesOverOneCount > 0 && nonRefCount > 0) {
+                // One-sided support
+                if (genotypes[i] > 0) {
+                    // recover.txt
+                    if (pass) {
+                        // recover.single.txt
+                        recoverSinglePass.add(genotypeRatio);
+                    } else {
+                        // recover.single.fail.txt
+                        recoverSingleFail.add(genotypeRatio);
+                    }
+                }
+            }
+        }
+
+        if (record.getId().equals("all_samples_wham_chr20_0000000e")) {
+            int x = 0;
+        }
+
+        // Quality scoring
+        final double normalization = 1; // TODO
+        final double normalizationVariant = 1; // TODO
+        for (int i = 0; i < samples.size(); i++) {
             if (genotypes[i] == 0) {
-                if (countSum == 0) {
+                if (countSum[i] == 0) {
                     genotypeQuals[i] = maxQuality;
                 } else {
-                    final PoissonDistribution dist = new PoissonDistribution(countSum);
+                    final PoissonDistribution dist = new PoissonDistribution(countSum[i]);
                     genotypeQuals[i] = (int) Math.round(-10. * Math.log10(1. - dist.cumulativeProbability(0)) * normalization);
                 }
             } else {
-                final double z0 = countSum - genotypes[i] * parameters.medianHom * 0.5;
+                final double z0 = countSum[i] - genotypes[i] * parameters.medianHom * 0.5;
                 final double z1 = z0 + parameters.medianHom * 0.5;
                 final double z2 = z0 - parameters.medianHom * 0.5;
                 final double q0 = getGenotypeLikelihood(z0, parameters.sdHet);
