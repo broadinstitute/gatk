@@ -193,6 +193,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20251107_1_MoreMem
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
