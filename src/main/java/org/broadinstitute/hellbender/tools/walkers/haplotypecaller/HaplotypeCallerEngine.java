@@ -661,13 +661,16 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
         MinimalGenotypingEngine localActiveGenotypingEngine = getLocalActiveGenotyper(ref);
-
+        boolean forceCallFlag = false;
         if (forceCallingAllelesPresent && features.getValues(hcArgs.alleles, ref).stream().anyMatch(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
+            forceCallFlag = true;
         }
 
         if (context == null || context.getBasePileup().isEmpty()) {
             // if we don't have any data, just abort early
+            if (forceCallFlag){
+                return new ActivityProfileState(ref.getInterval(),1.0);
+            }
             return new ActivityProfileState(ref.getInterval(), 0.0);
         }
 
@@ -697,6 +700,10 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     hcArgs.minBaseQualityScore,
                     averageHQSoftClips, false, hcArgs.activeRegionAltMultiplier)).genotypeLikelihoods;
             genotypes.add(new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make());
+        }
+
+        if (forceCallFlag){
+            return new ActivityProfileState(ref.getInterval(), 1.0);
         }
 
         final List<Allele> alleles = Arrays.asList(FAKE_REF_ALLELE, FAKE_ALT_ALLELE);
