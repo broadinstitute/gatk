@@ -165,7 +165,11 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
          * */
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations().stream().filter(a -> a.getClass()!=ReferenceBases.class).collect(Collectors.toList()), dbSNPBinding, features, false, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations().stream()
+                .filter(a -> a.getClass()!=ReferenceBases.class)
+                .filter(a-> a.getClass()!=MappingQuality0Count.class)
+                .filter(a->a.getClass()!=ClippedReadsCount.class)
+                .collect(Collectors.toList()), dbSNPBinding, features, false, false);
         Assert.assertFalse(vae.getVCFAnnotationDescriptions(false).contains(null));
 
         final int alt = 5;

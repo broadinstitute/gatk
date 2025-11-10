@@ -45,8 +45,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String NUM_MATCHING_BASES_IN_DANGLING_END_TO_RECOVER_LONG_NAME = "num-matching-bases-in-dangling-end-to-recover";
     public static final String KMER_LENGTH_FOR_READ_ERROR_CORRECTION_LONG_NAME = "kmer-length-for-read-error-correction";
     public static final String MIN_OBSERVATIONS_FOR_KMER_TO_BE_SOLID_LONG_NAME = "min-observations-for-kmer-to-be-solid";
-
-
+    public static final String MIN_MAPPING_QUALITY_IN_ASSEMBLY_PILEUP_LONG_NAME = "min-mapping-quality-in-assembly-and-pileup";
 
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
@@ -245,5 +244,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName= MIN_OBSERVATIONS_FOR_KMER_TO_BE_SOLID_LONG_NAME, doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
 
+    @Hidden
+    @Argument(fullName= MIN_MAPPING_QUALITY_IN_ASSEMBLY_PILEUP_LONG_NAME, doc = "Minimal mapping quality to be used in allele discovery (assembly and pileup", optional=true)
+    public int minMappingQualityInAssemblyPileup = -1;
     public abstract ReadThreadingAssembler makeReadThreadingAssembler();
 }

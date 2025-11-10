@@ -220,7 +220,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      */
     public static <A extends Allele> double[] calculateFRDLikelihoods(final int ploidy, final LikelihoodMatrix<GATKRead, A> sampleLikelihoods, final double[] ploidyModelLikelihoods,
                                                                final List<DRAGENGenotypesModel.DragenReadContainer> readContainers,
-                                                               final double snipAprioriHet, final double indelAprioriHet, final int maxEffectiveDepthForHetAdjustment) {
+                                                               final double snipAprioriHet, final double indelAprioriHet, final int maxEffectiveDepthForHetAdjustment,
+                                                                      final double maxForeignReadFraction) {
         final int alleleCount = sampleLikelihoods.numberOfAlleles();
         final double[] outputArray = new double[GenotypeIndexCalculator.genotypeCount(ploidy, alleleCount)];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
@@ -257,14 +258,22 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                     HaplotypeCallerGenotypingDebugger.println("indexForGT "+indexForGT);
                     HaplotypeCallerGenotypingDebugger.println("\nForwards Strands: ");
                 }
-                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(sampleLikelihoods, gtAlleleIndex, fAlleleIndex, readContainers,
-                        c -> !c.isReverseStrand() , thresholds.getCriticalThresholdsTotal());
+                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(sampleLikelihoods, gtAlleleIndex, fAlleleIndex,readContainers, c -> !c.isReverseStrand() ,
+
+                        thresholds.getCriticalThresholdsTotal(),
+                        maxForeignReadFraction);
                 if (HaplotypeCallerGenotypingDebugger.isEnabled()) {  HaplotypeCallerGenotypingDebugger.println("\nReverse Strands: ");}
-                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(sampleLikelihoods, gtAlleleIndex, fAlleleIndex, readContainers,
-                        c -> c.isReverseStrand(), thresholds.getCriticalThresholdsTotal());
+                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(sampleLikelihoods, gtAlleleIndex, fAlleleIndex,readContainers,
+                        c -> c.isReverseStrand(),
+
+                        thresholds.getCriticalThresholdsTotal(),
+                        maxForeignReadFraction);
                 if (HaplotypeCallerGenotypingDebugger.isEnabled()) {  HaplotypeCallerGenotypingDebugger.println("\nBoth Strands: ");}
-                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(sampleLikelihoods, gtAlleleIndex, fAlleleIndex, readContainers,
-                        c -> true, thresholds.getCriticalThresholdsTotal());
+                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(sampleLikelihoods, gtAlleleIndex, fAlleleIndex,readContainers,
+                        c -> true,
+
+                        thresholds.getCriticalThresholdsTotal(),
+                        maxForeignReadFraction);
 
                 if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
@@ -319,7 +328,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                                                                      final int homozygousAlleleIndex, final int fAlleleIndex,
                                                                      final List<DRAGENGenotypesModel.DragenReadContainer> positionSortedReads,
                                                                      final Predicate<DRAGENGenotypesModel.DragenReadContainer> predicate,
-                                                                     final List<Double> criticalThresholdsSorted) {
+                                                                     final List<Double> criticalThresholdsSorted,
+                                                  final double maxForeignReadFraction) {
         if (positionSortedReads.isEmpty()) {
             return new double[]{Double.NEGATIVE_INFINITY, 0};
         }
@@ -356,11 +366,12 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             }
 
             // Don't learn the beta but approximate it based on the read support for the alt
-            final double foreignAlleleLikelihood = Math.min(fAlleleProbRatio / fAlleleProbDenom, 0.5);
+            final double foreignAlleleLikelihood = Math.min(fAlleleProbRatio / fAlleleProbDenom, 0.5); //do not test the case of very high beta
             final double log10ForeignAlleleLikelihood = Math.log10(foreignAlleleLikelihood);
             final double log10NotForeignAlleleLikelihood = Math.log10(1.0 - foreignAlleleLikelihood);
             double cumulativeLog10LikelihoodOfForeignReadHypothesis = 0.0; // LP_R_GF
-
+            int totalReads = 0;
+            int foreignReads = 0;
             // iterate over the containers again using the approximated beta constraint
             for (final DRAGENGenotypesModel.DragenReadContainer container : positionSortedReads) {
                 // Ignore reads that were disqualified by the HMM
@@ -378,6 +389,10 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                             sampleLikelihoods.get(fAlleleIndex, readIndex);;
 
                     cumulativeLog10LikelihoodOfForeignReadHypothesis += MathUtils.approximateLog10SumLog10(log10ForeignAlleleLikelihood + log10LikelihoodOfForeignAlleleGivenLPFCutoff, log10NotForeignAlleleLikelihood + log10LikelihoodReadForGenotype);
+                    totalReads ++;
+                    if (log10LikelihoodOfForeignAlleleGivenLPFCutoff!=Double.NEGATIVE_INFINITY){
+                        foreignReads++;
+                    }
                 } else {
                     cumulativeLog10LikelihoodOfForeignReadHypothesis += log10LikelihoodReadForGenotype;
                 }
@@ -389,7 +404,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("beta: "+foreignAlleleLikelihood+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+logProbFAllele+" with LP_R_GF: "+cumulativeLog10LikelihoodOfForeignReadHypothesis+" index: "+counter++);
             }
-            if (localMaxLpspi > maxLpspi) {
+            if ( (localMaxLpspi > maxLpspi) && ((double)foreignReads/(double)totalReads <= maxForeignReadFraction)){
                 maxLpspi = Math.max(maxLpspi, localMaxLpspi);
                 lpfApplied = logProbFAllele;
             }

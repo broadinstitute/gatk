@@ -286,6 +286,15 @@ public final class Mutect2 extends AssemblyRegionWalker {
     }
 
     @Override
+    public Collection<Annotation> makeVariantAnnotations(){
+        final Collection<Annotation> annotations = super.makeVariantAnnotations();
+        if (MTAC.addMismatchCountAnnotation) {
+            annotations.add(new MismatchCount());
+        }
+        return annotations;
+    }
+
+    @Override
     public Object onTraversalSuccess() {
         m2Engine.writeExtraOutputs(new File(outputVCF + DEFAULT_STATS_EXTENSION));
 

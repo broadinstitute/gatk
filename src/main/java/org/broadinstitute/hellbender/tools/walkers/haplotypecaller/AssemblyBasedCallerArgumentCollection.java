@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentC
 public abstract class AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 1L;
     public static final String USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME = "use-filtered-reads-for-annotations";
+    public static final String ADD_MISMATCH_COUNT_ANNOTATION_LONG_NAME = "add-mismatch-count-annotation";
     public static final String BAM_OUTPUT_LONG_NAME = "bam-output";
     public static final String BAM_OUTPUT_SHORT_NAME = "bamout";
     public static final String BAM_WRITER_TYPE_LONG_NAME = "bam-writer-type";
@@ -148,6 +149,9 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     
     @Argument(fullName = DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME, doc = "Do not analyze soft clipped bases in the reads", optional = true)
     public boolean dontUseSoftClippedBases = false;
+
+    @Argument(fullName = ADD_MISMATCH_COUNT_ANNOTATION_LONG_NAME, doc = "Add tag ms to the reads that counts the number of mismatches", optional=true)
+    public boolean addMismatchCountAnnotation = false;
 
     @Advanced
     @Hidden

@@ -295,6 +295,34 @@ public class ReadPileup implements Iterable<PileupElement> {
     }
 
     /**
+     * Get insertion allele that start at the location in a Map
+     */
+    public Map<String, Integer> getInsertionCounts(){
+        final Map<String, Integer> result = new HashMap<>();
+        for (final PileupElement pe: this){
+            if (pe.isBeforeInsertion()){
+                String allele = pe.getBasesOfImmediatelyFollowingInsertion();
+                result.put(allele, result.getOrDefault(allele, 0)+1);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get deletion allele counts that start at the location in a Map
+     */
+    public Map<Integer, Integer> getDeletionCounts(){
+        final Map<Integer, Integer> result = new HashMap<>();
+        for (final PileupElement pe: this){
+            if (pe.isBeforeDeletionStart()){
+                Integer allele = pe.getLengthOfImmediatelyFollowingIndel();
+                result.put(allele, result.getOrDefault(allele, 0)+1);
+            }
+        }
+        return result;
+    }
+
+    /**
      * Fixes the quality of all the elements that come from an overlapping pair in the same way as
      * samtools does {@see tweak_overlap_quality function in
      * <a href="https://github.com/samtools/htslib/blob/master/sam.c">samtools</a>}.
@@ -530,4 +558,6 @@ public class ReadPileup implements Iterable<PileupElement> {
         }
         return new String(quals);
     }
+
+
 }

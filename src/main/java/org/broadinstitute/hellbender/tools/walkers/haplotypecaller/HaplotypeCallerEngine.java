@@ -698,6 +698,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     activeRegionDetectionHackishSamplePloidy,
                     sample.getValue().getBasePileup(), ref.getBase(),
                     hcArgs.minBaseQualityScore,
+                    hcArgs.assemblerArgs.minMappingQualityInAssemblyPileup,
                     averageHQSoftClips, false, hcArgs.activeRegionAltMultiplier)).genotypeLikelihoods;
             genotypes.add(new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make());
         }
@@ -1094,7 +1095,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                         ! hcArgs.doNotCorrectOverlappingBaseQualities,
                         hcArgs.softClipLowQualityEnds,
                         hcArgs.overrideSoftclipFragmentCheck,
-                        hcArgs.pileupDetectionArgs.usePileupDetection);
+                        hcArgs.pileupDetectionArgs.usePileupDetection,
+                        hcArgs.addMismatchCountAnnotation,
+                        referenceReader);
             }
 
             filterNonPassingReads(region);

@@ -62,6 +62,8 @@ public final class ReadThreadingAssembler {
      */
     private static final boolean PRINT_FULL_GRAPH_FOR_DEBUGGING = true;
     private static final byte DEFAULT_MIN_BASE_QUALITY_TO_USE = (byte) 10;
+
+    private static final int DEFAULT_MIN_MAPPING_QUALITY_TO_USE = 0;
     private static final int MIN_HAPLOTYPE_REFERENCE_LENGTH = 30;
 
     private boolean debug = false;
@@ -71,6 +73,8 @@ public final class ReadThreadingAssembler {
     private int minDanglingBranchLength = 0;
 
     private byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
+
+    protected int minMappingQualityToUseInAssembly = DEFAULT_MIN_MAPPING_QUALITY_TO_USE;
     private final int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
     private int minMatchingBasesToDanglingEndRecovery;
@@ -87,7 +91,8 @@ public final class ReadThreadingAssembler {
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
                                   final boolean enableLegacyGraphCycleDetection,
-                                  final int minMatchingBasesToDanglingEndRecovery) {
+                                  final int minMatchingBasesToDanglingEndRecovery,
+                                  final int minMappingQualityToUseInAssembly) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
@@ -96,6 +101,7 @@ public final class ReadThreadingAssembler {
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebruijnGraphs;
         this.pruneBeforeCycleCounting = !enableLegacyGraphCycleDetection;
+        this.minMappingQualityToUseInAssembly = minMappingQualityToUseInAssembly >= 0 ? minMappingQualityToUseInAssembly: DEFAULT_MIN_MAPPING_QUALITY_TO_USE;
         if (!generateSeqGraph) {
             logger.error("JunctionTreeLinkedDeBruijnGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
         }
@@ -108,7 +114,9 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, 2, Integer.MAX_VALUE, false, false, 3);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1,
+                pruneFactor, false, 0.001, 2, 2,
+                Integer.MAX_VALUE, false, false, 3, -1);
     }
 
     @VisibleForTesting
@@ -206,7 +214,8 @@ public final class ReadThreadingAssembler {
      * is acceptable for haplotype discovery then detect haplotypes.
      */
     private void assembleKmerGraphsAndHaplotypeCall(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
-                                                    final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
+                                                    final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters,
+                                                    final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
                                                     final List<SeqGraph> nonRefSeqGraphs, final AssemblyResultSet resultSet,
                                                     final SimpleInterval activeRegionExtendedLocation) {
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
@@ -234,7 +243,8 @@ public final class ReadThreadingAssembler {
      * attempt to recover haplotypes from the kmer graph and use them to assess whether to expand the kmer size.
      */
     private void assembleGraphsAndExpandKmersGivenHaplotypes(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
-                                                             final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
+                                                             final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final SWParameters haplotypeToReferenceSWParameters,
+                                                             final List<GATKRead> correctedReads,
                                                              final List<AbstractReadThreadingGraph> nonRefRTGraphs, final AssemblyResultSet resultSet,
                                                              final SimpleInterval activeRegionExtendedLocation) {
         // create the graphs by calling our subclass assemble method
@@ -631,8 +641,10 @@ public final class ReadThreadingAssembler {
         }
 
         // TODO figure out how you want to hook this in
-        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery) :
-                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery);
+        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations,
+                minBaseQualityToUseInAssembly, minMappingQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery) :
+                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, minMappingQualityToUseInAssembly,
+                        numPruningSamples, minMatchingBasesToDanglingEndRecovery);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
@@ -803,17 +815,17 @@ public final class ReadThreadingAssembler {
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
     }
 
-	private void logDebugKmerSize(final boolean debug, final int kmerSize) { 
+	private void logDebugKmerSize(final boolean debug, final int kmerSize) {
       if (debug) {
 	    logger.info("Using kmer size of " + kmerSize + " in read threading assembler");
       }
-	} 
+	}
 
     private void logDebugNotUsingKmerSize(final boolean debug, final int kmerSize) {
-      if(debug) { 
-        logger.info( "Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers"); 
+      if(debug) {
+        logger.info( "Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
       }
-    }   
+    }
 
     public boolean isDebug() {
         return debug;

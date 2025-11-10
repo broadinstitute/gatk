@@ -55,6 +55,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     protected final Map<Kmer, MultiDeBruijnVertex> kmerToVertexMap = new LinkedHashMap<>();
     protected final boolean debugGraphTransformations;
     protected final byte minBaseQualityToUseInAssembly;
+    protected final int minMappingQualityToUseInAssembly;
     protected List<MultiDeBruijnVertex> referencePath = null;
     protected boolean alreadyBuilt = false;
     // --------------------------------------------------------------------------------
@@ -74,6 +75,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         super(kmerSize, edgeFactory);
         debugGraphTransformations = false;
         minBaseQualityToUseInAssembly = 0;
+        minMappingQualityToUseInAssembly = 0;
     }
 
     /**
@@ -81,13 +83,15 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      *
      * @param kmerSize must be >= 1
      */
-    public AbstractReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
+    public AbstractReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly,
+                                      final int minMappingQuality, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
         super(kmerSize, new MyEdgeFactory(numPruningSamples));
 
         Utils.validateArg(kmerSize > 0, () -> "bad minkKmerSize " + kmerSize);
 
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
+        this.minMappingQualityToUseInAssembly = minMappingQuality;
         this.minMatchingBasesToDanglingEndRecovery = numDanglingMatchingPrefixBases;
     }
 
@@ -1039,26 +1043,37 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     void addRead(final GATKRead read, final SAMFileHeader header) {
         final byte[] sequence = read.getBases();
         final byte[] qualities = read.getBaseQualities();
+        if (readIsUsableInAssembly(read)) {
+            int lastGood = -1;
+            for (int end = 0; end <= sequence.length; end++) {
+                if (end == sequence.length || !baseIsUsableForAssembly(sequence[end], qualities[end])) {
+                    // the first good base is at lastGood, can be -1 if last base was bad
+                    final int start = lastGood;
+                    // the stop base is end - 1 (if we're not at the end of the sequence)
+                    final int len = end - start;
 
-        int lastGood = -1;
-        for (int end = 0; end <= sequence.length; end++) {
-            if (end == sequence.length || !baseIsUsableForAssembly(sequence[end], qualities[end])) {
-                // the first good base is at lastGood, can be -1 if last base was bad
-                final int start = lastGood;
-                // the stop base is end - 1 (if we're not at the end of the sequence)
-                final int len = end - start;
+                    if (start != -1 && len >= kmerSize) {
+                        // if the sequence is long enough to get some value out of, add it to the graph
+                        final String name = read.getName() + '_' + start + '_' + end;
+                        addSequence(name, ReadUtils.getSampleName(read, header), sequence, start, end, 1, false);
+                    }
 
-                if (start != -1 && len >= kmerSize) {
-                    // if the sequence is long enough to get some value out of, add it to the graph
-                    final String name = read.getName() + '_' + start + '_' + end;
-                    addSequence(name, ReadUtils.getSampleName(read, header), sequence, start, end, 1, false);
+                    lastGood = -1; // reset the last good base
+                } else if (lastGood == -1) {
+                    lastGood = end; // we're at a good base, the last good one is us
                 }
-
-                lastGood = -1; // reset the last good base
-            } else if (lastGood == -1) {
-                lastGood = end; // we're at a good base, the last good one is us
             }
         }
+    }
+
+    /**
+     * Determines whether read can be used in assembly (mapping quality above threshold)
+     *
+     * @param read  the read
+     * @return true if the read can be used for assembly, false otherwise
+     */
+    protected boolean readIsUsableInAssembly(final GATKRead read) {
+        return (read.getMappingQuality() >= minMappingQualityToUseInAssembly);
     }
 
     /**

@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
@@ -47,6 +48,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String STEPWISE_FITLERING_ARGUMENT = "use-flow-aligner-for-stepwise-hc-filtering";
     public static final String DISABLE_SPANNING_EVENT_GENOTYPING_LONG_NAME = "disable-spanning-event-genotyping";
     public static final String MAX_EFFECTIVE_DEPTH_ADJUSTMENT_FOR_FRD_LONG_NAME = "max-effective-depth-adjustment-for-frd";
+    public static final String MAX_FOREIGN_READ_FRACTION_LONG_NAME = "max-foreign-read-fraction-for-frd";
     public static final String KEEP_RG_LONG_NAME = "keep-rg";
     public static final String JUST_DETERMINE_ACTIVE_REGIONS_LONG_NAME = "just-determine-active-regions";
     public static final String DEBUG_ASSEMBLY_REGION_STATE_LONG_NAME = "debug-assembly-region-state";
@@ -217,6 +219,10 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = MAX_EFFECTIVE_DEPTH_ADJUSTMENT_FOR_FRD_LONG_NAME, doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
     public int maxEffectiveDepthAdjustment = 0;
 
+    @Advanced
+    @Argument(fullName = MAX_FOREIGN_READ_FRACTION_LONG_NAME, doc = "Maximal fraction of reads that can be excluded and considered foreign", optional = false)
+    public double maxForeignReadFraction = 1.0;
+
     @Hidden
     @Argument(fullName = KEEP_RG_LONG_NAME, doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
     public String keepRG = null;
@@ -357,6 +363,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 FILTER_ALLELES_SOR_THRESHOLD, "3",
                 FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, String.valueOf(AssemblyBasedCallerUtils.DETERMINE_COLLAPSE_THRESHOLD),
                 OVERRIDE_FRAGMENT_SOFTCLIP_CHECK_LONG_NAME, "true",
+                FlowBasedArgumentCollection.FLOW_USE_T0_TAG, "true",
                 FlowBasedAlignmentArgumentCollection.FLOW_LIKELIHOOD_PARALLEL_THREADS_LONG_NAME, "2",
                 FlowBasedAlignmentArgumentCollection.FLOW_LIKELIHOOD_OPTIMIZED_COMP_LONG_NAME, "true",
                 LikelihoodEngineArgumentCollection.LIKELIHOOD_CALCULATION_ENGINE_FULL_NAME, ReadLikelihoodCalculationEngine.Implementation.FlowBased.toString()
@@ -368,8 +375,17 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 LikelihoodEngineArgumentCollection.ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME, "true",
                 LikelihoodEngineArgumentCollection.DYNAMIC_READ_DISQUALIFICATION_THRESHOLD_LONG_NAME, "10",
                 APPLY_FRD_LONG_NAME, "true",
-                ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, "1",
-                MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, "1"
+                MAX_FOREIGN_READ_FRACTION_LONG_NAME, "0.35",
+                ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, "0",
+                ReadThreadingAssemblerArgumentCollection.MIN_MAPPING_QUALITY_IN_ASSEMBLY_PILEUP_LONG_NAME, "1",
+                MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, "1",
+                FlowBasedArgumentCollection.FLOW_USE_T0_TAG, "true",
+                "assembly-complexity-reference-mode", "true",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME, "true",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_SNP_THRESHOLD, "0.05",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_FOR_ASSEMBLY_LONG_NAME, "0",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_PROPER_PAIR_READ_BADNESS_LONG_NAME, "false",
         }, STANDARD);
 
         final private String[] nameValuePairs;

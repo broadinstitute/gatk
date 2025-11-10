@@ -33,6 +33,26 @@ public class ArtificialAnnotationUtils {
         return read;
     }
 
+    public static GATKRead makeRead(final byte base, final byte qual, final int mappingQuality) {
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(Utils.dupBytes(base,10), Utils.dupBytes(qual,10), "10M");
+        read.setMappingQuality(mappingQuality);
+        return read;
+    }
+    public static GATKRead makeSoftClippedRead(final int qual, final int mappingQuality, boolean leftClip) {
+        final String cigarString = leftClip ? "5S10M":"10M5S";
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(cigarString));
+        read.setMappingQuality(mappingQuality);
+        read.setBaseQualities(Utils.dupBytes((byte) qual, 15));
+        return read;
+    }
+
+    public static GATKRead makeSoftClippedRead(final byte base, final byte qual, final int mappingQuality, boolean leftClip) {
+        final String cigarString = leftClip ? "5S10M":"10M5S";
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(Utils.dupBytes(base,15), Utils.dupBytes(qual, 15), cigarString);
+        read.setMappingQuality(mappingQuality);
+        return read;
+    }
+
     public static VariantContext makeVC() {
         final GenotypesContext testGC = GenotypesContext.create(2);
         final Allele refAllele = Allele.create("A", true);

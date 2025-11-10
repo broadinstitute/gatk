@@ -35,7 +35,7 @@ public class ReadThreadingGraph extends AbstractReadThreadingGraph {
      * @throws IllegalArgumentException if (@code kmerSize) < 1.
      */
     public ReadThreadingGraph(final int kmerSize) {
-        this(kmerSize, false, (byte)6, 1, -1);
+        this(kmerSize, false, (byte)6, 0, 1, -1);
     }
 
     /**
@@ -55,8 +55,9 @@ public class ReadThreadingGraph extends AbstractReadThreadingGraph {
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
-        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, numDanglingMatchingPrefixBases);
+    ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly,
+                       final int minMappingQuality, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
+        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, minMappingQuality, numPruningSamples, numDanglingMatchingPrefixBases);
         nonUniqueKmers = null;
     }
 

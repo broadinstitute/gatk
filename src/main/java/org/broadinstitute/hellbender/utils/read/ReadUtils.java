@@ -46,7 +46,7 @@ public final class ReadUtils {
     // Base Quality Score Recalibrator specific attribute tags
     public static final String BQSR_BASE_INSERTION_QUALITIES = "BI";                // base qualities for insertions
     public static final String BQSR_BASE_DELETION_QUALITIES = "BD";                 // base qualities for deletions
-
+    public static final String NUM_MISMATCH_TAG             = "ms";
     public static final int READ_INDEX_NOT_FOUND = -1;
     private static final int DEFAULT_ADAPTOR_SIZE = 100;
 

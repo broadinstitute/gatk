@@ -5,6 +5,7 @@ import com.google.common.collect.Streams;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -12,11 +13,13 @@ import org.broadinstitute.hellbender.engine.AlignmentAndReferenceContext;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import javax.ws.rs.core.Variant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -141,6 +144,34 @@ public final class PileupBasedAlleles {
 
         return ImmutablePair.of(goodEvents, badEvents);
     }
+
+    /**
+     * Calculates counts in the pileup for each allele in the variant context
+     * @param vc
+     * @param pileup
+     * @return
+     */
+    public static Map<Allele, Integer> getPileupAlleleCounts(final VariantContext vc, final ReadPileup pileup){
+        int[] baseAlleleCounts = pileup.getBaseCounts();
+        Map<String, Integer> insertionCounts = pileup.getInsertionCounts();
+        Map<Integer, Integer> deletionCounts = pileup.getDeletionCounts();
+        Map<Allele, Integer> result = new HashMap<>();
+        Allele refAllele = vc.getReference();
+        for (Allele al: vc.getAlleles()){
+            if ((al.isReference()) | (al.length() == refAllele.length())){
+                byte refBase = al.getBases()[0];
+                result.put(al, baseAlleleCounts[BaseUtils.simpleBaseToBaseIndex(refBase)]);
+            }
+            if (al.length() > refAllele.length()){
+                result.put(al,insertionCounts.getOrDefault(al.getBaseString().substring(1),0));
+            }
+            if (al.length() < refAllele.length()){
+                result.put(al,deletionCounts.getOrDefault(refAllele.length()-al.length(),0));
+            }
+        }
+        return result;
+    }
+
 
     /**
      * Apply the filters to discovered alleles

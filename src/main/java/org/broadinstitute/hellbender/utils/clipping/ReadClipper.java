@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceModel;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -51,6 +52,11 @@ public class ReadClipper {
     private final GATKRead read;
     private boolean wasClipped;
     private List<ClippingOp> ops = null;
+
+    public static final String ORIGINAL_SOFTCLIP_TAG = "oc";
+    public static final String LEFT_SOFTCLIPPING_MARK = "L";
+    public static final String RIGHT_SOFTCLIPPING_MARK = "R";
+
     private final int extraBasesToClip;
 
     /**
@@ -316,14 +322,19 @@ public class ReadClipper {
             this.addOp(new ClippingOp(0, cutLeft));
         }
 
-        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
+        boolean clippedLeft = (cutLeft > 0);
+        boolean clippedRight = (cutRight>0);
+        String clippingString = clippedLeft ?LEFT_SOFTCLIPPING_MARK:"" + (clippedRight ? RIGHT_SOFTCLIPPING_MARK:"");
+        GATKRead newRead = clipRead(ClippingRepresentation.HARDCLIP_BASES);
+        if (clippedLeft || clippedRight) {
+            newRead.setAttribute(ORIGINAL_SOFTCLIP_TAG, clippingString);
+        }
+
+        return newRead;
     }
 
     public static GATKRead hardClipSoftClippedBases (final GATKRead read) {
         return new ReadClipper(read).hardClipSoftClippedBases();
-    }
-    public static GATKRead hardClipSoftClippedBases (final GATKRead read, int clipExtraBases) {
-        return new ReadClipper(read,clipExtraBases).hardClipSoftClippedBases();
     }
 
     /**

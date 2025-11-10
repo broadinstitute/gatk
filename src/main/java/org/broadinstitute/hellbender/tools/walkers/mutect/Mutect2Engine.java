@@ -585,7 +585,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                 false,
                 false,
                 false,
-                MTAC.pileupDetectionArgs.usePileupDetection);  //take off soft clips and low Q tails before we calculate likelihoods
+                MTAC.pileupDetectionArgs.usePileupDetection,
+                MTAC.addMismatchCountAnnotation,
+                referenceReader);  //take off soft clips and low Q tails before we calculate likelihoods
 
 
         final SimpleInterval paddedLoc = region.getPaddedSpan();

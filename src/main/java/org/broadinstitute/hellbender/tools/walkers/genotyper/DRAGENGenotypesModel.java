@@ -41,23 +41,29 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     private final boolean computeFRD;
     private final int allelePadding;
     private final int maxEffectiveDepthAdjustment;
+    private final double maxForeignReadFraction;
     private final DragstrParams dragstrParams;
 
     public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
-                                final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
+                                final int maxEffectiveDepthAdjustment,
+                                final double maxForeignReadFraction,
+                                final DragstrParams dragstrParams) {
         this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY,
-                useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
+                useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,
+                maxForeignReadFraction, dragstrParams); }
 
     /*
      *  Initialize model with given maximum allele count and ploidy for caching
      */
     public DRAGENGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
                                 final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
-                                final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
+                                final int maxEffectiveDepthAdjustment, final double maxForeignReadFraction,
+                                final DragstrParams dragstrParams) {
         this.computeBQD = useBQDModel;
         this.computeFRD = useFRDModel;
         this.allelePadding = allelePadding;
         this.maxEffectiveDepthAdjustment = maxEffectiveDepthAdjustment;
+        this.maxForeignReadFraction = maxForeignReadFraction;
         this.dragstrParams = dragstrParams;
 
         if (!(computeBQD || computeFRD)) {
@@ -148,7 +154,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
                 applyLikelihoodsAdjusmentToBaseline(ploidyModelGenotypeLikelihoods, "FRD",
                         GenotypeLikelihoodCalculatorDRAGEN.calculateFRDLikelihoods(samplePloidy, sampleLikelihoods, ploidyModelGenotypeLikelihoods,
                                 Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
-                                FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment));
+                                FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment, maxForeignReadFraction));
             }
 
             // this is what the work actually is, after we have computed a few things

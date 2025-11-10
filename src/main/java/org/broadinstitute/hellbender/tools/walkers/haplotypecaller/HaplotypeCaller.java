@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollecti
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.HaplotypeFilteringAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MismatchCount;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -237,6 +238,9 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
         if (hcArgs.filterAlleles) {
             annotations.add(new HaplotypeFilteringAnnotation());
+        }
+        if (hcArgs.addMismatchCountAnnotation){
+            annotations.add(new MismatchCount());
         }
         return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }

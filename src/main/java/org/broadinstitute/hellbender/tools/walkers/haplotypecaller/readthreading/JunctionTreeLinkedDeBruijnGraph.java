@@ -41,15 +41,16 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
 
     @VisibleForTesting
     public JunctionTreeLinkedDeBruijnGraph(int kmerSize) {
-        this(kmerSize, false, (byte)6, 1, -1);
+        this(kmerSize, false, (byte)6, 0, 1, -1);
     }
 
     /**
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    JunctionTreeLinkedDeBruijnGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
-        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, numDanglingMatchingPrefixBases);
+    JunctionTreeLinkedDeBruijnGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly,
+                                    final int minMappingQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
+        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, minMappingQualityToUseInAssembly, numPruningSamples, numDanglingMatchingPrefixBases);
     }
 
     /**
