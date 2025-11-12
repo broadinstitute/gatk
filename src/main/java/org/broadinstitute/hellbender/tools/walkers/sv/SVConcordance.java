@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  *     <li>Genotype concordance</li>
  * </ol>
  *
- * after meeting minimum overlap criteria. Evaluation VCF variants that are sucessfully matched are annotated with
+ * after meeting minimum overlap criteria. Evaluation VCF variants that are successfully matched are annotated with
  * genotype concordance metrics, including allele frequency of the truth variant. Concordance metrics are computed
  * on the intersection of sample sets of the two VCFs, but all other annotations including variant truth status
  * and allele frequency use all records and samples available. See output header for descriptions
