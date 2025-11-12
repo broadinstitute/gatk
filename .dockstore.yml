@@ -463,6 +463,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20251104_1
    - name: GvsMapUnmappedVIDs
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
