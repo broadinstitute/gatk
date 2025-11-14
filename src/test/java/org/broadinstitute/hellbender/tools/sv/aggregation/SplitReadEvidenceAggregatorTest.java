@@ -24,14 +24,14 @@ public class SplitReadEvidenceAggregatorTest extends GATKBaseTest {
     public Object[][] testCollectEvidenceData() {
         return new Object[][] {
                 // 1-based coordinates, positive (true) strand <=> "left", negative (false) strand <=> "right"
-                {25006096, true, 0, 3},
+                {25006095, true, 0, 3},
                 {25006096, false, 0, 0},  // wrong strand
-                {25006095, true, 0, 1},   // position off by 1
+                {25006094, true, 0, 1},   // position off by 1
                 {25006097, true, 0, 0},   // position off by 1
-                {25006096, true, 1, 4},   // window +1
-                {25006096, true, 2, 4},   // window +2
+                {25006095, true, 1, 4},   // window +1
+                {25006095, true, 2, 4},   // window +2
                 {25006096, true, 3, 5},   // window +3
-                {25005791, false, 0, 1},  // negative strand evidence
+                {25005790, false, 0, 1},  // negative strand evidence
                 {25006981, true, 40, 2},  // filter out one negative strand record within window
         };
     }
@@ -44,13 +44,6 @@ public class SplitReadEvidenceAggregatorTest extends GATKBaseTest {
                 "chr21", pos + 1000, true);
         final SVCallRecord endRecord = SVTestUtils.newBndCallRecordWithPositionAndStrands("chr21", pos - 1000, true,
                 "chr21", pos, strand);
-        final Collection<SimpleInterval> cacheIntervals = new ArrayList<>();
-        cacheIntervals.add(new SimpleInterval("chr21", 25247871, 25247871));
-        cacheIntervals.add(new SimpleInterval("chr21", 25249566, 25249566));
-        cacheIntervals.add(new SimpleInterval("chr21", 25249466, 25249666));
-        cacheIntervals.add(new SimpleInterval("chr22", 25247871, 25247871));
-        cacheIntervals.add(new SimpleInterval("chr21", pos, pos));
-        cacheIntervals.add(new SimpleInterval("chr21", pos - window, pos + window));
 
         // Start SR
         final List<SplitReadEvidence> testStart = new SplitReadEvidenceAggregator(source, DICTIONARY, window, true)
@@ -74,10 +67,10 @@ public class SplitReadEvidenceAggregatorTest extends GATKBaseTest {
     @DataProvider(name = "testGetEvidenceQueryIntervalData")
     public Object[][] testGetEvidenceQueryIntervalData() {
         return new Object[][] {
-                {1000, 0, 1000, 1000}, // 0 window
-                {1000, 1, 999, 1001}, // 1 window
-                {1000, 1000, 1, 2000}, // left clip window
-                {1000, 1000000000, 1, 46709983}, // left and right clip window
+                {999, 0, 1000, 1000}, // 0 window
+                {999, 1, 999, 1001}, // 1 window
+                {999, 1000, 1, 2000}, // left clip window
+                {999, 1000000000, 1, 46709983}, // left and right clip window
         };
     }
 
