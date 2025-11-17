@@ -213,14 +213,12 @@ workflow GvsImportGenomes {
         variants_docker = effective_variants_docker,
     }
     
-    scatter (i in range(length(DiscoverParquetFiles.table_names))) {
+    scatter (fofn in DiscoverParquetFiles.file_fofns) {
       call LoadParquetFilesToBQ {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
-          table_name = DiscoverParquetFiles.table_names[i],
-          files_to_load = DiscoverParquetFiles.file_fofns[i],
-          schema_path = DiscoverParquetFiles.schema_paths[i],
+          fofn_file = fofn,
           batch_size = 10000,
           variants_docker = effective_variants_docker,
       }
@@ -778,17 +776,6 @@ task DiscoverParquetFiles {
       --project-id ~{project_id} \
       --dataset ~{dataset_name} \
       --table-prefixes ~{sep=" " table_prefixes}
-    
-    # For each table, create a dummy schema file
-    # In production, these would be actual schema files
-    while IFS= read -r table_name; do
-      echo '[]' > "grouped_files/${table_name}.schema.json"
-    done < grouped_files/table_names.txt
-    
-    # Create list of schema paths
-    while IFS= read -r table_name; do
-      echo "$(pwd)/grouped_files/${table_name}.schema.json"
-    done < grouped_files/table_names.txt > grouped_files/schema_paths.txt
   >>>
   
   runtime {
@@ -798,14 +785,11 @@ task DiscoverParquetFiles {
     preemptible: 3
     cpu: 2
   }
-  
+
   output {
-    Array[String] table_names = read_lines("grouped_files/table_names.txt")
-    Array[File] file_fofns = read_lines("grouped_files/fofn_paths.txt")
-    Array[File] schema_paths = read_lines("grouped_files/schema_paths.txt")
+    Array[File] file_fofns = glob("grouped_files/*.fofn")
     File all_files_list = "all_files.txt"
     File stats_json = "grouped_files/stats.json"
-    Array[File] grouped_files = glob("grouped_files/*")
   }
 }
 
@@ -813,9 +797,7 @@ task LoadParquetFilesToBQ {
   input {
     String project_id
     String dataset_name
-    String table_name
-    File files_to_load
-    File schema_path
+    File fofn_file
     Int batch_size
     String? billing_project_id
     String variants_docker
@@ -824,12 +806,11 @@ task LoadParquetFilesToBQ {
   command <<<
     set -euo pipefail
     
+    # Table name is extracted from FOFN filename by the Python script
     python3 /app/load_parquet_to_bq.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
-      --table-name ~{table_name} \
-      --files-fofn ~{files_to_load} \
-      --schema-path ~{schema_path} \
+      --files-fofn ~{fofn_file} \
       --pending-jobs-path pending_jobs.json \
       --batch-size ~{batch_size} \
       --output-stats stats.json

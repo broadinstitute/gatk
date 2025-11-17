@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 
 from google.cloud import bigquery
@@ -30,9 +31,9 @@ def load_table_from_parquet_files(
     Args:
         project_id: BigQuery project ID
         dataset_name: BigQuery dataset name
-        table_name: Target table name (e.g., 'vet_001')
+        table_name: Target table name (e.g., 'vet_001'). If None, extracted from files_fofn filename.
         files_fofn: Path to file containing GCS URIs to load
-        schema_path: Path to JSON schema file
+        schema_path: Path to JSON schema file (optional, can be None for schema autodetection)
         pending_jobs_path: Path to persist in-flight job state
         location: BigQuery location (auto-detected if None)
         batch_size: Number of files per load job
@@ -41,13 +42,25 @@ def load_table_from_parquet_files(
         Dictionary with load statistics
     """
     client = bigquery.Client(project=project_id)
+    
+    # Extract table name from FOFN filename if not provided
+    if table_name is None:
+        fofn_path = Path(files_fofn)
+        # Remove .fofn extension to get table name
+        table_name = fofn_path.stem
+        print(f"Extracted table name from FOFN: {table_name}")
+    
     table_id = f"{project_id}.{dataset_name}.{table_name}"
     tracking_table_id = f"{project_id}.{dataset_name}.parquet_load_status"
     
-    # Load schema
-    with open(schema_path) as f:
-        schema_json = json.load(f)
-    schema = [bigquery.SchemaField.from_api_repr(field) for field in schema_json]
+    # Load schema if provided, otherwise use autodetection
+    schema = None
+    if schema_path:
+        with open(schema_path) as f:
+            schema_json = json.load(f)
+        schema = [bigquery.SchemaField.from_api_repr(field) for field in schema_json]
+    else:
+        print("No schema provided; using autodetection from Parquet files")
     
     # Fail fast if table was not pre-created
     try:
@@ -100,24 +113,16 @@ def load_table_from_parquet_files(
                     load_job = client.get_job(job_id=job_id, location=location)
                     print(f"  Resumed job in state: {load_job.state}")
                 except exceptions.NotFound:
-                    # Job never started or was cleaned up
+                    # Job never started or was cleaned up - resubmit with retry
                     print(f"  Job not found, will resubmit")
-                    load_job = client.load_table_from_uri(
-                        batch,
-                        table_id,
-                        job_config=job_config,
-                        job_id=job_id,
-                        location=location,
+                    load_job = _submit_load_job_with_retry(
+                        client, batch, table_id, job_config, job_id, location
                     )
             else:
-                # New job - submit it
+                # New job - submit it with retry logic
                 print(f"  Submitting new job {job_id}")
-                load_job = client.load_table_from_uri(
-                    batch,
-                    table_id,
-                    job_config=job_config,
-                    job_id=job_id,
-                    location=location,
+                load_job = _submit_load_job_with_retry(
+                    client, batch, table_id, job_config, job_id, location
                 )
                 pending_jobs[job_id] = {
                     "files": batch,
@@ -126,8 +131,8 @@ def load_table_from_parquet_files(
                 }
                 _store_pending_jobs(pending_jobs_path, pending_jobs)
             
-            # Wait for completion
-            load_job.result()
+            # Wait for completion with retry logic
+            load_job = _wait_for_job_with_retry(load_job)
             
             # Check for errors
             if load_job.errors:
@@ -194,6 +199,7 @@ def insert_tracking_records(client, tracking_table_id, records):
     """
     Insert load tracking records, skipping duplicates.
     Batches records to avoid exceeding BigQuery request limits.
+    Uses retry logic for quota errors.
     """
     chunk_size = 1000  # Keep well below 16MB limit
     
@@ -228,8 +234,8 @@ def insert_tracking_records(client, tracking_table_id, records):
             ]
         )
         
-        query_job = client.query(merge_query, job_config=job_config)
-        query_job.result()
+        # Execute query with retry logic for quota errors
+        _execute_query_with_retry(client, merge_query, job_config)
 
 
 def _make_job_id(table_name, batch):
@@ -257,15 +263,165 @@ def _store_pending_jobs(pending_jobs_path, pending_jobs):
     path.write_text(json.dumps(pending_jobs, indent=2))
 
 
+def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, location, max_retries=3):
+    """
+    Submit a BigQuery load job with exponential backoff for quota/rate limit errors.
+    
+    Args:
+        client: BigQuery client
+        batch: List of GCS URIs to load
+        table_id: Target table ID
+        job_config: LoadJobConfig
+        job_id: Deterministic job ID
+        location: BigQuery location
+        max_retries: Maximum number of retry attempts (default: 3)
+    
+    Returns:
+        LoadJob object
+    
+    Raises:
+        Exception: If all retries are exhausted or a non-retryable error occurs
+    """
+    retry_delays = [30, 60, 120]  # Exponential backoff: 30s, 60s, 120s
+    
+    for attempt in range(max_retries + 1):
+        try:
+            load_job = client.load_table_from_uri(
+                batch,
+                table_id,
+                job_config=job_config,
+                job_id=job_id,
+                location=location,
+            )
+            return load_job
+            
+        except (exceptions.TooManyRequests, 
+                exceptions.ServiceUnavailable,
+                exceptions.InternalServerError) as e:
+            # These are retryable quota/availability errors
+            if attempt < max_retries:
+                delay = retry_delays[attempt]
+                print(f"  Quota/rate limit error: {e}")
+                print(f"  Retrying in {delay} seconds (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(delay)
+            else:
+                print(f"  ERROR: Max retries ({max_retries}) exhausted for quota errors")
+                raise
+        
+        except exceptions.Conflict as e:
+            # Job ID already exists and is running - this is actually OK
+            # We can fetch it instead of treating it as an error
+            print(f"  Job {job_id} already exists, fetching existing job")
+            return client.get_job(job_id=job_id, location=location)
+        
+        except Exception as e:
+            # Non-retryable error, fail immediately
+            print(f"  Non-retryable error submitting job: {e}")
+            raise
+    
+    # Should never reach here, but just in case
+    raise Exception("Unexpected error in retry logic")
+
+
+def _wait_for_job_with_retry(load_job, max_retries=3):
+    """
+    Wait for a BigQuery load job to complete with retry logic for transient errors.
+    
+    Args:
+        load_job: LoadJob object
+        max_retries: Maximum number of retry attempts (default: 3)
+    
+    Returns:
+        Completed LoadJob object
+    
+    Raises:
+        Exception: If all retries are exhausted or a non-retryable error occurs
+    """
+    retry_delays = [30, 60, 120]  # Exponential backoff
+    
+    for attempt in range(max_retries + 1):
+        try:
+            # Wait for job completion
+            result = load_job.result()
+            return load_job
+            
+        except (exceptions.TooManyRequests,
+                exceptions.ServiceUnavailable, 
+                exceptions.InternalServerError) as e:
+            # Transient error while waiting - refresh job state and retry
+            if attempt < max_retries:
+                delay = retry_delays[attempt]
+                print(f"  Transient error while waiting for job: {e}")
+                print(f"  Retrying in {delay} seconds (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(delay)
+                # Refresh the job object
+                load_job.reload()
+            else:
+                print(f"  ERROR: Max retries ({max_retries}) exhausted while waiting for job")
+                raise
+        
+        except Exception as e:
+            # Non-retryable error (e.g., actual job failure)
+            print(f"  Job failed with non-retryable error: {e}")
+            raise
+    
+    raise Exception("Unexpected error in wait retry logic")
+
+
+def _execute_query_with_retry(client, query, job_config=None, max_retries=3):
+    """
+    Execute a BigQuery query with exponential backoff for quota/rate limit errors.
+    
+    Args:
+        client: BigQuery client
+        query: SQL query string
+        job_config: QueryJobConfig (optional)
+        max_retries: Maximum number of retry attempts (default: 3)
+    
+    Returns:
+        Query results
+    
+    Raises:
+        Exception: If all retries are exhausted or a non-retryable error occurs
+    """
+    retry_delays = [30, 60, 120]  # Exponential backoff
+    
+    for attempt in range(max_retries + 1):
+        try:
+            query_job = client.query(query, job_config=job_config)
+            result = query_job.result()
+            return result
+            
+        except (exceptions.TooManyRequests,
+                exceptions.ServiceUnavailable,
+                exceptions.InternalServerError) as e:
+            # Retryable quota/availability errors
+            if attempt < max_retries:
+                delay = retry_delays[attempt]
+                print(f"  Query quota/rate limit error: {e}")
+                print(f"  Retrying in {delay} seconds (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(delay)
+            else:
+                print(f"  ERROR: Max retries ({max_retries}) exhausted for query")
+                raise
+        
+        except Exception as e:
+            # Non-retryable error
+            print(f"  Non-retryable query error: {e}")
+            raise
+    
+    raise Exception("Unexpected error in query retry logic")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Load Parquet files into BigQuery with fault tolerance"
     )
     parser.add_argument("--project-id", required=True, help="BigQuery project ID")
     parser.add_argument("--dataset-name", required=True, help="BigQuery dataset name")
-    parser.add_argument("--table-name", required=True, help="Target table name")
+    parser.add_argument("--table-name", help="Target table name (if not provided, extracted from FOFN filename)")
     parser.add_argument("--files-fofn", required=True, help="File listing Parquet URIs to load")
-    parser.add_argument("--schema-path", required=True, help="Path to JSON schema file")
+    parser.add_argument("--schema-path", help="Path to JSON schema file (optional, autodetect if not provided)")
     parser.add_argument(
         "--pending-jobs-path",
         required=True,
