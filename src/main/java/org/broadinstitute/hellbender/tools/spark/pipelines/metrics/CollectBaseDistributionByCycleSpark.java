@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Collects base distribution per cycle in SAM/BAM/CRAM file(s). The tool leverages the Spark framework for
@@ -219,6 +220,13 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
                     }
                 }
             }
+        }
+    }
+
+    @Override
+    protected void onStartup() {
+        if(chartOutput != null) {
+            RScriptExecutor.checkIfRunningInGatkLiteDocker("Generating a chart file requires R, which is not available in the GATK Lite Docker image.");
         }
     }
 

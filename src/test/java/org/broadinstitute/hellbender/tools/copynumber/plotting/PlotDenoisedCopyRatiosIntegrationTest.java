@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber.plotting;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.testng.Assert;
@@ -62,6 +63,26 @@ public final class PlotDenoisedCopyRatiosIntegrationTest extends CommandLineProg
         };
         runCommandLine(arguments);
         assertFilesCreated(outputDir);
+    }
+
+    //checks that the tool fails correctly when in GATK Lite docker
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final File outputDir = createTempDir("testDir");
+            final String[] arguments = {
+                    "--" + CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, STANDARDIZED_COPY_RATIOS_FILE.getAbsolutePath(),
+                    "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
+                    "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
+                    "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
+                    "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
+            };
+
+            runCommandLine(arguments);
+        });
     }
 
     //checks that output files with reasonable file sizes are generated, but correctness of output is not checked

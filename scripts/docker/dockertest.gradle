@@ -15,7 +15,7 @@ repositories {
     mavenCentral()
 
     maven {
-        url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
+        url "https://us-central1-maven.pkg.dev/dsp-artifact-registry/libs-snapshot/" //for htsjdk snapshots
     }
     mavenLocal()
 }

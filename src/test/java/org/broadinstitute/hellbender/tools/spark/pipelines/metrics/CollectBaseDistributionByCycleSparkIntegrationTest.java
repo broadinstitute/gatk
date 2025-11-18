@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.EnvironmentTestUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
@@ -76,6 +78,29 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test(
+        expectedExceptions = UserException.NotAvailableInGatkLiteDocker.class,
+        singleThreaded = true
+    )
+    public void testInGatkLiteDocker() throws IOException {
+        EnvironmentTestUtils.checkWithGATKDockerPropertySet(() -> {
+            final File unsortedBam = new File(TEST_DATA_DIR, "unsortedBamName");
+
+            final File outfile = GATKBaseTest.createTempFile("test", ".metrics");
+            final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
+
+            ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(unsortedBam)
+                .addOutput(outfile)
+                .add("chart", pdf)
+                .add("pf-reads-only", false)
+                .add("aligned-reads-only", false);
+
+            runCommandLine(args);
+        });
+
     }
 
     @Test

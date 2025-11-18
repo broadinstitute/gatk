@@ -62,6 +62,11 @@ import java.util.stream.Collectors;
  * of the specific fields. For multi-allelic CNVs, only a copy state concordance metric is
  * annotated. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
  *
+ * Minimum matching criteria can be specified as in {@link SVCluster} (e.g. reciprocal overlap). These serve to
+ * improve computational efficiency, but may be set to relaxed values that can be iterated on post hoc. Note that
+ * this set of parameters includes minimum sample overlap (Jaccard index of carrier samples), which should generally
+ * be set to 0 for concordance analysis.
+ *
  * This tool also allows supports stratification of the SVs into groups with specified matching criteria including SV type,
  * size range, and interval overlap. Please see the {@link GroupedSVCluster} tool documentation for further details
  * on how to specify stratification groups. Stratification only affects the criteria applied to each "eval" SV. In
@@ -306,6 +311,9 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype.getSampleName()).alleles(genotype.getAlleles());
         if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
             builder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
+        }
+        if (genotype.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
+            builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT));
         }
         return builder.make();
     }

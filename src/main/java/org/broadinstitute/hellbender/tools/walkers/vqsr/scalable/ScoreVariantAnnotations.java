@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -383,6 +384,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 indelScorer = deserializeScorerFromSerFiles(VariantType.INDEL);
                 break;
             case PYTHON_IFOREST:
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using PYTHON_IFOREST backend.");
 
@@ -397,6 +399,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
             case PYTHON_SCRIPT:
+                PythonScriptExecutor.checkIfRunningInGatkLiteDocker("This tool cannot be run with a Python model in the GATK Lite Docker image.");
                 IOUtils.canReadFile(pythonScriptFile);
                 logger.info("Running in PYTHON_SCRIPT mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);
