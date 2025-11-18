@@ -586,16 +586,17 @@ task GetUningestedSampleIds {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+    # Create temp table with the sample_names and load external sample names into temp table
+    # Make this idempotent - clean up any existing temp table from failed runs
     set +o errexit
     bq --apilog=false show --project_id=~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
-    # If there is already a table of sample names or something else is wrong, bail.
+    # If temp table already exists, clean it up (idempotent behavior for retries)
     if [ $BQ_SHOW_RC -eq 0 ]; then
-      echo "There is already a list of sample names. This may need manual cleanup. Exiting"
-      exit 1
+      echo "Temp table ~{temp_table} already exists from previous run, cleaning up"
+      bq --apilog=false --project_id=~{project_id} rm -f ~{temp_table}
     fi
 
     echo "Creating the external sample name list table ~{temp_table}"
