@@ -190,8 +190,10 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
             return genotypes;
         }
 
+        final int eventLength = Math.abs(variant.getEnd() - variant.getStart());
+
         boolean multiallelicFilter = false;
-        if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
+        if (eventLength >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
             for (final Genotype genotype : genotypes) {
                 final String sample = genotype.getSampleName();
@@ -206,9 +208,11 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
 
         boolean gt5kbFilter = false;
         final List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
+        final boolean hasCn0Alt = variant.getAlternateAlleles().stream().anyMatch(a -> a.getDisplayString().equals("<CN0>"));
+
         if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
-        } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
+        } else if ((eventLength >= MIN_MULTIALLELIC_EVENT_SIZE || hasCn0Alt) && !multiallelicFilter) {
             gt5kbFilter = true;
         }
 
@@ -255,8 +259,10 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
             return genotypes;
         }
 
+        final int eventLength = Math.abs(variant.getEnd() - variant.getStart());
+
         boolean multiallelicFilter = false;
-        if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_LARGE_EVENT_SIZE) {
+        if (eventLength >= MIN_LARGE_EVENT_SIZE) {
             Map<String, Integer> sampleRdCn = new HashMap<>();
             for (final Genotype genotype : genotypes) {
                 final String sample = genotype.getSampleName();
@@ -276,9 +282,11 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
 
         boolean gt5kbFilter = false;
         final List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
+        final boolean hasCn0Alt = variant.getAlternateAlleles().stream().anyMatch(a -> a.getDisplayString().equals("<CN0>"));
+
         if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
-        } else if (variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0) >= MIN_MULTIALLELIC_EVENT_SIZE && !multiallelicFilter) {
+        } else if ((eventLength >= MIN_MULTIALLELIC_EVENT_SIZE || hasCn0Alt) && !multiallelicFilter) {
             gt5kbFilter = true;
         }
 
