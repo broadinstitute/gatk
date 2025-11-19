@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -559,8 +560,12 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
     }
 
     private boolean isDelDup(final VariantContext variant) {
-        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-        return svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP);
+        if (variant.getAlternateAlleles().size() != 1) {
+            return false;
+        }
+
+        final Allele alt = variant.getAlternateAllele(0);
+        return GATKSVVCFConstants.DEL_ALLELE.equals(alt) || GATKSVVCFConstants.DUP_ALLELE.equals(alt);
     }
 
     private boolean isLarge(final VariantContext variant, final int minSize) {
