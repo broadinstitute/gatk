@@ -83,6 +83,8 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
     private static final Map<String, Set<String>> abnormalRdCn = new HashMap<>();
     private static final Map<String, Map<String, Integer>> revisedCopyNumbers = new HashMap<>();
     private static final Set<String> revisedComplete = new HashSet<>();
+    private static final List<CopyNumberRevisionEvent> copyNumberRevisionEvents = new ArrayList<>();
+    private static final Map<String, Map<String, Integer>> initialCopyNumbers = new HashMap<>();
 
     // Data structures for cached data
     private final Map<String, Set<String>> nonRefSamplesCache = new HashMap<>();
@@ -97,6 +99,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
+            applyCopyNumberRevisionEvents();
             processCollectedVariants();
             clearAllCaches();
         }
@@ -323,15 +326,12 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
         // Iterate through samples to test against conditions
         for (final String sample : samples) {
-            final String largerFullId = largerId + "@" + sample;
-            final String smallerFullId = smallerId + "@" + sample;
-            if (revisedComplete.contains(largerFullId)) {
+            final int largerSampleRdCn = largerRdCn.getOrDefault(sample, Integer.MIN_VALUE);
+            final int smallerSampleRdCn = smallerRdCn.getOrDefault(sample, Integer.MIN_VALUE);
+            if (largerSampleRdCn == Integer.MIN_VALUE || smallerSampleRdCn == Integer.MIN_VALUE) {
                 continue;
             }
 
-            // Initialize variables for evaluation
-            final int largerSampleRdCn = revisedCopyNumbers.getOrDefault(largerId, Collections.emptyMap()).getOrDefault(sample, largerRdCn.get(sample));
-            final int smallerSampleRdCn = revisedCopyNumbers.getOrDefault(smallerId, Collections.emptyMap()).getOrDefault(sample, smallerRdCn.get(sample));
             final Set<String> largerSampleSupport = largerSupport.get(sample);
             final Set<String> smallerSampleSupport = smallerSupport.get(sample);
             final Genotype genotype2 = smallerVariant.getGenotype(sample);
@@ -339,58 +339,30 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             // Condition 1: Smaller depth call is driven by larger call
             if (largerSampleSupport.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && largerSampleSupport.size() > 1
                     && smallerSampleSupport.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1))) && !largerIsMultiCnv) {
-                if (largerSampleRdCn == 0) {
-                    makeRevision(smallerFullId, smallerSampleRdCn + 2);
-                } else if (largerSampleRdCn == 1) {
-                    makeRevision(smallerFullId, smallerSampleRdCn + largerSampleRdCn);
-                } else if (largerSampleRdCn > 1) {
-                    int newCN = smallerSampleRdCn - largerSampleRdCn + 2;
-                    newCN = Math.max(newCN, 0);
-                    makeRevision(smallerFullId, newCN);
-                }
+                addCopyNumberRevisionEvent(largerVariant, smallerVariant, sample, CopyNumberCondition.LARGER_DRIVES_SMALLER_MIXED_SUPPORT,
+                        largerSampleRdCn, smallerSampleRdCn);
             }
 
             // Condition 2: Smaller call is driven by larger depth call
             else if (smallerSampleSupport.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && smallerSampleSupport.size() > 1
                     && largerSampleSupport.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && !genotype2.isHomRef() && !smallerIsMultiCnv && isOverlapping) {
-                if (smallerSampleRdCn == 0) {
-                    makeRevision(largerFullId, largerSampleRdCn + 2);
-                } else if (smallerSampleRdCn == 1) {
-                    makeRevision(largerFullId, largerSampleRdCn + smallerSampleRdCn);
-                } else if (smallerSampleRdCn > 1) {
-                    int newCN = largerSampleRdCn - smallerSampleRdCn + 2;
-                    newCN = Math.max(newCN, 0);
-                    makeRevision(largerFullId, newCN);
-                }
+                addCopyNumberRevisionEvent(largerVariant, smallerVariant, sample, CopyNumberCondition.SMALLER_DRIVES_LARGER,
+                        largerSampleRdCn, smallerSampleRdCn);
             }
 
             // Condition 3: Depth-only calls where smaller call is driven by larger call
             else if (largerSampleSupport.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && smallerSampleSupport.equals(Collections.singleton(GATKSVVCFConstants.EV_VALUES.get(1)))
                     && !largerIsMultiCnv && isMatchingSvType) {
-                if (largerSampleRdCn == 0 && largerSampleRdCn != smallerSampleRdCn) {
-                    makeRevision(smallerFullId, smallerSampleRdCn + 2);
-                } else if (largerSampleRdCn == 1 && largerSampleRdCn > smallerSampleRdCn) {
-                    makeRevision(smallerFullId, 1);
-                } else if (largerSampleRdCn > 1 && largerSampleRdCn < smallerSampleRdCn) {
-                    makeRevision(smallerFullId, Math.max(smallerSampleRdCn - largerSampleRdCn + 2, 0));
-                } else {
-                    makeRevision(smallerFullId, 2);
-                }
+                addCopyNumberRevisionEvent(largerVariant, smallerVariant, sample, CopyNumberCondition.DEPTH_ONLY_BOTH_RD,
+                        largerSampleRdCn, smallerSampleRdCn);
             }
 
             // Condition 4: Any other time a larger call drives a smaller call
             else if (largerSampleSupport.contains(GATKSVVCFConstants.EV_VALUES.get(1)) && !largerIsMultiCnv && isLargerThanMin) {
-                if (largerSampleRdCn == 0) {
-                    makeRevision(smallerFullId, smallerSampleRdCn + 2);
-                } else if (largerSampleRdCn == 1) {
-                    makeRevision(smallerFullId, smallerSampleRdCn + largerSampleRdCn);
-                } else if (largerSampleRdCn > 1) {
-                    int newCN = smallerSampleRdCn - largerSampleRdCn + 2;
-                    newCN = Math.max(newCN, 0);
-                    makeRevision(smallerFullId, newCN);
-                }
+                addCopyNumberRevisionEvent(largerVariant, smallerVariant, sample, CopyNumberCondition.LARGER_DRIVES_SMALLER_GENERAL,
+                        largerSampleRdCn, smallerSampleRdCn);
             }
         }
     }
@@ -541,6 +513,169 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         nonRefSamplesCache.clear();
         supportCache.clear();
         rdCnCache.clear();
+    }
+
+    private void applyCopyNumberRevisionEvents() {
+        revisedCopyNumbers.clear();
+        revisedComplete.clear();
+
+        if (copyNumberRevisionEvents.isEmpty()) {
+            initialCopyNumbers.clear();
+            return;
+        }
+
+        final Map<String, Map<String, Integer>> currentCopyNumbersState = new HashMap<>();
+        for (final Map.Entry<String, Map<String, Integer>> entry : initialCopyNumbers.entrySet()) {
+            currentCopyNumbersState.put(entry.getKey(), new HashMap<>(entry.getValue()));
+        }
+
+        copyNumberRevisionEvents.sort((a, b) -> {
+            int cmp = Integer.compare(b.driverLength, a.driverLength);
+            if (cmp != 0) {
+                return cmp;
+            }
+            cmp = Integer.compare(b.otherLength, a.otherLength);
+            if (cmp != 0) {
+                return cmp;
+            }
+            cmp = a.driverVariantId.compareTo(b.driverVariantId);
+            if (cmp != 0) {
+                return cmp;
+            }
+            cmp = a.otherVariantId.compareTo(b.otherVariantId);
+            if (cmp != 0) {
+                return cmp;
+            }
+            cmp = a.sample.compareTo(b.sample);
+            if (cmp != 0) {
+                return cmp;
+            }
+            return a.condition.compareTo(b.condition);
+        });
+
+        for (final CopyNumberRevisionEvent event : copyNumberRevisionEvents) {
+            final String driverKey = event.driverVariantId + "@" + event.sample;
+            if (revisedComplete.contains(driverKey)) {
+                continue;
+            }
+
+            final Map<String, Integer> driverMap = currentCopyNumbersState.get(event.driverVariantId);
+            final Map<String, Integer> otherMap = currentCopyNumbersState.get(event.otherVariantId);
+            final Map<String, Integer> targetMap = currentCopyNumbersState.get(event.targetVariantId);
+
+            if (driverMap == null || otherMap == null || targetMap == null) {
+                continue;
+            }
+
+            if (!driverMap.containsKey(event.sample) || !otherMap.containsKey(event.sample) || !targetMap.containsKey(event.sample)) {
+                continue;
+            }
+
+            final int driverCn = driverMap.get(event.sample);
+            final int otherCn = otherMap.get(event.sample);
+            final int targetCn = targetMap.get(event.sample);
+            final int newCn = computeNewCopyNumber(event, driverCn, otherCn, targetCn);
+            if (newCn == targetCn) {
+                continue;
+            }
+
+            targetMap.put(event.sample, newCn);
+            makeRevision(event.targetVariantId + "@" + event.sample, newCn);
+        }
+
+        copyNumberRevisionEvents.clear();
+        initialCopyNumbers.clear();
+    }
+
+    private int computeNewCopyNumber(final CopyNumberRevisionEvent event, final int driverCn, final int otherCn, final int currentTargetCn) {
+        switch (event.condition) {
+            case LARGER_DRIVES_SMALLER_MIXED_SUPPORT:
+            case LARGER_DRIVES_SMALLER_GENERAL:
+                if (driverCn == 0) {
+                    return otherCn + 2;
+                } else if (driverCn == 1) {
+                    return otherCn + driverCn;
+                } else if (driverCn > 1) {
+                    return Math.max(otherCn - driverCn + 2, 0);
+                }
+                return currentTargetCn;
+            case SMALLER_DRIVES_LARGER:
+                if (otherCn == 0) {
+                    return driverCn + 2;
+                } else if (otherCn == 1) {
+                    return driverCn + otherCn;
+                } else if (otherCn > 1) {
+                    return Math.max(driverCn - otherCn + 2, 0);
+                }
+                return currentTargetCn;
+            case DEPTH_ONLY_BOTH_RD:
+                if (driverCn == 0 && driverCn != otherCn) {
+                    return otherCn + 2;
+                } else if (driverCn == 1 && driverCn > otherCn) {
+                    return 1;
+                } else if (driverCn > 1 && driverCn < otherCn) {
+                    return Math.max(otherCn - driverCn + 2, 0);
+                }
+                return 2;
+            default:
+                return currentTargetCn;
+        }
+    }
+
+    private void addCopyNumberRevisionEvent(final VariantContext driverVariant,
+                                            final VariantContext otherVariant,
+                                            final String sample,
+                                            final CopyNumberCondition condition,
+                                            final int driverRdCn,
+                                            final int otherRdCn) {
+        final String driverId = driverVariant.getID();
+        final String otherId = otherVariant.getID();
+        final int driverLength = Math.abs(driverVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        final int otherLength = Math.abs(otherVariant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        final String targetVariantId = condition == CopyNumberCondition.SMALLER_DRIVES_LARGER ? driverId : otherId;
+
+        recordInitialRdCn(driverId, sample, driverRdCn);
+        recordInitialRdCn(otherId, sample, otherRdCn);
+
+        copyNumberRevisionEvents.add(new CopyNumberRevisionEvent(driverId, otherId, targetVariantId, sample,
+                condition, driverLength, otherLength));
+    }
+
+    private void recordInitialRdCn(final String variantId, final String sample, final int rdCn) {
+        initialCopyNumbers.computeIfAbsent(variantId, k -> new HashMap<>()).put(sample, rdCn);
+    }
+
+    private enum CopyNumberCondition {
+        LARGER_DRIVES_SMALLER_MIXED_SUPPORT,
+        SMALLER_DRIVES_LARGER,
+        DEPTH_ONLY_BOTH_RD,
+        LARGER_DRIVES_SMALLER_GENERAL
+    }
+
+    private static final class CopyNumberRevisionEvent {
+        private final String driverVariantId;
+        private final String otherVariantId;
+        private final String targetVariantId;
+        private final String sample;
+        private final CopyNumberCondition condition;
+        private final int driverLength;
+        private final int otherLength;
+
+        private CopyNumberRevisionEvent(final String driverVariantId,
+                                        final String otherVariantId,
+                                        final String targetVariantId,
+                                        final String sample,
+                                        final CopyNumberCondition condition,
+                                        final int driverLength,
+                                        final int otherLength) {
+            this.driverVariantId = driverVariantId;
+            this.otherVariantId = otherVariantId;
+            this.targetVariantId = targetVariantId;
+            this.sample = sample;
+            this.condition = condition;
+            this.driverLength = driverLength;
+            this.otherLength = otherLength;
+        }
     }
 
     private void removeVariantFromCaches(final String variantID) {
