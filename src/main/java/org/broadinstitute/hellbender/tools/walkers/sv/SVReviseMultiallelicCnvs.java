@@ -220,12 +220,14 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                if (!genotype.isNoCall()) {
-                    if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) >= 2) {
+                final Object rdCnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+                if (genotype.hasGQ() && rdCnAttribute != null) {
+                    final int rdCn = Integer.parseInt(rdCnAttribute.toString());
+                    if (rdCn >= 2) {
                         gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
-                    } else if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) == 1) {
+                    } else if (rdCn == 1) {
                         gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                    } else if (genotype.hasGQ()) {
+                    } else {
                         gb.alleles(Arrays.asList(variant.getAlternateAllele(0), variant.getAlternateAllele(0)));
                     }
                 }
@@ -294,12 +296,14 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                if (!genotype.isNoCall()) {
-                    if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 3).toString()) <= 2) {
+                final Object rdCnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
+                if (genotype.hasGQ() && rdCnAttribute != null) {
+                    final int rdCn = Integer.parseInt(rdCnAttribute.toString());
+                    if (rdCn <= 2) {
                         gb.alleles(Arrays.asList(variant.getReference(), variant.getReference()));
-                    } else if (genotype.hasGQ() && Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) == 3) {
+                    } else if (rdCn == 3) {
                         gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                    } else if (genotype.hasGQ()) {
+                    } else {
                         gb.alleles(Arrays.asList(variant.getAlternateAllele(0), variant.getAlternateAllele(0)));
                     }
                 }
