@@ -137,6 +137,7 @@ task GetToolVersions {
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
+    String vep_loftee_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/loftee:2025-11-18-1ea988fc4bbf"
 
     String workspace_bucket = read_string(workspace_bucket_output)
     String workspace_id = read_string(workspace_id_output)

@@ -35,6 +35,12 @@ workflow GvsCreateVATfromVDS {
         String? gatk_docker
         String? variants_docker
         String? variants_nirvana_docker
+        String? vep_loftee_docker
+
+        String? vep_loftee_data_table_raw
+        String? vep_loftee_data_table_cooked
+
+        String loftee_references_dir = "gs://gvs-internal/loftee/"
     }
 
     parameter_meta {
@@ -84,6 +90,7 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
+    String effective_vep_loftee_docker = select_first([vep_loftee_docker, GetToolVersions.vep_loftee_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
     String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
 
@@ -265,6 +272,27 @@ workflow GvsCreateVATfromVDS {
                     variants_docker = effective_variants_docker,
             }
 
+            call GenerateVepAndLofteeAnnotations {
+                input:
+                    vep_loftee_docker = effective_vep_loftee_docker,
+                    loftee_human_ancestor_fa_gz = loftee_references_dir + "human_ancestor.fa.gz",
+                    loftee_human_ancestor_fa_gz_fai = loftee_references_dir + "human_ancestor.fa.gz.fai",
+                    loftee_human_ancestor_fa_gz_gzi = loftee_references_dir + "human_ancestor.fa.gz.gzi",
+                    loftee_gerp_scores = loftee_references_dir + "gerp_conservation_scores.homo_sapiens.GRCh38.bw",
+                    loftee_phylo_csf_database = loftee_references_dir + "loftee.sql",
+                    sites_only_vcf = CopySitesOnlyVcf.output_file_path,
+                    sites_only_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
+            }
+
+            call BigQueryLoadRawVepAndLofteeAnnotations {
+                input:
+                  vep_loftee_raw_output = GenerateVepAndLofteeAnnotations.output_file,
+                  project_id = project_id,
+                  dataset_name = dataset_name,
+                  raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                  variants_docker = effective_variants_docker,
+            }
+
             ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
             call AnnotateVCF {
                 input:
@@ -291,7 +319,15 @@ workflow GvsCreateVATfromVDS {
                     output_path = genes_output_path,
                     variants_docker = effective_variants_docker,
             }
+        }
 
+        call BigQueryCookVepAndLofteeRawAnnotations {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                cooked_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_cooked"]),
+                variants_docker = effective_variants_docker,
         }
 
         call Utils.MergeTsvs {
@@ -731,6 +767,166 @@ for line in sys.stdin:
         File monitoring_log = "monitoring.log"
     }
 }
+
+task GenerateVepAndLofteeAnnotations {
+    input {
+        String vep_loftee_docker
+        # TODO make a reference disk for this stuff, that
+        File loftee_human_ancestor_fa_gz
+        File loftee_human_ancestor_fa_gz_fai
+        File loftee_human_ancestor_fa_gz_gzi
+        File loftee_gerp_scores
+        File loftee_phylo_csf_database
+        File sites_only_vcf
+        File sites_only_vcf_index
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
+        args=(
+
+            # "Splats" out data into their own columns that otherwise would be nested (semicolon delimted) in the "Extra" column.
+            --tab
+
+            # Force writing versions on Ensembl transcripts for VAT compatibility.
+            --transcript_version
+
+            # Emit HGNC symbols and IDs.
+            --symbol
+
+            # Basic LOFTEE plugin setup
+            --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database}
+            --dir_plugins $LOFTEE_PATH
+
+            # Basic VEP/LOFTEE cache setup
+            --cache
+            --dir_cache .
+
+            # For GERP (Genomic Evolutionary Rate Profiling) score output.
+            --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig
+
+            # Input and output files
+            --input_file ~{sites_only_vcf}
+            --output_file vep_loftee_raw_output.txt
+        )
+
+        vep "${args[@}}"
+
+    >>>
+
+    runtime {
+        docker: vep_loftee_docker
+        memory: "15 GB"
+        disks: "1000 HDD"
+    }
+
+    output {
+        File output_file = "vep_loftee_raw_output.txt"
+    }
+}
+
+task BigQueryLoadRawVepAndLofteeAnnotations {
+    input {
+        String variants_docker
+        File vep_loftee_raw_output
+        String project_id
+        String dataset_name
+        String raw_data_table
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
+        # - Remove lines beginning with '##'.
+        # - Remove the leading '#' from the one line that should be left with a single leading '#' so the line can
+        #   serve as a TSV header.
+        sed -E '/^##/d' ~{vep_loftee_raw_output} | sed -E 's/^#//' > vep_loftee_load_file.txt
+
+        # Schema autodetection doesn't seem to work with --autodetect here for reasons unknown 😭
+        # Explicitly get the header and sed it into schema form
+        schema=$(head -1 vep_loftee_load_file.txt| sed "s/\t/:STRING,/g" | sed 's/$/:STRING/')
+
+        bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+           --null_marker="-" --schema ${schema} ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "7 GB"
+        disk: "1000 GB"
+    }
+
+    output {
+
+    }
+}
+
+task BigQueryCookVepAndLofteeRawAnnotations {
+    input {
+        String variants_docker
+        String project_id
+        String dataset_name
+        String raw_data_table
+        String cooked_data_table
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{cooked_data_table} --replace \
+           --project_id=~{project_id} '
+
+        SELECT
+        REGEXP_EXTRACT(Uploaded_variation, '^chr([^_]+)') || '-' || REGEXP_EXTRACT(Uploaded_variation, '_(\\d+)') || '-' || REGEXP_EXTRACT(Uploaded_variation, '_([ACGT]+)/') || '-' || REGEXP_EXTRACT(Uploaded_variation, '([ACGT]+)$') AS vid,
+        Gene,
+        Feature,
+        Feature_type,
+        Consequence,
+        cDNA_position,
+        CDS_position,
+        Protein_position,
+        Amino_acids,
+        Codons,
+        Existing_variation,
+        IMPACT,
+        DISTANCE,
+        STRAND,
+        SPLIT(FLAGS, ',') AS FLAGS,
+        SYMBOL,
+        SYMBOL_SOURCE,
+        HGNC_ID,
+        SOURCE,
+        LoF,
+        SPLIT(LoF_filter, ',') AS LoF_filter,
+        SPLIT(LoF_flags, ',') AS LoF_flags,
+        SPLIT(LoF_info, ',') AS LoF_info,
+        GERP
+        FROM
+        ~{project_id}.~{dataset_name}.~{raw_data_table}
+
+        '
+
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "7 GB"
+        disk: "1000 GB"
+    }
+
+    output {
+
+    }
+}
+
 
 
 task AnnotateVCF {
