@@ -885,7 +885,10 @@ task BigQueryCookVepAndLofteeRawAnnotations {
            --project_id=~{project_id} '
 
         SELECT
-        REGEXP_EXTRACT(Uploaded_variation, '^chr([^_]+)') || '-' || REGEXP_EXTRACT(Uploaded_variation, '_(\\d+)') || '-' || REGEXP_EXTRACT(Uploaded_variation, '_([ACGT]+)/') || '-' || REGEXP_EXTRACT(Uploaded_variation, '([ACGT]+)$') AS vid,
+        REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" || REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") || "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" || REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
+        Uploaded_variation,
+        Location,
+        Allele,
         Gene,
         Feature,
         Feature_type,
@@ -899,16 +902,17 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         IMPACT,
         DISTANCE,
         STRAND,
-        SPLIT(FLAGS, ',') AS FLAGS,
+        SPLIT(FLAGS, ",") AS FLAGS,
         SYMBOL,
         SYMBOL_SOURCE,
         HGNC_ID,
         SOURCE,
         LoF,
-        SPLIT(LoF_filter, ',') AS LoF_filter,
-        SPLIT(LoF_flags, ',') AS LoF_flags,
-        SPLIT(LoF_info, ',') AS LoF_info,
+        SPLIT(LoF_filter, ",") AS LoF_filter,
+        SPLIT(LoF_flags, ",") AS LoF_flags,
+        SPLIT(LoF_info, ",") AS LoF_info,
         GERP
+
         FROM
         ~{project_id}.~{dataset_name}.~{raw_data_table}
 
