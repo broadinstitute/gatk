@@ -323,6 +323,7 @@ workflow GvsCreateVATfromVDS {
 
         call BigQueryCookVepAndLofteeRawAnnotations {
             input:
+                go = GenerateVepAndLofteeAnnotations.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
@@ -350,6 +351,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 variant_transcripts_path = variant_transcripts_output_path,
@@ -379,6 +381,8 @@ workflow GvsCreateVATfromVDS {
                 vat_table_name = DeduplicateVatInBigQuery.vat_table,
                 output_path = effective_output_path,
                 merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
+                # This precondition seems wrong / misleading. This task is actually gated on DeduplicateVatInBigQuery,
+                # as it should be.
                 precondition_met = BigQueryLoadJson.done,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -825,6 +829,7 @@ task GenerateVepAndLofteeAnnotations {
 
     output {
         File output_file = "vep_loftee_raw_output.txt"
+        Boolean done = true
     }
 }
 
@@ -869,6 +874,7 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
 task BigQueryCookVepAndLofteeRawAnnotations {
     input {
+        Array[Boolean] go
         String variants_docker
         String project_id
         String dataset_name
@@ -885,6 +891,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
            --project_id=~{project_id} '
 
         SELECT
+        -- Make a VID-compatible string from the data in Uploaded_variation.
         REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" || REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") || "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" || REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
         Uploaded_variation,
         Location,
@@ -902,16 +909,25 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         IMPACT,
         DISTANCE,
         STRAND,
+        -- FLAGS can be multi-valued so SPLIT to make this REPEATED.
         SPLIT(FLAGS, ",") AS FLAGS,
-        SYMBOL,
+        SYMBOL as HGNC_SYMBOL,
         SYMBOL_SOURCE,
-        HGNC_ID,
+        -- HGNC IDs are formatted like HGNC:1234; we only want the number part.
+        CAST(SPLIT(HGNC_ID, ":")[OFFSET(1)] AS INTEGER) AS HGNC_ID,
         SOURCE,
         LoF,
+        -- These three appear to sometimes be multi-valued so SPLIT to make them REPEATEDs.
         SPLIT(LoF_filter, ",") AS LoF_filter,
         SPLIT(LoF_flags, ",") AS LoF_flags,
         SPLIT(LoF_info, ",") AS LoF_info,
-        GERP
+        -- Split and cast the GERP string to REPEATED FLOAT64s.
+        (
+        SELECT
+        ARRAY_AGG(SAFE_CAST(s AS FLOAT64))
+        FROM
+        UNNEST(SPLIT(GERP, ",")) AS s
+        ) AS GERP
 
         FROM
         ~{project_id}.~{dataset_name}.~{raw_data_table}
@@ -923,14 +939,14 @@ task BigQueryCookVepAndLofteeRawAnnotations {
     runtime {
         docker: variants_docker
         memory: "7 GB"
-        disk: "1000 GB"
+        disk: "1000 HDD"
     }
 
     output {
-
+        Boolean done = true
+        String cooked_table_name = cooked_data_table
     }
 }
-
 
 
 task AnnotateVCF {
@@ -1249,6 +1265,7 @@ task BigQueryLoadJson {
         File variant_transcript_schema
         File genes_schema
         String mane_table_name
+        String vep_loftee_cooked_table_name
         String project_id
         String dataset_name
         String variant_transcripts_path
@@ -1300,6 +1317,27 @@ task BigQueryLoadJson {
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+
+        echo "Adding VET + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+        UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET
+
+        vtt.hgnc_symbol = vep.hgnc_symbol,
+        vtt.hgnc_id     = vep.hgnc_id,
+        vtt.LoF         = vep.LoF,
+        vtt.LoF_filter  = vep.LoF_filter,
+        vtt.LoF_flags   = vep.LoF_flags,
+        vtt.LoF_info    = vep.LoF_info,
+        vtt.GERP        = vep.GERP
+
+        FROM `~{dataset_name}.~{vep_loftee_cooked_table_name}` vep WHERE
+
+        vtt.transcript = vep.transcript AND
+        vtt.vid = vep.vid AND
+        vtt.transcript is not null;
+
+        '
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
@@ -1451,7 +1489,14 @@ task BigQueryLoadJson {
             v.clinvar_rcv_classifications,
             v.clinvar_rcv_num_stars,
             v.mane_select_name,
-            v.mane_plus_clinical_name
+            v.mane_plus_clinical_name,
+            v.hgnc_symbol,
+            v.hgnc_id,
+            v.LoF,
+            v.LoF_filter,
+            v.LoF_flags,
+            v.LoF_info,
+            v.GERP
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
