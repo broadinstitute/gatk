@@ -789,6 +789,9 @@ task GenerateVepAndLofteeAnnotations {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        curl -O https://ftp.ensembl.org/pub/release-115/variation/indexed_vep_cache/homo_sapiens_vep_115_GRCh38.tar.gz
+        tar xzf homo_sapiens_vep_115_GRCh38.tar.gz
+
         LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
         args=(
 
