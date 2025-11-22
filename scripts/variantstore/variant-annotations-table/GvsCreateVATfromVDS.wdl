@@ -775,7 +775,7 @@ for line in sys.stdin:
 task GenerateVepAndLofteeAnnotations {
     input {
         String vep_loftee_docker
-        # TODO make a reference disk for this stuff, that
+        # TODO make a reference disk for this stuff, some of these references are huge.
         File loftee_human_ancestor_fa_gz
         File loftee_human_ancestor_fa_gz_fai
         File loftee_human_ancestor_fa_gz_gzi
@@ -817,7 +817,7 @@ task GenerateVepAndLofteeAnnotations {
             --output_file vep_loftee_raw_output.txt
         )
 
-        vep "${args[@}}"
+        vep "${args[@]}"
 
     >>>
 
