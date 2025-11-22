@@ -1338,9 +1338,10 @@ task BigQueryLoadJson {
 
         FROM `~{dataset_name}.~{vep_loftee_cooked_table_name}` vep WHERE
 
-        vtt.transcript = vep.transcript AND
-        vtt.vid = vep.vid AND
-        vtt.transcript is not null;
+        vtt.transcript is not null AND
+        vep.Feature_type is not null AND
+        vtt.transcript = vep.Feature AND
+        vtt.vid = vep.vid
 
         '
 
