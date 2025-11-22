@@ -824,7 +824,7 @@ task GenerateVepAndLofteeAnnotations {
     runtime {
         docker: vep_loftee_docker
         memory: "15 GB"
-        disks: "1000 HDD"
+        disks: "local-disk 1000 HDD"
     }
 
     output {
@@ -864,11 +864,11 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
     runtime {
         docker: variants_docker
         memory: "7 GB"
-        disk: "1000 GB"
+        disks: "local-disk 1000 HDD"
     }
 
     output {
-
+        Boolean done = true
     }
 }
 
@@ -939,7 +939,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
     runtime {
         docker: variants_docker
         memory: "7 GB"
-        disk: "1000 HDD"
+        disks: "local-disk 1000 HDD"
     }
 
     output {
@@ -1508,7 +1508,7 @@ task BigQueryLoadJson {
         memory: "3 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 100 HDD"
+        disks: "local-disk 1000 HDD"
     }
 
     output {
