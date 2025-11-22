@@ -343,7 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1739_cmrg_learnings
+             - vs_1520_loftee
          tags:
              - /.*/
    - name: GvsIngestTieout
