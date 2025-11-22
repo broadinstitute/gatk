@@ -285,15 +285,6 @@ workflow GvsCreateVATfromVDS {
                     sites_only_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
             }
 
-            call BigQueryLoadRawVepAndLofteeAnnotations {
-                input:
-                  vep_loftee_raw_output = GenerateVepAndLofteeAnnotations.output_file,
-                  project_id = project_id,
-                  dataset_name = dataset_name,
-                  raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
-                  variants_docker = effective_variants_docker,
-            }
-
             ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
             call AnnotateVCF {
                 input:
@@ -320,6 +311,15 @@ workflow GvsCreateVATfromVDS {
                     output_path = genes_output_path,
                     variants_docker = effective_variants_docker,
             }
+        }
+
+        call BigQueryLoadRawVepAndLofteeAnnotations {
+            input:
+                vep_loftee_raw_output = GenerateVepAndLofteeAnnotations.output_file,
+                project_id = project_id,
+                dataset_name = dataset_name,
+                raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                variants_docker = effective_variants_docker,
         }
 
         call BigQueryCookVepAndLofteeRawAnnotations {
@@ -841,7 +841,7 @@ task GenerateVepAndLofteeAnnotations {
 task BigQueryLoadRawVepAndLofteeAnnotations {
     input {
         String variants_docker
-        File vep_loftee_raw_output
+        Array[File] vep_loftee_raw_output
         String project_id
         String dataset_name
         String raw_data_table
@@ -852,18 +852,21 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
-        # - Remove lines beginning with '##'.
-        # - Remove the leading '#' from the one line that should be left with a single leading '#' so the line can
-        #   serve as a TSV header.
-        sed -E '/^##/d' ~{vep_loftee_raw_output} | sed -E 's/^#//' > vep_loftee_load_file.txt
+        for file in ~{vep_loftee_raw_output}
+        do
+            # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
+            # - Remove lines beginning with '##'.
+            # - Remove the leading '#' from the one line that should be left with a single leading '#' so the line can
+            #   serve as a TSV header.
+            sed -E '/^##/d' $file | sed -E 's/^#//' > vep_loftee_load_file.txt
 
-        # Schema autodetection doesn't seem to work with --autodetect here for reasons unknown 😭
-        # Explicitly get the header and sed it into schema form
-        schema=$(head -1 vep_loftee_load_file.txt| sed "s/\t/:STRING,/g" | sed 's/$/:STRING/')
+            # Schema autodetection doesn't seem to work with --autodetect here for reasons unknown 😭
+            # Explicitly get the header and sed it into schema form
+            schema=$(head -1 vep_loftee_load_file.txt| sed "s/\t/:STRING,/g" | sed 's/$/:STRING/')
 
-        bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
-           --null_marker="-" --schema ${schema} ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+               --null_marker="-" --schema ${schema} ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
+        done
     >>>
 
     runtime {
