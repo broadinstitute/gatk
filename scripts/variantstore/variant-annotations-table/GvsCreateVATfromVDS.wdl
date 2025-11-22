@@ -814,7 +814,7 @@ task GenerateVepAndLofteeAnnotations {
             --dir_cache .
 
             # For GERP (Genomic Evolutionary Rate Profiling) score output.
-            --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig
+            --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig,num_records=all
 
             # Input and output files
             --input_file ~{sites_only_vcf}
