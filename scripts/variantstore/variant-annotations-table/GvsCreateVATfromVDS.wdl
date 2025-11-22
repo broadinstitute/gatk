@@ -275,6 +275,7 @@ workflow GvsCreateVATfromVDS {
             call GenerateVepAndLofteeAnnotations {
                 input:
                     vep_loftee_docker = effective_vep_loftee_docker,
+                    vep_cache = loftee_references_dir + "homo_sapiens_vep_115_GRCh38.tar.gz",
                     loftee_human_ancestor_fa_gz = loftee_references_dir + "human_ancestor.fa.gz",
                     loftee_human_ancestor_fa_gz_fai = loftee_references_dir + "human_ancestor.fa.gz.fai",
                     loftee_human_ancestor_fa_gz_gzi = loftee_references_dir + "human_ancestor.fa.gz.gzi",
@@ -775,7 +776,8 @@ for line in sys.stdin:
 task GenerateVepAndLofteeAnnotations {
     input {
         String vep_loftee_docker
-        # TODO make a reference disk for this stuff, some of these references are huge.
+        # TODO make a reference disk for this stuff, some of these references are quite large.
+        File vep_cache
         File loftee_human_ancestor_fa_gz
         File loftee_human_ancestor_fa_gz_fai
         File loftee_human_ancestor_fa_gz_gzi
@@ -789,13 +791,12 @@ task GenerateVepAndLofteeAnnotations {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        curl -O https://ftp.ensembl.org/pub/release-115/variation/indexed_vep_cache/homo_sapiens_vep_115_GRCh38.tar.gz
-        tar xzf homo_sapiens_vep_115_GRCh38.tar.gz
+        tar xzf ~{vep_cache}
 
         LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
         args=(
 
-            # "Splats" out data into their own columns that otherwise would be nested (semicolon delimted) in the "Extra" column.
+            # Breaks out data into their own columns that otherwise would be nested (semicolon delimited) in the "Extra" column.
             --tab
 
             # Force writing versions on Ensembl transcripts for VAT compatibility.
@@ -808,7 +809,7 @@ task GenerateVepAndLofteeAnnotations {
             --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database}
             --dir_plugins $LOFTEE_PATH
 
-            # Basic VEP/LOFTEE cache setup
+            # Basic VEP cache setup
             --cache
             --dir_cache .
 
