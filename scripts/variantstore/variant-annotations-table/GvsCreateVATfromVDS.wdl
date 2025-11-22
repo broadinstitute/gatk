@@ -826,6 +826,7 @@ task GenerateVepAndLofteeAnnotations {
     >>>
 
     runtime {
+        preemptible: 2
         docker: vep_loftee_docker
         memory: "15 GB"
         disks: "local-disk 1000 HDD"
