@@ -882,7 +882,7 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
 task BigQueryCookVepAndLofteeRawAnnotations {
     input {
-        Array[Boolean] go
+        Boolean go
         String variants_docker
         String project_id
         String dataset_name
