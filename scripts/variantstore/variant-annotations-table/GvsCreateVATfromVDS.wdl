@@ -852,7 +852,7 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        for file in ~{vep_loftee_raw_output}
+        for file in ~{sep=' ' vep_loftee_raw_output}
         do
             # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
             # - Remove lines beginning with '##'.
