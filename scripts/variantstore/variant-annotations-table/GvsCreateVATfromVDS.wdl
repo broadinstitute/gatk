@@ -324,7 +324,7 @@ workflow GvsCreateVATfromVDS {
 
         call BigQueryCookVepAndLofteeRawAnnotations {
             input:
-                go = GenerateVepAndLofteeAnnotations.done,
+                go = BigQueryLoadRawVepAndLofteeAnnotations.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
