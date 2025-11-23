@@ -281,8 +281,7 @@ workflow GvsCreateVATfromVDS {
                     loftee_human_ancestor_fa_gz_gzi = loftee_references_dir + "human_ancestor.fa.gz.gzi",
                     loftee_gerp_scores = loftee_references_dir + "gerp_conservation_scores.homo_sapiens.GRCh38.bw",
                     loftee_phylo_csf_database = loftee_references_dir + "loftee.sql",
-                    sites_only_vcf = CopySitesOnlyVcf.output_file_path,
-                    sites_only_vcf_index = CopySitesOnlyVcfIndex.output_file_path,
+                    input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
             }
 
             ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -783,8 +782,7 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_human_ancestor_fa_gz_gzi
         File loftee_gerp_scores
         File loftee_phylo_csf_database
-        File sites_only_vcf
-        File sites_only_vcf_index
+        File input_vcf
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -817,7 +815,7 @@ task GenerateVepAndLofteeAnnotations {
             --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig,num_records=all
 
             # Input and output files
-            --input_file ~{sites_only_vcf}
+            --input_file ~{input_vcf}
             --output_file vep_loftee_raw_output.txt
         )
 
