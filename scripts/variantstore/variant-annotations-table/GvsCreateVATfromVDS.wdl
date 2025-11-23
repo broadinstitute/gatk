@@ -810,7 +810,7 @@ task GenerateVepAndLofteeAnnotations {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        if grep -E -v '^#' 2>&1 > /dev/null
+        if { grep -E -v '^#' 2>&1 > /dev/null; }
         then
             # only copy these references if there are actually data lines in the VCF to be processed.
             gcloud storage cp ~{vep_cache} ~{vep_cache} ~{loftee_human_ancestor_fa_gz} ~{loftee_human_ancestor_fa_gz_fai} ~{loftee_human_ancestor_fa_gz_gzi} ~{loftee_gerp_scores} ~{loftee_phylo_csf_database} .
