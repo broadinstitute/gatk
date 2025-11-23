@@ -847,6 +847,7 @@ task GenerateVepAndLofteeAnnotations {
             vep "${args[@]}"
         else
             echo "No data found for processing in VCF, exit 0."
+            touch "vep_loftee_raw_output.txt"
         fi
 
     >>>
@@ -880,18 +881,23 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
         for file in ~{sep=' ' vep_loftee_raw_output}
         do
-            # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
-            # - Remove lines beginning with '##'.
-            # - Remove the leading '#' from the one line that should be left with a single leading '#' so the line can
-            #   serve as a TSV header.
-            sed -E '/^##/d' $file | sed -E 's/^#//' > vep_loftee_load_file.txt
+            if [ -s $file ]
+            then
+                # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
+                # - Remove lines beginning with '##'.
+                # - Remove the leading '#' from the one line that should be left with a single leading '#' so the line can
+                #   serve as a TSV header.
+                sed -E '/^##/d' $file | sed -E 's/^#//' > vep_loftee_load_file.txt
 
-            # Schema autodetection doesn't seem to work with --autodetect here for reasons unknown 😭
-            # Explicitly get the header and sed it into schema form
-            schema=$(head -1 vep_loftee_load_file.txt| sed "s/\t/:STRING,/g" | sed 's/$/:STRING/')
+                # Schema autodetection doesn't seem to work with --autodetect here for reasons unknown 😭
+                # Explicitly get the header and sed it into schema form
+                schema=$(head -1 vep_loftee_load_file.txt| sed "s/\t/:STRING,/g" | sed 's/$/:STRING/')
 
-            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
-               --null_marker="-" --schema ${schema} ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
+                bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+                   --null_marker="-" --schema ${schema} ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
+            else
+                echo "File $file is empty, skipping."
+            fi
         done
     >>>
 
