@@ -784,42 +784,70 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_phylo_csf_database
         File input_vcf
     }
+
+    parameter_meta {
+        vep_cache: {
+            localization_optional: true
+        }
+        loftee_human_ancestor_fa_gz: {
+            localization_optional: true
+        }
+        loftee_human_ancestor_fa_gz_fai: {
+            localization_optional: true
+        }
+        loftee_human_ancestor_fa_gz_gzi: {
+            localization_optional: true
+        }
+        loftee_gerp_scores: {
+            localization_optional: true
+        }
+        loftee_phylo_csf_database: {
+            localization_optional: true
+        }
+    }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        tar xzf ~{vep_cache}
+        if [[ grep -E -v '^#' ]]
+        then
+            # only copy these references if there are actually data lines in the VCF to be processed.
+            gcloud storage cp ~{vep_cache} ~{vep_cache} ~{loftee_human_ancestor_fa_gz} ~{loftee_human_ancestor_fa_gz_fai} ~{loftee_human_ancestor_fa_gz_gzi} ~{loftee_gerp_scores} ~{loftee_phylo_csf_database} .
+            tar xzf ~{vep_cache}
 
-        LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
-        args=(
+            LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
+            args=(
 
-            # Breaks out data into their own columns that otherwise would be nested (semicolon delimited) in the "Extra" column.
-            --tab
+                # Breaks out data into their own columns that otherwise would be nested (semicolon delimited) in the "Extra" column.
+                --tab
 
-            # Force writing versions on Ensembl transcripts for VAT compatibility.
-            --transcript_version
+                # Force writing versions on Ensembl transcripts for VAT compatibility.
+                --transcript_version
 
-            # Emit HGNC symbols and IDs.
-            --symbol
+                # Emit HGNC symbols and IDs.
+                --symbol
 
-            # Basic LOFTEE plugin setup
-            --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database}
-            --dir_plugins $LOFTEE_PATH
+                # Basic LOFTEE plugin setup
+                --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database}
+                --dir_plugins $LOFTEE_PATH
 
-            # Basic VEP cache setup
-            --cache
-            --dir_cache .
+                # Basic VEP cache setup
+                --cache
+                --dir_cache .
 
-            # For GERP (Genomic Evolutionary Rate Profiling) score output.
-            --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig,num_records=all
+                # For GERP (Genomic Evolutionary Rate Profiling) score output.
+                --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig,num_records=all
 
-            # Input and output files
-            --input_file ~{input_vcf}
-            --output_file vep_loftee_raw_output.txt
-        )
+                # Input and output files
+                --input_file ~{input_vcf}
+                --output_file vep_loftee_raw_output.txt
+            )
 
-        vep "${args[@]}"
+            vep "${args[@]}"
+        else
+            echo "No data found for processing in VCF, exit 0."
+        fi
 
     >>>
 
