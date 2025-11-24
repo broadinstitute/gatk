@@ -871,9 +871,7 @@ task ValidateSampleNamesInSampleInfoTable {
       exit 1
     fi
 
-    echo "C"
-
-    # If here, there are no unrecognized sample names - now check if any of the input sample names are listed as withdrawn in the sample table
+    # Now check if any of the input sample names are listed as withdrawn in the sample table
 
     # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
@@ -887,10 +885,18 @@ task ValidateSampleNamesInSampleInfoTable {
 
     echo "D"
 
-    # Check if any samples are withdrawn
-    if [ -s withdrawn_samples.txt ]; then
-      echo "ERROR: The following sample names are listed as withdrawn  ~{fq_sample_table}:"
-      cat withdrawn_samples.txt
+    # Check if any samples are missing or are withdrawn
+    if [ -s missing_samples.txt ] || [ -s withdrawn_samples.txt ]; then
+      if [ -s missing_samples.txt ]; then
+        echo "ERROR: The following sample names were not found in ~{fq_sample_table}:"
+        cat missing_samples.txt
+      fi
+      if [ -s withdrawn_samples.txt ]; then
+        echo "ERROR: The following sample names are listed as withdrawn  ~{fq_sample_table}:"
+        cat withdrawn_samples.txt
+      fi
+
+      echo "ERROR: Sample name validation failed."
 
       # Clean up temp table
       bq --apilog=false rm -f -t ~{project_id}.~{dataset_name}.${TEMP_TABLE}
