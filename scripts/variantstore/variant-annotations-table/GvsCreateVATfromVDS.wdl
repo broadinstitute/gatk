@@ -785,26 +785,6 @@ task GenerateVepAndLofteeAnnotations {
         File input_vcf
     }
 
-    parameter_meta {
-        vep_cache: {
-            localization_optional: true
-        }
-        loftee_human_ancestor_fa_gz: {
-            localization_optional: true
-        }
-        loftee_human_ancestor_fa_gz_fai: {
-            localization_optional: true
-        }
-        loftee_human_ancestor_fa_gz_gzi: {
-            localization_optional: true
-        }
-        loftee_gerp_scores: {
-            localization_optional: true
-        }
-        loftee_phylo_csf_database: {
-            localization_optional: true
-        }
-    }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -812,8 +792,14 @@ task GenerateVepAndLofteeAnnotations {
 
         if { grep -E -v '^#' ~{input_vcf} 2>&1 > /dev/null; }
         then
-            # only copy these references if there are actually data lines in the VCF to be processed.
-            gcloud storage cp ~{vep_cache} ~{vep_cache} ~{loftee_human_ancestor_fa_gz} ~{loftee_human_ancestor_fa_gz_fai} ~{loftee_human_ancestor_fa_gz_gzi} ~{loftee_gerp_scores} ~{loftee_phylo_csf_database} .
+            # Only copy these references if there are actually data lines in the VCF to be processed,
+            # Most of the shards in 20/X/Y integration runs don't have any work to do and don't need
+            # to localize the references.
+            #
+            # gcloud storage cp ~{vep_cache} ~{vep_cache} ~{loftee_human_ancestor_fa_gz} ~{loftee_human_ancestor_fa_gz_fai} ~{loftee_human_ancestor_fa_gz_gzi} ~{loftee_gerp_scores} ~{loftee_phylo_csf_database} .
+            #
+            # TODO yeah that would be nice but here's no gcloud on the VEP + LOFTEE image. These references
+            # *really* should be on a reference disk.
             tar xzf ~{vep_cache}
 
             LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
