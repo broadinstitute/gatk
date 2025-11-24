@@ -816,6 +816,7 @@ task ValidateSampleNamesInSampleInfoTable {
     File sample_names_file
     String fq_sample_table
     String project_id
+    String dataset_name
     String cloud_sdk_docker
   }
   meta {
@@ -842,14 +843,14 @@ task ValidateSampleNamesInSampleInfoTable {
       --autodetect \
       --source_format=CSV \
       --replace \
-      ${TEMP_TABLE} \
+      \'~{project_id}.~{dataset_name}.${TEMP_TABLE}\' \
       ~{sample_names_file}
 
     # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name
-      FROM \`~{project_id}.${TEMP_TABLE}\` AS input
+      FROM \'~{project_id}.~{dataset_name}.${TEMP_TABLE}\' AS input
       LEFT JOIN \`~{fq_sample_table}\` AS samples
       ON input.sample_name = samples.sample_name
       WHERE samples.sample_name IS NULL
