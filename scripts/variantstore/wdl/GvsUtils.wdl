@@ -843,7 +843,7 @@ task ValidateSampleNamesInSampleInfoTable {
       --autodetect \
       --source_format=CSV \
       --replace \
-      \'~{project_id}.~{dataset_name}.${TEMP_TABLE}\' \
+      ~{dataset_name}.${TEMP_TABLE} \
       ~{sample_names_file}
 
     # Find sample names that are NOT in the fq_sample_table
