@@ -811,6 +811,79 @@ task GetNumSamplesLoaded {
   }
 }
 
+task ValidateSampleNamesInSampleInfoTable {
+  input {
+    File sample_names_file
+    String fq_sample_table
+    String project_id
+    String cloud_sdk_docker
+  }
+  meta {
+    description: "Validates that all sample names in the input file exist in the fq_sample_table"
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # Create a temporary table with the input sample names
+    TEMP_TABLE="temp_sample_validation_${RANDOM}"
+
+    # Upload sample names to a temporary BQ table
+    bq --apilog=false load --project_id=~{project_id} \
+      --autodetect \
+      --source_format=CSV \
+      --replace \
+      ${TEMP_TABLE} \
+      ~{sample_names_file}
+
+    # Find sample names that are NOT in the fq_sample_table
+    # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
+      SELECT DISTINCT input.sample_name
+      FROM \`~{project_id}.${TEMP_TABLE}\` AS input
+      LEFT JOIN \`~{fq_sample_table}\` AS samples
+      ON input.sample_name = samples.sample_name
+      WHERE samples.sample_name IS NULL
+      " | sed 1d > missing_samples.txt
+
+    # Check if any samples are missing
+    if [ -s missing_samples.txt ]; then
+      echo "ERROR: The following sample names were not found in ~{fq_sample_table}:"
+      cat missing_samples.txt
+
+      # Clean up temp table
+      bq --apilog=false rm -f -t ${TEMP_TABLE}
+      exit 1
+    fi
+
+    echo "All sample names validated successfully"
+
+    # Clean up temp table
+    bq --apilog=false rm -f -t ${TEMP_TABLE}
+  >>>
+
+  output {
+    Boolean done = true
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
 
 task CountSuperpartitions {
     meta {

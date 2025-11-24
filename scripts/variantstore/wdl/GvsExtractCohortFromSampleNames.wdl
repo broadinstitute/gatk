@@ -13,6 +13,7 @@ workflow GvsExtractCohortFromSampleNames {
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
     Boolean is_wgs = true
+    Boolean validate_sample_names_in_sample_info = false
 
     String gvs_project
     String gvs_dataset
@@ -141,8 +142,22 @@ workflow GvsExtractCohortFromSampleNames {
                                                else 7500
 
   if (!DoesTableExist.table_exists) {
+    # Check if all the samples in the file are present in sample_info
+    if (validate_sample_names_in_sample_info) {
+      call Utils.ValidateSampleNamesInSampleInfoTable {
+        input:
+          sample_names_file = cohort_sample_names_file,
+          fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
+          project_id = query_project,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
+    }
+
+    # TODO - Make the below conditional on the above.
+
     call GvsPrepareCallset.GvsPrepareCallset {
       input:
+        go = select_first([ValidateSampleNamesInSampleInfoTable.done, true]),
         call_set_identifier = call_set_identifier,
         extract_table_prefix = effective_cohort_table_prefix,
         sample_names_to_extract = cohort_sample_names_file,
