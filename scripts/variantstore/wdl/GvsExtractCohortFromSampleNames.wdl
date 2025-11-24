@@ -5,7 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
-# A
+# B
 
 workflow GvsExtractCohortFromSampleNames {
 
@@ -150,6 +150,7 @@ workflow GvsExtractCohortFromSampleNames {
           sample_names_file = cohort_sample_names_file,
           fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
           project_id = query_project,
+          dataset_name = gvs_dataset,
           cloud_sdk_docker = effective_cloud_sdk_docker,
       }
     }
