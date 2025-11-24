@@ -861,16 +861,6 @@ task ValidateSampleNamesInSampleInfoTable {
 
     echo "B"
 
-    # Check if any samples are missing
-    if [ -s missing_samples.txt ]; then
-      echo "ERROR: The following sample names were not found in ~{fq_sample_table}:"
-      cat missing_samples.txt
-
-      # Clean up temp table
-      bq --apilog=false rm -f -t ~{project_id}.~{dataset_name}.${TEMP_TABLE}
-      exit 1
-    fi
-
     # Now check if any of the input sample names are listed as withdrawn in the sample table
 
     # Find sample names that are NOT in the fq_sample_table
