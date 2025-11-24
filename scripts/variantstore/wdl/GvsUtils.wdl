@@ -844,17 +844,22 @@ task ValidateSampleNamesInSampleInfoTable {
       --source_format=CSV \
       --replace \
       ~{dataset_name}.${TEMP_TABLE} \
-      ~{sample_names_file}
+      ~{sample_names_file} \
+      sample_name:STRING
+
+    echo "A"
 
     # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name
-      FROM \'~{project_id}.~{dataset_name}.${TEMP_TABLE}\' AS input
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
       LEFT JOIN \`~{fq_sample_table}\` AS samples
       ON input.sample_name = samples.sample_name
       WHERE samples.sample_name IS NULL
       " | sed 1d > missing_samples.txt
+
+    echo "B"
 
     # Check if any samples are missing
     if [ -s missing_samples.txt ]; then
