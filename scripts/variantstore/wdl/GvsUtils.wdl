@@ -837,8 +837,9 @@ task ValidateSampleNamesInSampleInfoTable {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     echo "A"
-    # Create a temporary table with the input sample names
-    CREATE TEMP TABLE sample_validation(sample_name STRING)
+    # Name a temporary table with the input sample names
+    TEMP_TABLE="temp_sample_validation_${RANDOM}"
+
     echo "B"
 
     # Upload sample names to a temporary BQ table
@@ -846,33 +847,39 @@ task ValidateSampleNamesInSampleInfoTable {
       --autodetect \
       --source_format=CSV \
       --replace \
-      sample_validation \
-      ~{sample_names_file}
+      ~{dataset_name}.${TEMP_TABLE} \
+      ~{sample_names_file} \
+      sample_name:STRING
     echo "C"
+
+    # Set expiration on temp table to 1 hour
+    bq --apilog=false update --expiration 3600 ~{project_id}:~{dataset_name}.${TEMP_TABLE}
+
+    echo "D"
 
     # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name
-      FROM sample_validation AS input
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
       LEFT JOIN \`~{fq_sample_table}\` AS samples
       ON input.sample_name = samples.sample_name
       WHERE samples.sample_name IS NULL
       " | sed 1d > missing_samples.txt
 
-    echo "D"
+    echo "E"
     # Now check if any of the input sample names are listed as withdrawn in the sample table
 
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name
-      FROM sample_validation AS input
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
       JOIN \`~{fq_sample_table}\` AS samples
       ON input.sample_name = samples.sample_name
       WHERE samples.withdrawn IS NOT NULL
       " | sed 1d > withdrawn_samples.txt
 
-    echo "E"
+    echo "F"
     # Check if any samples are missing or are withdrawn
     if [ -s missing_samples.txt ] || [ -s withdrawn_samples.txt ]; then
       if [ -s missing_samples.txt ]; then
@@ -885,16 +892,10 @@ task ValidateSampleNamesInSampleInfoTable {
       fi
 
       echo "ERROR: Sample name validation failed."
-
-      # Clean up temp table
-      bq --apilog=false DROP TABLE sample_validation
       exit 1
     fi
 
     echo "All sample names validated successfully"
-
-    # Clean up temp table
-    bq --apilog=false DROP TABLE sample_validation
   >>>
 
   output {
