@@ -860,7 +860,6 @@ task ValidateSampleNamesInSampleInfoTable {
 
     # Now check if any of the input sample names are listed as withdrawn in the sample table
 
-    # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name

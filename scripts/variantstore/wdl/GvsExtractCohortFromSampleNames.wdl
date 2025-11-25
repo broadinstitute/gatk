@@ -154,8 +154,6 @@ workflow GvsExtractCohortFromSampleNames {
       }
     }
 
-    # TODO - Make the below conditional on the above.
-
     call GvsPrepareCallset.GvsPrepareCallset {
       input:
         go = select_first([ValidateSampleNamesInSampleInfoTable.done, true]),
