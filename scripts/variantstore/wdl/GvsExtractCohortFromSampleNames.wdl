@@ -4,7 +4,6 @@ import "GvsPrepareRangesCallset.wdl" as GvsPrepareCallset
 import "GvsExtractCallset.wdl" as GvsExtractCallset
 import "GvsUtils.wdl" as Utils
 
-# C
 # Workflow used by AoU to extract variants for a given cohort of sample_names
 
 workflow GvsExtractCohortFromSampleNames {

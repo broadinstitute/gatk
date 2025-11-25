@@ -836,11 +836,8 @@ task ValidateSampleNamesInSampleInfoTable {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    echo "A"
     # Name a temporary table with the input sample names
     TEMP_TABLE="temp_sample_validation_${RANDOM}"
-
-    echo "B"
 
     # Upload sample names to a temporary BQ table
     bq --apilog=false load --project_id=~{project_id} \
@@ -850,12 +847,9 @@ task ValidateSampleNamesInSampleInfoTable {
       ~{dataset_name}.${TEMP_TABLE} \
       ~{sample_names_file} \
       sample_name:STRING
-    echo "C"
 
     # Set expiration on temp table to 1 hour
     bq --apilog=false update --expiration 3600 ~{project_id}:~{dataset_name}.${TEMP_TABLE}
-
-    echo "D"
 
     # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
@@ -867,7 +861,6 @@ task ValidateSampleNamesInSampleInfoTable {
       WHERE samples.sample_name IS NULL
       " | sed 1d > missing_samples.txt
 
-    echo "E"
     # Now check if any of the input sample names are listed as withdrawn in the sample table
 
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
@@ -879,7 +872,6 @@ task ValidateSampleNamesInSampleInfoTable {
       WHERE samples.withdrawn IS NOT NULL
       " | sed 1d > withdrawn_samples.txt
 
-    echo "F"
     # Check if any samples are missing or are withdrawn
     if [ -s missing_samples.txt ] || [ -s withdrawn_samples.txt ]; then
       if [ -s missing_samples.txt ]; then
