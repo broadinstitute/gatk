@@ -327,7 +327,7 @@ workflow GvsCreateVATfromVDS {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
-                cooked_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_cooked"]),
+                cooked_data_table = select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"]),
                 variants_docker = effective_variants_docker,
         }
 
@@ -1344,7 +1344,7 @@ task BigQueryLoadJson {
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
-        echo "Adding VET + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
         UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET
