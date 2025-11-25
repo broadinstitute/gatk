@@ -837,22 +837,21 @@ task ValidateSampleNamesInSampleInfoTable {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # Create a temporary table with the input sample names
-    TEMP_TABLE="temp_sample_validation_${RANDOM}"
+    CREATE TEMP TABLE sample_validation(sample_name STRING)
 
     # Upload sample names to a temporary BQ table
     bq --apilog=false load --project_id=~{project_id} \
       --autodetect \
       --source_format=CSV \
       --replace \
-      ~{dataset_name}.${TEMP_TABLE} \
-      ~{sample_names_file} \
-      sample_name:STRING
+      sample_validation \
+      ~{sample_names_file}
 
     # Find sample names that are NOT in the fq_sample_table
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name
-      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
+      FROM sample_validation AS input
       LEFT JOIN \`~{fq_sample_table}\` AS samples
       ON input.sample_name = samples.sample_name
       WHERE samples.sample_name IS NULL
@@ -863,7 +862,7 @@ task ValidateSampleNamesInSampleInfoTable {
     # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
       SELECT DISTINCT input.sample_name
-      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
+      FROM sample_validation AS input
       JOIN \`~{fq_sample_table}\` AS samples
       ON input.sample_name = samples.sample_name
       WHERE samples.withdrawn IS NOT NULL
@@ -883,14 +882,14 @@ task ValidateSampleNamesInSampleInfoTable {
       echo "ERROR: Sample name validation failed."
 
       # Clean up temp table
-      bq --apilog=false rm -f -t ~{project_id}.~{dataset_name}.${TEMP_TABLE}
+      bq --apilog=false DROP TABLE sample_validation
       exit 1
     fi
 
     echo "All sample names validated successfully"
 
     # Clean up temp table
-    bq --apilog=false rm -f -t ~{project_id}.~{dataset_name}.${TEMP_TABLE}
+    bq --apilog=false DROP TABLE sample_validation
   >>>
 
   output {
@@ -901,7 +900,7 @@ task ValidateSampleNamesInSampleInfoTable {
   runtime {
     docker: cloud_sdk_docker
     memory: "3 GB"
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 500 SSD"
     preemptible: 3
     cpu: 1
   }
