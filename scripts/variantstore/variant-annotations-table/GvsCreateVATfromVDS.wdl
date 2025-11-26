@@ -918,7 +918,6 @@ task BigQueryCookVepAndLofteeRawAnnotations {
 
         SELECT
         -- Make a VID-compatible string from the data in Uploaded_variation.
-        IF((Allele IS NOT NULL AND LENGTH(Allele) = 1),
         -- VEP appears to use a different convention for the encoding of indel locations than what is used in GVS: the
         -- positions are based on the first *discrepant* base, not the first base mentioned which actually agrees
         -- between the reference and allele. Correct for that in the VID-building code below to substract 1 if the
