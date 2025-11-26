@@ -918,7 +918,17 @@ task BigQueryCookVepAndLofteeRawAnnotations {
 
         SELECT
         -- Make a VID-compatible string from the data in Uploaded_variation.
-        REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" || REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") || "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" || REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
+        IF((Allele IS NOT NULL AND LENGTH(Allele) = 1),
+        -- VEP appears to use a different convention for the encoding of indel locations than what is used in GVS: the
+        -- positions are based on the first *discrepant* base, not the first base mentioned which actually agrees
+        -- between the reference and allele. Correct for that in the VID-building code below to substract 1 if the
+        --  variant in question is an indel.
+        REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" ||
+            IF ((Allele IS NOT NULL AND LENGTH(Allele) = 1),
+                REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)"),
+                CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)"),) AS INT64) - 1) AS STRING) ||
+            "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" ||
+            REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
         Uploaded_variation,
         Location,
         Allele,
