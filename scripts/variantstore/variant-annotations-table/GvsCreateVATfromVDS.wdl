@@ -926,7 +926,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" ||
             IF ((Allele IS NOT NULL AND LENGTH(Allele) = 1),
                 REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)"),
-                CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)"),) AS INT64) - 1) AS STRING) ||
+                CAST(((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)"),) AS INT64) - 1) AS STRING)) ||
             "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" ||
             REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
         Uploaded_variation,
