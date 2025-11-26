@@ -926,7 +926,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
             -- A Location specified with a "-" range is an indel.
             IF (Location LIKE "%-%",
                 -- If this is an indel decrement the position by one for VAT compatibility.
-                CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") AS INT64) - 1) AS STRING)
+                CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") AS INT64) - 1) AS STRING),
                 -- Else SNPs use position without adjustment.
                 REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)")) ||
             "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" ||
