@@ -923,8 +923,9 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         -- GVS convention agrees between reference and allele. Correct for that in the VID-building code below to
         -- subtract 1 if the variant is an indel.
         REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" ||
-            -- A Location specified with a "-" range is an indel.
-            IF (Location LIKE "%-%",
+            -- A Location specified with a "-" range is an indel. Single-base deletions are a special case with a single
+            -- position, but like all deletions they have a NULL Allele so look for that as well.
+            IF ((Location LIKE "%-%") OR (Allele is NULL),
                 -- If this is an indel decrement the position by one for VAT compatibility.
                 CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") AS INT64) - 1) AS STRING),
                 -- Else SNPs use position without adjustment.
