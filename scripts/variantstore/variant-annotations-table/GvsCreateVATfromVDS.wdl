@@ -1374,8 +1374,10 @@ task BigQueryLoadJson {
 
         vtt.transcript is not null AND
         vep.Feature_type is not null AND
-        vtt.transcript = vep.Feature AND
-        vtt.vid = vep.vid
+        vtt.vid = vep.vid AND
+        -- Do not consider version numbers when matching on transcripts. In Quickstart about 25% of the transcripts are
+        -- mismatched on version number, with VEP having newer versions.
+        SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(vep.Feature, ".")[OFFSET(0)]
 
         '
 
