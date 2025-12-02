@@ -811,6 +811,98 @@ task GetNumSamplesLoaded {
   }
 }
 
+task ValidateSampleNamesInSampleInfoTable {
+  input {
+    File sample_names_file
+    String fq_sample_table
+    String project_id
+    String dataset_name
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+    description: "Validates that all sample names in the input file exist in the fq_sample_table and are not withdrawn."
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # Name a temporary table with the input sample names
+    TEMP_TABLE="temp_sample_validation_${RANDOM}"
+
+    # Upload sample names to a temporary BQ table
+    bq --apilog=false load --project_id=~{project_id} \
+      --autodetect \
+      --source_format=CSV \
+      --replace \
+      ~{dataset_name}.${TEMP_TABLE} \
+      ~{sample_names_file} \
+      sample_name:STRING
+
+    # Set expiration on temp table to 1 hour
+    bq --apilog=false update --expiration 3600 ~{project_id}:~{dataset_name}.${TEMP_TABLE}
+
+    # Find sample names that are NOT in the fq_sample_table
+    # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
+      SELECT DISTINCT input.sample_name
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
+      LEFT JOIN \`~{fq_sample_table}\` AS samples
+      ON input.sample_name = samples.sample_name
+      WHERE samples.sample_name IS NULL
+      " | sed 1d > missing_samples.txt
+
+    # Now check if any of the input sample names are listed as withdrawn in the sample table
+
+    # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
+      SELECT DISTINCT input.sample_name
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
+      JOIN \`~{fq_sample_table}\` AS samples
+      ON input.sample_name = samples.sample_name
+      WHERE samples.withdrawn IS NOT NULL
+      " | sed 1d > withdrawn_samples.txt
+
+    # Check if any samples are missing or are withdrawn
+    if [ -s missing_samples.txt ] || [ -s withdrawn_samples.txt ]; then
+      if [ -s missing_samples.txt ]; then
+        echo "ERROR: The following sample names were not found in ~{fq_sample_table}:"
+        cat missing_samples.txt
+      fi
+      if [ -s withdrawn_samples.txt ]; then
+        echo "ERROR: The following sample names are listed as withdrawn in ~{fq_sample_table}:"
+        cat withdrawn_samples.txt
+      fi
+
+      echo "ERROR: Sample name validation failed."
+      exit 1
+    fi
+
+    echo "All sample names validated successfully"
+  >>>
+
+  output {
+    Boolean done = true
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 SSD"
+    preemptible: 3
+    cpu: 1
+  }
+}
 
 task CountSuperpartitions {
     meta {
