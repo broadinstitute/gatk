@@ -142,7 +142,7 @@ workflow GvsExtractCohortFromSampleNames {
                                                else 7500
 
   if (!DoesTableExist.table_exists) {
-    # Check if all the samples in the file are present in sample_info
+    # Check if all the samples in the file are present in sample_info and are not marked as withdrawn.
     if (validate_sample_names_in_sample_info) {
       call Utils.ValidateSampleNamesInSampleInfoTable {
         input:
