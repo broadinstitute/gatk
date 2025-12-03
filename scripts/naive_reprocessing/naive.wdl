@@ -200,7 +200,7 @@ task sort_block {
 
   output {
     File sorted_bam     = "~{output_prefix}.~{output_prefix_append}.sorted.cram"
-    File sorted_bai     = "~{output_prefix}.~{output_prefix_append}.sorted.cram.crai"
+    File sorted_bai     = "~{output_prefix}.~{output_prefix_append}.sorted.cram.bai"
   }
 
   runtime {
