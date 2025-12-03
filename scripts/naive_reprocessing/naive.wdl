@@ -193,11 +193,14 @@ task sort_block {
     set -e
     echo "SORT ========================"
     java -jar -Xmx~{java_mem}G ~{gatk_jar} SortSam -I ~{bam} -O ~{output_prefix}.~{output_prefix_append}.sorted.cram  -R ~{ref_fasta} --CREATE_INDEX true -SO coordinate
+    echo "DONE SORT ========================"
+    ls -altrh
+    echo "That's all folks!"
   >>>
 
   output {
     File sorted_bam     = "~{output_prefix}.~{output_prefix_append}.sorted.cram"
-    File sorted_bai     = "~{output_prefix}.~{output_prefix_append}.sorted.crai"
+    File sorted_bai     = "~{output_prefix}.~{output_prefix_append}.sorted.cram.crai"
   }
 
   runtime {
