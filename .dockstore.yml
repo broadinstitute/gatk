@@ -269,6 +269,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20251204_1
          tags:
              - /.*/
    - name: GvsWithdrawSamples
