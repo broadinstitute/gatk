@@ -240,6 +240,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1520_loftee
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
