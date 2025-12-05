@@ -945,7 +945,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
 
             # 24 TTL for this table
             DATE=$((24 * 60 * 60))
-            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{cooked_data_table_schema}
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{cooked_data_table} ~{cooked_data_table_schema}
         fi
 
         bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{cooked_data_table} --replace \
