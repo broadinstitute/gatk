@@ -401,7 +401,8 @@ public class ReferenceConfidenceModel {
                                                                        final byte refBase,
                                                                        final byte minBaseQual,
                                                                        final MathUtils.RunningAverage hqSoftClips,
-                                                                       final boolean readsWereRealigned) {
+                                                                       final boolean readsWereRealigned,
+                                                                       final double altReadWeight) {
 
         final int likelihoodCount = ploidy + 1;
         final double log10Ploidy = Math.log10(ploidy);
@@ -426,13 +427,22 @@ public class ReferenceConfidenceModel {
             }
 
             readCount++;
-            applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips, readsWereRealigned);
+            applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips, readsWereRealigned, altReadWeight);
         }
         final double denominator = readCount * log10Ploidy;
         for (int i = 0; i < likelihoodCount; i++) {
             result.genotypeLikelihoods[i] -= denominator;
         }
         return result;
+    }
+
+    public ReferenceConfidenceResult calcGenotypeLikelihoodsOfRefVsAny(final int ploidy,
+                                                                       final ReadPileup pileup,
+                                                                       final byte refBase,
+                                                                       final byte minBaseQual,
+                                                                       final MathUtils.RunningAverage hqSoftClips,
+                                                                       final boolean readsWereRealigned) {
+        return calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, minBaseQual, hqSoftClips, readsWereRealigned, 1.0);
     }
 
     private int getOriginalSoftStart(GATKRead read) {
@@ -471,6 +481,10 @@ public class ReferenceConfidenceModel {
     }
 
     private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned) {
+        applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, element, qual, hqSoftClips, readsWereRealigned, 1.0);
+    }
+
+    private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned, final double altReadWeight) {
         final boolean isAlt = readsWereRealigned ? isAltAfterAssembly(element, refBase) : isAltBeforeAssembly(element, refBase);
         final double referenceLikelihood;
         final double nonRefLikelihood;
@@ -484,13 +498,14 @@ public class ReferenceConfidenceModel {
             result.refDepth++;
         }
 
+        final double readWeight = isAlt ? altReadWeight : 1.0;
         // Homozygous likelihoods don't need the logSum trick.
-        result.genotypeLikelihoods[0] += referenceLikelihood + log10Ploidy;
-        result.genotypeLikelihoods[likelihoodCount - 1] += nonRefLikelihood + log10Ploidy;
+        result.genotypeLikelihoods[0] += readWeight * (referenceLikelihood + log10Ploidy);
+        result.genotypeLikelihoods[likelihoodCount - 1] += readWeight * (nonRefLikelihood + log10Ploidy);
         // Heterozygous likelihoods need the logSum trick:
         for (int i = 1, j = likelihoodCount - 2; i < likelihoodCount - 1; i++, j--) {
             result.genotypeLikelihoods[i] +=
-                    MathUtils.approximateLog10SumLog10(
+                    readWeight * MathUtils.approximateLog10SumLog10(
                             referenceLikelihood + Math.log10(j),
                             nonRefLikelihood + Math.log10(i));
         }

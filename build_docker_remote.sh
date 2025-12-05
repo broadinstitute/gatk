@@ -131,16 +131,6 @@ fi
 echo "- name: 'gcr.io/cloud-builders/docker'" >> cloudbuild.yaml
 echo "  args: [ 'push', '${DOCKER_IMAGE_TAG}' ]" >> cloudbuild.yaml
 
-echo "steps:" >> cloudbuild.yaml
-echo "- name: 'gcr.io/cloud-builders/docker'" >> cloudbuild.yaml
-if [ -n "$RELEASE" ]; then
-  echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '--build-arg', 'RELEASE=true', '.' ]" >> cloudbuild.yaml
-else
-  echo "  args: [ 'build', '-t', '${DOCKER_IMAGE_TAG}', '.' ]" >> cloudbuild.yaml
-fi
-echo "- name: 'gcr.io/cloud-builders/docker'" >> cloudbuild.yaml
-echo "  args: [ 'push', '${DOCKER_IMAGE_TAG}' ]" >> cloudbuild.yaml
-
 echo "Building image with the tag ${DOCKER_IMAGE_TAG}..."
 
 SUBMIT_COMMAND="gcloud builds submit --config cloudbuild.yaml --timeout=24h --machine-type n1_highcpu_32"
