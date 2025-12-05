@@ -789,12 +789,15 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_gerp_scores
         File loftee_phylo_csf_database
         File input_vcf
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
 
         if { grep -E -v '^#' ~{input_vcf} 2>&1 > /dev/null; }
         then
@@ -854,6 +857,7 @@ task GenerateVepAndLofteeAnnotations {
 
     output {
         File output_file = "vep_loftee_raw_output.txt"
+        File monitoring_log = "monitoring.log"
         Boolean done = true
     }
 }
