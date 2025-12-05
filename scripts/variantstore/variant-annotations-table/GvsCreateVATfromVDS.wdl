@@ -318,6 +318,7 @@ workflow GvsCreateVATfromVDS {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                raw_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_raw_schema_json_file,
                 variants_docker = effective_variants_docker,
         }
 
@@ -328,6 +329,7 @@ workflow GvsCreateVATfromVDS {
                 dataset_name = dataset_name,
                 raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
                 cooked_data_table = select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"]),
+                cooked_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_cooked_schema_json_file,
                 variants_docker = effective_variants_docker,
         }
 
@@ -548,6 +550,8 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         String vat_schema_json_filename = "vat_schema.json"
         String variant_transcript_schema_json_filename = "variant_transcript_schema.json"
         String genes_schema_json_filename = "genes_schema.json"
+        String vep_loftee_115_raw_schema_json_filename = "vep_loftee_115_raw.json"
+        String vep_loftee_115_cooked_schema_json_filename = "vep_loftee_115_cooked.json"
         String variants_docker
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
@@ -579,6 +583,8 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         File vat_schema_json_file = vat_schema_json_filename
         File variant_transcript_schema_json_file = variant_transcript_schema_json_filename
         File genes_schema_json_file = genes_schema_json_filename
+        File vep_loftee_raw_schema_json_file = vep_loftee_115_raw_schema_json_filename
+        File vep_loftee_cooked_schema_json_file = vep_loftee_115_cooked_schema_json_filename
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
@@ -831,6 +837,7 @@ task GenerateVepAndLofteeAnnotations {
             )
 
             vep "${args[@]}"
+            echo "VEP + LOFTEE run complete."
         else
             echo "No data found for processing in VCF, exit 0."
             touch "vep_loftee_raw_output.txt"
@@ -858,12 +865,26 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         String project_id
         String dataset_name
         String raw_data_table
+        File raw_data_table_schema
     }
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{raw_data_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Creating raw VEP + LOFTEE table ~{dataset_name}.~{raw_data_table}"
+
+            # 24 TTL for this table
+            DATE=$((24 * 60 * 60))
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{raw_data_table_schema}
+        fi
 
         for file in ~{sep=' ' vep_loftee_raw_output}
         do
@@ -875,12 +896,8 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
                 #   serve as a TSV header.
                 sed -E '/^##/d' $file | sed -E 's/^#//' > vep_loftee_load_file.txt
 
-                # Schema autodetection doesn't seem to work with --autodetect here for reasons unknown 😭
-                # Explicitly get the header and sed it into schema form
-                schema=$(head -1 vep_loftee_load_file.txt| sed "s/\t/:STRING,/g" | sed 's/$/:STRING/')
-
                 bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
-                   --null_marker="-" --schema ${schema} ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
+                   --null_marker="-" ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
             else
                 echo "File $file is empty, skipping."
             fi
@@ -906,12 +923,26 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         String dataset_name
         String raw_data_table
         String cooked_data_table
+        File cooked_data_table_schema
     }
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{cooked_data_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo 'Creating "cooked" VEP + LOFTEE table ~{dataset_name}.~{cooked_data_table}'
+
+            # 24 TTL for this table
+            DATE=$((24 * 60 * 60))
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{cooked_data_table_schema}
+        fi
 
         bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{cooked_data_table} --replace \
            --project_id=~{project_id} '
