@@ -886,7 +886,7 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating raw VEP + LOFTEE table ~{dataset_name}.~{raw_data_table}"
 
-            # 24 TTL for this table
+            # 24 hour TTL for this table
             DATE=$((24 * 60 * 60))
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{raw_data_table_schema}
         fi
@@ -944,7 +944,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo 'Creating "cooked" VEP + LOFTEE table ~{dataset_name}.~{cooked_data_table}'
 
-            # 24 TTL for this table
+            # 24 hour TTL for this table
             DATE=$((24 * 60 * 60))
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{cooked_data_table} ~{cooked_data_table_schema}
         fi
