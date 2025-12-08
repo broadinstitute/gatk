@@ -136,3 +136,12 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: naive_reprocessing
+     subclass: WDL
+     primaryDescriptorPath: /scripts/naive_reprocessing/naive.wdl
+     filters:
+         branches:
+             - master
+             - VS-1773
+         tags:
+             - /.*/
