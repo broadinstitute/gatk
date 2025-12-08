@@ -1,4 +1,4 @@
-const hush = `
+`
 
 This file exists solely to prevent CodeQL from failing its "Analyze (javascript-typescript)" action with:
 
