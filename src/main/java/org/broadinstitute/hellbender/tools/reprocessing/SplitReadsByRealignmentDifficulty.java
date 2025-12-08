@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.reprocessing;
 
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -21,9 +23,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
-import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
-import com.google.common.hash.Hashing;
-import com.google.common.hash.HashCode;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +43,11 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
     public static final String MAPPABILITY_INTERVAL_LIST_LONG_NAME = "uniqueMapIntervals";
     public static final String READ_LOG_COUNT_SHORT_NAME = "RLG";
     public static final String READ_LOG_COUNT_LONG_NAME =  "reads_log_count";
+    public static final String EXPECTED_UNCERTAIN_READS_SHORT_NAME = "EUR";
+    public static final String EXPECTED_UNCERTAIN_READS_LONG_NAME = "expected_uncertain_reads";
+    public static final String BLOOM_FILTER_FPR_SHORT_NAME = "FPR";
+    public static final String BLOOM_FILTER_FPR_LONG_NAME = "bloom_filter_fpr";
+
     @Argument(fullName = MAPPABILITY_INTERVAL_LIST_LONG_NAME,
             shortName = MAPPABILITY_INTERVAL_LIST_SHORT_NAME,
             doc="Mappability interval list.  This must be a local path.")
@@ -66,17 +70,31 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
             doc="How many reads have been processed before logging an update")
     public int readsLogCount=1000000;
 
+    @Argument(fullName = EXPECTED_UNCERTAIN_READS_LONG_NAME,
+            shortName = EXPECTED_UNCERTAIN_READS_SHORT_NAME,
+            doc="Expected number of uncertain read names (approximately 15% of total read pairs). " +
+                "Used to size the Bloom filter. Overestimating is safe and uses slightly more memory; " +
+                "underestimating increases false positive rate but remains correct.",
+            optional = true)
+    public long expectedUncertainReads = 250_000_000L;
+
+    @Argument(fullName = BLOOM_FILTER_FPR_LONG_NAME,
+            shortName = BLOOM_FILTER_FPR_SHORT_NAME,
+            doc="False positive rate for the Bloom filter (0.0 to 1.0). Lower values use more memory " +
+                "but result in fewer naive reads being incorrectly classified as uncertain. " +
+                "Default of 0.001 (0.1%) uses ~314MB for 175M uncertain reads.",
+            optional = true)
+    public double bloomFilterFpr = 0.001;
+
     private SAMFileGATKReadWriter outputWriter;
     private SAMFileGATKReadWriter outputWriterUncertain;
-    private HashedStringSet128 overlapReadNameSet = new HashedStringSet128(4000L, 0.75f);
-    private HashedStringSet128 noOverlapReadNameSet = new HashedStringSet128(4000L, 0.75f);
+    private BloomFilter<String> uncertainBloomFilter;
     private int readCountPass1 = 0;
     private int readCountPass2 = 0;
     private OverlapDetector<SimpleInterval> overlapDetector;
     private int naiveCount = 0;
     private int uncertainCount = 0;
-    private int unknownReads = 0;
-    private int unknownReadLogCount = 0;
+    private long uncertainReadNamesAdded = 0;
 
 
     private void logHeapUsage(final String phase) {
@@ -114,6 +132,17 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         outputWriter = createSAMWriter(output, false);
         outputWriterUncertain = createSAMWriter(outputUncertainReads, false);
 
+        // Initialize Bloom filter for tracking uncertain read names
+        // We only track uncertain reads (minority ~15%) and default to naive for anything not in the filter
+        uncertainBloomFilter = BloomFilter.create(
+                Funnels.stringFunnel(StandardCharsets.UTF_8),
+                expectedUncertainReads,
+                bloomFilterFpr
+        );
+        logger.info("Initialized Bloom filter: expectedInsertions=" + expectedUncertainReads + 
+                    ", fpr=" + bloomFilterFpr + 
+                    ", estimated size (MB)=" + String.format("%.1f", expectedUncertainReads * (-Math.log(bloomFilterFpr) / (Math.log(2) * Math.log(2))) / 8.0 / 1024 / 1024));
+
         try {
             final FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(mappabilityIntervalPath.toString(), new BEDCodec(), false);
             final List<BEDFeature> intervalsAsBed = bedReader.iterator().toList();
@@ -123,14 +152,13 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
             throw new GATKException("Could not load bed file.", ioe);
         }
 
-        // Step 1:  Do a pass of all reads and determine which read names are primary and overlap (or not)
+        // Step 1: Do a pass of all reads and determine which read names are uncertain
+        // Only uncertain reads are added to the Bloom filter; naive reads require no storage
         forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
                 sortPrimaryReads(read)
         );
 
-        //TODO: Check intersection of the two sets....
-
-        // Step 2:  Do a pass of all reads and determine where to write the read, keeping mates together
+        // Step 2: Do a pass of all reads and determine where to write the read, keeping mates together
         forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
                 writeReads(read)
         );
@@ -141,13 +169,15 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         readCountPass1++;
         boolean isPrimary = (!read.isSecondaryAlignment() && !read.isSupplementaryAlignment() && !read.isUnmapped());
         boolean isReadOverlap = (overlapCount(read) > 100);
-        if (isReadOverlap && isPrimary) {
-            overlapReadNameSet.add(read.getName());
-        } else {
-            // NOTE:  non-primary reads can be put in here and will have the same name as overlapping reads.  The
-            //  reason this still works is that we check the overlapping set first in the writing phase.
-            noOverlapReadNameSet.add(read.getName());
+        
+        // Only track uncertain reads in the Bloom filter
+        // Naive reads (overlapping primary) require no storage - they're the default case
+        if (!(isReadOverlap && isPrimary)) {
+            // This read is uncertain - add to Bloom filter
+            uncertainBloomFilter.put(read.getName());
+            uncertainReadNamesAdded++;
         }
+        // Naive reads (isReadOverlap && isPrimary) don't need to be tracked
 
         if ((readCountPass1 > 0) && ((readCountPass1 % readsLogCount) == 0)) {
             logReadCounts(readCountPass1, "Sorting primary reads (" + readCountPass1 + " reads)");
@@ -156,19 +186,16 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
 
     private void writeReads(final GATKRead read) {
         readCountPass2++;
-        // Write this read to the proper location.  Keeping those with the same name in the same output file.
-        if (overlapReadNameSet.contains(read.getName())) {
-            outputWriter.addRead(read);
-            naiveCount++;
-        } else if (noOverlapReadNameSet.contains(read.getName())) {
+        // Write this read to the proper location. Keeping those with the same name in the same output file.
+        // Use Bloom filter to check if read was classified as uncertain.
+        // If in Bloom filter -> uncertain (may include some false positives from naive, which is safe)
+        // If not in Bloom filter -> definitely naive (no false negatives)
+        if (uncertainBloomFilter.mightContain(read.getName())) {
             outputWriterUncertain.addRead(read);
             uncertainCount++;
         } else {
-            unknownReads++;
-            unknownReadLogCount ++;
-            if (unknownReadLogCount <= 10) {
-                logger.warn("Found a read that could not be placed (only reporting the first 10): " + read);
-            }
+            outputWriter.addRead(read);
+            naiveCount++;
         }
 
         if (((readCountPass2 % readsLogCount) == 0) && (readCountPass2 > 0)) {
@@ -178,79 +205,26 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
 
     private void logReadCounts(int readCount, String phase) {
         logger.info("Reads processed: " + readCount);
-        logger.info("overlap set: " + overlapReadNameSet.size());
-        logger.info("no overlap set: " + noOverlapReadNameSet.size());
-        logger.info("unknown (should be zero): " + unknownReads);
+        logger.info("Uncertain read names added to Bloom filter: " + uncertainReadNamesAdded);
         logHeapUsage(phase);
     }
 
     @Override
     public void closeTool() {
-        //TODO: Add percentages
         logReadCounts(readCountPass2, "finish");
         logger.info("Naive reprocessing reads: " + naiveCount);
         logger.info("Uncertain reprocessing reads: " + uncertainCount);
+        logger.info("Uncertain read names in Bloom filter: " + uncertainReadNamesAdded);
+        
+        // Estimate false positive impact
+        long estimatedFalsePositives = (long) (naiveCount * bloomFilterFpr);
+        logger.info("Estimated false positives (naive reads sent to uncertain due to Bloom filter FPR): ~" + estimatedFalsePositives);
 
         if ( outputWriter != null ) {
             outputWriter.close();
         }
         if ( outputWriterUncertain != null ) {
             outputWriterUncertain.close();
-        }
-    }
-
-
-    /** Exact 128-bit membership using two primitive longs per key.  Mostly AI generated*/
-    // TODO: Really only checks the low 64 bits
-    public final static class HashedStringSet128 {
-        private final Long2LongOpenHashMap longOpenHashMap;
-
-        public HashedStringSet128(long expectedSize, float loadFactor) {
-            int initial = expectedSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)expectedSize;
-            this.longOpenHashMap = new Long2LongOpenHashMap(initial, loadFactor);
-            this.longOpenHashMap.defaultReturnValue(Long.MIN_VALUE); // sentinel
-        }
-
-        public boolean add(String readName) {
-            HashCode hc = Hashing.murmur3_128(0).hashString(readName, StandardCharsets.UTF_8);
-            long low  = hc.asLong();            // low 64
-            long high = toHigh64(hc.asBytes()); // high 64
-
-//            long prev = longOpenHashMap.putIfAbsent(low, high);
-            long existing = longOpenHashMap.get(low);
-            if (existing == Long.MIN_VALUE) {
-                // not present, safe to insert
-                longOpenHashMap.put(low, high);
-                // new entry
-            } else if (existing == high) {
-                // already present with same high bits
-                // do nothing
-            } else {
-                // same low64 but different high64 → extremely rare collision
-                throw new GATKException.ShouldNeverReachHereException("128-bit hash collision detected on read names.");
-            }
-            if (existing == Long.MIN_VALUE) return true;        // brand new
-            if (existing == high)            return false;      // already present
-            // Extremely rare: two different 128-bit values sharing low64.
-            // Handle by upgrading to a tiny side structure if you truly need multiple per low64.
-            throw new IllegalStateException("Low64 collision encountered; consider a tiny multimap fallback.");
-        }
-
-        public boolean contains(String readName) {
-            HashCode hc = Hashing.murmur3_128(0).hashString(readName, StandardCharsets.UTF_8);
-            long low  = hc.asLong();
-            long high = toHigh64(hc.asBytes());
-            return longOpenHashMap.get(low) == high;
-        }
-
-        public long size() { return longOpenHashMap.size(); }
-
-        private static long toHigh64(byte[] b128) {
-            // bytes[0..15] are the 128 bits; Guava orders low/high consistently.
-            // Reconstruct the OTHER 64 bits:
-            long x = 0;
-            for (int i = 8; i < 16; i++) x = (x << 8) | (b128[i] & 0xffL);
-            return x;
         }
     }
 }

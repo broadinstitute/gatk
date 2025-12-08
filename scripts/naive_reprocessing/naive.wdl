@@ -10,7 +10,7 @@ workflow ReprocessAndValidate {
 		File ref_fasta_fai="gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
     File ref_dict="gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File gatk_jar = "gs://fc-d26a03c8-5f34-4452-93ff-b3fc13cc2950/naive/gatkdev_naive.jar"
-    Int java_mem = 61
+    Int java_mem = 10
     String output_prefix="test"
   }
 
