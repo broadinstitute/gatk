@@ -873,6 +873,12 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         File raw_data_table_schema
     }
 
+    parameter_meta {
+        vep_loftee_raw_output: {
+            localization_optional: true
+        }
+    }
+
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -891,26 +897,35 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{raw_data_table_schema}
         fi
 
-        for file in ~{sep=' ' vep_loftee_raw_output}
-        do
-            if [ -s $file ]
-            then
-                # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
-                # - Remove lines beginning with '##'.
-                # - Remove the leading '#' from the one line that should be left with a single leading '#' so the line can
-                #   serve as a TSV header.
-                sed -E '/^##/d' $file | sed -E 's/^#//' > vep_loftee_load_file.txt
+        num_rows=$(bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{raw_data_table} --format json | jq -r .numRows)
+        if ((num_rows != 0))
+        then
+            echo "Found preexisting table with data, not adding more raw data."
+        else
+            echo "Raw data table is empty, copying VEP output to be loaded."
+            gcloud storage cp ~{sep=' ' vep_loftee_raw_output} .
+            for file in ~{sep=' ' vep_loftee_raw_output}
+            do
+                filename=$(basename $file)
+                if [ ! -e load_file.txt ]
+                then
+                    # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
+                    # - Remove lines beginning with '##'.
+                    # - Remove the leading '#' from the one line that should be left with a single leading '#' so
+                    #   the line can serve as a TSV header.
+                    sed -E '/^##/d' $filename | sed -E 's/^#//' > load_file.txt
+                fi
+                grep -E -v '^#' $filename >> load_file.txt
+            done
 
-                bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
-                   --null_marker="-" ~{dataset_name}.~{raw_data_table} vep_loftee_load_file.txt
-            else
-                echo "File $file is empty, skipping."
-            fi
-        done
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' \
+                --skip_leading_rows=1 --null_marker="-" ~{dataset_name}.~{raw_data_table} load_file.txt
+        fi
     >>>
 
     runtime {
         docker: variants_docker
+        preemptible: 2
         memory: "7 GB"
         disks: "local-disk 1000 HDD"
     }
@@ -948,6 +963,12 @@ task BigQueryCookVepAndLofteeRawAnnotations {
             DATE=$((3 * 24 * 60 * 60))
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{cooked_data_table} ~{cooked_data_table_schema}
         fi
+
+        num_rows=$(bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{cooked_data_table} --format json | jq -r .numRows)
+        if ((num_rows != 0))
+        then
+          echo "Found preexisting table with data, not adding more cooked data."
+        else
 
         bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{cooked_data_table} --replace \
            --project_id=~{project_id} '
@@ -1021,6 +1042,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         WHERE ROW_NUMBER = 1
 
         '
+        fi
 
     >>>
 
