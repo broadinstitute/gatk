@@ -886,8 +886,8 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating raw VEP + LOFTEE table ~{dataset_name}.~{raw_data_table}"
 
-            # 24 hour TTL for this table
-            DATE=$((24 * 60 * 60))
+            # 3 day TTL for this table
+            DATE=$((3 * 24 * 60 * 60))
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{raw_data_table_schema}
         fi
 
@@ -944,68 +944,81 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo 'Creating "cooked" VEP + LOFTEE table ~{dataset_name}.~{cooked_data_table}'
 
-            # 24 hour TTL for this table
-            DATE=$((24 * 60 * 60))
+            # 3 day TTL for this table
+            DATE=$((3 * 24 * 60 * 60))
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{cooked_data_table} ~{cooked_data_table_schema}
         fi
 
         bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{cooked_data_table} --replace \
            --project_id=~{project_id} '
 
-        SELECT
-        -- Make a VID-compatible string from the data in Uploaded_variation.
-        -- VEP appears to use a different convention for the encoding of indel positions than what is used in GVS:
-        -- VEP indel positions are based on the first *discrepant* base and not the first base mentioned, which in the
-        -- GVS convention agrees between reference and allele. Correct for that in the VID-building code below to
-        -- subtract 1 if the variant is an indel.
-        REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" ||
-            -- A Location specified with a "-" range is an indel. Single-base deletions are a special case with a single
-            -- position, but like all deletions they have a NULL Allele so look for that as well.
-            IF ((Location LIKE "%-%") OR (Allele is NULL),
-                -- If this is an indel decrement the position by one for VAT compatibility.
-                CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") AS INT64) - 1) AS STRING),
-                -- Else SNPs use position without adjustment.
-                REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)")) ||
-            "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" ||
-            REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
-        Uploaded_variation,
-        Location,
-        Allele,
-        Gene,
-        Feature,
-        Feature_type,
-        Consequence,
-        cDNA_position,
-        CDS_position,
-        Protein_position,
-        Amino_acids,
-        Codons,
-        Existing_variation,
-        IMPACT,
-        DISTANCE,
-        STRAND,
-        -- FLAGS can be multi-valued so SPLIT to make this REPEATED.
-        SPLIT(FLAGS, ",") AS FLAGS,
-        SYMBOL as HGNC_SYMBOL,
-        SYMBOL_SOURCE,
-        -- HGNC IDs are formatted like HGNC:1234; we only want the number part.
-        CAST(SPLIT(HGNC_ID, ":")[OFFSET(1)] AS INTEGER) AS HGNC_ID,
-        SOURCE,
-        LoF,
-        -- These three appear to sometimes be multi-valued so SPLIT to make them REPEATEDs.
-        SPLIT(LoF_filter, ",") AS LoF_filter,
-        SPLIT(LoF_flags, ",") AS LoF_flags,
-        SPLIT(LoF_info, ",") AS LoF_info,
-        -- Split and cast the GERP string to REPEATED FLOAT64s.
-        (
-        SELECT
-        ARRAY_AGG(SAFE_CAST(s AS FLOAT64))
-        FROM
-        UNNEST(SPLIT(GERP, ",")) AS s
-        ) AS GERP
+        SELECT * EXCEPT(row_number) FROM (
+            SELECT
+            -- Make a VID-compatible string from the data in Uploaded_variation.
+            -- VEP appears to use a different convention for the encoding of indel positions than what is used in GVS:
+            -- VEP indel positions are based on the first *discrepant* base and not the first base mentioned, which in the
+            -- GVS convention agrees between reference and allele. Correct for that in the VID-building code below to
+            -- subtract 1 if the variant is an indel.
+            REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" ||
+                -- A Location specified with a "-" range is an indel. Single-base deletions are a special case with a single
+                -- position, but like all deletions they have a NULL Allele so look for that as well.
+                IF ((Location LIKE "%-%") OR (Allele is NULL),
+                    -- If this is an indel decrement the position by one for VAT compatibility.
+                    CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") AS INT64) - 1) AS STRING),
+                    -- Else SNPs use position without adjustment.
+                    REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)")) ||
+                "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" ||
+                REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
+            Uploaded_variation,
+            Location,
+            Allele,
+            Gene,
+            Feature,
+            Feature_type,
+            Consequence,
+            cDNA_position,
+            CDS_position,
+            Protein_position,
+            Amino_acids,
+            Codons,
+            Existing_variation,
+            IMPACT,
+            DISTANCE,
+            STRAND,
+            -- FLAGS can be multi-valued so SPLIT to make this REPEATED.
+            SPLIT(FLAGS, ",") AS FLAGS,
+            SYMBOL as HGNC_SYMBOL,
+            SYMBOL_SOURCE,
+            -- HGNC IDs are formatted like HGNC:1234; we only want the number part.
+            CAST(SPLIT(HGNC_ID, ":")[OFFSET(1)] AS INTEGER) AS HGNC_ID,
+            SOURCE,
+            LoF,
+            -- These three appear to sometimes be multi-valued so SPLIT to make them REPEATEDs.
+            SPLIT(LoF_filter, ",") AS LoF_filter,
+            SPLIT(LoF_flags, ",") AS LoF_flags,
+            SPLIT(LoF_info, ",") AS LoF_info,
+            -- Split and cast the GERP string to REPEATED FLOAT64s.
+            (
+            SELECT
+            ARRAY_AGG(SAFE_CAST(s AS FLOAT64))
+            FROM
+            UNNEST(SPLIT(GERP, ",")) AS s
+            ) AS GERP,
 
-        FROM
-        ~{project_id}.~{dataset_name}.~{raw_data_table}
+            -- Use the ROW_NUMBER() magic to squash duplicates. A small number of deletions span interval boundaries
+            -- and are assigned to two different VEP processing shards. This duplicate data would cause problems when
+            -- we try to assign back
+            ROW_NUMBER()
+            -- The expression below uses Uploaded_variation rather than vid because BigQuery claims to not be able to
+            -- find the vid identifier. Uploaded_variation contains equivalent information to vid in a different format.
+            OVER (PARTITION BY Uploaded_variation, Feature)
+            ROW_NUMBER
+
+            FROM
+            ~{project_id}.~{dataset_name}.~{raw_data_table}
+            )
+
+        WHERE ROW_NUMBER = 1
 
         '
 
