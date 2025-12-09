@@ -897,7 +897,7 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{raw_data_table_schema}
         fi
 
-        num_rows=$(bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{raw_data_table} --format json | jq -r .numRows)
+        num_rows=$(bq --apilog=false show --project_id=~{project_id} --format json ~{dataset_name}.~{raw_data_table} | jq -r .numRows)
         if ((num_rows != 0))
         then
             echo "Found preexisting table with data, not adding more raw data."
@@ -964,7 +964,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
             bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{cooked_data_table} ~{cooked_data_table_schema}
         fi
 
-        num_rows=$(bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{cooked_data_table} --format json | jq -r .numRows)
+        num_rows=$(bq --apilog=false show --project_id=~{project_id} --format json ~{dataset_name}.~{cooked_data_table} | jq -r .numRows)
         if ((num_rows != 0))
         then
           echo "Found preexisting table with data, not adding more cooked data."
