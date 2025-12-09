@@ -867,7 +867,7 @@ task GenerateVepAndLofteeAnnotations {
             #
             # Task GvsCreateVATfromVDS.GenerateVepAndLofteeAnnotations:150:4 failed. The job was stopped before the command finished. GCP Batch task exited with VMReportingTimeout(50002).
             #
-            ulimit -m $vep_memory_kib
+            ulimit -v $vep_memory_kib
             set +o errexit
             vep "${args[@]}"
             set -o errexit
