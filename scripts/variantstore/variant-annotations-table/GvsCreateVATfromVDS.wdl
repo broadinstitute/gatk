@@ -964,6 +964,8 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
             bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' \
                 --skip_leading_rows=1 --null_marker="-" ~{dataset_name}.~{raw_data_table} load_file.txt
+
+            echo "VEP + LOFTEE raw data loading complete."
         fi
     >>>
 
