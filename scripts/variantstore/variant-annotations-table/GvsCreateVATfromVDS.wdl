@@ -805,10 +805,10 @@ task GenerateVepAndLofteeAnnotations {
 
         if [[ -z "${MEM_UNIT:-}" ]]
         then
-            vep_memory_kib=$(python3 -c "from math import floor; print(floor((~{memory_mib} - ~{overhead_memory_mib}) * 1024))")
+            vep_memory_kib=$(python -c "from math import floor; print(floor((~{memory_mib} - ~{overhead_memory_mib}) * 1024))")
         elif [[ ${MEM_UNIT} == "GB" ]]
         then
-            vep_memory_kib=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_mib}) * 1024))")
+            vep_memory_kib=$(python -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_mib}) * 1024))")
         else
             echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
             exit 1
