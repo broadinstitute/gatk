@@ -170,14 +170,19 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         boolean isPrimary = (!read.isSecondaryAlignment() && !read.isSupplementaryAlignment() && !read.isUnmapped());
         boolean isReadOverlap = (overlapCount(read) > 100);
         
-        // Only track uncertain reads in the Bloom filter
-        // Naive reads (overlapping primary) require no storage - they're the default case
-        if (!(isReadOverlap && isPrimary)) {
-            // This read is uncertain - add to Bloom filter
+        // Only add to uncertain Bloom filter if this is a PRIMARY read that does NOT overlap.
+        // This matches the original logic where:
+        //   - overlapping primaries → naive (checked first via overlapReadNameSet)
+        //   - non-overlapping primaries → uncertain
+        //   - non-primary reads inherit their name's classification from the primary
+        // Non-primary reads (secondary, supplementary, unmapped) are ignored here;
+        // they will inherit the classification of their read name from the primary.
+        if (isPrimary && !isReadOverlap) {
             uncertainBloomFilter.put(read.getName());
             uncertainReadNamesAdded++;
         }
-        // Naive reads (isReadOverlap && isPrimary) don't need to be tracked
+        // Primary reads that overlap: don't add (will default to naive in writeReads)
+        // Non-primary reads: ignored - the primary's overlap status decides
 
         if ((readCountPass1 > 0) && ((readCountPass1 % readsLogCount) == 0)) {
             logReadCounts(readCountPass1, "Sorting primary reads (" + readCountPass1 + " reads)");

@@ -141,7 +141,7 @@ task naive_processing {
     docker: "broadinstitute/gatk:latest"
     cpu: 2
     memory: "~{java_mem + 2}G"
-    disks: "local-disk 500 SSD"
+    disks: "local-disk 1500 SSD"
   }
 }
 
