@@ -30,7 +30,7 @@ public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
 
     @Override
     public TabixFormat getTabixFormat() {
-        return new TabixFormat(TabixFormat.ZERO_BASED, 1, 2, 0, '#', 0);
+        return new TabixFormat(TabixFormat.ZERO_BASED, 1, 2, 2, '#', 0);
     }
 
     @Override
