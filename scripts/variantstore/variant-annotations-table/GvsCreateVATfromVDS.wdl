@@ -814,6 +814,13 @@ task GenerateVepAndLofteeAnnotations {
             LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
             args=(
 
+                # Some logging please.
+                --verbose
+                --warning_file warnings.txt
+
+                # Explicitly turn off forking as LOFTEE might not deal well with that.
+                --fork 1
+
                 # Breaks out data into their own columns that otherwise would be nested (semicolon delimited) in the "Extra" column.
                 --tab
 
@@ -824,7 +831,7 @@ task GenerateVepAndLofteeAnnotations {
                 --symbol
 
                 # Basic LOFTEE plugin setup
-                --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database}
+                --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database},check_complete_cds:false
                 --dir_plugins $LOFTEE_PATH
 
                 # Basic VEP cache setup
@@ -861,6 +868,7 @@ task GenerateVepAndLofteeAnnotations {
     output {
         File output_file = "vep_loftee_raw_output.txt"
         File monitoring_log = "monitoring.log"
+        File warnings = "warnings.txt"
         Boolean done = true
     }
 }
