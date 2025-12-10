@@ -10,11 +10,16 @@ workflow ReprocessAndValidate {
 		File ref_fasta_fai="gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
     File ref_dict="gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File gatk_jar = "gs://fc-d26a03c8-5f34-4452-93ff-b3fc13cc2950/naive/gatkdev_naive.jar"
-    Int java_mem = 10
+    Int java_mem = 8
     String output_prefix="test"
     
     # Parallelization option - if true, splits by chromosome groups for faster processing
     Boolean parallelize = false
+    
+    # Uncertain-only optimization - if true, uses optimized I/O mode that only writes
+    # uncertain reads during traversal, then creates naive via samtools subtraction
+    # This can reduce total runtime by ~3 hours for typical samples
+    Boolean uncertain_only = false
     
     # Parallel processing options (only used when parallelize=true)
     Array[Array[String]] chromosome_groups = [
@@ -28,9 +33,29 @@ workflow ReprocessAndValidate {
   }
 
   # ============================================================================
-  # SEQUENTIAL PROCESSING PATH (parallelize=false)
+  # UNCERTAIN-ONLY OPTIMIZED PATH (uncertain_only=true)
+  # Uses optimized I/O: writes only uncertain reads, creates naive via samtools
   # ============================================================================
-  if (!parallelize) {
+  if (uncertain_only) {
+    call naive_processing_uncertain_only {
+      input:
+        rlg = rlg,
+        umil = umil,
+        input_bam = input_bam,
+        input_bam_idx = input_bam_idx,
+        ref_fasta = ref_fasta,
+        ref_fasta_fai = ref_fasta_fai,
+        ref_dict = ref_dict,
+        gatk_jar = gatk_jar,
+        output_prefix = output_prefix,
+        java_mem = java_mem
+    }
+  }
+
+  # ============================================================================
+  # SEQUENTIAL PROCESSING PATH (parallelize=false, uncertain_only=false)
+  # ============================================================================
+  if (!parallelize && !uncertain_only) {
     call naive_processing {
       input:
         rlg = rlg,
@@ -47,9 +72,9 @@ workflow ReprocessAndValidate {
   }
 
   # ============================================================================
-  # PARALLEL PROCESSING PATH (parallelize=true)
+  # PARALLEL PROCESSING PATH (parallelize=true, uncertain_only=false)
   # ============================================================================
-  if (parallelize) {
+  if (parallelize && !uncertain_only) {
     # Scatter across chromosome groups
     scatter (idx in range(length(chromosome_groups))) {
       call naive_processing_shard {
@@ -98,10 +123,18 @@ workflow ReprocessAndValidate {
   }
 
   # ============================================================================
-  # SELECT OUTPUTS FROM EITHER PATH
+  # SELECT OUTPUTS FROM ANY PATH
   # ============================================================================
-  File final_naive_bam = select_first([merge_naive.merged_cram, naive_processing.naive_bam])
-  File final_uncertain_bam = select_first([merge_uncertain.merged_cram, naive_processing.uncertain_bam])
+  File final_naive_bam = select_first([
+    naive_processing_uncertain_only.naive_bam,
+    merge_naive.merged_cram, 
+    naive_processing.naive_bam
+  ])
+  File final_uncertain_bam = select_first([
+    naive_processing_uncertain_only.uncertain_bam,
+    merge_uncertain.merged_cram, 
+    naive_processing.uncertain_bam
+  ])
 
   call validate_1 {
     input:
@@ -175,6 +208,9 @@ workflow ReprocessAndValidate {
     # Parallel processing debug outputs (only populated when parallelize=true)
     Array[File]? shard_naive_bams     = naive_processing_shard.naive_bam
     Array[File]? shard_uncertain_bams = naive_processing_shard.uncertain_bam
+    
+    # Uncertain-only mode output (only populated when uncertain_only=true)
+    File? uncertain_read_names = naive_processing_uncertain_only.uncertain_read_names
   }
 }
 
@@ -220,6 +256,82 @@ task naive_processing {
     docker: "broadinstitute/gatk:latest"
     cpu: 2
     memory: "~{java_mem + 2}G"
+    disks: "local-disk 1500 SSD"
+  }
+}
+
+# ============================================================================
+# UNCERTAIN-ONLY PROCESSING (optimized I/O - only writes uncertain reads)
+# ============================================================================
+# This task writes only uncertain reads during GATK traversal, then uses
+# samtools to create the naive CRAM by subtracting uncertain read names
+# from the original input. This dramatically reduces I/O time since
+# uncertain reads are typically <10% of total.
+
+task naive_processing_uncertain_only {
+  input {
+    String rlg
+    File   umil
+    File   input_bam
+    File   input_bam_idx
+    File   ref_fasta
+    File   ref_fasta_fai
+    File   ref_dict
+    File   gatk_jar
+    Int    java_mem
+    String output_prefix
+    
+    # Bloom filter parameters
+    Int expected_uncertain_reads = 100000000
+    Float bloom_filter_fpr = 0.001
+  }
+
+  command <<<
+    set -e
+    echo "NAIVE PROCESSING (UNCERTAIN-ONLY MODE) ============"
+    echo "Step 1: Write only uncertain reads + read names file..."
+    
+    java -jar -Xmx~{java_mem}G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
+      -RLG ~{rlg} \
+      -I ~{input_bam} \
+      -O /dev/null \
+      -Ou ~{output_prefix}.uncertain.cram \
+      -umil ~{umil} \
+      -R ~{ref_fasta} \
+      -UO true \
+      -URN ~{output_prefix}.uncertain_read_names.txt \
+      -EUR ~{expected_uncertain_reads} \
+      -FPR ~{bloom_filter_fpr}
+    
+    echo "Step 1 complete. Uncertain CRAM and read names file created."
+    echo "Uncertain read names count: $(wc -l < ~{output_prefix}.uncertain_read_names.txt)"
+    
+    echo "Step 2: Create naive CRAM by excluding uncertain read names from input..."
+    # Use samtools to create naive CRAM by excluding uncertain reads
+    # The ^ prefix means "exclude reads with names in this file"
+    samtools view \
+      -@ 4 \
+      --reference ~{ref_fasta} \
+      -N ^~{output_prefix}.uncertain_read_names.txt \
+      -O CRAM \
+      -o ~{output_prefix}.naive.cram \
+      ~{input_bam}
+    
+    echo "Step 2 complete. Naive CRAM created."
+    ls -lh ~{output_prefix}.*.cram
+    echo "Done!"
+  >>>
+
+  output {
+    File naive_bam     = "~{output_prefix}.naive.cram"
+    File uncertain_bam = "~{output_prefix}.uncertain.cram"
+    File uncertain_read_names = "~{output_prefix}.uncertain_read_names.txt"
+  }
+
+  runtime {
+    docker: "broadinstitute/gatk:latest"
+    cpu: 4
+    memory: "~{java_mem + 4}G"
     disks: "local-disk 1500 SSD"
   }
 }

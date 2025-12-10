@@ -24,8 +24,11 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,6 +50,10 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
     public static final String EXPECTED_UNCERTAIN_READS_LONG_NAME = "expected_uncertain_reads";
     public static final String BLOOM_FILTER_FPR_SHORT_NAME = "FPR";
     public static final String BLOOM_FILTER_FPR_LONG_NAME = "bloom_filter_fpr";
+    public static final String UNCERTAIN_ONLY_SHORT_NAME = "UO";
+    public static final String UNCERTAIN_ONLY_LONG_NAME = "uncertain_only";
+    public static final String UNCERTAIN_READ_NAMES_SHORT_NAME = "URN";
+    public static final String UNCERTAIN_READ_NAMES_LONG_NAME = "uncertain_read_names";
 
     @Argument(fullName = MAPPABILITY_INTERVAL_LIST_LONG_NAME,
             shortName = MAPPABILITY_INTERVAL_LIST_SHORT_NAME,
@@ -86,9 +93,28 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
             optional = true)
     public double bloomFilterFpr = 0.001;
 
+    @Argument(fullName = UNCERTAIN_ONLY_LONG_NAME,
+            shortName = UNCERTAIN_ONLY_SHORT_NAME,
+            doc="Write only uncertain reads to the uncertain output file. Skip writing naive reads entirely. " +
+                "Use this with --uncertain_read_names to generate a read names file, then use " +
+                "'samtools view -N ^read_names.txt' to create the naive CRAM from the original input. " +
+                "This dramatically reduces I/O time since uncertain reads are typically <10% of total.",
+            optional = true)
+    public boolean uncertainOnly = false;
+
+    @Argument(fullName = UNCERTAIN_READ_NAMES_LONG_NAME,
+            shortName = UNCERTAIN_READ_NAMES_SHORT_NAME,
+            doc="Write uncertain read names to this file (one per line). Used with --uncertain_only " +
+                "to enable creating the naive output via 'samtools view -N ^<this_file>'.",
+            optional = true)
+    @WorkflowOutput
+    public GATKPath uncertainReadNamesOutput;
+
     private SAMFileGATKReadWriter outputWriter;
     private SAMFileGATKReadWriter outputWriterUncertain;
     private BloomFilter<String> uncertainBloomFilter;
+    private Set<String> uncertainReadNamesSet;  // Only used in uncertainOnly mode to collect unique names
+    private BufferedWriter uncertainReadNamesWriter;
     private int readCountPass1 = 0;
     private int readCountPass2 = 0;
     private OverlapDetector<SimpleInterval> overlapDetector;
@@ -129,11 +155,21 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         // If a read is unmapped: uncertain
         // If a read does not overlap and mate does not overlap:  uncertain
 
-//        outputWriter = createSAMWriter(output, false);
-//        outputWriterUncertain = createSAMWriter(outputUncertainReads, false);
+        // In uncertainOnly mode, we skip writing naive reads entirely
+        // This dramatically reduces I/O time since naive reads are typically >90% of total
+        if (uncertainOnly) {
+            logger.info("Running in uncertain-only mode: will only write uncertain reads");
+            if (uncertainReadNamesOutput == null) {
+                logger.warn("No --uncertain_read_names output specified. You'll need to extract read names from the uncertain CRAM.");
+            }
+            // Initialize set to collect unique uncertain read names
+            uncertainReadNamesSet = new HashSet<>();
+        }
 
-        // going to attempt to just NOT sort here and let our laster sorting phase handle it
-        outputWriter = createSAMWriter(output, true);
+        // Only create naive output writer if not in uncertainOnly mode
+        if (!uncertainOnly) {
+            outputWriter = createSAMWriter(output, true);
+        }
         outputWriterUncertain = createSAMWriter(outputUncertainReads, true);
 
         // Initialize Bloom filter for tracking uncertain read names
@@ -184,6 +220,10 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         if (isPrimary && !isReadOverlap) {
             uncertainBloomFilter.put(read.getName());
             uncertainReadNamesAdded++;
+            // In uncertainOnly mode, also collect the read name for the output file
+            if (uncertainOnly && uncertainReadNamesSet != null) {
+                uncertainReadNamesSet.add(read.getName());
+            }
         }
         // Primary reads that overlap: don't add (will default to naive in writeReads)
         // Non-primary reads: ignored - the primary's overlap status decides
@@ -203,7 +243,10 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
             outputWriterUncertain.addRead(read);
             uncertainCount++;
         } else {
-            outputWriter.addRead(read);
+            // In uncertainOnly mode, skip writing naive reads entirely
+            if (!uncertainOnly) {
+                outputWriter.addRead(read);
+            }
             naiveCount++;
         }
 
@@ -218,6 +261,24 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         logHeapUsage(phase);
     }
 
+    private void writeUncertainReadNamesFile() {
+        if (uncertainReadNamesOutput == null || uncertainReadNamesSet == null) {
+            return;
+        }
+        
+        logger.info("Writing " + uncertainReadNamesSet.size() + " unique uncertain read names to " + uncertainReadNamesOutput);
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(uncertainReadNamesOutput.getOutputStream(), StandardCharsets.UTF_8))) {
+            for (String readName : uncertainReadNamesSet) {
+                writer.write(readName);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            throw new GATKException("Failed to write uncertain read names file", e);
+        }
+        logger.info("Finished writing uncertain read names file");
+    }
+
     @Override
     public void closeTool() {
         logReadCounts(readCountPass2, "finish");
@@ -225,9 +286,19 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         logger.info("Uncertain reprocessing reads: " + uncertainCount);
         logger.info("Uncertain read names in Bloom filter: " + uncertainReadNamesAdded);
         
+        if (uncertainOnly) {
+            logger.info("Uncertain-only mode: " + naiveCount + " naive reads were NOT written");
+            if (uncertainReadNamesSet != null) {
+                logger.info("Unique uncertain read names collected: " + uncertainReadNamesSet.size());
+            }
+        }
+        
         // Estimate false positive impact
         long estimatedFalsePositives = (long) (naiveCount * bloomFilterFpr);
         logger.info("Estimated false positives (naive reads sent to uncertain due to Bloom filter FPR): ~" + estimatedFalsePositives);
+
+        // Write uncertain read names file if requested
+        writeUncertainReadNamesFile();
 
         if ( outputWriter != null ) {
             outputWriter.close();
