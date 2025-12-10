@@ -852,6 +852,7 @@ task GenerateVepAndLofteeAnnotations {
     runtime {
         preemptible: 2
         maxRetries: 3
+        noAddress: true
         docker: vep_loftee_docker
         memory: "8 GB"
         disks: "local-disk 500 HDD"
