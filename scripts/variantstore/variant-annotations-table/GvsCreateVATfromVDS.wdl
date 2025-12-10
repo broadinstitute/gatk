@@ -829,6 +829,7 @@ task GenerateVepAndLofteeAnnotations {
 
                 # Basic VEP cache setup
                 --cache
+                --offline
                 --dir_cache .
 
                 # For GERP (Genomic Evolutionary Rate Profiling) score output.
