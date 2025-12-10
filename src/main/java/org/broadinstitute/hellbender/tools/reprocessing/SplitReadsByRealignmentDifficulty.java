@@ -129,8 +129,12 @@ public class SplitReadsByRealignmentDifficulty extends MultiplePassReadWalker {
         // If a read is unmapped: uncertain
         // If a read does not overlap and mate does not overlap:  uncertain
 
-        outputWriter = createSAMWriter(output, false);
-        outputWriterUncertain = createSAMWriter(outputUncertainReads, false);
+//        outputWriter = createSAMWriter(output, false);
+//        outputWriterUncertain = createSAMWriter(outputUncertainReads, false);
+
+        // going to attempt to just NOT sort here and let our laster sorting phase handle it
+        outputWriter = createSAMWriter(output, true);
+        outputWriterUncertain = createSAMWriter(outputUncertainReads, true);
 
         // Initialize Bloom filter for tracking uncertain read names
         // We only track uncertain reads (minority ~15%) and default to naive for anything not in the filter
