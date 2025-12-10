@@ -790,33 +790,12 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_phylo_csf_database
         File input_vcf
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-        Float memory_mib = 8 * 1024
-        # The memory headroom left for other processes including the Batch agent.
-        Float overhead_memory_mib = 1.6 * 1024
     }
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-
-        echo "MEM_SIZE is ${MEM_SIZE}"
-        echo "MEM_UNIT is ${MEM_UNIT}"
-
-        if [[ -z "${MEM_UNIT:-}" ]]
-        then
-            vep_memory_kib=$(python -c "from math import floor; print(int(floor((~{memory_mib} - ~{overhead_memory_mib}) * 1024)))")
-        elif [[ ${MEM_UNIT} == "GB" ]]
-        then
-            vep_memory_kib=$(python -c "from math import floor; print(int(floor(((${MEM_SIZE} * 1024) - ~{overhead_memory_mib}) * 1024)))")
-        else
-            echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
-            exit 1
-        fi
-
-        echo "memory_mib is ~{memory_mib}"
-        echo "overhead_memory_mib is ~{overhead_memory_mib}"
-        echo "vep_memory_kib is ${vep_memory_kib}"
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -860,31 +839,8 @@ task GenerateVepAndLofteeAnnotations {
                 --output_file vep_loftee_raw_output.txt
             )
 
-            # Limit the amount of memory the VEP Python process uses, expressed in KiB.
-            # If we don't do this it seems that the Batch agent is often (though not always) starved for memory and
-            # unable to check in with the Batch service. If this happens the job fails for reasons that appear to
-            # Cromwell to be unretryable, and thus the whole workflow fails. e.g.
-            #
-            # Task GvsCreateVATfromVDS.GenerateVepAndLofteeAnnotations:150:4 failed. The job was stopped before the command finished. GCP Batch task exited with VMReportingTimeout(50002).
-            #
-            ulimit -v $vep_memory_kib
-            set +o errexit
             vep "${args[@]}"
-            set -o errexit
-
-            VEP_RC=$?
-            if (( VEP_RC == 137 ))
-            then
-                # Cromwell does not currently consider the value in the rc file when determining retryability, though
-                # there are PRs open that would enable this.
-                # https://github.com/broadinstitute/cromwell/pull/7786/files
-                echo "VEP + LOFTEE appears to have OOMed with exit code 137, writing messages to stderr to hopefully trigger Cromwell to retry with more memory."
-                echo "Killed" >& 2
-                echo "java.lang.OutOfMemoryError" >& 2
-                exit 1
-            else
-                echo "VEP + LOFTEE run complete."
-            fi
+            echo "VEP + LOFTEE run complete."
         else
             echo "No data found for processing in VCF, exit 0."
             touch "vep_loftee_raw_output.txt"
@@ -964,8 +920,6 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
             bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' \
                 --skip_leading_rows=1 --null_marker="-" ~{dataset_name}.~{raw_data_table} load_file.txt
-
-            echo "VEP + LOFTEE raw data loading complete."
         fi
     >>>
 
