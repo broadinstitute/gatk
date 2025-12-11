@@ -868,7 +868,7 @@ task GenerateVepAndLofteeAnnotations {
     output {
         File output_file = "vep_loftee_raw_output.txt"
         File monitoring_log = "monitoring.log"
-        File warnings = "warnings.txt"
+        File? warnings = "warnings.txt"
         Boolean done = true
     }
 }
