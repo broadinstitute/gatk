@@ -219,8 +219,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
-                // Preserve no-call genotypes (e.g., females on chrY)
-                if (genotype.isNoCall()) {
+                // Preserve no-call genotypes that have no RD_CN (e.g., females on chrY with all fields missing)
+                if (genotype.isNoCall() && !genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                     updatedGenotypes.add(genotype);
                     continue;
                 }
@@ -245,8 +245,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
             for (final Genotype genotype : genotypes) {
-                // Preserve no-call genotypes (e.g., females on chrY)
-                if (genotype.isNoCall()) {
+                // Preserve no-call genotypes that have no RD_CN (e.g., females on chrY with all fields missing)
+                if (genotype.isNoCall() && !genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                     updatedGenotypes.add(genotype);
                     continue;
                 }
@@ -307,8 +307,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
-                // Preserve no-call genotypes (e.g., females on chrY)
-                if (genotype.isNoCall()) {
+                // Preserve no-call genotypes that have no RD_CN (e.g., females on chrY with all fields missing)
+                if (genotype.isNoCall() && !genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                     updatedGenotypes.add(genotype);
                     continue;
                 }
@@ -333,8 +333,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
             for (final Genotype genotype : genotypes) {
-                // Preserve no-call genotypes (e.g., females on chrY)
-                if (genotype.isNoCall()) {
+                // Preserve no-call genotypes that have no RD_CN (e.g., females on chrY with all fields missing)
+                if (genotype.isNoCall() && !genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                     updatedGenotypes.add(genotype);
                     continue;
                 }
