@@ -94,7 +94,6 @@ public class SVReviseAbnormalAllosomes extends VariantWalker {
         final List<Genotype> genotypes = variant.getGenotypes();
         final List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         for (final Genotype genotype : genotypes) {
-            // Only process samples with expected copy number 1 (males on sex chromosomes)
             final Object ecnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
             final int ecn = ecnAttribute != null ? Integer.parseInt(ecnAttribute.toString()) : 2;
             
