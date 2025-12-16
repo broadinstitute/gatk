@@ -94,18 +94,27 @@ public class SVReviseAbnormalAllosomes extends VariantWalker {
         final List<Genotype> genotypes = variant.getGenotypes();
         final List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         for (final Genotype genotype : genotypes) {
-            if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN, 0).toString()) > 0) {
-                int newRdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString()) - 1;
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
-                gb.attribute(GATKSVVCFConstants.RD_CN, newRdCn);
-                if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-                    gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, newRdCn);
+            // Only process samples with expected copy number 1 (males on sex chromosomes)
+            final Object ecnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+            final int ecn = ecnAttribute != null ? Integer.parseInt(ecnAttribute.toString()) : 2;
+            
+            if (ecn == 1 && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
+                final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
+                if (rdCn > 0) {
+                    final int newRdCn = rdCn - 1;
+                    final GenotypeBuilder gb = new GenotypeBuilder(genotype);
+                    gb.attribute(GATKSVVCFConstants.RD_CN, newRdCn);
+                    if (genotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
+                        gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, newRdCn);
+                    }
+                    updatedGenotypes.add(gb.make());
+                } else {
+                    updatedGenotypes.add(genotype);
                 }
-                updatedGenotypes.add(gb.make());
             } else {
                 updatedGenotypes.add(genotype);
             }
         }
-        builder.genotypes(genotypes);
+        builder.genotypes(updatedGenotypes);
     }
 }

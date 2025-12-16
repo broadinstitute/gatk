@@ -384,6 +384,12 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
             final String sampleName = entry.getKey();
             final Genotype genotype = variant.getGenotype(sampleName);
+            
+            // Skip no-call genotypes (e.g., females on chrY)
+            if (genotype.isNoCall()) {
+                continue;
+            }
+            
             final String largerId = event.getLeft();
             final String largerSvType = event.getRight();
             final int currentRdCn = currentCopyNumbers.get(variantId).getOrDefault(sampleName, 0);
@@ -425,6 +431,13 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         // Replace revised alleles and copy numbers
         for (final Genotype genotype : genotypes) {
             final String sampleName = genotype.getSampleName();
+            
+            // Skip no-call genotypes (e.g., females on chrY)
+            if (genotype.isNoCall()) {
+                updatedGenotypes.add(genotype);
+                continue;
+            }
+            
             if (revisedCopyNumbers.get(variantId).containsKey(sampleName)) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));

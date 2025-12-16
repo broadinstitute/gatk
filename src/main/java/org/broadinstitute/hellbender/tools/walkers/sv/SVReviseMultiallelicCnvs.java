@@ -219,6 +219,12 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
+                // Preserve no-call genotypes (e.g., females on chrY)
+                if (genotype.isNoCall()) {
+                    updatedGenotypes.add(genotype);
+                    continue;
+                }
+                
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 final Object rdCnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
                 if (genotype.hasGQ() && rdCnAttribute != null) {
@@ -239,6 +245,12 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
             for (final Genotype genotype : genotypes) {
+                // Preserve no-call genotypes (e.g., females on chrY)
+                if (genotype.isNoCall()) {
+                    updatedGenotypes.add(genotype);
+                    continue;
+                }
+                
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
                 gb.alleles(Arrays.asList(Allele.NO_CALL));
@@ -295,6 +307,12 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
+                // Preserve no-call genotypes (e.g., females on chrY)
+                if (genotype.isNoCall()) {
+                    updatedGenotypes.add(genotype);
+                    continue;
+                }
+                
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 final Object rdCnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
                 if (genotype.hasGQ() && rdCnAttribute != null) {
@@ -315,6 +333,12 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
             for (final Genotype genotype : genotypes) {
+                // Preserve no-call genotypes (e.g., females on chrY)
+                if (genotype.isNoCall()) {
+                    updatedGenotypes.add(genotype);
+                    continue;
+                }
+                
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
                 gb.alleles(Arrays.asList(Allele.NO_CALL));
