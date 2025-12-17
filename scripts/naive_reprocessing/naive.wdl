@@ -307,15 +307,13 @@ task naive_processing_uncertain_only {
     echo "Uncertain read names count: $(wc -l < ~{output_prefix}.uncertain_read_names.txt)"
     
     echo "Step 2: Create naive CRAM by excluding uncertain read names from input..."
-    # Use samtools to create naive CRAM by excluding uncertain reads
-    # The ^ prefix means "exclude reads with names in this file"
-    samtools view \
-      -@ 4 \
-      --reference ~{ref_fasta} \
-      -N ^~{output_prefix}.uncertain_read_names.txt \
-      -O CRAM \
-      -o ~{output_prefix}.naive.cram \
-      ~{input_bam}
+    # Use GATK FilterSamReads to create naive CRAM by excluding uncertain reads
+    gatk FilterSamReads \
+      -I ~{input_bam} \
+      -O ~{output_prefix}.naive.cram \
+      -R ~{ref_fasta} \
+      --FILTER excludeReadList \
+      --READ_LIST_FILE ~{output_prefix}.uncertain_read_names.txt
     
     echo "Step 2 complete. Naive CRAM created."
     ls -lh ~{output_prefix}.*.cram
