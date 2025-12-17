@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -244,9 +243,6 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
 
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
-            final boolean isChrY = variant.getContig().equals("chrY") || variant.getContig().equals("Y");
-            final int targetPloidy = isChrY ? 1 : -1; // -1 means preserve original ploidy
-            
             for (final Genotype genotype : genotypes) {
                 if (genotype.isNoCall() && !genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                     updatedGenotypes.add(genotype);
@@ -255,13 +251,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
                 
                 GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
-                
-                if (targetPloidy == 1) {
-                    gb.alleles(Collections.nCopies(1, Allele.NO_CALL));
-                } else {
-                    gb.alleles(Arrays.asList(Allele.NO_CALL));
-                }
-                
+                gb.alleles(Arrays.asList(Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
