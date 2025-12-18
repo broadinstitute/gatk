@@ -94,9 +94,7 @@ public class SVReviseAbnormalAllosomes extends VariantWalker {
         final List<Genotype> genotypes = variant.getGenotypes();
         final List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         for (final Genotype genotype : genotypes) {
-            final Object ecnAttribute = genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
-            final int ecn = ecnAttribute != null ? Integer.parseInt(ecnAttribute.toString()) : 2;
-            
+            final int ecn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT).toString());
             if (ecn == 1 && genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
                 final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
                 if (rdCn > 0) {
