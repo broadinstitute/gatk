@@ -244,7 +244,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
             for (final Genotype genotype : genotypes) {               
-                GenotypeBuilder gb = new GenotypeBuilder(genotype);
+                final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
                 gb.alleles(Arrays.asList(Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
@@ -325,11 +325,6 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
             for (final Genotype genotype : genotypes) {
-                if (genotype.isNoCall() && !genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) {
-                    updatedGenotypes.add(genotype);
-                    continue;
-                }
-                
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
                 gb.alleles(Arrays.asList(Allele.NO_CALL));
