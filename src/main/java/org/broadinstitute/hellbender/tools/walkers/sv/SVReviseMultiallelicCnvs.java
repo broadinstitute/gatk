@@ -351,8 +351,10 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
 
         if (builder.getAttributes().getOrDefault(GATKSVVCFConstants.SVTYPE, "").equals(GATKSVVCFConstants.CNV)) {
             for (final Genotype genotype : genotypes) {
-                if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2).toString()) != 2) {
-                    return true;
+                if (genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT) != null) {
+                    if (Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2).toString()) != 2) {
+                        return true;
+                    }
                 }
             }
         }
