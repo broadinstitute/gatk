@@ -185,6 +185,27 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void oneOffTestForDebuggingActiveRegionsDELETEME() {
+        Utils.resetRandomGenerator();
+        final File tumor = ;
+        final File normal = ;
+        final String reference = "";
+        final SimpleInterval interval = new SimpleInterval()
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(unfilteredVcf)
+                .addReference(reference);
+
+        args.addInput(tumor);
+        args.addInput(normal);
+        args.add(M2ArgumentCollection.NORMAL_SAMPLE_LONG_NAME, getSampleName(normal));
+        args.addInterval(interval);
+
+        runCommandLine(args);
+    }
+
+    @Test
     public void testNA12878NormalNormalFiltering() {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = new File(FILTERING_DIR, "NA12878.vcf");
