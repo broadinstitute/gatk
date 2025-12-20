@@ -246,7 +246,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
                         "Indel is too long", indelLength, splitVariant.getContig(), splitVariant.getStart(), indelLength));
                 realignedVariants.add(splitVariant);
             } else {
-                final int distanceToLastVariant = (lastVariantWritten != null && splitVariant.contigsMatch(lastVariantWritten)) ? splitVariant.getStart() - lastVariantWritten.getEnd() : Integer.MAX_VALUE;
+                final int distanceToLastVariant = (lastVariantWritten != null && splitVariant.contigsMatch(lastVariantWritten)) ? splitVariant.getStart() - lastVariantWritten.getStart() : Integer.MAX_VALUE;
                 realignedVariants.add(GATKVariantContextUtils.leftAlignAndTrim(splitVariant, ref, Math.min(maxLeadingBases, distanceToLastVariant), !dontTrimAlleles));
             }
         }
