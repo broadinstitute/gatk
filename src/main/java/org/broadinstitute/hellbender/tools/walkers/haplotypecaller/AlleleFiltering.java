@@ -352,8 +352,8 @@ public abstract class AlleleFiltering {
                 .forEach(alleleHaplotypeMap.get(notAllele)::add);
 
         final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods = readLikelihoods.marginalize(alleleHaplotypeMap);
-        final SimpleInterval variantCallingRelevantFragmentOverlap = new SimpleInterval(allele).expandWithinContig(assemblyArgs.informativeReadOverlapMargin, sequenceDictionary);
-        alleleLikelihoods.retainEvidence(variantCallingRelevantFragmentOverlap::overlaps);
+        final SimpleInterval expandedVariantInterval = new SimpleInterval(allele).expandWithinContig(assemblyArgs.informativeReadOverlapMargin, sequenceDictionary);
+        alleleLikelihoods.retainEvidence(expandedVariantInterval::overlaps);
 
         logger.debug(() -> String.format("GALM: %s %d %d", allele, alleleHaplotypeMap.get(allele.altAllele()).size(), alleleHaplotypeMap.get(notAllele).size()));
         return alleleLikelihoods;

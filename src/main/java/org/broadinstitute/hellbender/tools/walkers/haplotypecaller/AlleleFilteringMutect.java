@@ -50,7 +50,7 @@ public class AlleleFilteringMutect extends AlleleFiltering {
      * This is very similar to what is done in the callMutations function in MutectEngine, but here the haplotypes that do
      * not support the allele are all haplotypes that do not contain the allele rather than only the haplotypes that support reference
      * etc.
-     * The log odds is calculated separately for the tumor and the normal samples and the smalles (the strongest) is returned
+     * The log odds is calculated separately for the tumor and the normal samples and the smallest (the strongest) is returned
      *
      * @param alleleLikelihoods
      * @param allele
@@ -64,6 +64,9 @@ public class AlleleFilteringMutect extends AlleleFiltering {
                 .filter(i -> !normalSamples.contains(alleleLikelihoods.getSample(i)))
                 .mapToObj(alleleLikelihoods::sampleMatrix)
                 .collect(Collectors.toList());
+        if (allMatrices.size()==0){
+            throw new GATKException.ShouldNeverReachHereException("No tumor samples found when calculating allele likelihood vs inverse");
+        }
         final AlleleList<Allele> alleleList = allMatrices.get(0);
         final LikelihoodMatrix<GATKRead, Allele> logAllMatrix = SomaticGenotypingEngine.combinedLikelihoodMatrix(allMatrices, alleleList);
         final double alleleLogOddsTumor = somaticAltLogOdds(logAllMatrix);
