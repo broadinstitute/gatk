@@ -187,20 +187,35 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @Test
     public void oneOffTestForDebuggingActiveRegionsDELETEME() {
         Utils.resetRandomGenerator();
-        final File tumor = ;
-        final File normal = ;
-        final String reference = "";
-        final SimpleInterval interval = new SimpleInterval()
+        final String dir = "/Users/davidben/gatk/one-off-test-files/";
+        // these are the sample names as in Terra data table
+        final String hiseqx_2018_bamsurgeon_vaf25_NA12878_O1D1 = dir + "tumor_chr20_10_to_20_M.cram";
+        final String NA12878_NA12878_O1D2_SM_G947M_v1 = dir + "normal_chr20_10_to_20_M.cram";
+        final String tumor = hiseqx_2018_bamsurgeon_vaf25_NA12878_O1D1;
+        final String normal = NA12878_NA12878_O1D2_SM_G947M_v1;
+
+        final String reference = hg38Reference;
+        final SimpleInterval interval = new SimpleInterval("chr20", 10_000_000, 10_010_000);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        String normalSampleName;
+        try {
+            final File nameFile = createTempFile("sample_name", ".txt");
+            new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", normal, "-R", reference, "-O", nameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
+            normalSampleName = Files.readAllLines(nameFile.toPath()).get(0);
+        } catch (final IOException ex) {
+            throw new IllegalArgumentException(ex);
+        }
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(unfilteredVcf)
-                .addReference(reference);
+                .addReference(reference)
+                .addInput(tumor)
+                .addInput(normal)
+                .add(M2ArgumentCollection.NORMAL_SAMPLE_LONG_NAME, normalSampleName)
+                .addInterval(interval);
 
-        args.addInput(tumor);
-        args.addInput(normal);
-        args.add(M2ArgumentCollection.NORMAL_SAMPLE_LONG_NAME, getSampleName(normal));
-        args.addInterval(interval);
+        int j = 9;
 
         runCommandLine(args);
     }
