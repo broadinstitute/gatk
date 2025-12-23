@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -128,6 +129,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private PileupQualBuffer tumorPileupQualBuffer;
     private PileupQualBuffer normalPileupQualBuffer;
+
+    // DEBUG STUFF -- DELETE DELETE DELETE!!!!!
+    private static final Set<Integer> INTERESTING_LOCI = Sets.newHashSet(10_000_931, 10_002_349, 10_009_223,
+            10_014_154, 10_014_173, 10_020_787, 10_021_829, 10_024_132, 10_026_198, 10_028_093, 10_028_274,
+            10_028_336, 10_029_227, 10_031_926, 10_033_590, 10_034_899, 10_043_653, 10_043_675,
+            10_046_588, 10_056_282, 10_056_477);
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -468,7 +475,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         }
 
         final byte refBase = ref.getBase();
+
         final SimpleInterval refInterval = ref.getInterval();
+        boolean interesting = false;
+        // DEBUG STUFF DELETE DELETE DELETE!!!!!
+        if (INTERESTING_LOCI.contains(refInterval.getStart())) {
+            interesting = true;
+            int g = 90;
+        }
 
         if( context == null || context.getBasePileup().isEmpty() ) {
             return new ActivityProfileState(refInterval, 0.0);
@@ -659,6 +673,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     // check that we're next to a soft clip that is not due to a read that got out of sync and ended in a bunch of BQ2's
     // we only need to check the next base's quality
+    // TODO: only checking the next base's quality is MISLEADING!!!
+    // TODO: we commonly find one decent base qual followed by a bunch of bad base quals for the rest of the soft clip
     private static boolean isNextToUsefulSoftClip(final PileupElement pe) {
         final int offset = pe.getOffset();
         return pe.getQual() > MINIMUM_BASE_QUALITY &&

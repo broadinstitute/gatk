@@ -195,7 +195,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final String normal = NA12878_NA12878_O1D2_SM_G947M_v1;
 
         final String reference = hg38Reference;
-        final SimpleInterval interval = new SimpleInterval("chr20", 10_000_000, 10_010_000);
+        final SimpleInterval interval = new SimpleInterval("chr20", 10_000_000, 11_000_000);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
         String normalSampleName;
