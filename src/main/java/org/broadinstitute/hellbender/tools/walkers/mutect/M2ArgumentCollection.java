@@ -38,6 +38,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
     public static final String INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME = "initial-tumor-lod";
     public static final String INITIAL_TUMOR_LOG_10_ODDS_SHORT_NAME = "init-lod";
+    public static final String MIN_ALT_READS_FOR_ACTIVE_PILEUP_LONG_NAME = "min-alt-reads-for-active-pileup";
+    public static final String MIN_ALT_READS_FOR_ACTIVE_PILEUP_SHORT_NAME = "min-init-alt";
+    public static final String INITIAL_TUMOR_TO_NORMAL_AF_RATIO_LONG_NAME = "min-initial-tumor-normal-af-ratio";
+    public static final String INITIAL_TUMOR_TO_NORMAL_AF_RATIO_SHORT_NAME = "min-init-alt-tumor-normal-af-ratio";
     public static final String MAX_POPULATION_AF_LONG_NAME = "max-population-af";
     public static final String MAX_POPULATION_AF_SHORT_NAME = "max-af";
     public static final String DOWNSAMPLING_STRIDE_LONG_NAME = "downsampling-stride";
@@ -60,6 +64,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_MITO_EMISSION_LOD = 0;
     public static final double DEFAULT_INITIAL_LOG_10_ODDS = 2.0;
     public static final double DEFAULT_NORMAL_LOG_10_ODDS = 2.2;
+    public static final int DEFAULT_MIN_INITIAL_ALT_COUNT = 2;
+    public static final double DEFAULT_MIN_TUMOR_TO_NORMAL_AF_RATIO = 3.0;
     public static final double DEFAULT_MITO_INITIAL_LOG_10_ODDS = 0;
     public static final double DEFAULT_GVCF_LOG_10_ODDS = Double.NEGATIVE_INFINITY;
     public static final int DEFAULT_CALLABLE_DEPTH = 10;
@@ -274,6 +280,18 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME, shortName = INITIAL_TUMOR_LOG_10_ODDS_SHORT_NAME, optional = true, doc = "Log 10 odds threshold to consider pileup active.")
     private double initialLog10Odds = DEFAULT_INITIAL_LOG_10_ODDS;
+
+    /**
+     * Only variants with sufficient number of alt reads count as active.
+     */
+    @Argument(fullName = MIN_ALT_READS_FOR_ACTIVE_PILEUP_LONG_NAME, shortName = MIN_ALT_READS_FOR_ACTIVE_PILEUP_SHORT_NAME, optional = true, doc = "Min alt count consider pileup active.")
+    public int minInitialAltCount = DEFAULT_MIN_INITIAL_ALT_COUNT;
+
+    /**
+     * Variants with too large a ratio of normal alt reads to tumor alt reads are considered inactive.
+     */
+    @Argument(fullName = INITIAL_TUMOR_TO_NORMAL_AF_RATIO_LONG_NAME, shortName = INITIAL_TUMOR_TO_NORMAL_AF_RATIO_SHORT_NAME, optional = true, doc = "Min tumor alt to normal alt ratio to consider pileup active.")
+    public double minInitialTumorAltToNormalAFRatio = DEFAULT_MIN_TUMOR_TO_NORMAL_AF_RATIO;
 
     public double getInitialLogOdds() {
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {

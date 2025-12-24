@@ -18,7 +18,6 @@ import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
@@ -66,7 +65,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -499,9 +497,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         f1R2CountsCollector.ifPresent(collector -> collector.process(tumorPileup, ref));
         tumorPileupQualBuffer.accumulateQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
         final Pair<Integer, ByteArrayList> bestTumorAltAllele = tumorPileupQualBuffer.likeliestIndexAndQuals();
+        final int tumorAltCount = bestTumorAltAllele.getRight().size();
         final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - bestTumorAltAllele.getRight().size(), bestTumorAltAllele.getRight());
 
-        if (tumorLogOdds < MTAC.getInitialLogOdds()) {
+        if (MTAC.permutectTrainingDataset == null && tumorAltCount < MTAC.minInitialAltCount) {
+            return new ActivityProfileState(refInterval, 0.0);
+        } else if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (MTAC.permutectTrainingDataset != null) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
@@ -514,7 +515,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
                 final int normalAltCount = bestNormalAltAllele.getRight().size();
                 final double normalQualSum = normalPileupQualBuffer.qualSum(bestNormalAltAllele.getLeft());
-                if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
+
+                // TODO: this criterion is good enough to catch most germline variants, but it is FAR TOO LENIENT
+                // TODO: for many normal artifacts (note that in Permutect training dataset mode it's probably a good
+                // TODO: idea to be lenient so as to collect more artifacts, but otherwise it's a performance hit)
+                // TODO: for example, is tumor and normal both have 2 alt reads out of 20 reads total, the site
+                // TODO: is considered active!!!!!
+                final boolean rejectBasedOnNormalArtifact = MTAC.permutectTrainingDataset == null && !MTAC.genotypeGermlineSites
+                        && (normalAltCount * MTAC.minInitialTumorAltToNormalAFRatio * tumorPileup.size() > tumorAltCount * normalPileup.size() );
+                if (rejectBasedOnNormalArtifact || (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM)) {
                     return new ActivityProfileState(refInterval, 0.0);
                 }
             }
