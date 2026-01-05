@@ -9,4 +9,7 @@ runs:
       run: |
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo docker image prune --all --force
       shell: bash
