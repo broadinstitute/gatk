@@ -37,7 +37,7 @@ workflow ReprocessAndValidate {
   # Uses optimized I/O: writes only uncertain reads, creates naive via samtools
   # ============================================================================
   if (uncertain_only) {
-    call naive_processing_uncertain_only {
+    call generate_uncertain_read_names_only {
       input:
         rlg = rlg,
         umil = umil,
@@ -126,12 +126,12 @@ workflow ReprocessAndValidate {
   # SELECT OUTPUTS FROM ANY PATH
   # ============================================================================
   File final_naive_bam = select_first([
-    naive_processing_uncertain_only.naive_bam,
+    generate_uncertain_read_names_only.uncertain_bam,
     merge_naive.merged_cram, 
     naive_processing.naive_bam
   ])
   File final_uncertain_bam = select_first([
-    naive_processing_uncertain_only.uncertain_bam,
+    generate_uncertain_read_names_only.uncertain_bam,
     merge_uncertain.merged_cram, 
     naive_processing.uncertain_bam
   ])
@@ -145,7 +145,7 @@ workflow ReprocessAndValidate {
     Array[File]? shard_uncertain_bams = naive_processing_shard.uncertain_bam
     
     # Uncertain-only mode output (only populated when uncertain_only=true)
-    File? uncertain_read_names = naive_processing_uncertain_only.uncertain_read_names
+    File? uncertain_read_names = generate_uncertain_read_names_only.uncertain_read_names
   }
 }
 
@@ -265,6 +265,79 @@ task naive_processing_uncertain_only {
     docker: "broadinstitute/gatk:latest"
     cpu: 4
     memory: "~{java_mem + 4}G"
+    disks: "local-disk 1500 SSD"
+  }
+}
+
+# ============================================================================
+# EXPERIMENTAL: Only generate uncertain read names file for analysis
+# ============================================================================
+# This task only writes the uncertain reads CRAM and read names file,
+# without attempting to create the naive CRAM. Use this to examine
+# the read names file and determine optimal storage/processing strategies.
+
+task generate_uncertain_read_names_only {
+  input {
+    String rlg
+    File   umil
+    File   input_bam
+    File   input_bam_idx
+    File   ref_fasta
+    File   ref_fasta_fai
+    File   ref_dict
+    File   gatk_jar
+    Int    java_mem
+    String output_prefix
+    
+    # Bloom filter parameters
+    Int expected_uncertain_reads = 100000000
+    Float bloom_filter_fpr = 0.001
+  }
+
+  command <<<
+    set -e
+    echo "GENERATING UNCERTAIN READ NAMES ONLY (EXPERIMENTAL) ============"
+    echo "This task only writes uncertain reads + read names file for analysis."
+    echo ""
+    
+    java -jar -Xmx~{java_mem}G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
+      -RLG ~{rlg} \
+      -I ~{input_bam} \
+      -O /dev/null \
+      -Ou ~{output_prefix}.uncertain.cram \
+      -umil ~{umil} \
+      -R ~{ref_fasta} \
+      -UO true \
+      -URN ~{output_prefix}.uncertain_read_names.txt \
+      -EUR ~{expected_uncertain_reads} \
+      -FPR ~{bloom_filter_fpr}
+    
+    echo ""
+    echo "============================================"
+    echo "Uncertain CRAM and read names file created."
+    echo "Uncertain read names count: $(wc -l < ~{output_prefix}.uncertain_read_names.txt)"
+    echo "Read names file size: $(ls -lh ~{output_prefix}.uncertain_read_names.txt | awk '{print $5}')"
+    echo ""
+    echo "Analyzing read names..."
+    echo "First 10 read names:"
+    head -n 10 ~{output_prefix}.uncertain_read_names.txt
+    echo ""
+    echo "Average read name length:"
+    awk '{total += length($0); count++} END {print total/count " characters"}' ~{output_prefix}.uncertain_read_names.txt
+    echo ""
+    echo "Analysis complete. Files ready for examination."
+    echo "============================================"
+  >>>
+
+  output {
+    File uncertain_bam = "~{output_prefix}.uncertain.cram"
+    File uncertain_read_names = "~{output_prefix}.uncertain_read_names.txt"
+  }
+
+  runtime {
+    docker: "broadinstitute/gatk:latest"
+    cpu: 2
+    memory: "~{java_mem + 2}G"
     disks: "local-disk 1500 SSD"
   }
 }
