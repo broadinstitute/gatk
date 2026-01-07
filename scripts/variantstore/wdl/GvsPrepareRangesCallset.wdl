@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# C
+# D
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
@@ -95,6 +95,8 @@ workflow GvsPrepareCallset {
     }
   }
 
+  File? effective_interval_list = if (defined(interval_list) && defined(interval_list_padding)) then PadIntervalList.padded_interval_list_file else interval_list
+
   call PrepareRangesCallsetTask {
     input:
       call_set_identifier             = call_set_identifier,
@@ -114,7 +116,7 @@ workflow GvsPrepareCallset {
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
       vet_extract_table_version       = GetExtractVetTableVersion.version,
       enable_extract_table_ttl        = enable_extract_table_ttl,
-      interval_list                   = select_first([PadIntervalList.padded_interval_list_file, interval_list]),
+      interval_list                   = effective_interval_list,
   }
 
   output {
