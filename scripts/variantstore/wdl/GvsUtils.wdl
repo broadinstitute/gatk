@@ -1373,11 +1373,6 @@ task PadIntervalList {
     String gatk_docker
   }
 
-  parameter_meta {
-    interval_list: {
-       localization_optional: true
-     }
-  }
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   String padded_interval_list_filename = output_basename + ".interval_list"
