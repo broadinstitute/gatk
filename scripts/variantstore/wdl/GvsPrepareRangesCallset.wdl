@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-
+# A
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
@@ -24,11 +24,14 @@ workflow GvsPrepareCallset {
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
+    String? basic_docker
+    String? gatk_docker
     String? cloud_sdk_docker
     String? variants_docker
     String? git_branch_or_tag
     String? git_hash
     File? interval_list
+    Int? interval_list_padding
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -36,16 +39,26 @@ workflow GvsPrepareCallset {
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
-  if (!defined(git_hash) || !defined(variants_docker) || !defined(cloud_sdk_docker)) {
+  if (!defined(git_hash) || !defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
     }
   }
 
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  if (!defined(interval_list) && defined(interval_list_padding)) {
+    call Utils.TerminateWorkflow as IntervalListPaddingWithoutIntervalList {
+      input:
+        message = "Cannot define `interval_list_padding` without defining `interval_list`, exiting.",
+        basic_docker = effective_basic_docker,
+    }
+  }
 
   call Utils.GetBQTableLastModifiedDatetime as RefTableDatetimeCheck {
     input:
@@ -72,6 +85,16 @@ workflow GvsPrepareCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  if (defined(interval_list) && defined(interval_list_padding)) {
+    call Utils.PadIntervalList {
+      input:
+        interval_list_file = select_first([interval_list]),
+        padding_size = select_first([interval_list_padding]),
+        output_basename = "padded_intervals",
+        gatk_docker = effective_gatk_docker,
+    }
+  }
+
   call PrepareRangesCallsetTask {
     input:
       call_set_identifier             = call_set_identifier,
@@ -91,7 +114,7 @@ workflow GvsPrepareCallset {
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
       vet_extract_table_version       = GetExtractVetTableVersion.version,
       enable_extract_table_ttl        = enable_extract_table_ttl,
-      interval_list                   = interval_list,
+      interval_list                   = select_first([PadIntervalList.padded_interval_list_file, interval_list]),
   }
 
   output {

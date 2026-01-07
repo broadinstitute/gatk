@@ -1361,6 +1361,73 @@ task SelectVariants {
     }
 }
 
+task PadIntervalList {
+  input {
+    File interval_list_file
+    Int padding_size
+    String output_basename
+
+    Int memory_gib = 3
+    Int overhead_memory_gib = 1
+    Int disk_size_gb = ceil(2 * size(interval_list_file, "GiB")) + 200
+    String gatk_docker
+  }
+
+  parameter_meta {
+    interval_list: {
+       localization_optional: true
+     }
+  }
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  String padded_interval_list_filename = output_basename + ".interval_list"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+
+    # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
+    # the input `memory_gib`. If so, use the memory-related environment variables rather than the `memory_gib` input.
+    # But also be prepared if those memory-related variables are not set and fall back to using `memory_gib`.
+    # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
+    if [[ -z "${MEM_UNIT:-}" ]]
+    then
+      memory_mb=$(python3 -c "from math import floor; print(floor((~{memory_gib} - ~{overhead_memory_gib}) * 1000))")
+    elif [[ ${MEM_UNIT} == "GB" ]]
+    then
+      memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
+    else
+      echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
+      exit 1
+    fi
+
+    gatk --java-options "-Xmx${memory_mb}m" \
+      IntervalListTools \
+        --INPUT ~{interval_list_file} \
+        --PADDING ~{padding_size} \
+        --OUTPUT ~{padded_interval_list_filename}
+  >>>
+
+  runtime {
+    docker: gatk_docker
+    cpu: 1
+    memory: "${memory_gib} GiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 3
+    noAddress: true
+  }
+
+  output {
+    File padded_interval_list_file = padded_interval_list_filename
+    File monitoring_log = "monitoring.log"
+  }
+}
+
 task MergeJSONs {
     input {
         Array[File] input_files
@@ -1434,7 +1501,7 @@ task SummarizeTaskMonitorLogs {
         Array[File] inputs
         String variants_docker
         File log_fofn = write_lines(inputs)
-        }
+    }
     parameter_meta {
         inputs: {
             localization_optional: true
