@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# A
+# B
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
@@ -55,7 +55,7 @@ workflow GvsPrepareCallset {
   if (!defined(interval_list) && defined(interval_list_padding)) {
     call Utils.TerminateWorkflow as IntervalListPaddingWithoutIntervalList {
       input:
-        message = "Cannot define `interval_list_padding` without defining `interval_list`, exiting.",
+        message = "Cannot define `interval_list_padding` without defining `interval_list`, exiting!",
         basic_docker = effective_basic_docker,
     }
   }
