@@ -232,6 +232,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1772_PadPrepareIntervals
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
