@@ -346,6 +346,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1777_build_failure
+             - gg_VS-1772_PadPrepareIntervals
          tags:
              - /.*/
    - name: GvsIngestTieout
