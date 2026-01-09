@@ -87,7 +87,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     public static final int DEFAULT_PERMUTECT_REF_DOWNSAMPLE = 10;
     public static final int DEFAULT_PERMUTECT_ALT_DOWNSAMPLE = 20;
-    public static final int DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO = 1;
+    public static final int DEFAULT_PERMUTECT_NON_ARTIFACT_RATIO = 5;
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 1; }
