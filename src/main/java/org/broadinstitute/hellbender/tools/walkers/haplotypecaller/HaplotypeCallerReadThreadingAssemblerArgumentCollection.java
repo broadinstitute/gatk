@@ -37,6 +37,17 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
     @Argument(fullName= RECOVER_DANGLING_HEADS_LONG_NAME, doc="This argument is deprecated since version 3.3", optional = true)
     public boolean DEPRECATED_RecoverDanglingHeads = false;
 
+    /**
+     * Disables graph simplification into a seq graph, opts to construct a proper De Bruijn graph with potential loops
+     *
+     * NOTE: --linked-de-bruijn-graph is currently an experimental feature that does not directly match with
+     *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
+     *        sites. Use this mode at your own risk.
+     */
+    @Advanced
+    @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
+    public boolean useLinkedDeBruijnGraph = false;
+
 
     @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {
