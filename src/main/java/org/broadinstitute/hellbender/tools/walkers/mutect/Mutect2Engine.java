@@ -489,10 +489,19 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0);
-        } else if (MTAC.permutectTrainingDataset != null) {
+        }
+
+        // TODO: this is highly unoptimized.  MTAC has a non-artifact-ratio -- the max desired number of non-artifacts
+        // TODO: to artifacts in training data.  Non-artifacts come from downsampled germline variants and are generally
+        // TODO: far more plentiful than artifacts (i.e. much more so than the default ratio).  Therefore, if we count
+        // TODO: everything with a TLOD over the threshold as active we end up assembling far more germline sites than we
+        // TODO: need only to throw them away when creating the training dataset.
+        if (MTAC.permutectTrainingDataset != null) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
         }
 
+        // TODO: this currently keeps all germline sites even when genotype-germline-fraction is quite low.  This is
+        // TODO: very wasteful.
         if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
