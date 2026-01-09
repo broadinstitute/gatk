@@ -311,7 +311,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Downsample a pool of reads starting within a range of one or more bases.
      */
     @Argument(fullName = DOWNSAMPLING_STRIDE_LONG_NAME, shortName = DOWNSAMPLING_STRIDE_SHORT_NAME, optional = true, doc = "Downsample a pool of reads starting within a range of one or more bases.")
-    public int downsamplingStride = 1;
+    public int downsamplingStride = 20;
 
     @Argument(fullName = CALLABLE_DEPTH_LONG_NAME, optional = true, doc = "Minimum depth to be considered callable for Mutect stats.  Does not affect genotyping.")
     public int callableDepth = DEFAULT_CALLABLE_DEPTH;
