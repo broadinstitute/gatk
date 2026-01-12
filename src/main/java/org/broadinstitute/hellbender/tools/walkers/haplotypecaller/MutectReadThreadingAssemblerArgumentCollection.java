@@ -28,7 +28,7 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
      */
     @Advanced
     @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
-    public boolean useLinkedDeBruijnGraph = true;
+    public boolean useLinkedDeBruijnGraph = false;
 
     @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {
