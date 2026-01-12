@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-
+# A
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
@@ -31,7 +31,7 @@ workflow GvsPrepareCallset {
     String? git_branch_or_tag
     String? git_hash
     File? interval_list
-    Int? interval_list_padding
+    Int interval_list_padding = 1000
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -52,10 +52,10 @@ workflow GvsPrepareCallset {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
-  if (!defined(interval_list) && defined(interval_list_padding)) {
-    call Utils.TerminateWorkflow as IntervalListPaddingWithoutIntervalList {
+  if (interval_list_padding < 0) {
+    call Utils.TerminateWorkflow as NoNegativeIntervalListPaddingAllowed {
       input:
-        message = "Cannot define `interval_list_padding` without defining `interval_list`, exiting!",
+        message = "`interval_list_padding`must be >= 0, exiting!",
         basic_docker = effective_basic_docker,
     }
   }
@@ -85,17 +85,17 @@ workflow GvsPrepareCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  if (defined(interval_list) && defined(interval_list_padding)) {
+  if (defined(interval_list) && interval_list_padding > 0) {
     call Utils.PadIntervalList {
       input:
         interval_list_file = select_first([interval_list]),
-        padding_size = select_first([interval_list_padding]),
+        padding_size = interval_list_padding,
         output_basename = "padded_intervals",
         gatk_docker = effective_gatk_docker,
     }
   }
 
-  File? effective_interval_list = if (defined(interval_list) && defined(interval_list_padding)) then PadIntervalList.padded_interval_list_file else interval_list
+  File? effective_interval_list = if (defined(interval_list) && interval_list_padding > 0) then PadIntervalList.padded_interval_list_file else interval_list
 
   call PrepareRangesCallsetTask {
     input:

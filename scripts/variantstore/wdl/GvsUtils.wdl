@@ -1404,7 +1404,8 @@ task PadIntervalList {
       IntervalListTools \
         --INPUT ~{interval_list_file} \
         --PADDING ~{padding_size} \
-        --OUTPUT ~{padded_interval_list_filename}
+        --OUTPUT ~{padded_interval_list_filename} \
+        --UNIQUE true
   >>>
 
   runtime {
