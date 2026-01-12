@@ -521,7 +521,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         if (MTAC.permutectTrainingDataset != null) {
             return new ActivityProfileState(refInterval, 1.0);
         }
-        
+
         boolean altAlleleIsGermline = false;
         if (hasNormal()) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
