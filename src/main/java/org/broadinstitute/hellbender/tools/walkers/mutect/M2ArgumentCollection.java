@@ -140,7 +140,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     /**
      * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
-     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, etting this parameter to a value less
+     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, setting this parameter to a value less
      * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
      * this argument has no effect and no germline sites are genotyped.
      */

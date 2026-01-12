@@ -57,8 +57,6 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     private final double refPseudocount = 1;
     private final double altPseudocount;
 
-    private RandomGenerator rng = new JDKRandomGenerator();
-
     public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples,
                                    final VariantAnnotatorEngine annotationEngine,
                                    final SAMFileHeader header, final SAMSequenceDictionary sequenceDictionary) {
@@ -172,10 +170,8 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
 
-            final boolean considerGermlineActive = MTAC.genotypeGermlineSites && rng.nextDouble() < MTAC.genotypeGermlineSitesFraction;
-
             final List<Allele> allelesToGenotype = tumorAltAlleles.stream()
-                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || considerGermlineActive || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
+                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
                     .toList();
 
             // record somatic alleles for later use in the Event Count annotation

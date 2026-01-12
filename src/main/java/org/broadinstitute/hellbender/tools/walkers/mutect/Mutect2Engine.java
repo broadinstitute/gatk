@@ -14,6 +14,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -128,6 +129,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private PileupQualBuffer tumorPileupQualBuffer;
     private PileupQualBuffer normalPileupQualBuffer;
+    private SimpleInterval lastActiveTumorLocus = null;
+    private SimpleInterval lastActiveNormalLocus = null;
+    private final MutableInt tumorActiveCount = new MutableInt(0);
+    private final MutableInt normalActiveCount = new MutableInt(0);
+    private RandomGenerator rng = new JDKRandomGenerator();
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -470,6 +476,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 
+        // no reads
         if( context == null || context.getBasePileup().isEmpty() ) {
             return new ActivityProfileState(refInterval, 0.0);
         }
@@ -478,16 +485,31 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         if (MTAC.pileupDetectionArgs.usePileupDetection) {
             pileup.forEach(p -> PileupBasedAlleles.addMismatchPercentageToRead(p.getRead(), header, ref));
         }
-        if (pileup.size() >= minCallableDepth) {
-            callableSites.increment();
-        }
+
         final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
         f1R2CountsCollector.ifPresent(collector -> collector.process(tumorPileup, ref));
         tumorPileupQualBuffer.accumulateQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
         final Pair<Integer, ByteArrayList> bestTumorAltAllele = tumorPileupQualBuffer.likeliestIndexAndQuals();
         final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - bestTumorAltAllele.getRight().size(), bestTumorAltAllele.getRight());
 
+        if (pileup.size() >= minCallableDepth || tumorLogOdds >= MTAC.getInitialLogOdds()) {
+            callableSites.increment();
+        }
+
+        // Insufficient evidence in the tumor sample
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
+            return new ActivityProfileState(refInterval, 0.0);
+        }
+
+        // at this point there is activity in the tumor
+        // check whether this is a new, independent tumor event for our accounting
+        // for example, in a deletion we don't want every base to count as a new event
+        final boolean independentEvent = lastActiveTumorLocus == null || !lastActiveTumorLocus.getContig().equals(refInterval.getContig())
+                || !(refInterval.getStart() == lastActiveTumorLocus.getStart() + 1);
+        lastActiveTumorLocus = refInterval;
+
+        // In the panel of normals
+        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
             return new ActivityProfileState(refInterval, 0.0);
         }
 
@@ -497,23 +519,20 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // TODO: everything with a TLOD over the threshold as active we end up assembling far more germline sites than we
         // TODO: need only to throw them away when creating the training dataset.
         if (MTAC.permutectTrainingDataset != null) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
+            return new ActivityProfileState(refInterval, 1.0);
         }
-
-        // TODO: this currently keeps all germline sites even when genotype-germline-fraction is quite low.  This is
-        // TODO: very wasteful.
-        if (hasNormal() && !MTAC.genotypeGermlineSites) {
+        
+        boolean altAlleleIsGermline = false;
+        if (hasNormal()) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
                 final int normalAltCount = bestNormalAltAllele.getRight().size();
                 final double normalQualSum = normalPileupQualBuffer.qualSum(bestNormalAltAllele.getLeft());
-                if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
-                    return new ActivityProfileState(refInterval, 0.0);
-                }
+                altAlleleIsGermline = normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM;
             }
-        } else if (!MTAC.genotypeGermlineSites) {
+        } else {    // no normal, rely on the germline resource to guess likely germline sites
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
 
             for (final VariantContext germlineVC : germline) {
@@ -529,26 +548,24 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
                     // if it's a substitution that shares its first base with the dominant tumor allele, or if it's an
                     // indel and the dominant tumor allele is an indel, skip
-                    if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
-                            return new ActivityProfileState(refInterval, 0.0);
-                    } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
-                            && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineRef.getBases()[0]) {
-                        return new ActivityProfileState(refInterval, 0.0);
-                    }
-
+                    altAlleleIsGermline |= (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length());
+                    altAlleleIsGermline |= (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
+                            && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineRef.getBases()[0]);
                 }
             }
         }
 
-        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
-            return new ActivityProfileState(refInterval, 0.0);
+        if (altAlleleIsGermline) {
+            // Note that for multi-base events (e.g. deletions) where we choose to genotype some germline events
+            // we only mark the first base as active.  If we randomly chose whether to mark several dependent
+            // pileups as active we would erroneously inflate the genotypeGermlineSitesFraction.
+            final double probabilityToMarkAsActive = (MTAC.genotypeGermlineSites && independentEvent) ?
+                    MTAC.genotypeGermlineSitesFraction : 0.0;
+            final boolean markAsAstive = rng.nextDouble() < probabilityToMarkAsActive;
+            return new ActivityProfileState(refInterval, markAsAstive ? 1.0 : 0.0);
+        } else {
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.NONE, null);
         }
-
-        // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
-        if (pileup.size() < minCallableDepth) {
-            callableSites.increment();
-        }
-        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
     }
 
     // NOTE: this is a hack to get around an htsjdk bug: https://github.com/samtools/htsjdk/issues/1228
