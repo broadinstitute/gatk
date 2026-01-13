@@ -225,7 +225,7 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = select_first([split_intervals_disk_size_override, 50]) # Note: disk size is cheap and lack of it can increase probability of preemption
+  Int disk_size = select_first([split_intervals_disk_size_override, 500]) # Note: disk size is cheap and lack of it can increase probability of preemption
   Int memory_size = select_first([split_intervals_mem_override, 16])
   Int java_memory = memory_size - 4
 
@@ -304,7 +304,7 @@ task SplitIntervalsTarred {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = select_first([split_intervals_disk_size_override, 10])
+  Int disk_size = select_first([split_intervals_disk_size_override, 500])
   Int memory_size = select_first([split_intervals_mem_override, 16])
   Int java_memory = memory_size - 4
 
@@ -1361,6 +1361,55 @@ task SelectVariants {
     }
 }
 
+task PadIntervalList {
+  input {
+    File interval_list_file
+    Int padding_size
+    String output_basename
+
+    Int memory_mb = 3000
+    Int disk_size_gb = ceil(2 * size(interval_list_file, "GiB")) + 200
+    String gatk_docker
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
+  String padded_interval_list_filename = output_basename + ".interval_list"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+      IntervalListTools \
+        --INPUT ~{interval_list_file} \
+        --PADDING ~{padding_size} \
+        --OUTPUT ~{padded_interval_list_filename} \
+        --UNIQUE true
+  >>>
+
+  runtime {
+    docker: gatk_docker
+    cpu: 1
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 3
+    noAddress: true
+  }
+
+  output {
+    File padded_interval_list_file = padded_interval_list_filename
+    File monitoring_log = "monitoring.log"
+  }
+}
+
 task MergeJSONs {
     input {
         Array[File] input_files
@@ -1434,7 +1483,7 @@ task SummarizeTaskMonitorLogs {
         Array[File] inputs
         String variants_docker
         File log_fofn = write_lines(inputs)
-        }
+    }
     parameter_meta {
         inputs: {
             localization_optional: true
