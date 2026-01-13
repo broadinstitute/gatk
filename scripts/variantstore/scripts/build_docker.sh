@@ -31,8 +31,13 @@ fi
 docker buildx use singlebuilder
 echo "Using the single platform builder"
 
-docker buildx build --platform linux/amd64 --load .
-IMAGE_ID=$(docker image ls -q | head -n 1)
+# Build and write the full image id to an id file.
+docker buildx build --platform linux/amd64 --load . --iidfile idfile.txt
+
+# Scrape out the first 12 hex digits of the SHA256 hash to use for the tag.
+IMAGE_ID=$(cut -d : -f 2 idfile.txt | cut -c 1-12)
+
+rm idfile.txt
 
 # The Variants Docker image is alpine-based.
 IMAGE_TYPE="alpine"
