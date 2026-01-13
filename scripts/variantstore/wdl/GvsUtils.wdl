@@ -1367,13 +1367,15 @@ task PadIntervalList {
     Int padding_size
     String output_basename
 
-    Int memory_gib = 3
-    Int overhead_memory_gib = 1
+    Int memory_mb = 3000
     Int disk_size_gb = ceil(2 * size(interval_list_file, "GiB")) + 200
     String gatk_docker
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
 
   String padded_interval_list_filename = output_basename + ".interval_list"
 
@@ -1384,23 +1386,7 @@ task PadIntervalList {
 
     bash ~{monitoring_script} > monitoring.log &
 
-
-    # This tool may get invoked with "Retry with more memory" with a different amount of memory than specified in
-    # the input `memory_gib`. If so, use the memory-related environment variables rather than the `memory_gib` input.
-    # But also be prepared if those memory-related variables are not set and fall back to using `memory_gib`.
-    # https://support.terra.bio/hc/en-us/articles/4403215299355-Out-of-Memory-Retry
-    if [[ -z "${MEM_UNIT:-}" ]]
-    then
-      memory_mb=$(python3 -c "from math import floor; print(floor((~{memory_gib} - ~{overhead_memory_gib}) * 1000))")
-    elif [[ ${MEM_UNIT} == "GB" ]]
-    then
-      memory_mb=$(python3 -c "from math import floor; print(floor((${MEM_SIZE} - ~{overhead_memory_gib}) * 1000))")
-    else
-      echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
-      exit 1
-    fi
-
-    gatk --java-options "-Xmx${memory_mb}m" \
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       IntervalListTools \
         --INPUT ~{interval_list_file} \
         --PADDING ~{padding_size} \
@@ -1411,7 +1397,7 @@ task PadIntervalList {
   runtime {
     docker: gatk_docker
     cpu: 1
-    memory: "${memory_gib} GiB"
+    memory: "${memory_mb} MiB"
     disks: "local-disk ${disk_size_gb} HDD"
     bootDiskSizeGb: 15
     preemptible: 3

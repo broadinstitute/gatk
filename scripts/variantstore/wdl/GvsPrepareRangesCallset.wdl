@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# A
+
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
@@ -55,7 +55,7 @@ workflow GvsPrepareCallset {
   if (interval_list_padding < 0) {
     call Utils.TerminateWorkflow as NoNegativeIntervalListPaddingAllowed {
       input:
-        message = "`interval_list_padding`must be >= 0, exiting!",
+        message = "`interval_list_padding` must be >= 0, exiting!",
         basic_docker = effective_basic_docker,
     }
   }
