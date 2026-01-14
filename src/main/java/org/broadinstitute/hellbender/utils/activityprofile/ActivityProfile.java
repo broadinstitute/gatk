@@ -314,13 +314,15 @@ public class ActivityProfile {
             stateList.removeAll(statesToTrimAway);
         }
 
+        if ( ! forceConversion && stateList.size() < maxRegionSize + getMaxProbPropagationDistance() ) {
+            // we really haven't finalized at the probability mass that might affect our decision, so keep
+            // waiting until we do before we try to make any decisions
+            return null;
+        }
+
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
         final int offsetOfNextRegionEnd = findEndOfRegion(isActiveRegion, minRegionSize, maxRegionSize, forceConversion);
-        if ( offsetOfNextRegionEnd == -1 ) {
-            // couldn't find a valid ending offset, so we return null
-            return null;
-        }
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
@@ -357,12 +359,6 @@ public class ActivityProfile {
      * @return the index into stateList of the last element of this region, or -1 if it cannot be found
      */
     private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
-        if ( ! forceConversion && stateList.size() < maxRegionSize + getMaxProbPropagationDistance() ) {
-            // we really haven't finalized at the probability mass that might affect our decision, so keep
-            // waiting until we do before we try to make any decisions
-            return -1;
-        }
-
         int endOfActiveRegion = findFirstActivityBoundary(isActiveRegion, maxRegionSize);
 
         if ( isActiveRegion && endOfActiveRegion == maxRegionSize ) {
@@ -410,12 +406,12 @@ public class ActivityProfile {
      * value on activeProbThreshold, coloring each state as active or inactive.  Finds the
      * largest contiguous stretch of states starting at the first state (index 0) with the same isActive
      * state as isActiveRegion.  If the entire state list has the same isActive value, then returns
-     * maxRegionSize
+     * maxRegionSize or the size of the state list, whichever is less.
      *
      * @param isActiveRegion are we looking for a stretch of active states, or inactive ones?
      * @param maxRegionSize don't look for a boundary that would yield a region of size > maxRegionSize
      * @return the index of the first state in the state list with isActive value != isActiveRegion, or maxRegionSize
-     *         if no such element exists
+     *         if no such element exists.
      */
     private int findFirstActivityBoundary(final boolean isActiveRegion, final int maxRegionSize) {
         Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");
