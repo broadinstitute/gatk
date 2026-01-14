@@ -343,6 +343,89 @@ task generate_uncertain_read_names_only {
 }
 
 # ============================================================================
+# TWO-STAGE PROCESSING: Generate uncertain CRAM + .fcl, then filter to naive
+# ============================================================================
+# This task uses the memory-efficient two-stage approach:
+# Stage 1: SplitReadsByRealignmentDifficulty writes uncertain CRAM + .fcl file
+# Stage 2: FilterReadsByNameList uses .fcl to filter input -> naive CRAM
+# The .fcl format uses ~85% less memory than HashSet (1.5 GB vs 10.5 GB for 38M names)
+
+task naive_processing_two_stage {
+  input {
+    String rlg
+    File   umil
+    File   input_bam
+    File   input_bam_idx
+    File   ref_fasta
+    File   ref_fasta_fai
+    File   ref_dict
+    File   gatk_jar
+    Int    java_mem
+    String output_prefix
+    
+    # Bloom filter parameters for Stage 1
+    Int expected_uncertain_reads = 100000000
+    Float bloom_filter_fpr = 0.001
+  }
+
+  command <<<
+    set -e
+    echo "TWO-STAGE NAIVE PROCESSING ============"
+    echo "Stage 1: Generate uncertain CRAM and front-coded read names list..."
+    echo ""
+    
+    java -jar -Xmx~{java_mem}G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
+      -RLG ~{rlg} \
+      -I ~{input_bam} \
+      -O /dev/null \
+      -Ou ~{output_prefix}.uncertain.cram \
+      -umil ~{umil} \
+      -R ~{ref_fasta} \
+      -UO true \
+      -URN ~{output_prefix}.uncertain_read_names.fcl \
+      -EUR ~{expected_uncertain_reads} \
+      -FPR ~{bloom_filter_fpr}
+    
+    echo ""
+    echo "Stage 1 complete. Uncertain CRAM and .fcl file created."
+    echo "File sizes:"
+    ls -lh ~{output_prefix}.uncertain.cram ~{output_prefix}.uncertain_read_names.fcl
+    echo ""
+    
+    echo "Stage 2: Filter input CRAM using .fcl to create naive CRAM..."
+    echo ""
+    
+    java -jar -Xmx~{java_mem}G ~{gatk_jar} FilterReadsByNameList \
+      -I ~{input_bam} \
+      -O ~{output_prefix}.naive.cram \
+      -R ~{ref_fasta} \
+      -XRL ~{output_prefix}.uncertain_read_names.fcl
+    
+    echo ""
+    echo "Stage 2 complete. Naive CRAM created."
+    echo ""
+    echo "============================================"
+    echo "TWO-STAGE PROCESSING COMPLETE"
+    echo "Output files:"
+    ls -lh ~{output_prefix}.*.cram ~{output_prefix}.*.fcl
+    echo "============================================"
+  >>>
+
+  output {
+    File naive_bam     = "~{output_prefix}.naive.cram"
+    File uncertain_bam = "~{output_prefix}.uncertain.cram"
+    File uncertain_read_names = "~{output_prefix}.uncertain_read_names.fcl"
+  }
+
+  runtime {
+    docker: "broadinstitute/gatk:latest"
+    cpu: 2
+    memory: "~{java_mem + 2}G"
+    disks: "local-disk 1500 SSD"
+  }
+}
+
+# ============================================================================
 # PARALLEL PROCESSING TASKS
 # ============================================================================
 
