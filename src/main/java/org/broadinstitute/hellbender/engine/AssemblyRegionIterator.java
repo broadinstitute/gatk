@@ -4,12 +4,14 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.activityprofile.BandPassActivityProfile;
+import org.broadinstitute.hellbender.utils.activityprofile.Mutect2ActivityProfile;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadCachingIterator;
@@ -90,7 +92,21 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.pendingRegions = new ArrayDeque<>();
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
-        this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+        switch (activityProfileType) {
+            case BASE:
+                this.activityProfile = new ActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, readHeader);
+                break;
+            case BAND_PASS:
+                this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance,
+                        assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+                break;
+            case MUTECT2:
+                this.activityProfile = new Mutect2ActivityProfile(assemblyRegionArgs.maxProbPropagationDistance,
+                        assemblyRegionArgs.activeProbThreshold, readHeader);
+                break;
+            default: throw new GATKException.ShouldNeverReachHereException("Unknown activity profile type: " + activityProfileType);
+
+        }
         this.pendingAlignmentData = trackPileups ? new ArrayDeque<>() : null;
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
