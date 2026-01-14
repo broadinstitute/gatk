@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Class holding information about per-base activity scores for
@@ -361,23 +362,15 @@ public class ActivityProfile {
     private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
         Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");
 
-        final int nStates = stateList.size();
-        int endOfActiveRegion = 0;
+        final int maxNumStates = Math.min(stateList.size(), maxRegionSize);
 
-        while ( endOfActiveRegion < nStates && endOfActiveRegion < maxRegionSize) {
-            if ( getProb(endOfActiveRegion) > activeProbThreshold != isActiveRegion) {
-                break;
-            }
-            endOfActiveRegion++;
-        }
+        // find the number of consecutive states that all have the given isActive value
+        final int contiguousSize = IntStream.range(0, maxNumStates)
+                .filter(n -> (getProb(n) > activeProbThreshold != isActiveRegion))
+                .findFirst()
+                .orElse(maxNumStates);
 
-        if ( isActiveRegion && endOfActiveRegion == maxRegionSize ) {
-            // we've run to the end of the region, let's find a good place to cut
-            endOfActiveRegion = findBestCutSite(endOfActiveRegion, minRegionSize);
-        }
-
-        // we're one past the end, so i must be decremented
-        return endOfActiveRegion - 1;
+        return (isActiveRegion && contiguousSize == maxRegionSize) ? findBestCutSite(contiguousSize, minRegionSize) : contiguousSize - 1;
     }
 
     /**
