@@ -76,7 +76,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             readShard.setReadFilter(combinedReadFilter);
 
             final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource,
-                    null, evaluator, assemblyRegionArgs, ActivityProfile.ProfileType.BAND_PASS, false, );
+                    null, evaluator, assemblyRegionArgs, ActivityProfile.ProfileType.BAND_PASS, false);
 
             AssemblyRegion previousRegion = null;
             while ( iter.hasNext() ) {

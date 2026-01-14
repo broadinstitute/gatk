@@ -323,7 +323,7 @@ public class ActivityProfile {
 
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
-        final int offsetOfNextRegionEnd = findEndOfRegion(isActiveRegion, minRegionSize, maxRegionSize, forceConversion);
+        final int offsetOfNextRegionEnd = findEndOfRegion(isActiveRegion, minRegionSize, maxRegionSize);
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
@@ -341,26 +341,24 @@ public class ActivityProfile {
 
     /**
      * Find the end of the current region, returning the index into the element isActive element, or -1 if the region isn't done
-     *
+     * <p>
      * The current region is defined from the start of the stateList, looking for elements that have the same isActiveRegion
      * flag (i.e., if isActiveRegion is true we are looking for states with isActiveProb > threshold, or alternatively
      * for states < threshold).  The maximize size of the returned region is maxRegionSize.  If forceConversion is
      * true, then we'll return the region end even if this isn't safely beyond the max prob propagation distance.
-     *
+     * <p>
      * Note that if isActiveRegion is true, and we can construct an assembly region > maxRegionSize in bp, we
      * find the further local minimum within that max region, and cut the region there, under the constraint
      * that the resulting region must be at least minRegionSize in bp.
      *
      * @param isActiveRegion is the region we're looking for an active region or inactive region?
-     * @param minRegionSize the minimum region size, in the case where we have to cut up regions that are too large
-     * @param maxRegionSize the maximize size of the returned region
-     * @param forceConversion if true, we'll return a region whose end isn't sufficiently far from the end of the
-     *                        stateList.  Used to close out the assembly region when we've hit some kind of end (such
-     *                        as the end of the contig)
+     * @param minRegionSize  the minimum region size, in the case where we have to cut up regions that are too large
+     * @param maxRegionSize  the maximize size of the returned region
      * @return the index into stateList of the last element of this region, or -1 if it cannot be found
      */
-    private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
-        Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");
+    private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize) {
+        Utils.validateArg(minRegionSize > 0, "minRegionSize must be > 0");
+        Utils.validateArg(maxRegionSize >= minRegionSize, "maxRegionSize must be >= minRegionSize");
 
         final int maxNumStates = Math.min(stateList.size(), maxRegionSize);
 
@@ -371,22 +369,16 @@ public class ActivityProfile {
                 .orElse(maxNumStates);
 
         if (isActiveRegion && contiguousSize == maxRegionSize) {
-            Utils.validateArg(contiguousSize >= minRegionSize, "endOfActiveRegion must be >= minRegionSize");
-            Utils.validateArg(minRegionSize > 0, "minRegionSize must be > 0");
+            // the best site is the lowest local minimum of probability
+            // ties are broken by favoring longer regions
+            // if min region size is n, then we cut (inclusive) no earlier than index n
+            final int lowestMinIdx = IntStream.range(minRegionSize, maxRegionSize - 1)
+                    .filter(i -> getProb(i) <= getProb(i + 1) && getProb(i) < getProb(i - 1))
+                    .boxed()
+                    .min(Comparator.comparingDouble((Integer i) -> getProb(i)).thenComparingInt(i -> -i))
+                    .orElse(maxRegionSize - 1);
 
-            int minIdx = contiguousSize - 1;
-            double minProb = Double.MAX_VALUE;
-
-            for (int i = minIdx; i >= minRegionSize - 1; i-- ) {
-                double prob = getProb(i);
-                final boolean isLocalMinimum = prob <= getProb(i + 1) && prob < getProb(i - 1);
-                if ( prob < minProb && isMinimum(i) ) {
-                    minProb = prob;
-                    minIdx = i;
-                }
-            }
-
-            return minIdx + 1
+            return lowestMinIdx;
         } else {
             return contiguousSize - 1;
         }
@@ -403,29 +395,4 @@ public class ActivityProfile {
         return stateList.get(index).isActiveProb();
     }
 
-    /**
-     * Is the probability at index in a local minimum?
-     *
-     * Checks that the probability at index is <= both the probabilities to either side.
-     * Returns false if index is at the end or the start of the state list.
-     *
-     * @param index the index of the state we want to test
-     * @return true if prob at state is a minimum, false otherwise
-     */
-    private boolean isMinimum(final int index) {
-        Utils.validIndex(index, stateList.size());
-
-        if ( index == stateList.size() - 1 ) {
-            // we cannot be at a minimum if the current position is the last in the state list
-            return false;
-        }
-        else if ( index < 1 ) {
-            // we cannot be at a minimum if the current position is the first or second
-            return false;
-        }
-        else {
-            final double indexP = getProb(index);
-            return indexP <= getProb(index+1) && indexP < getProb(index-1);
-        }
-    }
 }
