@@ -359,7 +359,17 @@ public class ActivityProfile {
      * @return the index into stateList of the last element of this region, or -1 if it cannot be found
      */
     private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
-        int endOfActiveRegion = findFirstActivityBoundary(isActiveRegion, maxRegionSize);
+        Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");
+
+        final int nStates = stateList.size();
+        int endOfActiveRegion = 0;
+
+        while ( endOfActiveRegion < nStates && endOfActiveRegion < maxRegionSize) {
+            if ( getProb(endOfActiveRegion) > activeProbThreshold != isActiveRegion) {
+                break;
+            }
+            endOfActiveRegion++;
+        }
 
         if ( isActiveRegion && endOfActiveRegion == maxRegionSize ) {
             // we've run to the end of the region, let's find a good place to cut
@@ -397,36 +407,6 @@ public class ActivityProfile {
         }
 
         return minI + 1;
-    }
-
-    /**
-     * Find the first index into the state list where the state is considered ! isActiveRegion
-     *
-     * Note that each state has a probability of being active, and this function thresholds that
-     * value on activeProbThreshold, coloring each state as active or inactive.  Finds the
-     * largest contiguous stretch of states starting at the first state (index 0) with the same isActive
-     * state as isActiveRegion.  If the entire state list has the same isActive value, then returns
-     * maxRegionSize or the size of the state list, whichever is less.
-     *
-     * @param isActiveRegion are we looking for a stretch of active states, or inactive ones?
-     * @param maxRegionSize don't look for a boundary that would yield a region of size > maxRegionSize
-     * @return the index of the first state in the state list with isActive value != isActiveRegion, or maxRegionSize
-     *         if no such element exists.
-     */
-    private int findFirstActivityBoundary(final boolean isActiveRegion, final int maxRegionSize) {
-        Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");
-
-        final int nStates = stateList.size();
-        int endOfActiveRegion = 0;
-
-        while ( endOfActiveRegion < nStates && endOfActiveRegion < maxRegionSize ) {
-            if ( getProb(endOfActiveRegion) > activeProbThreshold != isActiveRegion ) {
-                break;
-            }
-            endOfActiveRegion++;
-        }
-
-        return endOfActiveRegion;
     }
 
     /**
