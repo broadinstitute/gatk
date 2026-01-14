@@ -470,7 +470,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
         if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
+            return new ActivityProfileState(ref.getInterval(), 1.0, ActivityProfileState.Type.SOMATIC, null);
         }
 
         final byte refBase = ref.getBase();
@@ -478,7 +478,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         // no reads
         if( context == null || context.getBasePileup().isEmpty() ) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
         final ReadPileup pileup = context.getBasePileup();
@@ -498,7 +498,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         // Insufficient evidence in the tumor sample
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
         // at this point there is activity in the tumor
@@ -510,7 +510,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         // In the panel of normals
         if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.ARTIFACT, null);
         }
 
         // TODO: this is highly unoptimized.  MTAC has a non-artifact-ratio -- the max desired number of non-artifacts
@@ -518,8 +518,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // TODO: far more plentiful than artifacts (i.e. much more so than the default ratio).  Therefore, if we count
         // TODO: everything with a TLOD over the threshold as active we end up assembling far more germline sites than we
         // TODO: need only to throw them away when creating the training dataset.
+
+        // TODO: really the MTAC.permutectTrainingDataset logic should be moved to the ActivityProfile -- isActive just
+        // TODO: feeds it ActivityProfileStates from the pileup, and ActivirtyProfile decides what to do with them
+        // TODO: and whether they constitute active regions
+        // TODO: therefore the following lines hsoudl simply be deleted
         if (MTAC.permutectTrainingDataset != null) {
-            return new ActivityProfileState(refInterval, 1.0);
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
         }
 
         boolean altAlleleIsGermline = false;
@@ -555,6 +560,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             }
         }
 
+        // TODO: (see above) as with permutect training dataset mode, this logic belongs in the ActivityProfile, not here
         if (altAlleleIsGermline) {
             // Note that for multi-base events (e.g. deletions) where we choose to genotype some germline events
             // we only mark the first base as active.  If we randomly chose whether to mark several dependent
@@ -562,9 +568,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             final double probabilityToMarkAsActive = (MTAC.genotypeGermlineSites && independentEvent) ?
                     MTAC.genotypeGermlineSitesFraction : 0.0;
             final boolean markAsAstive = rng.nextDouble() < probabilityToMarkAsActive;
-            return new ActivityProfileState(refInterval, markAsAstive ? 1.0 : 0.0);
+            return new ActivityProfileState(refInterval, markAsAstive ? 1.0 : 0.0, ActivityProfileState.Type.GERMLINE, null);
         } else {
-            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.NONE, null);
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
         }
     }
 
