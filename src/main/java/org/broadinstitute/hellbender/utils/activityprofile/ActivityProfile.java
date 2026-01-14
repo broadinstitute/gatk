@@ -370,36 +370,26 @@ public class ActivityProfile {
                 .findFirst()
                 .orElse(maxNumStates);
 
-        return (isActiveRegion && contiguousSize == maxRegionSize) ? findBestCutSite(contiguousSize, minRegionSize) : contiguousSize - 1;
-    }
+        if (isActiveRegion && contiguousSize == maxRegionSize) {
+            Utils.validateArg(contiguousSize >= minRegionSize, "endOfActiveRegion must be >= minRegionSize");
+            Utils.validateArg(minRegionSize > 0, "minRegionSize must be > 0");
 
-    /**
-     * Find the the local minimum within 0 - endOfActiveRegion where we should divide region
-     *
-     * This algorithm finds the global minimum probability state within the region [minRegionSize, endOfActiveRegion)
-     * (exclusive of endOfActiveRegion), and returns the state index of that state.
-     * that it
-     *
-     * @param endOfActiveRegion the last state of the current active region (exclusive)
-     * @param minRegionSize the minimum of the left-most region, after cutting
-     * @return the index of state after the cut site (just like endOfActiveRegion)
-     */
-    private int findBestCutSite(final int endOfActiveRegion, final int minRegionSize) {
-        Utils.validateArg(endOfActiveRegion >= minRegionSize, "endOfActiveRegion must be >= minRegionSize");
-        Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
+            int minIdx = contiguousSize - 1;
+            double minProb = Double.MAX_VALUE;
 
-        int minI = endOfActiveRegion - 1;
-        double minP = Double.MAX_VALUE;
-
-        for ( int i = minI; i >= minRegionSize - 1; i-- ) {
-            double cur = getProb(i);
-            if ( cur < minP && isMinimum(i) ) {
-                minP = cur;
-                minI = i;
+            for (int i = minIdx; i >= minRegionSize - 1; i-- ) {
+                double prob = getProb(i);
+                final boolean isLocalMinimum = prob <= getProb(i + 1) && prob < getProb(i - 1);
+                if ( prob < minProb && isMinimum(i) ) {
+                    minProb = prob;
+                    minIdx = i;
+                }
             }
-        }
 
-        return minI + 1;
+            return minIdx + 1
+        } else {
+            return contiguousSize - 1;
+        }
     }
 
     /**
