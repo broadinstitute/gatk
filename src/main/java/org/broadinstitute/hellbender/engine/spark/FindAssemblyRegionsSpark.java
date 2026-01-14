@@ -14,6 +14,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.DownsampleableSparkReadShard;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileStateRange;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
@@ -92,7 +93,7 @@ public class FindAssemblyRegionsSpark {
                     .map(downsampledShardedRead -> {
                         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
                                 new ShardToMultiIntervalShardAdapter<>(downsampledShardedRead),
-                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs, trackPileups);
+                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs, ActivityProfile.ProfileType.BAND_PASS, trackPileups);
                         return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                                 new AssemblyRegionWalkerContext(assemblyRegion,
                                         new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),

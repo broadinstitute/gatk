@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
@@ -230,6 +231,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private Mutect2Engine m2Engine;
+
+    @Override
+    public ActivityProfile.ProfileType activityProfileType() { return ActivityProfile.ProfileType.MUTECT2; }
 
     @Override
     public boolean useVariantAnnotations() { return true;}

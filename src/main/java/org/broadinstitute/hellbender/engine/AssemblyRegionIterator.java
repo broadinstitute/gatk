@@ -54,12 +54,14 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
     /**
      * Constructs an AssemblyRegionIterator over a provided read shard
-     *  @param readShard MultiIntervalShard containing the reads that will go into the assembly regions.
-     *                  Must have a MAPPED filter set on it.
-     * @param readHeader header for the reads
-     * @param reference source of reference bases (may be null)
-     * @param features source of arbitrary features (may be null)
-     * @param evaluator evaluator used to determine whether a locus is active
+     *
+     * @param readShard           MultiIntervalShard containing the reads that will go into the assembly regions.
+     *                            Must have a MAPPED filter set on it.
+     * @param readHeader          header for the reads
+     * @param reference           source of reference bases (may be null)
+     * @param features            source of arbitrary features (may be null)
+     * @param evaluator           evaluator used to determine whether a locus is active
+     * @param activityProfileType
      */
     public AssemblyRegionIterator(final MultiIntervalShard<GATKRead> readShard,
                                   final SAMFileHeader readHeader,
@@ -67,7 +69,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
                                   final FeatureManager features,
                                   final AssemblyRegionEvaluator evaluator,
                                   final AssemblyRegionArgumentCollection assemblyRegionArgs,
-                                  final boolean trackPileups ) {
+                                  ActivityProfile.ProfileType activityProfileType,
+                                  final boolean trackPileups) {
 
         Utils.nonNull(readShard);
         Utils.nonNull(readHeader);

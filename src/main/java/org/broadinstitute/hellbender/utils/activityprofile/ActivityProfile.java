@@ -28,6 +28,10 @@ public class ActivityProfile {
      */
     protected int contigLength = -1;
 
+    public enum ProfileType {
+        BASE, BAND_PASS, MUTECT2
+    }
+
     /**
      * Create a empty ActivityProfile, restricting output to profiles overlapping intervals, if not null
      * @param maxProbPropagationDistance region probability propagation distance beyond its maximum size
