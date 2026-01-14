@@ -790,7 +790,7 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_phylo_csf_database
         File input_vcf
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-        Float memory_mib = 8 * 1024
+        Float memory_mib = 4 * 1024
         # The memory headroom left for other processes including the Batch agent.
         Float overhead_memory_mib = 1.6 * 1024
     }
@@ -905,7 +905,7 @@ task GenerateVepAndLofteeAnnotations {
         maxRetries: 3
         noAddress: true
         docker: vep_loftee_docker
-        memory: "4 GB"
+        memory: memory_mib + " MB"
         disks: "local-disk 500 HDD"
     }
 
