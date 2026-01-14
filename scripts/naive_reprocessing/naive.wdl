@@ -16,10 +16,11 @@ workflow ReprocessAndValidate {
     # Parallelization option - if true, splits by chromosome groups for faster processing
     Boolean parallelize = false
     
-    # Uncertain-only optimization - if true, uses optimized I/O mode that only writes
-    # uncertain reads during traversal, then creates naive via samtools subtraction
-    # This can reduce total runtime by ~3 hours for typical samples
-    Boolean uncertain_only = false
+    # Two-stage optimization - if true, uses memory-efficient two-stage processing:
+    # Stage 1: Generate uncertain CRAM + .fcl file
+    # Stage 2: Filter input CRAM using .fcl to create naive CRAM
+    # This uses 85% less memory (1.5 GB vs 10.5 GB for 38M read names)
+    Boolean two_stage = true
     
     # Parallel processing options (only used when parallelize=true)
     Array[Array[String]] chromosome_groups = [
@@ -33,11 +34,11 @@ workflow ReprocessAndValidate {
   }
 
   # ============================================================================
-  # UNCERTAIN-ONLY OPTIMIZED PATH (uncertain_only=true)
-  # Uses optimized I/O: writes only uncertain reads, creates naive via samtools
+  # TWO-STAGE OPTIMIZED PATH (two_stage=true) - DEFAULT
+  # Uses memory-efficient two-stage processing with front-coded binary lists
   # ============================================================================
-  if (uncertain_only) {
-    call generate_uncertain_read_names_only {
+  if (two_stage) {
+    call naive_processing_two_stage {
       input:
         rlg = rlg,
         umil = umil,
@@ -53,9 +54,9 @@ workflow ReprocessAndValidate {
   }
 
   # ============================================================================
-  # SEQUENTIAL PROCESSING PATH (parallelize=false, uncertain_only=false)
+  # SEQUENTIAL PROCESSING PATH (parallelize=false, two_stage=false)
   # ============================================================================
-  if (!parallelize && !uncertain_only) {
+  if (!parallelize && !two_stage) {
     call naive_processing {
       input:
         rlg = rlg,
@@ -72,9 +73,9 @@ workflow ReprocessAndValidate {
   }
 
   # ============================================================================
-  # PARALLEL PROCESSING PATH (parallelize=true, uncertain_only=false)
+  # PARALLEL PROCESSING PATH (parallelize=true, two_stage=false)
   # ============================================================================
-  if (parallelize && !uncertain_only) {
+  if (parallelize && !two_stage) {
     # Scatter across chromosome groups
     scatter (idx in range(length(chromosome_groups))) {
       call naive_processing_shard {
@@ -126,12 +127,12 @@ workflow ReprocessAndValidate {
   # SELECT OUTPUTS FROM ANY PATH
   # ============================================================================
   File final_naive_bam = select_first([
-    generate_uncertain_read_names_only.uncertain_bam,
+    naive_processing_two_stage.naive_bam,
     merge_naive.merged_cram, 
     naive_processing.naive_bam
   ])
   File final_uncertain_bam = select_first([
-    generate_uncertain_read_names_only.uncertain_bam,
+    naive_processing_two_stage.uncertain_bam,
     merge_uncertain.merged_cram, 
     naive_processing.uncertain_bam
   ])
@@ -144,8 +145,8 @@ workflow ReprocessAndValidate {
     Array[File]? shard_naive_bams     = naive_processing_shard.naive_bam
     Array[File]? shard_uncertain_bams = naive_processing_shard.uncertain_bam
     
-    # Uncertain-only mode output (only populated when uncertain_only=true)
-    File? uncertain_read_names = generate_uncertain_read_names_only.uncertain_read_names
+    # Two-stage mode output (only populated when two_stage=true)
+    File? uncertain_read_names = naive_processing_two_stage.uncertain_read_names
   }
 }
 
@@ -265,79 +266,6 @@ task naive_processing_uncertain_only {
     docker: "broadinstitute/gatk:latest"
     cpu: 4
     memory: "~{java_mem + 4}G"
-    disks: "local-disk 1500 SSD"
-  }
-}
-
-# ============================================================================
-# EXPERIMENTAL: Only generate uncertain read names file for analysis
-# ============================================================================
-# This task only writes the uncertain reads CRAM and read names file,
-# without attempting to create the naive CRAM. Use this to examine
-# the read names file and determine optimal storage/processing strategies.
-
-task generate_uncertain_read_names_only {
-  input {
-    String rlg
-    File   umil
-    File   input_bam
-    File   input_bam_idx
-    File   ref_fasta
-    File   ref_fasta_fai
-    File   ref_dict
-    File   gatk_jar
-    Int    java_mem
-    String output_prefix
-    
-    # Bloom filter parameters
-    Int expected_uncertain_reads = 100000000
-    Float bloom_filter_fpr = 0.001
-  }
-
-  command <<<
-    set -e
-    echo "GENERATING UNCERTAIN READ NAMES ONLY (EXPERIMENTAL) ============"
-    echo "This task only writes uncertain reads + read names file for analysis."
-    echo ""
-    
-    java -jar -Xmx~{java_mem}G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
-      -RLG ~{rlg} \
-      -I ~{input_bam} \
-      -O /dev/null \
-      -Ou ~{output_prefix}.uncertain.cram \
-      -umil ~{umil} \
-      -R ~{ref_fasta} \
-      -UO true \
-      -URN ~{output_prefix}.uncertain_read_names.txt \
-      -EUR ~{expected_uncertain_reads} \
-      -FPR ~{bloom_filter_fpr}
-    
-    echo ""
-    echo "============================================"
-    echo "Uncertain CRAM and read names file created."
-    echo "Uncertain read names count: $(wc -l < ~{output_prefix}.uncertain_read_names.txt)"
-    echo "Read names file size: $(ls -lh ~{output_prefix}.uncertain_read_names.txt | awk '{print $5}')"
-    echo ""
-    echo "Analyzing read names..."
-    echo "First 10 read names:"
-    head -n 10 ~{output_prefix}.uncertain_read_names.txt
-    echo ""
-    echo "Average read name length:"
-    awk '{total += length($0); count++} END {print total/count " characters"}' ~{output_prefix}.uncertain_read_names.txt
-    echo ""
-    echo "Analysis complete. Files ready for examination."
-    echo "============================================"
-  >>>
-
-  output {
-    File uncertain_bam = "~{output_prefix}.uncertain.cram"
-    File uncertain_read_names = "~{output_prefix}.uncertain_read_names.txt"
-  }
-
-  runtime {
-    docker: "broadinstitute/gatk:latest"
-    cpu: 2
-    memory: "~{java_mem + 2}G"
     disks: "local-disk 1500 SSD"
   }
 }
