@@ -878,15 +878,15 @@ task GenerateVepAndLofteeAnnotations {
             ulimit -v $vep_memory_kib
             set +o errexit
             vep "${args[@]}"
+            VEP_RC=$?
             set -o errexit
 
-            VEP_RC=$?
-            if (( VEP_RC == 137 ))
+            if [ "$VEP_RC" -ne 0 ]
             then
                 # Cromwell does not currently consider the value in the rc file when determining retryability, though
                 # there are PRs open that would enable this.
                 # https://github.com/broadinstitute/cromwell/pull/7786/files
-                echo "VEP + LOFTEE appears to have OOMed with exit code 137, writing messages to stderr to hopefully trigger Cromwell to retry with more memory."
+                echo "VEP + LOFTEE appears to have crashed with a non-zero return code, writing messages to stderr to hopefully trigger Cromwell to retry with more memory."
                 echo "Killed" >& 2
                 echo "java.lang.OutOfMemoryError" >& 2
                 exit 1
@@ -905,7 +905,7 @@ task GenerateVepAndLofteeAnnotations {
         maxRetries: 3
         noAddress: true
         docker: vep_loftee_docker
-        memory: "8 GB"
+        memory: "4 GB"
         disks: "local-disk 500 HDD"
     }
 
