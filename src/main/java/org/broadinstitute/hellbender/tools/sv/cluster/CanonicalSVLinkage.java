@@ -201,7 +201,12 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
         final Iterator<SVCallRecord.ComplexEventInterval> iterA = intervalsA.iterator();
         final Iterator<SVCallRecord.ComplexEventInterval> iterB = intervalsB.iterator();
-        for (int i = 0; i < intervalsA.size(); i++) {
+        double sumMinBreakpointDistances = 0;
+        double sumMaxBreakpointDistances = 0;
+        double sumReciprocalOverlap = 0;
+        double sumSizeSimilarity = 0;
+        int nIntervals = intervalsA.size();
+        for (int i = 0; i < nIntervals; i++) {
             final SVCallRecord.ComplexEventInterval cpxIntervalA = iterA.next();
             final SVCallRecord.ComplexEventInterval cpxIntervalB = iterB.next();
             if (cpxIntervalA.getIntervalSVType() != cpxIntervalB.getIntervalSVType()) {
@@ -218,10 +223,22 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
                     && testBreakendProximity(breakpointDistance1, breakpointDistance2, window))) {
                 return new CanonicalLinkageResult(false);
             }
+            if (breakpointDistance2 > breakpointDistance1) {
+                sumMinBreakpointDistances += breakpointDistance1;
+                sumMaxBreakpointDistances += breakpointDistance2;
+            } else {
+                sumMinBreakpointDistances += breakpointDistance2;
+                sumMaxBreakpointDistances += breakpointDistance1;
+            }
+            sumReciprocalOverlap += reciprocalOverlap;
+            sumSizeSimilarity += sizeSimilarity;
         }
         // Don't do expensive overlap calculation if threshold is 0
         final Double sampleOverlap = sampleOverlapThreshold > 0 ? computeSampleOverlap(a, b) : Double.valueOf(1.);
-        return new CanonicalLinkageResult(testSampleOverlap(sampleOverlap, sampleOverlapThreshold));
+
+        return new CanonicalLinkageResult(testSampleOverlap(sampleOverlap, sampleOverlapThreshold),
+                sumReciprocalOverlap / nIntervals, sumSizeSimilarity / nIntervals,
+                (int) Math.round(sumMinBreakpointDistances / nIntervals), (int) Math.round(sumMaxBreakpointDistances / nIntervals));
     }
 
     private static Double computeReciprocalOverlap(final SVCallRecord a, final SVCallRecord b) {
