@@ -233,7 +233,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private Mutect2Engine m2Engine;
 
     @Override
-    public ActivityProfile.ProfileType activityProfileType() { return ActivityProfile.ProfileType.MUTECT2; }
+    public ActivityProfile.ProfileType activityProfileType() { return ActivityProfile.ProfileType.BAND_PASS; }
 
     @Override
     public boolean useVariantAnnotations() { return true;}
