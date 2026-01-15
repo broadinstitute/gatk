@@ -803,9 +803,9 @@ task GenerateVepAndLofteeAnnotations {
         echo "MEM_UNIT is ${MEM_UNIT}"
 
         if [[ -z "${MEM_UNIT:-}" ]]
+        then
             echo "MEM_UNIT environment variable unexpectedly not set." 1>&2
             exit 1
-        then
         elif [[ ${MEM_UNIT} == "GB" ]]
         then
             vep_memory_kib=$(python -c "from math import floor; print(int(floor(((${MEM_SIZE} * 1024) - ~{overhead_memory_mib}) * 1024)))")
