@@ -322,15 +322,15 @@ public class ActivityProfile {
         if( forceConversion ) {
             final List<ActivityProfileState> statesToTrimAway = new ArrayList<>(stateList.subList(getSpan().size(), stateList.size()));
             stateList.removeAll(statesToTrimAway);
+        } else if (stateList.size() < maxRegionSize + getMaxProbPropagationDistance()) {
+            // we haven't added enough states to decide on the region's activity and boundaries
+            return null;
         }
 
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
+
         final int offsetOfNextRegionEnd = findEndOfRegion(isActiveRegion, minRegionSize, maxRegionSize, forceConversion);
-        if ( offsetOfNextRegionEnd == -1 ) {
-            // couldn't find a valid ending offset, so we return null
-            return null;
-        }
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
@@ -367,12 +367,6 @@ public class ActivityProfile {
      * @return the index into stateList of the last element of this region, or -1 if it cannot be found
      */
     private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
-        if ( ! forceConversion && stateList.size() < maxRegionSize + getMaxProbPropagationDistance() ) {
-            // we really haven't finalized at the probability mass that might affect our decision, so keep
-            // waiting until we do before we try to make any decisions
-            return -1;
-        }
-
         int endOfActiveRegion = findFirstActivityBoundary(isActiveRegion, maxRegionSize);
 
         if ( isActiveRegion && endOfActiveRegion == maxRegionSize ) {
