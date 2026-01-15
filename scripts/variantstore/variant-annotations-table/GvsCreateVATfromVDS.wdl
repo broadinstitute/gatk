@@ -790,7 +790,6 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_phylo_csf_database
         File input_vcf
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-        Float memory_mib = 4 * 1024
         # The memory headroom left for other processes including the Batch agent.
         Float overhead_memory_mib = 1.6 * 1024
     }
@@ -804,8 +803,9 @@ task GenerateVepAndLofteeAnnotations {
         echo "MEM_UNIT is ${MEM_UNIT}"
 
         if [[ -z "${MEM_UNIT:-}" ]]
+            echo "MEM_UNIT environment variable unexpectedly not set." 1>&2
+            exit 1
         then
-            vep_memory_kib=$(python -c "from math import floor; print(int(floor((~{memory_mib} - ~{overhead_memory_mib}) * 1024)))")
         elif [[ ${MEM_UNIT} == "GB" ]]
         then
             vep_memory_kib=$(python -c "from math import floor; print(int(floor(((${MEM_SIZE} * 1024) - ~{overhead_memory_mib}) * 1024)))")
@@ -814,7 +814,6 @@ task GenerateVepAndLofteeAnnotations {
             exit 1
         fi
 
-        echo "memory_mib is ~{memory_mib}"
         echo "overhead_memory_mib is ~{overhead_memory_mib}"
         echo "vep_memory_kib is ${vep_memory_kib}"
 
@@ -868,31 +867,18 @@ task GenerateVepAndLofteeAnnotations {
                 --output_file vep_loftee_raw_output.txt
             )
 
-            # Limit the amount of memory the VEP Python process uses, expressed in KiB.
-            # If we don't do this it seems that the Batch agent is often (though not always) starved for memory and
-            # unable to check in with the Batch service. If this happens the job fails for reasons that appear to
-            # Cromwell to be unretryable, and thus the whole workflow fails. e.g.
+            # Unfortunately we don't seem to be able to limit the amount of memory the Perl process uses. There are
+            # ways of limiting memory in Docker containers if one has access to Docker daemon configuration or in the
+            # way the `docker run` command is invoked (cgroups, ulimit, etc.), but unfortunately we don't have those
+            # options when running in GCP Batch. If we try to do a `ulimit -H -v <value>` when running under GCP Batch
+            # it has no effect.
             #
-            # Task GvsCreateVATfromVDS.GenerateVepAndLofteeAnnotations:150:4 failed. The job was stopped before the command finished. GCP Batch task exited with VMReportingTimeout(50002).
-            #
-            ulimit -v $vep_memory_kib
-            set +o errexit
-            vep "${args[@]}"
-            VEP_RC=$?
-            set -o errexit
+            # Run the vep process with these default memory settings and a very limited number of retries (maybe zero).
+            # Some shards will likely fail, which in turn will fail the workflow. After this happens, edit this wdl to
+            # increase the `memory` runtime attribute and rerun with call caching enabled. Repeat as necessary.
 
-            if [ "$VEP_RC" -ne 0 ]
-            then
-                # Cromwell does not currently consider the value in the rc file when determining retryability, though
-                # there are PRs open that would enable this.
-                # https://github.com/broadinstitute/cromwell/pull/7786/files
-                echo "VEP + LOFTEE appears to have crashed with a non-zero return code, writing messages to stderr to hopefully trigger Cromwell to retry with more memory."
-                echo "Killed" >& 2
-                echo "java.lang.OutOfMemoryError" >& 2
-                exit 1
-            else
-                echo "VEP + LOFTEE run complete."
-            fi
+            vep "${args[@]}"
+
         else
             echo "No data found for processing in VCF, exit 0."
             touch "vep_loftee_raw_output.txt"
@@ -902,10 +888,10 @@ task GenerateVepAndLofteeAnnotations {
 
     runtime {
         preemptible: 2
-        maxRetries: 3
+        maxRetries: 0
         noAddress: true
         docker: vep_loftee_docker
-        memory: memory_mib + " MB"
+        memory: "4 GB"
         disks: "local-disk 500 HDD"
     }
 
