@@ -888,7 +888,7 @@ task GenerateVepAndLofteeAnnotations {
 
     runtime {
         preemptible: 2
-        maxRetries: 0
+        maxRetries: 2
         noAddress: true
         docker: vep_loftee_docker
         memory: "4 GB"
