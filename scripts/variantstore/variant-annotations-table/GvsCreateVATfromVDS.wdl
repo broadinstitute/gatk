@@ -790,6 +790,7 @@ task GenerateVepAndLofteeAnnotations {
         File loftee_phylo_csf_database
         File input_vcf
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+        Float memory_mib = 4 * 1024
         # The memory headroom left for other processes including the Batch agent.
         Float overhead_memory_mib = 1.6 * 1024
     }
@@ -804,18 +805,18 @@ task GenerateVepAndLofteeAnnotations {
 
         if [[ -z "${MEM_UNIT:-}" ]]
         then
-            echo "MEM_UNIT environment variable unexpectedly not set." 1>&2
-            exit 1
+            vep_memory_kib=$(python -c "from math import floor; print(int(floor((~{memory_mib} - ~{overhead_memory_mib}) * 1024)))")
         elif [[ ${MEM_UNIT} == "GB" ]]
         then
-            vep_memory_mib=$(python -c "from math import floor; print(int(floor((${MEM_SIZE} * 1024) - ~{overhead_memory_mib})))")
+            vep_memory_kib=$(python -c "from math import floor; print(int(floor(((${MEM_SIZE} * 1024) - ~{overhead_memory_mib}) * 1024)))")
         else
             echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
             exit 1
         fi
 
+        echo "memory_mib is ~{memory_mib}"
         echo "overhead_memory_mib is ~{overhead_memory_mib}"
-        echo "vep_memory_mib is ${vep_memory_mib}"
+        echo "vep_memory_kib is ${vep_memory_kib}"
 
         bash ~{monitoring_script} > monitoring.log &
 
@@ -874,8 +875,9 @@ task GenerateVepAndLofteeAnnotations {
             #
             # Task GvsCreateVATfromVDS.GenerateVepAndLofteeAnnotations:150:4 failed. The job was stopped before the command finished. GCP Batch task exited with VMReportingTimeout(50002).
             #
+            ulimit -v $vep_memory_kib
             set +o errexit
-            systemd-run --scope -p MemoryMax=${vep_memory_mib}M vep "${args[@]}"
+            vep "${args[@]}"
             VEP_RC=$?
             set -o errexit
 
@@ -903,7 +905,7 @@ task GenerateVepAndLofteeAnnotations {
         maxRetries: 3
         noAddress: true
         docker: vep_loftee_docker
-        memory: "4 GB"
+        memory: memory_mib + " MB"
         disks: "local-disk 500 HDD"
     }
 
