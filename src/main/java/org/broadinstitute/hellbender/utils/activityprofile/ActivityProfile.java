@@ -288,15 +288,18 @@ public class ActivityProfile {
 
         final List<AssemblyRegion> regions = new ArrayList<>();
 
-        while ( true ) {
-            final AssemblyRegion nextRegion = popNextReadyAssemblyRegion(assemblyRegionExtension, minRegionSize, maxRegionSize, forceConversion);
-            if ( nextRegion == null ) {
-                return regions;
-            }
-            else {
-                regions.add(nextRegion);
-            }
+        while ( readyToPopNextAssemblyRegion(maxRegionSize, forceConversion) ) {
+            regions.add(popNextReadyAssemblyRegion(assemblyRegionExtension, minRegionSize, maxRegionSize, forceConversion));
         }
+
+        return regions;
+    }
+
+    /**
+     * Is there a large enough span of states in the state list to find the next assembly region?
+     */
+    private boolean readyToPopNextAssemblyRegion(final int maxRegionSize, final boolean forceConversion) {
+        return !stateList.isEmpty() && (forceConversion || stateList.size() >= maxRegionSize + getMaxProbPropagationDistance());
     }
 
     /**
@@ -315,18 +318,11 @@ public class ActivityProfile {
      * @return a fully formed assembly region, or null if none can be made
      */
     private AssemblyRegion popNextReadyAssemblyRegion( final int assemblyRegionExtension, final int minRegionSize, final int maxRegionSize, final boolean forceConversion ) {
-        if ( stateList.isEmpty() ) {
-            return null;
-        }
-
         // If we are flushing the activity profile we need to trim off the excess states so that we don't create regions outside of our current processing interval
         if( forceConversion ) {
             final List<ActivityProfileState> statesToTrimAway = new ArrayList<>(stateList.subList(getSpan().size(), stateList.size()));
             stateList.removeAll(statesToTrimAway);
-        } else if (stateList.size() < maxRegionSize + getMaxProbPropagationDistance()) {
-            // we haven't added enough states to decide on the region's activity and boundaries
-            return null;
-        }
+        } 
 
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
