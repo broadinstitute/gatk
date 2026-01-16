@@ -322,16 +322,14 @@ public class ActivityProfile {
         if( forceConversion ) {
             final List<ActivityProfileState> statesToTrimAway = new ArrayList<>(stateList.subList(getSpan().size(), stateList.size()));
             stateList.removeAll(statesToTrimAway);
-        } 
+        }
 
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
 
-        final int offsetOfNextRegionEnd = findEndOfRegion(minRegionSize, maxRegionSize);
+        final int sizeOfNextRegion = findSizeOfRegion(minRegionSize, maxRegionSize);
 
-        // we need to create the active region, and clip out the states we're extracting from this profile
-        final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
-        sub.clear();
+        stateList.subList(0, sizeOfNextRegion).clear(); // remove states in popped region
 
         // update the start and stop locations as necessary
         if ( stateList.isEmpty() ) {
@@ -339,7 +337,7 @@ public class ActivityProfile {
         } else {
             regionStartLoc = stateList.get(0).getLoc();
         }
-        final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + offsetOfNextRegionEnd);
+        final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + sizeOfNextRegion - 1);
         return new AssemblyRegion(regionLoc, isActiveRegion, assemblyRegionExtension, samHeader);
     }
 
@@ -358,7 +356,7 @@ public class ActivityProfile {
      * @param maxRegionSize the maximize size of the returned region
      * @return the index into stateList of the last element of this region, or -1 if it cannot be found
      */
-    private int findEndOfRegion(final int minRegionSize, final int maxRegionSize) {
+    private int findSizeOfRegion(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
         Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
         Utils.validateArg(maxRegionSize >= minRegionSize, "Max region size is less than min region size.");
@@ -370,14 +368,10 @@ public class ActivityProfile {
 
         // too many contiguous active states.  Cut at the lowest local minimum, ties favoring later cuts, defaulting
         // to the max size if no local minima exist
-        if ( aboveThreshold && contiguousSize == maxRegionSize ) {
-            return IntStream.range(minRegionSize, maxRegionSize).filter(this::isLocalMinimum).boxed()
+        return !(aboveThreshold && contiguousSize == maxRegionSize) ? contiguousSize :
+                IntStream.range(minRegionSize, maxRegionSize).filter(this::isLocalMinimum).boxed()
                     .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
-                    .findFirst().orElse(maxRegionSize - 1);
-        }
-
-        // we're one past the end, so i must be decremented
-        return contiguousSize - 1;
+                    .findFirst().orElse(maxRegionSize - 1) + 1;
     }
 
     /**
