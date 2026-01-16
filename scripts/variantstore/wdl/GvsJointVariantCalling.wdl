@@ -248,7 +248,6 @@ workflow GvsJointVariantCalling {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             merge_output_vcfs = merge_output_vcfs,
-            bgzip_output_vcfs = bgzip_output_vcfs,
     }
 
     output {

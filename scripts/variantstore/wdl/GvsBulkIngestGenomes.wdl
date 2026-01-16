@@ -164,6 +164,7 @@ workflow GvsBulkIngestGenomes {
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             load_vcf_headers = load_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
+            output_gcs_dir = output_gcs_dir,
             is_wgs = is_wgs,
     }
 
