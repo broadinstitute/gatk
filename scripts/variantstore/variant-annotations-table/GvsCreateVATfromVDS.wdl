@@ -943,9 +943,9 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
             echo "Found preexisting table with data, not adding more raw data."
         else
             echo "Raw data table is empty, copying VEP output to be loaded."
-            gcloud storage cp ~{sep=' ' vep_loftee_raw_output} .
             for file in ~{sep=' ' vep_loftee_raw_output}
             do
+                gcloud storage cp $file .
                 filename=$(basename $file)
                 if [ ! -e load_file.txt ]
                 then
