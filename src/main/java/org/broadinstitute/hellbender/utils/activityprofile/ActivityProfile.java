@@ -321,8 +321,7 @@ public class ActivityProfile {
     private AssemblyRegion popNextReadyAssemblyRegion( final int assemblyRegionExtension, final int minRegionSize, final int maxRegionSize, final boolean forceConversion ) {
         // If we are flushing the activity profile we need to trim off the excess states so that we don't create regions outside of our current processing interval
         if( forceConversion ) {
-            final List<ActivityProfileState> statesToTrimAway = new ArrayList<>(stateList.subList(getSpan().size(), stateList.size()));
-            stateList.removeAll(statesToTrimAway);
+            stateList.subList(getSpan().size(), stateList.size()).clear();
         }
 
         final Pair<Integer, Boolean> sizeAndActivityOfNextRegion = findSizeOfRegionAndActivity(minRegionSize, maxRegionSize);
