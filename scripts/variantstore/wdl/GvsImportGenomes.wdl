@@ -195,12 +195,12 @@ workflow GvsImportGenomes {
     }
     
     # Set up lifecycle rules for parquet directories before loading
-    call ConfigureParquetLifecycle {
-      input:
-        output_gcs_dir = output_gcs_dir,
-        billing_project_id = billing_project_id,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+#    call ConfigureParquetLifecycle {
+#      input:
+#        output_gcs_dir = output_gcs_dir,
+#        billing_project_id = billing_project_id,
+#        cloud_sdk_docker = effective_cloud_sdk_docker,
+#    }
     
     # Load Parquet files into BigQuery after all data has been created
     call CreateParquetTrackingTable {
@@ -208,7 +208,7 @@ workflow GvsImportGenomes {
         project_id = project_id,
         dataset_name = dataset_name,
         set_is_loaded_done = SetIsLoadedColumn.done,
-        lifecycle_configured = ConfigureParquetLifecycle.done,
+        lifecycle_configured = "ConfigureParquetLifecycle.done",
         variants_docker = effective_variants_docker,
     }
     
