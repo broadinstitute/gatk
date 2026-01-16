@@ -352,10 +352,9 @@ public class ActivityProfile {
      * <p>
      * The current region is defined from the start of the stateList, looking for elements that have the same isActiveRegion
      * flag (i.e., if isActiveRegion is true we are looking for states with isActiveProb > threshold, or alternatively
-     * for states < threshold).  The maximize size of the returned region is maxRegionSize.  If forceConversion is
-     * true, then we'll return the region end even if this isn't safely beyond the max prob propagation distance.
+     * for states < threshold).  The maximize size of the returned region is maxRegionSize.
      * <p>
-     * Note that if isActiveRegion is true, and we can construct an assembly region > maxRegionSize in bp, we
+     * If there are more than maxRegionSize consecutive active states, we
      * find the further local minimum within that max region, and cut the region there, under the constraint
      * that the resulting region must be at least minRegionSize in bp.
      *
@@ -400,7 +399,7 @@ public class ActivityProfile {
 
         for ( int i = minI; i >= minRegionSize - 1; i-- ) {
             double cur = getProb(i);
-            if ( cur < minP && isMinimum(i) ) {
+            if ( cur < minP && isLocalMinimum(i) ) {
                 minP = cur;
                 minI = i;
             }
@@ -423,26 +422,11 @@ public class ActivityProfile {
     /**
      * Is the probability at index in a local minimum?
      *
-     * Checks that the probability at index is <= both the probabilities to either side.
-     * Returns false if index is at the end or the start of the state list.
-     *
      * @param index the index of the state we want to test
-     * @return true if prob at state is a minimum, false otherwise
+     * @return true if prob at state is a local minimum, false otherwise
      */
-    private boolean isMinimum(final int index) {
-        Utils.validIndex(index, stateList.size());
-
-        if ( index == stateList.size() - 1 ) {
-            // we cannot be at a minimum if the current position is the last in the state list
-            return false;
-        }
-        else if ( index < 1 ) {
-            // we cannot be at a minimum if the current position is the first or second
-            return false;
-        }
-        else {
-            final double indexP = getProb(index);
-            return indexP <= getProb(index+1) && indexP < getProb(index-1);
-        }
+    private boolean isLocalMinimum(final int index) {
+        return index > 0 && index < stateList.size() - 1 && getProb(index) <= getProb(index + 1) &&
+                getProb(index) < getProb(index - 1);
     }
 }
