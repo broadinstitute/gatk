@@ -955,7 +955,11 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
                     #   the line can serve as a TSV header.
                     sed -E '/^##/d' $filename | sed -E 's/^#//' > load_file.txt
                 fi
+                set +o errexit
+                # In our integration tests when running on chromosomes 20/X/Y (the default), many of these files will be
+                # empty, so turn off errexit temporarily.
                 grep -E -v '^#' $filename >> load_file.txt
+                set -o errexit
             done
 
             bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' \
