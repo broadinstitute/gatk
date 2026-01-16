@@ -1,6 +1,6 @@
 version 1.0
 
-import "../../wdl/GvsUtils.wdl" as GvsUtils
+import "../../../wdl/GvsUtils.wdl" as GvsUtils
 
 workflow SearchGVCFsForUnmappedVIDs {
     input {

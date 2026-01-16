@@ -13,11 +13,12 @@ workflow GvsExtractCohortFromSampleNames {
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
     Boolean is_wgs = true
+    Boolean validate_sample_names_in_sample_info = false
 
     String gvs_project
     String gvs_dataset
     String call_set_identifier
-    String cohort_table_prefix = call_set_identifier
+    String? cohort_table_prefix
     String query_project = gvs_project
 
     # not using the defaults in GvsPrepareCallset because we might be using pre created datasets defined by the caller
@@ -65,6 +66,8 @@ workflow GvsExtractCohortFromSampleNames {
     }
   }
 
+  String effective_cohort_table_prefix = select_first([cohort_table_prefix, call_set_identifier + "_" + select_first([GetToolVersions.date_as_secs_since_unix_epoch])])
+
   String effective_git_hash = select_first([git_branch_or_tag, GetToolVersions.git_hash])
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
@@ -75,6 +78,24 @@ workflow GvsExtractCohortFromSampleNames {
     input:
       reference_name = reference_name,
       basic_docker = effective_basic_docker,
+  }
+
+  String prepare_sample_table_name = effective_cohort_table_prefix + "__SAMPLES"
+
+  call Utils.DoesTableExist {
+    input:
+      project_id = query_project,
+      dataset_name = gvs_dataset,
+      table_name = prepare_sample_table_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
+  if (DoesTableExist.table_exists) {
+    call Utils.TerminateWorkflow as TableExistsError {
+      input:
+        message = "There are already tables with the cohort prefix '~{effective_cohort_table_prefix}' in the dataset '~{gvs_dataset}' in project '~{query_project}'.  Please choose a different cohort_table_prefix to avoid overwriting existing data.",
+        basic_docker = effective_basic_docker,
+    }
   }
 
   # allow an interval list to be passed in, but default it to the reference-standard one if no args are here
@@ -120,70 +141,84 @@ workflow GvsExtractCohortFromSampleNames {
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
 
+  if (!DoesTableExist.table_exists) {
+    # Check if all the samples in the file are present in sample_info and are not marked as withdrawn.
+    if (validate_sample_names_in_sample_info) {
+      call Utils.ValidateSampleNamesInSampleInfoTable {
+        input:
+          sample_names_file = cohort_sample_names_file,
+          fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
+          project_id = query_project,
+          dataset_name = gvs_dataset,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
+    }
 
-  call GvsPrepareCallset.GvsPrepareCallset {
-    input:
-      call_set_identifier = call_set_identifier,
-      extract_table_prefix = cohort_table_prefix,
-      sample_names_to_extract = cohort_sample_names_file,
-      project_id = gvs_project,
-      query_labels = ["extraction_uuid=~{extraction_uuid}"],
-      query_project = query_project,
-      dataset_name = gvs_dataset, # unused if fq_* args are given
-      destination_project = destination_project_id,
-      destination_dataset = destination_dataset_name,
-      fq_temp_table_dataset = fq_gvs_extraction_temp_tables_dataset,
-      write_cost_to_db = write_cost_to_db,
-      enable_extract_table_ttl = true,
-      interval_list = effective_interval_list,
-      control_samples = control_samples,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      git_hash = effective_git_hash,
-      variants_docker = effective_variants_docker,
-  }
+    call GvsPrepareCallset.GvsPrepareCallset {
+      input:
+        go = select_first([ValidateSampleNamesInSampleInfoTable.done, true]),
+        call_set_identifier = call_set_identifier,
+        extract_table_prefix = effective_cohort_table_prefix,
+        sample_names_to_extract = cohort_sample_names_file,
+        project_id = gvs_project,
+        query_labels = ["extraction_uuid=~{extraction_uuid}"],
+        query_project = query_project,
+        dataset_name = gvs_dataset, # unused if fq_* args are given
+        destination_project = destination_project_id,
+        destination_dataset = destination_dataset_name,
+        fq_temp_table_dataset = fq_gvs_extraction_temp_tables_dataset,
+        write_cost_to_db = write_cost_to_db,
+        enable_extract_table_ttl = true,
+        interval_list = effective_interval_list,
+        control_samples = control_samples,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        git_hash = effective_git_hash,
+        variants_docker = effective_variants_docker,
+    }
 
-  call GvsExtractCallset.GvsExtractCallset {
-    input:
-      go = GvsPrepareCallset.done,
-      project_id = gvs_project,
-      query_project = query_project,
-      dataset_name = gvs_dataset,
-      call_set_identifier = call_set_identifier,
-      cohort_project_id = destination_project_id,
-      cohort_dataset_name = destination_dataset_name,
-      extract_table_prefix = cohort_table_prefix,
+    call GvsExtractCallset.GvsExtractCallset {
+      input:
+        go = GvsPrepareCallset.done,
+        project_id = gvs_project,
+        query_project = query_project,
+        dataset_name = gvs_dataset,
+        call_set_identifier = call_set_identifier,
+        cohort_project_id = destination_project_id,
+        cohort_dataset_name = destination_dataset_name,
+        extract_table_prefix = effective_cohort_table_prefix,
 
-      scatter_count = effective_scatter_count,
-      filter_set_name = filter_set_name,
-      output_file_base_name = output_file_base_name,
-      output_gcs_dir = output_gcs_dir,
+        scatter_count = effective_scatter_count,
+        filter_set_name = filter_set_name,
+        output_file_base_name = output_file_base_name,
+        output_gcs_dir = output_gcs_dir,
 
-      drop_state = drop_state,
-      bgzip_output_vcfs = bgzip_output_vcfs,
-      merge_output_vcfs = merge_output_vcfs,
-      collect_variant_calling_metrics = collect_variant_calling_metrics,
-      extract_preemptible_override = extract_preemptible_override,
-      extract_maxretries_override = extract_maxretries_override,
-      split_intervals_disk_size_override = split_intervals_disk_size_override,
-      split_intervals_mem_override = split_intervals_mem_override,
-      extract_memory_override_gib = extract_memory_override,
-      disk_override = extract_disk_override,
-      interval_list = effective_interval_list,
-      control_samples = control_samples,
+        drop_state = drop_state,
+        bgzip_output_vcfs = bgzip_output_vcfs,
+        merge_output_vcfs = merge_output_vcfs,
+        collect_variant_calling_metrics = collect_variant_calling_metrics,
+        extract_preemptible_override = extract_preemptible_override,
+        extract_maxretries_override = extract_maxretries_override,
+        split_intervals_disk_size_override = split_intervals_disk_size_override,
+        split_intervals_mem_override = split_intervals_mem_override,
+        extract_memory_override_gib = extract_memory_override,
+        disk_override = extract_disk_override,
+        interval_list = effective_interval_list,
+        control_samples = control_samples,
 
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-      gatk_docker = effective_gatk_docker,
-      gatk_override = gatk_override,
-      git_hash = effective_git_hash,
-      variants_docker = effective_variants_docker,
-      write_cost_to_db = write_cost_to_db,
-      target_interval_list = target_interval_list,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        gatk_docker = effective_gatk_docker,
+        gatk_override = gatk_override,
+        git_hash = effective_git_hash,
+        variants_docker = effective_variants_docker,
+        write_cost_to_db = write_cost_to_db,
+        target_interval_list = target_interval_list,
+    }
   }
 
   output {
-    Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
-    Array[File] output_vcfs = GvsExtractCallset.output_vcfs
-    Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
+    Float? total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+    Array[File]? output_vcfs = GvsExtractCallset.output_vcfs
+    Array[File]? output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
     String recorded_git_hash = effective_git_hash
   }
 

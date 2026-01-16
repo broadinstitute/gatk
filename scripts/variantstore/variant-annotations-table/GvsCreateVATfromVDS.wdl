@@ -364,6 +364,7 @@ task ExcludeSitesFromSitesOnlyVcf {
     input {
         File sites_to_exclude
         File input_sites_only_vcf
+        Int disk_size_gb = ceil(4 * (size(input_sites_only_vcf, "GiB"))) + 500
         String variants_docker
     }
 
@@ -386,7 +387,7 @@ task ExcludeSitesFromSitesOnlyVcf {
         memory: "4 GB"
         preemptible: 2
         cpu: "1"
-        disk: "local-disk 500 HDD"
+        disks: "local-disk ${disk_size_gb} HDD"
     }
 
     output {

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Script to generate bcftools invocations from VIDs (Variant IDs).
+Script to generate bcftools invocations from VIDs (Variant IDs) for the purpose of finding insertions or deletions of
+a particular size which may represent non-left aligned synonyms of particular variants.
 
 A VID consists of four components separated by dashes:
 chromosome-position-reference_allele-variant_allele
 
 Example usage:
-python generate_bcftools_commands.py input_vids.txt
+python generate_bcftools_searches_for_variant_synonyms.py input_vids.txt
 """
 
 import sys
@@ -30,23 +31,18 @@ def calculate_insert_size(ref_allele, var_allele):
     return len(var_allele) - len(ref_allele)
 
 
-def generate_bcftools_command(vid):
+def generate_bcftools_command(vid, sites_only):
     """Generate bcftools command for a given VID."""
     chromosome, position, ref_allele, var_allele = parse_vid(vid)
     
     insert_size = calculate_insert_size(ref_allele, var_allele)
 
-    # The "pseudo vid"s are either short (< 10 base) inserts, or longer (up to ~400 base) deletions.
-    # Choose the search range accordingly.
-    if insert_size > 0:
-        search_range = 20
-    else:
-        search_range = 200
+    search_range = 200
 
-    start = position + 1
+    start = position
     end = position + search_range
     
-    command = f"bcftools view --no-header -i '(ILEN = {insert_size})' --regions chr{chromosome}:{start}-{end} sites-only.vcf"
+    command = f"bcftools view --no-header -i '(ILEN = {insert_size})' --regions chr{chromosome}:{start}-{end} {sites_only}"
     
     return command
 
@@ -54,6 +50,7 @@ def generate_bcftools_command(vid):
 def main():
     parser = argparse.ArgumentParser(description='Generate bcftools commands from VIDs')
     parser.add_argument('input_file', help='File containing one VID per line')
+    parser.add_argument('-s', '--sites-only', help='Sites-only VCF file name')
     parser.add_argument('-o', '--output', help='Output file (default: stdout)')
     
     args = parser.parse_args()
@@ -68,7 +65,7 @@ def main():
                     continue
                 
                 try:
-                    command = generate_bcftools_command(line)
+                    command = generate_bcftools_command(line, args.sites_only)
                     print(command, file=output_file)
                 except ValueError as e:
                     print(f"Error on line {line_num}: {e}", file=sys.stderr)

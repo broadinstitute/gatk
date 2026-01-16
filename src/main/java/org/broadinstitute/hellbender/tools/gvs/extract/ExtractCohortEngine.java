@@ -401,7 +401,7 @@ public class ExtractCohortEngine {
                 return Long.compare(firstSample, secondSample);
             }
         };
-        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam, true);
+        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
     }
 
     private void addToVetSortingCollection(final SortingCollection<GenericRecord> sortingCollection,
@@ -446,7 +446,7 @@ public class ExtractCohortEngine {
     }
 
     private void addToRefSortingCollection(final SortingCollection<GenericRecord> sortingCollection, final Iterable<GenericRecord> avroReader, final VariantBitSet vbs) {
-        int recordsProcessed = 0;
+        long recordsProcessed = 0;
         long startTime = System.currentTimeMillis();
 
         for (final GenericRecord queryRow : avroReader) {

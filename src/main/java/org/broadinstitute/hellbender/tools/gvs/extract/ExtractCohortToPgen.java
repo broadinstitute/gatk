@@ -15,7 +15,6 @@ import org.broadinstitute.pgen.PgenEmptyPgenException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.EnumSet;
-import java.util.stream.Collectors;
 
 
 @SuppressWarnings("unused")
@@ -188,14 +187,10 @@ public class ExtractCohortToPgen extends ExtractCohort {
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
                     VariantContextBuilder variantBuilder = new VariantContextBuilder(variantContext);
-                    final String id = String.format("%s:%d:%s:%s",
+                    final String id = String.format("%s:%d:%s",
                             variantContext.getContig(),
                             variantContext.getStart(),
-                            variantContext.getReference().getDisplayString(),
-                            variantContext.getAlleles().stream()
-                                    .filter(allele -> !allele.isReference())
-                                    .map(Allele::getDisplayString)
-                                    .collect(Collectors.joining(","))
+                            variantContext.getReference().getDisplayString()
                     );
                     variantBuilder.id(id);
                     pgenWriter.add(variantBuilder.make());
