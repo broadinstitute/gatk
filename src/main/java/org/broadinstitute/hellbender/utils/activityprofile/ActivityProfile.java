@@ -364,42 +364,24 @@ public class ActivityProfile {
      */
     private int findEndOfRegion(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
+        Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
+        Utils.validateArg(maxRegionSize >= minRegionSize, "Max region size is less than min region size.");
         final boolean aboveThreshold = getProb(0) > activeProbThreshold;
         final int maxContiguousSize = Math.min(stateList.size(), maxRegionSize);
         final int contiguousSize = IntStream.range(0, maxContiguousSize)
                 .filter(n -> getProb(n) > activeProbThreshold != aboveThreshold)
                 .findFirst().orElse(maxContiguousSize);
 
+        // too many contiguous active states.  Cut at the lowest local minimum, ties favoring later cuts, defaulting
+        // to the max size if no local minima exist
         if ( aboveThreshold && contiguousSize == maxRegionSize ) {
-            // we've run to the end of the region, let's find a good place to cut
-            return findBestCutSite(contiguousSize, minRegionSize) - 1;
+            return IntStream.range(minRegionSize, maxRegionSize).filter(this::isLocalMinimum).boxed()
+                    .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
+                    .findFirst().orElse(maxRegionSize - 1);
         }
 
         // we're one past the end, so i must be decremented
         return contiguousSize - 1;
-    }
-
-    /**
-     * Find the the local minimum within 0 - endOfActiveRegion where we should divide region
-     *
-     * This algorithm finds the global minimum probability state within the region [minRegionSize, endOfActiveRegion)
-     * (exclusive of endOfActiveRegion), and returns the state index of that state.
-     * that it
-     *
-     * @param endOfActiveRegion the last state of the current active region (exclusive)
-     * @param minRegionSize the minimum of the left-most region, after cutting
-     * @return the index of state after the cut site (just like endOfActiveRegion)
-     */
-    private int findBestCutSite(final int endOfActiveRegion, final int minRegionSize) {
-        Utils.validateArg(endOfActiveRegion >= minRegionSize, "endOfActiveRegion must be >= minRegionSize");
-        Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
-        
-        // find the lowest local minimum, ties favoring later cuts, defaulting to the max size if no local minima exist
-        final int bestMinimum = IntStream.range(minRegionSize, endOfActiveRegion).filter(this::isLocalMinimum).boxed()
-                .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
-                .findFirst().orElse(endOfActiveRegion - 1);
-
-        return bestMinimum + 1;
     }
 
     /**
