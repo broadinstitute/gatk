@@ -1002,7 +1002,8 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         BQ_SHOW_RC=$?
         set -o errexit
 
-        if [ $BQ_SHOW_RC -ne 0 ]; then
+        if [ $BQ_SHOW_RC -ne 0 ]
+        then
             echo 'Creating "cooked" VEP + LOFTEE table ~{dataset_name}.~{cooked_data_table}'
 
             # 3 day TTL for this table
@@ -1011,7 +1012,7 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         fi
 
         num_rows=$(bq --apilog=false show --project_id=~{project_id} --format json ~{dataset_name}.~{cooked_data_table} | jq -r .numRows)
-        if ((num_rows != 0))
+        if [ $num_rows -ne 0]
         then
           echo "Found preexisting table with data, not adding more cooked data."
         else
