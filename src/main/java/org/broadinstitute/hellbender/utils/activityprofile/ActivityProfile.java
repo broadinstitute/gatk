@@ -355,7 +355,7 @@ public class ActivityProfile {
      * @param maxRegionSize the maximize size of the returned region
      * @return a Pair containing the size of the next region and whether it is active
      */
-    private Pair<Integer, Boolean> findSizeOfRegionAndActivity(final int minRegionSize, final int maxRegionSize) {
+    protected Pair<Integer, Boolean> findSizeOfRegionAndActivity(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
         Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
         Utils.validateArg(maxRegionSize >= minRegionSize, "Max region size is less than min region size.");
@@ -380,7 +380,7 @@ public class ActivityProfile {
      * @param index a valid offset into the state list
      * @return the isActiveProb of the state at index
      */
-    private double getProb(final int index) {
+    protected double getProb(final int index) {
         Utils.validIndex(index, stateList.size());
 
         return stateList.get(index).isActiveProb();
