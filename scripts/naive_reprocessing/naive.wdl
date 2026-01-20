@@ -10,17 +10,19 @@ workflow ReprocessAndValidate {
 		File ref_fasta_fai="gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
     File ref_dict="gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File gatk_jar = "gs://fc-d26a03c8-5f34-4452-93ff-b3fc13cc2950/naive/gatkdev_naive.jar"
-    Int java_mem = 8
+    Int java_mem = 4
     String output_prefix="test"
     
     # Parallelization option - if true, splits by chromosome groups for faster processing
-    Boolean parallelize = false
+    # Recommended: true (enables preemptible VMs for cost savings)
+    Boolean parallelize = true
     
     # Two-stage optimization - if true, uses memory-efficient two-stage processing:
     # Stage 1: Generate uncertain CRAM + .fcl file
     # Stage 2: Filter input CRAM using .fcl to create naive CRAM
     # This uses 85% less memory (1.5 GB vs 10.5 GB for 38M read names)
-    Boolean two_stage = true
+    # Note: Not compatible with parallelize=true
+    Boolean two_stage = false
     
     # Parallel processing options (only used when parallelize=true)
     Array[Array[String]] chromosome_groups = [
@@ -299,13 +301,13 @@ task naive_processing_two_stage {
   command <<<
     set -e
     echo "TWO-STAGE NAIVE PROCESSING ============"
-    echo "Stage 1: Generate uncertain CRAM and front-coded read names list..."
+    echo "Single-pass: Generate both naive and uncertain CRAMs + .fcl file..."
     echo ""
     
     java -jar -Xmx~{java_mem}G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
       -RLG ~{rlg} \
       -I ~{input_bam} \
-      -O /dev/null \
+      -O ~{output_prefix}.naive.cram \
       -Ou ~{output_prefix}.uncertain.cram \
       -umil ~{umil} \
       -R ~{ref_fasta} \
@@ -315,25 +317,8 @@ task naive_processing_two_stage {
       -FPR ~{bloom_filter_fpr}
     
     echo ""
-    echo "Stage 1 complete. Uncertain CRAM and .fcl file created."
-    echo "File sizes:"
-    ls -lh ~{output_prefix}.uncertain.cram ~{output_prefix}.uncertain_read_names.fcl
-    echo ""
-    
-    echo "Stage 2: Filter input CRAM using .fcl to create naive CRAM..."
-    echo ""
-    
-    java -jar -Xmx~{java_mem}G ~{gatk_jar} FilterReadsByNameList \
-      -I ~{input_bam} \
-      -O ~{output_prefix}.naive.cram \
-      -R ~{ref_fasta} \
-      -XRL ~{output_prefix}.uncertain_read_names.fcl
-    
-    echo ""
-    echo "Stage 2 complete. Naive CRAM created."
-    echo ""
     echo "============================================"
-    echo "TWO-STAGE PROCESSING COMPLETE"
+    echo "PROCESSING COMPLETE"
     echo "Output files:"
     ls -lh ~{output_prefix}.*.cram ~{output_prefix}.*.fcl
     echo "============================================"
@@ -405,7 +390,7 @@ task naive_processing_shard {
     echo "Filtered BED lines: $(wc -l < filtered_umil.bed)"
     
     # Run SplitReadsByRealignmentDifficulty on this shard
-    java -jar -Xmx~{java_mem}G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
+    java -jar -Xmx4G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
       -RLG ~{rlg} \
       -I ~{input_bam} \
       $INTERVALS \
@@ -427,9 +412,10 @@ task naive_processing_shard {
 
   runtime {
     docker: "broadinstitute/gatk:latest"
-    cpu: 2
-    memory: "~{java_mem + 2}G"
+    cpu: 1
+    memory: "6G"
     disks: "local-disk 400 SSD"
+    preemptible: 3
   }
 }
 
@@ -469,8 +455,9 @@ task merge_crams {
 
   runtime {
     docker: "broadinstitute/gatk:latest"
-    cpu: 4
-    memory: "~{java_mem + 2}G"
+    cpu: 1
+    memory: "6G"
     disks: "local-disk 1000 SSD"
+    preemptible: 3
   }
 }
