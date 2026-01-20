@@ -72,7 +72,7 @@ public class Mutect2ActivityProfile extends ActivityProfile {
                 }
             }
 
-            return Pair.of(startOfLargestGap, true);
+            return Pair.of(startOfLargestGap + 1, true);
         }
     }
 }
