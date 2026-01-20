@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCall
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -75,7 +74,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             final CountingReadFilter combinedReadFilter = CountingReadFilter.fromList(readFilters, readsSource.getHeader());
             readShard.setReadFilter(combinedReadFilter);
 
-            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, assemblyRegionArgs, ActivityProfile.ProfileType.BAND_PASS, false);
+            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, assemblyRegionArgs, false);
 
             AssemblyRegion previousRegion = null;
             while ( iter.hasNext() ) {

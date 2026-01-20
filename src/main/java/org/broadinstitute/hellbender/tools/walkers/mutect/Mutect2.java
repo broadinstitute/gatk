@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
@@ -222,6 +224,11 @@ public final class Mutect2 extends AssemblyRegionWalker {
      public static final String MUTECT_STATS_SHORT_NAME = "stats";
      public static final String DEFAULT_STATS_EXTENSION = ".stats";
 
+     @Override
+    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
+        return new Mutect2AssemblyRegionArgumentCollection();
+    }
+
     @ArgumentCollection
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
 
@@ -231,9 +238,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private Mutect2Engine m2Engine;
-
-    @Override
-    public ActivityProfile.ProfileType activityProfileType() { return ActivityProfile.ProfileType.MUTECT2; }
 
     @Override
     public boolean useVariantAnnotations() { return true;}

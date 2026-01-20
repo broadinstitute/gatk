@@ -4,6 +4,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 
 import java.io.Serializable;
 
@@ -11,6 +12,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String ASSEMBLY_REGION_OUT_LONG_NAME = "assembly-region-out";
     public static final String FORCE_ACTIVE_REGIONS_LONG_NAME = "force-active";
     private static final long serialVersionUID = 1L;
+
+    public static final String ACTIVITY_PROFILE_TYPE_LONG_NAME = "activity-profile-type";
 
     public static final String MIN_ASSEMBLY_LONG_NAME = "min-assembly-region-size";
     public static final String MAX_ASSEMBLY_LONG_NAME = "max-assembly-region-size";
@@ -66,6 +69,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     /**
      * Parameters that control active regions
      */
+    @Argument(fullName = ACTIVITY_PROFILE_TYPE_LONG_NAME, doc = "Activity profile type", optional = true)
+    public ActivityProfile.ProfileType activityProfileType = defaultActivityProfileType();
 
     @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
     public int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
@@ -126,6 +131,11 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Hidden
     @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)
     public boolean enableLegacyAssemblyRegionTrimming = false;
+
+    /**
+     * @return Default value for the {@link #activityProfileType} parameter, if none is provided on the command line
+     */
+    protected ActivityProfile.ProfileType defaultActivityProfileType() { return ActivityProfile.ProfileType.BAND_PASS; }
 
     /**
      * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line

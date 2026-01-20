@@ -41,8 +41,12 @@ import java.util.List;
  */
 public abstract class AssemblyRegionWalker extends WalkerBase {
 
+    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
+        return new AssemblyRegionArgumentCollection();
+    }
+
     @ArgumentCollection
-    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = getAssemblyRegionArgumentCollection();
 
     /**
      * If provided, this walker will write out its assembly regions
@@ -54,8 +58,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      */
     @Argument(fullName = AssemblyRegionArgumentCollection.ASSEMBLY_REGION_OUT_LONG_NAME, doc="Output the assembly region to this IGV formatted file", optional = true)
     protected String assemblyRegionOut = null;
-
-    public ActivityProfile.ProfileType activityProfileType() { return ActivityProfile.ProfileType.BAND_PASS; }
 
     private PrintStream assemblyRegionOutStream;
 
@@ -189,7 +191,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference,
-                features, assemblyRegionEvaluator(), assemblyRegionArgs, activityProfileType(), shouldTrackPileupsForAssemblyRegions());
+                features, assemblyRegionEvaluator(), assemblyRegionArgs, shouldTrackPileupsForAssemblyRegions());
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
