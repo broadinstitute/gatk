@@ -913,6 +913,10 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         File raw_data_table_schema
     }
 
+    meta {
+        volatile: true
+    }
+
     parameter_meta {
         vep_loftee_raw_output: {
             localization_optional: true
@@ -990,6 +994,9 @@ task BigQueryCookVepAndLofteeRawAnnotations {
         String raw_data_table
         String cooked_data_table
         File cooked_data_table_schema
+    }
+    meta {
+        volatile: true
     }
 
     command <<<
