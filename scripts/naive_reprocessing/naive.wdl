@@ -443,7 +443,7 @@ task naive_processing_shard {
   runtime {
     docker: "broadinstitute/gatk:latest"
     cpu: 1
-    memory: "3500M"
+    memory: "3G"
     disks: "local-disk 400 SSD"
     preemptible: 3
   }
