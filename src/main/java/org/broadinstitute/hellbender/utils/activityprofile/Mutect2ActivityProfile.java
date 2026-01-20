@@ -59,6 +59,7 @@ public class Mutect2ActivityProfile extends ActivityProfile {
         if (inactive) {
             return Pair.of(numInactiveStates - PADDING, false);
         } else {
+            boolean isSomatic = false;
             int lastActiveIdx = numInactiveStates;
             int startOfLargestGap = numInactiveStates;  // the active site right before the longest inactive gap
             int maxGapLength = 0;
@@ -72,11 +73,12 @@ public class Mutect2ActivityProfile extends ActivityProfile {
                 if (idx > lastActiveIdx + maxPhasingDistance()) {
                     break;
                 } else if (getProb(idx) >= activeProbThreshold) {
+                    isSomatic |= stateList.get(idx).getResultState() == ActivityProfileState.Type.SOMATIC;
                     lastActiveIdx = idx;
                 }
             }
 
-            return Pair.of(Math.min(startOfLargestGap + 1 + PADDING, maxSize), true);
+            return Pair.of(Math.min(startOfLargestGap + 1 + PADDING, maxSize), isSomatic);
         }
     }
 }
