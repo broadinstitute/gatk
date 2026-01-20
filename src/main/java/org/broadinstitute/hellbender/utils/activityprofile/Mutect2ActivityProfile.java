@@ -11,6 +11,8 @@ import java.util.stream.IntStream;
 
 public class Mutect2ActivityProfile extends ActivityProfile {
 
+    private static final int PADDING = 5;
+
     public Mutect2ActivityProfile(final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
         // note that in this class maxProbPropagationDistance is interpreted as a maximum phasing distance
         // we don't "propagate" probability like the BandPassActivityFilter
@@ -44,21 +46,23 @@ public class Mutect2ActivityProfile extends ActivityProfile {
         // TODO: active pileup
         Utils.validate(!stateList.isEmpty(), "This code should only be called when there are states with which to form a region.");
 
-        final int maxSize = Math.min(stateList.size(), maxRegionSize);
+        final int maxSize = Math.min(stateList.size(), maxRegionSize + PADDING);
+
+        final int numInactiveStates = IntStream.range(0, maxSize)
+                .filter(n -> getProb(n) >= activeProbThreshold)
+                .findFirst().orElse(maxSize);
+
+        final boolean inactive = numInactiveStates > PADDING;
 
         // If inactive, extend up to the first active site or the maximum possible size
         // If active, extend until we reach an inactive gap longer than the max phasing distance
-        if (getProb(0) < activeProbThreshold) {
-            final int numInactiveStates = IntStream.range(0, maxSize)
-                    .filter(n -> getProb(n) >= activeProbThreshold)
-                    .findFirst().orElse(maxSize);
-
-            return Pair.of(numInactiveStates, false);
+        if (inactive) {
+            return Pair.of(numInactiveStates - PADDING, false);
         } else {
-            int lastActiveIdx = 0;
-            int startOfLargestGap = 0;  // the active site right before the longest inactive gap
+            int lastActiveIdx = numInactiveStates;
+            int startOfLargestGap = numInactiveStates;  // the active site right before the longest inactive gap
             int maxGapLength = 0;
-            for (int idx = 0; idx < maxSize; idx++) {
+            for (int idx = numInactiveStates; idx < maxSize; idx++) {
                 final int gapLength = idx - lastActiveIdx - 1;
                 if (gapLength > maxGapLength) {
                     startOfLargestGap = lastActiveIdx;
@@ -72,7 +76,7 @@ public class Mutect2ActivityProfile extends ActivityProfile {
                 }
             }
 
-            return Pair.of(startOfLargestGap + 1, true);
+            return Pair.of(Math.min(startOfLargestGap + 1 + PADDING, maxSize), true);
         }
     }
 }
