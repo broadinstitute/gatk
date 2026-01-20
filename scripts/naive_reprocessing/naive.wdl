@@ -25,14 +25,37 @@ workflow ReprocessAndValidate {
     Boolean two_stage = false
     
     # Parallel processing options (only used when parallelize=true)
+    # 8 shards optimized for ~equal runtime and preemptible VM safety (~1.1 hours each)
     Array[Array[String]] chromosome_groups = [
-      ["chr1", "chr2"],
-      ["chr3", "chr4", "chr5", "chr6"],
-      ["chr7", "chr8", "chr9", "chr10", "chr11", "chr12"],
-      ["chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+      ["chr1"],           # Largest chromosome
+      ["chr2"],           # Second largest
+      ["chr3", "chr4"],   # Medium chromosomes
+      ["chr5", "chr6"],   # Medium chromosomes
+      ["chr7", "chr8", "chr9"],      # Smaller chromosomes
+      ["chr10", "chr11", "chr12"],   # Smaller chromosomes
+      ["chr13", "chr14", "chr15", "chr16", "chr17", "chr18"],  # Small chromosomes
+      ["chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]  # Smallest + sex + mito
     ]
-    Array[String] shard_names = ["shard1_chr1_2", "shard2_chr3_6", "shard3_chr7_12", "shard4_chr13_Y"]
-    Array[Int] expected_uncertain_per_shard = [15000000, 12000000, 12000000, 15000000]
+    Array[String] shard_names = [
+      "shard1_chr1", 
+      "shard2_chr2", 
+      "shard3_chr3_4", 
+      "shard4_chr5_6",
+      "shard5_chr7_9",
+      "shard6_chr10_12",
+      "shard7_chr13_18",
+      "shard8_chr19_M"
+    ]
+    Array[Int] expected_uncertain_per_shard = [
+      10000000,  # chr1
+      9000000,   # chr2
+      8000000,   # chr3-4
+      8000000,   # chr5-6
+      7000000,   # chr7-9
+      7000000,   # chr10-12
+      6000000,   # chr13-18
+      5000000    # chr19-M
+    ]
   }
 
   # ============================================================================
@@ -376,8 +399,10 @@ task naive_processing_shard {
     echo "Intervals: $INTERVALS"
     
     # Filter BED file to only include regions in our chromosomes
-    # This speeds up overlap detection significantly
+    # This speeds up overlap detection significantly and reduces memory usage
     echo "Filtering BED file for shard chromosomes..."
+    echo "Original BED file size: $(wc -l < ~{umil}) lines"
+    
     CHROM_PATTERN=$(echo "~{sep='|' chromosomes}" | sed 's/|/\\|/g')
     grep -E "^($CHROM_PATTERN)\t" ~{umil} > filtered_umil.bed || true
     
@@ -387,7 +412,12 @@ task naive_processing_shard {
       touch filtered_umil.bed
     fi
     
-    echo "Filtered BED lines: $(wc -l < filtered_umil.bed)"
+    FILTERED_LINES=$(wc -l < filtered_umil.bed)
+    echo "Filtered BED lines: $FILTERED_LINES"
+    if [ "$(wc -l < ~{umil})" -gt 0 ]; then
+      REDUCTION=$(awk "BEGIN {printf \"%.1f\", (1 - $FILTERED_LINES / $(wc -l < ~{umil})) * 100}")
+      echo "BED file reduced by ${REDUCTION}% for this shard"
+    fi
     
     # Run SplitReadsByRealignmentDifficulty on this shard
     java -jar -Xmx4G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
