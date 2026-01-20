@@ -12,11 +12,14 @@ import java.util.stream.IntStream;
 public class Mutect2ActivityProfile extends ActivityProfile {
 
     private static final int PADDING = 5;
+    private final AssemblyRegionArgumentCollection args;
+    private final Random rng = Utils.getRandomGenerator();
 
     public Mutect2ActivityProfile(final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
         // note that in this class maxProbPropagationDistance is interpreted as a maximum phasing distance
         // we don't "propagate" probability like the BandPassActivityFilter
         super(args.maxProbPropagationDistance, args.activeProbThreshold, header);
+        this.args = args;
     }
 
     @Override
@@ -78,7 +81,9 @@ public class Mutect2ActivityProfile extends ActivityProfile {
                 }
             }
 
-            return Pair.of(Math.min(startOfLargestGap + 1 + PADDING, maxSize), isSomatic);
+            final boolean keepGermline = rng.nextDouble() < args.genotypeGermlineSitesFraction;
+
+            return Pair.of(Math.min(startOfLargestGap + 1 + PADDING, maxSize), isSomatic || keepGermline);
         }
     }
 }

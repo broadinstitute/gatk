@@ -21,6 +21,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
+    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
 
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
@@ -101,6 +102,19 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * Parameters that control genotyping regions
      */
 
+    /**
+     * This parameter is useful in Mutect2 and Permutect where we may want to retain some germline calls in a somatic
+     * call set for machine learning.
+     *
+     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
+     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, setting this parameter to a value less
+     * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
+     * this argument has no effect and no germline sites are genotyped.
+     */
+    @Advanced
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped in somatic calling.", optional = true)
+    public double genotypeGermlineSitesFraction = defaultGenotypeGermlineSitesFraction();
+
     @Hidden
     @Argument(fullName= INDEL_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling indels", optional = true)
     public int indelPaddingForGenotyping = 75;
@@ -162,6 +176,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      */
     protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
 
+    protected double defaultGenotypeGermlineSitesFraction() { return 1.0; }
     /**
      * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line
      */
