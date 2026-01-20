@@ -420,7 +420,7 @@ task naive_processing_shard {
     fi
     
     # Run SplitReadsByRealignmentDifficulty on this shard
-    java -jar -Xmx4G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
+    java -jar -Xmx2G ~{gatk_jar} SplitReadsByRealignmentDifficulty \
       -RLG ~{rlg} \
       -I ~{input_bam} \
       $INTERVALS \
@@ -443,7 +443,7 @@ task naive_processing_shard {
   runtime {
     docker: "broadinstitute/gatk:latest"
     cpu: 1
-    memory: "6G"
+    memory: "3500M"
     disks: "local-disk 400 SSD"
     preemptible: 3
   }
@@ -465,11 +465,13 @@ task merge_crams {
   command <<<
     set -e
     echo "MERGING ~{output_suffix} CRAMs ============"
+    echo "Number of input CRAMs: ~{length(input_crams)}"
     echo "Input files: ~{sep=' ' input_crams}"
     
     # Use samtools merge for speed (it's in the GATK docker)
+    # With 8 input files, use 2 threads (efficient for merge I/O)
     samtools merge \
-      -@ 4 \
+      -@ 2 \
       --reference ~{ref_fasta} \
       -O CRAM \
       ~{output_prefix}.~{output_suffix}.merged.cram \
@@ -485,8 +487,8 @@ task merge_crams {
 
   runtime {
     docker: "broadinstitute/gatk:latest"
-    cpu: 1
-    memory: "6G"
+    cpu: 2
+    memory: "4G"
     disks: "local-disk 1000 SSD"
     preemptible: 3
   }
