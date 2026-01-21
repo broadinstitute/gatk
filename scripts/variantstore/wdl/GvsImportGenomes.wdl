@@ -47,6 +47,7 @@ workflow GvsImportGenomes {
 
     # Dump these parquet files to a bucket
     String output_gcs_dir
+    Boolean configure_parquet_bucket_lifecycle = false
 
     Boolean is_wgs = true
   }
@@ -193,14 +194,17 @@ workflow GvsImportGenomes {
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
-    
-    # Set up lifecycle rules for parquet directories before loading
-#    call ConfigureParquetLifecycle {
-#      input:
-#        output_gcs_dir = output_gcs_dir,
-#        billing_project_id = billing_project_id,
-#        cloud_sdk_docker = effective_cloud_sdk_docker,
-#    }
+
+    if (configure_parquet_bucket_lifecycle) {
+      # Set up lifecycle rules for parquet directories before loading
+      # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
+      call ConfigureParquetLifecycle {
+        input:
+          output_gcs_dir = output_gcs_dir,
+          billing_project_id = billing_project_id,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
+    }
     
     # Load Parquet files into BigQuery after all data has been created
     call CreateParquetTrackingTable {
@@ -208,7 +212,7 @@ workflow GvsImportGenomes {
         project_id = project_id,
         dataset_name = dataset_name,
         set_is_loaded_done = SetIsLoadedColumn.done,
-        lifecycle_configured = "ConfigureParquetLifecycle.done",
+        lifecycle_configured = select_first([ConfigureParquetLifecycle.done, "done"]),
         variants_docker = effective_variants_docker,
     }
     
