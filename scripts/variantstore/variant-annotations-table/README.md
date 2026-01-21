@@ -14,7 +14,9 @@ The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates 
 configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run. If you forget and it fails, re-run it with call-caching on and all the same inputs, and it will resume at the right point.
 - **Note:** due to an [open issue with GCP Batch](https://partnerissuetracker.corp.google.com/issues/449751210) it is expected that some shards of `GenerateVepAndLofteeAnnotations` will fail
 with 50002 errors that are caused by this task consuming all the memory on the VM, leaving the Batch agent unable to checkin with the Batch service.
-If and when the workflow fails in this manner, double the memory in `GenerateVepAndLofteeAnnotations` and rerun `GvsCreateVATfromVDS` with call caching enabled. Repeat as necessary. For the AnVIL 3K dataset, about 50 of 500 shards failed with 4 GiB of memory.
+If and when the workflow fails in this manner, double the value in the `memory` runtime attribute of the `GenerateVepAndLofteeAnnotations` task  and rerun `GvsCreateVATfromVDS` with call caching enabled.
+Do not change any task inputs or call caching will break, just edit the value of the runtime attribute directly.
+Repeat as necessary. For the AnVIL 3K dataset, about 50 of 500 shards failed with 4 GiB of memory.
 Rerunning with 8 GiB of memory recovered most of these shards, but further runs of 16 GiB and 32 GiB were required for all shards to succeed.
 - The `ancestry_file` input is the GCS path of the TSV file that maps samples (by `sample_name`) to subpopulations.
 - You will want to run this workflow with the same `dataset_name`, `project_id`, and `filter_set_name` as `GvsCreateVds.wdl`.
