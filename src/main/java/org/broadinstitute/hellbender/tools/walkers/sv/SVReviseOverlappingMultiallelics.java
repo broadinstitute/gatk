@@ -18,38 +18,6 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 
-/**
- * Completes an initial series of cleaning steps for a VCF produced by the GATK-SV pipeline.
- *
- * <h3>Inputs</h3>
- * <ul>
- *     <li>
- *         VCF containing structural variant (SV) records from the GATK-SV pipeline.
- *     </li>
- *     <li>
- *         TODO
- *     </li>
- * </ul>
- *
- * <h3>Output</h3>
- * <ul>
- *     <li>
- *         Cleansed VCF.
- *     </li>
- * </ul>
- *
- * <h3>Usage Example</h3>
- * <pre>
- *     TODO
- * </pre>
- *
- * <h3>Processing Steps</h3>
- * <ol>
- *     <li>
- *         TODO
- *     </li>
- * </ol>
- */
 @CommandLineProgramProperties(
         summary = "Clean and format SV VCF",
         oneLineSummary = "Clean and format SV VCF",

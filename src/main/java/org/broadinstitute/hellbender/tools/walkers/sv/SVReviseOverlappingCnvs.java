@@ -20,37 +20,15 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Collections;
 
-/**
- * Completes a series of cleaning steps for a VCF produced by the GATK-SV pipeline.
- *
- * <h3>Inputs</h3>
- * <ul>
- *     <li>
- *         TODO
- *     </li>
- * </ul>
- *
- * <h3>Output</h3>
- * <ul>
- *     <li>
- *         TODO
- *     </li>
- * </ul>
- *
- * <h3>Usage Example</h3>
- * <pre>
- *     TODO
- * </pre>
- *
- * <h3>Processing Steps</h3>
- * <ol>
- *     <li>
- *         TODO
- *     </li>
- * </ol>
- */
 @CommandLineProgramProperties(
         summary = "Clean and format SV VCF",
         oneLineSummary = "Clean and format SV VCF",
