@@ -1,8 +1,4 @@
-# The Dockerfile in this directory is used to build a Docker image for Ensembl VEP 115 with GRCh38 LOFTEE support.
-# Copy the Dockerfile over the `docker/Dockerfile` in the Ensembl VEP repo and copy this script to the root of the repo.
-#
-# This script is best run on an x86 VM. I was able to run it on my Apple Silicon Mac, but there were random crashes at
-# several different points and I had to restart each time.
+# This script should only be run on an x86 machine! See README.md for further info.
 set -o errexit -o nounset -o pipefail -o xtrace
 
 # Build and write the full image id to an id file.
