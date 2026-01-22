@@ -4,7 +4,7 @@ Mac resulted in frequent random segmentation faults and a final image that was m
 
 Steps to build:
 
-- Clone the Ensembl VEP repo [here](https://github.com/Ensembl/ensembl-vep#) and make sure the appropriate branch is checked out.
+- Clone the Ensembl VEP repo [here](https://github.com/Ensembl/ensembl-vep) and make sure the appropriate branch is checked out.
 For Ensembl VEP 115 this branch is `releases/115`, which at the time of this writing also happens to be the default branch.
 
 - Copy the Dockerfile in this directory over the `docker/Dockerfile` in the Ensembl VEP repo.
