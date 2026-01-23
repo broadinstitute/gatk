@@ -65,6 +65,8 @@ workflow GvsJointVariantCalling {
 
         File? target_interval_list
 
+        String parquet_output_gcs_dir
+
         # Overrides to be passed to GvsCreateFilterSet
         Int? INDEL_VQSR_max_gaussians_override = 4
         Int? INDEL_VQSR_mem_gb_override
@@ -154,6 +156,7 @@ workflow GvsJointVariantCalling {
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
             is_wgs = is_wgs,
+            parquet_output_gcs_dir = parquet_output_gcs_dir,
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
