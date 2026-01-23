@@ -32,7 +32,7 @@ setup(
     description='GATK gCNV computational kernel',
     long_description=open('gcnvkernel/README.txt').read(),
     install_requires=[
-        "pymc == 5.10.0",
+        "pymc == 5.11.0",
         "pytensor == 2.18.1",
         "numpy == 1.26.2",
         "scipy == 1.11.4",
