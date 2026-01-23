@@ -266,6 +266,7 @@ jobs:
 
   #run wdl validation on generated WDLs
   generatedWdlValidation:
+    if: false # Variants does not have any generated WDLs
     runs-on: ubuntu-latest
     name: Validate generated WDLs using womtools
     steps:
