@@ -5,7 +5,7 @@ import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsQuickstartVATIntegration.wdl" as QuickstartVATIntegration
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
 import "../GvsUtils.wdl" as Utils
-# A
+# B
 workflow GvsQuickstartIntegration {
     input {
         String git_branch_or_tag
@@ -332,6 +332,7 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = vcf_files_column_name,
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 extract_output_gcs_dir = extract_output_gcs_dir,
+                parquet_output_gcs_dir = extract_output_gcs_dir,
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
         }
 
