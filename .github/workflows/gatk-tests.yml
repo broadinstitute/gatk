@@ -288,6 +288,7 @@ jobs:
 
   #Run our various targeted medium scale wdl wiring tests
   wdlTests:
+    if: false # Variants does not want to run any of these workflows
     runs-on: ubuntu-latest
     strategy:
       matrix:
