@@ -347,7 +347,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1777_build_failure
-             - gg_VS-1785
          tags:
              - /.*/
    - name: GvsIngestTieout
