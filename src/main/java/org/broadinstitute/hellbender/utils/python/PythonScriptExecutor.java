@@ -225,8 +225,7 @@ public class PythonScriptExecutor extends PythonExecutorBase {
                 throw new RuntimeException(errorMessage);
             }
         } catch (PythonScriptExecutorException e) {
-            logger.warn("Could not load package '{}'", packageName);
-            // throw new RuntimeException(errorMessage, e);
+            throw new RuntimeException(errorMessage, e);
         }
     }
 
