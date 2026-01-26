@@ -694,3 +694,4 @@ If you use GATK in your research, please see [this article](https://gatk.broadin
 
 ## <a name="license">License</a>
 Licensed under the Apache 2.0 License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
+
