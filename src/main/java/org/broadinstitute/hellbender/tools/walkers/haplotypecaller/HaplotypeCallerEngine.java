@@ -695,7 +695,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     activeRegionDetectionHackishSamplePloidy,
                     sample.getValue().getBasePileup(), ref.getBase(),
                     hcArgs.minBaseQualityScore,
-                    averageHQSoftClips, false)).genotypeLikelihoods;
+                    averageHQSoftClips, false, hcArgs.activeRegionAltMultiplier)).genotypeLikelihoods;
             genotypes.add(new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make());
         }
 
@@ -780,6 +780,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(region, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, false);
+
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, hcArgs.maxMnpDistance, assembledEventMapVcfOutputWriter);
 
         if (assemblyDebugOutStream != null) {
@@ -1127,6 +1128,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 throw new UserException("Error closing debug output stream", e);
             }
         }
+
         HaplotypeCallerGenotypingDebugger.close();
         // Write assembly region debug output if present
         assemblyEngine.printDebugHistograms();

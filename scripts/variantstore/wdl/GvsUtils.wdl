@@ -71,6 +71,7 @@ task GetToolVersions {
   String submission_id_output = "submission_id.txt"
   String workflow_id_output = "workflow_id.txt"
   String google_project_output = "google_project.txt"
+  String date_as_secs_since_unix_epoch_output = "date_as_secs_since_unix_epoch.txt"
 
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
@@ -94,6 +95,7 @@ task GetToolVersions {
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{submission_id_output}
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' ${CROMWELL_ROOT}/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
     sed -n -E 's!.*(terra-[0-9a-f]+).*# project to use if requester pays$!\1!p' ${CROMWELL_ROOT}/gcs_localization.sh | sort -u > ~{google_project_output}
+    date +%s > ~{date_as_secs_since_unix_epoch_output}
 
     echo "~{effective_version}" > version.txt
 
@@ -131,7 +133,7 @@ task GetToolVersions {
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-01-26-alpine-31607c946ac7"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-09-10-gatkbase-1a3ae0febf7b"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-12-09-gatkbase-cda718c731d5"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -141,6 +143,7 @@ task GetToolVersions {
     String submission_id = read_string(submission_id_output)
     String workflow_id = read_string(workflow_id_output)
     String google_project = read_string(google_project_output)
+    String date_as_secs_since_unix_epoch = read_string(date_as_secs_since_unix_epoch_output)
   }
 }
 
@@ -222,7 +225,7 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = select_first([split_intervals_disk_size_override, 50]) # Note: disk size is cheap and lack of it can increase probability of preemption
+  Int disk_size = select_first([split_intervals_disk_size_override, 500]) # Note: disk size is cheap and lack of it can increase probability of preemption
   Int memory_size = select_first([split_intervals_mem_override, 16])
   Int java_memory = memory_size - 4
 
@@ -301,7 +304,7 @@ task SplitIntervalsTarred {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = select_first([split_intervals_disk_size_override, 10])
+  Int disk_size = select_first([split_intervals_disk_size_override, 500])
   Int memory_size = select_first([split_intervals_mem_override, 16])
   Int java_memory = memory_size - 4
 
@@ -808,6 +811,98 @@ task GetNumSamplesLoaded {
   }
 }
 
+task ValidateSampleNamesInSampleInfoTable {
+  input {
+    File sample_names_file
+    String fq_sample_table
+    String project_id
+    String dataset_name
+    String cloud_sdk_docker
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
+    description: "Validates that all sample names in the input file exist in the fq_sample_table and are not withdrawn."
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # Name a temporary table with the input sample names
+    TEMP_TABLE="temp_sample_validation_${RANDOM}"
+
+    # Upload sample names to a temporary BQ table
+    bq --apilog=false load --project_id=~{project_id} \
+      --autodetect \
+      --source_format=CSV \
+      --replace \
+      ~{dataset_name}.${TEMP_TABLE} \
+      ~{sample_names_file} \
+      sample_name:STRING
+
+    # Set expiration on temp table to 1 hour
+    bq --apilog=false update --expiration 3600 ~{project_id}:~{dataset_name}.${TEMP_TABLE}
+
+    # Find sample names that are NOT in the fq_sample_table
+    # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
+      SELECT DISTINCT input.sample_name
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
+      LEFT JOIN \`~{fq_sample_table}\` AS samples
+      ON input.sample_name = samples.sample_name
+      WHERE samples.sample_name IS NULL
+      " | sed 1d > missing_samples.txt
+
+    # Now check if any of the input sample names are listed as withdrawn in the sample table
+
+    # bq query --max_rows check: enlarged max rows in case we get a lot of missing samples
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000000 "
+      SELECT DISTINCT input.sample_name
+      FROM ~{project_id}.~{dataset_name}.${TEMP_TABLE} AS input
+      JOIN \`~{fq_sample_table}\` AS samples
+      ON input.sample_name = samples.sample_name
+      WHERE samples.withdrawn IS NOT NULL
+      " | sed 1d > withdrawn_samples.txt
+
+    # Check if any samples are missing or are withdrawn
+    if [ -s missing_samples.txt ] || [ -s withdrawn_samples.txt ]; then
+      if [ -s missing_samples.txt ]; then
+        echo "ERROR: The following sample names were not found in ~{fq_sample_table}:"
+        cat missing_samples.txt
+      fi
+      if [ -s withdrawn_samples.txt ]; then
+        echo "ERROR: The following sample names are listed as withdrawn in ~{fq_sample_table}:"
+        cat withdrawn_samples.txt
+      fi
+
+      echo "ERROR: Sample name validation failed."
+      exit 1
+    fi
+
+    echo "All sample names validated successfully"
+  >>>
+
+  output {
+    Boolean done = true
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 SSD"
+    preemptible: 3
+    cpu: 1
+  }
+}
 
 task CountSuperpartitions {
     meta {
@@ -1266,6 +1361,55 @@ task SelectVariants {
     }
 }
 
+task PadIntervalList {
+  input {
+    File interval_list_file
+    Int padding_size
+    String output_basename
+
+    Int memory_mb = 3000
+    Int disk_size_gb = ceil(2 * size(interval_list_file, "GiB")) + 200
+    String gatk_docker
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
+
+  String padded_interval_list_filename = output_basename + ".interval_list"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+      IntervalListTools \
+        --INPUT ~{interval_list_file} \
+        --PADDING ~{padding_size} \
+        --OUTPUT ~{padded_interval_list_filename} \
+        --UNIQUE true
+  >>>
+
+  runtime {
+    docker: gatk_docker
+    cpu: 1
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 3
+    noAddress: true
+  }
+
+  output {
+    File padded_interval_list_file = padded_interval_list_filename
+    File monitoring_log = "monitoring.log"
+  }
+}
+
 task MergeJSONs {
     input {
         Array[File] input_files
@@ -1339,7 +1483,7 @@ task SummarizeTaskMonitorLogs {
         Array[File] inputs
         String variants_docker
         File log_fofn = write_lines(inputs)
-        }
+    }
     parameter_meta {
         inputs: {
             localization_optional: true
