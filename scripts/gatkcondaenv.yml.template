@@ -21,6 +21,7 @@ channels:
 
 dependencies:
 
+# use : rather than :: for channel specifiers
 # core python dependencies
 - conda-forge:python=3.10.13         # do not update without good reason
 - conda-forge:pip=23.3.1
