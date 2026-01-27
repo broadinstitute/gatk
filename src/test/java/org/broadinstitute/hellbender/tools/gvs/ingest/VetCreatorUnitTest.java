@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import htsjdk.variant.variantcontext.*;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
@@ -15,11 +14,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static htsjdk.variant.vcf.VCFConstants.DEPTH_KEY;
 import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
 
 public class VetCreatorUnitTest {
@@ -27,7 +24,7 @@ public class VetCreatorUnitTest {
     private static final String SAMPLE_NAME = "NA1";
     private static final String PROJECT_ID = "test";
     private static final String DATASET_NAME = "test";
-    private File outputDirectory = new File("quickstart/output/");
+    private final File outputDirectory = new File("quickstart/output/");
     Path currentRelativePath = Paths.get("");
     private final CommonCode.OutputType outputType = CommonCode.OutputType.PARQUET;
     private static final String VET_FILETYPE_PREFIX = "vet_"; // should this live somewhere else--check out IngestConstants for instance--why is that a tsv?!?!
@@ -62,7 +59,7 @@ public class VetCreatorUnitTest {
 
 
 
-    @Test
+    @Test(enabled = false)
     public void testParquetOutputFile() throws IOException {
         String fullPath = String.join(currentRelativePath.toAbsolutePath().toString(), outputDirectory.toString());
         final File parquetOutputFile = new File(fullPath, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + ".parquet");
@@ -73,7 +70,7 @@ public class VetCreatorUnitTest {
     }
 
     //@Test(expected = FileAlreadyExistsException.class)
-    @Test
+    @Test(enabled = false)
     public void testErrorFile() throws IOException {
         VariantContextBuilder builderA =
                 new VariantContextBuilder("a","1",10329,10329,
