@@ -205,8 +205,8 @@ Once the VAT table is created and a tsv is exported, the AoU research workbench 
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
-    - `GvsExtractCallset` currently defaults to 1000 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. For AoU callsets make sure to specify the AoU-appropriate `maximum_alternate_alleles` value, currently 100.
-    - `GvsExtractCallsetPgen` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped.
+    - `GvsExtractCallset` currently defaults to 1000 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Specify a `maximum_alternate_alleles` value of 100.
+    - `GvsExtractCallsetPgenMerged` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Specify a `max_alt_alleles` value of 100.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflows have finished.
     - For `GvsExtractCallset`, you will probably (check the requirements to confirm) want to set the input `bgzip_output_vcfs` to `true`.
     - For `GvsExtractCallset`, make sure to set the `ploidy_table_name` to 'sample_chromosome_ploidy' (the default ploidy table name created during ingest)
@@ -250,47 +250,30 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 
 
-### VID to Participant ID Mapping Table.
+### VID to Participant ID Mapping Table
 Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them. 
 
-1. Create the database table. Using (for instance) the BigQuery cloud user interface, run the query below. Note that you should redirect the output of this query to a new database table in the same dataset, for instance by using the 'query settings' feature in the BigQuery cloud user interface. Also note that you will need to specify the `project`, `dataset`, and `vat_table_name` fields before running the query. Further note that this query might take an hour or two to run to completion:
-    ```
-   CREATE TEMP FUNCTION vidToLocation(vid string)
-    RETURNS int64
-    AS (
-        (CASE SPLIT(vid, '-')[OFFSET(0)]
-                            WHEN 'X' THEN 23
-                            WHEN 'Y' THEN 24
-                            ELSE CAST(SPLIT(vid, '-')[OFFSET(0)] AS int64) END) * 1000000000000 +
-                    CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64)
-    );
-    
-    SELECT vat.vid as vid, ARRAY_AGG(SAFE_CAST(si.sample_name as INT64) IGNORE NULLS) AS person_ids
-        FROM `<project>.<dataset>.alt_allele` AS aa
-                JOIN `<project>.<dataset>.sample_info` AS si
-                    ON aa.sample_id = si.sample_id
-                JOIN
-            (SELECT vid,
-                vidToLocation(vid) AS location,
-                SPLIT(vid, '-')[OFFSET(2)] AS ref_allele,
-                SPLIT(vid, '-')[OFFSET(3)] AS alt_allele
-            FROM `<project>.<dataset>.<vat_table_name>`
-            GROUP BY vid, location) AS vat
-        ON
-            vat.ref_allele = aa.ref AND
-            vat.alt_allele = aa.allele AND
-            vat.location = aa.location
-    GROUP BY vat.vid
-    ORDER BY
-        vidToLocation(vat.vid),
-        SPLIT(vat.vid, '-')[OFFSET(2)],
-        SPLIT(vat.vid, '-')[OFFSET(3)]
-   ```
-1. Once the query has successfully finished, you should cluster it on the field `vid`. This can be accomplished using the command below. Note that you will need to specify the `project`, `dataset`, and `mapping_table_name` fields before running the command:
-    ```
-    bq update --project_id=<project> --clustering_fields=vid <dataset>.<mapping_table_name>
-    ```
+1. First run `GvsCreateParticipantMappingTable.wdl` to create this participant ID mapping table and most of its data.
+   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `participant_mapping_table_name` that
+   will be created to hold the VID to participant mapping information.
+1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" (a.k.a "pseudo VIDs"). These unmapped VIDs have
+   VAT table entries but no corresponding `alt_allele` entries and correspond to data that appeared in
+   input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
+   disconnected from their `alt_allele` representations. Specify the following parameters:
+   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
+   1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
+       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
+1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATFromVDS` currently preserves a left-aligned version of the
+   synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
+   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
+       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
+   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATFromVDS.wdl`.
+   1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
+      position/ref/alt to left-aligned position/ref/alt. This should be a new table.
 
+#### Delivery Steps
 1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
 
 1. Note well that there will be a small difference in the number of vids in the VAT and that in the new mapping table that you have just created. For the Echo callset there are 3595 vids in the VAT that don't exist in the new mapping table (use the query below to determine them). The difference occurs because when we generate annotations using Nirvana, Nirvana left align and truncates the indels. For some of these indels, they now are remapped to a slightly different location than we had defined them as in the `alt_allele` table. This is a known issue that will be resolved in a future release.
@@ -298,3 +281,4 @@ Once the VAT has been created, you will need to create a database table mapping 
     ```
    select distinct vid from `<dataset>.<vat_table_name>` where vid not in (select vid from `<dataset>.<mapping_table_name>`) ;
     ```
+   Instructions for adding these "unmapped VIDs" into the participant mapping table are forthcoming.

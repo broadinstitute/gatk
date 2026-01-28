@@ -74,7 +74,7 @@ final guavaVersion = System.getProperty('guava.version', '32.1.3-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.24.1')
 final testNGVersion = System.getProperty('testNGVersion', '7.7.0')
 final googleCloudNioVersion = System.getProperty('googleCloudNioVersion','0.127.8')
-final gklVersion = System.getProperty('gklVersion', '0.9.0')
+final gklVersion = System.getProperty('gklVersion', '0.9.1')
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'

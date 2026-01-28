@@ -52,6 +52,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String DEBUG_ASSEMBLY_REGION_STATE_LONG_NAME = "debug-assembly-region-state";
     public static final String DEBUG_GENOTYPER_OUTPUT_LONG_NAME = "debug-genotyper-output";
     public static final String DONT_GENOTYPE_LONG_NAME = "dont-genotype";
+    public static final String ACTIVE_REGION_ALT_MULTIPLIER = "activeregion-alt-multiplier";
 
     @ArgumentCollection
     public StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
@@ -97,6 +98,19 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = StandardArgumentDefinitions.COMPARISON_LONG_NAME, shortName = StandardArgumentDefinitions.COMPARISON_SHORT_NAME, doc = "Comparison VCF file(s)", optional = true)
     public List<FeatureInput<VariantContext>> comps = new ArrayList<>();
+
+    /**
+     * Applies a multiplier to up-weight ALT-supporting reads when computing
+     * genotype likelihoods for active region selection. As an example, a value
+     * of 2 would effectively result in each ALT-supporting read being counted
+     * twice during active region detection. A value of 1.5 would similarly weight
+     * ALT-supporting reads 50% more than REF-supporting reads during active
+     * region detection. Values above 1 will lead to more regions being declared
+     * active, while values below 1 will decrease the number of regions being declared active.
+     */
+    @Advanced
+    @Argument(fullName = ACTIVE_REGION_ALT_MULTIPLIER, doc = "Multiplier for up-weighting ALT-supporting reads during active region determination", optional = true)
+    public double activeRegionAltMultiplier = 1;
 
     /**
      * When HC is run in reference confidence mode with banding compression enabled (-ERC GVCF), homozygous-reference
@@ -213,7 +227,6 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Hidden
     @Argument(fullName = JUST_DETERMINE_ACTIVE_REGIONS_LONG_NAME, doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
     public boolean justDetermineActiveRegions = false;
-
 
     @Hidden
     @Advanced

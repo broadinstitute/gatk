@@ -6,7 +6,7 @@ import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsUtils.wdl" as Utils
-
+# 3
 workflow GvsJointVariantCalling {
     input {
         Boolean go = true
@@ -65,6 +65,8 @@ workflow GvsJointVariantCalling {
 
         File? target_interval_list
 
+        String parquet_output_gcs_dir
+
         # Overrides to be passed to GvsCreateFilterSet
         Int? INDEL_VQSR_max_gaussians_override = 4
         Int? INDEL_VQSR_mem_gb_override
@@ -74,7 +76,7 @@ workflow GvsJointVariantCalling {
         File? training_python_script
         File? scoring_python_script
 
-        Int? maximum_alternate_alleles
+        Int maximum_alternate_alleles = 1000
 
         Int? extract_maxretries_override
         Int? extract_preemptible_override
@@ -154,6 +156,7 @@ workflow GvsJointVariantCalling {
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
             is_wgs = is_wgs,
+            parquet_output_gcs_dir = parquet_output_gcs_dir,
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
@@ -248,7 +251,6 @@ workflow GvsJointVariantCalling {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             merge_output_vcfs = merge_output_vcfs,
-            bgzip_output_vcfs = bgzip_output_vcfs,
     }
 
     output {

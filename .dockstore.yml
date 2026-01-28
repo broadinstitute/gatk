@@ -290,6 +290,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1737
+             - gg_VS-1785
          tags:
              - /.*/
    - name: GvsBeta
@@ -345,7 +346,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1730_clusters_leaking
+             - vs_1777_build_failure
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -464,6 +465,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsMapUnmappedVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1757_dropped_duplicates
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -483,3 +492,30 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: SearchGVCFsAtSite
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/SearchGVCFsAtSite.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - dst_2716_an_divergence_echo_foxtrot
+   - name: GvsCreateParticipantMappingTable
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateParticipantMappingTable.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1757_dropped_duplicates
+       tags:
+         - /.*/
+   - name: GvsMapDroppedDuplicateVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapDroppedDuplicateVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1757_dropped_duplicates
+       tags:
+         - /.*/

@@ -5,6 +5,7 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -72,6 +73,7 @@ import java.util.*;
         oneLineSummary = "Merges SV evidence records.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
+@DocumentedFeature
 @ExperimentalFeature
 public class PrintSVEvidence extends MultiFeatureWalker<SVFeature> {
     public static final String EVIDENCE_FILE_NAME = "evidence-file";

@@ -123,6 +123,7 @@ workflow GvsQuickstartVcfIntegration {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             extract_output_gcs_dir = extract_output_gcs_dir,
+            parquet_output_gcs_dir = extract_output_gcs_dir,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)
