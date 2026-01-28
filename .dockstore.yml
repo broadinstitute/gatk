@@ -290,7 +290,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1737
-             - gg_VS-1785
+             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsBeta
