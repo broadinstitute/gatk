@@ -332,6 +332,7 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = vcf_files_column_name,
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 extract_output_gcs_dir = extract_output_gcs_dir,
+                parquet_output_gcs_dir = extract_output_gcs_dir,
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
         }
 
