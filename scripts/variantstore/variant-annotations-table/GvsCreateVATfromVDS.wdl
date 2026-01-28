@@ -904,6 +904,7 @@ task GenerateVepAndLofteeAnnotations {
 }
 
 task BigQueryLoadRawVepAndLofteeAnnotations {
+    # Loads data into BQ in the same "raw" tab-delimited format that was emitted by VEP.
     input {
         String variants_docker
         Array[File] vep_loftee_raw_output
@@ -986,6 +987,12 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 }
 
 task BigQueryCookVepAndLofteeRawAnnotations {
+    # Reformat the "raw" data ("cooks" it) into a more directly queryable BigQuery format. This involves:
+    # - Creating a VID field by parsing information in the `Uploaded_variation` field.
+    # - Splitting nested fields into BigQuery REPEATEDs.
+    # - Extracting an HGNC ID.
+    # - Splitting and castng a nested GERP field into an array of floating point numbers.
+    # - Squashing any duplicate rows resulting from deletions spanning shards.
     input {
         Boolean go
         String variants_docker
