@@ -17,6 +17,7 @@ channels:
 # if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
 # verify that key dependencies are installed from the correct channel
 - conda-forge
+- bioconda
 
 dependencies:
 
@@ -26,6 +27,7 @@ dependencies:
 - conda-forge:blas=1.0=mkl            # our official environment uses MKL versions of various packages; if other versions are desired, users should edit this YML accordingly
 - conda-forge::numpy=1.26.2
 - conda-forge::pymc=5.10.1
+- conda-forge:fastprogress=1.0.3
 - conda-forge::pytensor=2.18.3
 - conda-forge::scipy=1.11.4
 - conda-forge::h5py=3.10.0
