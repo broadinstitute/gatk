@@ -1004,7 +1004,7 @@ task SetIsLoadedColumnOnceParquetLoadingVerified {
 
     # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true'
+    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true where 1=1'
   >>>
   runtime {
     docker: cloud_sdk_docker
