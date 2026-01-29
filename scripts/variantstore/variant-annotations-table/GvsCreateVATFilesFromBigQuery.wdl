@@ -192,7 +192,7 @@ task BigQueryExportVat {
         clinvar_last_updated,
         (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_phenotype) c) as clinvar_phenotype,
         (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_rcv_ids) c) as clinvar_rcv_ids,
-        (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_rcv_classification) c) as clinvar_rcv_classification,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_rcv_classifications) c) as clinvar_rcv_classifications,
         (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_rcv_num_stars) num_stars) as clinvar_num_stars,
         mane_select_name,
         mane_plus_clinical_name,
