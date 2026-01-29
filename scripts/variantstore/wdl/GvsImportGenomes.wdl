@@ -46,6 +46,7 @@ workflow GvsImportGenomes {
     String? billing_project_id
 
     # Dump these parquet files to a bucket
+    Boolean use_parquet_ingest = true   # currently only in limited use.
     String output_gcs_dir
     Boolean configure_parquet_bucket_lifecycle = false
 
@@ -187,6 +188,7 @@ workflow GvsImportGenomes {
   }
 
   if (load_vet_and_ref_ranges) {
+    # Note - currently this is NOT setting the is_loaded column because sample_load_status is not being set in CreateVariantIngestFiles... TODO
     call SetIsLoadedColumn {
       input:
         load_done = LoadData.done,
@@ -244,6 +246,14 @@ workflow GvsImportGenomes {
         gcs_files_list = DiscoverParquetFiles.all_files_list,
         load_outputs = LoadParquetFilesToBQ.completion_status,
         variants_docker = effective_variants_docker,
+    }
+
+    call SetIsLoadedColumnOnceParquetLoadingVerified {
+      input:
+        verify_done = VerifyParquetLoading.done,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -955,5 +965,55 @@ task VerifyParquetLoading {
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
+    String done = "done"
+  }
+}
+
+# Temporary hack to set is_loaded FOR ALL SAMPLES only after parquet loading has been verified - dangerous assumption that they are all loaded.
+# This so that I can get it through testing.
+# The right way is probably to update CreateVariantIngestFiles to set sample_status entries appropriately.
+task SetIsLoadedColumnOnceParquetLoadingVerified {
+  input {
+    String dataset_name
+    String project_id
+
+    String verify_done
+    String cloud_sdk_docker
+  }
+  meta {
+    # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
+    volatile: true
+  }
+
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
+
+    # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
+    # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
+    # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
+    # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
+
+    # bq query --max_rows check: ok update
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true'
+  >>>
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    cpu: 1
+  }
+
+  output {
+    String done = "done"
   }
 }
