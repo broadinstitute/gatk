@@ -198,7 +198,14 @@ task BigQueryExportVat {
         ARRAY_TO_STRING(clinvar_rcv_classifications, ", ") as clinvar_rcv_classifications,
         (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_rcv_num_stars) num_stars) as clinvar_num_stars,
         mane_select_name,
-        mane_plus_clinical_name
+        mane_plus_clinical_name,
+        hgnc_symbol,
+        hgnc_id,
+        LoF,
+        ARRAY_TO_STRING(LoF_filter, ", ") as LoF_filter,
+        ARRAY_TO_STRING(LoF_flags, ", ") as LoF_flags,
+        ARRAY_TO_STRING(LoF_info, ", ") as LOF_info,
+        (SELECT STRING_AGG(CAST(g as STRING), ", ") FROM UNNEST(GERP) g) as GERP,
         FROM `~{dataset_name}.~{vat_table}`
         WHERE contig="~{contig}"
         ORDER BY position
