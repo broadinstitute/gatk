@@ -12,7 +12,6 @@ workflow GvsCreateVATFilesFromBigQuery {
 
         String output_path
         Int? merge_vcfs_disk_size_override
-        Boolean precondition_met = true
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
     }
@@ -38,7 +37,6 @@ workflow GvsCreateVATFilesFromBigQuery {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = vat_table_name,
-                load_jsons_done = precondition_met,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
@@ -68,7 +66,6 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
-        Boolean load_jsons_done
         String cloud_sdk_docker
     }
 

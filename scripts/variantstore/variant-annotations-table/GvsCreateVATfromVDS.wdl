@@ -383,9 +383,6 @@ workflow GvsCreateVATfromVDS {
                 vat_table_name = DeduplicateVatInBigQuery.vat_table,
                 output_path = effective_output_path,
                 merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-                # This precondition seems wrong / misleading. This task is actually gated on DeduplicateVatInBigQuery,
-                # as it should be.
-                precondition_met = BigQueryLoadJson.done,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
        }
