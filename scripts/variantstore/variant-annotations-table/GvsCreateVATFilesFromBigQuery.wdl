@@ -187,22 +187,22 @@ task BigQueryExportVat {
         splice_ai_donor_loss_score,
         splice_ai_donor_loss_distance,
         (SELECT STRING_AGG(CAST(id AS STRING), ", ") FROM UNNEST(omim_phenotypes_id) id) as omim_phenotypes_id,
-        ARRAY_TO_STRING(omim_phenotypes_name, ", ") as omim_phenotypes_name,
-        ARRAY_TO_STRING(clinvar_classification, ", ") as clinvar_classification,
+        (SELECT STRING_AGG(o, ", ") FROM UNNEST(omim_phenotypes_name) o) as omim_phenotypes_name,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_classification) c) as clinvar_classification,
         clinvar_last_updated,
-        ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
-        ARRAY_TO_STRING(clinvar_rcv_ids, ", ") as clinvar_rcv_ids,
-        ARRAY_TO_STRING(clinvar_rcv_classifications, ", ") as clinvar_rcv_classifications,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_phenotype) c) as clinvar_phenotype,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_rcv_ids) c) as clinvar_rcv_ids,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(clinvar_rcv_classification) c) as clinvar_rcv_classification,
         (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_rcv_num_stars) num_stars) as clinvar_num_stars,
         mane_select_name,
         mane_plus_clinical_name,
         hgnc_symbol,
         hgnc_id,
         LoF,
-        ARRAY_TO_STRING(LoF_filter, ", ") as LoF_filter,
-        ARRAY_TO_STRING(LoF_flags, ", ") as LoF_flags,
-        ARRAY_TO_STRING(LoF_info, ", ") as LOF_info,
-        (SELECT STRING_AGG(CAST(g as STRING), ", ") FROM UNNEST(GERP) g) as GERP,
+        (SELECT STRING_AGG(l, ", ") FROM UNNEST(LoF_filter) l) as LoF_filter,
+        (SELECT STRING_AGG(l, ", ") FROM UNNEST(LoF_flags) l) as LoF_flags,
+        (SELECT STRING_AGG(l, ", ") FROM UNNEST(LoF_info) l) as LoF_info,
+        (SELECT STRING_AGG(CAST(g as STRING), ", ") FROM UNNEST(GERP) g) as GERP
         FROM `~{dataset_name}.~{vat_table}`
         WHERE contig="~{contig}"
         ORDER BY position
@@ -274,7 +274,7 @@ task MergeVatTSVs {
 
         echo_date "making header.gz"
         # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
-        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfe_ac\tgnomad_nfe_an\tgnomad_nfe_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype\tclinvar_rcv_ids\tclinvar_rcv_classifications\tclinvar_num_stars\tmane_select_name\tmane_plus_clinical_name" | gzip > header.gz
+        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfe_ac\tgnomad_nfe_an\tgnomad_nfe_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype\tclinvar_rcv_ids\tclinvar_rcv_classifications\tclinvar_num_stars\tmane_select_name\tmane_plus_clinical_name\thgnc_symbol\thgnc_id\tLoF\tLoF_filter\tLoF_flags\tLoF_info\tGERP" | gzip > header.gz
 
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz
