@@ -80,7 +80,7 @@ task BigQueryExportVat {
 
         # note: tab delimiter and compression creates tsv.gz files
         # bq query --max_rows check: ok export
-        cat > query.sql <<<FIN
+        cat > query.sql <<FIN
 
         DECLARE dynamic_vat_query STRING;
         DECLARE vat_query STRING;
