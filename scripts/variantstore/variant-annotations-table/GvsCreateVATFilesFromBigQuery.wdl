@@ -122,7 +122,7 @@ task BigQueryExportVat {
         EXECUTE IMMEDIATE export_query;
         FIN
 
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < export_query.sql
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql
 
     >>>
     # ------------------------------------------------
