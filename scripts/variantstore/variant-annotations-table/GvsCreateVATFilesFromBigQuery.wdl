@@ -82,17 +82,11 @@ task BigQueryExportVat {
         # bq query --max_rows check: ok export
         cat > query.sql <<<FIN
 
+        DECLARE dynamic_vat_query STRING;
+        DECLARE vat_query STRING;
         DECLARE export_query STRING;
 
-        SET export_query = """
-        EXPORT DATA OPTIONS(
-        uri="~{export_path}",
-        format="CSV",
-        compression="GZIP",
-        overwrite=true,
-        header=false,
-        field_delimiter="\t") AS
-
+        SET dynamic_vat_query = """
         SELECT 'SELECT ' ||
         (SELECT
         STRING_AGG(
@@ -106,9 +100,24 @@ task BigQueryExportVat {
         WHERE
         table_name = '~{vat_table}'
         ) ||
-        'FROM ~{project_id}.~{dataset_name} WHERE contig = "~{contig}" ORDER BY position'
+        ' FROM `~{project_id}.~{dataset_name}.~{vat_table}` WHERE contig = "~{contig}" ORDER BY position'
 
         """;
+
+        EXECUTE IMMEDIATE dynamic_vat_query INTO vat_query;
+
+        SET export_query = """
+        EXPORT DATA OPTIONS(
+        uri="~{export_path}",
+        format="CSV",
+        compression="GZIP",
+        overwrite=true,
+        header=false,
+        field_delimiter="\t") AS
+
+        """ || vat_query;
+
+        SELECT export_query;
 
         EXECUTE IMMEDIATE export_query;
         FIN
@@ -129,7 +138,7 @@ task BigQueryExportVat {
     # Outputs:
     output {
         Boolean done = true
-        File export_query = "export_query.sql"
+        File export_query = "query.sql"
     }
 }
 
