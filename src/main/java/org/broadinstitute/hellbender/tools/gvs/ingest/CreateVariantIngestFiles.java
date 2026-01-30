@@ -339,6 +339,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 }
             }
         } else if (outputType == CommonCode.OutputType.PARQUET) {
+            loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
+
+            LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
+
+            // Legacy "FINISHED" state indicates variants and references completely loaded.
+            if (state.isFinished()) {
+                logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
+                System.exit(0);
+            }
+
             // These checks don't matter for parquet, since it's a local file created.  Operate as though they don't exist at all times during testing
             refRangesRowsExist = Boolean.FALSE;
             vetRowsExist = Boolean.FALSE;
