@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
 public class SVMatchesFinder implements CorrespondingSVSelector {
     protected final Map<Long, SVCallRecord> truthIdToItemMap;
     protected final Map<Long, ActiveCluster> idToClusterMap;
-    private final SVConcordanceLinkage linkage;
+    private final SVMatchingLinkage linkage;
 
     private Integer lastItemStart;
     private String lastItemContig;
 
-    public SVMatchesFinder(final SVConcordanceLinkage linkage) {
+    public SVMatchesFinder(final SVMatchingLinkage linkage) {
         this.linkage = Utils.nonNull(linkage);
         truthIdToItemMap = new HashMap<>();
         idToClusterMap = new HashMap<>();

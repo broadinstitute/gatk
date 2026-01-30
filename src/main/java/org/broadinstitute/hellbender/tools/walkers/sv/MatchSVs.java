@@ -141,7 +141,7 @@ public final class MatchSVs extends AbstractConcordanceWalker {
                     final ClusteringParameters pesrParams = ClusteringParameters.createPesrParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
                     final ClusteringParameters mixedParams = ClusteringParameters.createMixedParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
                     final ClusteringParameters depthParams = ClusteringParameters.createDepthParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
-                    final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
+                    final SVMatchingLinkage linkage = new SVMatchingLinkage(dictionary);
                     linkage.setDepthOnlyParams(depthParams);
                     linkage.setMixedParams(mixedParams);
                     linkage.setEvidenceParams(pesrParams);
@@ -154,7 +154,7 @@ public final class MatchSVs extends AbstractConcordanceWalker {
             }
         }
 
-        final SVConcordanceLinkage defaultLinkage = new SVConcordanceLinkage(dictionary);
+        final SVMatchingLinkage defaultLinkage = new SVMatchingLinkage(dictionary);
         defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
         defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
         defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());
