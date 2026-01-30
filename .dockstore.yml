@@ -222,6 +222,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1736
+             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
