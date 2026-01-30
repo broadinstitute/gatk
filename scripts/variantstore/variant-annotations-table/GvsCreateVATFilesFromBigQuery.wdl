@@ -80,38 +80,11 @@ task BigQueryExportVat {
 
         # note: tab delimiter and compression creates tsv.gz files
         # bq query --max_rows check: ok export
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} '
+        cat > query.sql <<<FIN
 
-        DECLARE dynamic_vat_fields_query STRING;
-        DECLARE dynamic_query STRING;
         DECLARE export_query STRING;
 
-        SET dynamic_vat_fields_query = """
-
-        SELECT
-        STRING_AGG(
-        CASE
-        WHEN data_type LIKE "ARRAY%" THEN FORMAT("(SELECT STRING_AGG(CAST(x AS STRING), '"','"') FROM UNNEST(%s) x) AS %s", column_name, column_name)
-        ELSE column_name
-        END
-        , ",") AS select_statement
-        FROM
-        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
-        WHERE
-        table_name = "~{vat_table}"
-
-        """;
-
-        SELECT dynamic_vat_fields_query;
-
-        SET dynamic_query = "SELECT " || dynamic_vat_fields_query || """
-        FROM ~{project_id}.~{dataset_name} WHERE contig = "~{contig}" ORDER BY position'
-        """;
-
-        SELECT dynamic_query;
-
         SET export_query = """
-
         EXPORT DATA OPTIONS(
         uri="~{export_path}",
         format="CSV",
@@ -119,12 +92,29 @@ task BigQueryExportVat {
         overwrite=true,
         header=false,
         field_delimiter="\t") AS
-        """ || dynamic_query;
 
-        SELECT export_query;
+        SELECT 'SELECT ' ||
+        (SELECT
+        STRING_AGG(
+        CASE
+        WHEN data_type LIKE 'ARRAY%' THEN FORMAT('(SELECT STRING_AGG(CAST(x AS STRING), ",") FROM UNNEST(%s) x) AS %s', column_name, column_name)
+        ELSE column_name
+        END
+        , ',') AS select_statement
+        FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        WHERE
+        table_name = '~{vat_table}'
+        ) ||
+        'FROM ~{project_id}.~{dataset_name} WHERE contig = "~{contig}" ORDER BY position'
+
+        """;
 
         EXECUTE IMMEDIATE export_query;
-        '
+        FIN
+
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < export_query.sql
+
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -139,6 +129,7 @@ task BigQueryExportVat {
     # Outputs:
     output {
         Boolean done = true
+        File export_query = "export_query.sql"
     }
 }
 
