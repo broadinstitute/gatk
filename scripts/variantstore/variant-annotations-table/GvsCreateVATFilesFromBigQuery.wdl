@@ -81,7 +81,7 @@ task BigQueryExportVat {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        -- Write out a query to a file using an uninterpolated here doc. The single quotes around the FIN delimiter
+        -- Write out a query to a file using an uninterpolated here doc. The single quotes around the delimiter
         -- tell bash not to interpolate within the here doc. Without the backticks bash will evaluate whatever is
         -- between pairs of backticks which would not work out well for us.
         cat > query.sql <<'FIN'
@@ -95,8 +95,8 @@ task BigQueryExportVat {
         -- Depending on whether a column type is primitive or `ARRAY`, the `CASE` statement returns a query fragment
         -- that either returns the value of the field (for a primitive) or an expression that `STRING_AGG`s the array
         -- values into a single comma-separated string. Note this dynamic query is simply building a string appropriate
-        -- for running against the VAT table based on the contents of `INFORMATION_SCHEMA` and does not actually run
-        -- the query yet.
+        -- for running against the VAT table based on the contents of `INFORMATION_SCHEMA` and does not actually query
+        -- the VAT yet.
         SET dynamic_vat_query = """
         SELECT 'SELECT ' ||
         (SELECT
