@@ -47,6 +47,9 @@ workflow GvsCreateVATFilesFromBigQuery {
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
+            project_id = project_id,
+            dataset_name = dataset_name,
+            vat_table = vat_table_name,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
