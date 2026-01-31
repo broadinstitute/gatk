@@ -81,9 +81,9 @@ task BigQueryExportVat {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        -- Write out a query to a file using an uninterpolated here doc. The single quotes around the delimiter
-        -- tell bash not to interpolate within the here doc. Without the backticks bash will evaluate whatever is
-        -- between pairs of backticks which would not work out well for us.
+        # Write out a query to a file using an uninterpolated here doc. The single quotes around the delimiter
+        # tell bash not to interpolate within the here doc. Without the backticks bash will evaluate whatever is
+        # between pairs of backticks which would not work out well for us.
         cat > query.sql <<'FIN'
 
         DECLARE dynamic_vat_query STRING;
