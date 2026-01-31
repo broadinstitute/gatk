@@ -78,14 +78,22 @@ task BigQueryExportVat {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        # note: tab delimiter and compression creates tsv.gz files
-        # bq query --max_rows check: ok export
+        -- Write out a query to a file using an uninterpolated here doc. The single quotes around the FIN delimiter
+        -- tell bash not to interpolate within the here doc. Without the backticks bash will evaluate whatever is
+        -- between pairs of backticks which would not work out well for us.
         cat > query.sql <<'FIN'
 
         DECLARE dynamic_vat_query STRING;
         DECLARE vat_query STRING;
         DECLARE export_query STRING;
 
+        -- The `dynamic_vat_query` is composed of three parts: two literal strings sandwiching an inner query of
+        -- `INFORMATION_SCHEMA`. This inner query determines the names and types of columns in the VAT table.
+        -- Depending on whether a column type is primitive or `ARRAY`, the `CASE` statement returns a query fragment
+        -- that either returns the value of the field (for a primitive) or an expression that `STRING_AGG`s the array
+        -- values into a single comma-separated string. Note this dynamic query is simply building a string appropriate
+        -- for running against the VAT table based on the contents of `INFORMATION_SCHEMA` and does not actually run
+        -- the query yet.
         SET dynamic_vat_query = """
         SELECT 'SELECT ' ||
         (SELECT
@@ -94,18 +102,22 @@ task BigQueryExportVat {
         WHEN data_type LIKE 'ARRAY%' THEN FORMAT('(SELECT STRING_AGG(CAST(x AS STRING), ",") FROM UNNEST(%s) x) AS %s', column_name, column_name)
         ELSE column_name
         END
-        , ',')
+        , ', ')
         FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
         WHERE
-        table_name = '~{vat_table}'
+        table_name = '~{vat_table}' ORDER BY ordinal_position
         ) ||
         ' FROM `~{project_id}.~{dataset_name}.~{vat_table}` WHERE contig = "~{contig}" ORDER BY position'
 
         """;
 
+        -- Run the query above to materialize the string appropriate for running against the VAT table and store the
+        -- value of this string in the variable `vat_query`.
         EXECUTE IMMEDIATE dynamic_vat_query INTO vat_query;
 
+        -- Build a final export query by concatenating the VAT query built above with some export syntax.
+        -- Tab delimiter and GZIP compression creates tsv.gz files.
         SET export_query = """
         EXPORT DATA OPTIONS(
         uri="~{export_path}",
@@ -117,11 +129,15 @@ task BigQueryExportVat {
 
         """ || vat_query;
 
+        -- Print out the export query for diagnostic purposes.
         SELECT export_query;
 
+        -- Execute the export query.
         EXECUTE IMMEDIATE export_query;
         FIN
 
+        # Feed the query file to `bq` as input.
+        # bq query --max_rows check: ok export
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql
 
     >>>
@@ -146,6 +162,9 @@ task MergeVatTSVs {
     input {
         Array[Boolean] export_done
         Array[String] contig_array
+        String project_id
+        String dataset_name
+        String vat_table
         String output_path
 
         Int? merge_vcfs_disk_size_override
@@ -175,6 +194,19 @@ task MergeVatTSVs {
         contigs=( ~{sep=' ' contig_array} )
         files="header.gz"
 
+        cat > query.sql <<'FIN'
+
+        SELECT STRING_AGG(column_name, "\t") FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        WHERE
+        table_name = '~{vat_table}' ORDER BY ordinal_position
+
+        FIN
+
+        # Feed the query file to `bq` as input.
+        # bq query --max_rows check: ok 1 row
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql > header.tsv
+
         echo_date "looping over contigs: $contigs"
         for i in "${contigs[@]}"
         do
@@ -192,7 +224,7 @@ task MergeVatTSVs {
 
         echo_date "making header.gz"
         # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
-        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfe_ac\tgnomad_nfe_an\tgnomad_nfe_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype\tclinvar_rcv_ids\tclinvar_rcv_classifications\tclinvar_num_stars\tmane_select_name\tmane_plus_clinical_name\thgnc_symbol\thgnc_id\tLoF\tLoF_filter\tLoF_flags\tLoF_info\tGERP" | gzip > header.gz
+        cat header.tsv | gzip > header.gz
 
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz
