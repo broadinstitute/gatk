@@ -80,7 +80,7 @@ task BigQueryExportVat {
 
         # note: tab delimiter and compression creates tsv.gz files
         # bq query --max_rows check: ok export
-        cat > query.sql <<FIN
+        cat > query.sql <<'FIN'
 
         DECLARE dynamic_vat_query STRING;
         DECLARE vat_query STRING;
@@ -94,7 +94,7 @@ task BigQueryExportVat {
         WHEN data_type LIKE 'ARRAY%' THEN FORMAT('(SELECT STRING_AGG(CAST(x AS STRING), ",") FROM UNNEST(%s) x) AS %s', column_name, column_name)
         ELSE column_name
         END
-        , ',') AS select_statement
+        , ',')
         FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
         WHERE
