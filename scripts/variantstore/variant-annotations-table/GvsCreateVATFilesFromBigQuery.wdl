@@ -109,7 +109,7 @@ task BigQueryExportVat {
         FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
         WHERE
-        table_name = '~{vat_table}' ORDER BY ordinal_position
+        table_name = '~{vat_table}'
         ) ||
         ' FROM `~{project_id}.~{dataset_name}.~{vat_table}` WHERE contig = "~{contig}" ORDER BY position'
 
@@ -202,7 +202,7 @@ task MergeVatTSVs {
         SELECT STRING_AGG(column_name, "\t") FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
         WHERE
-        table_name = '~{vat_table}' ORDER BY ordinal_position
+        table_name = '~{vat_table}'
 
         FIN
 
