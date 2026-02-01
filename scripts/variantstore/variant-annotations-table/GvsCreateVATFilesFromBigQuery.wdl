@@ -81,54 +81,57 @@ task BigQueryExportVat {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        # Write out a query to a file using an uninterpolated here doc. The single quotes around the delimiter
-        # tell bash not to interpolate within the here doc. Without the backticks bash will evaluate whatever is
-        # between pairs of backticks which would not work out well for us.
+        # Write out a query to a file using an uninterpolated here doc. The single quotes around the delimiter tell bash
+        # not to interpolate within the here doc. Without the single quotes bash would evaluate anything that looked
+        # like a bash expression in the query body, which would be problematic here for backticks.
         cat > query.sql <<'FIN'
 
         DECLARE dynamic_vat_query STRING;
         DECLARE vat_query STRING;
         DECLARE export_query STRING;
 
-        -- The `dynamic_vat_query` is composed of three parts: two literal strings sandwiching an inner query of
-        -- `INFORMATION_SCHEMA`. This inner query determines the names and types of columns in the VAT table.
+        -- `dynamic_vat_query` is a concatenation of three expressions: two literal strings sandwiching an inner query
+        -- of `INFORMATION_SCHEMA`. This inner query determines the names and types of columns in the VAT table.
         -- Depending on whether a column type is primitive or `ARRAY`, the `CASE` statement returns a query fragment
         -- that either returns the value of the field (for a primitive) or an expression that `STRING_AGG`s the array
-        -- values into a single comma-separated string. Note this dynamic query is simply building a string appropriate
-        -- for running against the VAT table based on the contents of `INFORMATION_SCHEMA` and does not actually query
-        -- the VAT yet.
+        -- values into a single comma-separated string. Note this logic is building a query string for determining the
+        -- shape of the VAT table based on the contents of `INFORMATION_SCHEMA`, but that query is not actually executed
+        -- until the *second* `EXECUTE IMMEDIATE` statement below.
         SET dynamic_vat_query = """
+
         SELECT 'SELECT ' ||
-        (SELECT
-        STRING_AGG(
-        CASE
-        WHEN data_type LIKE 'ARRAY%' THEN FORMAT('(SELECT STRING_AGG(CAST(x AS STRING), ",") FROM UNNEST(%s) x) AS %s', column_name, column_name)
-        ELSE column_name
-        END
-        , ', ')
-        FROM
-        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
-        WHERE
-        table_name = '~{vat_table}'
+        (
+            SELECT
+            STRING_AGG(
+                CASE
+                WHEN data_type LIKE 'ARRAY%' THEN FORMAT('(SELECT STRING_AGG(CAST(x AS STRING), ",") FROM UNNEST(%s) x) AS %s', column_name, column_name)
+                ELSE column_name
+                END,
+            ', ')
+            FROM
+                `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+            WHERE
+                table_name = '~{vat_table}'
         ) ||
         ' FROM `~{project_id}.~{dataset_name}.~{vat_table}` WHERE contig = "~{contig}" ORDER BY position'
 
         """;
 
-        -- Run the query above to materialize the string appropriate for running against the VAT table and store the
-        -- value of this string in the variable `vat_query`.
+        -- Run the query constructed above to materialize the string for querying the VAT table and store the result in
+        -- the variable `vat_query`.
         EXECUTE IMMEDIATE dynamic_vat_query INTO vat_query;
 
         -- Build a final export query by concatenating the VAT query built above with some export syntax.
-        -- Tab delimiter and GZIP compression creates tsv.gz files.
+        -- The combination of tab delimiter and GZIP compression creates tsv.gz files.
         SET export_query = """
+
         EXPORT DATA OPTIONS(
-        uri="~{export_path}",
-        format="CSV",
-        compression="GZIP",
-        overwrite=true,
-        header=false,
-        field_delimiter="\t") AS
+            uri="~{export_path}",
+            format="CSV",
+            compression="GZIP",
+            overwrite=true,
+            header=false,
+            field_delimiter="\t") AS
 
         """ || vat_query;
 
@@ -141,7 +144,7 @@ task BigQueryExportVat {
 
         # Feed the query file to `bq` as input.
         # bq query --max_rows check: ok export
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql > export_query.sql
 
     >>>
     # ------------------------------------------------
@@ -157,7 +160,8 @@ task BigQueryExportVat {
     # Outputs:
     output {
         Boolean done = true
-        File export_query = "query.sql"
+        File query = "query.sql"
+        File export_query = "export_query.sql"
     }
 }
 
