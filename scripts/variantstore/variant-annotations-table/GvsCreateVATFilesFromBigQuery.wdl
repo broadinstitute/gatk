@@ -204,9 +204,9 @@ task MergeVatTSVs {
         cat > query.sql <<'FIN'
 
         SELECT STRING_AGG(column_name, "\t") FROM
-        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+            `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
         WHERE
-        table_name = '~{vat_table}'
+            table_name = '~{vat_table}'
 
         FIN
 
