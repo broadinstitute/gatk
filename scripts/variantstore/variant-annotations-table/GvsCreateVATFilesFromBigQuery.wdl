@@ -212,7 +212,7 @@ task MergeVatTSVs {
 
         # Feed the query file to `bq` as input.
         # bq query --max_rows check: ok 1 row
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql > header.tsv
+        bq --apilog=false query --nouse_legacy_sql --format csv --project_id=~{project_id} < query.sql | sed 1d > header.tsv
 
         echo_date "looping over contigs: $contigs"
         for i in "${contigs[@]}"
