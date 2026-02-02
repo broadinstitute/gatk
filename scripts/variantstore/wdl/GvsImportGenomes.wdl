@@ -628,13 +628,17 @@ task SetIsLoadedColumnForParquetIngest {
     from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
     WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")) OR
     sample_name in (
-    select sample_name from (
-    select REGEXP_EXTRACT(file_path, r'.*input_vcf_\d+_(.*).vcf.gz.parquet$') as sample_name,
-    FROM `~{dataset_name}.parquet_load_status`
-    where REGEXP_EXTRACT(file_path, r'.*(vet|ref_ranges)\_\d+.*') = "ref_ranges"
-    intersect distinct
-    select REGEXP_EXTRACT(file_path, r'.*input_vcf_\d+_(.*).vcf.gz.parquet$') as sample_name,
-    FROM `~{dataset_name}.parquet_load_status`))'
+    select sample_name from
+      (
+      select REGEXP_EXTRACT(file_path, r".*input_vcf_\d+_(.*).vcf.gz.parquet$") as sample_name,
+      FROM `~{dataset_name}.parquet_load_status`
+      where REGEXP_CONTAINS(file_path, ".*vet_[0-9]+_input_vcf_[0-9]+_.*$")
+      intersect distinct
+      select REGEXP_EXTRACT(file_path, r".*input_vcf_\d+_(.*).vcf.gz.parquet$") as sample_name,
+      FROM `~{dataset_name}.parquet_load_status`
+      where REGEXP_CONTAINS(file_path, ".*ref_ranges_[0-9]+_input_vcf_[0-9]+_.*$")
+      )
+    )'
   >>>
   runtime {
     docker: cloud_sdk_docker
