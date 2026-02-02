@@ -189,6 +189,11 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     private static CanonicalLinkageResult testComplexIntervals(final SVCallRecord a, final SVCallRecord b, final double overlapThreshold,
                                                                final double sizeSimilarityThreshold, final int window,
                                                                final double sampleOverlapThreshold) {
+        final Integer overallBreakpointDistance1 = getFirstBreakpointProximity(a, b);
+        final Integer overallBreakpointDistance2 = getSecondBreakpointProximity(a, b);
+        if (!(testBreakendProximity(overallBreakpointDistance1, overallBreakpointDistance2, window))) {
+            return new CanonicalLinkageResult(false);
+        }
         final List<SVCallRecord.ComplexEventInterval> intervalsA = a.getComplexEventIntervals();
         final List<SVCallRecord.ComplexEventInterval> intervalsB = b.getComplexEventIntervals();
         if (intervalsA.size() != intervalsB.size()) {
@@ -198,14 +203,14 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         final Iterator<SVCallRecord.ComplexEventInterval> iterB = intervalsB.iterator();
         for (int i = 0; i < intervalsA.size(); i++) {
             final SVCallRecord.ComplexEventInterval cpxIntervalA = iterA.next();
-            final SVCallRecord.ComplexEventInterval cpxIintervalB = iterB.next();
-            if (cpxIntervalA.getIntervalSVType() != cpxIintervalB.getIntervalSVType()) {
+            final SVCallRecord.ComplexEventInterval cpxIntervalB = iterB.next();
+            if (cpxIntervalA.getIntervalSVType() != cpxIntervalB.getIntervalSVType()) {
                 return new CanonicalLinkageResult(false);
             }
-            final Integer breakpointDistance1 = getFirstBreakpointProximity(a, b);
-            final Integer breakpointDistance2 = getSecondBreakpointProximity(a, b);
+            final Integer breakpointDistance1 = getFirstBreakpointProximity(cpxIntervalA, cpxIntervalB);
+            final Integer breakpointDistance2 = getSecondBreakpointProximity(cpxIntervalA, cpxIntervalB);
             final SimpleInterval intervalA = cpxIntervalA.getInterval();
-            final SimpleInterval intervalB = cpxIintervalB.getInterval();
+            final SimpleInterval intervalB = cpxIntervalB.getInterval();
             final Double reciprocalOverlap = computeReciprocalOverlap(intervalA, intervalB);
             final Double sizeSimilarity = computeSizeSimilarity(intervalA.size(), intervalB.size());
             if (!(testReciprocalOverlap(reciprocalOverlap, overlapThreshold)
@@ -272,9 +277,27 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
+    private static Integer getFirstBreakpointProximity(final SVCallRecord.ComplexEventInterval a,
+                                                       final SVCallRecord.ComplexEventInterval b) {
+        if (a.getContig().equals(b.getContig())) {
+            return Math.abs(a.getStart() - b.getStart());
+        } else {
+            return null;
+        }
+    }
+
     private static Integer getSecondBreakpointProximity(final SVCallRecord a, final SVCallRecord b) {
         if (a.getContigB().equals(b.getContigB())) {
             return Math.abs(a.getPositionB() - b.getPositionB());
+        } else {
+            return null;
+        }
+    }
+
+    private static Integer getSecondBreakpointProximity(final SVCallRecord.ComplexEventInterval a,
+                                                        final SVCallRecord.ComplexEventInterval b) {
+        if (a.getContig().equals(b.getContig())) {
+            return Math.abs(a.getEnd() - b.getEnd());
         } else {
             return null;
         }
