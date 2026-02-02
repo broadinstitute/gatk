@@ -634,7 +634,7 @@ task SetIsLoadedColumnForParquetIngest {
     where REGEXP_EXTRACT(file_path, r'.*(vet|ref_ranges)\_\d+.*') = "ref_ranges"
     intersect distinct
     select REGEXP_EXTRACT(file_path, r'.*input_vcf_\d+_(.*).vcf.gz.parquet$') as sample_name,
-    FROM `~{dataset_name}.parquet_load_status`)
+    FROM `~{dataset_name}.parquet_load_status`))'
   >>>
   runtime {
     docker: cloud_sdk_docker
