@@ -2,8 +2,8 @@
 
 ## Overview
 
-As a general rule, any artifacts that have clearly become obsolete (e.g. VDSes with known issues that have been
-superseded by corrected versions, obsolete sets of prepare tables, etc.) should be deleted ASAP. If it's not clear
+As a general rule, any AoU callset artifacts that have clearly become obsolete (e.g. VDSes with known issues that have
+been superseded by corrected versions, obsolete sets of prepare tables, etc.) should be deleted ASAP. If it's not clear
 whether an artifact should be cleaned up or not, [calculate the monthly cost to preserve the artifact](Cost.md)
 (i.e. the sum of all relevant GCS or BigQuery storage costs) as well as the cost to regenerate the artifact.
 Reach out to leadership with these numbers for their verdict on whether to keep or delete.
@@ -13,11 +13,11 @@ Reach out to leadership with these numbers for their verdict on whether to keep 
 During the course of creating AoU callsets several large and expensive artifacts are created:
 
 * Pilot workspace / dataset
-    * For the Delta callset the Variants team created an AoU 10K workspace and dataset to pilot the Hail/VDS creation.
+    * For the Delta callset the Variants team created an AoU 10K workspace and dataset to pilot Hail/VDS creation.
       Similarly for Foxtrot there was a "Foxtrot Batch Testing" workspace created to pilot our usage of the then-new
       Google Batch API at AoU scale.
-    * These datasets, workspace data tables, and submission files have been cleaned up to save money, but the workspace
-      has been kept around for future reference.
+    * These datasets, workspace data tables, and submission files have been cleaned up to save money, but the workspaces
+      have been kept around for future reference.
 * Production BigQuery dataset
     * For callsets up to and including Echo, at least one completely new dataset was created. For Foxtrot, we copied
       the Echo dataset as the starting point for the Foxtrot dataset.
