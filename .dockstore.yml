@@ -346,16 +346,6 @@ workflows:
              - vs_1777_build_failure
          tags:
              - /.*/
-   - name: GvsQuickstartIntegrationEverything
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1789_refresh_gatk_docker
-       tags:
-         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
