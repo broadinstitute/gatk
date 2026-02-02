@@ -291,14 +291,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 if (state.areReferencesLoaded()) {
                     logger.info("Sample ID {}: Reference ranges writing enabled but REFERENCES_LOADED status row found, skipping.", sampleId);
                 } else {
-                    logger.info("Sample ID {}: Reference ranges writing enabled and no REFERENCES_LOADED status row found, looking for existing rows.", sampleId);
-                    RefCreator.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
                     refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
                                 sampleId, sampleName);
-                    } else {
-                        logger.info("Sample ID {}: No preexisting ref_ranges rows found.", sampleId);
                     }
                     shouldWriteReferencesLoadedStatusRow = true;
                 }
@@ -308,13 +304,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 if (state.areVariantsLoaded()) {
                     logger.info("Sample ID {}: Variant writing enabled but VARIANTS_LOADED status row found, skipping.", sampleId);
                 } else {
-                    logger.info("Sample ID {}: Variant writing enabled and no VARIANTS_LOADED status row found, looking for existing rows.", sampleId);
                     vetRowsExist = VetCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (vetRowsExist) {
                         logger.warn("Vet enabled for sample id = {}, name = {} but preexisting vet rows found, skipping vet writes.",
                                 sampleId, sampleName);
-                    } else {
-                        logger.info("Sample ID {}: No preexisting vet rows found.", sampleId);
                     }
                     shouldWriteVariantsLoadedStatusRow = true;
                 }
@@ -339,29 +332,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 }
             }
         } else if (outputType == CommonCode.OutputType.PARQUET) {
-            loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
-
-            LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
-
-            // Legacy "FINISHED" state indicates variants and references completely loaded.
-            if (state.isFinished()) {
-                logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
-                System.exit(0);
-            }
-
             // These checks don't matter for parquet, since it's a local file created.  Operate as though they don't exist at all times during testing
             refRangesRowsExist = Boolean.FALSE;
             vetRowsExist = Boolean.FALSE;
             vcfHeaderRowsExist = Boolean.FALSE;
-            if (enableReferenceRanges) {
-                shouldWriteReferencesLoadedStatusRow = true;
-            }
-            if (enableVet) {
-                shouldWriteVariantsLoadedStatusRow = true;
-            }
-            if (enableVCFHeaders) {
-                shouldWriteVCFHeadersLoadedStatusRow = true;
-            }
         }
 
         // This needs to be called *outside* the "if outputType == BQ" because it side-effects the initialization of

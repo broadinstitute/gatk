@@ -259,14 +259,6 @@ workflow GvsImportGenomes {
           cloud_sdk_docker = effective_cloud_sdk_docker,
       }
     }
-
-#    call SetIsLoadedColumnOnceParquetLoadingVerified {
-#      input:
-#        verify_done = VerifyParquetLoading.done,
-#        project_id = project_id,
-#        dataset_name = dataset_name,
-#        cloud_sdk_docker = effective_cloud_sdk_docker,
-#    }
   }
 
   output {
