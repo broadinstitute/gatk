@@ -415,9 +415,6 @@ public final class GenotypeSVs extends MultiplePassVariantWalker {
     public void nthPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext, final int n) {
         final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
         if (n == 0) {
-            if (record.getId().equals("all_samples_depth_chrY_00000d1a")) {
-                int x = 0;
-            }
             final DepthEvidenceGenotyper.DepthGenotypeResult depth = genotypeDepth(record);
             final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult discordantPair = genotypeDiscordantPairs(record);
             final SplitReadEvidenceGenotyper.SplitReadGenotypeResult splitRead = genotypeSplitReads(record);

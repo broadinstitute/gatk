@@ -28,6 +28,9 @@ public class DepthEvidenceGenotyper {
     private static final double DEFAULT_COPY_STATE_STD = 0.15; // arbitrary, gives reasonable GQs when training
     private static final int DEFAULT_NUM_STATES = 6; // must be at least 3
     private static final int NO_CARRIER_VARIANT_QUAL = 0;
+    private static final int NO_DATA_VARIANT_QUAL = 0;
+    private static final int NO_DATA_COPY_STATE = 2;
+    private static final int NO_DATA_GENOTYPE_QUAL = 2;
 
     private static final NormalDistribution Z_DISTRIBUTION = new NormalDistribution();
     private static final Median MEDIAN = new Median();
@@ -127,6 +130,16 @@ public class DepthEvidenceGenotyper {
     }
 
     public DepthGenotypeResult genotype(final DepthMatrix depthMatrix) {
+        if (depthMatrix.getNumBins() == 0) {
+            // Edge case where there are no overlapping read depth bins
+            final double[] medians = new double[samples.size()];
+            Arrays.fill(medians, Double.NaN);
+            final int[] copyStates = new int[samples.size()];
+            Arrays.fill(copyStates, NO_DATA_COPY_STATE);
+            final double[] qualities = new double[samples.size()];
+            Arrays.fill(qualities, NO_DATA_GENOTYPE_QUAL);
+            return new DepthGenotypeResult(medians, copyStates, qualities, NO_DATA_VARIANT_QUAL);
+        }
         // Get median coverage for each sample
         final double[] medians = DepthEvidenceTest.getSampleMedians(depthMatrix, samples);
         final int numSamples = medians.length;
