@@ -253,7 +253,7 @@ workflow GvsImportGenomes {
       # Update sample_info.is_loaded once parquet loading has been verified
       call SetIsLoadedColumnForParquetIngest {
         input:
-          verify_done = VerifyParquetLoading.done,
+          go = VerifyParquetLoading.done,
           project_id = project_id,
           dataset_name = dataset_name,
           cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -588,7 +588,7 @@ task SetIsLoadedColumnForParquetIngest {
     String dataset_name
     String project_id
 
-    String verify_done
+    Boolean go
     String cloud_sdk_docker
   }
   meta {
@@ -640,7 +640,7 @@ task SetIsLoadedColumnForParquetIngest {
   }
 
   output {
-    String done = "done"
+    Boolean done = true
   }
 }
 
@@ -1030,6 +1030,6 @@ task VerifyParquetLoading {
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
-    String done = "done"
+    Boolean done = true
   }
 }
