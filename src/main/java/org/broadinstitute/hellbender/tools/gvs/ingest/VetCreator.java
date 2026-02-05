@@ -65,7 +65,9 @@ public class VetCreator {
                     vetWriter.setHeaderLine(getHeaders());
                     break;
                 case PARQUET:
-                    final File parquetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + ".parquet");
+                    String[] sampleComponents = {tableNumber, sampleIdentifierForOutputFileName, sampleId.toString()};
+                    String filename = VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) + outputType.toString().toLowerCase();
+                    final File parquetOutputFile = new File(outputDirectory, filename);
                     vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                     break;
             }

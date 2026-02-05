@@ -473,7 +473,7 @@ task LoadData {
       vet_parquet_file=`ls vet_*.parquet`
       ref_parquet_file=`ls ref_*.parquet`
 
-      # parse the table partition out of the file name
+      # parse the table superpartition out of the file name
       table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
 
       # copy the vet and ref parquet files to the gcs bucket in the right place
