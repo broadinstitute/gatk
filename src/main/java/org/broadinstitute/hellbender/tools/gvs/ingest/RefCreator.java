@@ -96,7 +96,8 @@ public final class RefCreator {
         try {
             if (writeReferenceRanges) {
                 String[] sampleComponents = {tableNumber, sampleIdentifierForOutputFileName, sampleId.toString()};
-                String filename = REF_RANGES_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) + outputType.toString().toLowerCase();
+                String filename = REF_RANGES_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
+                        "." + outputType.toString().toLowerCase();
 
                 final File refOutputFile = new File(outputDirectory, filename);
                 switch (outputType) {
