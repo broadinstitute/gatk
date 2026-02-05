@@ -65,7 +65,7 @@ public class VetCreator {
                     vetWriter.setHeaderLine(getHeaders());
                     break;
                 case PARQUET:
-                    String[] sampleComponents = {tableNumber, sampleIdentifierForOutputFileName, sampleId.toString()};
+                    String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
                     String filename = VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                             "." + outputType.toString().toLowerCase();
                     final File parquetOutputFile = new File(outputDirectory, filename);
