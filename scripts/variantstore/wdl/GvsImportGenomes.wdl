@@ -204,7 +204,6 @@ workflow GvsImportGenomes {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
-          go = select_first([ConfigureParquetLifecycle.done, true]),
           variants_docker = effective_variants_docker,
       }
 
@@ -215,7 +214,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = CreateParquetTrackingTable.done,
+          go = LoadData.done,
           variants_docker = effective_variants_docker,
       }
 
