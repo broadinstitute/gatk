@@ -611,7 +611,7 @@ task SetIsLoadedColumnForParquetIngest {
     # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
     # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
     # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
-    # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
+    # in workflow processing. So this method is used to set *all* of the sample_info.is_loaded flags at one time.
 
     # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
