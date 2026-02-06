@@ -246,7 +246,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           gcs_files_list = DiscoverParquetFiles.all_files_list,
-          load_outputs = LoadParquetFilesToBQ.completion_status,
+          go = LoadParquetFilesToBQ.done,
           variants_docker = effective_variants_docker,
       }
 
@@ -877,8 +877,9 @@ task CreateParquetTrackingTable {
   }
   
   command <<<
-    set -euo pipefail
-    
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
     python3 /app/create_tracking_table.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name}
@@ -964,7 +965,8 @@ task LoadParquetFilesToBQ {
   }
   
   command <<<
-    set -euo pipefail
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
     
     # Table name is extracted from FOFN filename by the Python script
     python3 /app/load_parquet_to_bq.py \
@@ -986,7 +988,7 @@ task LoadParquetFilesToBQ {
   }
   
   output {
-    String completion_status = read_string("stats.json")
+    Boolean done = true
     File stats_json = "stats.json"
   }
 }
@@ -996,7 +998,7 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
-    Array[String] load_outputs
+    Array[Boolean] go = [true]
     String variants_docker
   }
   
@@ -1005,7 +1007,8 @@ task VerifyParquetLoading {
   }
   
   command <<<
-    set -euo pipefail
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
     
     mkdir -p verification_output
     
