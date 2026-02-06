@@ -197,59 +197,59 @@ workflow GvsImportGenomes {
           cloud_sdk_docker = effective_cloud_sdk_docker,
       }
     }
-
-    if (configure_parquet_bucket_lifecycle) {
-      # Set up lifecycle rules for parquet directories before loading
-      # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
-      call ConfigureParquetLifecycle {
-        input:
-          output_gcs_dir = output_gcs_dir,
-          billing_project_id = billing_project_id,
-          cloud_sdk_docker = effective_cloud_sdk_docker,
+    # Alas WDL 1.0/1.1 do not have an else statement, so test `use_parquet_ingest` again...
+    if (use_parquet_ingest) {
+      if (configure_parquet_bucket_lifecycle) {
+        # Set up lifecycle rules for parquet directories before loading
+        # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
+        call ConfigureParquetLifecycle {
+          input:
+            output_gcs_dir = output_gcs_dir,
+            billing_project_id = billing_project_id,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
       }
-    }
-    
-    # Load Parquet files into BigQuery after all data has been created
-    call CreateParquetTrackingTable {
-      input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        load_done = LoadData.done,
-        go = select_first([ConfigureParquetLifecycle.done, true]),
-        variants_docker = effective_variants_docker,
-    }
-    
-    call DiscoverParquetFiles {
-      input:
-        output_gcs_dir = output_gcs_dir,
-        project_id = project_id,
-        dataset_name = dataset_name,
-        table_prefixes = ["vet", "ref_ranges"],
-        go = CreateParquetTrackingTable.done,
-        variants_docker = effective_variants_docker,
-    }
-    
-    scatter (fofn in DiscoverParquetFiles.file_fofns) {
-      call LoadParquetFilesToBQ {
+
+      call CreateParquetTrackingTable {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
-          fofn_file = fofn,
-          batch_size = 10000,
+          load_done = LoadData.done,
+          go = select_first([ConfigureParquetLifecycle.done, true]),
           variants_docker = effective_variants_docker,
       }
-    }
-    
-    call VerifyParquetLoading {
-      input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        gcs_files_list = DiscoverParquetFiles.all_files_list,
-        load_outputs = LoadParquetFilesToBQ.completion_status,
-        variants_docker = effective_variants_docker,
-    }
 
-    if (use_parquet_ingest) {
+      # Load Parquet files into BigQuery after all data has been created
+      call DiscoverParquetFiles {
+        input:
+          output_gcs_dir = output_gcs_dir,
+          project_id = project_id,
+          dataset_name = dataset_name,
+          table_prefixes = ["vet", "ref_ranges"],
+          go = CreateParquetTrackingTable.done,
+          variants_docker = effective_variants_docker,
+      }
+
+      scatter (fofn in DiscoverParquetFiles.file_fofns) {
+        call LoadParquetFilesToBQ {
+          input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            fofn_file = fofn,
+            batch_size = 10000,
+            variants_docker = effective_variants_docker,
+        }
+      }
+
+      call VerifyParquetLoading {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          gcs_files_list = DiscoverParquetFiles.all_files_list,
+          load_outputs = LoadParquetFilesToBQ.completion_status,
+          variants_docker = effective_variants_docker,
+      }
+
       # Update sample_info.is_loaded once parquet loading has been verified
       call SetIsLoadedColumnForParquetIngest {
         input:
