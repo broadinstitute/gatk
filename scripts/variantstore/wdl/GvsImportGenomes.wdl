@@ -45,7 +45,7 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
 
-    # Dump these parquet files to a bucket
+    # Dump these Parquet files to a bucket
     Boolean use_parquet_ingest = true   # currently only in limited use.
     String output_gcs_dir
     Boolean configure_parquet_bucket_lifecycle = false
@@ -214,7 +214,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = select_first([LoadData.done, true]),
+          go = select_first([LoadData.done[0], true]),
           variants_docker = effective_variants_docker,
       }
 
@@ -241,11 +241,12 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
-        # If we're using parquet loading then gate the assignement of `is_loaded` on the verification task, otherwise
-        # (if we're using the Write API) gate on LoadData. The Write API-flavored invocation of LoadData loads all data
-        # into vet and ref ranges tables itself, whereas a Parquet invocation of LoadData only creates the Parquet files
-        # and stages them to GCS; other WDL tasks are responsible for loading Parquet data into BigQuery.
-        go = select_first([VerifyParquetLoading.done, LoadData.done]),
+        # If we're using Parquet loading then gate the assignment of `is_loaded` on the verification task, otherwise
+        # (if we're using the Write API) gate on LoadData. A BQ Write API-flavored invocation of LoadData loads all data
+        # into vet and ref ranges tables itself, whereas a Parquet-flavored invocation of LoadData only creates the
+        # Parquet files and stages them to GCS; separate WDL tasks are responsible for finding and loading staged
+        # Parquet data into BigQuery.
+        go = select_first([VerifyParquetLoading.done, LoadData.done[0]]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -525,7 +526,7 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
-    Boolean go
+    Boolean go = true
     String cloud_sdk_docker
   }
   meta {
@@ -859,7 +860,7 @@ task DiscoverParquetFiles {
     # Normalize GCS path to ensure exactly one trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
     
-    # List all objects, filter for parquet files
+    # List all objects, filter for Parquet files
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
       "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
