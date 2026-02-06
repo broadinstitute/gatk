@@ -189,7 +189,7 @@ workflow GvsImportGenomes {
 
   if (load_vet_and_ref_ranges) {
     if (!use_parquet_ingest) {
-      call SetIsLoadedColumn {
+      call SetIsLoadedColumnNonParquet {
         input:
           load_done = LoadData.done,
           project_id = project_id,
@@ -215,7 +215,7 @@ workflow GvsImportGenomes {
         project_id = project_id,
         dataset_name = dataset_name,
         load_done = LoadData.done,
-        lifecycle_configured = select_first([ConfigureParquetLifecycle.done, "done"]),
+        go = select_first([ConfigureParquetLifecycle.done, true]),
         variants_docker = effective_variants_docker,
     }
     
@@ -225,7 +225,7 @@ workflow GvsImportGenomes {
         project_id = project_id,
         dataset_name = dataset_name,
         table_prefixes = ["vet", "ref_ranges"],
-        tracking_table_ready = CreateParquetTrackingTable.done,
+        go = CreateParquetTrackingTable.done,
         variants_docker = effective_variants_docker,
     }
     
@@ -529,7 +529,7 @@ task ProcessVCFHeaders {
 }
 
 
-task SetIsLoadedColumn {
+task SetIsLoadedColumnNonParquet {
   input {
     String dataset_name
     String project_id
@@ -863,7 +863,7 @@ EOF
   }
   
   output {
-    String done = "lifecycle_configured"
+    Boolean done = true
   }
 }
 
@@ -872,7 +872,7 @@ task CreateParquetTrackingTable {
     String project_id
     String dataset_name
     Array[String] load_done
-    String lifecycle_configured
+    Boolean go = true
     String variants_docker
   }
   
@@ -903,7 +903,7 @@ task DiscoverParquetFiles {
     String project_id
     String dataset_name
     Array[String] table_prefixes
-    String tracking_table_ready
+    Boolean go = true
     String? billing_project_id
     String variants_docker
   }
