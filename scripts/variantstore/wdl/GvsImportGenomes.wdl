@@ -834,7 +834,7 @@ task CreateParquetTrackingTable {
   }
   
   output {
-    String done = true
+    Boolean done = true
   }
 }
 

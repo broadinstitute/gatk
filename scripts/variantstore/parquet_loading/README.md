@@ -25,7 +25,7 @@ This implementation loads Parquet files into BigQuery with:
 
 ### GCS Directory Structure
 
-Individual parquet files are named like
+Individual Parquet files are named like
 
 ```
 <data type>_<superpartition>_<sample id>_<VCF filename>.parquet
