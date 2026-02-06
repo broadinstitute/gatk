@@ -214,7 +214,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = LoadData.done,
+          go = select_first([LoadData.done, true]),
           variants_docker = effective_variants_docker,
       }
 
