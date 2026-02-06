@@ -102,6 +102,9 @@ public final class MatchSVs extends AbstractConcordanceWalker {
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
+        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_NONDIPLOID_CN_FREQ", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Nondiploid CN frequency of truth variant(s)"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_NONDIPLOID_CN_FREQ_XX", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Nondiploid CN frequency of truth variant(s) in XX samples"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_NONDIPLOID_CN_FREQ_XY", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Nondiploid CN frequency of truth variant(s) in XY samples"));
         SVStratify.addStratifyMetadata(header);
         return header;
     }

@@ -64,6 +64,9 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
             attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, cluster.getMatchAlleleCounts());
             attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, cluster.getMatchAlleleFrequencies());
             attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, cluster.getMatchAlleleNumbers());
+            attributes.put("TRUTH_NONDIPLOID_CN_FREQ", cluster.getMatchNondiploidFrequencies());
+            attributes.put("TRUTH_NONDIPLOID_CN_FREQ_XX", cluster.getMatchXXNondiploidFrequencies());
+            attributes.put("TRUTH_NONDIPLOID_CN_FREQ_XY", cluster.getMatchXYNondiploidFrequencies());
 
         } else {
             attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, null);
@@ -127,7 +130,8 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
         } else {
             final int maxStart = linkage.getMaxClusterableStartingPosition(item);
             final ActiveCluster cluster = new ActiveCluster(id, item, new ArrayList<>(), new ArrayList<>(),
-                    new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), maxStart);
+                    new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),
+                    new ArrayList<>(), maxStart);
             for (final SVCallRecord truthItem : truthIdToItemMap.values()) {
                 final CanonicalSVLinkage.CanonicalLinkageResult result = linkage.areClusterable(item, truthItem);
                 if (result.getResult()) {
@@ -146,12 +150,17 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
         final List<Object> matchAlleleCounts;
         final List<Object> matchAlleleNumbers;
         final List<Object> matchAlleleFrequencies;
+        final List<Object> matchNondiploidFrequencies;
+        final List<Object> matchXXNondiploidFrequencies;
+        final List<Object> matchXYNondiploidFrequencies;
         final int maxClusterableStartingPosition;
 
         public ActiveCluster(final Long itemId, final SVCallRecord item, final List<String> matchVids,
                              final List<CanonicalSVLinkage.CanonicalLinkageResult> linkageResults,
                              final List<Object> matchAlleleCounts, final List<Object> matchAlleleNumbers,
-                             final List<Object> matchAlleleFrequencies, int maxClusterableStartingPosition) {
+                             final List<Object> matchAlleleFrequencies, final List<Object> matchNondiploidFrequencies,
+                             final List<Object> matchXXNondiploidFrequencies, final List<Object> matchXYNondiploidFrequencies,
+                             int maxClusterableStartingPosition) {
             this.itemId = itemId;
             this.item = item;
             this.matchVids = matchVids;
@@ -159,6 +168,9 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
             this.matchAlleleCounts = matchAlleleCounts;
             this.matchAlleleNumbers = matchAlleleNumbers;
             this.matchAlleleFrequencies = matchAlleleFrequencies;
+            this.matchNondiploidFrequencies = matchNondiploidFrequencies;
+            this.matchXXNondiploidFrequencies = matchXXNondiploidFrequencies;
+            this.matchXYNondiploidFrequencies = matchXYNondiploidFrequencies;
             this.maxClusterableStartingPosition = maxClusterableStartingPosition;
         }
 
@@ -171,6 +183,9 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
             matchAlleleCounts.add(matchAttr.get(VCFConstants.ALLELE_COUNT_KEY));
             matchAlleleNumbers.add(matchAttr.get(VCFConstants.ALLELE_NUMBER_KEY));
             matchAlleleFrequencies.add(matchAttr.get(VCFConstants.ALLELE_FREQUENCY_KEY));
+            matchNondiploidFrequencies.add(matchAttr.get("CN_NONREF_FREQ"));
+            matchXXNondiploidFrequencies.add(matchAttr.get("CN_NONREF_FREQ_XX"));
+            matchXYNondiploidFrequencies.add(matchAttr.get("CN_NONREF_FREQ_XY"));
         }
 
         Long getItemId() {
@@ -202,6 +217,10 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
         List<Object> getMatchAlleleNumbers() { return matchAlleleNumbers; }
 
         List<Object> getMatchAlleleFrequencies() { return matchAlleleFrequencies; }
+
+        List<Object> getMatchNondiploidFrequencies() { return matchAlleleFrequencies; }
+        List<Object> getMatchXXNondiploidFrequencies() { return matchXXNondiploidFrequencies; }
+        List<Object> getMatchXYNondiploidFrequencies() { return matchXYNondiploidFrequencies; }
 
         int getMaxClusterableStartingPosition() {
             return maxClusterableStartingPosition;
