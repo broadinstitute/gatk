@@ -181,7 +181,7 @@ workflow GvsImportGenomes {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        load_done = LoadData.done,
+        go = LoadData.done,
         dataset_name = dataset_name,
         project_id = project_id,
     }
@@ -204,7 +204,6 @@ workflow GvsImportGenomes {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
-          load_done = LoadData.done,
           go = select_first([ConfigureParquetLifecycle.done, true]),
           variants_docker = effective_variants_docker,
       }
@@ -243,7 +242,10 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
-        # If we're using parquet loading gate on verification, else (if we're using the Write API) gate on LoadData.
+        # If we're using parquet loading then gate the assignement of `is_loaded` on the verification task, otherwise
+        # (if we're using the Write API) gate on LoadData. The Write API-flavored invocation of LoadData loads all data
+        # into vet and ref ranges tables itself, whereas a Parquet invocation of LoadData only creates the Parquet files
+        # and stages them to GCS; other WDL tasks are responsible for loading Parquet data into BigQuery.
         go = select_first([VerifyParquetLoading.done, LoadData.done]),
         project_id = project_id,
         dataset_name = dataset_name,
@@ -495,7 +497,7 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
-    Array[String] load_done
+    Array[Boolean] go
     String variants_docker
   }
   meta {
@@ -528,7 +530,7 @@ task SetIsLoadedColumn {
     String cloud_sdk_docker
   }
   meta {
-    # Always run. This task is idempotent and depends on upstream tasks side effecting data into BigQuery.
+    # Always run. This task is idempotent and depends on upstream tasks side-effecting data into BigQuery.
     volatile: true
   }
 
@@ -810,7 +812,6 @@ task CreateParquetTrackingTable {
   input {
     String project_id
     String dataset_name
-    Array[String] load_done
     Boolean go = true
     String variants_docker
   }
