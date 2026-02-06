@@ -21,10 +21,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
-import org.broadinstitute.hellbender.tools.sv.cluster.ClusteringParameters;
-import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngineArgumentsCollection;
-import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker;
-import org.broadinstitute.hellbender.tools.sv.cluster.StratifiedClusteringTableParser;
+import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.tools.sv.concordance.*;
 import org.broadinstitute.hellbender.tools.sv.stratify.OptionalSVStratificationEngineArgumentsCollection;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
@@ -98,6 +95,10 @@ public final class MatchSVs extends AbstractConcordanceWalker {
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_SIZE_SIMILARITY_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Size similarity with truth variant"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_START_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Start coordinate distance in bp to truth variant's start"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_DISTANCE_END_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "End coordinate distance in bp to truth variant's end"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_INTERVAL_RECIPROCAL_OVERLAP_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Reciprocal overlap of CPX intervals with truth intervals"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_INTERVAL_SIZE_SIMILARITY_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Size similarity of CPX intervals with truth intervals"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_INTERVAL_START_DISTANCE_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Start coordinate distance in bp of CPX intervals to truth intervals"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TRUTH_INTERVAL_END_DISTANCE_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "End coordinate distance in bp of CPX intervals to truth intervals"));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
@@ -141,7 +142,7 @@ public final class MatchSVs extends AbstractConcordanceWalker {
                     final ClusteringParameters pesrParams = ClusteringParameters.createPesrParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
                     final ClusteringParameters mixedParams = ClusteringParameters.createMixedParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
                     final ClusteringParameters depthParams = ClusteringParameters.createDepthParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
-                    final SVMatchingLinkage linkage = new SVMatchingLinkage(dictionary);
+                    final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<SVCallRecord>(dictionary, false);
                     linkage.setDepthOnlyParams(depthParams);
                     linkage.setMixedParams(mixedParams);
                     linkage.setEvidenceParams(pesrParams);
@@ -154,7 +155,7 @@ public final class MatchSVs extends AbstractConcordanceWalker {
             }
         }
 
-        final SVMatchingLinkage defaultLinkage = new SVMatchingLinkage(dictionary);
+        final CanonicalSVLinkage<SVCallRecord> defaultLinkage = new CanonicalSVLinkage<SVCallRecord>(dictionary, false);
         defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
         defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
         defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());

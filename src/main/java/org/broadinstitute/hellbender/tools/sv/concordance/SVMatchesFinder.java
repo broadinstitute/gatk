@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
 public class SVMatchesFinder implements CorrespondingSVSelector {
     protected final Map<Long, SVCallRecord> truthIdToItemMap;
     protected final Map<Long, ActiveCluster> idToClusterMap;
-    private final SVMatchingLinkage linkage;
+    private final CanonicalSVLinkage<SVCallRecord> linkage;
 
     private Integer lastItemStart;
     private String lastItemContig;
 
-    public SVMatchesFinder(final SVMatchingLinkage linkage) {
+    public SVMatchesFinder(final CanonicalSVLinkage<SVCallRecord> linkage) {
         this.linkage = Utils.nonNull(linkage);
         truthIdToItemMap = new HashMap<>();
         idToClusterMap = new HashMap<>();
@@ -47,6 +47,18 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
                     .collect(Collectors.toList()));
             attributes.put(GATKSVVCFConstants.TRUTH_DISTANCE_END_INFO, linkageResults.stream()
                     .map(CanonicalSVLinkage.CanonicalLinkageResult::getBreakpointDistance2)
+                    .collect(Collectors.toList()));
+            attributes.put(GATKSVVCFConstants.TRUTH_INTERVAL_RECIPROCAL_OVERLAP_INFO, linkageResults.stream()
+                    .map(CanonicalSVLinkage.CanonicalLinkageResult::getIntervalReciprocalOverlap)
+                    .collect(Collectors.toList()));
+            attributes.put(GATKSVVCFConstants.TRUTH_INTERVAL_SIZE_SIMILARITY_INFO, linkageResults.stream()
+                    .map(CanonicalSVLinkage.CanonicalLinkageResult::getIntervalSizeSimilarity)
+                    .collect(Collectors.toList()));
+            attributes.put(GATKSVVCFConstants.TRUTH_INTERVAL_START_DISTANCE_INFO, linkageResults.stream()
+                    .map(CanonicalSVLinkage.CanonicalLinkageResult::getIntervalFirstBreakpointDistance)
+                    .collect(Collectors.toList()));
+            attributes.put(GATKSVVCFConstants.TRUTH_INTERVAL_END_DISTANCE_INFO, linkageResults.stream()
+                    .map(CanonicalSVLinkage.CanonicalLinkageResult::getIntervalSecondBreakpointDistance)
                     .collect(Collectors.toList()));
             // TODO: add header line for log AF diff and annotate?
             attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, cluster.getMatchAlleleCounts());

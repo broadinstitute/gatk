@@ -201,11 +201,11 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
         final Iterator<SVCallRecord.ComplexEventInterval> iterA = intervalsA.iterator();
         final Iterator<SVCallRecord.ComplexEventInterval> iterB = intervalsB.iterator();
-        double sumMinBreakpointDistances = 0;
-        double sumMaxBreakpointDistances = 0;
-        double sumReciprocalOverlap = 0;
-        double sumSizeSimilarity = 0;
         int nIntervals = intervalsA.size();
+        final Double[] intervalReciprocalOverlap = new Double[nIntervals];
+        final Double[] intervalSizeSimilarity = new Double[nIntervals];
+        final Integer[] intervalFirstBreakpointDistance = new Integer[nIntervals];
+        final Integer[] intervalSecondBreakpointDistance = new Integer[nIntervals];
         for (int i = 0; i < nIntervals; i++) {
             final SVCallRecord.ComplexEventInterval cpxIntervalA = iterA.next();
             final SVCallRecord.ComplexEventInterval cpxIntervalB = iterB.next();
@@ -214,31 +214,27 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
             }
             final Integer breakpointDistance1 = getFirstBreakpointProximity(cpxIntervalA, cpxIntervalB);
             final Integer breakpointDistance2 = getSecondBreakpointProximity(cpxIntervalA, cpxIntervalB);
+            intervalFirstBreakpointDistance[i] = breakpointDistance1;
+            intervalSecondBreakpointDistance[i] = breakpointDistance2;
             final SimpleInterval intervalA = cpxIntervalA.getInterval();
             final SimpleInterval intervalB = cpxIntervalB.getInterval();
             final Double reciprocalOverlap = computeReciprocalOverlap(intervalA, intervalB);
+            intervalReciprocalOverlap[i] = reciprocalOverlap;
             final Double sizeSimilarity = computeSizeSimilarity(intervalA.size(), intervalB.size());
+            intervalSizeSimilarity[i] = sizeSimilarity;
             if (!(testReciprocalOverlap(reciprocalOverlap, overlapThreshold)
                     && testSizeSimilarity(sizeSimilarity, sizeSimilarityThreshold)
                     && testBreakendProximity(breakpointDistance1, breakpointDistance2, window))) {
                 return new CanonicalLinkageResult(false);
             }
-            if (breakpointDistance2 > breakpointDistance1) {
-                sumMinBreakpointDistances += breakpointDistance1;
-                sumMaxBreakpointDistances += breakpointDistance2;
-            } else {
-                sumMinBreakpointDistances += breakpointDistance2;
-                sumMaxBreakpointDistances += breakpointDistance1;
-            }
-            sumReciprocalOverlap += reciprocalOverlap;
-            sumSizeSimilarity += sizeSimilarity;
         }
         // Don't do expensive overlap calculation if threshold is 0
         final Double sampleOverlap = sampleOverlapThreshold > 0 ? computeSampleOverlap(a, b) : Double.valueOf(1.);
 
         return new CanonicalLinkageResult(testSampleOverlap(sampleOverlap, sampleOverlapThreshold),
-                sumReciprocalOverlap / nIntervals, sumSizeSimilarity / nIntervals,
-                (int) Math.round(sumMinBreakpointDistances / nIntervals), (int) Math.round(sumMaxBreakpointDistances / nIntervals));
+                computeReciprocalOverlap(a, b), computeSizeSimilarity(a, b), overallBreakpointDistance1,
+                overallBreakpointDistance2, intervalReciprocalOverlap, intervalSizeSimilarity,
+                intervalFirstBreakpointDistance, intervalSecondBreakpointDistance);
     }
 
     private static Double computeReciprocalOverlap(final SVCallRecord a, final SVCallRecord b) {
@@ -402,6 +398,10 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         private final Double sizeSimilarity;
         private final Integer breakpointDistance1;
         private final Integer breakpointDistance2;
+        private final Double[] intervalReciprocalOverlap;
+        private final Double[] intervalSizeSimilarity;
+        private final Integer[] intervalFirstBreakpointDistance;
+        private final Integer[] intervalSecondBreakpointDistance;
 
         public CanonicalLinkageResult(final boolean result) {
             super(result);
@@ -409,6 +409,10 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
             this.sizeSimilarity = null;
             this.breakpointDistance1 = null;
             this.breakpointDistance2 = null;
+            this.intervalReciprocalOverlap = null;
+            this.intervalSizeSimilarity = null;
+            this.intervalFirstBreakpointDistance = null;
+            this.intervalSecondBreakpointDistance = null;
         }
 
         public CanonicalLinkageResult(final boolean result, final Double reciprocalOverlap, final Double sizeSimilarity,
@@ -419,6 +423,25 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
             this.sizeSimilarity = sizeSimilarity;
             this.breakpointDistance1 = breakpointDistance1;
             this.breakpointDistance2 = breakpointDistance2;
+            this.intervalReciprocalOverlap = null;
+            this.intervalSizeSimilarity = null;
+            this.intervalFirstBreakpointDistance = null;
+            this.intervalSecondBreakpointDistance = null;
+        }
+
+        public CanonicalLinkageResult(final boolean result, final Double reciprocalOverlap, final Double sizeSimilarity,
+                                      final Integer breakpointDistance1, final Integer breakpointDistance2,
+                                      final Double[] intervalReciprocalOverlap, final Double[] intervalSizeSimilarity,
+                                      final Integer[] intervalFirstBreakpointDistance, final Integer[] intervalSecondBreakpointDistance) {
+            super(result);
+            this.reciprocalOverlap = reciprocalOverlap;
+            this.sizeSimilarity = sizeSimilarity;
+            this.breakpointDistance1 = breakpointDistance1;
+            this.breakpointDistance2 = breakpointDistance2;
+            this.intervalReciprocalOverlap = intervalReciprocalOverlap;
+            this.intervalSizeSimilarity = intervalSizeSimilarity;
+            this.intervalFirstBreakpointDistance = intervalFirstBreakpointDistance;
+            this.intervalSecondBreakpointDistance = intervalSecondBreakpointDistance;
         }
 
         public Double getReciprocalOverlap() {
@@ -436,6 +459,14 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         public Integer getBreakpointDistance2() {
             return breakpointDistance2;
         }
+
+        public Double[] getIntervalReciprocalOverlap() { return intervalReciprocalOverlap; }
+
+        public Double[] getIntervalSizeSimilarity() { return intervalSizeSimilarity; }
+
+        public Integer[] getIntervalFirstBreakpointDistance() { return intervalFirstBreakpointDistance; }
+
+        public Integer[] getIntervalSecondBreakpointDistance() { return intervalSecondBreakpointDistance; }
     }
 
 }
