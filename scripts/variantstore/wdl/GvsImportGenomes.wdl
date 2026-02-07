@@ -243,9 +243,9 @@ workflow GvsImportGenomes {
       input:
         # If we're using Parquet loading then gate the assignment of `is_loaded` on the verification task, otherwise
         # (if we're using the Write API) gate on LoadData. A BQ Write API-flavored invocation of LoadData loads all data
-        # into vet and ref ranges tables itself, whereas a Parquet-flavored invocation of LoadData only creates the
-        # Parquet files and stages them to GCS; separate WDL tasks are responsible for finding and loading staged
-        # Parquet data into BigQuery.
+        # into vet and ref ranges tables itself. However a Parquet-flavored invocation of LoadData only creates the
+        # Parquet files and stages them to GCS; a chain of WDL tasks are responsible for finding and loading staged
+        # Parquet data into BigQuery, the last of which is `VerifyParquetLoading`.
         go = select_first([VerifyParquetLoading.done, LoadData.done[0]]),
         project_id = project_id,
         dataset_name = dataset_name,
@@ -554,29 +554,38 @@ task SetIsLoadedColumn {
     # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
-    UPDATE `~{dataset_name}.sample_info` SET is_loaded = true
-    WHERE sample_id in (
-      SELECT CAST(variant_data_loaded.partition_id AS INT64) AS sample_id FROM (
-        -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
-        -- will be (stringified) sample ids. If the partition id predicate below is satisfied for both the vet and
-        -- ref ranges tables, then the data for that sample id / partition id is fully loaded.
-        SELECT partition_id FROM `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-        WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
-      ) variant_data_loaded
-      LEFT JOIN
-      (
-        SELECT partition_id FROM `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-        WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
-      ) reference_data_loaded ON
-      variant_data_loaded.partition_id = reference_data_loaded.partition_id
-    )
+      -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
+      -- will be stringified sample ids. This function can be used to identify which sample ids have had their vet or
+      -- ref_ranges data loaded.
+      CREATE OR REPLACE TABLE FUNCTION `~{project_id}.~{dataset_name}`.sample_ids_loaded_in(table_prefix STRING)
+      AS (
+        (
+        SELECT CAST(partition_id AS INT64) AS sample_id
+        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+        WHERE
+        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^" || table_prefix || "_[0-9]+$")
+        )
+      );
+
+      -- If a sample_id has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
+      UPDATE `~{project_id}.~{dataset_name}.sample_info`
+      SET is_loaded = TRUE
+      WHERE
+      sample_id IN (
+        SELECT v.sample_id FROM
+        `~{project_id}.~{dataset_name}.sample_ids_loaded_in("vet") v
+        LEFT JOIN
+        `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("ref_ranges") r
+        ON
+        v.sample_id = r.sample_id
+      );
 
     '
   >>>
   runtime {
     docker: cloud_sdk_docker
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
+    memory: "4 GB"
+    disks: "local-disk 500 HDD"
     cpu: 1
   }
 
