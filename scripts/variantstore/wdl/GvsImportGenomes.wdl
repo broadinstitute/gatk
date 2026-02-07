@@ -207,7 +207,7 @@ workflow GvsImportGenomes {
           variants_docker = effective_variants_docker,
       }
 
-      # Load Parquet files into BigQuery after all data has been created
+      # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
           output_gcs_dir = output_gcs_dir,
@@ -573,7 +573,7 @@ task SetIsLoadedColumn {
       WHERE
       sample_id IN (
         SELECT v.sample_id FROM
-        `~{project_id}.~{dataset_name}.sample_ids_loaded_in("vet") v
+        `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("vet") v
         LEFT JOIN
         `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("ref_ranges") r
         ON
