@@ -574,7 +574,7 @@ task SetIsLoadedColumn {
       sample_id IN (
         SELECT v.sample_id FROM
         `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("vet") v
-        LEFT JOIN
+        INNER JOIN
         `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("ref_ranges") r
         ON
         v.sample_id = r.sample_id
