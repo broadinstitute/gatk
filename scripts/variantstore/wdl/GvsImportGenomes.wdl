@@ -152,7 +152,7 @@ workflow GvsImportGenomes {
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
-    call LoadData {
+    call GenerateParquetFilesFromInputGVCFs {
       input:
         index = i,
         dataset_name = dataset_name,
@@ -181,7 +181,7 @@ workflow GvsImportGenomes {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        go = LoadData.done,
+        go = GenerateParquetFilesFromInputGVCFs.done,
         dataset_name = dataset_name,
         project_id = project_id,
     }
@@ -214,7 +214,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = select_first([LoadData.done[0], true]),
+          go = select_first([GenerateParquetFilesFromInputGVCFs.done[0], true]),
           variants_docker = effective_variants_docker,
       }
 
@@ -241,12 +241,16 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
-        # If we're using Parquet loading then gate the assignment of `is_loaded` on the verification task, otherwise
-        # (if we're using the Write API) gate on LoadData. A BQ Write API-flavored invocation of LoadData loads all data
-        # into vet and ref ranges tables itself. However a Parquet-flavored invocation of LoadData only creates the
-        # Parquet files and stages them to GCS; a chain of WDL tasks are responsible for finding and loading staged
-        # Parquet data into BigQuery, the last of which is `VerifyParquetLoading`.
-        go = select_first([VerifyParquetLoading.done, LoadData.done[0]]),
+        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
+        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
+        # While the final version of the Parquet work that will merge to ah_var_store should support both BQ Write API
+        # and Parquet loading (controlled via an optional boolean input), the current state of the Parquet work is that
+        # the `LoadData` task is hardcoded for Parquet file generation only. To avoid confusion as to the scope of what
+        # this task does, it is aliased here to `GenerateParquetFilesFromInputGVCFs`.
+
+        # Because the loading and verification for Parquet is handled by a chain of other WDL tasks, the `go` trigger
+        # for setting the `is_loaded` column becomes the last task in that chain, `VerifyParquetLoading`.
+        go = select_first([VerifyParquetLoading.done, true]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -257,7 +261,7 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
-    Array[File] load_data_stderrs = LoadData.stderr
+    Array[File] load_data_stderrs = GenerateParquetFilesFromInputGVCFs.stderr
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
@@ -301,7 +305,10 @@ task CreateFOFNs {
   }
 }
 
-task LoadData {
+# This is the task known as `LoadData` on the ah_var_store branch, but on the Parquet branches it does not load data.
+# The invocation of `GenerateVariantIngestFiles` here is hardcoded to only generate Parquet files from input gVCFs and
+# then stage them to GCS.
+task GenerateParquetFilesFromInputGVCFs {
   input {
     Int index
     String dataset_name
@@ -331,7 +338,7 @@ task LoadData {
   }
 
   meta {
-    description: "Load data into BigQuery using the Write Api"
+    description: "Generate Parquet files from input gVCFs."
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
