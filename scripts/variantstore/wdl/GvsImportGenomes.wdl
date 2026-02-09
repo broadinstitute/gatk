@@ -246,10 +246,11 @@ workflow GvsImportGenomes {
         # While the final version of the Parquet work that will merge to ah_var_store should support both BQ Write API
         # and Parquet loading (controlled via an optional boolean input), the current state of the Parquet work is that
         # the `LoadData` task is hardcoded for Parquet file generation only. To avoid confusion as to the scope of what
-        # this task does, it is aliased here to `GenerateParquetFilesFromInputGVCFs`.
+        # this task does, its usage in this Parquet branch is aliased to `GenerateParquetFilesFromInputGVCFs`.
 
-        # Because the loading and verification for Parquet is handled by a chain of other WDL tasks, the `go` trigger
-        # for setting the `is_loaded` column becomes the last task in that chain, `VerifyParquetLoading`.
+        # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
+        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done`
+        # output of the last task in that chain, `VerifyParquetLoading`.
         go = select_first([VerifyParquetLoading.done, true]),
         project_id = project_id,
         dataset_name = dataset_name,
