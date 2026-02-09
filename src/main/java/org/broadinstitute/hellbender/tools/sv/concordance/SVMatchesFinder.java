@@ -218,7 +218,7 @@ public class SVMatchesFinder implements CorrespondingSVSelector {
 
         List<Object> getMatchAlleleFrequencies() { return matchAlleleFrequencies; }
 
-        List<Object> getMatchNondiploidFrequencies() { return matchAlleleFrequencies; }
+        List<Object> getMatchNondiploidFrequencies() { return matchNondiploidFrequencies; }
         List<Object> getMatchXXNondiploidFrequencies() { return matchXXNondiploidFrequencies; }
         List<Object> getMatchXYNondiploidFrequencies() { return matchXYNondiploidFrequencies; }
 
