@@ -357,7 +357,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1777_build_failure
+             - vs_1800_prep_for_merge
              - gg_VS-1780
          tags:
              - /.*/
