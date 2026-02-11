@@ -214,17 +214,26 @@ workflows:
              - VS-1736
          tags:
              - /.*/
-   - name: GvsBulkIngestGenomes
+   - name: BulkIngestWriteAPI
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
          branches:
              - master
              - ah_var_store
-             - VS-1736
-             - gg_VS-1780
+             - vs_1800_prep_for_merge
          tags:
              - /.*/
+   - name: BulkIngestParquet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1800_prep_for_merge
+       tags:
+         - /.*/
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl

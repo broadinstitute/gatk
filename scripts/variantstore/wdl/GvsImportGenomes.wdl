@@ -520,7 +520,7 @@ task ProcessInputGVCFs {
         --enable-vcf-headers ~{load_vcf_headers} \
         --use-compressed-refs ~{use_compressed_references}
 
-      # These Parquet / non-Parquet branches here might also be coalesced.
+      # The Parquet / non-Parquet branches here might also be coalesced.
       if [[ "~{use_parquet_ingest}" = 'true' ]]
       then
         rm $updated_input_vcf
