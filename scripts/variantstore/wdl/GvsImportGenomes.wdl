@@ -45,9 +45,10 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
 
-    # Dump these Parquet files to a bucket
-    Boolean use_parquet_ingest = true   # currently only in limited use.
-    String output_gcs_dir
+    # Currently only in limited use.
+    Boolean use_parquet_ingest = true
+    # Dump these Parquet files to a bucket.
+    String? parquet_output_gcs_dir
     Boolean configure_parquet_bucket_lifecycle = false
 
     Boolean is_wgs = true
@@ -76,6 +77,23 @@ workflow GvsImportGenomes {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  if (use_parquet_ingest && !defined(parquet_output_gcs_dir)) {
+    call Utils.TerminateWorkflow as MustDefineOutputDirForParquetIngest {
+      input:
+        message = "use_parquet_ingest set to true but parquet_output_gcs_dir not defined",
+        basic_docker = effective_basic_docker,
+    }
+  }
+  # use_parquet_ingest + defined(parquet_output_gcs_dir) would be weird but we're not calling that an error for now.
+
+  if (load_vcf_headers && use_parquet_ingest) {
+    call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
+      input:
+      message = "The combination of Parquet ingest and VCF header loading is not currently supported.",
+      basic_docker = effective_basic_docker,
+    }
+  }
 
   call Utils.GetReference {
     input:
@@ -152,28 +170,56 @@ workflow GvsImportGenomes {
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
-    call GenerateParquetFilesFromInputGVCFs {
-      input:
-        index = i,
-        dataset_name = dataset_name,
-        project_id = project_id,
-        skip_loading_vqsr_fields = skip_loading_vqsr_fields,
-        drop_state = drop_state,
-        drop_state_includes_greater_than = false,
-        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
-        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-        interval_list = effective_interval_list,
-        gatk_docker = effective_gatk_docker,
-        gatk_override = load_data_gatk_override,
-        load_data_preemptible = effective_load_data_preemptible,
-        load_data_maxretries = effective_load_data_maxretries,
-        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map,
-        load_vet_and_ref_ranges = load_vet_and_ref_ranges,
-        load_vcf_headers = load_vcf_headers,
-        billing_project_id = billing_project_id,
-        use_compressed_references = use_compressed_references,
-        output_gcs_dir = output_gcs_dir,
+    if (use_parquet_ingest) {
+      call ProcessInputGVCFs as GenerateParquetFilesFromInputGVCFs {
+        input:
+          index = i,
+          dataset_name = dataset_name,
+          project_id = project_id,
+          skip_loading_vqsr_fields = skip_loading_vqsr_fields,
+          drop_state = drop_state,
+          drop_state_includes_greater_than = false,
+          input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
+          input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          interval_list = effective_interval_list,
+          gatk_docker = effective_gatk_docker,
+          gatk_override = load_data_gatk_override,
+          load_data_preemptible = effective_load_data_preemptible,
+          load_data_maxretries = effective_load_data_maxretries,
+          sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
+          sample_map = GetUningestedSampleIds.sample_map,
+          load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+          load_vcf_headers = load_vcf_headers,
+          billing_project_id = billing_project_id,
+          use_compressed_references = use_compressed_references,
+          parquet_output_gcs_dir = parquet_output_gcs_dir,
+          use_parquet_ingest = true,
+      }
+    }
+    if (!use_parquet_ingest) { # WDL 1.1 does not have an else statement
+      call ProcessInputGVCFs as LoadDataViaBigQueryWriteAPI {
+        input:
+          index = i,
+          dataset_name = dataset_name,
+          project_id = project_id,
+          skip_loading_vqsr_fields = skip_loading_vqsr_fields,
+          drop_state = drop_state,
+          drop_state_includes_greater_than = false,
+          input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
+          input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          interval_list = effective_interval_list,
+          gatk_docker = effective_gatk_docker,
+          gatk_override = load_data_gatk_override,
+          load_data_preemptible = effective_load_data_preemptible,
+          load_data_maxretries = effective_load_data_maxretries,
+          sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
+          sample_map = GetUningestedSampleIds.sample_map,
+          load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+          load_vcf_headers = load_vcf_headers,
+          billing_project_id = billing_project_id,
+          use_compressed_references = use_compressed_references,
+          use_parquet_ingest = false,
+      }
     }
   }
 
@@ -181,7 +227,7 @@ workflow GvsImportGenomes {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        go = GenerateParquetFilesFromInputGVCFs.done,
+        go = select_first([LoadDataViaBigQueryWriteAPI.done[0]]), # add a gate on Parquet once we're loading headers on the Parquet flow
         dataset_name = dataset_name,
         project_id = project_id,
     }
@@ -189,12 +235,13 @@ workflow GvsImportGenomes {
 
   if (load_vet_and_ref_ranges) {
     if (use_parquet_ingest) {
+      String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
       if (configure_parquet_bucket_lifecycle) {
         # Set up lifecycle rules for parquet directories before loading
         # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
         call ConfigureParquetLifecycle {
           input:
-            output_gcs_dir = output_gcs_dir,
+            output_gcs_dir = defined_parquet_output_dir,
             billing_project_id = billing_project_id,
             cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -210,7 +257,7 @@ workflow GvsImportGenomes {
       # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
-          output_gcs_dir = output_gcs_dir,
+          output_gcs_dir = defined_parquet_output_dir,
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
@@ -251,7 +298,7 @@ workflow GvsImportGenomes {
         # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done`
         # output of the last task in that chain, `VerifyParquetLoading`.
-        go = select_first([VerifyParquetLoading.done, true]),
+        go = select_first([VerifyParquetLoading.done, LoadDataViaBigQueryWriteAPI.done[0]]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -262,7 +309,7 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
-    Array[File] load_data_stderrs = GenerateParquetFilesFromInputGVCFs.stderr
+    Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
@@ -307,9 +354,9 @@ task CreateFOFNs {
 }
 
 # This is the task known as `LoadData` on the ah_var_store branch, but on the Parquet branches it does not load data.
-# The invocation of `GenerateVariantIngestFiles` here is hardcoded to only generate Parquet files from input gVCFs and
-# then stage them to GCS.
-task GenerateParquetFilesFromInputGVCFs {
+# In the Parquet flow we only generate Parquet files from input gVCFs and then stage them to GCS; the actual data
+# loading is performed by a suite of other, Parquet-specific downstream tasks.
+task ProcessInputGVCFs {
   input {
     Int index
     String dataset_name
@@ -330,16 +377,18 @@ task GenerateParquetFilesFromInputGVCFs {
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
 
-    String output_gcs_dir
+    String? parquet_output_gcs_dir
 
     String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
+
+    Boolean use_parquet_ingest
   }
 
   meta {
-    description: "Generate Parquet files from input gVCFs."
+    description: "Generate Parquet files from input gVCFs OR load data into BigQuery using the Write API, depending on the value of `use_parquet_ingest`."
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
@@ -434,18 +483,24 @@ task GenerateParquetFilesFromInputGVCFs {
     VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
     SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
 
-
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
       gs_input_vcf="${VCFS_ARRAY[$i]}"
       gs_input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
-      # we always do our own localization
-      updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
-#      updated_input_vcf=input_vcf_$i_$sample_name.vcf.gz
+      # We always do our own localization.
+      # It seems possible that the Parquet / non-Parquet branches below might be coalesced.
+      if [[ "~{use_parquet_ingest}" = 'true' ]]
+      then
+        updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
+      else
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+        updated_input_vcf=input_vcf_$i.vcf.gz
+      fi
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
@@ -455,33 +510,40 @@ task GenerateParquetFilesFromInputGVCFs {
         --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
-        --output-type PARQUET \
-        --enable-reference-ranges true \
-        --enable-vet true \
+        --output-type ~{true="PARQUET" false="BQ" use_parquet_ingest} \
+        --enable-reference-ranges ~{load_vet_and_ref_ranges} \
+        --enable-vet ~{load_vet_and_ref_ranges} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
-        --enable-vcf-headers false \
+        --enable-vcf-headers ~{load_vcf_headers} \
         --use-compressed-refs ~{use_compressed_references}
 
-      rm $updated_input_vcf
-      rm ${updated_input_vcf}.tbi
+      # These Parquet / non-Parquet branches here might also be coalesced.
+      if [[ "~{use_parquet_ingest}" = 'true' ]]
+      then
+        rm $updated_input_vcf
+        rm ${updated_input_vcf}.tbi
 
-      OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-      # the file name is a little wonky, so let's just grab the file using such a star statement
-      vet_parquet_file=`ls vet_*.parquet`
-      ref_parquet_file=`ls ref_*.parquet`
+        OUTPUT_GCS_DIR=$(echo ~{parquet_output_gcs_dir} | sed 's/\/$//')
+        # the file name is a little wonky, so let's just grab the file using such a star statement
+        vet_parquet_file=`ls vet_*.parquet`
+        ref_parquet_file=`ls ref_*.parquet`
 
-      # parse the table superpartition out of the file name
-      table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+        # parse the table superpartition out of the file name
+        table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
 
-      # copy the vet and ref parquet files to the gcs bucket in the right place
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
+        # copy the vet and ref parquet files to the gcs bucket in the right place
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
 
-      # cleanup after ourselves
-      rm *.parquet
+        # cleanup after ourselves
+        rm *.parquet
+      else
+        rm input_vcf_$i.vcf.gz
+        rm input_vcf_$i.vcf.gz.tbi
+      fi
 
     done
   >>>
@@ -505,7 +567,7 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
-    Array[Boolean] go
+    Boolean go
     String variants_docker
   }
   meta {
@@ -527,7 +589,6 @@ task ProcessVCFHeaders {
     disks: "local-disk 500 HDD"
   }
 }
-
 
 task SetIsLoadedColumn {
   input {
@@ -761,15 +822,15 @@ task ConfigureParquetLifecycle {
     String? billing_project_id
     String cloud_sdk_docker
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-    
+
     # Extract bucket name from GCS path
     BUCKET_NAME=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f1)
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
-    
+
     # Create lifecycle configuration for parquet directories
     cat > lifecycle.json << 'EOF'
 {
@@ -786,7 +847,7 @@ task ConfigureParquetLifecycle {
   }
 }
 EOF
-    
+
     # Get existing lifecycle configuration if any
     set +e
     gcloud storage buckets describe gs://${BUCKET_NAME} \
@@ -794,7 +855,7 @@ EOF
       --format="value(lifecycle)" > existing_lifecycle.json 2>/dev/null
     EXISTING_RC=$?
     set -e
-    
+
     if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
       echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
       # Note: In production, you might want more sophisticated merging
@@ -803,15 +864,15 @@ EOF
     else
       echo "No existing lifecycle rules found"
     fi
-    
+
     # Apply the lifecycle configuration
     gcloud storage buckets update gs://${BUCKET_NAME} \
       ~{"--billing-project " + billing_project_id} \
       --lifecycle-file=lifecycle.json
-    
+
     echo "✓ Lifecycle rule applied: Delete files in vet/ and ref_ranges/ after 14 days"
   >>>
-  
+
   runtime {
     docker: cloud_sdk_docker
     memory: "1 GB"
@@ -819,7 +880,7 @@ EOF
     preemptible: 3
     cpu: 1
   }
-  
+
   output {
     Boolean done = true
   }
@@ -832,7 +893,7 @@ task CreateParquetTrackingTable {
     Boolean go = true
     String variants_docker
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
@@ -841,7 +902,7 @@ task CreateParquetTrackingTable {
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name}
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "2 GB"
@@ -849,7 +910,7 @@ task CreateParquetTrackingTable {
     preemptible: 3
     cpu: 1
   }
-  
+
   output {
     Boolean done = true
   }
@@ -865,28 +926,28 @@ task DiscoverParquetFiles {
     String? billing_project_id
     String variants_docker
   }
-  
+
   meta {
     volatile: true
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-    
+
     # Normalize GCS path to ensure exactly one trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-    
+
     # List all objects, filter for Parquet files
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
       "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
-    
+
     grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
-    
+
     FILE_COUNT=$(wc -l < all_files.txt)
     echo "Found $FILE_COUNT Parquet files"
-    
+
     # Parse and group by table
     python3 /app/parse_and_group_files.py \
       --input all_files.txt \
@@ -895,7 +956,7 @@ task DiscoverParquetFiles {
       --dataset ~{dataset_name} \
       --table-prefixes ~{sep=" " table_prefixes}
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "4 GB"
@@ -920,11 +981,11 @@ task LoadParquetFilesToBQ {
     String? billing_project_id
     String variants_docker
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-    
+
     # Table name is extracted from FOFN filename by the Python script
     python3 /app/load_parquet_to_bq.py \
       --project-id ~{project_id} \
@@ -934,7 +995,7 @@ task LoadParquetFilesToBQ {
       --batch-size ~{batch_size} \
       --output-stats stats.json
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "4 GB"
@@ -943,7 +1004,7 @@ task LoadParquetFilesToBQ {
     maxRetries: 3
     cpu: 1
   }
-  
+
   output {
     Boolean done = true
     File stats_json = "stats.json"
@@ -958,31 +1019,31 @@ task VerifyParquetLoading {
     Array[Boolean] go = [true]
     String variants_docker
   }
-  
+
   meta {
     volatile: true
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-    
+
     mkdir -p verification_output
-    
+
     python3 /app/verify_all_loaded.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --gcs-files-list ~{gcs_files_list} \
       --output-dir verification_output
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "4 GB"
     disks: "local-disk 20 HDD"
     cpu: 1
   }
-  
+
   output {
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
