@@ -212,6 +212,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1736
+             - vs_1800_prep_for_merge
          tags:
              - /.*/
    - name: BulkIngestWriteAPI
