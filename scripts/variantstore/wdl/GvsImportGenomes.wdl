@@ -618,7 +618,7 @@ task SetIsLoadedColumn {
         -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
         -- will be stringified sample ids. This function can be used to identify which sample ids have had their vet or
         -- ref_ranges data loaded. If both the vet and ref_ranges tables have data for a particular sample id, that
-        -- sample id's data should be marked as loaded.
+        -- sample id should be marked as loaded.
         --
         -- Unfortunately this straightforward approach of querying INFORMATION_SCHEMA for sample load status does not
         -- work reliably when data is loaded with the Write API. In this case INFORMATION_SCHEMA shows vet and ref_ranges
