@@ -126,6 +126,7 @@ workflow GvsQuickstartVcfIntegration {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             extract_output_gcs_dir = extract_output_gcs_dir,
+            use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = effective_parquet_output_gcs_dir,
     }
 
