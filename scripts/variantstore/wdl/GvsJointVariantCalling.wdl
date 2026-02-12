@@ -32,6 +32,7 @@ workflow GvsJointVariantCalling {
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         Boolean use_parquet_ingest = false
+        String? parquet_output_gcs_dir
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
@@ -65,8 +66,6 @@ workflow GvsJointVariantCalling {
         String? filter_set_name
 
         File? target_interval_list
-
-        String parquet_output_gcs_dir
 
         # Overrides to be passed to GvsCreateFilterSet
         Int? INDEL_VQSR_max_gaussians_override = 4
@@ -157,11 +156,11 @@ workflow GvsJointVariantCalling {
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
             is_wgs = is_wgs,
-            parquet_output_gcs_dir = parquet_output_gcs_dir,
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
             use_parquet_ingest = use_parquet_ingest,
+            parquet_output_gcs_dir = parquet_output_gcs_dir,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
