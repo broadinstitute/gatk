@@ -85,7 +85,7 @@ workflow GvsImportGenomes {
         basic_docker = effective_basic_docker,
     }
   }
-  # use_parquet_ingest + defined(parquet_output_gcs_dir) would be weird but we're not calling that an error for now.
+  # !use_parquet_ingest && defined(parquet_output_gcs_dir) would be weird but we're not calling that an error for now.
 
   if (load_vcf_headers && use_parquet_ingest) {
     call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
