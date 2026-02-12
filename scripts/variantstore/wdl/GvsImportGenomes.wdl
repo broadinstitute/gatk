@@ -227,7 +227,7 @@ workflow GvsImportGenomes {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        go = select_first([LoadDataViaBigQueryWriteAPI.done[0]]), # add a gate on Parquet once we're loading headers on the Parquet flow
+        go = select_all(select_first([LoadDataViaBigQueryWriteAPI.done])), # add a gate on Parquet once we're loading headers on the Parquet flow
         dataset_name = dataset_name,
         project_id = project_id,
     }
@@ -558,7 +558,7 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
-    Boolean go
+    Array[Boolean] go
     String variants_docker
   }
   meta {
