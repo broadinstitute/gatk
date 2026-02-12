@@ -288,7 +288,7 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
-        go = select_first([VerifyParquetLoading.done, LoadDataViaBigQueryWriteAPI.done[0]]),
+        go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
         project_id = project_id,
         dataset_name = dataset_name,
         use_parquet_ingest = use_parquet_ingest,
@@ -587,7 +587,7 @@ task SetIsLoadedColumn {
     String project_id
 
     Boolean use_parquet_ingest
-    Boolean go = true
+    Array[Boolean] go = [true]
     String cloud_sdk_docker
   }
   meta {
