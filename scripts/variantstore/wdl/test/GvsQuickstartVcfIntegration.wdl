@@ -12,6 +12,8 @@ workflow GvsQuickstartVcfIntegration {
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
+        Boolean use_parquet_ingest = false
+        String? parquet_output_gcs_dir
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
@@ -84,6 +86,7 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     String extract_output_gcs_dir = "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}/~{dataset_suffix}"
+    String effective_parquet_output_gcs_dir = select_first([parquet_output_gcs_dir, extract_output_gcs_dir + "/parquet/"])
 
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
@@ -123,7 +126,7 @@ workflow GvsQuickstartVcfIntegration {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             extract_output_gcs_dir = extract_output_gcs_dir,
-            parquet_output_gcs_dir = extract_output_gcs_dir,
+            parquet_output_gcs_dir = effective_parquet_output_gcs_dir,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)

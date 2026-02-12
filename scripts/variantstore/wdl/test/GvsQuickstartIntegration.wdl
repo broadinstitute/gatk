@@ -170,6 +170,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = workspace_id,
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                use_parquet_ingest = true,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
             input:
@@ -332,7 +333,6 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = vcf_files_column_name,
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 extract_output_gcs_dir = extract_output_gcs_dir,
-                parquet_output_gcs_dir = extract_output_gcs_dir,
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
         }
 

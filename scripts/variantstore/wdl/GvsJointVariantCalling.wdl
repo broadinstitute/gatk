@@ -31,6 +31,7 @@ workflow GvsJointVariantCalling {
         Boolean load_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
+        Boolean use_parquet_ingest = false
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
@@ -160,6 +161,7 @@ workflow GvsJointVariantCalling {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
+            use_parquet_ingest = use_parquet_ingest,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
