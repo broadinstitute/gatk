@@ -619,10 +619,6 @@ task SetIsLoadedColumn {
         -- will be stringified sample ids. This function can be used to identify which sample ids have had their vet or
         -- ref_ranges data loaded. If both the vet and ref_ranges tables have data for a particular sample id, that
         -- sample id should be marked as loaded.
-        --
-        -- Unfortunately this straightforward approach of querying INFORMATION_SCHEMA for sample load status does not
-        -- work reliably when data is loaded with the Write API. In this case INFORMATION_SCHEMA shows vet and ref_ranges
-        -- tables as being unpartitioned for hours after loading before eventually showing the expected partitioning.
         CREATE OR REPLACE TABLE FUNCTION `~{project_id}.~{dataset_name}`.sample_ids_loaded_in(table_prefix STRING)
         AS (
           (
@@ -649,8 +645,13 @@ task SetIsLoadedColumn {
       '
     else
       # When loading data with the BigQuery Write API we must use the GVS `sample_load_status` table to *reliably*
-      # determine sample load status. If / when GVS switches over to Parquet loading exclusively, we might consider
-      # deprecating `sample_load_status` and all the cumbersome code that supports it.
+      # determine sample load status. Unfortunately the straightforward approach of querying INFORMATION_SCHEMA for
+      # sample load status often does not work when data is loaded with the Write API. When using the Write API with a
+      # PENDING writer, INFORMATION_SCHEMA sometimes shows vet and ref_ranges tables as being unpartitioned for *hours*
+      # after loading completes before eventually showing the expected partitioning.
+      # If / when GVS switches over to Parquet loading exclusively, we might consider deprecating `sample_load_status`
+      # and all the cumbersome code that supports it. At the time of this writing, the Parquet flow is not writing to
+      # `sample_load_status` at all.
 
       # bq query --max_rows check: ok update
       bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
