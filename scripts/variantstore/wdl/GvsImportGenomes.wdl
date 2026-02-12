@@ -288,19 +288,10 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
-        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
-        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
-        # While the final version of the Parquet work that will merge to ah_var_store should support both BQ Write API
-        # and Parquet loading (controlled via an optional boolean input), the current state of the Parquet work is that
-        # the `LoadData` task is hardcoded for Parquet file generation only. To avoid confusion as to the scope of what
-        # this task does, its usage in this Parquet branch is aliased to `GenerateParquetFilesFromInputGVCFs`.
-
-        # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
-        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done`
-        # output of the last task in that chain, `VerifyParquetLoading`.
         go = select_first([VerifyParquetLoading.done, LoadDataViaBigQueryWriteAPI.done[0]]),
         project_id = project_id,
         dataset_name = dataset_name,
+        use_parquet_ingest = use_parquet_ingest,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
@@ -595,6 +586,7 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
+    Boolean use_parquet_ingest
     Boolean go = true
     String cloud_sdk_docker
   }
@@ -613,43 +605,72 @@ task SetIsLoadedColumn {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-
     # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
     # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
     # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
     # in workflow processing. So this method is used to set *all* of the sample_info.is_loaded flags at one time.
 
-    # bq query --max_rows check: ok update
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+    if [[ "~{use_parquet_ingest}" = 'true' ]]
+    then
+      # bq query --max_rows check: ok update
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
-      -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
-      -- will be stringified sample ids. This function can be used to identify which sample ids have had their vet or
-      -- ref_ranges data loaded.
-      CREATE OR REPLACE TABLE FUNCTION `~{project_id}.~{dataset_name}`.sample_ids_loaded_in(table_prefix STRING)
-      AS (
-        (
-        SELECT CAST(partition_id AS INT64) AS sample_id
-        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+        -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
+        -- will be stringified sample ids. This function can be used to identify which sample ids have had their vet or
+        -- ref_ranges data loaded. If both the vet and ref_ranges tables have data for a particular sample id, that
+        -- sample id's data should be marked as loaded.
+        --
+        -- Unfortunately this straightforward approach of querying INFORMATION_SCHEMA for sample load status does not
+        -- work reliably when data is loaded with the Write API. In this case INFORMATION_SCHEMA shows vet and ref_ranges
+        -- tables as being unpartitioned for hours after loading before eventually showing the expected partitioning.
+        CREATE OR REPLACE TABLE FUNCTION `~{project_id}.~{dataset_name}`.sample_ids_loaded_in(table_prefix STRING)
+        AS (
+          (
+          SELECT CAST(partition_id AS INT64) AS sample_id
+          FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+          WHERE
+          partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^" || table_prefix || "_[0-9]+$")
+          )
+        );
+
+        -- If a sample_id has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
+        UPDATE `~{project_id}.~{dataset_name}.sample_info`
+        SET is_loaded = TRUE
         WHERE
-        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^" || table_prefix || "_[0-9]+$")
-        )
-      );
+        sample_id IN (
+          SELECT v.sample_id FROM
+          `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("vet") v
+          INNER JOIN
+          `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("ref_ranges") r
+          ON
+          v.sample_id = r.sample_id
+        );
 
-      -- If a sample_id has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
-      UPDATE `~{project_id}.~{dataset_name}.sample_info`
-      SET is_loaded = TRUE
-      WHERE
-      sample_id IN (
-        SELECT v.sample_id FROM
-        `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("vet") v
-        INNER JOIN
-        `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("ref_ranges") r
-        ON
-        v.sample_id = r.sample_id
-      );
+      '
+    else
+      # When loading data with the BigQuery Write API we must use the GVS `sample_load_status` table to *reliably*
+      # determine sample load status. If / when GVS switches over to Parquet loading exclusively, we might consider
+      # deprecating `sample_load_status` and all the cumbersome code that supports it.
 
-    '
+      # bq query --max_rows check: ok update
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+        UPDATE `~{project_id}.~{dataset_name}.sample_info`
+
+        SET is_loaded = TRUE
+        WHERE
+        sample_id IN (
+          SELECT v.sample_id FROM
+          `~{project_id}.~{dataset_name}.sample_load_status` v
+          INNER JOIN
+          `~{project_id}.~{dataset_name}.sample_load_status` r
+          ON
+          v.sample_id = r.sample_id
+          AND v.status = "VARIANTS_LOADED"
+          AND r.status = "REFERENCES_LOADED"
+        );
+
+      '
+    fi
   >>>
   runtime {
     docker: cloud_sdk_docker
