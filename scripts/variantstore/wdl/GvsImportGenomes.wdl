@@ -860,7 +860,7 @@ task CreateSampleDataViews {
      -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
      -- will be stringified sample ids. These views identify which sample ids have had vet or reference data loaded.
 
-     CREATE OR UPDATE VIEW `~{project_id}.~{dataset_name}.samples_with_vet_data` AS
+     CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_vet_data` AS
      (
        SELECT CAST(partition_id AS INT64) AS sample_id
        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
@@ -868,7 +868,7 @@ task CreateSampleDataViews {
        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
      );
 
-     CREATE OR UPDATE VIEW `~{project_id}.~{dataset_name}.samples_with_ref_ranges_data` AS
+     CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_ref_ranges_data` AS
      (
        SELECT CAST(partition_id AS INT64) AS sample_id
        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
