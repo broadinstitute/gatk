@@ -40,6 +40,7 @@ public class GvsReferenceParquetFileWriter extends RefRangesWriter {
         this.parquetWriterImpl.write(object);
     }
 
+    @Override
     public void close() throws IOException {
         this.parquetWriterImpl.close();
     }
@@ -53,6 +54,7 @@ public class GvsReferenceParquetFileWriter extends RefRangesWriter {
         }
     }
 
+    @Override
     public void write(long location, long sampleId, int length, String state) throws IOException {
         JSONObject record = new JSONObject();
         record.put("location", location);
@@ -62,6 +64,7 @@ public class GvsReferenceParquetFileWriter extends RefRangesWriter {
         this.write(record);
     }
 
+    @Override
     public void writeCompressed(long packedData, long sampleId) throws IOException {
         JSONObject compressedRecord = new JSONObject();
         compressedRecord.put("packedData", packedData);
@@ -74,7 +77,7 @@ public class GvsReferenceParquetFileWriter extends RefRangesWriter {
      * 
      * The WriteSupport is injected via constructor rather than created inside
      * getWriteSupport(), which provides better separation of concerns and testability.
-     * 
+     *
      * Note: The getWriteSupport(Configuration) method is deprecated in Parquet 1.13.1
      * but there's no alternative method available yet. The @SuppressWarnings annotation
      * is used because:
