@@ -85,7 +85,7 @@ workflow GvsImportGenomes {
         basic_docker = effective_basic_docker,
     }
   }
-  # Not calling the combination of !use_parquet_ingest && defined(parquet_output_gcs_dir) an error for now, this is
+  # We're not considering the combo of !use_parquet_ingest && defined(parquet_output_gcs_dir) an error for now, this is
   # how this workflow is (indirectly) invoked through our integration test.
 
   if (load_vcf_headers && use_parquet_ingest) {
