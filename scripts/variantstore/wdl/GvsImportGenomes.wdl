@@ -261,7 +261,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = select_first([GenerateParquetFilesFromInputGVCFs.done[0], true]),
+          go = select_all(select_first([GenerateParquetFilesFromInputGVCFs.done, []])),
           variants_docker = effective_variants_docker,
       }
 
@@ -587,7 +587,7 @@ task SetIsLoadedColumn {
     String project_id
 
     Boolean use_parquet_ingest
-    Array[Boolean] go = [true]
+    Array[Boolean] go
     String cloud_sdk_docker
   }
   meta {
@@ -912,7 +912,6 @@ task CreateParquetTrackingTable {
   input {
     String project_id
     String dataset_name
-    Boolean go = true
     String variants_docker
   }
 
@@ -944,7 +943,7 @@ task DiscoverParquetFiles {
     String project_id
     String dataset_name
     Array[String] table_prefixes
-    Boolean go = true
+    Array[Boolean] go
     String? billing_project_id
     String variants_docker
   }
@@ -1038,7 +1037,7 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
-    Array[Boolean] go = [true]
+    Array[Boolean] go
     String variants_docker
   }
 
