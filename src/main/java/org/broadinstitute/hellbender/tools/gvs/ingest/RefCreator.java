@@ -178,31 +178,24 @@ public final class RefCreator {
                         int localStart = start;
                         while ( localStart <= end ) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                            switch(outputType) {
+                            switch (outputType) {
                                 case BQ:
                                 case PARQUET:
-                                    try {
-                                        if (storeCompressedReferences) {
-                                            refRangesWriter.writeCompressed(
-                                                    SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
-                                                            getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
-                                                    sampleId
-                                            );
-                                        } else {
-                                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                                    sampleId,
-                                                    length,
-                                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
-                                            );
-                                        }
-                                    } catch (IOException ex) {
-                                        throw new IOException("BQ exception", ex);
+                                    if (storeCompressedReferences) {
+                                        refRangesWriter.writeCompressed(
+                                                SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
+                                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
+                                                sampleId
+                                        );
+                                    } else {
+                                        refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                                sampleId,
+                                                length,
+                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                        );
                                     }
                                     break;
-
                             }
-
-
 
                             localStart = localStart + length ;
                         }
