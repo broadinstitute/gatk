@@ -228,7 +228,7 @@ workflow GvsImportGenomes {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        go = select_all(select_first([LoadDataViaBigQueryWriteAPI.done])), # add a gate on Parquet once we're loading headers on the Parquet flow
+        go = select_all(LoadDataViaBigQueryWriteAPI.done), # add a gate for Parquet header loading here once that's implemented
         dataset_name = dataset_name,
         project_id = project_id,
     }
@@ -269,7 +269,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = select_all(select_first([GenerateParquetFilesFromInputGVCFs.done, []])),
+          go = select_all(GenerateParquetFilesFromInputGVCFs.done),
           variants_docker = effective_variants_docker,
       }
 
