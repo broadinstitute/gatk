@@ -635,20 +635,20 @@ task SetIsLoadedColumn {
       # bq query --max_rows check: ok update
       bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
-        -- If a sample has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
-        UPDATE `~{project_id}.~{dataset_name}.sample_info`
-        SET is_loaded = TRUE
-        WHERE
-        sample_id IN (
+      -- If a sample has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
+      UPDATE `~{project_id}.~{dataset_name}.sample_info`
+      SET is_loaded = TRUE
+      WHERE
+      sample_id IN (
         SELECT v.sample_id FROM
         `~{project_id}.~{dataset_name}`.samples_with_vet_data v
         INNER JOIN
         `~{project_id}.~{dataset_name}`.samples_with_ref_ranges_data r
         ON
         v.sample_id = r.sample_id
-        );
+      );
 
-      '
+    '
     else
       # When loading data with the BigQuery Write API we must use the GVS `sample_load_status` table to *reliably*
       # determine sample load status. Unfortunately the straightforward approach of querying INFORMATION_SCHEMA for
