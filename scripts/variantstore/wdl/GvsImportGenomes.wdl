@@ -85,7 +85,8 @@ workflow GvsImportGenomes {
         basic_docker = effective_basic_docker,
     }
   }
-  # !use_parquet_ingest && defined(parquet_output_gcs_dir) would be weird but we're not calling that an error for now.
+  # Not calling the combination of !use_parquet_ingest && defined(parquet_output_gcs_dir) an error for now, this is
+  # how this workflow is (indirectly) invoked through our integration test.
 
   if (load_vcf_headers && use_parquet_ingest) {
     call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
@@ -296,6 +297,17 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
+        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
+        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
+        # While the final version of the Parquet work that will merge to ah_var_store should support both BQ Write API
+        # and Parquet loading (controlled via an optional boolean input), the current state of the Parquet work is that
+        # the `LoadData` task is hardcoded for Parquet file generation only. To avoid confusion as to the scope of what
+        # this task does, its usage in this Parquet branch is aliased to `GenerateParquetFilesFromInputGVCFs`.
+
+        # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
+        # `GenerateParquetFilesFromInputGVCFs`, one of the elements of the `go` trigger for setting the `is_loaded`
+        # column is the `done` output of the last task in that chain, `VerifyParquetLoading`. `go` is also dependent
+        # upon creating `CreateSampleDataViews` since the query that sets `is_loaded` depends on sample data views.
         go = select_all(select_first([[CreateSampleDataViews.done, VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
         project_id = project_id,
         dataset_name = dataset_name,
