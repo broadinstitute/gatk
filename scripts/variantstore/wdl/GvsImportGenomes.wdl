@@ -752,53 +752,56 @@ task CurateInputLists {
 }
 
 task CreateSampleDataViews {
-   input {
-     String project_id
-     String dataset_name
-     String cloud_sdk_docker
-   }
+  input {
+    String project_id
+    String dataset_name
+    String cloud_sdk_docker
+  }
 
-   command <<<
-     PS4='\D{+%F %T} \w $ '
-     set -o errexit -o nounset -o xtrace -o pipefail
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
 
-     bq --apilog=false show --project_id=~{project_id}  > /dev/null '
 
-     -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
-     -- will be stringified sample ids. These views identify which sample ids have had vet or reference data loaded.
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
 
-     CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_vet_data` AS
-     (
-       SELECT CAST(partition_id AS INT64) AS sample_id
-       FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-       WHERE
-       partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
-     );
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
-     CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_ref_ranges_data` AS
-     (
-       SELECT CAST(partition_id AS INT64) AS sample_id
-       FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-       WHERE
-       partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
-     );
+      -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
+      -- will be stringified sample ids. These views identify which sample ids have had vet or reference data loaded.
 
-     '
+      CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_vet_data` AS
+      (
+        SELECT CAST(partition_id AS INT64) AS sample_id
+        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+        WHERE
+        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+      );
 
-   >>>
+      CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_ref_ranges_data` AS
+      (
+        SELECT CAST(partition_id AS INT64) AS sample_id
+        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+        WHERE
+        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+      );
 
-   runtime {
-     docker: cloud_sdk_docker
-     memory: "4 GB"
-     disks: "local-disk 500 HDD"
-     preemptible: 3
-     cpu: 1
-   }
+    '
 
-   output {
-     Boolean done = true
-   }
- }
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "4 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+
+  output {
+    Boolean done = true
+  }
+}
 
 task ConfigureParquetLifecycle {
   input {
