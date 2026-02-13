@@ -35,6 +35,7 @@ workflow GvsQuickstartIntegration {
         Boolean chr20_X_Y_only = true
         Int? maximum_alternate_alleles
         File? gatk_override
+        Boolean use_parquet_ingest = false
     }
 
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
@@ -132,6 +133,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                use_parquet_ingest = use_parquet_ingest,
         }
 
         if (GvsQuickstartHailVETSIntegration.used_tighter_gcp_quotas) {
@@ -198,6 +200,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = workspace_id,
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
+                use_parquet_ingest = use_parquet_ingest,
         }
 
         if (QuickstartVcfVQSRIntegration.used_tighter_gcp_quotas) {
@@ -245,6 +248,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
+                use_parquet_ingest = use_parquet_ingest,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
@@ -284,6 +288,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
+                use_parquet_ingest = use_parquet_ingest,
         }
 
         if (QuickstartVcfBgeIntegration.used_tighter_gcp_quotas) {
@@ -334,6 +339,7 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 extract_output_gcs_dir = extract_output_gcs_dir,
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
+                use_parquet_ingest = use_parquet_ingest,
         }
 
         if (!QuickstartBeta.used_tighter_gcp_quotas) {
