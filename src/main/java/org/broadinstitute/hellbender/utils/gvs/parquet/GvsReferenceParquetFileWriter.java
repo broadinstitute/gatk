@@ -6,6 +6,8 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.gvs.ingest.RefRangesWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -18,8 +20,8 @@ import java.io.IOException;
  * getWriteSupport(Configuration) method. This approach provides better testability,
  * flexibility, and follows dependency injection principles.
  */
-public class GvsReferenceParquetFileWriter {
-    private ParquetWriter<JSONObject> parquetWriterImpl;
+public class GvsReferenceParquetFileWriter extends RefRangesWriter {
+    private final ParquetWriter<JSONObject> parquetWriterImpl;
 
     public GvsReferenceParquetFileWriter(
             Path file,
@@ -34,7 +36,7 @@ public class GvsReferenceParquetFileWriter {
         this.parquetWriterImpl = builder.withCompressionCodec(codecName).build();
     }
 
-    public void write(JSONObject object) throws IOException {
+    private void write(JSONObject object) throws IOException {
         this.parquetWriterImpl.write(object);
     }
 
@@ -42,20 +44,29 @@ public class GvsReferenceParquetFileWriter {
         this.parquetWriterImpl.close();
     }
 
-    public static JSONObject writeJson(long location, Long sampleId, int length, String state) {
+    @Override
+    public void commitData() {
+        try {
+            this.close();
+        } catch (IOException e) {
+            throw new GATKException("Error while closing Parquet writer", e);
+        }
+    }
+
+    public void write(long location, long sampleId, int length, String state) throws IOException {
         JSONObject record = new JSONObject();
         record.put("location", location);
         record.put("sample_id", sampleId);
         record.put("length", length);
         record.put("state", state);
-        return record;
+        this.write(record);
     }
 
-    public static JSONObject writeCompressed(long packedData, long sampleId) {
+    public void writeCompressed(long packedData, long sampleId) throws IOException {
         JSONObject compressedRecord = new JSONObject();
         compressedRecord.put("packedData", packedData);
         compressedRecord.put("sample_id", sampleId);
-        return compressedRecord;
+        this.write(compressedRecord);
     }
 
     /**
