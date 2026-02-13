@@ -221,7 +221,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = select_first([GenerateParquetFilesFromInputGVCFs.done[0], true]),
+          go = select_all(GenerateParquetFilesFromInputGVCFs.done),
           variants_docker = effective_variants_docker,
       }
 
@@ -257,9 +257,10 @@ workflow GvsImportGenomes {
         # this task does, its usage in this Parquet branch is aliased to `GenerateParquetFilesFromInputGVCFs`.
 
         # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
-        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done`
-        # output of the last task in that chain, `VerifyParquetLoading`.
-        go = select_all([CreateSampleDataViews.done, VerifyParquetLoading.done, true]),
+        # `GenerateParquetFilesFromInputGVCFs`, one of the elements of the `go` trigger for setting the `is_loaded`
+        # column is the `done` output of the last task in that chain, `VerifyParquetLoading`. `go` is also dependent
+        # upon creating `CreateSampleDataViews` since the query that sets `is_loaded` depends on sample data views.
+        go = select_all([CreateSampleDataViews.done, VerifyParquetLoading.done]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -905,7 +906,7 @@ task DiscoverParquetFiles {
     String project_id
     String dataset_name
     Array[String] table_prefixes
-    Boolean go = true
+    Array[Boolean] go
     String? billing_project_id
     String variants_docker
   }
