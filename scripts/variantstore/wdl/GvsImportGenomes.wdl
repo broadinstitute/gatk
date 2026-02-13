@@ -207,6 +207,13 @@ workflow GvsImportGenomes {
           variants_docker = effective_variants_docker,
       }
 
+      call CreateSampleDataViews {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
+
       # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
@@ -221,6 +228,7 @@ workflow GvsImportGenomes {
       scatter (fofn in DiscoverParquetFiles.file_fofns) {
         call LoadParquetFilesToBQ {
           input:
+            go = CreateParquetTrackingTable.done,
             project_id = project_id,
             dataset_name = dataset_name,
             fofn_file = fofn,
@@ -251,7 +259,7 @@ workflow GvsImportGenomes {
         # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done`
         # output of the last task in that chain, `VerifyParquetLoading`.
-        go = select_first([VerifyParquetLoading.done, true]),
+        go = select_all([CreateSampleDataViews.done, VerifyParquetLoading.done, true]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -534,7 +542,7 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
-    Boolean go = true
+    Array[Boolean] go
     String cloud_sdk_docker
   }
   meta {
@@ -562,28 +570,15 @@ task SetIsLoadedColumn {
     # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
-      -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
-      -- will be stringified sample ids. This function can be used to identify which sample ids have had their vet or
-      -- ref_ranges data loaded.
-      CREATE OR REPLACE TABLE FUNCTION `~{project_id}.~{dataset_name}`.sample_ids_loaded_in(table_prefix STRING)
-      AS (
-        (
-        SELECT CAST(partition_id AS INT64) AS sample_id
-        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-        WHERE
-        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^" || table_prefix || "_[0-9]+$")
-        )
-      );
-
-      -- If a sample_id has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
+      -- If a sample has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
       UPDATE `~{project_id}.~{dataset_name}.sample_info`
       SET is_loaded = TRUE
       WHERE
       sample_id IN (
         SELECT v.sample_id FROM
-        `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("vet") v
+        `~{project_id}.~{dataset_name}`.samples_with_vet_data v
         INNER JOIN
-        `~{project_id}.~{dataset_name}`.sample_ids_loaded_in("ref_ranges") r
+        `~{project_id}.~{dataset_name}`.samples_with_ref_ranges_data r
         ON
         v.sample_id = r.sample_id
       );
@@ -755,6 +750,55 @@ task CurateInputLists {
   }
 }
 
+task CreateSampleDataViews {
+   input {
+     String project_id
+     String dataset_name
+     String cloud_sdk_docker
+   }
+
+   command <<<
+     PS4='\D{+%F %T} \w $ '
+     set -o errexit -o nounset -o xtrace -o pipefail
+
+     bq --apilog=false show --project_id=~{project_id}  > /dev/null '
+
+     -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
+     -- will be stringified sample ids. These views identify which sample ids have had vet or reference data loaded.
+
+     CREATE OR UPDATE VIEW `~{project_id}.~{dataset_name}.samples_with_vet_data` AS
+     (
+       SELECT CAST(partition_id AS INT64) AS sample_id
+       FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+       WHERE
+       partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+     );
+
+     CREATE OR UPDATE VIEW `~{project_id}.~{dataset_name}.samples_with_ref_ranges_data` AS
+     (
+       SELECT CAST(partition_id AS INT64) AS sample_id
+       FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+       WHERE
+       partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+     );
+
+     '
+
+   >>>
+
+   runtime {
+     docker: cloud_sdk_docker
+     memory: "4 GB"
+     disks: "local-disk 500 HDD"
+     preemptible: 3
+     cpu: 1
+   }
+
+   output {
+     Boolean done = true
+   }
+ }
+
 task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
@@ -913,6 +957,7 @@ task DiscoverParquetFiles {
 
 task LoadParquetFilesToBQ {
   input {
+    Boolean go
     String project_id
     String dataset_name
     File fofn_file
