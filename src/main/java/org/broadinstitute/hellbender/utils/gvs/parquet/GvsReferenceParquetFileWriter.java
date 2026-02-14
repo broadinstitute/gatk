@@ -118,7 +118,7 @@ public class GvsReferenceParquetFileWriter extends RefRangesWriter {
          * @return the WriteSupport instance provided at construction time
          */
         @Override
-        @SuppressWarnings("deprecation")
+        @Deprecated
         protected WriteSupport<JSONObject> getWriteSupport(Configuration configuration) {
             return this.writeSupport;
         }

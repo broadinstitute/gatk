@@ -117,7 +117,8 @@ workflow GvsJointVariantCalling {
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
-    String effective_parquet_output_gcs_dir = select_first([parquet_output_gcs_dir, GetToolVersions.submission_folder + "/parquet_extract/"])
+    String effective_parquet_output_gcs_dir = select_first(
+        [parquet_output_gcs_dir, GetToolVersions.submission_folder + "/parquet_extract/" + GetToolVersions.workflow_id + "/"])
 
     call Utils.GetReference {
         input:
