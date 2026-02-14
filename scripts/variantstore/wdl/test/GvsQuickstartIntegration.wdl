@@ -304,6 +304,7 @@ workflow GvsQuickstartIntegration {
         String project_id = "gvs-internal"
 
         String extract_output_gcs_dir = "~{workspace_bucket}/output_vcfs/by_submission_id/~{submission_id}/beta"
+        String parquet_output_gcs_dir = "~{workspace_bucket}/parquet/by_submission_id/~{submission_id}/beta"
         Boolean collect_variant_calling_metrics = true
 
         call Utils.CreateDatasetForTest as CreateBetaDataset {
@@ -340,6 +341,7 @@ workflow GvsQuickstartIntegration {
                 extract_output_gcs_dir = extract_output_gcs_dir,
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_output_gcs_dir = parquet_output_gcs_dir,
         }
 
         if (!QuickstartBeta.used_tighter_gcp_quotas) {

@@ -144,7 +144,6 @@ task GetToolVersions {
     String workflow_id = read_string(workflow_id_output)
     String google_project = read_string(google_project_output)
     String date_as_secs_since_unix_epoch = read_string(date_as_secs_since_unix_epoch_output)
-    String submission_folder = workspace_bucket + "/submissions/" + submission_id
   }
 }
 
