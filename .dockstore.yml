@@ -371,6 +371,16 @@ workflows:
          - vs_1799_fix_parquet_exome_npe
        tags:
          - /.*/
+   - name: GvsQuickstartIntegrationWriteAPI1799
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1799_fix_parquet_exome_npe
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
