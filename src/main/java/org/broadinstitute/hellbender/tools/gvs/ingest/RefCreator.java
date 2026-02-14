@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
-import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
@@ -20,7 +19,6 @@ import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceParquetFileWriter;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
