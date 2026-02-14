@@ -13,8 +13,7 @@ workflow GvsJointVariantCalling {
         String call_set_identifier
         String dataset_name
         String extract_output_gcs_dir
-        # Remove trailing slash and add "/parquet/"
-        String parquet_output_gcs_dir = sub(extract_output_gcs_dir, "/$", "") + "/parquet/"
+        String? parquet_output_gcs_dir
         String project_id
 
         String sample_id_column_name
@@ -104,7 +103,7 @@ workflow GvsJointVariantCalling {
 
     if (!defined(git_hash) ||
         !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
-        !defined(workspace_bucket) || !defined(submission_id)) {
+        !defined(workspace_bucket) || !defined(submission_id) || !defined(parquet_output_gcs_dir)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -118,6 +117,7 @@ workflow GvsJointVariantCalling {
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_parquet_output_gcs_dir = select_first([parquet_output_gcs_dir, GetToolVersions.submission_folder + "/parquet_extract/"])
 
     call Utils.GetReference {
         input:
@@ -161,7 +161,7 @@ workflow GvsJointVariantCalling {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
             use_parquet_ingest = use_parquet_ingest,
-            parquet_output_gcs_dir = parquet_output_gcs_dir,
+            parquet_output_gcs_dir = effective_parquet_output_gcs_dir,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
