@@ -13,7 +13,6 @@ workflow GvsJointVariantCalling {
         String call_set_identifier
         String dataset_name
         String extract_output_gcs_dir
-        String? parquet_output_gcs_dir
         String project_id
 
         String sample_id_column_name
@@ -33,6 +32,7 @@ workflow GvsJointVariantCalling {
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         Boolean use_parquet_ingest = false
+        String? parquet_output_gcs_dir
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
