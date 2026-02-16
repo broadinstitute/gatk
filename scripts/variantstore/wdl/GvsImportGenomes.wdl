@@ -862,7 +862,6 @@ task CreateSampleDataViews {
       EXECUTE IMMEDIATE create_reference_data_view;
       END;
 
-
       -- The header data view is created conditionally as the header tables are created conditionally.
       BEGIN
 
@@ -910,11 +909,8 @@ task CreateSampleDataViews {
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
         (
-
           SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
-
           UNION DISTINCT
-
           SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
 
       """ || query_header_existence_clause || ");";
