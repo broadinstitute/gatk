@@ -666,7 +666,7 @@ task GetUningestedSampleIds {
     if [[ "~{load_vet_and_ref_ranges}" = "true" ]]
     then
 
-    cat > query.txt <<'FIN'
+    cat > query_vet_and_ref_ranges.sql <<'FIN'
 
       SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
       UNION DISTINCT
@@ -674,23 +674,23 @@ task GetUningestedSampleIds {
 
     FIN
 
-    cat query.txt |
-      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
-        variant_and_reference_data.status_bucket.csv
+    cat query_vet_and_ref_ranges.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > variant_and_reference_data.status_bucket.csv
     fi
 
     if [[ "~{load_vcf_headers}" = "true" ]]
     then
 
-    cat > query.txt <<'FIN2'
+    cat > query_headers.sql <<'FIN2'
 
       SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
 
     FIN2
 
-    cat query.txt |
-      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
-        header_data.status_bucket.csv
+    cat query_headers.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > header_data.status_bucket.csv
     fi
 
     ## delete the table that was only needed for this ingest test
@@ -720,6 +720,7 @@ task GetUningestedSampleIds {
     File sample_map = "sample_map.csv"
     File gvs_ids = "gvs_ids.csv"
     Array[File] status_buckets = glob("*.status_bucket.csv")
+    Array[File] queries = glob("query_*.sql")
   }
 }
 
@@ -778,7 +779,7 @@ task CreateSampleDataViews {
     cat > query.sql <<'FIN'
 
       -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
-      -- will be stringified sample ids. These views identify which sample ids have had vet or reference data loaded.
+      -- will be stringified sample ids. These views identify which samples have vet, reference, or header data loaded.
       --
       -- The Parquet flow is not currently writing sample status rows so we must use the data in INFORMATION_SCHEMA to
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in a very delayed
