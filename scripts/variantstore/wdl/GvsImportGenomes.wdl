@@ -805,14 +805,14 @@ task CreateSampleDataViews {
       DECLARE sample_load_status_table_exists INT64;
 
       SET sample_load_status_table_exists = (
-      SELECT COUNT(1) FROM
+        SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
         WHERE table_name = "sample_load_status"
       );
 
       DECLARE variants_load_status_clause STRING;
 
-      IF sample_load_status_table_exists THEN
+      IF sample_load_status_table_exists > 0 THEN
         SET variants_load_status_clause = format(sample_load_status_template, "VARIANTS_LOADED");
       ELSE
         SET variants_load_status_clause = "";
@@ -836,7 +836,7 @@ task CreateSampleDataViews {
 
 
       DECLARE references_load_status_clause STRING;
-      IF sample_load_status_table_exists THEN
+      IF sample_load_status_table_exists > 0 THEN
         SET references_load_status_clause = format(sample_load_status_template, "REFERENCES_LOADED");
       ELSE
         SET references_load_status_clause = "";
@@ -870,7 +870,7 @@ task CreateSampleDataViews {
 
       IF header_table_exists > 0 THEN
         DECLARE headers_load_status_clause STRING;
-        IF sample_load_status_table_exists THEN
+        IF sample_load_status_table_exists > 0 THEN
           SET headers_load_status_clause = format(sample_load_status_template, "HEADERS_LOADED");
         ELSE
           SET headers_load_status_clause = "";
@@ -932,6 +932,7 @@ task CreateSampleDataViews {
 
   output {
     Boolean done = true
+    File query = "query.sql"
   }
 }
 
