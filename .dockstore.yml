@@ -389,6 +389,7 @@ workflows:
          - master
          - ah_var_store
          - vs_1799_fix_parquet_exome_npe
+         - vs_1800_prep_for_merge
        tags:
          - /.*/
    - name: GvsIngestTieout
