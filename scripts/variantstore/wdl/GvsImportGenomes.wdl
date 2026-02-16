@@ -406,25 +406,49 @@ task GenerateParquetFilesFromInputGVCFs {
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
     # Get sample map of samples that haven't been loaded yet
-    # Break out individual queries into "status buckets" for all of the statuses we care about.
-    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
-    do
-      echo "
-        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
-        samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
-        samples.withdrawn is NULL" > query.txt
+    if [[ "~{load_vet_and_ref_ranges}" = "true" ]]
+    then
 
-      # bq query --max_rows check: ok sets max rows explicitly
-      cat query.txt |
-        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
-        $status.status_bucket.csv
-    done
+    cat > query_vet_and_ref_ranges.sql <<'FIN_VET_REF'
+
+      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+        UNION DISTINCT
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+      ) AND
+      samples.withdrawn is NULL
+
+    FIN_VET_REF
+
+    cat query_vet_and_ref_ranges.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > variant_and_reference_data.status_bucket.csv
+    fi
+
+    if [[ "~{load_vcf_headers}" = "true" ]]
+    then
+
+    cat > query_headers.sql <<'FIN_HEADERS'
+
+      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+      ) AND
+      samples.withdrawn is NULL
+    FIN_HEADERS
+
+    cat query_headers.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > header_data.status_bucket.csv
+    fi
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
-    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    # If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
     # Add a header manually:
     echo "sample_id,sample_name" > sample_map.csv
     # The real header sorts to the bottom of the file, delete that.
