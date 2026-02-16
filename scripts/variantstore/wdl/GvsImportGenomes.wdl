@@ -411,14 +411,15 @@ task GenerateParquetFilesFromInputGVCFs {
 
     cat > query_vet_and_ref_ranges.sql <<'FIN_VET_REF'
 
-      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
         SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
         UNION DISTINCT
         SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
       ) AND
-      samples.withdrawn is NULL
+      samples.withdrawn IS NULL
 
     FIN_VET_REF
 
@@ -432,12 +433,13 @@ task GenerateParquetFilesFromInputGVCFs {
 
     cat > query_headers.sql <<'FIN_HEADERS'
 
-      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
         SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
       ) AND
-      samples.withdrawn is NULL
+      samples.withdrawn IS NULL
     FIN_HEADERS
 
     cat query_headers.sql |
@@ -692,14 +694,15 @@ task GetUningestedSampleIds {
 
     cat > query_vet_and_ref_ranges.sql <<'FIN_VET_REF'
 
-      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
         SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
         UNION DISTINCT
         SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
       ) AND
-      samples.withdrawn is NULL
+      samples.withdrawn IS NULL
 
     FIN_VET_REF
 
@@ -713,7 +716,8 @@ task GetUningestedSampleIds {
 
     cat > query_headers.sql <<'FIN_HEADERS'
 
-      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
         SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
