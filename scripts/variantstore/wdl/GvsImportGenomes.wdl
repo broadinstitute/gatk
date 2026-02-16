@@ -896,16 +896,17 @@ task CreateSampleDataViews {
         SELECT create_header_data_view;
         EXECUTE IMMEDIATE create_header_data_view;
 
-        SET query_header_existence_clause = """;
+        SET query_header_existence_clause = """
 
-        UNION DISTINCT SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+        UNION DISTINCT
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
 
         """;
       ELSE
         SET query_header_existence_clause = "";
       END IF;
 
-      SET create_all_sample_data_view = """;
+      SET create_all_sample_data_view = """
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
         (
