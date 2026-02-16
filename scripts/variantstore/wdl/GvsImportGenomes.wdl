@@ -121,8 +121,16 @@ workflow GvsImportGenomes {
 
   Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
+  call CreateSampleDataViews {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call GetUningestedSampleIds {
     input:
+      go = CreateSampleDataViews.done,
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
@@ -207,13 +215,6 @@ workflow GvsImportGenomes {
           variants_docker = effective_variants_docker,
       }
 
-      call CreateSampleDataViews {
-        input:
-          project_id = project_id,
-          dataset_name = dataset_name,
-          cloud_sdk_docker = effective_cloud_sdk_docker,
-      }
-
       # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
@@ -257,10 +258,9 @@ workflow GvsImportGenomes {
         # this task does, its usage in this Parquet branch is aliased to `GenerateParquetFilesFromInputGVCFs`.
 
         # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
-        # `GenerateParquetFilesFromInputGVCFs`, one of the elements of the `go` trigger for setting the `is_loaded`
-        # column is the `done` output of the last task in that chain, `VerifyParquetLoading`. `go` is also dependent
-        # upon creating `CreateSampleDataViews` since the query that sets `is_loaded` depends on sample data views.
-        go = select_all([CreateSampleDataViews.done, VerifyParquetLoading.done]),
+        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
+        # of the last task in that chain, `VerifyParquetLoading`.
+        go = select_all([VerifyParquetLoading.done]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -600,6 +600,7 @@ task SetIsLoadedColumn {
 
 task GetUningestedSampleIds {
   input {
+    Boolean go
     String dataset_name
     String project_id
 
@@ -669,24 +670,43 @@ task GetUningestedSampleIds {
 
     # Get sample map of samples that haven't been loaded yet
     # Break out individual queries into "status buckets" for all of the statuses we care about.
-    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
-    do
-      echo "
-        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
-        samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
-        samples.withdrawn is NULL" > query.txt
 
-      # bq query --max_rows check: ok sets max rows explicitly
-      cat query.txt |
-        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
-        $status.status_bucket.csv
-    done
+    if [[ "~{load_vet_and_ref_ranges}" = "true" ]]
+    then
+
+    cat > query.txt <<'FIN'
+
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+      UNION DISTINCT
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+
+    FIN
+
+    cat query.txt |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
+        variant_and_reference_data.status_bucket.csv
+
+    fi
+
+    if [[ "~{load_vcf_headers}" = "true" ]]
+    then
+
+    cat > query.txt <<'FIN2'
+
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+
+    FIN2
+
+    cat query.txt |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
+        header_data.status_bucket.csv
+
+    fi
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
-    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    # If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
     # Add a header manually:
     echo "sample_id,sample_name" > sample_map.csv
     # The real header sorts to the bottom of the file, delete that.
@@ -765,28 +785,120 @@ task CreateSampleDataViews {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
 
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+    cat > query.sql <<'FIN'
 
       -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
       -- will be stringified sample ids. These views identify which sample ids have had vet or reference data loaded.
+      --
+      -- The Parquet flow is not currently writing sample status rows so we must use the data in INFORMATION_SCHEMA to
+      -- determine load status. Conversely, data written with the BigQuery Write API seems to result in a very delayed
+      -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
+      -- very unreliable when using the Write API. These following vet and ref ranges queries UNION the
+      -- sample_load_status table with the INFORMATION_SCHEMA reliably detect sample data.
+      --
+      -- This code also provides for a header row existence view if headers are being loaded.
 
-      CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_vet_data` AS
-      (
-        SELECT CAST(partition_id AS INT64) AS sample_id
-        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-        WHERE
-        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+      DECLARE sample_load_status_template STRING;
+
+      SET sample_load_status_template = """
+
+        UNION DISTINCT
+
+        SELECT sample_id FROM
+        `~{project_id}.~{dataset_name}.sample_load_status`
+        WHERE status = '%s'
+
+      """;
+
+      -- In the future the `sample_load_status` table may no longer be needed. Only refer to `sample_load_status` in the
+      -- following existence queries if the table actually exists.
+      DECLARE sample_load_status_table_exists INT64;
+
+      SET sample_load_status_table_exists = (
+      SELECT COUNT(1) FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
+        WHERE table_name = "sample_load_status"
       );
 
-      CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_ref_ranges_data` AS
+      DECLARE variants_load_status_clause STRING;
+
+      IF sample_load_status_table_exists THEN
+        SET variants_load_status_clause = format(sample_load_status_template, "VARIANTS_LOADED");
+      ELSE
+        SET variants_load_status_clause = "";
+      END IF;
+
+      DECLARE create_variant_data_view STRING;
+      SET create_variant_data_view = """
+
+        CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_variant_data` AS
+        (
+          SELECT CAST(partition_id AS INT64) AS sample_id
+          FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+          WHERE
+          partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+
+      """ || variants_load_status_clause || ");";
+
+      EXECUTE IMMEDIATE create_variant_data_view;
+
+
+      DECLARE references_load_status_clause STRING;
+      IF sample_load_status_table_exists THEN
+        SET references_load_status_clause = format(sample_load_status_template, "REFERENCES_LOADED");
+      ELSE
+        SET references_load_status_clause = "";
+      END IF;
+
+      DECLARE create_reference_data_view STRING;
+      SET create_reference_data_view = """
+
+      CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_reference_data` AS
       (
         SELECT CAST(partition_id AS INT64) AS sample_id
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
         WHERE
         partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+
+      """ || references_load_status_clause || ");";
+
+      EXECUTE IMMEDIATE create_reference_data_view;
+
+
+      -- The header data view is created conditionally as the header tables are created conditionally.
+      DECLARE header_table_exists INT64;
+      SET header_table_exists = (
+        SELECT COUNT(1) FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
+        WHERE table_name = "vcf_header_lines_scratch"
       );
 
-    '
+      IF header_table_exists > 0 THEN
+        DECLARE headers_load_status_clause STRING;
+        IF sample_load_status_table_exists THEN
+          SET headers_load_status_clause = format(sample_load_status_template, "HEADERS_LOADED");
+        ELSE
+          SET headers_load_status_clause = "";
+        END IF;
+
+        DECLARE create_header_data_view STRING;
+        SET create_header_data_view = """
+
+          CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_header_data` AS
+          (
+          SELECT DISTINCT sample_id FROM `~{project_id}.~{dataset_name}.vcf_header_lines_scratch`
+
+          """ || headers_load_status_clause || ");";
+
+        """;
+
+        EXECUTE IMMEDIATE create_header_data_view;
+
+      END IF;
+
+    FIN
+
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} < query.sql
 
   >>>
 
