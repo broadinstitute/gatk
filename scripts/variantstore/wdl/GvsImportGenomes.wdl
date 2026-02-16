@@ -677,7 +677,6 @@ task GetUningestedSampleIds {
     cat query.txt |
       bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
         variant_and_reference_data.status_bucket.csv
-
     fi
 
     if [[ "~{load_vcf_headers}" = "true" ]]
@@ -692,7 +691,6 @@ task GetUningestedSampleIds {
     cat query.txt |
       bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} >
         header_data.status_bucket.csv
-
     fi
 
     ## delete the table that was only needed for this ingest test
@@ -832,6 +830,8 @@ task CreateSampleDataViews {
 
       """ || variants_load_status_clause || ");";
 
+      -- debug
+      SELECT create_variant_data_view;
       EXECUTE IMMEDIATE create_variant_data_view;
 
 
@@ -854,6 +854,8 @@ task CreateSampleDataViews {
 
       """ || references_load_status_clause || ");";
 
+      -- debug
+      SELECT create_reference_data_view;
       EXECUTE IMMEDIATE create_reference_data_view;
 
 
@@ -885,6 +887,8 @@ task CreateSampleDataViews {
 
         """;
 
+        -- debug
+        SELECT create_header_data_view;
         EXECUTE IMMEDIATE create_header_data_view;
 
         SET query_header_existence_clause = """
