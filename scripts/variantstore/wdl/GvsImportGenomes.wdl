@@ -902,7 +902,7 @@ task CreateSampleDataViews {
 
         """;
       ELSE
-        SET query_header_existence_clause = ""
+        SET query_header_existence_clause = "";
       END IF;
 
       SET create_all_sample_data_view = """;
