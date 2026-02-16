@@ -561,8 +561,6 @@ task SetIsLoadedColumn {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-
     # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
     # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
     # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
@@ -571,17 +569,11 @@ task SetIsLoadedColumn {
     # bq query --max_rows check: ok update
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
-      -- If a sample has both its vet and ref_ranges data loaded then set the is_loaded flag in sample_info to TRUE.
       UPDATE `~{project_id}.~{dataset_name}.sample_info`
       SET is_loaded = TRUE
       WHERE
       sample_id IN (
-        SELECT v.sample_id FROM
-        `~{project_id}.~{dataset_name}`.samples_with_vet_data v
-        INNER JOIN
-        `~{project_id}.~{dataset_name}`.samples_with_ref_ranges_data r
-        ON
-        v.sample_id = r.sample_id
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_all_data`
       );
 
     '
@@ -872,6 +864,7 @@ task CreateSampleDataViews {
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
         WHERE table_name = "vcf_header_lines_scratch"
       );
+      DECLARE query_header_existence_clause STRING;
 
       IF header_table_exists > 0 THEN
         DECLARE headers_load_status_clause STRING;
@@ -894,7 +887,30 @@ task CreateSampleDataViews {
 
         EXECUTE IMMEDIATE create_header_data_view;
 
+        SET query_header_existence_clause = """
+
+        UNION DISTINCT SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+
+        """;
+      ELSE
+        SET query_header_existence_clause = ""
       END IF;
+
+      DECLARE create_all_sample_data_view STRING;
+      SET create_all_sample_data_view = """
+
+        CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
+        (
+
+          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+
+          UNION DISTINCT
+
+          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+
+      """ || query_header_existence_clause || ");";
+
+      EXECUTE IMMEDIATE create_all_sample_data_view;
 
     FIN
 
