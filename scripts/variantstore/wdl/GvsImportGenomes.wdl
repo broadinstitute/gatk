@@ -790,6 +790,10 @@ task CreateSampleDataViews {
 
       DECLARE sample_load_status_template STRING;
 
+      -- In the future the `sample_load_status` table may no longer be needed. Only refer to `sample_load_status` in the
+      -- following existence queries if the table actually exists.
+      DECLARE sample_load_status_table_exists INT64;
+
       SET sample_load_status_template = """
 
         UNION DISTINCT
@@ -800,17 +804,15 @@ task CreateSampleDataViews {
 
       """;
 
-      -- In the future the `sample_load_status` table may no longer be needed. Only refer to `sample_load_status` in the
-      -- following existence queries if the table actually exists.
-      DECLARE sample_load_status_table_exists INT64;
-
       SET sample_load_status_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
         WHERE table_name = "sample_load_status"
       );
 
+      BEGIN
       DECLARE variants_load_status_clause STRING;
+      DECLARE create_variant_data_view STRING;
 
       IF sample_load_status_table_exists > 0 THEN
         SET variants_load_status_clause = format(sample_load_status_template, "VARIANTS_LOADED");
@@ -818,7 +820,6 @@ task CreateSampleDataViews {
         SET variants_load_status_clause = "";
       END IF;
 
-      DECLARE create_variant_data_view STRING;
       SET create_variant_data_view = """
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_variant_data` AS
@@ -833,16 +834,18 @@ task CreateSampleDataViews {
       -- debug
       SELECT create_variant_data_view;
       EXECUTE IMMEDIATE create_variant_data_view;
+      END;
 
-
+      BEGIN
       DECLARE references_load_status_clause STRING;
+      DECLARE create_reference_data_view STRING;
+
       IF sample_load_status_table_exists > 0 THEN
         SET references_load_status_clause = format(sample_load_status_template, "REFERENCES_LOADED");
       ELSE
         SET references_load_status_clause = "";
       END IF;
 
-      DECLARE create_reference_data_view STRING;
       SET create_reference_data_view = """
 
       CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_reference_data` AS
@@ -857,26 +860,31 @@ task CreateSampleDataViews {
       -- debug
       SELECT create_reference_data_view;
       EXECUTE IMMEDIATE create_reference_data_view;
+      END;
 
 
       -- The header data view is created conditionally as the header tables are created conditionally.
+      BEGIN
+
       DECLARE header_table_exists INT64;
+      DECLARE query_header_existence_clause STRING;
+      DECLARE headers_load_status_clause STRING;
+      DECLARE create_header_data_view STRING;
+      DECLARE create_all_sample_data_view STRING;
+
       SET header_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
         WHERE table_name = "vcf_header_lines_scratch"
       );
-      DECLARE query_header_existence_clause STRING;
 
       IF header_table_exists > 0 THEN
-        DECLARE headers_load_status_clause STRING;
         IF sample_load_status_table_exists > 0 THEN
           SET headers_load_status_clause = format(sample_load_status_template, "HEADERS_LOADED");
         ELSE
           SET headers_load_status_clause = "";
         END IF;
 
-        DECLARE create_header_data_view STRING;
         SET create_header_data_view = """
 
           CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_header_data` AS
@@ -885,13 +893,11 @@ task CreateSampleDataViews {
 
           """ || headers_load_status_clause || ");";
 
-        """;
-
         -- debug
         SELECT create_header_data_view;
         EXECUTE IMMEDIATE create_header_data_view;
 
-        SET query_header_existence_clause = """
+        SET query_header_existence_clause = """;
 
         UNION DISTINCT SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
 
@@ -900,8 +906,7 @@ task CreateSampleDataViews {
         SET query_header_existence_clause = ""
       END IF;
 
-      DECLARE create_all_sample_data_view STRING;
-      SET create_all_sample_data_view = """
+      SET create_all_sample_data_view = """;
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
         (
@@ -915,6 +920,7 @@ task CreateSampleDataViews {
       """ || query_header_existence_clause || ");";
 
       EXECUTE IMMEDIATE create_all_sample_data_view;
+      END;
 
     FIN
 
