@@ -666,13 +666,18 @@ task GetUningestedSampleIds {
     if [[ "~{load_vet_and_ref_ranges}" = "true" ]]
     then
 
-    cat > query_vet_and_ref_ranges.sql <<'FIN'
+    cat > query_vet_and_ref_ranges.sql <<'FIN_VET_REF'
 
-      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
-      UNION DISTINCT
-      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+        UNION DISTINCT
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+      ) AND
+      samples.withdrawn is NULL
 
-    FIN
+    FIN_VET_REF
 
     cat query_vet_and_ref_ranges.sql |
       bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
@@ -682,11 +687,15 @@ task GetUningestedSampleIds {
     if [[ "~{load_vcf_headers}" = "true" ]]
     then
 
-    cat > query_headers.sql <<'FIN2'
+    cat > query_headers.sql <<'FIN_HEADERS'
 
-      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
-
-    FIN2
+      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+      ) AND
+      samples.withdrawn is NULL
+    FIN_HEADERS
 
     cat query_headers.sql |
       bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
@@ -781,11 +790,11 @@ task CreateSampleDataViews {
       -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
       -- will be stringified sample ids. These views identify which samples have vet, reference, or header data loaded.
       --
-      -- The Parquet flow is not currently writing sample status rows so we must use the data in INFORMATION_SCHEMA to
-      -- determine load status. Conversely, data written with the BigQuery Write API seems to result in a very delayed
+      -- The Parquet flow is not currently writing sample status rows so we use the data in INFORMATION_SCHEMA to
+      -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
-      -- very unreliable when using the Write API. These following vet and ref ranges queries UNION the
-      -- sample_load_status table with the INFORMATION_SCHEMA reliably detect sample data.
+      -- unreliable with Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status table
+      -- with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
