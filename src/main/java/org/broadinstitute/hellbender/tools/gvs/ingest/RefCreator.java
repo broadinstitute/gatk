@@ -95,7 +95,11 @@ public final class RefCreator {
 
         try {
             if (writeReferenceRanges) {
-                final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
+                String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+                String filename = REF_RANGES_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
+                        "." + outputType.toString().toLowerCase();
+
+                final File refOutputFile = new File(outputDirectory, filename);
                 switch (outputType) {
                     case BQ:
                         if (projectId == null || datasetName == null) {
