@@ -25,8 +25,8 @@ public class IngestUtils {
 
     public static Long getSampleId(final String sampleName, final File sampleMap) {
         Long sampleId = null;
-        // Because BigQuery only supports partitioning based on timestamp or integer,
-        // sample names will be remapped into sample_id integers.
+        //  Because BigQuery only supports partitioning based on timestamp or integer,
+        // sample names will be remapped into sample_id integers
         try {
             BufferedReader br = new BufferedReader(new FileReader(sampleMap));
 
