@@ -25,30 +25,17 @@ This implementation loads Parquet files into BigQuery with:
 
 ### GCS Directory Structure
 
-Individual Parquet files are named like
-
-```
-<data type>_<superpartition>_<sample id>_<VCF filename>.parquet
-```
-
-where `<data type>` is `vet` or `ref_ranges`.
-
-Sample GCS directory structure:
-
 ```
 gs://bucket/output_dir/
 ├── vet/
-│   ├── 001/
-│   │   ├── vet_001_1_sample1.parquet
-│   │   ├── vet_001_2_sample1.parquet
-...
-│   └── 002/
-│       ├── vet_002_4001_sample1.parquet
-...
+│   ├── 000/
+│   │   ├── vet_000_sample1.parquet
+│   │   └── vet_000_sample2.parquet
+│   └── 001/
+│       └── vet_001_sample1.parquet
 └── ref_ranges/
-│   ├── 001/
-│   │   ├── vet_001_2_sample1.parquet
-...
+    └── 000/
+        └── ref_000_sample1.parquet
 ```
 
 **Mapping**: `vet/001/` → BigQuery table `vet_001`, `ref_ranges/042/` → table `ref_042`
