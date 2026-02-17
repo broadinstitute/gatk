@@ -250,12 +250,13 @@ workflow GvsImportGenomes {
 
     call SetIsLoadedColumn {
       input:
-        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
-        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
+        # A BQ Write API-flavored invocation of the task formerly known as `LoadData` actually loads all data into vet
+        # and ref ranges tables, but a Parquet-flavored invocation of this task would only generates Parquet files from
+        # input gVCFs.
         # While the final version of the Parquet work that will merge to ah_var_store should support both BQ Write API
         # and Parquet loading (controlled via an optional boolean input), the current state of the Parquet work is that
         # the `LoadData` task is hardcoded for Parquet file generation only. To avoid confusion as to the scope of what
-        # this task does, its usage in this Parquet branch is aliased to `GenerateParquetFilesFromInputGVCFs`.
+        # this task does, `LoadData` has been renamed to `GenerateParquetFilesFromInputGVCFs` in this branch.
 
         # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
@@ -316,7 +317,7 @@ task CreateFOFNs {
 }
 
 # This is the task known as `LoadData` on the ah_var_store branch, but on the Parquet branches it does not load data.
-# The invocation of `GenerateVariantIngestFiles` here is hardcoded to only generate Parquet files from input gVCFs and
+# The invocation of `CreateVariantIngestFiles` here is hardcoded to only generate Parquet files from input gVCFs and
 # then stage them to GCS.
 task GenerateParquetFilesFromInputGVCFs {
   input {
@@ -821,8 +822,8 @@ task CreateSampleDataViews {
       -- The Parquet flow is not currently writing sample status rows so we use the data in INFORMATION_SCHEMA to
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
-      -- unreliable with Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status table
-      -- with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
