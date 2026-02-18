@@ -250,14 +250,15 @@ def insert_tracking_records(client, tracking_table_id, records):
         USING UNNEST(@records) S
         ON T.file_path = S.file_path
         WHEN NOT MATCHED THEN
-          INSERT (file_path, table_name, file_size_bytes, load_timestamp, load_job_id, rows_loaded)
-          VALUES (S.file_path, S.table_name, S.file_size_bytes, CURRENT_TIMESTAMP(), S.load_job_id, S.rows_loaded)
+          INSERT (file_path, table_name, sample_id, file_size_bytes, load_timestamp, load_job_id, rows_loaded)
+          VALUES (S.file_path, S.table_name, S.sample_id, S.file_size_bytes, CURRENT_TIMESTAMP(), S.load_job_id, S.rows_loaded)
         """
         
         # Define the struct type for the array parameter
         struct_fields = [
             bigquery.ScalarQueryParameter("file_path", "STRING", None),
             bigquery.ScalarQueryParameter("table_name", "STRING", None),
+            bigquery.ScalarQueryParameter("sample_id", "INT64", None),
             bigquery.ScalarQueryParameter("file_size_bytes", "INT64", None),
             bigquery.ScalarQueryParameter("load_job_id", "STRING", None),
             bigquery.ScalarQueryParameter("rows_loaded", "INT64", None),
@@ -271,6 +272,7 @@ def insert_tracking_records(client, tracking_table_id, records):
                     None,  # No name needed for array elements
                     bigquery.ScalarQueryParameter("file_path", "STRING", r["file_path"]),
                     bigquery.ScalarQueryParameter("table_name", "STRING", r["table_name"]),
+                    bigquery.ScalarQueryParameter("sample_id", "INT64", r["sample_id"]),
                     bigquery.ScalarQueryParameter("file_size_bytes", "INT64", r["file_size_bytes"]),
                     bigquery.ScalarQueryParameter("load_job_id", "STRING", r["load_job_id"]),
                     bigquery.ScalarQueryParameter("rows_loaded", "INT64", r["rows_loaded"]),
