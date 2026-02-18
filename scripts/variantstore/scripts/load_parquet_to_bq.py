@@ -15,6 +15,41 @@ from google.cloud import bigquery
 from google.api_core import exceptions
 
 
+def extract_sample_id_from_path(file_path, table_name):
+    """
+    Extract sample_id from file path.
+
+    Example:
+        file_path: "gs://.../ref_ranges_001_1_input_vcf_0_ERS4367795.vcf.gz.parquet"
+        table_name: "ref_ranges_001"
+        Returns: 1
+
+    The pattern is: {table_name}_{sample_id}_
+    """
+    try:
+        # Get just the filename from the path
+        filename = file_path.split('/')[-1]
+
+        # Find the pattern: table_name followed by underscore and sample_id
+        pattern = f"{table_name}_"
+        if pattern in filename:
+            # Find where the pattern starts
+            start_idx = filename.index(pattern) + len(pattern)
+
+            # Extract the part after the pattern
+            remainder = filename[start_idx:]
+
+            # The sample_id is everything up to the next underscore
+            if '_' in remainder:
+                sample_id_str = remainder.split('_')[0]
+                return int(sample_id_str)
+
+        # If pattern not found, return None
+        return None
+    except (ValueError, IndexError):
+        return None
+
+
 def load_table_from_parquet_files(
     project_id,
     dataset_name,
@@ -154,9 +189,13 @@ def load_table_from_parquet_files(
             # For single-file batches, we know exact row count; for multi-file, set to None
             rows_per_file = rows_loaded if len(batch) == 1 else None
             for file_path in batch:
+                print(f" about to extract sample_id from {file_path} for table {table_name}")
+                sample_id = extract_sample_id_from_path(file_path, table_name)
+                print(f" extracted {sample_id} from {file_path} for table {table_name}")
                 successful_loads.append({
                     "file_path": file_path,
                     "table_name": table_name,
+                    "sample_id": sample_id,
                     "file_size_bytes": None,  # Could populate via storage API
                     "load_job_id": load_job.job_id,
                     "rows_loaded": rows_per_file,
