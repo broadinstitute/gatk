@@ -25,6 +25,7 @@ def create_tracking_table(project_id, dataset_name):
     schema = [
         bigquery.SchemaField("file_path", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("table_name", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("sample_id", "INT64", mode="REQUIRED"),
         bigquery.SchemaField("load_timestamp", "TIMESTAMP", mode="REQUIRED"),
         bigquery.SchemaField("load_job_id", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("file_size_bytes", "INT64", mode="NULLABLE"),
