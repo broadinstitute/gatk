@@ -8,6 +8,8 @@ import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.broadinstitute.hellbender.tools.gvs.ingest.bq.SamplePloidyBQWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.SamplePloidyParquetWriter;
 
 import java.io.File;
 import java.io.IOException;

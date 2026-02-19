@@ -1,7 +1,7 @@
-package org.broadinstitute.hellbender.tools.gvs.ingest;
+package org.broadinstitute.hellbender.tools.gvs.ingest.bq;
 
 import com.google.protobuf.Descriptors;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.gvs.ingest.RefRangesWriter;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.json.JSONObject;
 

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.gvs.ingest;
+package org.broadinstitute.hellbender.tools.gvs.ingest.parquet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -7,6 +7,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.gvs.ingest.RefRangesWriter;
 import org.broadinstitute.hellbender.utils.gvs.parquet.GvsParquetWriteSupport;
 import org.json.JSONObject;
 

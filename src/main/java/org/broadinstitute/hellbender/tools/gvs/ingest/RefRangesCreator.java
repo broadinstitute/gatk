@@ -13,6 +13,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
+import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
