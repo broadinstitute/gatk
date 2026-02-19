@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.SamplePloidyBQWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.SamplePloidyParquetWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.SamplePloidyParquetFileWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class SamplePloidyCreator {
 
                     final File sampleChromosomePloidyOutputFile = new File(outputDirectory, filename);
 
-                    samplePloidyWriter = new SamplePloidyParquetWriter(new Path(sampleChromosomePloidyOutputFile.toURI()), schema, CompressionCodecName.SNAPPY);
+                    samplePloidyWriter = new SamplePloidyParquetFileWriter(new Path(sampleChromosomePloidyOutputFile.toURI()), schema, CompressionCodecName.SNAPPY);
                     break;
                 default:
                     logger.warn("Not creating sample ploidy writer for unsupported output type " + outputType);

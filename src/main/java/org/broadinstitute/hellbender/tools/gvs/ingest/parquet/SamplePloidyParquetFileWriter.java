@@ -7,8 +7,8 @@ import org.broadinstitute.hellbender.tools.gvs.ingest.SamplePloidyWriter;
 
 import java.io.IOException;
 
-public class SamplePloidyParquetWriter extends SamplePloidyWriter {
-    public SamplePloidyParquetWriter(Path file, MessageType schema, CompressionCodecName codecName) {
+public class SamplePloidyParquetFileWriter extends SamplePloidyWriter {
+    public SamplePloidyParquetFileWriter(Path file, MessageType schema, CompressionCodecName codecName) {
     }
 
     @Override

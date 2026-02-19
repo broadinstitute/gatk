@@ -20,10 +20,10 @@ import java.io.IOException;
  * getWriteSupport(Configuration) method. This approach provides better testability,
  * flexibility, and follows dependency injection principles.
  */
-public class RefRangesParquetWriter extends RefRangesWriter {
+public class RefRangesParquetFileWriter extends RefRangesWriter {
     private final ParquetWriter<JSONObject> parquetWriterImpl;
 
-    public RefRangesParquetWriter(
+    public RefRangesParquetFileWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName

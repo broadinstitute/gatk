@@ -14,7 +14,7 @@ import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetFileWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
@@ -110,7 +110,7 @@ public final class RefRangesCreator {
                         refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
                         break;
                     case PARQUET:
-                        refRangesWriter = new RefRangesParquetWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
+                        refRangesWriter = new RefRangesParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                         break;
                 }
             }
