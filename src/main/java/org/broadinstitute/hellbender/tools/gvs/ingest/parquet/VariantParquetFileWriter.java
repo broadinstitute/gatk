@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.gvs.parquet;
+package org.broadinstitute.hellbender.tools.gvs.ingest.parquet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -18,16 +18,16 @@ import java.io.IOException;
  * getWriteSupport(Configuration) method. This approach provides better testability,
  * flexibility, and follows dependency injection principles.
  */
-public class GvsHeaderParquetFileWriter {
+public class VariantParquetFileWriter {
     private ParquetWriter<JSONObject> parquetWriterImpl;
 
-    public GvsHeaderParquetFileWriter(
+    public VariantParquetFileWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName
     ) throws IOException {
         // Use composition pattern: create WriteSupport independently
-        WriteSupport<JSONObject> writeSupport = new GvsParquetWriteSupport(schema);
+        WriteSupport<JSONObject> writeSupport = new ParquetWriteSupport(schema);
         
         // Use our modern Builder that accepts WriteSupport via constructor
         Builder builder = new Builder(file, writeSupport);
@@ -40,13 +40,6 @@ public class GvsHeaderParquetFileWriter {
 
     public void close() throws IOException {
         this.parquetWriterImpl.close();
-    }
-
-    public static JSONObject writeJson(Long sampleId, String headerLineHash) {
-        JSONObject record = new JSONObject();
-        record.put("sample_id", sampleId);
-        record.put("headerLineHash", headerLineHash);
-        return record;
     }
 
     /**
@@ -86,7 +79,7 @@ public class GvsHeaderParquetFileWriter {
          * 
          * This method is deprecated but still required to implement ParquetWriter.Builder.
          * We suppress the deprecation warning because:
-         * - This is the only way to extend ParquetWriter.Builder in this version
+         * - This is the only way to extend ParquetWriter.Builder in Parquet 1.13.1
          * - We follow modern composition patterns by injecting WriteSupport via constructor
          * - The Configuration parameter is properly ignored (not used)
          * - This approach is more testable and flexible than creating WriteSupport here

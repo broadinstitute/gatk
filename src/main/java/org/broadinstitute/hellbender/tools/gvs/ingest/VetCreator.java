@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsVariantParquetFileWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.VariantParquetFileWriter;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import org.json.JSONObject;
 
@@ -31,7 +31,7 @@ public class VetCreator {
     private SimpleXSVWriter vetWriter = null;
     private final Long sampleId;
     private PendingBQWriter vetBQJsonWriter = null;
-    private GvsVariantParquetFileWriter vetParquetFileWriter = null;
+    private VariantParquetFileWriter vetParquetFileWriter = null;
     private final boolean forceLoadingFromNonAlleleSpecific;
     private final boolean skipLoadingVqsrFields;
 
@@ -69,7 +69,7 @@ public class VetCreator {
                     String filename = VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                             "." + outputType.toString().toLowerCase();
                     final File parquetOutputFile = new File(outputDirectory, filename);
-                    vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
+                    vetParquetFileWriter = new VariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                     break;
             }
         } catch (final FileAlreadyExistsException fs) {

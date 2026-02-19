@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.gvs.parquet;
+package org.broadinstitute.hellbender.tools.gvs.ingest.parquet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -16,13 +16,13 @@ import java.util.List;
  * A generic WriteSupport implementation for writing JSONObject records to Parquet files
  * in the GVS system.
  */
-public class GvsParquetWriteSupport extends WriteSupport<JSONObject> {
+public class ParquetWriteSupport extends WriteSupport<JSONObject> {
     MessageType schema;
     RecordConsumer recordConsumer;
     List<ColumnDescriptor> cols;
 
     // support specifying encodings and compression?
-    public GvsParquetWriteSupport(@NotNull MessageType schema) {
+    public ParquetWriteSupport(@NotNull MessageType schema) {
         this.schema = schema;
         this.cols = schema.getColumns();
     }

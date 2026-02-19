@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsHeaderParquetFileWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.HeaderParquetFileWriter;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -25,7 +25,7 @@ public class VcfHeaderLineScratchCreator {
     private final String datasetName;
 
     private PendingBQWriter vcfHeaderBQJsonWriter = null;
-    private GvsHeaderParquetFileWriter vcfHeaderParquetFileWriter = null;
+    private HeaderParquetFileWriter vcfHeaderParquetFileWriter = null;
     private static final String NON_SCRATCH_TABLE_NAME = "vcf_header_lines";
     private static final String SCRATCH_TABLE_NAME = "vcf_header_lines_scratch";
 
@@ -72,7 +72,7 @@ public class VcfHeaderLineScratchCreator {
                 case PARQUET:
                     // TODO ensure that there doesn't need to be a table_number or sampleIdentifierForOutputFileName--it's all tables/samples, yes?
                     final File parquetOutputFile = new File(outputDirectory, HEADER_FILETYPE_PREFIX + ".parquet");
-                    vcfHeaderParquetFileWriter = new GvsHeaderParquetFileWriter(new Path(parquetOutputFile.toURI()), headersRowSchema, CompressionCodecName.SNAPPY);
+                    vcfHeaderParquetFileWriter = new HeaderParquetFileWriter(new Path(parquetOutputFile.toURI()), headersRowSchema, CompressionCodecName.SNAPPY);
                     break;
 
             }
@@ -107,7 +107,7 @@ public class VcfHeaderLineScratchCreator {
                 case PARQUET:
                     String chunkHash = Utils.calcMD5(headerChunk.getKey());
                     Boolean isExpectedUnique = headerChunk.getValue();
-                    JSONObject record = GvsHeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
+                    JSONObject record = HeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
                     vcfHeaderParquetFileWriter.write(record);
 
                     //boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
