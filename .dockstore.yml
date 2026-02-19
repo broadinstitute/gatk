@@ -222,7 +222,6 @@ workflows:
              - master
              - ah_var_store
              - VS-1736
-             - vs_1810_add_sample_id_to_parquet_tracking
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
