@@ -59,13 +59,14 @@ public class VetCreatorUnitTest {
 
 
 
-    @Test(enabled = false)
-    public void testParquetOutputFile() throws IOException {
-        String fullPath = String.join(currentRelativePath.toAbsolutePath().toString(), outputDirectory.toString());
-        final File parquetOutputFile = new File(fullPath, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + ".parquet");
+    @Test
+    public void testParquetOutputFileNaming() throws IOException {
+        String fullPath = Paths.get(currentRelativePath.toAbsolutePath().toString(), outputDirectory.toString()).toString();
+        String filename = VetCreator.getOutputFileName(tableNumber, 27L, sampleIdentifierForOutputFileName, outputType);
+        final File parquetOutputFile = new File(fullPath, filename);
 
-        String expected = String.join(fullPath, "vet_001_parquet.parquet");
-        Assert.assertEquals(parquetOutputFile.getAbsoluteFile(), expected);
+        String expected = Paths.get(fullPath, "vet_001_27_parquet.parquet").toString();
+        Assert.assertEquals(parquetOutputFile.getAbsolutePath(), expected);
         Files.deleteIfExists(parquetOutputFile.toPath());
     }
 

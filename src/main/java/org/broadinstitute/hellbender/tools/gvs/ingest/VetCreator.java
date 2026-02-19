@@ -36,6 +36,7 @@ public class VetCreator {
     private final boolean skipLoadingVqsrFields;
 
     private static final String VET_FILETYPE_PREFIX = "vet_";
+    private static final String PREFIX_SEPARATOR = "_";
 
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
@@ -49,7 +50,6 @@ public class VetCreator {
         this.skipLoadingVqsrFields = skipLoadingVqsrFields;
 
         try {
-            String PREFIX_SEPARATOR = "_";
             switch (outputType) {
                 case BQ:
                     if (projectId == null || datasetName == null) {
@@ -65,9 +65,7 @@ public class VetCreator {
                     vetWriter.setHeaderLine(getHeaders());
                     break;
                 case PARQUET:
-                    String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
-                    String filename = VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
-                            "." + outputType.toString().toLowerCase();
+                    String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
                     vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                     break;
@@ -141,6 +139,12 @@ public class VetCreator {
 
     public static List<String> getHeaders() {
         return Arrays.stream(VetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
+    }
+
+    public static String getOutputFileName(String tableNumber, Long sampleId, String sampleIdentifierForOutputFileName, CommonCode.OutputType outputType) {
+        String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+        return VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
+                "." + outputType.toString().toLowerCase();
     }
 
     public void commitData() {
