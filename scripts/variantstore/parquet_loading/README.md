@@ -47,7 +47,7 @@ gs://bucket/output_dir/
 ...
 └── ref_ranges/
 │   ├── 001/
-│   │   ├── vet_001_2_sample1.parquet
+│   │   ├── ref_ranges_001_2_sample1.parquet
 ...
 ```
 
