@@ -28,12 +28,9 @@ public class SamplePloidyCreator {
 
     private final Long sampleId;
 
-    private final CommonCode.OutputType outputType;
-
     public SamplePloidyCreator(String sampleIdentifierForOutputFileName, Long sampleId, String projectId, String datasetName, File outputDirectory, MessageType schema, final CommonCode.OutputType outputType) {
         try {
             this.sampleId = sampleId;
-            this.outputType = outputType;
 
             switch (outputType) {
                 case BQ:
@@ -110,9 +107,7 @@ public class SamplePloidyCreator {
             // It's a small enough number to just note and move on with
             logger.warn("WARNING: Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", but second ploidy of "+secondBestPloidy+" detected in only "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total)of samples. Going with dominant ploidy of "+bestPloidy);
 
-            if (outputType == CommonCode.OutputType.BQ) {
-                samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), bestPloidy);
-            }
+            samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), bestPloidy);
         }
     }
 
