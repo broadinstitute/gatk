@@ -882,8 +882,8 @@ task CreateSampleDataViews {
       -- The Parquet flow is not currently writing sample status rows so we use the data in INFORMATION_SCHEMA to
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
-      -- unreliable with Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status table
-      -- with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
