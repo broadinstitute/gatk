@@ -155,6 +155,11 @@ def load_table_from_parquet_files(
             rows_per_file = rows_loaded if len(batch) == 1 else None
             for file_path in batch:
                 sample_id = extract_sample_id_from_path(file_path, table_name)
+                if sample_id is None:
+                    raise ValueError(
+                        f"Failed to extract sample_id from file path: {file_path}. "
+                        f"Expected pattern '{table_name}_<sample_id>_' not found in filename."
+                    )
                 successful_loads.append({
                     "file_path": file_path,
                     "table_name": table_name,
