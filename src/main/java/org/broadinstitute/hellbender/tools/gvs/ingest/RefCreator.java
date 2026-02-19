@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceParquetFileWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +41,6 @@ public final class RefCreator {
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
-    private Map<String, BitSet> ploidiesPerChromosome = null;
     private Map<String, Map<Integer, Long>> ploidiesCountPerChromosome = null;
 
     // for easily calculating percentages later
@@ -85,7 +83,6 @@ public final class RefCreator {
         this.storeCompressedReferences = storeCompressedReferences;
         this.gqStatesToIgnore = gqStatesToIgnore;
 
-        this.ploidiesPerChromosome = new HashMap<>();
         this.ploidiesCountPerChromosome = new HashMap<>();
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
@@ -111,7 +108,7 @@ public final class RefCreator {
                         refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
                         break;
                     case PARQUET:
-                        refRangesWriter = new GvsReferenceParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
+                        refRangesWriter = new RefRangesParquetWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                         break;
                 }
             }

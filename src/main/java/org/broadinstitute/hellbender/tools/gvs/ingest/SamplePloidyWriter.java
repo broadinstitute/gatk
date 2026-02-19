@@ -1,4 +1,12 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-public class SamplePloidyWriter {
+import java.io.Closeable;
+import java.io.IOException;
+
+public abstract class SamplePloidyWriter implements Closeable {
+    public abstract void write(Long sampleId, Long chromosome, Integer ploidy) throws IOException;
+
+    public void commitData() {
+        // no-op
+    }
 }

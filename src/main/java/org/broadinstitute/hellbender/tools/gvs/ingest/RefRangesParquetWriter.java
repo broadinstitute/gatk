@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.gvs.parquet;
+package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -7,7 +7,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.gvs.ingest.RefRangesWriter;
+import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceWriteSupport;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -20,10 +20,10 @@ import java.io.IOException;
  * getWriteSupport(Configuration) method. This approach provides better testability,
  * flexibility, and follows dependency injection principles.
  */
-public class GvsReferenceParquetFileWriter extends RefRangesWriter {
+public class RefRangesParquetWriter extends RefRangesWriter {
     private final ParquetWriter<JSONObject> parquetWriterImpl;
 
-    public GvsReferenceParquetFileWriter(
+    public RefRangesParquetWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName

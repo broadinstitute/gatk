@@ -6,23 +6,16 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.broadinstitute.hellbender.utils.gvs.parquet.GvsHeaderParquetFileWriter;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceParquetFileWriter;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsVariantParquetFileWriter;
-import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-
 
 
 public class VcfHeaderLineScratchCreator {

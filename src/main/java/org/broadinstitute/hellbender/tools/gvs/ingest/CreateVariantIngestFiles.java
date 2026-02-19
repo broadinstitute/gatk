@@ -209,6 +209,15 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             """);
 
+    public final MessageType sampleChromosomePloidyRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message HeaderRow {
+                required int64 sample_id;
+                required int64 chromosome;
+                required int64 ploidy;
+            }
+            """);
+
     public final MessageType headersRowSchema = MessageTypeParser
             .parseMessageType("""
             message HeaderRow {
@@ -349,7 +358,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
             // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
             logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
-            samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
+            samplePloidyCreator = new SamplePloidyCreator(sampleIdentifierForOutputFileName, sampleId, projectID, datasetName, outputDir, sampleChromosomePloidyRowSchema, outputType);
         }
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
