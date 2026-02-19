@@ -12,15 +12,14 @@ import java.io.IOException;
  * 
  * This writer stores sample ID and header line hash associations in Parquet format.
  */
-public class HeaderParquetFileWriter {
-    private final AbstractParquetFileWriter delegate;
+public class HeaderParquetFileWriter extends AbstractParquetFileWriter {
 
     public HeaderParquetFileWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName
     ) throws IOException {
-        this.delegate = new AbstractParquetFileWriter(file, schema, codecName);
+        super(file, schema, codecName);
     }
 
     /**
@@ -30,16 +29,7 @@ public class HeaderParquetFileWriter {
      * @throws IOException if an error occurs during writing
      */
     public void write(JSONObject object) throws IOException {
-        this.delegate.write(object);
-    }
-
-    /**
-     * Closes the Parquet writer and releases resources.
-     * 
-     * @throws IOException if an error occurs during closing
-     */
-    public void close() throws IOException {
-        this.delegate.close();
+        super.write(object);
     }
 
     /**

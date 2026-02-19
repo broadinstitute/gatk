@@ -12,23 +12,17 @@ import java.io.IOException;
 /**
  * Parquet writer for sample ploidy data.
  * 
- * This writer extends SamplePloidyWriter for domain-specific functionality
- * and uses AbstractParquetFileWriter via composition for common Parquet writing infrastructure.
+ * This writer extends AbstractParquetFileWriter for common Parquet infrastructure
+ * and implements SamplePloidyWriter for domain-specific functionality.
  */
-public class SamplePloidyParquetFileWriter implements SamplePloidyWriter {
-    private final AbstractParquetFileWriter delegate;
+public class SamplePloidyParquetFileWriter extends AbstractParquetFileWriter implements SamplePloidyWriter {
 
     public SamplePloidyParquetFileWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName
     ) throws IOException {
-        this.delegate = new AbstractParquetFileWriter(file, schema, codecName);
-    }
-
-    @Override
-    public void close() throws IOException {
-        this.delegate.close();
+        super(file, schema, codecName);
     }
 
     @Override
@@ -37,7 +31,7 @@ public class SamplePloidyParquetFileWriter implements SamplePloidyWriter {
         record.put("sample_id", sampleId);
         record.put("chromosome", chromosome);
         record.put("ploidy", ploidy);
-        this.delegate.write(record);
+        super.write(record);
     }
 
     @Override

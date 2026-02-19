@@ -11,17 +11,17 @@ import org.json.JSONObject;
 import java.io.IOException;
 
 /**
- * Delegate helper class for Parquet file writers that simplifies writing JSON objects to Parquet files.
+ * Abstract base class for Parquet file writers that simplifies writing JSON objects to Parquet files.
  * 
  * This implementation uses the modern composition pattern where WriteSupport is created
  * independently and passed to the Builder, rather than creating it inside a deprecated
  * getWriteSupport(Configuration) method. This approach provides better testability,
  * flexibility, and follows dependency injection principles.
  * 
- * This class is designed to be used via composition by concrete writer implementations,
- * allowing them to extend domain-specific abstract classes while reusing common Parquet logic.
+ * Subclasses extend this class to add domain-specific write methods while inheriting
+ * the common Parquet writing infrastructure.
  */
-public class AbstractParquetFileWriter {
+public abstract class AbstractParquetFileWriter {
     private final ParquetWriter<JSONObject> parquetWriterImpl;
 
     /**
@@ -32,7 +32,7 @@ public class AbstractParquetFileWriter {
      * @param codecName the compression codec to use
      * @throws IOException if an error occurs during writer initialization
      */
-    public AbstractParquetFileWriter(
+    protected AbstractParquetFileWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName
@@ -51,7 +51,7 @@ public class AbstractParquetFileWriter {
      * @param object the JSON object to write
      * @throws IOException if an error occurs during writing
      */
-    public void write(JSONObject object) throws IOException {
+    protected void write(JSONObject object) throws IOException {
         this.parquetWriterImpl.write(object);
     }
 

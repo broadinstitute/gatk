@@ -12,15 +12,14 @@ import java.io.IOException;
  * 
  * This writer stores variant information in Parquet format.
  */
-public class VariantParquetFileWriter {
-    private final AbstractParquetFileWriter delegate;
+public class VariantParquetFileWriter extends AbstractParquetFileWriter {
 
     public VariantParquetFileWriter(
             Path file,
             MessageType schema,
             CompressionCodecName codecName
     ) throws IOException {
-        this.delegate = new AbstractParquetFileWriter(file, schema, codecName);
+        super(file, schema, codecName);
     }
 
     /**
@@ -30,15 +29,6 @@ public class VariantParquetFileWriter {
      * @throws IOException if an error occurs during writing
      */
     public void write(JSONObject object) throws IOException {
-        this.delegate.write(object);
-    }
-
-    /**
-     * Closes the Parquet writer and releases resources.
-     * 
-     * @throws IOException if an error occurs during closing
-     */
-    public void close() throws IOException {
-        this.delegate.close();
+        super.write(object);
     }
 }
