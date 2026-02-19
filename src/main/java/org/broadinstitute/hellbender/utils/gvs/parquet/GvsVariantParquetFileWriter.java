@@ -27,7 +27,7 @@ public class GvsVariantParquetFileWriter {
             CompressionCodecName codecName
     ) throws IOException {
         // Use composition pattern: create WriteSupport independently
-        WriteSupport<JSONObject> writeSupport = new GvsVariantWriteSupport(schema);
+        WriteSupport<JSONObject> writeSupport = new GvsParquetWriteSupport(schema);
         
         // Use our modern Builder that accepts WriteSupport via constructor
         Builder builder = new Builder(file, writeSupport);

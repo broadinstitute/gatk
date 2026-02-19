@@ -7,7 +7,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceWriteSupport;
+import org.broadinstitute.hellbender.utils.gvs.parquet.GvsParquetWriteSupport;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -29,7 +29,7 @@ public class RefRangesParquetWriter extends RefRangesWriter {
             CompressionCodecName codecName
     ) throws IOException {
         // Use composition pattern: create WriteSupport independently
-        WriteSupport<JSONObject> writeSupport = new GvsReferenceWriteSupport(schema);
+        WriteSupport<JSONObject> writeSupport = new GvsParquetWriteSupport(schema);
         
         // Use our modern Builder that accepts WriteSupport via constructor
         Builder builder = new Builder(file, writeSupport);
