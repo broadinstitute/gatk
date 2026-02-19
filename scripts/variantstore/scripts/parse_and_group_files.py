@@ -14,15 +14,16 @@ from pathlib import Path
 from google.cloud import bigquery
 
 
-def parse_table_from_path(file_path, table_prefixes):
+def parse_table_from_path(file_path, superpartitioned_table_prefixes, regular_table_prefixes):
     """
     Extract table name from GCS path.
     
     Example:
         gs://bucket/vet/001/vet_001_sample.parquet -> vet_001
         gs://bucket/ref_ranges/042/ref_042_sample.parquet -> ref_042
+        gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy.parquet -> sample_chromosome_ploidy
     """
-    for prefix in table_prefixes:
+    for prefix in superpartitioned_table_prefixes:
         # Match pattern: {prefix}/{digits}/
         pattern = rf'{prefix}/(\d+)/'
         match = re.search(pattern, file_path)
@@ -81,10 +82,16 @@ def main():
         help="BigQuery dataset name"
     )
     parser.add_argument(
-        "--table-prefixes",
+        "--regular-table-prefixes",
+        nargs="+",
+        default=["sample_chromosome_ploidy"],
+        help="Table prefixes to scan for which correspond to regular, non-superpartitioned tables (e.g., sample_chromosome_ploidy)"
+    )
+    parser.add_argument(
+        "--superpartitioned-table-prefixes",
         nargs="+",
         default=["vet", "ref_ranges"],
-        help="Table prefixes to scan for (e.g., vet ref_ranges)"
+        help="Table prefixes which correspond to superpartitioned tables(e.g., vet ref_ranges)"
     )
     
     args = parser.parse_args()
@@ -114,7 +121,7 @@ def main():
             continue
         
         # Extract table name
-        table_name = parse_table_from_path(file_path, args.table_prefixes)
+        table_name = parse_table_from_path(file_path, args.superpartitioned_table_prefixes, args.regular_table_prefixes)
         if table_name:
             table_files[table_name].append(file_path)
         else:

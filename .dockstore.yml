@@ -233,6 +233,7 @@ workflows:
          - master
          - ah_var_store
          - vs_1800_prep_for_merge
+         - vs_1809_parquet_ploidy
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset

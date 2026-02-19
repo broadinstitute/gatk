@@ -269,7 +269,8 @@ workflow GvsImportGenomes {
           output_gcs_dir = defined_parquet_output_dir,
           project_id = project_id,
           dataset_name = dataset_name,
-          table_prefixes = ["vet", "ref_ranges"],
+          regular_table_prefixes = ["sample_chromosome_ploidy"],
+          superpartitioned_table_prefixes = ["vet", "ref_ranges"],
           go = select_all(GenerateParquetFilesFromInputGVCFs.done),
           variants_docker = effective_variants_docker,
       }
@@ -562,6 +563,7 @@ task ProcessInputGVCFs {
         # the file name is a little wonky, so let's just grab the file using such a star statement
         vet_parquet_file=`ls vet_*.parquet`
         ref_parquet_file=`ls ref_*.parquet`
+        ploidy_parquet_file=`ls sample_chromosome_ploidy_*.parquet`
 
         # parse the table superpartition out of the file name
         table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
@@ -569,6 +571,7 @@ task ProcessInputGVCFs {
         # copy the vet and ref parquet files to the gcs bucket in the right place
         gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
         gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $ploidy_parquet_file ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/$ploidy_parquet_file
 
         # cleanup after ourselves
         rm *.parquet
@@ -1139,7 +1142,8 @@ task DiscoverParquetFiles {
     String output_gcs_dir
     String project_id
     String dataset_name
-    Array[String] table_prefixes
+    Array[String] regular_table_prefixes
+    Array[String] superpartitioned_table_prefixes
     Array[Boolean] go
     String? billing_project_id
     String variants_docker
@@ -1172,7 +1176,8 @@ task DiscoverParquetFiles {
       --output-dir grouped_files \
       --project-id ~{project_id} \
       --dataset ~{dataset_name} \
-      --table-prefixes ~{sep=" " table_prefixes}
+      --superpartitioned-table-prefixes ~{sep=" " superpartitioned_table_prefixes} \
+      --regular-table-prefixes ~{sep=" " regular_table_prefixes}
   >>>
 
   runtime {
