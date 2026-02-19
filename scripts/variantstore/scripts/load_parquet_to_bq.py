@@ -154,9 +154,16 @@ def load_table_from_parquet_files(
             # For single-file batches, we know exact row count; for multi-file, set to None
             rows_per_file = rows_loaded if len(batch) == 1 else None
             for file_path in batch:
+                sample_id = extract_sample_id_from_path(file_path, table_name)
+                if sample_id is None:
+                    raise ValueError(
+                        f"Failed to extract sample_id from file path: {file_path}. "
+                        f"Expected pattern '{table_name}_<sample_id>_' not found in filename."
+                    )
                 successful_loads.append({
                     "file_path": file_path,
                     "table_name": table_name,
+                    "sample_id": sample_id,
                     "file_size_bytes": None,  # Could populate via storage API
                     "load_job_id": load_job.job_id,
                     "rows_loaded": rows_per_file,
@@ -211,14 +218,15 @@ def insert_tracking_records(client, tracking_table_id, records):
         USING UNNEST(@records) S
         ON T.file_path = S.file_path
         WHEN NOT MATCHED THEN
-          INSERT (file_path, table_name, file_size_bytes, load_timestamp, load_job_id, rows_loaded)
-          VALUES (S.file_path, S.table_name, S.file_size_bytes, CURRENT_TIMESTAMP(), S.load_job_id, S.rows_loaded)
+          INSERT (file_path, table_name, sample_id, file_size_bytes, load_timestamp, load_job_id, rows_loaded)
+          VALUES (S.file_path, S.table_name, S.sample_id, S.file_size_bytes, CURRENT_TIMESTAMP(), S.load_job_id, S.rows_loaded)
         """
         
         # Define the struct type for the array parameter
         struct_fields = [
             bigquery.ScalarQueryParameter("file_path", "STRING", None),
             bigquery.ScalarQueryParameter("table_name", "STRING", None),
+            bigquery.ScalarQueryParameter("sample_id", "INT64", None),
             bigquery.ScalarQueryParameter("file_size_bytes", "INT64", None),
             bigquery.ScalarQueryParameter("load_job_id", "STRING", None),
             bigquery.ScalarQueryParameter("rows_loaded", "INT64", None),
@@ -232,6 +240,7 @@ def insert_tracking_records(client, tracking_table_id, records):
                     None,  # No name needed for array elements
                     bigquery.ScalarQueryParameter("file_path", "STRING", r["file_path"]),
                     bigquery.ScalarQueryParameter("table_name", "STRING", r["table_name"]),
+                    bigquery.ScalarQueryParameter("sample_id", "INT64", r["sample_id"]),
                     bigquery.ScalarQueryParameter("file_size_bytes", "INT64", r["file_size_bytes"]),
                     bigquery.ScalarQueryParameter("load_job_id", "STRING", r["load_job_id"]),
                     bigquery.ScalarQueryParameter("rows_loaded", "INT64", r["rows_loaded"]),
@@ -421,6 +430,40 @@ def _execute_query_with_retry(client, query, job_config=None, max_retries=3):
             raise
     
     raise Exception("Unexpected error in query retry logic")
+
+def extract_sample_id_from_path(file_path, table_name):
+    """
+    Extract sample_id from file path.
+
+    Example:
+        file_path: "gs://.../ref_ranges_001_1_input_vcf_0_ERS4367795.vcf.gz.parquet"
+        table_name: "ref_ranges_001"
+        Returns: 1
+
+    The pattern is: {table_name}_{sample_id}_
+    """
+    try:
+        # Get just the filename from the path
+        filename = file_path.split('/')[-1]
+
+        # Find the pattern: table_name followed by underscore and sample_id
+        pattern = f"{table_name}_"
+        if pattern in filename:
+            # Find where the pattern starts
+            start_idx = filename.index(pattern) + len(pattern)
+
+            # Extract the part after the pattern
+            remainder = filename[start_idx:]
+
+            # The sample_id is everything up to the next underscore
+            if '_' in remainder:
+                sample_id_str = remainder.split('_')[0]
+                return int(sample_id_str)
+
+        # If pattern not found, return None
+        return None
+    except (ValueError, IndexError):
+        return None
 
 
 def main():

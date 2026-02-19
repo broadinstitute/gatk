@@ -47,11 +47,11 @@ gs://bucket/output_dir/
 ...
 └── ref_ranges/
 │   ├── 001/
-│   │   ├── vet_001_2_sample1.parquet
+│   │   ├── ref_ranges_001_2_sample1.parquet
 ...
 ```
 
-**Mapping**: `vet/001/` → BigQuery table `vet_001`, `ref_ranges/042/` → table `ref_042`
+**Mapping**: `vet/001/` → BigQuery table `vet_001`, `ref_ranges/042/` → BigQuery table `ref_ranges_042`
 
 ## Prerequisites
 
