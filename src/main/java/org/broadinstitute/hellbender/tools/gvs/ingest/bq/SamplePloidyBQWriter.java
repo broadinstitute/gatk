@@ -8,7 +8,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-public class SamplePloidyBQWriter extends SamplePloidyWriter {
+public class SamplePloidyBQWriter implements SamplePloidyWriter {
 
     private PendingBQWriter pendingBQWriter = null;
 
@@ -28,7 +28,7 @@ public class SamplePloidyBQWriter extends SamplePloidyWriter {
 
     @Override
     public void commitData() {
-        super.commitData();
+        SamplePloidyWriter.super.commitData();
         if (pendingBQWriter != null) {
             pendingBQWriter.flushBuffer();
             pendingBQWriter.commitWriteStreams();

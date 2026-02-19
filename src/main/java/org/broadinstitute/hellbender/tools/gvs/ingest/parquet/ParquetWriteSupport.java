@@ -39,8 +39,8 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
      * @param config Configuration object (unused in our implementation)
      * @return WriteContext containing the schema and metadata
      */
+    @Deprecated
     @Override
-    @SuppressWarnings("deprecation")
     public WriteContext init(Configuration config) {
         return new WriteContext(schema, new HashMap<>());
     }

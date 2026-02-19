@@ -8,7 +8,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-public class RefRangesBQWriter extends RefRangesWriter {
+public class RefRangesBQWriter implements RefRangesWriter {
     private PendingBQWriter bqWriter;
 
     public RefRangesBQWriter(String projectId, String datasetName, String tableName) throws IOException{

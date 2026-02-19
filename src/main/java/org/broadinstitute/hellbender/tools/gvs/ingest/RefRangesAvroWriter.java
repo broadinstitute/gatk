@@ -13,7 +13,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
-public class RefRangesAvroWriter extends RefRangesWriter {
+public class RefRangesAvroWriter implements RefRangesWriter {
     private DataFileWriter<GenericData.Record> writer;
     private Schema schema;
 
