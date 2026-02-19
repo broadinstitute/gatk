@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.gvs.ingest.parquet;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.ingest.SamplePloidyWriter;
 import org.json.JSONObject;
 
@@ -37,5 +38,15 @@ public class SamplePloidyParquetFileWriter implements SamplePloidyWriter {
         record.put("chromosome", chromosome);
         record.put("ploidy", ploidy);
         this.delegate.write(record);
+    }
+
+    @Override
+    public void commitData() {
+        SamplePloidyWriter.super.commitData();
+        try {
+            this.close();
+        } catch (IOException e) {
+            throw new GATKException("Error while closing Parquet writer", e);
+        }
     }
 }

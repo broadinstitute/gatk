@@ -50,6 +50,7 @@ public class RefRangesBQWriter implements RefRangesWriter {
     }
 
     public void commitData() {
+        RefRangesWriter.super.commitData();
         bqWriter.flushBuffer();
         bqWriter.commitWriteStreams();
     }

@@ -33,6 +33,7 @@ public class RefRangesParquetFileWriter implements RefRangesWriter {
 
     @Override
     public void commitData() {
+        RefRangesWriter.super.commitData();
         try {
             this.close();
         } catch (IOException e) {
