@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * A generic WriteSupport implementation for writing JSONObject records to Parquet files
- * in the GVS system. This class handles writing header, reference, and variant data.
+ * in the GVS system.
  */
 public class GvsParquetWriteSupport extends WriteSupport<JSONObject> {
     MessageType schema;
@@ -68,7 +68,8 @@ public class GvsParquetWriteSupport extends WriteSupport<JSONObject> {
                     case INT64 -> recordConsumer.addLong(record.getLong(columnName));
                     case FLOAT -> recordConsumer.addFloat(record.getFloat(columnName));
                     case BINARY -> recordConsumer.addBinary(Binary.fromString(record.getString(columnName)));
-                    default -> throw new UnsupportedOperationException("Haven't implemented other types yet! Can't process column "+columnName+ "with type "+col.getPrimitiveType().getName());
+                    default ->
+                            throw new UnsupportedOperationException("Haven't implemented other types yet! Can't process column " + columnName + " with type " + col.getPrimitiveType().getName());
                 }
                 recordConsumer.endField(columnName, field);
             }

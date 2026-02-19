@@ -25,8 +25,8 @@ import java.util.*;
 
 
 
-public final class RefCreator {
-    private static final Logger logger = LogManager.getLogger(RefCreator.class);
+public final class RefRangesCreator {
+    private static final Logger logger = LogManager.getLogger(RefRangesCreator.class);
 
     private final CommonCode.OutputType outputType;
 
@@ -76,7 +76,7 @@ public final class RefCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
+    public RefRangesCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
@@ -136,7 +136,7 @@ public final class RefCreator {
             }
 
             // Create output if the reference block's GQ is not the one to discard, or it's a variant.
-            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(RefCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
+            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(RefRangesCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
