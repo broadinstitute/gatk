@@ -68,6 +68,9 @@ public class VetCreatorUnitTest {
         // This test verifies that FileAlreadyExistsException is properly thrown when
         // attempting to create a VetCreator with a file that already exists
 
+        // Ensure the output directory exists
+        Files.createDirectories(outputDirectory.toPath());
+
         // Calculate the actual filename that will be generated
         String filename = VetCreator.getOutputFileName(tableNumber, SAMPLE_ID, sampleIdentifierForOutputFileName, outputType);
         final File parquetOutputFile = new File(outputDirectory, filename);
