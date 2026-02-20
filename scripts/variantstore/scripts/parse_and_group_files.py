@@ -14,9 +14,9 @@ from pathlib import Path
 from google.cloud import bigquery
 
 
-def parse_table_from_path(file_path, superpartitioned_table_prefixes, regular_table_prefixes):
+def parse_table_from_path(file_path, superpartitioned_table_prefixes=["vet", "ref_ranges"], regular_table_prefixes=["sample_chromosome_ploidy"]):
     """
-    Extract table name from GCS path.
+    Extract table name from superpartitioned or regular (non-superpartitioned) GCS paths.
     
     Example:
         gs://bucket/vet/001/vet_001_sample.parquet -> vet_001
@@ -34,6 +34,14 @@ def parse_table_from_path(file_path, superpartitioned_table_prefixes, regular_ta
             # table_prefix = "ref" if prefix == "ref_ranges" else prefix
             # return f"{table_prefix}_{table_number}"
             return f"{prefix}_{table_number}"
+
+    for prefix in regular_table_prefixes:
+        # Match pattern: /{prefix}/{filename} where filename does not contain slashes.
+        pattern = rf'/({prefix})/[^/]+$'
+        match = re.search(pattern, file_path)
+        if match:
+            return prefix
+
     return None
 
 
