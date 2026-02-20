@@ -69,46 +69,4 @@ public class VetCreatorUnitTest {
         Files.deleteIfExists(parquetOutputFile.toPath());
     }
 
-    //@Test(expected = FileAlreadyExistsException.class)
-    @Test(enabled = false)
-    public void testErrorFile() throws IOException {
-        VariantContextBuilder builderA =
-                new VariantContextBuilder("a","1",10329,10329,
-                        Arrays.asList(Allele.REF_C,Allele.ALT_A,Allele.NON_REF_ALLELE));
-
-
-        Genotype g = new GenotypeBuilder(SAMPLE_NAME)
-                .alleles(Arrays.asList(Allele.REF_C, Allele.ALT_A))
-                .PL(new int[]{74,0,34,707,390,467})
-                .DP(64)
-                .GQ(36)
-                .AD(new int[]{22,42,0})
-                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "1,21,6,50")
-                .make();
-
-        builderA.attribute(AS_RAW_RMS_MAPPING_QUALITY_KEY,"29707.00|39366.00|2405.00")
-                .attribute(AS_RAW_MAP_QUAL_RANK_SUM_KEY,"|-0.2,1|-2.5,1")
-                .attribute(RAW_QUAL_APPROX_KEY,"74")
-                .attribute(AS_RAW_QUAL_APPROX_KEY,"|74|0")
-                .attribute(AS_RAW_READ_POS_RANK_SUM_KEY,"|2.4,1|1.5,1")
-                .attribute(AS_SB_TABLE_KEY,"1,21|3,39|3,11")
-                .attribute(AS_VARIANT_DEPTH_KEY,"22|42|0")
-                .genotypes(Arrays.asList(g));
-
-        VariantContext vc = builderA.make();
-
-        final File parquetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + ".parquet");
-        // Path tempFile = Files.createTempFile(parquetOutputFile.getAbsolutePath());
-       // Files.createTempFile("vet_001_parquet", ".parquet");
-        String sampleIdentifierForOutputFileName = "bleh";
-
-        VetCreator vetCreator = new VetCreator(parquetOutputFile.getName(), SAMPLE_ID, tableNumber, outputDirectory, outputType, PROJECT_ID, DATASET_NAME, true, false, PARQUET_SCHEMA);
-        List<String> row = vetCreator.createRow(10329,vc, SAMPLE_NAME);
-
-        Assert.assertEquals("/ by zero", row.get(0));
-        Files.deleteIfExists(parquetOutputFile.toPath());
-
-       // Assert.assertEquals("/ by zero", );
-    }
-
 }
