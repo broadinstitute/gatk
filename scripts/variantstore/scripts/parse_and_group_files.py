@@ -91,7 +91,7 @@ def main():
         "--superpartitioned-table-prefixes",
         nargs="+",
         default=["vet", "ref_ranges"],
-        help="Table prefixes which correspond to superpartitioned tables(e.g., vet ref_ranges)"
+        help="Table prefixes which correspond to superpartitioned tables (e.g., vet ref_ranges)"
     )
     
     args = parser.parse_args()

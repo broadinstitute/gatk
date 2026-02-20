@@ -11,17 +11,13 @@ import java.io.IOException;
 
 /**
  * Parquet writer for sample ploidy data.
- * 
+ * <p>
  * This writer extends AbstractParquetFileWriter for common Parquet infrastructure
  * and implements SamplePloidyWriter for domain-specific functionality.
  */
 public class SamplePloidyParquetFileWriter extends AbstractParquetFileWriter implements SamplePloidyWriter {
 
-    public SamplePloidyParquetFileWriter(
-            Path file,
-            MessageType schema,
-            CompressionCodecName codecName
-    ) throws IOException {
+    public SamplePloidyParquetFileWriter(Path file, MessageType schema, CompressionCodecName codecName) throws IOException {
         super(file, schema, codecName);
     }
 
@@ -36,7 +32,6 @@ public class SamplePloidyParquetFileWriter extends AbstractParquetFileWriter imp
 
     @Override
     public void commitData() {
-        SamplePloidyWriter.super.commitData();
         try {
             this.close();
         } catch (IOException e) {

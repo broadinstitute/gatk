@@ -20,7 +20,7 @@ public class SamplePloidyCreator {
 
     private SamplePloidyWriter samplePloidyWriter = null;
     private static final String SAMPLE_PLOIDY_TABLE_NAME = "sample_chromosome_ploidy";
-    private static final String SAMPLE_CHROMOSOME_PLOIDY_FILETYPE_PREFIX = "sample_chromosome_ploidy";
+    private static final String SAMPLE_CHROMOSOME_PLOIDY_FILETYPE_PREFIX = "sample_chromosome_ploidy_";
     // When we detect mixed ploidy, we allow for a small fraction due to DRAGEN bugs.  This constant determines the cutoff
     // after which we'll throw an error instead of just normalizing the ploidy
     private static final double MIXED_PLOIDY_ERROR_CUTOFF = 0.05;
@@ -102,12 +102,12 @@ public class SamplePloidyCreator {
             // First, see if the second best ploidy is for greater than 5% of the sample (this is likely way too generous).
             // If so, there may be a deeper error going on and we should just quit
             if (secondHighestPercentage > MIXED_PLOIDY_ERROR_CUTOFF) {
-                throw new UserException("Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", with second ploidy of "+secondBestPloidy+" detected in "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total) of samples");
+                throw new UserException("Detected mixed ploidy in sample " + this.sampleId + " on chromosome " + ploidyLine.getKey() + ", with second ploidy of " + secondBestPloidy + " detected in " + (secondHighestPercentage * 100) + "% (" + secondHighestCount + " total) of samples");
             }
             // It's a small enough number to just note and move on with
-            logger.warn("WARNING: Detected mixed ploidy in sample "+this.sampleId+" on chromosome "+ploidyLine.getKey()+", but second ploidy of "+secondBestPloidy+" detected in only "+(secondHighestPercentage * 100)+"% ("+secondHighestCount+" total)of samples. Going with dominant ploidy of "+bestPloidy);
+            logger.warn("WARNING: Detected mixed ploidy in sample " + this.sampleId + " on chromosome " + ploidyLine.getKey() + ", but second ploidy of " + secondBestPloidy + " detected in only " + (secondHighestPercentage * 100) + "% (" + secondHighestCount + " total)of samples. Going with dominant ploidy of " + bestPloidy);
 
-            samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(),0), bestPloidy);
+            samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(), 0), bestPloidy);
         }
     }
 
