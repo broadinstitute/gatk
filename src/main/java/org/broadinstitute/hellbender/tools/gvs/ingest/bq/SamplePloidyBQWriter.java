@@ -1,45 +1,19 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest.bq;
 
-import com.google.protobuf.Descriptors;
 import org.broadinstitute.hellbender.tools.gvs.ingest.SamplePloidyWriter;
-import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
-public class SamplePloidyBQWriter implements SamplePloidyWriter {
-
-    private PendingBQWriter pendingBQWriter = null;
+public class SamplePloidyBQWriter extends AbstractBQWriter implements SamplePloidyWriter {
 
     public SamplePloidyBQWriter(String projectId, String datasetName, String samplePloidyTableName) {
-        pendingBQWriter = new PendingBQWriter(projectId, datasetName, samplePloidyTableName);
+        super(projectId, datasetName, samplePloidyTableName);
     }
 
     @Override
     public void write(Long sampleId, Long chromosome, Integer ploidy) throws IOException {
-        JSONObject jsonRow = createJson(sampleId, chromosome, ploidy);
-        try {
-            this.pendingBQWriter.addJsonRow(jsonRow);
-        } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException e) {
-            throw new IOException(e);
-        }
-    }
-
-    @Override
-    public void commitData() {
-        SamplePloidyWriter.super.commitData();
-        if (pendingBQWriter != null) {
-            pendingBQWriter.flushBuffer();
-            pendingBQWriter.commitWriteStreams();
-        }
-    }
-
-    @Override
-    public void close() throws IOException {
-        if (pendingBQWriter != null) {
-            pendingBQWriter.close();
-        }
+        write(createJson(sampleId, chromosome, ploidy));
     }
 
     private JSONObject createJson(Long sampleId, Long chromosome, Integer ploidy) {
