@@ -11,17 +11,13 @@ import java.io.IOException;
 
 /**
  * Parquet writer for reference ranges data.
- * 
+ * <p>
  * This writer extends AbstractParquetFileWriter for common Parquet infrastructure
  * and implements RefRangesWriter for domain-specific functionality.
  */
 public class RefRangesParquetFileWriter extends AbstractParquetFileWriter implements RefRangesWriter {
 
-    public RefRangesParquetFileWriter(
-            Path file,
-            MessageType schema,
-            CompressionCodecName codecName
-    ) throws IOException {
+    public RefRangesParquetFileWriter(Path file, MessageType schema, CompressionCodecName codecName) throws IOException {
         super(file, schema, codecName);
     }
 

@@ -25,16 +25,6 @@ public class VetParquetFileWriter extends AbstractParquetFileWriter implements V
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
     }
 
-    /**
-     * Writes a JSON object to the Parquet file.
-     *
-     * @param object the JSON object to write
-     * @throws IOException if an error occurs during writing
-     */
-    public void write(JSONObject object) throws IOException {
-        super.write(object);
-    }
-
     @Override
     public void write(long location, VariantContext variant, long sampleId) throws IOException {
         JSONObject jsonObject = createJson(location, variant, sampleId, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);

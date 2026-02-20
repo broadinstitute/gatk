@@ -12,12 +12,12 @@ import java.io.IOException;
 
 /**
  * Abstract base class for Parquet file writers that simplifies writing JSON objects to Parquet files.
- * 
+ * <p>
  * This implementation uses the modern composition pattern where WriteSupport is created
  * independently and passed to the Builder, rather than creating it inside a deprecated
  * getWriteSupport(Configuration) method. This approach provides better testability,
  * flexibility, and follows dependency injection principles.
- * 
+ * <p>
  * Subclasses extend this class to add domain-specific write methods while inheriting
  * the common Parquet writing infrastructure.
  */
@@ -26,20 +26,16 @@ public abstract class AbstractParquetFileWriter {
 
     /**
      * Creates a Parquet file writer with the specified configuration.
-     * 
-     * @param file the output file path
-     * @param schema the Parquet message type schema
+     *
+     * @param file      the output file path
+     * @param schema    the Parquet message type schema
      * @param codecName the compression codec to use
      * @throws IOException if an error occurs during writer initialization
      */
-    protected AbstractParquetFileWriter(
-            Path file,
-            MessageType schema,
-            CompressionCodecName codecName
-    ) throws IOException {
+    protected AbstractParquetFileWriter(Path file, MessageType schema, CompressionCodecName codecName) throws IOException {
         // Use composition pattern: create WriteSupport independently
         WriteSupport<JSONObject> writeSupport = new ParquetWriteSupport(schema);
-        
+
         // Use our modern Builder that accepts WriteSupport via constructor
         Builder builder = new Builder(file, writeSupport);
         this.parquetWriterImpl = builder.withCompressionCodec(codecName).build();
@@ -47,7 +43,7 @@ public abstract class AbstractParquetFileWriter {
 
     /**
      * Writes a JSON object to the Parquet file.
-     * 
+     *
      * @param object the JSON object to write
      * @throws IOException if an error occurs during writing
      */
@@ -57,7 +53,7 @@ public abstract class AbstractParquetFileWriter {
 
     /**
      * Closes the Parquet writer and releases resources.
-     * 
+     *
      * @throws IOException if an error occurs during closing
      */
     public void close() throws IOException {
@@ -66,10 +62,10 @@ public abstract class AbstractParquetFileWriter {
 
     /**
      * Modern Builder implementation using composition pattern.
-     * 
+     * <p>
      * The WriteSupport is injected via constructor rather than created inside
      * getWriteSupport(), which provides better separation of concerns and testability.
-     * 
+     * <p>
      * Note: The getWriteSupport(Configuration) method is deprecated in Parquet 1.13.1
      * but there's no alternative method available yet.
      */
@@ -78,8 +74,8 @@ public abstract class AbstractParquetFileWriter {
 
         /**
          * Creates a builder with injected WriteSupport (composition pattern).
-         * 
-         * @param file the output file path
+         *
+         * @param file         the output file path
          * @param writeSupport the WriteSupport instance to use (injected dependency)
          */
         public Builder(Path file, WriteSupport<JSONObject> writeSupport) {
@@ -94,10 +90,10 @@ public abstract class AbstractParquetFileWriter {
 
         /**
          * Returns the WriteSupport instance provided via constructor.
-         * 
+         * <p>
          * This method is deprecated but still required to implement ParquetWriter.Builder.
          * The Configuration parameter is properly ignored (not used).
-         * 
+         *
          * @param configuration ignored parameter (as intended by modern design)
          * @return the WriteSupport instance provided at construction time
          */
