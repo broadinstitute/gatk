@@ -14,11 +14,7 @@ import java.io.IOException;
  */
 public class HeaderParquetFileWriter extends AbstractParquetFileWriter {
 
-    public HeaderParquetFileWriter(
-            Path file,
-            MessageType schema,
-            CompressionCodecName codecName
-    ) throws IOException {
+    public HeaderParquetFileWriter(Path file, MessageType schema, CompressionCodecName codecName) throws IOException {
         super(file, schema, codecName);
     }
 
