@@ -568,8 +568,6 @@ task ProcessInputGVCFs {
         # parse the table superpartition out of the file name
         table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
 
-        ls -lh *.parquet
-
         # copy the vet and ref parquet files to the gcs bucket in the right place
         gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
         gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
