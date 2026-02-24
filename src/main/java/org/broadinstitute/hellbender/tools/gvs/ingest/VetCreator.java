@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
@@ -19,6 +18,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -43,7 +43,7 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) throws FileAlreadyExistsException {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
@@ -74,7 +74,7 @@ public class VetCreator {
                     break;
             }
         } catch (final FileAlreadyExistsException fs) {
-            throw new UserException("This variants parquet file already exists", fs);
+            throw fs;
         } catch (final IOException ioex) {
             throw new UserException("Could not create vet outputs", ioex);
         }

@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -82,8 +83,8 @@ public class VetCreatorUnitTest {
         Files.createFile(parquetOutputFile.toPath());
 
         try {
-            // This should throw a UserException wrapping FileAlreadyExistsException
-            VetCreator vetCreator = new VetCreator(
+            // This should throw a FileAlreadyExistsException
+            new VetCreator(
                 sampleIdentifierForOutputFileName,
                 SAMPLE_ID,
                 tableNumber,
@@ -97,11 +98,11 @@ public class VetCreatorUnitTest {
             );
 
             // If we get here, the test failed - no exception was thrown
-            Assert.fail("Expected UserException to be thrown when file already exists");
+            Assert.fail("Expected FileAlreadyExistsException to be thrown when the file already exists");
 
-        } catch (org.broadinstitute.hellbender.exceptions.UserException ex) {
-            // Expected exception - verify it's about the file already existing
-            Assert.assertTrue(ex.getMessage().contains("already exists"),
+        } catch (FileAlreadyExistsException ex) {
+            // Expected exception (verify it's about the file already existing)
+            Assert.assertTrue(ex.getMessage().contains("file already exists"),
                 "Expected error message about file already existing, got: " + ex.getMessage());
         } finally {
             // Clean up the test file
