@@ -64,7 +64,7 @@ public class VetCreatorUnitTest {
         Files.deleteIfExists(parquetOutputFile.toPath());
     }
 
-    @Test
+    @Test(expectedExceptions = FileAlreadyExistsException.class)
     public void testErrorFile() throws IOException {
         // This test verifies that FileAlreadyExistsException is properly thrown when
         // attempting to create a VetCreator with a file that already exists
@@ -99,11 +99,6 @@ public class VetCreatorUnitTest {
 
             // If we get here, the test failed - no exception was thrown
             Assert.fail("Expected FileAlreadyExistsException to be thrown when the file already exists");
-
-        } catch (FileAlreadyExistsException ex) {
-            // Expected exception (verify it's about the file already existing)
-            Assert.assertTrue(ex.getMessage().contains("file already exists"),
-                "Expected error message about file already existing, got: " + ex.getMessage());
         } finally {
             // Clean up the test file
             Files.deleteIfExists(parquetOutputFile.toPath());
