@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
@@ -19,6 +18,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,20 +36,20 @@ public class VetCreator {
     private final boolean skipLoadingVqsrFields;
 
     private static final String VET_FILETYPE_PREFIX = "vet_";
+    private static final String PREFIX_SEPARATOR = "_";
 
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) throws FileAlreadyExistsException {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
         this.skipLoadingVqsrFields = skipLoadingVqsrFields;
 
         try {
-            String PREFIX_SEPARATOR = "_";
             switch (outputType) {
                 case BQ:
                     if (projectId == null || datasetName == null) {
@@ -65,15 +65,16 @@ public class VetCreator {
                     vetWriter.setHeaderLine(getHeaders());
                     break;
                 case PARQUET:
-                    String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
-                    String filename = VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
-                            "." + outputType.toString().toLowerCase();
+                    String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
+                    if (parquetOutputFile.exists()) {
+                        throw new FileAlreadyExistsException("Parquet file already exists: " + parquetOutputFile.getAbsolutePath());
+                    }
                     vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                     break;
             }
         } catch (final FileAlreadyExistsException fs) {
-            throw new UserException("This variants parquet file already exists", fs);
+            throw fs;
         } catch (final IOException ioex) {
             throw new UserException("Could not create vet outputs", ioex);
         }
@@ -141,6 +142,12 @@ public class VetCreator {
 
     public static List<String> getHeaders() {
         return Arrays.stream(VetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
+    }
+
+    public static String getOutputFileName(String tableNumber, Long sampleId, String sampleIdentifierForOutputFileName, CommonCode.OutputType outputType) {
+        String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+        return VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
+                "." + outputType.toString().toLowerCase();
     }
 
     public void commitData() {
