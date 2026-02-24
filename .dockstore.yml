@@ -222,7 +222,6 @@ workflows:
              - master
              - ah_var_store
              - VS-1736
-             - gg_VS-1793_InvestigateFailingTests
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
