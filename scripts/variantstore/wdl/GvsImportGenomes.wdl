@@ -735,6 +735,12 @@ task ConfigureParquetLifecycle {
     
     # Extract bucket name from GCS path
     BUCKET_NAME=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f1)
+    # Extract bucket path prefix (if any) to ensure lifecycle rules are applied to the correct subdirectories
+    BUCKET_PATH_PREFIX=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f2-)
+    if [ -n "$BUCKET_PATH_PREFIX" ]; then
+      BUCKET_PATH_PREFIX="$BUCKET_PATH_PREFIX/"
+    fi
+
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
     
     # Create lifecycle configuration for parquet directories
@@ -746,21 +752,29 @@ task ConfigureParquetLifecycle {
         "action": {"type": "Delete"},
         "condition": {
           "age": 14,
-          "matchesPrefix": ["vet/", "ref_ranges/"]
+          "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
         }
       }
     ]
   }
 }
 EOF
+
+    echo "Here's the file:"
+    cat lifecycle.json
+    echo "that's it"
     
     # Get existing lifecycle configuration if any
     set +e
     gcloud storage buckets describe gs://${BUCKET_NAME} \
       ~{"--billing-project " + billing_project_id} \
-      --format="value(lifecycle)" > existing_lifecycle.json 2>/dev/null
+      --format="value(lifecycle_config)" > existing_lifecycle.json 2>/dev/null
     EXISTING_RC=$?
     set -e
+
+    echo "Here's the existing lifecycle config (if any):"
+    cat existing_lifecycle.json || echo "No existing lifecycle configuration"
+    echo "that's it"
     
     if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
       echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
@@ -772,11 +786,11 @@ EOF
     fi
     
     # Apply the lifecycle configuration
-    gcloud storage buckets update gs://${BUCKET_NAME} \
-      ~{"--billing-project " + billing_project_id} \
-      --lifecycle-file=lifecycle.json
-    
-    echo "✓ Lifecycle rule applied: Delete files in vet/ and ref_ranges/ after 14 days"
+#    gcloud storage buckets update gs://${BUCKET_NAME} \
+#      ~{"--billing-project " + billing_project_id} \
+#      --lifecycle-file=lifecycle.json
+#
+#    echo "✓ Lifecycle rule applied: Delete files in vet/ and ref_ranges/ after 14 days"
   >>>
   
   runtime {
