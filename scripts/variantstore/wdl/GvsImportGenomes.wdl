@@ -744,7 +744,7 @@ task ConfigureParquetLifecycle {
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
     
     # Create lifecycle configuration for parquet directories
-    cat > lifecycle.json << 'EOF'
+    cat > lifecycle.json << EOF
 {
   "lifecycle": {
     "rule": [
@@ -773,7 +773,7 @@ EOF
     set -e
 
     echo "Here's the existing lifecycle config (if any):"
-    cat existing_lifecycle.json || echo "No existing lifecycle configuration"
+    cat existing_lifecycle.json
     echo "that's it"
     
     if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
@@ -791,6 +791,7 @@ EOF
 #      --lifecycle-file=lifecycle.json
 #
 #    echo "✓ Lifecycle rule applied: Delete files in vet/ and ref_ranges/ after 14 days"
+    exit 1 # Temporarily exit with error to prevent actual lifecycle changes while testing
   >>>
   
   runtime {
