@@ -736,10 +736,8 @@ task ConfigureParquetLifecycle {
     # Extract bucket name from GCS path
     BUCKET_NAME=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f1)
     # Extract bucket path prefix (if any) to ensure lifecycle rules are applied to the correct subdirectories
-    BUCKET_PATH_PREFIX=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f2-)
-    if [ -n "$BUCKET_PATH_PREFIX" ]; then
-      BUCKET_PATH_PREFIX="$BUCKET_PATH_PREFIX/"
-    fi
+    # For example, if output_gcs_dir is gs://my-bucket/path/to/data/, we want the prefix to be path/to/data to apply rules to that subdirectory rather than the whole bucket
+    BUCKET_PATH_PREFIX=$(echo ~{output_gcs_dir} | sed 's|gs://||' | sed 's/\/$//' | cut -d'/' -f2-)
 
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
     
@@ -752,7 +750,7 @@ task ConfigureParquetLifecycle {
         "action": {"type": "Delete"},
         "condition": {
           "age": 14,
-          "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
+          "matchesPrefix": ["${BUCKET_PATH_PREFIX}/vet/", "${BUCKET_PATH_PREFIX}/ref_ranges/"]
         }
       }
     ]
