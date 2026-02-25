@@ -47,7 +47,7 @@ workflow GvsImportGenomes {
 
     # Dump these parquet files to a bucket
     String output_gcs_dir
-    Boolean configure_parquet_bucket_lifecycle = true
+    Boolean configure_parquet_bucket_lifecycle = false
 
     Boolean is_wgs = true
   }
