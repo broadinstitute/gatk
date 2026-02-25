@@ -222,6 +222,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1736
+             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -290,7 +291,7 @@ workflows:
              - master
              - ah_var_store
              - VS-1737
-             - gg_VS-1785
+             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsBeta
@@ -347,6 +348,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1777_build_failure
+             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsIngestTieout
