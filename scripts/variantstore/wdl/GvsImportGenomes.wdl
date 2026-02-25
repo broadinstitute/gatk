@@ -48,6 +48,7 @@ workflow GvsImportGenomes {
     # Dump these parquet files to a bucket
     String output_gcs_dir
     Boolean configure_parquet_bucket_lifecycle = false
+    Boolean delete_parquet_files_after_loading = true
 
     Boolean is_wgs = true
   }
@@ -241,6 +242,16 @@ workflow GvsImportGenomes {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        gcs_files_list = DiscoverParquetFiles.all_files_list,
+        load_outputs = LoadParquetFilesToBQ.completion_status,
+        variants_docker = effective_variants_docker,
+    }
+
+    call DeleteParquetFiles {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        parquet_files_verified = VerifyParquetLoading.all_loaded,
         gcs_files_list = DiscoverParquetFiles.all_files_list,
         load_outputs = LoadParquetFilesToBQ.completion_status,
         variants_docker = effective_variants_docker,
