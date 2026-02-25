@@ -738,11 +738,16 @@ task ConfigureParquetLifecycle {
 
     # Extract bucket path prefix (if any) to ensure lifecycle rules are applied to the correct subdirectories
     # For example, if output_gcs_dir is gs://my-bucket/path/to/data/, we want the prefix to be path/to/data/ to apply rules to that subdirectory rather than the whole bucket
-    BUCKET_PATH_PREFIX=$(echo ~{output_gcs_dir} | sed 's|gs://||' | sed 's/\/$//' | cut -d'/' -f2-)
+    # First, remove gs:// prefix and trailing slash, then check if there's a path component
+    TEMP_PATH=$(echo ~{output_gcs_dir} | sed 's|gs://||' | sed 's/\/$//')
 
-    # If BUCKET_PATH_PREFIX is not empty (i.e., output_gcs_dir is not just gs://bucket-name), append a trailing slash
-    if [ -n "$BUCKET_PATH_PREFIX" ]; then
+    # If TEMP_PATH contains a /, extract everything after the first /, otherwise set to empty
+    if [[ "$TEMP_PATH" == */* ]]; then
+      BUCKET_PATH_PREFIX=$(echo "$TEMP_PATH" | cut -d'/' -f2-)
+      # Append trailing slash since we have a path
       BUCKET_PATH_PREFIX="${BUCKET_PATH_PREFIX}/"
+    else
+      BUCKET_PATH_PREFIX=""
     fi
 
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
