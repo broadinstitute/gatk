@@ -735,12 +735,19 @@ task ConfigureParquetLifecycle {
     
     # Extract bucket name from GCS path
     BUCKET_NAME=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f1)
+
     # Extract bucket path prefix (if any) to ensure lifecycle rules are applied to the correct subdirectories
-    # For example, if output_gcs_dir is gs://my-bucket/path/to/data/, we want the prefix to be path/to/data to apply rules to that subdirectory rather than the whole bucket
+    # For example, if output_gcs_dir is gs://my-bucket/path/to/data/, we want the prefix to be path/to/data/ to apply rules to that subdirectory rather than the whole bucket
     BUCKET_PATH_PREFIX=$(echo ~{output_gcs_dir} | sed 's|gs://||' | sed 's/\/$//' | cut -d'/' -f2-)
 
+    # If BUCKET_PATH_PREFIX is not empty (i.e., output_gcs_dir is not just gs://bucket-name), append a trailing slash
+    if [ -n "$BUCKET_PATH_PREFIX" ]; then
+      BUCKET_PATH_PREFIX="${BUCKET_PATH_PREFIX}/"
+    fi
+
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
-    
+    echo "Path prefix: '${BUCKET_PATH_PREFIX}'"
+
     # Create lifecycle configuration for parquet directories
     cat > lifecycle.json << EOF
 {
@@ -750,7 +757,7 @@ task ConfigureParquetLifecycle {
         "action": {"type": "Delete"},
         "condition": {
           "age": 14,
-          "matchesPrefix": ["${BUCKET_PATH_PREFIX}/vet/", "${BUCKET_PATH_PREFIX}/ref_ranges/"]
+          "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
         }
       }
     ]
@@ -782,7 +789,7 @@ EOF
       ~{"--billing-project " + billing_project_id} \
       --lifecycle-file=lifecycle.json
 
-    echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}/ref_ranges/"
+    echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}ref_ranges/"
   >>>
   
   runtime {
