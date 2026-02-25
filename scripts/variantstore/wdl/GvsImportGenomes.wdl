@@ -784,12 +784,12 @@ EOF
     fi
     
     # Apply the lifecycle configuration
-#    gcloud storage buckets update gs://${BUCKET_NAME} \
-#      ~{"--billing-project " + billing_project_id} \
-#      --lifecycle-file=lifecycle.json
-#
-#    echo "✓ Lifecycle rule applied: Delete files in vet/ and ref_ranges/ after 14 days"
-    exit 1 # Temporarily exit with error to prevent actual lifecycle changes while testing
+    gcloud storage buckets update gs://${BUCKET_NAME} \
+      ~{"--billing-project " + billing_project_id} \
+      --lifecycle-file=lifecycle.json
+
+    echo "✓ Lifecycle rule applied: Delete files Bucket: ${BUCKET_NAME}, path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}/ref_ranges/ after 14 days"
+#    exit 1 # Temporarily exit with error to prevent actual lifecycle changes while testing
   >>>
   
   runtime {
