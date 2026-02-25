@@ -249,12 +249,9 @@ workflow GvsImportGenomes {
 
     call DeleteParquetFiles {
       input:
-        project_id = project_id,
-        dataset_name = dataset_name,
+        output_gcs_dir = output_gcs_dir,
         parquet_files_verified = VerifyParquetLoading.all_loaded,
-        gcs_files_list = DiscoverParquetFiles.all_files_list,
-        load_outputs = LoadParquetFilesToBQ.completion_status,
-        variants_docker = effective_variants_docker,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -966,5 +963,50 @@ task VerifyParquetLoading {
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
+  }
+}
+
+task DeleteParquetFiles {
+  input {
+    String output_gcs_dir
+    String parquet_files_verified
+
+    String? billing_project_id
+    String cloud_sdk_docker
+  }
+
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    # Normalize GCS path to ensure exactly one trailing slash
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    # List the contents of the vet and ref_ranges directories for deletion later
+    echo "Listing directories in ${OUTPUT_GCS_DIR}/vet/..."
+    gcloud storage ls  ~{"--billing-project " + billing_project_id} \
+    "${OUTPUT_GCS_DIR}/vet/" > vet_dirs.txt || true
+
+    echo "Here it is"
+    cat vet_dirs.txt
+
+    echo "Listing directories in ${OUTPUT_GCS_DIR}/ref_ranges/..."
+    gcloud storage ls  ~{"--billing-project " + billing_project_id} \
+    "${OUTPUT_GCS_DIR}/ref_ranges/" > ref_ranges_dirs.txt || true
+
+    echo "Here it is"
+    cat ref_ranges_dirs.txt
+
+  >>>
+  output {
+    String done = "true"
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }
