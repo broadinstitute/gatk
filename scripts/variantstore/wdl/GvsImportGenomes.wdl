@@ -758,10 +758,6 @@ task ConfigureParquetLifecycle {
 }
 EOF
 
-    echo "Here's the file:"
-    cat lifecycle.json
-    echo "that's it"
-    
     # Get existing lifecycle configuration if any
     set +e
     gcloud storage buckets describe gs://${BUCKET_NAME} \
@@ -769,10 +765,6 @@ EOF
       --format="value(lifecycle_config)" > existing_lifecycle.json 2>/dev/null
     EXISTING_RC=$?
     set -e
-
-    echo "Here's the existing lifecycle config (if any):"
-    cat existing_lifecycle.json
-    echo "that's it"
     
     if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
       echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
@@ -784,12 +776,13 @@ EOF
     fi
     
     # Apply the lifecycle configuration
+    # Lies! This will overwrite existing lifecycle rules rather than merging any existing lifecycle rules with the to-be-applied rules,
+    #  but gcloud doesn't have a way to do an actual merge. In the future, we would need to implement merging logic.
     gcloud storage buckets update gs://${BUCKET_NAME} \
       ~{"--billing-project " + billing_project_id} \
       --lifecycle-file=lifecycle.json
 
-    echo "✓ Lifecycle rule applied: Delete files Bucket: ${BUCKET_NAME}, path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}/ref_ranges/ after 14 days"
-#    exit 1 # Temporarily exit with error to prevent actual lifecycle changes while testing
+    echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}/ref_ranges/"
   >>>
   
   runtime {
@@ -802,6 +795,8 @@ EOF
   
   output {
     String done = "lifecycle_configured"
+    File lifecycle_config = "lifecycle.json"
+    File existing_lifecycle_config = "existing_lifecycle.json"
   }
 }
 
