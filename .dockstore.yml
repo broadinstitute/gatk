@@ -222,7 +222,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1800_prep_for_merge
+             - vs_1799_fix_parquet_exome_npe
          tags:
              - /.*/
    - name: BulkIngestParquet
@@ -232,7 +232,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1800_prep_for_merge
+         - vs_1799_fix_parquet_exome_npe
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
