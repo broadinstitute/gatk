@@ -1245,7 +1245,7 @@ task DeleteParquetFiles {
 
     # List the contents of the vet and ref_ranges directories for deletion later
     echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ for deletion..."
-    gcloud storage ls  ~{"--billing-project " + billing_project_id} \
+    gcloud storage ls ~{"--billing-project " + billing_project_id} \
     "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt || true
 
     # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
@@ -1253,8 +1253,7 @@ task DeleteParquetFiles {
     while IFS= read -r gcs_path; do
       if [ -n "$gcs_path" ]; then
         echo "Deleting objects in: $gcs_path"
-        gcloud storage rm ~{"--billing-project " + billing_project_id} \
-          "${gcs_path}**" --recursive || echo "Warning: Failed to delete $gcs_path"
+        gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
       fi
     done < parquet_dirs.txt
 
@@ -1268,7 +1267,7 @@ task DeleteParquetFiles {
   runtime {
     docker: cloud_sdk_docker
     memory: "3 GB"
-    disks: "local-disk 500 HDD"
+    disks: "local-disk 100 HDD"
     preemptible: 3
     cpu: 1
   }
