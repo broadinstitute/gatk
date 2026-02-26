@@ -247,6 +247,15 @@ workflow GvsImportGenomes {
           go = LoadParquetFilesToBQ.done,
           variants_docker = effective_variants_docker,
       }
+
+      if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
+        call DeleteParquetFiles {
+          input:
+            output_gcs_dir = output_gcs_dir,
+            billing_project_id = billing_project_id,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+      }
     }
 
     call SetIsLoadedColumn {
@@ -266,15 +275,6 @@ workflow GvsImportGenomes {
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    if (delete_parquet_files_after_loading) {
-      call DeleteParquetFiles {
-        input:
-          output_gcs_dir = output_gcs_dir,
-          parquet_files_verified = VerifyParquetLoading.all_loaded,
-          cloud_sdk_docker = effective_cloud_sdk_docker,
-      }
     }
   }
 
@@ -1231,7 +1231,6 @@ task VerifyParquetLoading {
 task DeleteParquetFiles {
   input {
     String output_gcs_dir
-    String parquet_files_verified
 
     String? billing_project_id
     String cloud_sdk_docker
