@@ -62,7 +62,7 @@ class TestParseSuperpartitionedTableFromPath(unittest.TestCase):
         path = "gs://bucket/vet/abc/file.parquet"
         self.assertIsNone(parse_table_from_path(path, ["vet", "ref_ranges"]))
 
-class TestParseReguilarTableFromPath(unittest.TestCase):
+class TestParseRegularTableFromPath(unittest.TestCase):
     def test_parse_ploidy_path_basic(self):
         """Test basic ploidy path parsing."""
         path = "gs://bucket/sample_chromosome_ploidy/file.parquet"

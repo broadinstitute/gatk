@@ -9,7 +9,7 @@ import java.io.IOException;
 
 /**
  * Parquet writer for VCF header information.
- * 
+ * <p>
  * This writer stores sample ID and header line hash associations in Parquet format.
  */
 public class HeaderParquetFileWriter extends AbstractParquetFileWriter {

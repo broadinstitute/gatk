@@ -112,12 +112,16 @@ public class SamplePloidyCreator {
     }
 
     public void commitData() {
-        this.samplePloidyWriter.commitData();
+        if (this.samplePloidyWriter != null) {
+            this.samplePloidyWriter.commitData();
+        }
     }
 
     public void closeTool() {
         try {
-            samplePloidyWriter.close();
+            if (this.samplePloidyWriter != null) {
+                samplePloidyWriter.close();
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

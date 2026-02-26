@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 
 public class VetCreator {
     private VetWriter vetWriter = null;
