@@ -363,12 +363,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
-            try {
-                vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
-            } catch (FileAlreadyExistsException fe) {
-                // rewrap the FileAlreadyExistsException in a UserException to avoid having to declare the checked exception in the method signature
-                throw new UserException(fe.getMessage(), fe);
-            }
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);

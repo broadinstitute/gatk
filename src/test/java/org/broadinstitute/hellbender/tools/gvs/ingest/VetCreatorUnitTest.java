@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import htsjdk.variant.variantcontext.*;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
@@ -64,7 +65,7 @@ public class VetCreatorUnitTest {
         Files.deleteIfExists(parquetOutputFile.toPath());
     }
 
-    @Test(expectedExceptions = FileAlreadyExistsException.class)
+    @Test
     public void testErrorFile() throws IOException {
         // This test verifies that FileAlreadyExistsException is properly thrown when
         // attempting to create a VetCreator with a file that already exists
@@ -98,11 +99,14 @@ public class VetCreatorUnitTest {
             );
 
             // If we get here, the test failed - no exception was thrown
-            Assert.fail("Expected FileAlreadyExistsException to be thrown when the file already exists");
+            Assert.fail("Expected FileAlreadyExistsException to be thrown (and wrapped) when the file already exists");
+        } catch (UserException e) {
+            Assert.assertTrue(e.getMessage().contains("File already exists"));
+        } catch (Exception e) {
+            Assert.fail(e.getMessage());
         } finally {
             // Clean up the test file
             Files.deleteIfExists(parquetOutputFile.toPath());
         }
     }
-
 }
