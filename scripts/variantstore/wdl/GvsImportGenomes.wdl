@@ -1262,7 +1262,7 @@ task DeleteParquetFiles {
 
   >>>
   output {
-    String done = "true"
+    Boolean done = true
   }
 
   runtime {
