@@ -11,24 +11,18 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
 
 public class VetCreatorUnitTest {
     private static final long SAMPLE_ID = 100;
-    private static final String SAMPLE_NAME = "NA1";
     private static final String PROJECT_ID = "test";
     private static final String DATASET_NAME = "test";
     private final File outputDirectory = new File("quickstart/output/");
     Path currentRelativePath = Paths.get("");
     private final CommonCode.OutputType outputType = CommonCode.OutputType.PARQUET;
-    private static final String VET_FILETYPE_PREFIX = "vet_"; // should this live somewhere else--check out IngestConstants for instance--why is that a tsv?!?!
-    String PREFIX_SEPARATOR = "_"; // should this live somewhere else?
 
     int sampleTableNumber = IngestUtils.getTableNumber(SAMPLE_ID, IngestConstants.partitionPerTable);
     String tableNumber = String.format("%03d", sampleTableNumber);
@@ -59,14 +53,56 @@ public class VetCreatorUnitTest {
 
 
 
-    @Test(enabled = false)
-    public void testParquetOutputFile() throws IOException {
-        String fullPath = String.join(currentRelativePath.toAbsolutePath().toString(), outputDirectory.toString());
-        final File parquetOutputFile = new File(fullPath, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + ".parquet");
+    @Test
+    public void testParquetOutputFileNaming() throws IOException {
+        String fullPath = Paths.get(currentRelativePath.toAbsolutePath().toString(), outputDirectory.toString()).toString();
+        String filename = VetCreator.getOutputFileName(tableNumber, 27L, sampleIdentifierForOutputFileName, outputType);
+        final File parquetOutputFile = new File(fullPath, filename);
 
-        String expected = String.join(fullPath, "vet_001_parquet.parquet");
-        Assert.assertEquals(parquetOutputFile.getAbsoluteFile(), expected);
+        String expected = Paths.get(fullPath, "vet_001_27_parquet.parquet").toString();
+        Assert.assertEquals(parquetOutputFile.getAbsolutePath(), expected);
         Files.deleteIfExists(parquetOutputFile.toPath());
+    }
+
+    @Test(expectedExceptions = FileAlreadyExistsException.class)
+    public void testErrorFile() throws IOException {
+        // This test verifies that FileAlreadyExistsException is properly thrown when
+        // attempting to create a VetCreator with a file that already exists
+
+        // Ensure the output directory exists
+        Files.createDirectories(outputDirectory.toPath());
+
+        // Calculate the actual filename that will be generated
+        String filename = VetCreator.getOutputFileName(tableNumber, SAMPLE_ID, sampleIdentifierForOutputFileName, outputType);
+        final File parquetOutputFile = new File(outputDirectory, filename);
+
+        // Clean up any existing file first
+        Files.deleteIfExists(parquetOutputFile.toPath());
+
+        // Create the file to simulate it already existing
+        Files.createFile(parquetOutputFile.toPath());
+
+        try {
+            // This should throw a FileAlreadyExistsException
+            new VetCreator(
+                sampleIdentifierForOutputFileName,
+                SAMPLE_ID,
+                tableNumber,
+                outputDirectory,
+                outputType,
+                PROJECT_ID,
+                DATASET_NAME,
+                true,
+                false,
+                PARQUET_SCHEMA
+            );
+
+            // If we get here, the test failed - no exception was thrown
+            Assert.fail("Expected FileAlreadyExistsException to be thrown when the file already exists");
+        } finally {
+            // Clean up the test file
+            Files.deleteIfExists(parquetOutputFile.toPath());
+        }
     }
 
 }

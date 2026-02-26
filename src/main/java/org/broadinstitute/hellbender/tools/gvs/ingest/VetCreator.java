@@ -21,17 +21,17 @@ public class VetCreator {
     private final Long sampleId;
 
     private static final String VET_FILETYPE_PREFIX = "vet_";
+    private static final String PREFIX_SEPARATOR = "_";
 
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) throws FileAlreadyExistsException {
         this.sampleId = sampleId;
 
         try {
-            String PREFIX_SEPARATOR = "_";
             switch (outputType) {
                 case BQ:
                     if (projectId == null || datasetName == null) {
@@ -45,9 +45,7 @@ public class VetCreator {
                     vetWriter = new VetTsvWriter(vetOutputFile, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
                     break;
                 case PARQUET:
-                    String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
-                    String filename = VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
-                            "." + outputType.toString().toLowerCase();
+                    String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
                     vetWriter = new VetParquetFileWriter(new Path(parquetOutputFile.toURI()), skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific, parquetSchema, CompressionCodecName.SNAPPY);
                     break;
@@ -64,6 +62,12 @@ public class VetCreator {
         vetWriter.write(location, variant, sampleId);
     }
 
+
+    public static String getOutputFileName(String tableNumber, Long sampleId, String sampleIdentifierForOutputFileName, CommonCode.OutputType outputType) {
+        String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+        return VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
+                "." + outputType.toString().toLowerCase();
+    }
 
     public void commitData() {
         if (vetWriter != null) {

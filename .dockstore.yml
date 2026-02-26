@@ -303,7 +303,6 @@ workflows:
              - master
              - ah_var_store
              - VS-1737
-             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsBeta
@@ -360,7 +359,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1800_prep_for_merge
-             - gg_VS-1780
          tags:
              - /.*/
    - name: GvsQuickstartIntegrationParquet1809
