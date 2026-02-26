@@ -212,6 +212,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             """);
 
+    public final MessageType refRangesCompressedRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message RefRangesRow {
+                required int64 sample_id;
+                required int64 packed_ref_data;
+            }
+            """);
+
     public final MessageType sampleChromosomePloidyRowSchema = MessageTypeParser
             .parseMessageType("""
             message HeaderRow {
@@ -363,7 +371,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
             logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
-            refRangesCreator = new RefRangesCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesRowSchema);
+            MessageType refRangesParquetSchema = storeCompressedReferences ? refRangesCompressedRowSchema : refRangesRowSchema;
+            refRangesCreator = new RefRangesCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
 
             // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
             // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
