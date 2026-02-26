@@ -656,7 +656,7 @@ task SetIsLoadedColumn {
     UPDATE `~{project_id}.~{dataset_name}.sample_info`
     SET is_loaded = TRUE
     WHERE
-    sample_id IN (
+      sample_id IN (
       SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_all_data`
     );
 
@@ -1204,7 +1204,6 @@ task LoadParquetFilesToBQ {
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-
     # Table name is extracted from FOFN filename by the Python script
     python3 /app/load_parquet_to_bq.py \
       --project-id ~{project_id} \
@@ -1246,7 +1245,6 @@ task VerifyParquetLoading {
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-
     mkdir -p verification_output
 
     python3 /app/verify_all_loaded.py \
