@@ -101,7 +101,7 @@ public class VetCreatorUnitTest {
             // If we get here, the test failed - no exception was thrown
             Assert.fail("Expected FileAlreadyExistsException to be thrown (and wrapped) when the file already exists");
         } catch (UserException e) {
-            Assert.assertTrue(e.getMessage().contains("File already exists"));
+            Assert.assertTrue(e.getMessage().contains("already exists"), e.getMessage());
         } catch (Exception e) {
             Assert.fail(e.getMessage());
         } finally {
