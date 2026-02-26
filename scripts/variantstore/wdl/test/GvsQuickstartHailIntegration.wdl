@@ -39,6 +39,7 @@ workflow GvsQuickstartHailIntegration {
 
         Int? maximum_alternate_alleles
         String ploidy_table_name = "sample_chromosome_ploidy"
+        Boolean use_parquet_ingest = false
     }
 
     String project_id = "gvs-internal"
@@ -94,6 +95,7 @@ workflow GvsQuickstartHailIntegration {
             workspace_id = effective_workspace_id,
             submission_id = effective_submission_id,
             maximum_alternate_alleles = maximum_alternate_alleles,
+            use_parquet_ingest = use_parquet_ingest,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
