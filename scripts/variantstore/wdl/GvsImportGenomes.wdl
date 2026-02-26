@@ -989,22 +989,13 @@ task DeleteParquetFiles {
     gcloud storage ls  ~{"--billing-project " + billing_project_id} \
     "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt || true
 
-#    echo "Listing directories in ${OUTPUT_GCS_DIR}/ref_ranges/..."
-#    gcloud storage ls  ~{"--billing-project " + billing_project_id} \
-#    "${OUTPUT_GCS_DIR}/ref_ranges/" >> parquet_dirs.txt || true
-
-    echo "Here it is!"
-    cat parquet_dirs.txt
-    echo "."
-
     # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
     echo "Deleting objects in vet and ref_ranges directories..."
     while IFS= read -r gcs_path; do
       if [ -n "$gcs_path" ]; then
         echo "Deleting objects in: $gcs_path"
-        echo "Command: gcloud storage rm ~{"--billing-project " + billing_project_id} ${gcs_path}** --recursive"
-#        gcloud storage rm ~{"--billing-project " + billing_project_id} \
-#          "${gcs_path}**" --recursive || echo "Warning: Failed to delete $gcs_path"
+        gcloud storage rm ~{"--billing-project " + billing_project_id} \
+          "${gcs_path}**" --recursive || echo "Warning: Failed to delete $gcs_path"
       fi
     done < parquet_dirs.txt
 
