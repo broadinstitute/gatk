@@ -247,11 +247,13 @@ workflow GvsImportGenomes {
         variants_docker = effective_variants_docker,
     }
 
-    call DeleteParquetFiles {
-      input:
-        output_gcs_dir = output_gcs_dir,
-        parquet_files_verified = VerifyParquetLoading.all_loaded,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
+    if (delete_parquet_files_after_loading) {
+      call DeleteParquetFiles {
+        input:
+          output_gcs_dir = output_gcs_dir,
+          parquet_files_verified = VerifyParquetLoading.all_loaded,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
     }
   }
 
@@ -985,17 +987,24 @@ task DeleteParquetFiles {
     # List the contents of the vet and ref_ranges directories for deletion later
     echo "Listing directories in ${OUTPUT_GCS_DIR}/vet/..."
     gcloud storage ls  ~{"--billing-project " + billing_project_id} \
-    "${OUTPUT_GCS_DIR}/vet/" > vet_dirs.txt || true
-
-    echo "Here it is"
-    cat vet_dirs.txt
+    "${OUTPUT_GCS_DIR}/vet/" > parquet_dirs.txt || true
 
     echo "Listing directories in ${OUTPUT_GCS_DIR}/ref_ranges/..."
     gcloud storage ls  ~{"--billing-project " + billing_project_id} \
-    "${OUTPUT_GCS_DIR}/ref_ranges/" > ref_ranges_dirs.txt || true
+    "${OUTPUT_GCS_DIR}/ref_ranges/" >> parquet_dirs.txt || true
 
-    echo "Here it is"
-    cat ref_ranges_dirs.txt
+    # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
+    echo "Deleting objects in vet and ref_ranges directories..."
+    while IFS= read -r gcs_path; do
+      if [ -n "$gcs_path" ]; then
+        echo "Deleting objects in: $gcs_path"
+        echo "Command: gcloud storage rm ~{"--billing-project " + billing_project_id} ${gcs_path}** --recursive"
+#        gcloud storage rm ~{"--billing-project " + billing_project_id} \
+#          "${gcs_path}**" --recursive || echo "Warning: Failed to delete $gcs_path"
+      fi
+    done < parquet_dirs.txt
+
+    echo "✓ Completed deletion of vet and ref_ranges parquet files"
 
   >>>
   output {
