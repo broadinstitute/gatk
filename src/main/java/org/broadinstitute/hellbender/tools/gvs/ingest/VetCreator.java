@@ -67,9 +67,6 @@ public class VetCreator {
                 case PARQUET:
                     String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
-                    if (parquetOutputFile.exists()) {
-                        throw new FileAlreadyExistsException("Parquet file already exists: " + parquetOutputFile.getAbsolutePath());
-                    }
                     vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                     break;
             }
