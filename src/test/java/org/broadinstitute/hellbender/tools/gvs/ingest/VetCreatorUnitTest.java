@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import htsjdk.variant.variantcontext.*;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -13,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -101,7 +101,7 @@ public class VetCreatorUnitTest {
             // If we get here, the test failed - no exception was thrown
             Assert.fail("Expected FileAlreadyExistsException to be thrown (and wrapped) when the file already exists");
         } catch (UserException e) {
-            Assert.assertTrue(e.getMessage().contains("File already exists"));
+            Assert.assertTrue(e.getCause() instanceof FileAlreadyExistsException, e.getCause().toString());
         } catch (Exception e) {
             Assert.fail(e.getMessage());
         } finally {
@@ -110,3 +110,4 @@ public class VetCreatorUnitTest {
         }
     }
 }
+
