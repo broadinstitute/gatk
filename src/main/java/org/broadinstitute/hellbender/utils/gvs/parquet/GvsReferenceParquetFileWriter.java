@@ -67,7 +67,7 @@ public class GvsReferenceParquetFileWriter extends RefRangesWriter {
     @Override
     public void writeCompressed(long packedData, long sampleId) throws IOException {
         JSONObject compressedRecord = new JSONObject();
-        compressedRecord.put("packedData", packedData);
+        compressedRecord.put("packed_ref_data", packedData);
         compressedRecord.put("sample_id", sampleId);
         this.write(compressedRecord);
     }
