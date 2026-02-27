@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import htsjdk.variant.variantcontext.*;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
