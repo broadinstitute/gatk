@@ -93,7 +93,7 @@ public class SchemaUtils {
     public static final String LOAD_STATUS_FIELD_NAME = "status";
     public static final String LOAD_STATUS_EVENT_TIMESTAMP_NAME = "event_timestamp";
 
-    public static final long chromAdjustment = 1000000000000L;
+    public static final long chromAdjustment = 1000000000L;
 
     public static long encodeLocation(String chrom, int position) {
         int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).getIndex();
