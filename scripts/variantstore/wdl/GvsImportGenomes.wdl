@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
+# A
 
 workflow GvsImportGenomes {
 
@@ -50,6 +51,7 @@ workflow GvsImportGenomes {
     # Dump these Parquet files to a bucket.
     String? parquet_output_gcs_dir
     Boolean configure_parquet_bucket_lifecycle = false
+    # Delete parquet files from GCS after successfully loading them into BigQuery
     Boolean delete_parquet_files_after_loading = true
 
     Boolean is_wgs = true
@@ -299,7 +301,7 @@ workflow GvsImportGenomes {
       if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
         call DeleteParquetFiles {
           input:
-            output_gcs_dir = output_gcs_dir,
+            output_gcs_dir = defined_parquet_output_dir,
             billing_project_id = billing_project_id,
             cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -1294,7 +1296,7 @@ task DeleteParquetFiles {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
 
-    # Normalize GCS path to ensure exactly one trailing slash
+    # Normalize GCS path by removing any trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     # List the contents of the vet and ref_ranges directories for deletion later
