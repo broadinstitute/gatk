@@ -222,9 +222,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1736
-             - gg_VS-1779_CleanUpParquetFilesImmediatement
-             - gg_VS-1780
              - vs_1800_prep_for_merge
          tags:
              - /.*/
@@ -236,6 +233,7 @@ workflows:
          - master
          - ah_var_store
          - vs_1800_prep_for_merge
+         - gg_VS-1779_CleanUpParquetFilesImmediatement
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
