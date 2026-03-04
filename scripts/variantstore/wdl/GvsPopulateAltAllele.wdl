@@ -241,7 +241,7 @@ task CreateAltAlleleTable {
       call_AD STRING,
       ref_ad INT64,
       ad INT64
-    ) PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))
+    ) PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000, 2500000))
     CLUSTER BY location, sample_id;'
 
   >>>

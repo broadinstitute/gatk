@@ -118,7 +118,7 @@ download_gvcfs() {
         JOIN echo.sample_info si ON aa.sample_id = si.sample_id
         JOIN echo.sample_data_table dt ON dt.research_id = si.sample_name
         WHERE
-            location = ${alt_allele_chr} * 1000000000000 + ${pos}
+            location = ${alt_allele_chr} * 1000000000 + ${pos}
             AND ref = '${ref}'
             AND allele='${alt}'
 

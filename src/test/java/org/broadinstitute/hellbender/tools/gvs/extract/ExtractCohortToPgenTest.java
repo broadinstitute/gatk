@@ -72,14 +72,14 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.ref_ranges_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000;
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000;
     //
     // Then export in GUI w/ Avro + Snappy
     //
     // And the same for the VET data:
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.vet_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_vets.pgen");
     final File expectedPsam = getTestFile("ranges_extract.expected_vets.psam");
@@ -118,14 +118,14 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.ref_ranges_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000;
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000;
     //
     // Then export in GUI w/ Avro + Snappy
     //
     // And the same for the VET data:
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.vet_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_low_AC.pgen");
     final File expectedPsam = getTestFile("ranges_extract.expected_low_AC.psam");
@@ -166,14 +166,14 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.ref_ranges_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000;
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000;
     //
     // Then export in GUI w/ Avro + Snappy
     //
     // And the same for the VET data:
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.vet_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_separate_index.pgen");
     final File expectedPgi = getTestFile("ranges_extract.expected_separate_index.pgen.pgi");
@@ -217,14 +217,14 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.ref_ranges_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000;
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000;
     //
     // Then export in GUI w/ Avro + Snappy
     //
     // And the same for the VET data:
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.vet_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000
     //
     // Create a temp dif for the output
     final File outputDir = createTempDir("extract_output");
@@ -263,14 +263,14 @@ public class ExtractCohortToPgenTest extends CommandLineProgramTest {
     //
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.ref_ranges_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000;
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000;
     //
     // Then export in GUI w/ Avro + Snappy
     //
     // And the same for the VET data:
     // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.vet_for_testing` AS
     // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
-    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
+    // WHERE location >= (20 * 1000000000) + 10000000 - 1001 AND location <= (20 * 1000000000) + 20000000
     //
     final File expectedPgen = getTestFile("ranges_extract.expected_vqsr.pgen");
     final File expectedPsam = getTestFile("ranges_extract.expected_vqsr.psam");

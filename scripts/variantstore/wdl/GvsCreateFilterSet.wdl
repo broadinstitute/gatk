@@ -500,7 +500,7 @@ task PopulateFilterSetSites {
 
     echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
     bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 1 -F "tab" \
-      --range_partitioning=location,0,26000000000000,6500000000 \
+      --range_partitioning=location,0,26000000000,2600000 \
       --clustering_fields=location \
       --schema "filter_set_name:string,location:integer,filters:string" \
       ${bq_table} \

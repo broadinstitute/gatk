@@ -68,7 +68,7 @@ task MapUnmappedVIDs {
                  (CASE SPLIT(vid, "-")[OFFSET(0)]
                                      WHEN "X" THEN 23
                                      WHEN "Y" THEN 24
-                                     ELSE CAST(SPLIT(vid, "-")[OFFSET(0)] AS int64) END) * 1000000000000 +
+                                     ELSE CAST(SPLIT(vid, "-")[OFFSET(0)] AS int64) END) * 1000000000 +
                              CAST(SPLIT(vid, "-")[OFFSET(1)] AS int64)
              );
 

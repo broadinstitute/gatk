@@ -51,9 +51,9 @@ def get_chromosome_number(chrom):
 
 
 def calculate_location(chrom, pos):
-    """Calculate location as chromosome_number * 1000000000000 + position."""
+    """Calculate location as chromosome_number * 1000000000 + position."""
     chrom_num = get_chromosome_number(chrom)
-    return chrom_num * 1000000000000 + int(pos)
+    return chrom_num * 1000000000 + int(pos)
 
 
 def load_vcf_to_dict(vcf_file):

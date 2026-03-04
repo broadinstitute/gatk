@@ -291,13 +291,13 @@ task ExtractFromPloidyTable {
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT (
-                CASE (p.chromosome / 1000000000000)
+                CASE (p.chromosome / 1000000000)
                     WHEN 23 THEN 'chrX'
                     WHEN 24 THEN 'chrY'
                     END) AS location, s.sample_name, p.ploidy
             FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
             JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON p.sample_id = s.sample_id
-            WHERE (p.chromosome / 1000000000000 = 23 or p.chromosome / 1000000000000 = 24)
+            WHERE (p.chromosome / 1000000000 = 23 or p.chromosome / 1000000000 = 24)
             ~{new_samples_extract_clause}
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
     >>>
@@ -419,7 +419,7 @@ task ExtractFromSuperpartitionedTables {
                         RETURNS STRUCT<location INT64, len INT64, state string>
                         AS (
                           STRUCT(
-                          1000000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
+                          1000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
                           (superpackEntry >> 4) & 0xFFF,
                           intToState(superpackEntry & 0xF))
                     );

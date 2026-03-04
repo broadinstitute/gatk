@@ -72,7 +72,7 @@ public final class IntervalOverlapReadFilterTest {
 
     @Test(dataProvider = "filteredReadsData", expectedExceptions = UserException.class)
     public void testFilterErrorsWhenProvidedBadIntervals(final IntervalOverlapReadFilter f, final GATKRead read) {
-        final IntervalOverlapReadFilter filter = createReadFilter(Arrays.asList("1:-100-1000000000000", "2:1-300", "3:1-10"));
+        final IntervalOverlapReadFilter filter = createReadFilter(Arrays.asList("1:-100-1000000000", "2:1-300", "3:1-10"));
         Assert.assertFalse(filter.test(read));
     }
 }

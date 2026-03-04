@@ -16,7 +16,7 @@ RETURNS STRING
 CREATE OR REPLACE TABLE
   `spec-ops-aou.gvs_tieout_acmg_v1.alt_allele`
 PARTITION BY
-   RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))  
+   RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000, 2500000))
 CLUSTER BY location, sample_id
 AS
   -- data will be in 3 positions: 0, 1, 2

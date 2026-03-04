@@ -132,7 +132,7 @@ and cost. The core tables are either partitioned by sample ID or location,
 depending on the access pattern for which they are optimized. GVS uses the term
 "location" in a very specific way: the chromosome number is multiplied by
 1,000,000,000,000 and then the position on the chromosome is added. For example,
-chromosome 1 position 1000 becomes `1000000000000 + 1000 = 1000000001000`. GVS
+chromosome 1 position 1000 becomes `1000000000 + 1000 = 1000000001000`. GVS
 locations use a chromosome number of 23 for the X chromosome and 24 for the Y
 chromosome. This location encoding allows for efficient storage and querying in
 BigQuery using a single partitionable value. GVS references to "position"

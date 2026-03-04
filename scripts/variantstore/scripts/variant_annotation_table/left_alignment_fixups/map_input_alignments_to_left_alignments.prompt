@@ -56,5 +56,5 @@ Please modify the script to include three new columns in the output. The code to
 The three new columns are:
 
 - chr: This is just the CHROM value for the "input variant", e.g. chr1 or chrX or whatever.
-- input_location: This is the numerical part of the "input variant" CHROM multiplied by 1000000000000 plus "input variant" position. If CHROM is chrX use 23, if CHROM is chrY use 24. For example if CHROM is chrX and position is 1326731 for an "input variant", its input_location would be 23000001326731.
-- left_aligned_location: This is the numerical part of the "left aligned variant" CHROM multiplied by 1000000000000 plus "left aligned variant" position. If CHROM is chrX use 23, if CHROM is chrY use 24.
+- input_location: This is the numerical part of the "input variant" CHROM multiplied by 1000000000 plus "input variant" position. If CHROM is chrX use 23, if CHROM is chrY use 24. For example if CHROM is chrX and position is 1326731 for an "input variant", its input_location would be 23000001326731.
+- left_aligned_location: This is the numerical part of the "left aligned variant" CHROM multiplied by 1000000000 plus "left aligned variant" position. If CHROM is chrX use 23, if CHROM is chrY use 24.

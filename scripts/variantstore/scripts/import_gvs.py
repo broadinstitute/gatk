@@ -160,7 +160,7 @@ def import_gvs(refs: 'List[List[str]]',
 
     def translate_locus(location):
         """Translates an int64-encoded locus into a locus object."""
-        factor = 1000000000000
+        factor = 1000000000
         chrom = hl.literal(reference_genome.contigs[:26])[hl.int32(location / factor) - 1]
         pos = hl.int32(location % factor)
         return hl.locus(chrom, pos, reference_genome=reference_genome)

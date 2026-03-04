@@ -1583,7 +1583,7 @@ task PopulateFilterSetInfo {
 
     echo "Loading combined TSV into ~{fq_filter_set_info_destination_table}"
     bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
-      --range_partitioning=location,0,26000000000000,6500000000 \
+      --range_partitioning=location,0,26000000000,2600000 \
       --clustering_fields=location \
       --schema "~{filter_schema}" \
       ${bq_table} \

@@ -38,7 +38,7 @@ and then converted to bed with this python:
 ```
 import pandas as pd
 
-location_offset = 1000000000000
+location_offset = 1000000000
 binsize_kb = 100
 infile = f"40K_vet_weight_{binsize_kb}k.csv"
 

@@ -352,7 +352,7 @@ task CollectMetricsForChromosome {
             bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
                 SELECT CAST((max(location) - min(location)) / ~{num_chunks} AS INT64), min(location)
                     FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA`
-                    WHERE location >= ~{chromosome}000000000000 and location < ~{chromosome + 1}000000000000' | sed 1d > locations.txt
+                    WHERE location >= ~{chromosome}000000000 and location < ~{chromosome + 1}000000000' | sed 1d > locations.txt
 
             chunk_width=$(cut -f 1 -d ',' locations.txt)
             echo "chunk_width = $chunk_width"
@@ -365,13 +365,13 @@ task CollectMetricsForChromosome {
             done
         fi
         # Set the final endpoint to be beyond the start of the next chromosome
-        chunk_endpoints+=(~{chromosome + 1}000000000000)
-        echo "Added final chunk endpoint (the beginning of the next chromosome) = ~{chromosome + 1}000000000000"
+        chunk_endpoints+=(~{chromosome + 1}000000000)
+        echo "Added final chunk endpoint (the beginning of the next chromosome) = ~{chromosome + 1}000000000"
 
         echo "Number of chunk endpoints: ${#chunk_endpoints[@]}"
 
         # Iterate over all chunks
-        start_location=~{chromosome}000000000000
+        start_location=~{chromosome}000000000
         for ((i=0; i<${#chunk_endpoints[@]}; i++)); do
             end_location=${chunk_endpoints[i]}
             echo "Running query for >= $start_location to < $end_location"

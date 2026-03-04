@@ -47,7 +47,7 @@ CREATE TEMP FUNCTION UnpackRefRangeInfo(superpackEntry int64)
 RETURNS STRUCT<location INT64, len INT64, state string>
 AS (
     STRUCT(
-        1000000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
+        1000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
         (superpackEntry >> 4) & 0xFFF,
         intToState(superpackEntry & 0xF))
 );
@@ -176,7 +176,7 @@ def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract
               call_PL       STRING
               {additional_columns}	
         )
-          PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
+          PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000, 2600000))
           CLUSTER BY location
           {ttl}        
         """
@@ -198,7 +198,7 @@ def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract
               length        INT64,
               state	        STRING	
         )
-          PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
+          PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000, 2600000))
           CLUSTER BY location
           {ttl}        
         """

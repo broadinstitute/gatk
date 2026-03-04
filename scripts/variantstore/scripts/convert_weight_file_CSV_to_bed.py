@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
 
-location_offset = 1000000000000
+location_offset = 1000000000
 
 argParser = argparse.ArgumentParser()
 
