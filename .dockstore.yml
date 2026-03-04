@@ -343,7 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1777_build_failure
+             - vs_1820_partition_experiment
          tags:
              - /.*/
    - name: GvsIngestTieout
