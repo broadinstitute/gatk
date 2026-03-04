@@ -1,7 +1,6 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-# A
 
 workflow GvsImportGenomes {
 
@@ -1299,10 +1298,10 @@ task DeleteParquetFiles {
     # Normalize GCS path by removing any trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    # List the contents of the vet and ref_ranges directories for deletion later
+    # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below
     echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ for deletion..."
     gcloud storage ls ~{"--billing-project " + billing_project_id} \
-    "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt || true
+    "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
 
     # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
     echo "Deleting objects in vet and ref_ranges directories..."
