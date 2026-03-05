@@ -193,6 +193,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1820_fix_vcf_integration_assertion
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
