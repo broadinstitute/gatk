@@ -1304,7 +1304,7 @@ task DeleteParquetFiles {
     "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
 
     # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
-    echo "Deleting objects in vet and ref_ranges directories..."
+    echo "Deleting Parquet files..."
     while IFS= read -r gcs_path; do
       if [ -n "$gcs_path" ]; then
         echo "Deleting objects in: $gcs_path"
