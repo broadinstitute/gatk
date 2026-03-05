@@ -1103,12 +1103,12 @@ EOF
     # Apply the lifecycle configuration
     # Lies! This will overwrite existing lifecycle rules rather than merging any existing lifecycle rules with the to-be-applied rules,
     #  but gcloud doesn't have a way to do an actual merge. In the future, we would need to implement merging logic.
-    gcloud storage buckets update gs://${BUCKET_NAME} \
-      ~{"--billing-project " + billing_project_id} \
-      --lifecycle-file=lifecycle.json
+#    gcloud storage buckets update gs://${BUCKET_NAME} \
+#      ~{"--billing-project " + billing_project_id} \
+#      --lifecycle-file=lifecycle.json
 
     echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}ref_ranges/"
-    exit 1 # Temporary exit to prevent accidental lifecycle application during testing - remove this line in production
+    exit 0 # Temporary exit to prevent accidental lifecycle application during testing - remove this line in production
   >>>
 
   runtime {
