@@ -1099,30 +1099,40 @@ task ConfigureParquetLifecycle {
       }
 EOF
 
-    # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration
-    jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle_config.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
-
-
     else
       echo "No existing lifecycle configuration found (file is empty)"
+      # Create the new lifecycle configuration (actually just the outer structure since there are no existing rules) for parquet directories
       # Create the new lifecycle configuration for parquet directories
-      cat > updated_lifecycle.json << EOF
+      cat > existing_lifecycle.json << EOF
       {
         "lifecycle": {
           "rule": [
-            {
-              "action": {"type": "Delete"},
-              "condition": {
-                "age": 14,
-                "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
-              }
-            }
           ]
         }
       }
 EOF
+
+# Old
+#      cat > updated_lifecycle.json << EOF
+#      {
+#        "lifecycle": {
+#          "rule": [
+#            {
+#              "action": {"type": "Delete"},
+#              "condition": {
+#                "age": 14,
+#                "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
+#              }
+#            }
+#          ]
+#        }
+#      }
+#EOF
+# OLD
     fi
 
+    # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration
+    jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle_config.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
 
 #    if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
 #    echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
@@ -1133,15 +1143,12 @@ EOF
 #    echo "No existing lifecycle rules found"
 #    fi
 
-    # Apply the lifecycle configuration
-    # Lies! This will overwrite existing lifecycle rules rather than merging any existing lifecycle rules with the to-be-applied rules,
-    #  but gcloud doesn't have a way to do an actual merge. In the future, we would need to implement merging logic.
-#    gcloud storage buckets update gs://${BUCKET_NAME} \
-#      ~{"--billing-project " + billing_project_id} \
-#      --lifecycle-file=lifecycle.json
+    # Apply the updated lifecycle configuration
+    gcloud storage buckets update gs://${BUCKET_NAME} \
+      ~{"--billing-project " + billing_project_id} \
+      --lifecycle-file=updated_lifecycle.json
 
     echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}ref_ranges/"
-#    exit 0 # Temporary exit to prevent accidental lifecycle application during testing - remove this line in production
   >>>
 
   runtime {
