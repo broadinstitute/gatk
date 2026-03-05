@@ -45,8 +45,10 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
 
-    # Dump these parquet files to a bucket
-    String output_gcs_dir
+    # Currently only in limited use.
+    Boolean use_parquet_ingest = true
+    # Dump these Parquet files to a bucket.
+    String? parquet_output_gcs_dir
     Boolean configure_parquet_bucket_lifecycle = false
 
     Boolean is_wgs = true
@@ -75,6 +77,24 @@ workflow GvsImportGenomes {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+  if (use_parquet_ingest && !defined(parquet_output_gcs_dir)) {
+    call Utils.TerminateWorkflow as MustDefineOutputDirForParquetIngest {
+      input:
+        message = "use_parquet_ingest set to true but parquet_output_gcs_dir not defined",
+        basic_docker = effective_basic_docker,
+    }
+  }
+  # We're not considering the combo of !use_parquet_ingest && defined(parquet_output_gcs_dir) an error for now, this is
+  # how this workflow is (indirectly) invoked through our integration test.
+
+  if (load_vcf_headers && use_parquet_ingest) {
+    call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
+      input:
+      message = "The combination of Parquet ingest and VCF header loading is not currently supported.",
+      basic_docker = effective_basic_docker,
+    }
+  }
 
   call Utils.GetReference {
     input:
@@ -120,8 +140,16 @@ workflow GvsImportGenomes {
 
   Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
+  call CreateSampleDataViews {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call GetUningestedSampleIds {
     input:
+      go = CreateSampleDataViews.done,
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
@@ -151,28 +179,56 @@ workflow GvsImportGenomes {
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
-    call LoadData {
-      input:
-        index = i,
-        dataset_name = dataset_name,
-        project_id = project_id,
-        skip_loading_vqsr_fields = skip_loading_vqsr_fields,
-        drop_state = drop_state,
-        drop_state_includes_greater_than = false,
-        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
-        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-        interval_list = effective_interval_list,
-        gatk_docker = effective_gatk_docker,
-        gatk_override = load_data_gatk_override,
-        load_data_preemptible = effective_load_data_preemptible,
-        load_data_maxretries = effective_load_data_maxretries,
-        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map,
-        load_vet_and_ref_ranges = load_vet_and_ref_ranges,
-        load_vcf_headers = load_vcf_headers,
-        billing_project_id = billing_project_id,
-        use_compressed_references = use_compressed_references,
-        output_gcs_dir = output_gcs_dir,
+    if (use_parquet_ingest) {
+      call ProcessInputGVCFs as GenerateParquetFilesFromInputGVCFs {
+        input:
+          index = i,
+          dataset_name = dataset_name,
+          project_id = project_id,
+          skip_loading_vqsr_fields = skip_loading_vqsr_fields,
+          drop_state = drop_state,
+          drop_state_includes_greater_than = false,
+          input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
+          input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          interval_list = effective_interval_list,
+          gatk_docker = effective_gatk_docker,
+          gatk_override = load_data_gatk_override,
+          load_data_preemptible = effective_load_data_preemptible,
+          load_data_maxretries = effective_load_data_maxretries,
+          sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
+          sample_map = GetUningestedSampleIds.sample_map,
+          load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+          load_vcf_headers = load_vcf_headers,
+          billing_project_id = billing_project_id,
+          use_compressed_references = use_compressed_references,
+          parquet_output_gcs_dir = parquet_output_gcs_dir,
+          use_parquet_ingest = true,
+      }
+    }
+    if (!use_parquet_ingest) { # WDL 1.1 does not have an else statement
+      call ProcessInputGVCFs as LoadDataViaBigQueryWriteAPI {
+        input:
+          index = i,
+          dataset_name = dataset_name,
+          project_id = project_id,
+          skip_loading_vqsr_fields = skip_loading_vqsr_fields,
+          drop_state = drop_state,
+          drop_state_includes_greater_than = false,
+          input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
+          input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          interval_list = effective_interval_list,
+          gatk_docker = effective_gatk_docker,
+          gatk_override = load_data_gatk_override,
+          load_data_preemptible = effective_load_data_preemptible,
+          load_data_maxretries = effective_load_data_maxretries,
+          sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
+          sample_map = GetUningestedSampleIds.sample_map,
+          load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+          load_vcf_headers = load_vcf_headers,
+          billing_project_id = billing_project_id,
+          use_compressed_references = use_compressed_references,
+          use_parquet_ingest = false,
+      }
     }
   }
 
@@ -180,70 +236,78 @@ workflow GvsImportGenomes {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        load_done = LoadData.done,
+        go = select_all(LoadDataViaBigQueryWriteAPI.done), # add a gate for Parquet header loading here once that's implemented
         dataset_name = dataset_name,
         project_id = project_id,
     }
   }
 
   if (load_vet_and_ref_ranges) {
-    call SetIsLoadedColumn {
-      input:
-        load_done = LoadData.done,
-        project_id = project_id,
-        dataset_name = dataset_name,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-
-    if (configure_parquet_bucket_lifecycle) {
-      # Set up lifecycle rules for parquet directories before loading
-      # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
-      call ConfigureParquetLifecycle {
-        input:
-          output_gcs_dir = output_gcs_dir,
-          billing_project_id = billing_project_id,
-          cloud_sdk_docker = effective_cloud_sdk_docker,
+    if (use_parquet_ingest) {
+      String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
+      if (configure_parquet_bucket_lifecycle) {
+        # Set up lifecycle rules for parquet directories before loading
+        # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
+        call ConfigureParquetLifecycle {
+          input:
+            output_gcs_dir = defined_parquet_output_dir,
+            billing_project_id = billing_project_id,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
       }
-    }
-    
-    # Load Parquet files into BigQuery after all data has been created
-    call CreateParquetTrackingTable {
-      input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        set_is_loaded_done = SetIsLoadedColumn.done,
-        lifecycle_configured = select_first([ConfigureParquetLifecycle.done, "done"]),
-        variants_docker = effective_variants_docker,
-    }
-    
-    call DiscoverParquetFiles {
-      input:
-        output_gcs_dir = output_gcs_dir,
-        project_id = project_id,
-        dataset_name = dataset_name,
-        table_prefixes = ["vet", "ref_ranges"],
-        tracking_table_ready = CreateParquetTrackingTable.done,
-        variants_docker = effective_variants_docker,
-    }
-    
-    scatter (fofn in DiscoverParquetFiles.file_fofns) {
-      call LoadParquetFilesToBQ {
+
+      call CreateParquetTrackingTable {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
-          fofn_file = fofn,
-          batch_size = 10000,
+          variants_docker = effective_variants_docker,
+      }
+
+      # Discover and load Parquet files into BigQuery after all data has been created.
+      call DiscoverParquetFiles {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          project_id = project_id,
+          dataset_name = dataset_name,
+          table_prefixes = ["vet", "ref_ranges"],
+          go = select_all(GenerateParquetFilesFromInputGVCFs.done),
+          variants_docker = effective_variants_docker,
+      }
+
+      scatter (fofn in DiscoverParquetFiles.file_fofns) {
+        call LoadParquetFilesToBQ {
+          input:
+            go = CreateParquetTrackingTable.done,
+            project_id = project_id,
+            dataset_name = dataset_name,
+            fofn_file = fofn,
+            batch_size = 10000,
+            variants_docker = effective_variants_docker,
+        }
+      }
+
+      call VerifyParquetLoading {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          gcs_files_list = DiscoverParquetFiles.all_files_list,
+          go = LoadParquetFilesToBQ.done,
           variants_docker = effective_variants_docker,
       }
     }
-    
-    call VerifyParquetLoading {
+
+    call SetIsLoadedColumn {
       input:
+        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
+        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
+        # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
+        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
+        # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
+        # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
+        go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
         project_id = project_id,
         dataset_name = dataset_name,
-        gcs_files_list = DiscoverParquetFiles.all_files_list,
-        load_outputs = LoadParquetFilesToBQ.completion_status,
-        variants_docker = effective_variants_docker,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -251,7 +315,7 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
-    Array[File] load_data_stderrs = LoadData.stderr
+    Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
@@ -295,7 +359,10 @@ task CreateFOFNs {
   }
 }
 
-task LoadData {
+# This is the task known as `LoadData` on the ah_var_store branch, but on the Parquet branches it does not load data.
+# In the Parquet flow we only generate Parquet files from input gVCFs and then stage them to GCS; the actual data
+# loading is performed by a suite of other, Parquet-specific downstream tasks.
+task ProcessInputGVCFs {
   input {
     Int index
     String dataset_name
@@ -316,16 +383,18 @@ task LoadData {
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
 
-    String output_gcs_dir
+    String? parquet_output_gcs_dir
 
     String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
+
+    Boolean use_parquet_ingest
   }
 
   meta {
-    description: "Load data into BigQuery using the Write Api"
+    description: "Generate Parquet files from input gVCFs OR load data into BigQuery using the Write API, depending on the value of `use_parquet_ingest`."
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
@@ -383,25 +452,51 @@ task LoadData {
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
     # Get sample map of samples that haven't been loaded yet
-    # Break out individual queries into "status buckets" for all of the statuses we care about.
-    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
-    do
-      echo "
-        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
-        samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
-        samples.withdrawn is NULL" > query.txt
+    if [[ "~{load_vet_and_ref_ranges}" = "true" ]]
+    then
 
-      # bq query --max_rows check: ok sets max rows explicitly
-      cat query.txt |
-        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
-        $status.status_bucket.csv
-    done
+    cat > query_vet_and_ref_ranges.sql <<'FIN_VET_REF'
+
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+        UNION DISTINCT
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+      ) AND
+      samples.withdrawn IS NULL
+
+    FIN_VET_REF
+
+    cat query_vet_and_ref_ranges.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > variant_and_reference_data.status_bucket.csv
+    fi
+
+    if [[ "~{load_vcf_headers}" = "true" ]]
+    then
+
+    cat > query_headers.sql <<'FIN_HEADERS'
+
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+      ) AND
+      samples.withdrawn IS NULL
+    FIN_HEADERS
+
+    cat query_headers.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > header_data.status_bucket.csv
+    fi
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
-    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    # If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
     # Add a header manually:
     echo "sample_id,sample_name" > sample_map.csv
     # The real header sorts to the bottom of the file, delete that.
@@ -420,18 +515,24 @@ task LoadData {
     VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
     SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
 
-
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
       gs_input_vcf="${VCFS_ARRAY[$i]}"
       gs_input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
-      # we always do our own localization
-      updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
-#      updated_input_vcf=input_vcf_$i_$sample_name.vcf.gz
+      # We always do our own localization.
+      # It seems possible that the Parquet / non-Parquet branches below might be coalesced.
+      if [[ "~{use_parquet_ingest}" = 'true' ]]
+      then
+        updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
+      else
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+        updated_input_vcf=input_vcf_$i.vcf.gz
+      fi
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
@@ -441,33 +542,40 @@ task LoadData {
         --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
-        --output-type PARQUET \
-        --enable-reference-ranges true \
-        --enable-vet true \
+        --output-type ~{true="PARQUET" false="BQ" use_parquet_ingest} \
+        --enable-reference-ranges ~{load_vet_and_ref_ranges} \
+        --enable-vet ~{load_vet_and_ref_ranges} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
-        --enable-vcf-headers false \
+        --enable-vcf-headers ~{load_vcf_headers} \
         --use-compressed-refs ~{use_compressed_references}
 
-      rm $updated_input_vcf
-      rm ${updated_input_vcf}.tbi
+      # The Parquet / non-Parquet branches here might also be coalesced.
+      if [[ "~{use_parquet_ingest}" = 'true' ]]
+      then
+        rm $updated_input_vcf
+        rm ${updated_input_vcf}.tbi
 
-      OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-      # the file name is a little wonky, so let's just grab the file using such a star statement
-      vet_parquet_file=`ls vet_*.parquet`
-      ref_parquet_file=`ls ref_*.parquet`
+        OUTPUT_GCS_DIR=$(echo ~{parquet_output_gcs_dir} | sed 's/\/$//')
+        # the file name is a little wonky, so let's just grab the file using such a star statement
+        vet_parquet_file=`ls vet_*.parquet`
+        ref_parquet_file=`ls ref_*.parquet`
 
-      # parse the table partition out of the file name
-      table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+        # parse the table superpartition out of the file name
+        table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
 
-      # copy the vet and ref parquet files to the gcs bucket in the right place
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
-      gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
+        # copy the vet and ref parquet files to the gcs bucket in the right place
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
+        gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
 
-      # cleanup after ourselves
-      rm *.parquet
+        # cleanup after ourselves
+        rm *.parquet
+      else
+        rm input_vcf_$i.vcf.gz
+        rm input_vcf_$i.vcf.gz.tbi
+      fi
 
     done
   >>>
@@ -491,7 +599,7 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
-    Array[String] load_done
+    Array[Boolean] go
     String variants_docker
   }
   meta {
@@ -514,17 +622,16 @@ task ProcessVCFHeaders {
   }
 }
 
-
 task SetIsLoadedColumn {
   input {
     String dataset_name
     String project_id
 
-    Array[String] load_done
+    Array[Boolean] go
     String cloud_sdk_docker
   }
   meta {
-    # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
+    # Always run. This task is idempotent and depends on upstream tasks side-effecting data into BigQuery.
     volatile: true
   }
 
@@ -538,39 +645,38 @@ task SetIsLoadedColumn {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-
     # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
     # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
     # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
-    # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
+    # in workflow processing. So this method is used to set *all* of the sample_info.is_loaded flags at one time.
 
     # bq query --max_rows check: ok update
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true
-    WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
-    from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
-    WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")) OR sample_id IN
-    (SELECT references_status.sample_id FROM `~{dataset_name}.sample_load_status` AS references_status
-                     INNER JOIN `~{dataset_name}.sample_load_status` AS variants_status
-                     ON references_status.sample_id = variants_status.sample_id
-                     AND references_status.status = "REFERENCES_LOADED"
-                     AND variants_status.status = "VARIANTS_LOADED")'
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+    UPDATE `~{project_id}.~{dataset_name}.sample_info`
+    SET is_loaded = TRUE
+    WHERE
+      sample_id IN (
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_all_data`
+    );
+
+    '
   >>>
   runtime {
     docker: cloud_sdk_docker
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
+    memory: "4 GB"
+    disks: "local-disk 500 HDD"
     cpu: 1
   }
 
   output {
-    String done = "done"
+    Boolean done = true
   }
 }
 
 task GetUningestedSampleIds {
   input {
+    Boolean go
     String dataset_name
     String project_id
 
@@ -640,24 +746,52 @@ task GetUningestedSampleIds {
 
     # Get sample map of samples that haven't been loaded yet
     # Break out individual queries into "status buckets" for all of the statuses we care about.
-    for status in ~{true="REFERENCES_LOADED VARIANTS_LOADED" false="" load_vet_and_ref_ranges} ~{true="HEADERS_LOADED" false="" load_vcf_headers}
-    do
-      echo "
-        SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`~{temp_table}\` AS temp ON
-        samples.sample_name = temp.sample_name WHERE
-        samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status = '$status') AND
-        samples.withdrawn is NULL" > query.txt
 
-      # bq query --max_rows check: ok sets max rows explicitly
-      cat query.txt |
-        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} > \
-        $status.status_bucket.csv
-    done
+    if [[ "~{load_vet_and_ref_ranges}" = "true" ]]
+    then
+
+    cat > query_vet_and_ref_ranges.sql <<'FIN_VET_REF'
+
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+        UNION DISTINCT
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+      ) AND
+      samples.withdrawn IS NULL
+
+    FIN_VET_REF
+
+    cat query_vet_and_ref_ranges.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > variant_and_reference_data.status_bucket.csv
+    fi
+
+    if [[ "~{load_vcf_headers}" = "true" ]]
+    then
+
+    cat > query_headers.sql <<'FIN_HEADERS'
+
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN
+      `~{temp_table}` AS temp ON
+      samples.sample_name = temp.sample_name WHERE
+      samples.sample_id NOT IN (
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+      ) AND
+      samples.withdrawn is NULL
+    FIN_HEADERS
+
+    cat query_headers.sql |
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ~{num_samples} > header_data.status_bucket.csv
+    fi
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
-    #  If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
+    # If a given sample shows up in any status bucket it should appear in the final sample map exactly once.
     # Add a header manually:
     echo "sample_id,sample_name" > sample_map.csv
     # The real header sorts to the bottom of the file, delete that.
@@ -681,6 +815,7 @@ task GetUningestedSampleIds {
     File sample_map = "sample_map.csv"
     File gvs_ids = "gvs_ids.csv"
     Array[File] status_buckets = glob("*.status_bucket.csv")
+    Array[File] queries = glob("query_*.sql")
   }
 }
 
@@ -722,17 +857,195 @@ task CurateInputLists {
   }
 }
 
+task CreateSampleDataViews {
+  input {
+    String project_id
+    String dataset_name
+    String cloud_sdk_docker
+  }
+
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+
+
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    cat > query.sql <<'FIN'
+
+      -- Because the vet and ref_ranges tables are partitioned by sample_id, their INFORMATION_SCHEMA partition ids
+      -- will be stringified sample ids. These views identify which samples have vet, reference, or header data loaded.
+      --
+      -- The Parquet flow is not currently writing sample status rows so we use the data in INFORMATION_SCHEMA to
+      -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
+      -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
+      -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      --
+      -- This code also provides for a header row existence view if headers are being loaded.
+
+      DECLARE sample_load_status_template STRING;
+
+      -- In the future the `sample_load_status` table may no longer be needed. Only refer to `sample_load_status` in the
+      -- following existence queries if the table actually exists.
+      DECLARE sample_load_status_table_exists INT64;
+
+      SET sample_load_status_template = """
+
+        UNION DISTINCT
+
+        SELECT sample_id FROM
+        `~{project_id}.~{dataset_name}.sample_load_status`
+        WHERE status = '%s'
+
+      """;
+
+      SET sample_load_status_table_exists = (
+        SELECT COUNT(1) FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
+        WHERE table_name = "sample_load_status"
+      );
+
+      BEGIN
+      DECLARE variants_load_status_clause STRING;
+      DECLARE create_variant_data_view STRING;
+
+      IF sample_load_status_table_exists > 0 THEN
+        SET variants_load_status_clause = format(sample_load_status_template, "VARIANTS_LOADED");
+      ELSE
+        SET variants_load_status_clause = "";
+      END IF;
+
+      SET create_variant_data_view = """
+
+        CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_variant_data` AS
+        (
+          SELECT CAST(partition_id AS INT64) AS sample_id
+          FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+          WHERE
+          partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+
+      """ || variants_load_status_clause || ");";
+
+      -- debug
+      SELECT create_variant_data_view;
+      EXECUTE IMMEDIATE create_variant_data_view;
+      END;
+
+      BEGIN
+      DECLARE references_load_status_clause STRING;
+      DECLARE create_reference_data_view STRING;
+
+      IF sample_load_status_table_exists > 0 THEN
+        SET references_load_status_clause = format(sample_load_status_template, "REFERENCES_LOADED");
+      ELSE
+        SET references_load_status_clause = "";
+      END IF;
+
+      SET create_reference_data_view = """
+
+      CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_reference_data` AS
+      (
+        SELECT CAST(partition_id AS INT64) AS sample_id
+        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+        WHERE
+        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+
+      """ || references_load_status_clause || ");";
+
+      -- debug
+      SELECT create_reference_data_view;
+      EXECUTE IMMEDIATE create_reference_data_view;
+      END;
+
+      -- The header data view is created conditionally as the header tables are created conditionally.
+      BEGIN
+
+      DECLARE header_table_exists INT64;
+      DECLARE query_header_existence_clause STRING;
+      DECLARE headers_load_status_clause STRING;
+      DECLARE create_header_data_view STRING;
+      DECLARE create_all_sample_data_view STRING;
+
+      SET header_table_exists = (
+        SELECT COUNT(1) FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
+        WHERE table_name = "vcf_header_lines_scratch"
+      );
+
+      IF header_table_exists > 0 THEN
+        IF sample_load_status_table_exists > 0 THEN
+          SET headers_load_status_clause = format(sample_load_status_template, "HEADERS_LOADED");
+        ELSE
+          SET headers_load_status_clause = "";
+        END IF;
+
+        SET create_header_data_view = """
+
+          CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_header_data` AS
+          (
+          SELECT DISTINCT sample_id FROM `~{project_id}.~{dataset_name}.vcf_header_lines_scratch`
+
+          """ || headers_load_status_clause || ");";
+
+        -- debug
+        SELECT create_header_data_view;
+        EXECUTE IMMEDIATE create_header_data_view;
+
+        SET query_header_existence_clause = """
+
+        UNION DISTINCT
+        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+
+        """;
+      ELSE
+        SET query_header_existence_clause = "";
+      END IF;
+
+      SET create_all_sample_data_view = """
+
+        CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
+        (
+          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+          UNION DISTINCT
+          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+
+      """ || query_header_existence_clause || ");";
+
+      EXECUTE IMMEDIATE create_all_sample_data_view;
+      END;
+
+    FIN
+
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} < query.sql
+
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "4 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+
+  output {
+    Boolean done = true
+    File query = "query.sql"
+  }
+}
+
 task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
     String? billing_project_id
     String cloud_sdk_docker
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-    
+
     # Extract bucket name from GCS path
     BUCKET_NAME=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f1)
 
@@ -777,7 +1090,7 @@ EOF
       --format="value(lifecycle_config)" > existing_lifecycle.json 2>/dev/null
     EXISTING_RC=$?
     set -e
-    
+
     if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
       echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
       # Note: In production, you might want more sophisticated merging
@@ -786,7 +1099,7 @@ EOF
     else
       echo "No existing lifecycle rules found"
     fi
-    
+
     # Apply the lifecycle configuration
     # Lies! This will overwrite existing lifecycle rules rather than merging any existing lifecycle rules with the to-be-applied rules,
     #  but gcloud doesn't have a way to do an actual merge. In the future, we would need to implement merging logic.
@@ -796,7 +1109,7 @@ EOF
 
     echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}ref_ranges/"
   >>>
-  
+
   runtime {
     docker: cloud_sdk_docker
     memory: "1 GB"
@@ -804,8 +1117,9 @@ EOF
     preemptible: 3
     cpu: 1
   }
-  
+
   output {
+    Boolean done = true
     String done = "lifecycle_configured"
     File lifecycle_config = "lifecycle.json"
     File existing_lifecycle_config = "existing_lifecycle.json"
@@ -816,19 +1130,18 @@ task CreateParquetTrackingTable {
   input {
     String project_id
     String dataset_name
-    String set_is_loaded_done
-    String lifecycle_configured
     String variants_docker
   }
-  
+
   command <<<
-    set -euo pipefail
-    
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
     python3 /app/create_tracking_table.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name}
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "2 GB"
@@ -836,9 +1149,9 @@ task CreateParquetTrackingTable {
     preemptible: 3
     cpu: 1
   }
-  
+
   output {
-    String done = true
+    Boolean done = true
   }
 }
 
@@ -848,32 +1161,32 @@ task DiscoverParquetFiles {
     String project_id
     String dataset_name
     Array[String] table_prefixes
-    String tracking_table_ready
+    Array[Boolean] go
     String? billing_project_id
     String variants_docker
   }
-  
+
   meta {
     volatile: true
   }
-  
+
   command <<<
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
-    
+
     # Normalize GCS path to ensure exactly one trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-    
-    # List all objects, filter for parquet files
+
+    # List all objects, filter for Parquet files
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
       "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
-    
+
     grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
-    
+
     FILE_COUNT=$(wc -l < all_files.txt)
     echo "Found $FILE_COUNT Parquet files"
-    
+
     # Parse and group by table
     python3 /app/parse_and_group_files.py \
       --input all_files.txt \
@@ -882,7 +1195,7 @@ task DiscoverParquetFiles {
       --dataset ~{dataset_name} \
       --table-prefixes ~{sep=" " table_prefixes}
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "4 GB"
@@ -900,6 +1213,7 @@ task DiscoverParquetFiles {
 
 task LoadParquetFilesToBQ {
   input {
+    Boolean go
     String project_id
     String dataset_name
     File fofn_file
@@ -907,10 +1221,10 @@ task LoadParquetFilesToBQ {
     String? billing_project_id
     String variants_docker
   }
-  
+
   command <<<
-    set -euo pipefail
-    
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
     # Table name is extracted from FOFN filename by the Python script
     python3 /app/load_parquet_to_bq.py \
       --project-id ~{project_id} \
@@ -920,7 +1234,7 @@ task LoadParquetFilesToBQ {
       --batch-size ~{batch_size} \
       --output-stats stats.json
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "4 GB"
@@ -929,9 +1243,9 @@ task LoadParquetFilesToBQ {
     maxRetries: 3
     cpu: 1
   }
-  
+
   output {
-    String completion_status = read_string("stats.json")
+    Boolean done = true
     File stats_json = "stats.json"
   }
 }
@@ -941,33 +1255,33 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
-    Array[String] load_outputs
+    Array[Boolean] go
     String variants_docker
   }
-  
+
   meta {
     volatile: true
   }
-  
+
   command <<<
-    set -euo pipefail
-    
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
     mkdir -p verification_output
-    
+
     python3 /app/verify_all_loaded.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --gcs-files-list ~{gcs_files_list} \
       --output-dir verification_output
   >>>
-  
+
   runtime {
     docker: variants_docker
     memory: "4 GB"
     disks: "local-disk 20 HDD"
     cpu: 1
   }
-  
+
   output {
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
@@ -975,5 +1289,6 @@ task VerifyParquetLoading {
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
+    Boolean done = true
   }
 }
