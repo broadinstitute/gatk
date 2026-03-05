@@ -1108,7 +1108,7 @@ EOF
 #      --lifecycle-file=lifecycle.json
 
     echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}ref_ranges/"
-    exit 0 # Temporary exit to prevent accidental lifecycle application during testing - remove this line in production
+#    exit 0 # Temporary exit to prevent accidental lifecycle application during testing - remove this line in production
   >>>
 
   runtime {
@@ -1121,7 +1121,6 @@ EOF
 
   output {
     Boolean done = true
-    String done = "lifecycle_configured"
     File lifecycle_config = "lifecycle.json"
     File existing_lifecycle_config = "existing_lifecycle.json"
   }
