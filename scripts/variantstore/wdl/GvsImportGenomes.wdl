@@ -1087,6 +1087,9 @@ task ConfigureParquetLifecycle {
     if [ -s existing_lifecycle.json ]; then
       echo "Existing lifecycle configuration:"
       cat existing_lifecycle.json
+      cp existing_lifecycle.json temp.json
+      sed 's/lifecycle_config/lifecycle/g' temp.json > existing_lifecycle.json
+      rm temp.json
 
       # Create the new lifecycle configuration for parquet directories
       cat > new_lifecycle_rule.json << EOF
@@ -1132,7 +1135,7 @@ EOF
     fi
 
     # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration
-    jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle_config.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
+    jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
 
 #    if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
 #    echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
